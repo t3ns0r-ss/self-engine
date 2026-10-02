@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { MISTAKE_LABELS, REVIEW_OFFSETS, addDays, getProblems, getSettings, getTopics, isSolved, resolveDue, today, type Mistake } from '../lib/storage';
 import { useStore } from '../lib/useStore';
+import { url } from '../lib/url';
 
 export type DashTopic = {
   id: string; order: number; title: string; href: string; hasLesson: boolean; hasCheckpoint: boolean;
@@ -72,7 +73,7 @@ export default function DashboardIsland({ topics, problems }: { topics: DashTopi
         <h2 id="due-today">Due today</h2>
         {dueReviews.length === 0 && dueResolves.length === 0 && <p>Nothing due.</p>}
         {dueReviews.length > 0 && (
-          <ul>{dueReviews.map((r) => <li key={`${r.t.id}-${r.s}`}><a href={`/review/${r.t.id.replace('.', '-')}/${r.s}/`}>Review set {r.s} for {r.t.id}</a> (due {r.due})</li>)}</ul>
+          <ul>{dueReviews.map((r) => <li key={`${r.t.id}-${r.s}`}><a href={url(`/review/${r.t.id.replace('.', '-')}/${r.s}/`)}>Review set {r.s} for {r.t.id}</a> (due {r.due})</li>)}</ul>
         )}
         {dueResolves.length > 0 && (
           <>

@@ -34,7 +34,7 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
 
   // Seed history: a problem read with the editorial 8 days ago (re-solve due), with a recognition miss,
   // and a checkpoint passed 4 days ago (review set 1 due).
-  const ids = await p.evaluate(async () => (await (await fetch('/phase-1/1-3-two-pointers/')).text()).match(/cf-90\d\dA/g));
+  const ids = await p.evaluate(async () => (await (await fetch('phase-1/1-3-two-pointers/')).text()).match(/cf-90\d\dA/g));
   const ladderId = 'cf-9001A';
   await p.evaluate(({ ladderId, d8, d4 }) => {
     localStorage.setItem('cp:v1:problems', JSON.stringify({ [ladderId]: { status: 'editorial', hintsOpened: 3, mistake: 'recognition', date: d8, note: 'missed closure' } }));

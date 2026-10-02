@@ -12,6 +12,8 @@ import { parse } from 'yaml';
 // links to its problem bank page and carries a "soon" badge. data-order lets the browser add
 // a "later" badge to topics after the learner's current topic (see src/styles/later-badge.js).
 const curriculum = parse(readFileSync('./src/data/curriculum.yaml', 'utf8'));
+// GitHub Pages serves the site under /<repo>/; BASE_PATH is set by the Pages workflow.
+const base = process.env.BASE_PATH || '/';
 const PHASES = ['Foundations', 'Array techniques', 'Mathematics I', 'Recursion to dynamic programming', 'Graphs', 'Range data structures', 'Strings', 'Integration'];
 const dash = (id) => id.replace('.', '-');
 const phaseGroups = PHASES.map((name, phase) => {
@@ -22,7 +24,8 @@ const phaseGroups = PHASES.map((name, phase) => {
     const lesson = existsSync(`${dir}/${dash(t.id)}-${t.slug}.mdx`);
     items.push({
       label: `${t.id} ${t.title}`,
-      link: lesson ? `/phase-${phase}/${dash(t.id)}-${t.slug}/` : `/bank/${dash(t.id)}/`,
+      // 7.8 has no practice set, so before its lesson exists it points at the bank overview.
+      link: lesson ? `/phase-${phase}/${dash(t.id)}-${t.slug}/` : t.id === '7.8' ? '/bank/' : `/bank/${dash(t.id)}/`,
       attrs: { 'data-order': String(t.order), 'data-topic': t.id },
       ...(lesson ? {} : { badge: { text: 'soon', variant: 'note' } }),
     });
@@ -34,12 +37,13 @@ const phaseGroups = PHASES.map((name, phase) => {
 // SITE_URL comes from .env.deploy at deploy time (PLAN.md Section 14.2); never hard-code a host.
 export default defineConfig({
   site: process.env.SITE_URL || undefined,
+  base,
   markdown: { remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] },
   integrations: [
     starlight({
       title: 'CP Training',
       customCss: ['katex/dist/katex.min.css', './src/styles/custom.css'],
-      head: [{ tag: 'script', attrs: { src: '/later-badge.js', defer: true } }],
+      head: [{ tag: 'script', attrs: { src: `${base.replace(/\/$/, '')}/later-badge.js`, defer: true } }],
       sidebar: [
         { label: 'Home', link: '/' },
         { label: 'Method', link: '/method/' },

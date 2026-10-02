@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { validateAll } from './validate.mjs';
 import { validateTopics } from './validate-topics.mjs';
 import { findLessons } from './lessons.mjs';
+import { url } from './url';
 
 export type Topic = { order: number; id: string; phase: number; slug: string; title: string; requires: string[]; keywords: string[]; target_rating: [number, number] };
 export type Pattern = { id: string; name: string; description: string; precondition: string };
@@ -96,7 +97,7 @@ export function practiceOf(bank: BankFile | undefined): BankProblem[] {
 }
 
 export const topicSlug = (id: string) => id.replace('.', '-');
-export const lessonHref = (t: Topic) => `/phase-${t.phase}/${topicSlug(t.id)}-${t.slug}/`;
+export const lessonHref = (t: Topic) => url(`/phase-${t.phase}/${topicSlug(t.id)}-${t.slug}/`);
 export const PHASE_NAMES = ['Foundations', 'Array techniques', 'Mathematics I', 'Recursion to dynamic programming', 'Graphs', 'Range data structures', 'Strings', 'Integration'];
 export const PLATFORM_NAMES: Record<Source, string> = { codeforces: 'Codeforces', atcoder: 'AtCoder', cses: 'CSES', leetcode: 'LeetCode' };
 

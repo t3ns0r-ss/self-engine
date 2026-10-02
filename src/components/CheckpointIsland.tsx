@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { REVIEW_OFFSETS, addDays, getDrills, getTopics, saveTopic, today, type TopicState } from '../lib/storage';
 import { useStore } from '../lib/useStore';
+import { url } from '../lib/url';
 import PlatformBadge from './PlatformBadge';
 
 export type CheckpointProblem = { id: string; title: string; url: string; source: string; difficulty: string };
@@ -45,7 +46,7 @@ export default function CheckpointIsland({ topic, minutes, problems, drill }: {
         <p><strong>Passed on {state.checkpointPassedOn}.</strong> Review sets are due on:</p>
         <ul>
           {([1, 2, 3] as const).map((s) => (
-            <li key={s}><a href={`/review/${topic.replace('.', '-')}/${s}/`}>Review set {s}</a>: {addDays(state.checkpointPassedOn!, REVIEW_OFFSETS[s])}</li>
+            <li key={s}><a href={url(`/review/${topic.replace('.', '-')}/${s}/`)}>Review set {s}</a>: {addDays(state.checkpointPassedOn!, REVIEW_OFFSETS[s])}</li>
           ))}
         </ul>
       </div>

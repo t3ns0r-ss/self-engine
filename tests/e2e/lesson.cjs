@@ -68,7 +68,7 @@ const check = (cond, msg) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`); 
   await p.locator('button:has-text("Submit results")').click();
   await p.waitForTimeout(200);
   check(await p.locator('text=Passed on').isVisible(), 'checkpoint passes with 2/3 and 8 drill items');
-  check(await p.locator('a[href="/review/1-3/1/"]').isVisible(), 'review set links shown with due dates');
+  check(await p.locator('a[href$="/review/1-3/1/"]').isVisible(), 'review set links shown with due dates');
 
   await p.locator('.sl-markdown-content').screenshot({ path: `${OUT}/lesson.png` });
 

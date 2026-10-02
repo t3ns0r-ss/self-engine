@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 done and approved. B1 in progress
-- Topic: bank 1.5
+- Topic: bank 1.6
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: link-check script (`scripts/fetch_problem.mjs`) and `source_check` field
 - Next action: B1 banks, one topic per commit, 0.1 → 1.7, then stop at the B1 spot-check gate
@@ -34,7 +34,8 @@
 | 1.2 | short | 22 | 23 |
 | 1.3 | short | 24 | 24 |
 | 1.4 | short | 21 | 19 |
-| other 38 | patterns written, no problems yet | 0 | 0 |
+| 1.5 | short | 21 | 22 |
+| other 37 | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -47,6 +48,7 @@
 - 1.2: reserved 23 of 24: one look-alike pair (2 of 4), review 6 of 10, no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
 - 1.3: reserved 24, but one look-alike pair (2 of 4) and review 5 of 10.
 - 1.4: reserved 19 of 24: no look-alike pair, review 4 of 10, no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
+- 1.5: reserved 22 of 24: no look-alike pair (the natural partners, merge vs. remove intervals, are already used in 1.1), review 7 of 10, no exam problems.
 
 ## Scope notes for current topic
 - Allowed: —

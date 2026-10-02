@@ -20,7 +20,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 1 | [1.6 Monotonic stack and deque](phase-1/1.6-monotonic-stack.md) | 2 | 0 | 9 | 3 | 2 | 16 | short |
 | 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 11 | 2 | 1 | 22 | short |
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 11 | 3 | 3 | 24 | short |
-| 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 1 | 2 | 4 | 6 | 1 | 14 | short |
 | 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

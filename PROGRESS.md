@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1 done; B2 (Phase 2 banks) in progress
-- Topic: bank 2.2
+- Topic: bank 2.3
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B1, all 13 Phase 0 and Phase 1 banks (606 problems: 345 practice, 261 reserved; 101 Codeforces problems API-checked only), validated and published
 - Next action: B2 banks 2.1 → 2.4, one commit per topic; then B3
@@ -38,7 +38,8 @@
 | 1.6 | short | 16 | 10 |
 | 1.7 | short | 22 | 15 |
 | 2.1 | short | 24 | 14 |
-| other 34 (Phases 2–7) | patterns written, no problems yet | 0 | 0 |
+| 2.2 | short | 14 | 3 |
+| other 33 (Phases 2–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -55,6 +56,7 @@
 - 1.6: the thinnest Phase 1 topic. Practice 16 of 20, reserved 10 of 24 (drill 5, checkpoint 3, review 2; no look-alike, later_drill or exam). Patterns `min-max-span` and `deque-window-condition` have 1 practice problem each, `histogram-rectangle` 2. Pure stack/deque problems at ratings 1000–1800 are scarce on these platforms; harder ones (e.g. Codeforces 1313C2, 1900) are above the Phase 1 tier range. Suggest allowing tier-5 problems up to 2000 for this topic, or accepting the gap.
 - 1.7: reserved 15 of 24: two look-alike pairs (complete), drill 8, checkpoint 3; no later_drill, review or exam problems left at tier 3–4. Practice is LeetCode-heavy (12 of 22, 55%).
 - 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.
+- 2.2: very thin. Practice 14 of 20, reserved 3 (checkpoint only). Most modular-arithmetic problems also need nCr (2.3), expectation (2.4) or DP, so they belong later. `inverse-general` has no problems (the fitting ones use extended Euclid and are in 2.1). Suggest merging 2.2's bank with 2.3's for practice purposes, or accepting the gap.
 
 ## Scope notes for current topic
 - Allowed: —

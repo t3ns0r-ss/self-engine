@@ -1,0 +1,32 @@
+---
+// Review set pages (PLAN.md Section 10.4): summary, link, pre-coding fields; answers behind a reveal; no hints.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import ReviewIsland, { type ReviewProblem } from '../../../components/ReviewIsland';
+import { loadData, problemsOf, topicSlug, lessonHref } from '../../../lib/data';
+
+export async function getStaticPaths() {
+  const data = await loadData();
+  return Object.keys(data.topics).flatMap((topic) =>
+    [1, 2, 3]
+      .filter((s) => data.topics[topic].problems.some((p) => p.role === 'review' && p.review_set === s))
+      .map((s) => ({ params: { topic: topicSlug(topic), set: String(s) }, props: { topic, set: s } })),
+  );
+}
+const { topic, set } = Astro.props as { topic: string; set: 1 | 2 | 3 };
+const data = await loadData();
+const t = data.curriculum.find((x) => x.id === topic)!;
+const cards = new Map(data.topics[topic].cards.map((c) => [c.id, c]));
+const problems: ReviewProblem[] = problemsOf(data, topic, ['review'])
+  .filter((p) => p.review_set === set)
+  .map((p) => ({
+    id: p.id, title: p.title, url: p.url, source: p.source, difficulty: p.difficulty, summary: p.summary,
+    card: cards.get(p.card!)!.name, property: cards.get(p.card!)!.decisive_property,
+  }));
+---
+<StarlightPage frontmatter={{ title: `Review ${t.id}, set ${set}`, description: `Spaced review set ${set} for topic ${t.id}.`, pagefind: false }}>
+  <p>
+    Review of <a href={lessonHref(t)}>{t.id} {t.title}</a>. These problems are new to you. For each one, write the budget,
+    candidate tools, and the property before coding. There are no hints: if you get stuck, reread the lesson's cards, then upsolve.
+  </p>
+  <ReviewIsland client:load topic={topic} set={set} problems={problems} />
+</StarlightPage>

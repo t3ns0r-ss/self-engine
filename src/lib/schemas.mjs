@@ -6,6 +6,12 @@ export const TOPIC_ID = /^[0-7]\.[1-8]$/;
 const topicId = z.string().regex(TOPIC_ID, 'topic id like "1.3"');
 const slug = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'kebab-case id');
 
+// YAML 1.1 parsers (Astro's) read an unquoted 2026-10-02 as a Date; YAML 1.2 (scripts) as a string.
+const isoDate = z.preprocess(
+  (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : v),
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date YYYY-MM-DD'),
+);
+
 export const curriculumRow = z.strictObject({
   order: z.number().int().min(1),
   id: topicId,
@@ -47,7 +53,7 @@ export const bankProblem = z
     reserved_for: z.enum(RESERVED_FOR).nullable(),
     lookalike_of: z.string().nullable().default(null),
     techniques: z.array(topicId).min(1),
-    checked_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date YYYY-MM-DD'),
+    checked_on: isoDate,
   })
   .superRefine((p, ctx) => {
     if (p.set === 'practice' && p.reserved_for !== null)

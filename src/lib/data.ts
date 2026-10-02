@@ -99,3 +99,29 @@ export const topicSlug = (id: string) => id.replace('.', '-');
 export const lessonHref = (t: Topic) => `/phase-${t.phase}/${topicSlug(t.id)}-${t.slug}/`;
 export const PHASE_NAMES = ['Foundations', 'Array techniques', 'Mathematics I', 'Recursion to dynamic programming', 'Graphs', 'Range data structures', 'Strings', 'Integration'];
 export const PLATFORM_NAMES: Record<Source, string> = { codeforces: 'Codeforces', atcoder: 'AtCoder', cses: 'CSES', leetcode: 'LeetCode' };
+
+/** One row per problem the learner can meet: bank practice problems and every problem a topic
+ *  file uses. Reserved bank problems that no lesson uses yet are left out on purpose. */
+export type IndexedProblem = {
+  id: string; title: string; url: string; source: Source; difficulty: string; topic: string;
+  role: Role | 'practice'; card: string; cardName: string; reviewSet: number | null;
+};
+
+export function problemIndex(data: SiteData): IndexedProblem[] {
+  const out = new Map<string, IndexedProblem>();
+  for (const [topic, bank] of Object.entries(data.banks)) {
+    const names = new Map((data.patterns[topic]?.patterns ?? []).map((p) => [p.id, p.name]));
+    for (const p of practiceOf(bank))
+      out.set(p.id, { id: p.id, title: p.title, url: p.url, source: p.source, difficulty: p.difficulty, topic, role: 'practice', card: p.pattern, cardName: names.get(p.pattern) ?? p.pattern, reviewSet: null });
+  }
+  for (const [topic, tf] of Object.entries(data.topics)) {
+    const names = new Map(tf.cards.map((c) => [c.id, c.name]));
+    const drillCard = new Map(tf.drill.map((d) => [d.problem, d.answer_card]));
+    for (const p of tf.problems) {
+      const b = data.bankById.get(p.id)!;
+      const card = p.card ?? drillCard.get(p.id) ?? b.pattern;
+      out.set(p.id, { id: p.id, title: b.title, url: b.url, source: b.source, difficulty: b.difficulty, topic, role: p.role, card, cardName: names.get(card) ?? card, reviewSet: p.review_set });
+    }
+  }
+  return [...out.values()];
+}

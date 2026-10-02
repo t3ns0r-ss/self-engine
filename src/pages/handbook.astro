@@ -1,0 +1,37 @@
+---
+// Recognition Handbook (PLAN.md Section 11.4), generated from every topic's cards and decision map.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import HandbookIsland, { type HCard, type HGroup } from '../components/HandbookIsland';
+import { loadData, lessonHref } from '../lib/data';
+import { cardName } from '../lib/cards';
+
+const data = await loadData();
+const order = new Map(data.curriculum.map((t) => [t.id, t.order]));
+const cards: HCard[] = [];
+const groups = new Map<string, HGroup>();
+for (const t of data.curriculum) {
+  const tf = data.topics[t.id];
+  if (!tf) continue;
+  for (const c of tf.cards) {
+    const sample = tf.problems.find((p) => p.role === 'ladder' && p.card === c.id && p.rung === 1)?.summary ?? null;
+    cards.push({ topic: t.id, order: t.order, href: `${lessonHref(t)}#card-${c.id}`, id: c.id, name: c.name, property: c.decisive_property, theorem: c.from_theorem, weak: c.weak_signals, kill: c.kill_signals, sample });
+  }
+  for (const e of tf.decision_map) {
+    const g = groups.get(e.weak_signal) ?? { signal: e.weak_signal, entries: [] };
+    g.entries.push({ topic: t.id, order: t.order, choose: cardName(data, e.choose, t.id), when: e.when, over: e.over.map((o) => ({ card: cardName(data, o.card), because: o.because })) });
+    groups.set(e.weak_signal, g);
+  }
+}
+const topics = data.curriculum.filter((t) => data.topics[t.id]).map((t) => ({ id: t.id, order: order.get(t.id)!, title: t.title }));
+---
+<StarlightPage frontmatter={{ title: 'Recognition Handbook', description: 'Every Recognition Card and decision rule, by weak signal and by topic.' }}>
+  <p>
+    A weak signal (a phrase in the statement, the size of n) only suggests candidate tools. The decision comes from checking
+    the decisive property. This handbook collects every card and every decision rule from the lessons.
+  </p>
+  {cards.length === 0 ? (
+    <p>No lessons are written yet, so there are no cards. Until then, each topic's patterns and their preconditions are listed on its <a href="/bank/">problem bank</a> page.</p>
+  ) : (
+    <HandbookIsland client:load topics={topics} cards={cards} groups={[...groups.values()]} />
+  )}
+</StarlightPage>

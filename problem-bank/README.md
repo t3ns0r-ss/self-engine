@@ -32,7 +32,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 3 | [3.7 Bitmask DP](phase-3/3.7-bitmask-dp.md) | 0 | 0 | 8 | 6 | 5 | 19 | short |
 | 3 | [3.8 Digit DP](phase-3/3.8-digit-dp.md) | 1 | 1 | 5 | 4 | 6 | 17 | short |
 | 4 | [4.1 Representation, BFS, DFS, components, grids as graphs](phase-4/4.1-graph-traversal.md) | 6 | 14 | 33 | 9 | 2 | 64 | complete |
-| 4 | [4.2 Bipartiteness, cycle detection, topological sort](phase-4/4.2-graph-structure.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 4 | [4.2 Bipartiteness, cycle detection, topological sort](phase-4/4.2-graph-structure.md) | 2 | 8 | 7 | 3 | 4 | 24 | short |
 | 4 | [4.3 Dijkstra, 0-1 BFS, Bellman–Ford, Floyd–Warshall](phase-4/4.3-shortest-paths.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 4 | [4.4 DSU and MST: Kruskal, Prim, cut property](phase-4/4.4-dsu-mst.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 4 | [4.5 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.5-trees.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

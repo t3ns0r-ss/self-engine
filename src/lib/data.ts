@@ -13,7 +13,7 @@ export type Source = 'codeforces' | 'atcoder' | 'cses' | 'leetcode';
 export type BankProblem = {
   id: string; source: Source; title: string; url: string; difficulty: string;
   tier: number; tier_basis: string; pattern: string; set: 'practice' | 'reserved'; reserved_for: string | null;
-  lookalike_of: string | null; techniques: string[]; checked_on: string;
+  lookalike_of: string | null; techniques: string[]; checked_on: string; source_check: 'page' | 'api';
 };
 export type BankFile = { topic: string; status: 'in_progress' | 'complete' | 'short'; problems: BankProblem[] };
 export type Card = {

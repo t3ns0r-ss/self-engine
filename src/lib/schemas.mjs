@@ -54,6 +54,9 @@ export const bankProblem = z
     lookalike_of: z.string().nullable().default(null),
     techniques: z.array(topicId).min(1),
     checked_on: isoDate,
+    // page: the problem page was opened and the statement read. api: only the platform's official
+    // API was reachable (title and difficulty confirmed, statement not read); Saurabh spot-checks.
+    source_check: z.enum(['page', 'api']).default('page'),
   })
   .superRefine((p, ctx) => {
     if (p.set === 'practice' && p.reserved_for !== null)

@@ -182,6 +182,8 @@ export function validateAll({ curriculum, patterns, banks, notes }) {
         if (!urlOk) err(F, `${P}: url ${p.url} does not match the ${p.source} URL format`);
       }
       if (!plat.difficulty.test(p.difficulty)) err(F, `${P}: difficulty "${p.difficulty}" is not valid for ${p.source}`);
+      if (p.source_check === 'api' && p.source !== 'codeforces')
+        err(F, `${P}: source_check api is only for Codeforces; open the ${p.source} page instead`);
       if (!plat.bases.includes(p.tier_basis)) err(F, `${P}: tier_basis ${p.tier_basis} not allowed for ${p.source} (use ${plat.bases.join(' or ')})`);
 
       // 6. Techniques never later than this topic; contain the topic itself unless the problem

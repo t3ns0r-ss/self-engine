@@ -37,9 +37,11 @@ function topicPage(t, bank, pf) {
     }
     lines.push('| id | title | platform | difficulty | pattern |', '|---|---|---|---|---|');
     for (const p of tier.problems)
-      lines.push(`| ${p.id} | [${esc(p.title)}](${p.url}) | ${PLATFORM_NAME[p.source]} | ${esc(p.difficulty)} | ${esc(names.get(p.pattern) ?? p.pattern)} |`);
+      lines.push(`| ${p.id}${p.source_check === 'api' ? ' †' : ''} | [${esc(p.title)}](${p.url}) | ${PLATFORM_NAME[p.source]} | ${esc(p.difficulty)} | ${esc(names.get(p.pattern) ?? p.pattern)} |`);
     lines.push('');
   }
+  if ((bank?.problems ?? []).some((p) => p.set === 'practice' && p.source_check === 'api'))
+    lines.push('† Title and rating confirmed through the Codeforces API; the statement could not be opened from the build machine, so topic fit rests on the solution note. Please spot-check.', '');
   return lines.join('\n');
 }
 

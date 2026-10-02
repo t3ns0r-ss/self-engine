@@ -21,7 +21,8 @@ export default function CheckpointIsland({ topic, minutes, problems, drill }: {
   const [solved, setSolved] = useState<Record<string, boolean>>({});
   const [result, setResult] = useState('');
   const running = !!state.checkpointStartedAt && !state.checkpointFinished;
-  const left = running ? state.checkpointStartedAt! + minutes * 60_000 - now : 0;
+  // Clamped: the first render after Start can use a clock reading taken just before the start time.
+  const left = running ? Math.min(minutes * 60_000, state.checkpointStartedAt! + minutes * 60_000 - now) : 0;
 
   useEffect(() => {
     if (!running) return;

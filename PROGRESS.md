@@ -1,18 +1,18 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 done and approved. B1 in progress
-- Topic: bank 1.7
+- Milestone: M0 done; B0 approved; B1 done. Waiting at the B1 spot-check gate
+- Topic: —
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: link-check script (`scripts/fetch_problem.mjs`) and `source_check` field
-- Next action: B1 banks, one topic per commit, 0.1 → 1.7, then stop at the B1 spot-check gate
+- Last completed step: B1, all 13 Phase 0 and Phase 1 banks (606 problems: 345 practice, 261 reserved; 101 Codeforces problems API-checked only), validated and published
+- Next action: ⏸ Saurabh spot-checks a few topics (see Questions). Then B2 (Phase 2) or M1 (the 1.3 lesson), whichever Saurabh prefers
 
 ## Gates
 | Gate | Status | Date |
 |---|---|---|
 | B0 pattern lists review | approved | 2026-10-02 |
 | M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
-| B1 spot-check | not started | |
+| B1 spot-check | waiting for Saurabh | 2026-10-02 |
 
 ## Saurabh is studying
 - Topic: —
@@ -64,6 +64,12 @@
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
 ## Questions for Saurabh
+- **B1 spot-check (gate).** All 13 banks are in `problem-bank/phase-0/` and `problem-bank/phase-1/` (readable lists) and on the site under Problem bank. Suggested spot-checks: `problem-bank/phase-1/1.3-two-pointers.md` (the exemplar topic) with `notes/bank/1.3.md`, then one Phase 0 topic (0.4) and one thin topic (1.6). For each, check a few problems: does the solution really need the topic, is the tier right, is the note correct?
+  - Problems marked † are Codeforces problems checked through the official API only: title and rating are exact, but I could not open the statement, so their notes are from my knowledge of the problem and are marked "(recalled)" where a detail matters. Please open a few † problems and compare with the note.
+  - Every bank is `status: short` (Section 11). The usual shortfalls: look-alike pairs (rare where both problems are unused and nearly identical), review and exam problems at tiers 3–4, and Phase 0 tiers 3–5. Details per topic are under Bank gaps. Is `short` acceptable here, or should I relax a rule (for example allow ABC B problems at tier 2 for Phase 0 reserved sets, or ratings up to 2000 for 1.6)?
+  - Pattern `fast-io` (0.1) has no problems; suggest folding it into the lesson as a rule rather than a pattern. `real-search` (1.4) has 1 problem.
+  - Fixed after B0 approval: the 1.7 pattern `bit-identities` had lost its precondition (a "|" in the text split it during generation). It now reads: "Addition is XOR plus the carries: a carry appears exactly at the bits where both a and b are 1, so a + b = (a ⊕ b) + 2(a & b) and a | b = (a ⊕ b) + (a & b)."
+  - Next: B2–B7 before lessons (the bank plan's order), or M1 (the 1.3 lesson) now with banks running one phase ahead?
 - Review the 48 pattern files in `src/data/bank/patterns/` (readable versions in `problem-bank/phase-*/`). They decide what each topic teaches. Approve the B0 gate here or leave changes in FEEDBACK.md.
 - Hosting: GitHub Pages at https://t3ns0r-ss.github.io/self-engine/ (your server is unreachable). Enable it once: Settings → Pages → Source: "GitHub Actions". The self-hosted files stay as an alternative.
 - Deviations in M0, decided while you were travelling (change any you disagree with):

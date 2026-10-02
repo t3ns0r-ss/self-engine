@@ -1,17 +1,17 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 done and approved. Next: B1
-- Topic: —
+- Milestone: M0 done; B0 done and approved. B1 in progress
+- Topic: bank 0.1
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: M0. All components, pages, method page, validation, test scripts, CI, and deploy files; placeholder topic removed from the site (kept only as a test fixture in `tests/placeholder/`)
-- Next action: B1 (Phase 0 and 1 banks) as soon as the problem sites are reachable (see Blocked). First GitHub Pages publish once Saurabh sets Settings → Pages → Source to "GitHub Actions"
+- Last completed step: link-check script (`scripts/fetch_problem.mjs`) and `source_check` field
+- Next action: B1 banks, one topic per commit, 0.1 → 1.7, then stop at the B1 spot-check gate
 
 ## Gates
 | Gate | Status | Date |
 |---|---|---|
 | B0 pattern lists review | approved | 2026-10-02 |
-| M0 test deploy | changed to GitHub Pages (server unreachable); waiting for Pages to be enabled in repo settings | 2026-10-02 |
+| M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
 | B1 spot-check | not started | |
 
 ## Saurabh is studying
@@ -24,7 +24,11 @@
 ## Bank
 | topic | status | practice | reserved |
 |---|---|---|---|
-| all 48 | patterns written, no problems yet | 0 | 0 |
+| 0.1 | short | 34 | 13 |
+| other 47 | patterns written, no problems yet | 0 | 0 |
+
+### Bank gaps (status: short)
+- 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
 
 ## Scope notes for current topic
 - Allowed: —
@@ -32,7 +36,8 @@
 - Forbidden keywords: —
 
 ## Blocked
-- B1 problem collection: this cloud environment's network policy denies codeforces.com, atcoder.jp, cses.fi, leetcode.com and kenkoooo.com (checked with curl and WebFetch on 2026-10-02). PLAN.md Section 0.1 and bank plan Section 7.3 forbid filling any problem field from memory, so no problems were added. Fix: allow those hosts in the environment's network settings, or run B1 somewhere they're reachable.
+- Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.
+- Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
 ## Questions for Saurabh
 - Review the 48 pattern files in `src/data/bank/patterns/` (readable versions in `problem-bank/phase-*/`). They decide what each topic teaches. Approve the B0 gate here or leave changes in FEEDBACK.md.
@@ -46,6 +51,8 @@
   - Astro 7 needed `@astrojs/markdown-remark` installed for KaTeX's remark/rehype plugins.
 - Git: the session works on the branch `claude/problemset-implementation-yja039`, not the `bank/phase-{n}` and `setup/m0` branches named in the plans. Should I keep that branch name or switch?
 - Interpretations made (change any you disagree with):
+  - AtCoder titles are stored without the task letter prefix shown in the page heading ("C - Title" → "Title"), matching how the other platforms' titles look.
+  - Phase 0 topics (especially 0.1) have few pure problems in tiers 3–5, and reserved purposes need tier ≥ 2 while ABC A–B count as tier 1. Expect `status: short` for several Phase 0 topics; gaps are listed under Bank.
   - Count and composition rules (bank plan Sections 10.3–10.5) apply only to `status: complete`. `in_progress` files must pass every rule for each problem but may be below the counts.
   - Codeforces tier ranges include both ends, so a rating exactly on a boundary (e.g. 1400 in Phase 1) may sit in either tier. Phase 0 tier 1 is rating 800.
   - Pattern files are also checked for later-topic keywords (PLAN.md Section 4).

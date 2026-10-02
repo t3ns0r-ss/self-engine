@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1 and B2 done; B3 (Phase 3 banks) in progress
-- Topic: bank 3.5
+- Topic: bank 3.6
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B1, all 13 Phase 0 and Phase 1 banks (606 problems: 345 practice, 261 reserved; 101 Codeforces problems API-checked only), validated and published
 - Next action: B3 (Phase 3 banks), one commit per topic
@@ -46,7 +46,8 @@
 | 3.3 | short | 18 | 22 |
 | 3.4 | short | 20 | 17 |
 | 3.5 | short | 22 | 30 |
-| other 26 (Phases 3–7) | patterns written, no problems yet | 0 | 0 |
+| 3.6 | short | 21 | 18 |
+| other 25 (Phases 3–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -71,6 +72,7 @@
 - 3.3: practice 18 of 20, reserved 22 of 24. `value-indexed` has 1 practice problem (EDP E is reserved as a look-alike with EDP D) and `bounded` has 2; most other bounded or value-indexed tasks are rated above 2000. Drill 5 of 8, review 5 of 10. Three ABC candidates are shared ARC tasks whose statements were not cached.
 - 3.4: practice 20, reserved 17 of 24 (drill 3 of 8, review 3 of 10). `edit-distance` has 3 practice problems and none left for checkpoint or review; `lis-reduction` practice spans tiers 3–4 only. Two look-alike pairs (LCS vs Minimum Operations to Make a Subsequence; Russian Doll Envelopes vs Maximum Length of Pair Chain).
 - 3.5: practice 22, reserved 30. Short on composition only: `partition-counting` has 3 practice problems over tiers 2–3 and none in checkpoint or review (most partition-counting problems are coin-change variants already in 3.3); later_drill 2 of 4; one look-alike pair (Grid 1 vs Grid 2).
+- 3.6: practice 21, reserved 18 of 24 (drill 4 of 8, review 3 of 10, later_drill 2 of 4). AtCoder ABC has almost no interval DP below F, so the set leans on LeetCode (57%) and Codeforces († notes). `first-element-match` and `palindrome-segment` practice each span 2 tiers. Two look-alike pairs (Predict the Winner vs Stone Game; Longest Palindromic Subsequence vs Substring).
 
 ## Scope notes for current topic
 - Allowed: —

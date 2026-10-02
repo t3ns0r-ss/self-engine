@@ -1,0 +1,51 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import BankTable, { type BankTier } from '../../components/BankTable';
+import { loadData, practiceOf, topicSlug, PHASE_NAMES } from '../../lib/data';
+import { practiceByTier } from '../../lib/validate.mjs';
+
+export async function getStaticPaths() {
+  const { curriculum } = await loadData();
+  return curriculum.filter((t) => t.id !== '7.8').map((t) => ({ params: { topic: topicSlug(t.id) }, props: { id: t.id } }));
+}
+
+const { id } = Astro.props;
+const { curriculum, patterns, banks, lessons } = await loadData();
+const topic = curriculum.find((t) => t.id === id)!;
+const pf = patterns[id];
+const bank = banks[id];
+const practice = { topic: id, status: bank?.status ?? 'in_progress', problems: practiceOf(bank) };
+// Only practice problems, and only the fields the table shows, are sent to the browser.
+const tiers: BankTier[] = practiceByTier(practice, pf).map((t: { tier: number; name: string; problems: ReturnType<typeof practiceOf> }) => ({
+  tier: t.tier,
+  name: t.name,
+  problems: t.problems.map(({ id, title, url, source, difficulty, pattern }) => ({ id, title, url, source, difficulty, pattern })),
+}));
+const patternNames = Object.fromEntries(pf.patterns.map((p) => [p.id, p.name]));
+const hasLesson = lessons.has(id);
+const lessonHref = `/phase-${topic.phase}/${topicSlug(id)}-${topic.slug}/`;
+---
+<StarlightPage frontmatter={{ title: `${topic.id} ${topic.title}`, description: `Practice problems for topic ${topic.id}.` }}>
+  <p>
+    Phase {topic.phase} ({PHASE_NAMES[topic.phase]}), target rating {topic.target_rating[0]}–{topic.target_rating[1]}.
+    {hasLesson ? <> Read the <a href={lessonHref}>lesson</a> first.</> : null}
+  </p>
+  {!hasLesson && (
+    <aside class="starlight-aside starlight-aside--note">
+      <p>Lesson coming. You can practise now; pattern descriptions are below.</p>
+    </aside>
+  )}
+  <h2 id="patterns">Patterns</h2>
+  <dl class="patterns">
+    {pf.patterns.map((p) => (
+      <>
+        <dt>{p.name}</dt>
+        <dd>
+          <p>{p.description}</p>
+          <p><strong>Works because:</strong> {p.precondition}</p>
+        </dd>
+      </>
+    ))}
+  </dl>
+  <BankTable client:load tiers={tiers} patternNames={patternNames} />
+</StarlightPage>

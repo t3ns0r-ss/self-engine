@@ -1,7 +1,7 @@
 // Creates (or removes, with --remove) a placeholder topic that exercises every component
 // (PLAN.md milestone M0). All problems are fake (ids cf-9xxxA, titles "Placeholder …") and
 // must never stay in the repository: tests/e2e.sh creates them, builds, tests, and removes them.
-import { writeFileSync, rmSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { writeFileSync, rmSync, mkdirSync, readFileSync, existsSync, cpSync } from 'node:fs';
 import { stringify } from 'yaml';
 
 const FILES = [
@@ -12,12 +12,14 @@ const FILES = [
   'src/data/topics/1-3.yaml',
   'src/content/docs/phase-1/1-3-two-pointers.mdx',
 ];
+const CODE = 'code/0.0-placeholder';
 const GLOSSARY = 'src/data/glossary.yaml';
 const GLOSSARY_BACKUP = 'tests/placeholder/.glossary.backup';
 
 if (process.argv.includes('--remove')) {
   for (const f of FILES) rmSync(f, { force: true });
   rmSync('src/content/docs/phase-1', { recursive: true, force: true });
+  rmSync(CODE, { recursive: true, force: true });
   if (existsSync(GLOSSARY_BACKUP)) {
     writeFileSync(GLOSSARY, readFileSync(GLOSSARY_BACKUP, 'utf8'));
     rmSync(GLOSSARY_BACKUP);
@@ -108,6 +110,7 @@ writeFileSync(GLOSSARY, stringify([
   { term: 'window', definition: 'A contiguous segment a[l..r] of an array.', topic: '1.3' },
   { term: 'GCD', expansion: 'greatest common divisor', definition: 'The largest positive integer dividing both numbers.', topic: '0.4' },
 ]));
+cpSync('tests/placeholder/window-sum', `${CODE}/window-sum`, { recursive: true });
 mkdirSync('src/content/docs/phase-1', { recursive: true });
 writeFileSync('src/content/docs/phase-1/1-3-two-pointers.mdx', `---
 title: "1.3 Two pointers and sliding window"

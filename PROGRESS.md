@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 done and approved. B1 in progress
-- Topic: bank 0.1
+- Topic: bank 0.3
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: link-check script (`scripts/fetch_problem.mjs`) and `source_check` field
 - Next action: B1 banks, one topic per commit, 0.1 → 1.7, then stop at the B1 spot-check gate
@@ -25,10 +25,12 @@
 | topic | status | practice | reserved |
 |---|---|---|---|
 | 0.1 | short | 34 | 13 |
-| other 47 | patterns written, no problems yet | 0 | 0 |
+| 0.2 | short | 27 | 20 |
+| other 46 | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
+- 0.2: reserved has 20 of 24: no look-alike pair (no near-identical earlier-topic partner exists; the natural partners need later topics), 2 of 4 later_drill, review 7 of 10, no exam problems. Practice platform mix is 59% AtCoder.
 
 ## Scope notes for current topic
 - Allowed: —

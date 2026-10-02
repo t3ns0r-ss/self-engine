@@ -8,7 +8,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 |---|---|---|---|---|---|---|---|---|
 | 0 | [0.1 C++ for CP: I/O, types, overflow, compiling, online judges](phase-0/0.1-cpp-for-cp.md) | 29 | 2 | 3 | 0 | 0 | 34 | short |
 | 0 | [0.2 Complexity analysis and reading constraints](phase-0/0.2-complexity.md) | 3 | 14 | 6 | 3 | 1 | 27 | short |
-| 0 | [0.3 Implementation and simulation](phase-0/0.3-implementation.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 0 | [0.3 Implementation and simulation](phase-0/0.3-implementation.md) | 15 | 17 | 12 | 0 | 1 | 45 | short |
 | 0 | [0.4 Parity, divisibility, GCD via Euclid, basic modular arithmetic](phase-0/0.4-elementary-math.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 0 | [0.5 Brute force: loops, bitmask subsets, permutations, simple recursion](phase-0/0.5-brute-force.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 0 | [0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs](phase-0/0.6-stl-toolbox.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

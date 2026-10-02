@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 approved; B1 and B2 done; B3 (Phase 3 banks) in progress
-- Topic: bank 3.7
+- Milestone: M0 done; B0 approved; B1, B2 and B3 done; B4 (Phase 4 banks) next
+- Topic: bank 3.8
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: B1, all 13 Phase 0 and Phase 1 banks (606 problems: 345 practice, 261 reserved; 101 Codeforces problems API-checked only), validated and published
-- Next action: B3 (Phase 3 banks), one commit per topic
+- Last completed step: B3, all 8 Phase 3 banks (3.1–3.8: 322 problems, 172 practice, 150 reserved), validated and published
+- Next action: B4 (Phase 4 banks), one commit per topic
 
 ## Gates
 | Gate | Status | Date |
@@ -48,7 +48,8 @@
 | 3.5 | short | 22 | 30 |
 | 3.6 | short | 21 | 18 |
 | 3.7 | short | 19 | 9 |
-| other 24 (Phases 3–7) | patterns written, no problems yet | 0 | 0 |
+| 3.8 | short | 17 | 10 |
+| other 23 (Phases 3–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -75,6 +76,7 @@
 - 3.5: practice 22, reserved 30. Short on composition only: `partition-counting` has 3 practice problems over tiers 2–3 and none in checkpoint or review (most partition-counting problems are coin-change variants already in 3.3); later_drill 2 of 4; one look-alike pair (Grid 1 vs Grid 2).
 - 3.6: practice 21, reserved 18 of 24 (drill 4 of 8, review 3 of 10, later_drill 2 of 4). AtCoder ABC has almost no interval DP below F, so the set leans on LeetCode (57%) and Codeforces († notes). `first-element-match` and `palindrome-segment` practice each span 2 tiers. Two look-alike pairs (Predict the Winner vs Stone Game; Longest Palindromic Subsequence vs Substring).
 - 3.7: practice 19 of 20, reserved 9 of 24: bitmask DP below rating 1700 is rare, so tiers 1–2 are empty and most candidates went to practice. `group-mask` has 2 practice problems (two others are in 3.1 as backtracking), `submask-mask` 3. No drill beyond 1, no later_drill, no look-alike pair (the natural partner, Boats to Save People, is used in an earlier bank).
+- 3.8: practice 17 of 20, reserved 10 of 24: digit DP is rare below rating 1700, so most problems are tier 3–5 and went to practice. Drill 1 of 8, review 3 of 10, no later_drill; one look-alike pair (Count Numbers with Unique Digits vs Count Special Integers). `neighbour-digits` and `digit-aggregate` practice each span 2 tiers.
 
 ## Scope notes for current topic
 - Allowed: —

@@ -29,7 +29,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 3 | [3.4 LIS in O(n log n), LCS, edit distance](phase-3/3.4-sequence-dp.md) | 1 | 8 | 5 | 3 | 3 | 20 | short |
 | 3 | [3.5 Grid and counting DP modulo a prime](phase-3/3.5-counting-dp.md) | 0 | 8 | 9 | 4 | 1 | 22 | short |
 | 3 | [3.6 Interval DP](phase-3/3.6-interval-dp.md) | 0 | 4 | 9 | 3 | 5 | 21 | short |
-| 3 | [3.7 Bitmask DP](phase-3/3.7-bitmask-dp.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 3 | [3.7 Bitmask DP](phase-3/3.7-bitmask-dp.md) | 0 | 0 | 8 | 6 | 5 | 19 | short |
 | 3 | [3.8 Digit DP](phase-3/3.8-digit-dp.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 4 | [4.1 Representation, BFS, DFS, components, grids as graphs](phase-4/4.1-graph-traversal.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 4 | [4.2 Bipartiteness, cycle detection, topological sort](phase-4/4.2-graph-structure.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1, B2 and B3 done; B4 (Phase 4 banks) next
-- Topic: bank 4.3
+- Topic: bank 4.4
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B3, all 8 Phase 3 banks (3.1–3.8: 322 problems, 172 practice, 150 reserved), validated and published
 - Next action: B4 (Phase 4 banks), one commit per topic
@@ -52,7 +52,8 @@
 | 4.1 | complete | 64 | 34 |
 | 4.2 | short | 24 | 34 |
 | 4.3 | short | 42 | 32 |
-| other 20 (Phases 4–7) | patterns written, no problems yet | 0 | 0 |
+| 4.4 | complete | 36 | 31 |
+| other 19 (Phases 4–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -83,6 +84,7 @@
 - 4.1: complete (all counts and composition rules met). 20 Codeforces notes are recalled from memory (†) and need a spot-check against the statement pages.
 - 4.2: short only because pattern `smallest-order` has 1 practice problem (needs 4 over 3 tiers): lexicographically-smallest topological sort problems are rare in band, and two of the three found are used as checkpoint and look-alike. Suggestion: merge `smallest-order` into `dependency-order` as a variant. 17 Codeforces notes are recalled (†).
 - 4.3: short only because pattern `negative-edges` has 4 practice problems in tiers 3–4 only (needs 3 tiers): no tier-2 or tier-5 Bellman–Ford problem was found that does not need a later topic. 18 Codeforces notes are recalled (†).
+- 4.4: complete (all counts and composition rules met). 17 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
 - Allowed: —

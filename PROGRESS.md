@@ -1,18 +1,18 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 approved; B1 done. Waiting at the B1 spot-check gate
-- Topic: —
+- Milestone: M0 done; B0 approved; B1 done; B2 (Phase 2 banks) in progress
+- Topic: bank 2.2
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B1, all 13 Phase 0 and Phase 1 banks (606 problems: 345 practice, 261 reserved; 101 Codeforces problems API-checked only), validated and published
-- Next action: ⏸ Saurabh spot-checks a few topics (see Questions). Then B2 (Phase 2) or M1 (the 1.3 lesson), whichever Saurabh prefers
+- Next action: B2 banks 2.1 → 2.4, one commit per topic; then B3
 
 ## Gates
 | Gate | Status | Date |
 |---|---|---|
 | B0 pattern lists review | approved | 2026-10-02 |
 | M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
-| B1 spot-check | waiting for Saurabh | 2026-10-02 |
+| B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |
 
 ## Saurabh is studying
 - Topic: —
@@ -37,7 +37,8 @@
 | 1.5 | short | 21 | 22 |
 | 1.6 | short | 16 | 10 |
 | 1.7 | short | 22 | 15 |
-| other 35 (Phases 2–7) | patterns written, no problems yet | 0 | 0 |
+| 2.1 | short | 24 | 14 |
+| other 34 (Phases 2–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -53,6 +54,7 @@
 - 1.5: reserved 22 of 24: no look-alike pair (the natural partners, merge vs. remove intervals, are already used in 1.1), review 7 of 10, no exam problems.
 - 1.6: the thinnest Phase 1 topic. Practice 16 of 20, reserved 10 of 24 (drill 5, checkpoint 3, review 2; no look-alike, later_drill or exam). Patterns `min-max-span` and `deque-window-condition` have 1 practice problem each, `histogram-rectangle` 2. Pure stack/deque problems at ratings 1000–1800 are scarce on these platforms; harder ones (e.g. Codeforces 1313C2, 1900) are above the Phase 1 tier range. Suggest allowing tier-5 problems up to 2000 for this topic, or accepting the gap.
 - 1.7: reserved 15 of 24: two look-alike pairs (complete), drill 8, checkpoint 3; no later_drill, review or exam problems left at tier 3–4. Practice is LeetCode-heavy (12 of 22, 55%).
+- 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.
 
 ## Scope notes for current topic
 - Allowed: —

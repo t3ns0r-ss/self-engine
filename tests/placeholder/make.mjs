@@ -1,7 +1,7 @@
 // Creates (or removes, with --remove) a placeholder topic that exercises every component
 // (PLAN.md milestone M0). All problems are fake (ids cf-9xxxA, titles "Placeholder …") and
 // must never stay in the repository: tests/e2e.sh creates them, builds, tests, and removes them.
-import { writeFileSync, rmSync, mkdirSync, readFileSync, existsSync, cpSync } from 'node:fs';
+import { writeFileSync, rmSync, mkdirSync, readFileSync, existsSync, cpSync, readdirSync } from 'node:fs';
 import { stringify } from 'yaml';
 
 const FILES = [
@@ -15,10 +15,19 @@ const FILES = [
 const CODE = 'code/0.0-placeholder';
 const GLOSSARY = 'src/data/glossary.yaml';
 const GLOSSARY_BACKUP = 'tests/placeholder/.glossary.backup';
+// Real files at these paths (for example the real 1.2 and 1.3 banks) are moved aside while the
+// placeholder exists and put back by --remove.
+const BACKUP = 'tests/placeholder/.backup';
+const backupOf = (f) => `${BACKUP}/${f.replaceAll('/', '__')}`;
 
 if (process.argv.includes('--remove')) {
-  for (const f of FILES) rmSync(f, { force: true });
-  rmSync('src/content/docs/phase-1', { recursive: true, force: true });
+  for (const f of FILES) {
+    rmSync(f, { force: true });
+    if (existsSync(backupOf(f))) cpSync(backupOf(f), f);
+  }
+  rmSync(BACKUP, { recursive: true, force: true });
+  // Only remove the folder if the placeholder lesson was the only thing in it.
+  if (existsSync('src/content/docs/phase-1') && readdirSync('src/content/docs/phase-1').length === 0) rmSync('src/content/docs/phase-1', { recursive: true });
   rmSync(CODE, { recursive: true, force: true });
   if (existsSync(GLOSSARY_BACKUP)) {
     writeFileSync(GLOSSARY, readFileSync(GLOSSARY_BACKUP, 'utf8'));
@@ -27,6 +36,9 @@ if (process.argv.includes('--remove')) {
   console.log('placeholder removed');
   process.exit(0);
 }
+
+mkdirSync(BACKUP, { recursive: true });
+for (const f of FILES) if (existsSync(f) && !existsSync(backupOf(f))) cpSync(f, backupOf(f));
 
 let n = 0;
 const prob = (rating, tier, extra) => {

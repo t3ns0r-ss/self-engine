@@ -11,7 +11,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 0 | [0.3 Implementation and simulation](phase-0/0.3-implementation.md) | 15 | 17 | 12 | 0 | 1 | 45 | short |
 | 0 | [0.4 Parity, divisibility, GCD via Euclid, basic modular arithmetic](phase-0/0.4-elementary-math.md) | 7 | 12 | 3 | 0 | 1 | 23 | short |
 | 0 | [0.5 Brute force: loops, bitmask subsets, permutations, simple recursion](phase-0/0.5-brute-force.md) | 3 | 14 | 10 | 3 | 0 | 30 | short |
-| 0 | [0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs](phase-0/0.6-stl-toolbox.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 0 | [0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs](phase-0/0.6-stl-toolbox.md) | 4 | 16 | 11 | 4 | 1 | 36 | short |
 | 1 | [1.1 Sorting, comparators, coordinate compression](phase-1/1.1-sorting.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 1 | [1.2 Prefix sums and difference arrays (1D, 2D)](phase-1/1.2-prefix-sums.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 1 | [1.3 Two pointers and sliding window](phase-1/1.3-two-pointers.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

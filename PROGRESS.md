@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 done and approved. B1 in progress
-- Topic: bank 0.6
+- Topic: bank 1.1
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: link-check script (`scripts/fetch_problem.mjs`) and `source_check` field
 - Next action: B1 banks, one topic per commit, 0.1 → 1.7, then stop at the B1 spot-check gate
@@ -29,7 +29,8 @@
 | 0.3 | short | 45 | 24 |
 | 0.4 | short | 23 | 22 |
 | 0.5 | short | 30 | 22 |
-| other 43 | patterns written, no problems yet | 0 | 0 |
+| 0.6 | short | 36 | 27 |
+| other 42 | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -37,6 +38,7 @@
 - 0.3: reserved has 24 (the minimum) but no look-alike pair and no exam problems; review has 9 of 10 (no tier-4 problem besides one LeetCode Hard).
 - 0.4: reserved has 22 of 24: one look-alike pair (2 of 4), 3 of 4 later_drill, review 6 of 10, no exam problems.
 - 0.5: reserved has 22 of 24: no look-alike pair, review 6 of 10, exam 1 of 2. Pattern `permutations` spans only tiers 2–3 in practice.
+- 0.6: all reserved purposes are met except look-alikes (none found), so the status is short only for that.
 
 ## Scope notes for current topic
 - Allowed: —

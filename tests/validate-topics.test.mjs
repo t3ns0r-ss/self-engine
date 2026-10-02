@@ -21,7 +21,7 @@ const run = (mutate) => {
 const expectError = (errors, re) => assert.ok(errors.some((e) => re.test(e)), `expected ${re}, got:\n${errors.join('\n')}`);
 
 test('placeholder topic is valid', () => assert.deepEqual(run(), []));
-test('problem must exist in the bank', () => expectError(run((d, t) => { t.problems[0].id = 'cf-1A'; }), /cf-1A is not in the problem bank/));
+test('problem must exist in the bank', () => expectError(run((d, t) => { t.problems[0].id = 'cf-99999Z'; }), /cf-99999Z is not in the problem bank/));
 test('ladder must come from practice', () => expectError(run((d, t) => { const r = t.problems.find((p) => p.role === 'review'); Object.assign(t.problems[0], { id: r.id }); t.problems.splice(t.problems.indexOf(r), 1); }), /role ladder must come from the practice set/));
 test('ladder card must belong to the topic', () => expectError(run((d, t) => { t.problems[0].card = 'nope'; }), /card nope is not a card of topic 1.3/));
 test('at least 3 ladder problems per card', () => expectError(run((d, t) => { t.problems = t.problems.filter((p) => !(p.role === 'ladder' && p.card === 'fixed-window' && p.rung === 4)); t.problems.find((p) => p.role === 'ladder' && p.card === 'fixed-window' && p.rung === 3).rung = 3; t.problems = t.problems.filter((p) => !(p.role === 'ladder' && p.card === 'fixed-window' && p.rung === 3)); }), /card fixed-window has 2 ladder problems/));

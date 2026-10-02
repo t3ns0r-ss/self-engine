@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 approved; B1, B2 and B3 done; B4 (Phase 4 banks) next
-- Topic: bank 4.6
+- Milestone: M0 done; B0 approved; B1, B2, B3 and B4 done; B5 (Phase 5 banks) next
+- Topic: bank 4.7
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: B3, all 8 Phase 3 banks (3.1–3.8: 322 problems, 172 practice, 150 reserved), validated and published
-- Next action: B4 (Phase 4 banks), one commit per topic
+- Last completed step: B4, all 7 Phase 4 banks (4.1–4.7: 418 problems, 242 practice, 176 reserved; 4.1, 4.4 and 4.5 complete), validated and published
+- Next action: B5 (Phase 5 banks), one commit per topic
 
 ## Gates
 | Gate | Status | Date |
@@ -55,7 +55,8 @@
 | 4.4 | complete | 36 | 31 |
 | 4.5 | complete | 33 | 31 |
 | 4.6 | short | 23 | 10 |
-| other 17 (Phases 4–7) | patterns written, no problems yet | 0 | 0 |
+| 4.7 | short | 20 | 4 |
+| other 16 (Phases 5–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -89,6 +90,7 @@
 - 4.4: complete (all counts and composition rules met). 17 Codeforces notes are recalled (†).
 - 4.5: complete (all counts and composition rules met). 19 Codeforces notes are recalled (†).
 - 4.6: short: reserved has 10 of 24 (drill 2, later_drill 1, lookalike 2, checkpoint 2, review 3, exam 0). Patterns `lca-query` (3 practice, tiers 2–3) and `path-aggregate` (5 practice, tiers 4–5) span only 2 tiers; `path-updates` has 1 practice problem: offline path updates by subtree sums are rare in band. LCA problems in band are scarce once those needing sparse tables, Fenwick trees or tree DP are excluded. Suggestion: merge `path-updates` into `path-aggregate`. 12 Codeforces notes are recalled (†).
+- 4.7: short: reserved has 4 of 24 (lookalike 2, checkpoint 1, review 1); every in-band problem found was needed to reach 20 practice. Pattern `cut-vertices` has 3 practice problems. SCC, bridge and cut-vertex problems in band are scarce on the four platforms once SCC+DAG-DP problems (7.2) are excluded. Suggestion: allow ARC/AtCoder Library tasks and older Codeforces problems for this topic, or lower its reserved minimums. 13 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
 - Allowed: —

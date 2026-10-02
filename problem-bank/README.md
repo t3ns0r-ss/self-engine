@@ -37,7 +37,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 4 | [4.4 DSU and MST: Kruskal, Prim, cut property](phase-4/4.4-dsu-mst.md) | 0 | 2 | 13 | 14 | 7 | 36 | complete |
 | 4 | [4.5 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.5-trees.md) | 2 | 1 | 15 | 7 | 8 | 33 | complete |
 | 4 | [4.6 LCA via binary lifting](phase-4/4.6-lca.md) | 0 | 1 | 9 | 4 | 9 | 23 | short |
-| 4 | [4.7 SCC, bridges, articulation points](phase-4/4.7-connectivity.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 4 | [4.7 SCC, bridges, articulation points](phase-4/4.7-connectivity.md) | 0 | 3 | 5 | 7 | 5 | 20 | short |
 | 5 | [5.1 Sparse table and RMQ](phase-5/5.1-sparse-table.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 5 | [5.2 Fenwick tree (BIT), inversion counting](phase-5/5.2-fenwick.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

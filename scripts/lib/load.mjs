@@ -3,7 +3,8 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { curriculumFile, patternFile, bankFile } from '../../src/lib/schemas.mjs';
+import { curriculumFile, patternFile, bankFile, topicFile, glossaryFile } from '../../src/lib/schemas.mjs';
+import { findLessons } from '../../src/lib/lessons.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const DATA = join(ROOT, 'src', 'data');
@@ -27,7 +28,7 @@ function parseWith(schema, path, errors) {
 
 const yamlFiles = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.yaml')).sort() : []);
 
-/** @returns {{curriculum, patterns, banks, notes, errors: string[]}} */
+/** @returns {{curriculum, patterns, banks, notes, topics, glossary, lessons, errors: string[]}} */
 export function loadAll() {
   const errors = [];
   const curriculum = parseWith(curriculumFile, join(DATA, 'curriculum.yaml'), errors) ?? [];
@@ -50,5 +51,17 @@ export function loadAll() {
       notes[d.topic] = existsSync(notePath) ? readFileSync(notePath, 'utf8') : null;
     }
   }
-  return { curriculum, patterns, banks, notes, errors };
+  const topics = {};
+  for (const f of yamlFiles(join(DATA, 'topics'))) {
+    const d = parseWith(topicFile, join(DATA, 'topics', f), errors);
+    if (d) {
+      if (f !== `${d.id.replace('.', '-')}.yaml`) errors.push(`src/data/topics/${f}: file name does not match topic ${d.id}`);
+      topics[d.id] = d;
+    }
+  }
+  const glossaryPath = join(DATA, 'glossary.yaml');
+  const glossary = existsSync(glossaryPath) ? parseWith(glossaryFile, glossaryPath, errors) ?? [] : [];
+  const { lessons, errors: lessonErrors } = findLessons(ROOT);
+  errors.push(...lessonErrors);
+  return { curriculum, patterns, banks, notes, topics, glossary, lessons, errors };
 }

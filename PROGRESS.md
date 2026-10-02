@@ -10,7 +10,7 @@
 ## Gates
 | Gate | Status | Date |
 |---|---|---|
-| B0 pattern lists review | waiting | 2026-10-02 |
+| B0 pattern lists review | approved | 2026-10-02 |
 
 ## Saurabh is studying
 - Topic: —

@@ -3,9 +3,10 @@
 // Runs as the first step of `npm run build`; exits 1 with every error listed.
 import { loadAll } from './lib/load.mjs';
 import { validateAll } from '../src/lib/validate.mjs';
+import { validateTopics } from '../src/lib/validate-topics.mjs';
 
 const data = loadAll();
-const errors = [...data.errors, ...(data.errors.length ? [] : validateAll(data))];
+const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data)])];
 if (errors.length) {
   console.error(`Validation failed with ${errors.length} error(s):`);
   for (const e of errors) console.error(`  - ${e}`);
@@ -14,5 +15,6 @@ if (errors.length) {
 const counts = Object.values(data.banks).map((b) => b.problems.length);
 console.log(
   `Validation passed: ${data.curriculum.length} topics, ${Object.keys(data.patterns).length} pattern files, ` +
-    `${counts.length} bank files, ${counts.reduce((a, b) => a + b, 0)} bank problems.`,
+    `${counts.length} bank files, ${counts.reduce((a, b) => a + b, 0)} bank problems, ` +
+    `${Object.keys(data.topics).length} topic files, ${Object.keys(data.lessons).length} lessons, ${data.glossary.length} glossary terms.`,
 );

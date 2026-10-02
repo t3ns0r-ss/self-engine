@@ -25,7 +25,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 0 | 7 | 2 | 6 | 16 | short |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 2 | 10 | 4 | 2 | 4 | 22 | short |
 | 3 | [3.2 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.2-dp-foundations.md) | 4 | 14 | 11 | 3 | 1 | 33 | short |
-| 3 | [3.3 Knapsack family: 0/1, unbounded, bounded](phase-3/3.3-knapsack.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 3 | [3.3 Knapsack family: 0/1, unbounded, bounded](phase-3/3.3-knapsack.md) | 0 | 7 | 7 | 2 | 2 | 18 | short |
 | 3 | [3.4 LIS in O(n log n), LCS, edit distance](phase-3/3.4-sequence-dp.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 3 | [3.5 Grid and counting DP modulo a prime](phase-3/3.5-counting-dp.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 3 | [3.6 Interval DP](phase-3/3.6-interval-dp.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

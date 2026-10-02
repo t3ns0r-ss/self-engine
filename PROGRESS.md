@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1 and B2 done; B3 (Phase 3 banks) in progress
-- Topic: bank 3.2
+- Topic: bank 3.3
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B1, all 13 Phase 0 and Phase 1 banks (606 problems: 345 practice, 261 reserved; 101 Codeforces problems API-checked only), validated and published
 - Next action: B3 (Phase 3 banks), one commit per topic
@@ -43,7 +43,8 @@
 | 2.4 | short | 16 | 3 |
 | 3.1 | short | 22 | 18 |
 | 3.2 | short | 33 | 26 |
-| other 29 (Phases 3–7) | patterns written, no problems yet | 0 | 0 |
+| 3.3 | short | 18 | 22 |
+| other 28 (Phases 3–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -65,6 +66,7 @@
 - 2.4: practice 16 of 20, reserved 3 (checkpoint only). `geometric-wait` has 1 problem. Most expectation problems at these ratings need DP (Phase 3) and belong there.
 - 3.1: practice 22, reserved 18 of 24 (drill 5 of 8, review 3 of 10, later_drill 2 of 4, one look-alike pair). `constraint-placement` practice covers tiers 2–3 only; no meet-in-the-middle problem is left for checkpoint or review once practice has three tiers. Practice is 59% LeetCode (limit 60%): unused AtCoder search problems at ABC C–D are scarce after 0.5.
 - 3.2: practice 33, reserved 26 of 24. Short on composition only: `reconstruct` has 2 practice problems (most reconstruction tasks need LCS or knapsack, placed in 3.3–3.4), `two-index` practice spans tiers 3–4, later_drill 2 of 4, and no look-alike pair (the near-identical candidates, CF 455A and CF 1272D, need the same tool as their LeetCode twins).
+- 3.3: practice 18 of 20, reserved 22 of 24. `value-indexed` has 1 practice problem (EDP E is reserved as a look-alike with EDP D) and `bounded` has 2; most other bounded or value-indexed tasks are rated above 2000. Drill 5 of 8, review 5 of 10. Three ABC candidates are shared ARC tasks whose statements were not cached.
 
 ## Scope notes for current topic
 - Allowed: —

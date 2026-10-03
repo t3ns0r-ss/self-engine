@@ -18,15 +18,137 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. Given $N \le 10^{12}$, list all positive divisors of $N$.
+
+The obvious program tries every $d$ from 1 to $N$ and keeps those with $N \bmod d = 0$. It is correct, but for $N = 10^{12}$ it makes $10^{12}$ checks. A judge's computer does roughly $10^8$ simple steps per second, so this takes about $10^4$ seconds, close to three hours. The time limit is 2 seconds.
+
+You need to know this *before* writing the program. The constraints in the statement are not decoration: they tell you how many steps you may spend. Here, the trick is that divisors come in pairs $d$ and $N/d$, and one of each pair is at most $\sqrt{N} = 10^6$; trying $d$ up to $10^6$ takes a millisecond.
+
+This topic teaches you to count the steps a program takes, to compare that count with the time limit before coding, and to recognise three common ways a step count that *looks* too large is actually small: a formula replacing a loop, a total that is bounded even though loops are nested, and loops over multiples whose lengths shrink like $n/1, n/2, n/3, \dots$
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming (CP): reading input, `long long`, and the integer division rules (Theorem 0.1.4), since many closed forms divide.
+
 ### What this topic does not cover
+
+- Turning a long description of a process into code step by step (simulation). Covered in topic 0.3.
+- Divisibility, GCD (greatest common divisor), and the Euclidean algorithm. Covered in topic 0.4.
+- Marking the multiples of each prime to find all primes up to $N$ (the sieve of Eratosthenes), which uses the same harmonic bound as Section 4.5. Covered in topic 2.1.
+- Moving two indices through an array, each only forward (two pointers), whose cost is bounded by the same argument as Theorem 0.2.4. Covered in topic 1.3.
 
 ## 3. Definitions
 
+- A **step** is one simple operation: an arithmetic operation, a comparison, an array access, an assignment. We count steps instead of measuring seconds, because the count does not depend on the computer.
+- The **running time** of a program on an input is its number of steps. We care about the largest running time over all inputs allowed by the constraints.
+- For functions $f$ and $g$ of $n$, we write $f(n) = O(g(n))$ (read "big-O of $g$", the **big-O** notation) if there are constants $c > 0$ and $n_0$ such that $f(n) \le c \cdot g(n)$ for every $n \ge n_0$. It says "$f$ grows at most as fast as $g$, up to a constant factor". Example: $3n^2 + 5n + 7 = O(n^2)$, since $3n^2 + 5n + 7 \le 4n^2$ for $n \ge 7$.
+- A **complexity class** is the $g$ in such a bound: $O(1)$ (constant), $O(\log n)$, $O(\sqrt n)$, $O(n)$ (linear), $O(n \log n)$, $O(n^2)$ (quadratic), $O(2^n)$ (exponential), $O(n!)$.
+- The **budget** of a problem is the number of steps that fit in its time limit: about $10^8$ simple steps per second. This is a rule of thumb, accurate to a factor of about 3 either way, depending on the steps.
+- A **closed form** of a sum is a formula that gives its value without adding the terms one by one. Example: $1 + 2 + \dots + n = n(n+1)/2$.
+- An **amortised analysis** bounds the total cost of many steps together instead of each step alone. Example: a loop inside a loop can still make only $n$ steps in total.
+- The **harmonic sum** is $H_n = 1 + \frac12 + \frac13 + \dots + \frac1n$.
+- A **divisor** of a positive integer $N$ is a positive integer $d$ with $N \bmod d = 0$. Example: the divisors of 12 are 1, 2, 3, 4, 6, 12.
+
 ## 4. Theory and proofs
+
+### 4.1 Counting steps and reading constraints
+
+**Theorem 0.2.1 (step counts of loops).**
+1. If a loop runs at most $m$ times and its body takes at most $s$ steps each time, the loop takes at most $m \cdot s$ steps. In particular, $k$ nested loops that run at most $m_1, \dots, m_k$ times do at most $m_1 m_2 \cdots m_k$ innermost steps.
+2. Code that runs one part after another takes the sum of their steps.
+3. If $f(n) = O(g(n))$ and $g(n) \le B$ for the largest allowed $n$, then $f(n) \le c \cdot B$ for that $n$, where $c$ is the constant of the big-O bound.
+
+*Proof.* 1. Each of the at most $m$ runs of the body costs at most $s$, so the total is at most $m s$; apply this from the innermost loop outward. 2. The steps of consecutive parts add. 3. This is the definition of $O$ applied at one value of $n$ (for $n$ large enough, $n \ge n_0$). $\square$
+
+:::note[This proof needs]
+1. A bound on how many times each loop runs, in terms of the input sizes given in the constraints.
+2. The largest input the constraints allow, plugged into the count.
+:::
+
+**From constraints to complexity.** With about $10^8$ steps per second and a constant factor between 1 and 10, these are the usual limits for a 1–2 second time limit:
+
+| largest $n$ | complexity that fits | example |
+|---|---|---|
+| $n \le 10$ | $O(n!)$ | all orderings ($10! \approx 3.6 \cdot 10^6$) |
+| $n \le 20$ | $O(2^n \cdot n)$ | all subsets ($2^{20} \cdot 20 \approx 2 \cdot 10^7$) |
+| $n \le 500$ | $O(n^3)$ | three nested loops ($1.25 \cdot 10^8$) |
+| $n \le 5000$ | $O(n^2)$ | all pairs ($2.5 \cdot 10^7$) |
+| $n \le 2 \cdot 10^5$ to $10^6$ | $O(n \log n)$ | sorting ($2 \cdot 10^5 \cdot 18 \approx 3.6 \cdot 10^6$) |
+| $n \le 10^7$ to $10^8$ | $O(n)$ | one pass |
+| $n \le 10^{12}$ | $O(\sqrt n)$ | divisors ($10^6$) |
+| $n \le 10^{18}$ | $O(\log n)$ or $O(1)$ | a formula |
+
+Read the table in both directions. Given $n$, it says which complexity to aim for. Given an idea, it says whether to write it or think more. The constant factor matters near the boundaries: $n = 5000$ with $O(n^2)$ is safe for simple loop bodies, but not if each step is a costly operation such as a `map` lookup.
+
+**Memory.** A typical memory limit of 256 MB holds about $6 \cdot 10^7$ `int` values or $3 \cdot 10^7$ `long long` values.
+
+### 4.2 Divisors up to the square root
+
+**Theorem 0.2.2 (divisor pairs).** Let $N \ge 1$. For every divisor $d$ of $N$, $N/d$ is also a divisor, and at least one of $d$ and $N/d$ is at most $\sqrt N$. So trying every $d$ with $d \cdot d \le N$, and recording both $d$ and $N/d$ when $d$ divides $N$, finds every divisor; at most $\lfloor \sqrt N \rfloor$ values of $d$ are tried.
+
+*Proof.* If $d \cdot e = N$, both are divisors. If both were greater than $\sqrt N$, then $d \cdot e > \sqrt N \cdot \sqrt N = N$, a contradiction. So the smaller of the pair is at most $\sqrt N$ and is tried; the larger is recorded as $N/d$. The tried values are $1, 2, \dots, \lfloor \sqrt N \rfloor$. $\square$
+
+:::note[This proof needs]
+1. The objects come in pairs $(d, N/d)$ whose product is fixed, so the smaller one is at most $\sqrt N$.
+2. When $d = N/d$ (a perfect square), the pair has one element, recorded once.
+:::
+
+The same argument works for anything that pairs up with a fixed product: all ways to write $N = a \cdot b$, or all rectangles of area $N$.
+
+### 4.3 Closed forms
+
+**Theorem 0.2.3 (arithmetic sums).** For integers $n \ge 1$, $a$, and $d$:
+$$a + (a + d) + (a + 2d) + \dots + (a + (n-1)d) = \frac{n \bigl(2a + (n-1)d\bigr)}{2}.$$
+In particular $1 + 2 + \dots + n = n(n+1)/2$, and the number of pairs $i < j$ among $n$ items is $n(n-1)/2$.
+
+*Proof.* Write the sum $S$ forwards and backwards and add term by term: the $k$-th terms are $a + kd$ and $a + (n-1-k)d$, which add to $2a + (n-1)d$ for every $k$. There are $n$ such pairs, so $2S = n(2a + (n-1)d)$. Among $n$ items, item $j$ forms a pair with each of the $j - 1$ items before it, so the number of pairs is $0 + 1 + \dots + (n-1) = (n-1)n/2$. $\square$
+
+:::note[This proof needs]
+1. Consecutive terms differ by the same amount $d$ (the loop adds a fixed step).
+2. The product $n(2a + (n-1)d)$ is computed before dividing by 2, since it is always even but its halves may not be whole.
+:::
+
+A loop that adds $n$ terms of an arithmetic progression takes $n$ steps; the formula takes one. When $n$ is $10^{18}$, only the formula fits the budget. Watch the size of the product (Theorem 0.1.1): $n(n+1)$ for $n = 2 \cdot 10^9$ is $4 \cdot 10^{18}$, near the `long long` limit.
+
+**Periodic patterns.** If a quantity repeats with period $p$, the sum over $n$ steps is (number of full periods) $\times$ (sum of one period) + (sum of the leftover part): $\lfloor n/p \rfloor$ full periods and $n \bmod p$ leftover steps. That replaces $n$ steps with about $p$ steps.
+
+### 4.4 Amortised totals
+
+**Theorem 0.2.4 (bounded total work).** Suppose a program has an outer loop, and inside it an inner loop each of whose iterations increases a counter `j` by at least 1. If `j` starts at 0, never decreases, and never exceeds $n$, then the inner loop runs at most $n$ times *in total*, over all iterations of the outer loop.
+
+*Proof.* Each inner iteration increases `j` by at least 1. `j` starts at 0 and ends at most $n$, and never goes down, so the increases add up to at most $n$; hence there are at most $n$ inner iterations. $\square$
+
+:::note[This proof needs]
+1. Every inner iteration moves a counter forward by at least one.
+2. The counter never moves back and has a bounded range ($0$ to $n$).
+:::
+
+**Example: maximal runs.** To split a string into maximal blocks of equal characters, an outer loop starts a block at position $i$ and an inner loop advances $j$ while $s_j = s_i$; then the outer loop continues from $j$. The two loops look like $O(n^2)$, but the index only moves forward, so the total is $O(n)$ by Theorem 0.2.4. Section 6 has the code.
+
+### 4.5 Loops over multiples
+
+**Theorem 0.2.5 (harmonic loops).** The loop
+
+```
+for i = 1 .. n:
+    for j = i, 2i, 3i, ... while j <= n:
+        (one step)
+```
+
+makes $\sum_{i=1}^{n} \lfloor n/i \rfloor \le n \cdot H_n \le n (1 + \ln n)$ steps. So it is $O(n \log n)$.
+
+*Proof.* For a fixed $i$, the multiples of $i$ up to $n$ are $i, 2i, \dots, \lfloor n/i \rfloor i$, so the inner loop runs $\lfloor n/i \rfloor \le n/i$ times. Summing gives at most $n (1 + \frac12 + \dots + \frac1n) = n H_n$. For $k \ge 2$, $\frac1k \le \int_{k-1}^{k} \frac{dx}{x}$ because $\frac1x \ge \frac1k$ on that interval; adding these for $k = 2, \dots, n$ gives $H_n - 1 \le \int_1^n \frac{dx}{x} = \ln n$. $\square$
+
+:::note[This proof needs]
+1. The inner loop for $i$ visits only the multiples of $i$ up to $n$ (it steps by $i$, not by 1).
+2. Each visit costs $O(1)$.
+:::
+
+**Numbers.** For $n = 10^7$ the exact count is $162\,725\,364$ steps (the bound $n(1 + \ln n)$ gives $1.7 \cdot 10^8$): about one to two seconds of simple steps. For $n = 10^6$ it is $13\,970\,034$. Compare with checking every pair $(i, j)$, which is $n^2 = 10^{14}$ for $n = 10^7$.
+
+**Typical use.** Loops over multiples answer questions about all numbers up to $n$ at once: the number of divisors of every $k \le n$ (add 1 to each multiple of each $i$), or the number of pairs $(a, b)$ with $a \cdot b \le n$ (for each $a$, there are $\lfloor n/a \rfloor$ choices of $b$).
 
 ## 5. Recognition Cards
 

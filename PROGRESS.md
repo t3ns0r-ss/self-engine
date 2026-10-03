@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.2 Complexity analysis and reading constraints
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.2 step 1 (scope)
-- Next action: 0.2 step 2 (theory)
+- Last completed step: 0.2 step 2 (theory): Theorems 0.2.1–0.2.5, constraints table, 8 glossary terms
+- Next action: 0.2 step 3 (cards)
 
 ## Gates
 | Gate | Status | Date |
@@ -24,7 +24,7 @@
 |---|---|---|
 | 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
 | 0.1 | done (on this session's branch) | — |
-| 0.2 | in progress (step 1 of 10) | — |
+| 0.2 | in progress (step 2 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

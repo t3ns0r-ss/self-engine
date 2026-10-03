@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import cycleSteps from '../../../../code/0.3/cycle-steps/solution.cpp?raw';
+import robotWalk from '../../../../code/0.3/robot-walk/solution.cpp?raw';
+import neighbourCount from '../../../../code/0.3/neighbour-count/solution.cpp?raw';
+import bracketsCode from '../../../../code/0.3/brackets/solution.cpp?raw';
+import intervalCases from '../../../../code/0.3/interval-cases/solution.cpp?raw';
 
 <TopicHeader topic="0.3" />
 
@@ -121,6 +126,76 @@ Each card names one kind of implementation work. The **decisive property** is th
 <Cards topic="0.3" />
 
 ## 6. Templates
+
+Five short programs, one for each part of Section 4.
+
+### State after T steps, with cycle detection (Theorem 0.3.1)
+
+<Code code={cycleSteps} lang="cpp" title="cycle-steps/solution.cpp" />
+
+**How it works.** `order[i]` records the state after `i` steps and `firstSeen[s]` the step at which state `s` first appeared. The loop follows the process. If it reaches step `t` first, the current state is the answer. Otherwise it meets a state seen before: that is the first repeat $x_\mu = x_{\mu + \lambda}$, with `mu = firstSeen[s]` and `lambda = step - mu`, and Theorem 0.3.1 gives the answer as `order[mu + (t - mu) % lambda]`. At most $K + 1$ steps are taken, whatever $T$ is.
+
+**C++ details explained.**
+- `for (long long step = 0;; step++)` has no stopping condition between the semicolons, so it repeats until a `return` inside the body ends the program.
+- `vector<long long> firstSeen(k, -1)` fills all `k` entries with $-1$, meaning "not seen yet".
+
+**Tested.** Stress-tested against a brute force that takes all $T$ steps, on 5000 random inputs ($K \le 8$, $T \le 60$, including $T = 0$ and states that point to themselves), plus 4 fixed tests including $T = 10^{18}$ on a cycle of length 3 (checked by hand: $10^{18} \bmod 3 = 1$).
+
+**Alternative formulation.** Instead of storing `order`, after finding $\mu$ and $\lambda$ restart from $x$ and take $\mu + (T - \mu) \bmod \lambda$ steps. Same result and the same $O(K)$ cost, with less memory.
+
+### A robot with a direction array (Theorem 0.3.2)
+
+<Code code={robotWalk} lang="cpp" title="robot-walk/solution.cpp" />
+
+**How it works.** Directions are numbered clockwise: 0 up, 1 right, 2 down, 3 left. Turning right adds 1, turning left adds 3 (both modulo 4). A forward move computes the target cell from `dr[d]` and `dc[d]`, and moves only if the target is inside the grid and not a wall.
+
+**C++ details explained.**
+- `const int dr[4] = {-1, 0, 1, 0};` is a fixed array of four values that cannot be changed.
+- `vector<string> g(h);` holds the grid as `h` strings; `g[r][c]` is the character in row `r`, column `c`.
+- In `nr >= 0 && nr < h && nc >= 0 && nc < w && g[nr][nc] != '#'`, C++ evaluates `&&` from left to right and stops at the first false condition, so `g[nr][nc]` is read only when the cell is inside the grid. The order of the conditions matters.
+
+**Tested.** Stress-tested against a brute force that names every direction and surrounds the grid with a border of walls, on 5000 random grids up to $5 \times 5$ with up to 15 commands, plus 3 fixed tests (walls, a $1 \times 1$ grid, edges).
+
+**Alternative formulation.** Pad the grid with a border of `#` cells (as the brute force does): then every neighbour of a real cell exists, and only the wall check is needed. It costs two extra rows and columns.
+
+### Counting the 8 neighbours (Theorem 0.3.2)
+
+<Code code={neighbourCount} lang="cpp" title="neighbour-count/solution.cpp" />
+
+**How it works.** For each free cell, two loops over `dr` and `dc` from $-1$ to 1 visit the 9 cells of the $3 \times 3$ square around it; the centre is skipped, and every other cell is counted if it is inside the grid and holds a mine. The result is written into a copy `out`, so the counts do not disturb the grid still being read.
+
+**C++ details explained.**
+- `vector<string> out = g;` makes an independent copy of the grid.
+- `char('0' + mines)` turns a count from 0 to 8 into the digit character, since digit characters have consecutive codes.
+- `continue` skips the rest of the current loop iteration.
+
+**Tested.** Stress-tested against a brute force that compares each cell with every mine in the grid, on 5000 random grids up to $5 \times 5$ with random mine density, plus 3 fixed tests (a pattern with mines in the middle, a single free cell, a grid full of mines).
+
+**Alternative formulation.** Loop over the mines instead: for each mine, add 1 to each of its free neighbours. Same $O(HW)$ cost.
+
+### One pass over a bracket string (Theorem 0.3.3)
+
+<Code code={bracketsCode} lang="cpp" title="brackets/solution.cpp" />
+
+**How it works.** The state is `depth`, the number of unmatched `(` so far. The string is valid exactly when `depth` never drops below 0 and ends at 0. *Proof:* if `depth` goes below 0 at some `)`, that `)` has no `(` before it left to match, and nothing later can supply one; if `depth` ends above 0, some `(` is never closed. Conversely, if `depth` stays $\ge 0$ and ends at 0, match each `)` with the nearest unmatched `(` before it, which exists because `depth` was at least 1 just before; every bracket gets matched. The largest value of `depth` is the deepest nesting.
+
+**C++ details explained.** `(ch == '(') ? 1 : -1` is 1 for an opening bracket and $-1$ for a closing one.
+
+**Tested.** Stress-tested against a brute force that repeatedly deletes every adjacent `()` pair (the depth is the number of rounds), on 5000 random strings (half of them valid by construction), plus 4 fixed tests including `)(` (depth returns to 0 but goes negative first) and `(((`.
+
+**Alternative formulation.** Use a stack (topic 0.6) and push each `(`, pop at each `)`. It does the same work; the counter is enough here because there is only one kind of bracket.
+
+### Cases for two intervals (Theorem 0.3.4)
+
+<Code code={intervalCases} lang="cpp" title="interval-cases/solution.cpp" />
+
+**How it works.** Points in both intervals are exactly those in $[\max(a, c), \min(b, d)]$. Three cases cover every input: this shared part is empty ($lo > hi$), a single point ($lo = hi$), or a segment of positive length ($lo < hi$). Each case prints its answer.
+
+**C++ details explained.** None beyond earlier templates.
+
+**Tested.** Stress-tested against a brute force that checks every point and every half-unit piece of a small range, on 5000 random pairs of intervals (including single points and touching ends), plus 4 fixed tests including an interval of length $2 \cdot 10^9$ touching a point.
+
+**Alternative formulation.** List the six possible orders of the endpoints and handle each. It is correct if done carefully, but many more cases means more places to slip; the max/min form folds them into three.
 
 ## 7. Bug catalogue
 

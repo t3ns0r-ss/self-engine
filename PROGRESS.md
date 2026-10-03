@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 approved; B1, B2, B3 and B4 done; B5 (Phase 5 banks) next
-- Topic: bank 5.3
+- Milestone: M0 done; B0 approved; B1–B5 done; B6 (Phase 6 banks) next
+- Topic: bank 5.4
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: B4, all 7 Phase 4 banks (4.1–4.7: 420 problems, 243 practice, 177 reserved; 4.1, 4.2, 4.4 and 4.5 complete), validated and published
-- Next action: B5 (Phase 5 banks), one commit per topic
+- Last completed step: B5, all 4 Phase 5 banks (5.1–5.4: 139 problems, 80 practice, 59 reserved; 5.3 complete), validated and published
+- Next action: B6 (Phase 6 banks), one commit per topic
 
 ## Gates
 | Gate | Status | Date |
@@ -59,7 +59,8 @@
 | 5.1 | short | 14 | 5 |
 | 5.2 | short | 22 | 26 |
 | 5.3 | complete | 30 | 31 |
-| other 13 (Phases 5–7) | patterns written, no problems yet | 0 | 0 |
+| 5.4 | short | 14 | 2 |
+| other 12 (Phases 6–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -97,6 +98,7 @@
 - 5.1: short: 14 practice of 20 and 5 reserved of 24 (review 3, checkpoint 1, exam 1). Static range-query problems are few once monotonic-deque (1.6) and segment-tree (5.3) problems are excluded; LeetCode and AtCoder have almost none (searched cached ABC/ARC statements). Suggestion: fold 5.1 into 5.3 as a lesson section, or accept a small bank. 13 Codeforces notes are recalled (†).
 - 5.2: short: pattern `range-add-point` has 2 practice problems (Codeforces Progressions Covering, ABC 253 F; ABC 340 E is used for review) and `kth-in-tree` has 4 over tiers 2–3; review has 7 of 10; one look-alike pair (CSES Dynamic Range Sum / Range Update Queries). Online range-add/point-query problems in band are rare (most are static difference arrays, 1.2). 15 Codeforces notes are recalled (†).
 - 5.3: complete (all counts and composition rules met). 20 Codeforces notes are recalled (†).
+- 5.4: short: 14 practice and 2 reserved, all from Codeforces (16 recalled notes, †). LeetCode has no free Mo's-algorithm or square-root problems, AtCoder's are ABC G (above the tier table), and most Codeforces block problems are rated 2400+. Pattern `blocks` has 3 practice problems. Suggestion: keep 5.4 as a short optional topic, or accept 2500–2700 Codeforces problems as tier 5 here.
 
 ## Scope notes for current topic
 - Allowed: —

@@ -4,8 +4,8 @@
 - Milestone: M1 (topic 1.3 exemplar)
 - Topic: 1.3 Two pointers and sliding window
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.3 step 1 (scope): lesson skeleton, draft data file, code folder
-- Next action: 1.3 step 2 (theory): lesson Sections 1–4 and glossary entries
+- Last completed step: 1.3 step 2 (theory): Sections 1–4, six theorems with preconditions boxes, 12 glossary terms
+- Next action: 1.3 step 3 (Recognition Cards): five cards from the bank patterns
 
 ## Gates
 | Gate | Status | Date |
@@ -22,7 +22,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | in progress (step 1 of 10) | — |
+| 1.3 | in progress (step 2 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

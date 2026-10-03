@@ -18,15 +18,202 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. You are given $n$ positive integers $a_0, a_1, \dots, a_{n-1}$ and a number $K$. Find the length of the longest run of consecutive elements whose sum is at most $K$. The limits are $n \le 2 \cdot 10^5$ and $a_i \le 10^9$.
+
+The direct method tries every start $l$ and every end $r$. There are about $n^2 / 2 = 2 \cdot 10^{10}$ pairs. Even if each pair's sum takes one step (with the prefix sums of topic 1.2), that is about 200 seconds at $10^8$ simple operations per second. The time limit is usually 1 or 2 seconds.
+
+The key idea: if a run of elements has sum at most $K$, then every shorter run inside it also has sum at most $K$, because all values are positive and removing one can only lower the sum. So when we move the end of the run to the right, the best start for the new end is never to the left of the best start for the old end. We keep two indices, a left one and a right one, and both only ever move to the right. Each moves at most $n$ times, so the whole search costs about $2n$ steps instead of $n^2/2$.
+
+This lesson turns that idea into proofs and templates, and shows the three other forms it takes: a window of fixed length, two indices moving towards each other in a sorted array, and two indices walking through two sorted lists.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming: reading input, `long long` for sums that pass about $2 \cdot 10^9$.
+- Topic 0.2, complexity analysis: turning $n \le 2 \cdot 10^5$ into "about $10^6$ to $10^7$ operations are fine, $n^2$ is not".
+- Topic 0.6, STL (Standard Template Library) toolbox: `map` and `multiset` to keep counts of the values inside a window.
+- Topic 1.1, sorting: two of this lesson's four forms work on sorted arrays.
+- Topic 1.2, prefix sums: the standard alternative when a condition is an exact sum or values can be negative. Several look-alike problems in this lesson need it instead of two pointers.
+
 ### What this topic does not cover
+
+- For each start, finding the farthest end with binary search on the prefix sums. It costs $O(n \log n)$ and works in the same situations as Theorem 1.3.1. Covered in topic 1.4 (binary search).
+- The maximum or minimum of every window of fixed length in $O(n)$ total, using a monotonic deque. Here a `multiset` does it in $O(n \log n)$. Covered in topic 1.6.
+- Proving that a pairing such as "heaviest with lightest" is optimal by an exchange argument. The ladder problems that need such a pairing give the short argument in their hints; the general method is covered in topic 1.5 (greedy I).
+- Counting segments whose sum is exactly $K$ when values may be negative. This needs prefix sums and a hash map (topic 1.2), not two pointers. Section 11 contrasts the two.
 
 ## 3. Definitions
 
+Indices start at 0. For an array $a$ of length $n$:
+
+- A **subarray** (also **segment**) is a run of consecutive elements $a_l, a_{l+1}, \dots, a_r$ with $0 \le l \le r \le n-1$. We write it $[l, r]$; both ends are included. Example: in $a = [3, 1, 2]$, the subarray $[1, 2]$ is $1, 2$. Choosing elements 0 and 2 without element 1 is not a subarray.
+- A **window** is a subarray we are currently looking at, described by two indices $l$ and $r$. The **length** of $[l, r]$ is $r - l + 1$. We also allow the **empty window** $l = r + 1$, of length 0.
+- A **pointer** here means an integer variable holding an index into an array (not a C++ pointer type). **Two pointers** is the method of keeping two such indices and moving each in only one direction.
+- A **sliding window** is a window whose ends both move right as the algorithm runs.
+- A **validity condition** is a yes/no property of windows, decided by the problem. Example: "the sum is at most $K$". A window with the property is **valid**.
+- A **sub-window** of $[l, r]$ is any window $[l', r']$ with $l \le l'$ and $r' \le r$ (possibly empty). Example: $[2, 3]$ is a sub-window of $[1, 4]$.
+- A validity condition is **closed under shrinking** if every sub-window of a valid window is valid. Example: "sum at most $K$" with positive values is closed under shrinking. With values $[5, -4]$ and $K = 2$, the window $[0, 1]$ has sum 1 and is valid, but its sub-window $[0, 0]$ has sum 5 and is not, so with negative values the condition is not closed under shrinking.
+- A validity condition is **closed under extension** if every window that contains a valid window is valid. Example: "sum at least $S$" with positive values. A condition is closed under extension exactly when its opposite ("not valid") is closed under shrinking.
+- A **subsequence** of a sequence is what remains after deleting some elements, keeping the order of the rest. Example: `ace` is a subsequence of `abcde`; `aec` is not. Unlike a subarray, a subsequence may skip elements.
+- A function $f$ on indices is **non-decreasing** if $i < j$ implies $f(i) \le f(j)$.
+- **Amortised analysis** bounds the total cost of a sequence of steps instead of each step alone. Example: one `while` loop inside a `for` loop can run many times for one value of `r`, but if each run moves `l` right and `l` never passes $n$, all runs together are at most $n$.
+
 ## 4. Theory and proofs
+
+Throughout, $n$ is the array length and indices run from 0 to $n - 1$.
+
+### 4.1 Longest valid window
+
+For each right end $r$, let $L(r)$ be the smallest $l$ such that $[l, r]$ is valid. Since the empty window $[r + 1, r]$ is valid (we assume this, and check it in each problem), $L(r)$ always exists and $L(r) \le r + 1$.
+
+**Theorem 1.3.1 (shrinkable window).** Suppose the validity condition is closed under shrinking and the empty window is valid. Then:
+1. $L(r) \le L(r + 1)$ for every $r$ (the best left end never moves left);
+2. the loop below ends each iteration with `l` $= L(r)$, so `r - l + 1` is the length of the longest valid window ending at `r`;
+3. the loop runs at most $2n$ validity checks in total.
+
+```
+l = 0
+for r = 0 .. n-1:
+    add a[r] to the window
+    while window [l, r] is not valid:
+        remove a[l] from the window; l = l + 1
+    best = max(best, r - l + 1)
+```
+
+*Proof.*
+1. The window $[L(r+1), r+1]$ is valid. Its sub-window $[L(r+1), r]$ is valid by closure under shrinking. $L(r)$ is the smallest left end that is valid with right end $r$, so $L(r) \le L(r+1)$.
+2. By induction on $r$. Before the first iteration `l` $= 0 \le L(0)$. Assume `l` $\le L(r)$ when iteration $r$ starts (true for $r = 0$; for $r > 0$, the previous iteration ended with `l` $= L(r-1) \le L(r)$ by part 1). Every $l' < L(r)$ makes $[l', r]$ invalid, by the definition of $L(r)$ as the smallest valid left end, so the `while` loop keeps moving `l` while `l` $< L(r)$. When `l` $= L(r)$ the window is valid and the loop stops. So the iteration ends with `l` $= L(r)$. Any valid window $[l', r]$ has $l' \ge L(r)$, so its length is at most $r - L(r) + 1$, and this length is reached.
+3. Each check either ends a `while` loop (at most once per $r$, so $n$ times) or is followed by `l = l + 1`. `l` starts at 0 and never passes $n$ (it never passes $r + 1$), so it increases at most $n$ times. Total checks: at most $2n$. $\square$
+
+:::note[This proof needs]
+1. Validity is closed under shrinking: every sub-window of a valid window is valid.
+2. The empty window is valid.
+3. The window's validity can be checked after adding or removing one element (here, by keeping its sum or its counts up to date).
+:::
+
+**Complexity.** $O(n)$ checks, adds, and removes. With a running sum each costs $O(1)$, so $O(n)$ in total. With a `map` of counts each costs $O(\log n)$, so $O(n \log n)$.
+
+**Trace.** $a = [3, 1, 2, 1, 4, 1]$, $K = 5$, condition "sum at most $K$".
+
+| $r$ | $a_r$ | `l` before | `l` after | window sum | $r - l + 1$ | best |
+|---|---|---|---|---|---|---|
+| 0 | 3 | 0 | 0 | 3 | 1 | 1 |
+| 1 | 1 | 0 | 0 | 4 | 2 | 2 |
+| 2 | 2 | 0 | 1 | 3 | 2 | 2 |
+| 3 | 1 | 1 | 1 | 4 | 3 | 3 |
+| 4 | 4 | 1 | 3 | 5 | 2 | 3 |
+| 5 | 1 | 3 | 4 | 5 | 2 | 3 |
+
+At $r = 4$ the sum would be 8, so `l` moves twice (removing 1 and 2). `l` moved 4 times in total and `r` 6 times. The answer is 3 (the window $[1, 3]$ with values $1, 2, 1$).
+
+**Shortest valid window.** Some problems ask for the shortest window with sum at least $S$. "Sum at least $S$" is closed under extension, not under shrinking. Its opposite, "sum less than $S$", is closed under shrinking, and the empty window has sum $0 < S$ when $S > 0$. Apply Theorem 1.3.1 to the opposite condition: after the `while` loop, `l` $= L(r)$ is the smallest left end with sum less than $S$, so if `l` $> 0$ the window $[L(r) - 1, r]$ is the shortest window ending at $r$ with sum at least $S$. In code this is usually written the other way round: move `l` right while the window still has sum at least $S$, recording the length before each move. Both forms run in $O(n)$.
+
+### 4.2 Counting valid windows
+
+**Theorem 1.3.2 (counting windows).** Under the same conditions as Theorem 1.3.1, for each $r$ the window $[l, r]$ is valid exactly when $L(r) \le l \le r + 1$. So the number of non-empty valid windows is
+$$\sum_{r=0}^{n-1} \bigl(r - L(r) + 1\bigr).$$
+
+*Proof.* If $l < L(r)$, the window $[l, r]$ is invalid by the definition of $L(r)$. If $L(r) \le l \le r + 1$, the window $[l, r]$ is a sub-window of the valid window $[L(r), r]$, so it is valid by closure under shrinking. Each non-empty valid window has exactly one right end $r$, and for that $r$ the possible left ends are $L(r), \dots, r$: that is $r - L(r) + 1$ of them. $\square$
+
+:::note[This proof needs]
+1. Validity is closed under shrinking.
+2. The empty window is valid (so $L(r)$ exists).
+:::
+
+**Complexity.** The same loop as Theorem 1.3.1, adding `r - l + 1` instead of taking a maximum: $O(n)$ checks. The count can reach $n(n+1)/2 \approx 2 \cdot 10^{10}$ for $n = 2 \cdot 10^5$, so it needs `long long`.
+
+**Trace.** On the same input ($a = [3, 1, 2, 1, 4, 1]$, $K = 5$) the values of $r - L(r) + 1$ in the table above are $1, 2, 2, 3, 2, 2$, so there are 12 windows with sum at most 5. Counting by hand over all 21 windows gives the same 12.
+
+**Counting through the opposite.** To count windows with sum *at least* $S$, count the windows with sum less than $S$ (closed under shrinking) and subtract from $n(n+1)/2$.
+
+### 4.3 Windows of fixed length
+
+Sometimes every window of exactly length $k$ must be examined. There are $n - k + 1$ of them; recomputing each from scratch costs $O(k)$, so $O(nk)$ in total, which is about $10^{10}$ for $n = 2 \cdot 10^5$ and $k = 10^5$.
+
+**Theorem 1.3.3 (fixed window).** Suppose we keep a *summary* of a window (a sum, a table of counts, a `multiset` of values, …) with two operations: *add* an element and *remove* an element, where removing $x$ from the summary of a collection gives the summary of the collection without one copy of $x$. Then the loop below gives, at each `r` $\ge k - 1$, the summary of exactly $[r - k + 1, r]$:
+
+```
+for r = 0 .. n-1:
+    add a[r]
+    if r >= k: remove a[r - k]
+    if r >= k - 1: use the summary of [r - k + 1, r]
+```
+
+*Proof.* By induction on $r$, after iteration $r$ the summary holds the elements $a_{\max(0,\,r-k+1)}, \dots, a_r$. For $r = 0$ it holds $a_0$. Going from $r - 1$ to $r$ adds $a_r$; if $r \ge k$ the previous window started at $r - k$, and removing $a_{r-k}$ leaves exactly $a_{r-k+1}, \dots, a_r$. If $r < k$, nothing is removed and the window starts at 0. $\square$
+
+:::note[This proof needs]
+1. Every window considered has the same length $k$.
+2. The summary supports removing one element exactly (undoing an add), not only adding.
+:::
+
+**Complexity.** $n$ adds and at most $n$ removes: $O(n)$ for a sum or an array of counts, $O(n \log n)$ for a `map` or `multiset`.
+
+**When the second condition fails.** A single variable holding "the maximum so far" cannot remove: if the maximum leaves the window, the variable does not know the second largest. Example: window $[5, 1, 2]$, maximum 5; after 5 leaves, the answer is 2, which was never stored. A `multiset` of the window's values supports removing one copy, so its largest element (`*s.rbegin()`) is the window maximum.
+
+### 4.4 Two pointers from opposite ends
+
+**Theorem 1.3.4 (opposite ends).** Let $a_0 \le a_1 \le \dots \le a_{n-1}$ be sorted, and $T$ a target. The loop below finds a pair $i < j$ with $a_i + a_j = T$ if one exists:
+
+```
+l = 0, r = n - 1
+while l < r:
+    if a[l] + a[r] == T: report (l, r); stop
+    if a[l] + a[r] <  T: l = l + 1
+    else:                r = r - 1
+report "none"
+```
+
+*Proof.* Invariant: if some pair $(i, j)$ with $i < j$ and $a_i + a_j = T$ exists, then one exists with $l \le i < j \le r$. It holds at the start. Suppose it holds and $a_l + a_r < T$. For every $j$ with $l < j \le r$, $a_l + a_j \le a_l + a_r < T$ because the array is sorted, so no solution inside $[l, r]$ uses index $l$; moving `l` keeps the invariant. The case $a_l + a_r > T$ is symmetric: for every $i$ with $l \le i < r$, $a_i + a_r \ge a_l + a_r > T$, so no solution uses $r$. When $l \ge r$ no pair is left inside $[l, r]$, so by the invariant no pair exists at all. $\square$
+
+:::note[This proof needs]
+1. The array is sorted, so when one pointer is fixed the pair's value only grows as the other pointer moves right (it is monotone in each pointer).
+2. In every step one of the two ends can be shown to belong to no remaining solution, so it can be discarded.
+:::
+
+**Complexity.** Each iteration moves `l` up or `r` down, so at most $n - 1$ iterations: $O(n)$ after an $O(n \log n)$ sort.
+
+**Trace.** $a = [1, 2, 4, 6, 9]$, $T = 8$: $(l, r) = (0, 4)$ gives $1 + 9 = 10 > 8$, so `r` becomes 3; $(0, 3)$ gives $7 < 8$, so `l` becomes 1; $(1, 3)$ gives $2 + 6 = 8$, found.
+
+The same discard reasoning works for other questions about pairs in a sorted array, as long as each step can rule out one end. Example: to count pairs with $a_i + a_j \le T$, when $a_l + a_r \le T$ every $j$ in $(l, r]$ pairs with $l$, so add $r - l$ and move `l`; otherwise $r$ pairs with nothing left, so move `r`.
+
+### 4.5 Walking two sorted sequences
+
+**Theorem 1.3.5 (forward-only walk).** Let $a_0 \le \dots \le a_{n-1}$ and $b_0 \le \dots \le b_{m-1}$ be sorted. For each $i$ let $p(i)$ be the number of elements of $b$ that are less than $a_i$. Then $p$ is non-decreasing, and the loop below computes every $p(i)$ with at most $n + m$ pointer moves:
+
+```
+j = 0
+for i = 0 .. n-1:
+    while j < m and b[j] < a[i]: j = j + 1
+    p[i] = j
+```
+
+*Proof.* Since $b$ is sorted, the elements less than $a_i$ are exactly $b_0, \dots, b_{p(i)-1}$, a prefix. If $i < i'$ then $a_i \le a_{i'}$, so every $b$ less than $a_i$ is also less than $a_{i'}$, and $p(i) \le p(i')$. By induction, when iteration $i$ starts, `j` $= p(i-1) \le p(i)$ (or 0 for $i = 0$); all of $b_{j}, \dots, b_{p(i)-1}$ are less than $a_i$, so the loop advances to $p(i)$ and stops at $b_{p(i)} \ge a_i$ (or at $m$). `j` only increases and stays at most $m$, so the `while` loop advances at most $m$ times overall. $\square$
+
+:::note[This proof needs]
+1. Both sequences are sorted in the same direction.
+2. What each element of $a$ needs from $b$ is a prefix (or the element just after a prefix) of $b$, so an element of $b$ that has been passed is never needed again.
+:::
+
+**Complexity.** $O(n + m)$ after sorting. With $b_{p(i)}$ and $b_{p(i)-1}$ (the first element at least $a_i$ and the last element below it), the same walk gives the closest element of $b$ to each $a_i$, and merging two sorted lists into one is the same walk with output.
+
+**Theorem 1.3.6 (subsequence check).** A string $t$ is obtained from a string $s$ by deleting characters (that is, $t$ is a subsequence of $s$) if and only if the following walk ends with `j` $= |t|$:
+
+```
+j = 0
+for i = 0 .. |s|-1:
+    if j < |t| and s[i] == t[j]: j = j + 1
+```
+
+*Proof.* If the walk ends with `j` $= |t|$, the positions $i$ where `j` increased spell out $t$ in order, so $t$ is a subsequence. Conversely, suppose $t$ is a subsequence, matched at positions $q_0 < q_1 < \dots < q_{|t|-1}$ of $s$. Let $g_k$ be the position where the walk matches $t_k$. We show $g_k \le q_k$ by induction. The walk matches $t_0$ at the first $i$ with $s_i = t_0$, and $s_{q_0} = t_0$, so $g_0 \le q_0$. If $g_k \le q_k$, then $q_{k+1} > q_k \ge g_k$ and $s_{q_{k+1}} = t_{k+1}$, so the walk, which looks for $t_{k+1}$ from $g_k + 1$ on, finds it at some $g_{k+1} \le q_{k+1}$. So all $|t|$ characters are matched. $\square$
+
+:::note[This proof needs]
+1. Matching each character of $t$ at its earliest possible position never hurts later characters, because later characters only need positions further right.
+:::
+
+**Complexity.** One pass over $s$: $O(|s|)$.
+
+**Common thread.** In all six theorems, some index that an answer depends on moves in only one direction as the outer loop advances: $L(r)$ in Theorems 1.3.1 and 1.3.2, the window's left end in 1.3.3, the ends in 1.3.4, $p(i)$ in 1.3.5, and the match position in 1.3.6. Because each pointer moves at most $n$ times, the total work is linear even though the inner loops look nested.
 
 ## 5. Recognition Cards
 

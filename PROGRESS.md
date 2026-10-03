@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.5 Brute force: loops, bitmask subsets, permutations, simple recursion
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.5 step 2 (theory: Theorems 0.5.1–0.5.5, 7 glossary terms)
-- Next action: 0.5 step 3 (recognition cards)
+- Last completed step: 0.5 step 3 (recognition cards: nested-loops, subset-bitmask, permutations, recursive-choices, enumerate-answer)
+- Next action: 0.5 step 4 (templates and stress tests)
 
 ## Gates
 | Gate | Status | Date |
@@ -27,7 +27,7 @@
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
 | 0.4 | done (on this session's branch) | — |
-| 0.5 | in progress (step 2 of 10) | — |
+| 0.5 | in progress (step 3 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

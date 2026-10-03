@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import weightedSum from '../../../../code/0.5/weighted-sum/solution.cpp?raw';
+import subsetSumRange from '../../../../code/0.5/subset-sum-range/solution.cpp?raw';
+import bestOrder from '../../../../code/0.5/best-order/solution.cpp?raw';
+import boundedSteps from '../../../../code/0.5/bounded-steps/solution.cpp?raw';
+import smallestAnswer from '../../../../code/0.5/smallest-answer/solution.cpp?raw';
 
 <TopicHeader topic="0.5" />
 
@@ -157,6 +162,78 @@ Each card names one way to list a search space. The **decisive property** is the
 <Cards topic="0.5" />
 
 ## 6. Templates
+
+Five short programs, one for each card. Each brute force lists the same search space a different way, which is what makes it a useful check.
+
+### Nested loops, computing the last variable (Theorem 0.5.1)
+
+<Code code={weightedSum} lang="cpp" title="weighted-sum/solution.cpp" />
+
+**How it works.** A candidate is a triple $(x, y, z)$, but once $y$ and $z$ are chosen, $x = S - 2y - 3z$ is forced. So two loops run over $y$ and $z$, compute $x$, and count the triple if $x$ is in $[0, K]$. Each triple with $x + 2y + 3z = S$ is counted exactly once, at its own $(y, z)$. For $K = 3000$ that is $3001^2 \approx 9 \cdot 10^6$ steps, while three loops would take $2.7 \cdot 10^{10}$.
+
+**C++ details explained.** None beyond earlier topics.
+
+**Tested.** Stress-tested against three nested loops over $x, y, z$ on 5000 random inputs ($K \le 15$, every $S$ from 0 to $6K$), plus 4 fixed tests including $K = 3000$ (right answers computed by a separate script).
+
+**Alternative formulation.** Loop over $z$ only and count the $y$ for which $x$ falls in $[0, K]$ with a formula: one loop, but the bounds need care. The two-loop version is the safe default when it fits.
+
+### All subsets with a bitmask (Theorem 0.5.2)
+
+<Code code={subsetSumRange} lang="cpp" title="subset-sum-range/solution.cpp" />
+
+**How it works.** `mask` runs over $0, \dots, 2^n - 1$, one integer per subset. For each, the inner loop adds `a[i]` exactly when bit $i$ is set, and the subset is counted if its sum is in $[L, R]$. The cost is $2^n \cdot n \approx 2 \cdot 10^7$ for $n = 20$.
+
+**C++ details explained.**
+- `1 << n` is $2^n$: the 1 shifted left by $n$ bits.
+- `(mask >> i) & 1` moves bit $i$ to the lowest position and keeps only that bit: 1 if item $i$ is in the subset, else 0.
+- `sum` is a `long long`: 20 values up to $10^9$ add up to $2 \cdot 10^{10}$.
+
+**Tested.** Stress-tested against a recursion that takes or skips each item, on 5000 random inputs ($n \le 8$, values up to 15), plus 4 fixed tests including $n = 20$ with all values $10^9$ (all $2^{20}$ subsets count) and the apples $3, 3, 2, 2, 2$ of Section 1.
+
+**Alternative formulation.** The recursion of the brute force (take or skip item $i$, then continue with $i + 1$) lists the same subsets with the sum carried along, so each subset costs $O(1)$ instead of $O(n)$: $O(2^n)$ in total.
+
+### All orders with `next_permutation` (Theorem 0.5.3)
+
+<Code code={bestOrder} lang="cpp" title="best-order/solution.cpp" />
+
+**How it works.** `order` starts as $0, 1, \dots, n - 1$, the smallest arrangement. The `do { … } while (next_permutation(…))` loop checks the current order first and then moves to the next one, so every one of the $n!$ orders is checked once, the sorted one included. For $n = 9$: $9! \cdot 8 \approx 2.9 \cdot 10^6$ additions.
+
+**C++ details explained.**
+- `iota(order.begin(), order.end(), 0)` (from `<numeric>`) fills the vector with $0, 1, 2, \dots$
+- `do { … } while (cond);` runs the body once before testing the condition. With a plain `while`, the first (sorted) order would be skipped.
+- `next_permutation` rearranges the vector into the next order and returns `false` once it wraps around from the largest order.
+- `LLONG_MAX` is the largest `long long`, a safe start for a minimum.
+
+**Tested.** Stress-tested against a recursion that picks the next unvisited place at every step, on 5000 random inputs ($n \le 6$, asymmetric costs), plus 4 fixed tests including $n = 1$ (cost 0) and $n = 9$ with costs up to $10^9$ (the right answer computed by a separate script).
+
+**Alternative formulation.** The recursion of the brute force is the same search written by hand. It is useful when some orders can be rejected early, which `next_permutation` cannot do.
+
+### Recursive generation (Theorem 0.5.4)
+
+<Code code={boundedSteps} lang="cpp" title="bounded-steps/solution.cpp" />
+
+**How it works.** `rec(pos)` fills position `pos` with every allowed value and calls itself for `pos + 1`; the base case `pos == L` records a finished sequence. The allowed values depend on the previous choice ($|v - c_{pos-1}| \le D$), which a fixed set of loops could also do, but the *number* of positions $L$ comes from the input: recursion handles any $L$ with the same code. Values are tried in increasing order at every position, so the sequences come out in lexicographic order.
+
+**C++ details explained.**
+- `void rec(int pos)` returns nothing; it works on the global vectors `c` and `found`.
+- `found.push_back(c)` stores a copy of the current sequence.
+- `continue` skips a value that breaks the condition.
+
+**Tested.** Stress-tested against a brute force that counts in base $M$ from 0 to $M^L - 1$ (each number is one sequence) and keeps the valid ones, on 5000 random inputs ($L, M \le 5$), plus 4 fixed tests including $L = M = 8$, $D = 7$ ($8^8 = 16\,777\,216$ sequences).
+
+**Alternative formulation.** Counting in base $M$, as the brute force does, lists all $M^L$ sequences with one loop; the recursion skips invalid sequences as soon as one position breaks the rule, so it does less work when the condition is strict.
+
+### Trying every answer (Theorem 0.5.5)
+
+<Code code={smallestAnswer} lang="cpp" title="smallest-answer/solution.cpp" />
+
+**How it works.** The answer is bounded by $10^6$, so the loop tests $x = 1, 2, \dots$ in order and prints the first $x$ that is a multiple of $K$ with digit sum $S$. By Theorem 0.5.5 that is the smallest. At most $10^6$ tests of about 7 steps each.
+
+**C++ details explained.** `for (; x > 0; x /= 10)` has an empty first part: the loop variable `x` is the function's parameter.
+
+**Tested.** Stress-tested against a brute force that walks the multiples of $K$ downward from $10^6$ and keeps the last one that passes, on 5000 random inputs (half with an answer), plus 5 fixed tests including $S = 55$ (impossible: the largest digit sum below $10^6$ is 54) and $K = 10^6$.
+
+**Alternative formulation.** Loop over the multiples of $K$ only ($x = K, 2K, \dots$), which tests $10^6 / K$ values instead of $10^6$.
 
 ## 7. Bug catalogue
 

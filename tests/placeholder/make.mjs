@@ -20,7 +20,15 @@ const GLOSSARY_BACKUP = 'tests/placeholder/.glossary.backup';
 const BACKUP = 'tests/placeholder/.backup';
 const backupOf = (f) => `${BACKUP}/${f.replaceAll('/', '__')}`;
 
+// Present only while the placeholder exists. --remove does nothing without it, so a cleanup that
+// runs before the placeholder was made can never delete the real files at these paths.
+const ACTIVE = 'tests/placeholder/.active';
+
 if (process.argv.includes('--remove')) {
+  if (!existsSync(ACTIVE)) {
+    console.log('no placeholder to remove');
+    process.exit(0);
+  }
   for (const f of FILES) {
     rmSync(f, { force: true });
     if (existsSync(backupOf(f))) cpSync(backupOf(f), f);
@@ -33,11 +41,13 @@ if (process.argv.includes('--remove')) {
     writeFileSync(GLOSSARY, readFileSync(GLOSSARY_BACKUP, 'utf8'));
     rmSync(GLOSSARY_BACKUP);
   }
+  rmSync(ACTIVE);
   console.log('placeholder removed');
   process.exit(0);
 }
 
 mkdirSync(BACKUP, { recursive: true });
+writeFileSync(ACTIVE, 'placeholder topic is present\n');
 for (const f of FILES) if (existsSync(f) && !existsSync(backupOf(f))) cpSync(f, backupOf(f));
 
 let n = 0;

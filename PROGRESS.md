@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M1 (topic 1.3 exemplar)
+- Milestone: M1 (topic 1.3 exemplar) done; waiting at the "M1 exemplar review" gate
 - Topic: 1.3 Two pointers and sliding window
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.3 step 9 (decision map): six entries, rendered in the lesson and the Handbook
-- Next action: 1.3 step 10 (self-review): remove draft flag, full tests, browser check, read-through
+- Last completed step: 1.3 step 10 (self-review): draft flag removed, all checks pass (build, 48 validator tests, 12 code units with 5000-case stress, browser tests of the real lesson and the placeholder), keyword search clean, read-through on desktop and 375px dark
+- Next action: ⏸ M1 exemplar review by Saurabh. After approval (and any FEEDBACK.md items): M2, Phase 0 (0.1–0.6), phase intro, Phase 0 exam
 
 ## Gates
 | Gate | Status | Date |
@@ -14,7 +14,7 @@
 | M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
 | B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |
 | Final bank review | approved ("Let's begin with material building") | 2026-10-03 |
-| M1 exemplar review | not reached | — |
+| M1 exemplar review | waiting for Saurabh | — |
 
 ## Saurabh is studying
 - Topic: —
@@ -22,7 +22,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | in progress (step 9 of 10) | — |
+| 1.3 | done, awaiting M1 review (not merged to main or tagged: work stays on this session's branch until Saurabh merges it) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -138,13 +138,22 @@
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
 ## Questions for Saurabh
+- **M1 exemplar review (gate).** Topic 1.3 is the template every other lesson will copy, so this is the review that matters most. Open it on the site (Phase 1 → 1.3) and try:
+  - Read Sections 1–4 as a beginner. Are the definitions and the six theorems clear, and are the proofs the right length?
+  - Section 6: is the "C++ details explained" level right (too much, too little)?
+  - Section 9: open a few hints and log a problem; Section 10: do the drill; Section 13: start and finish the checkpoint; then open a review set.
+  - Problem choices: ladder order and twists, and whether any drill item feels unfair.
+  - Leave notes in FEEDBACK.md (one item per issue), or reply in chat. Set the gate to `approved` when happy.
+- Changes made while building 1.3 (change any you disagree with):
+  - Topic data files may carry `draft: true` while a lesson is being written: count rules are skipped and the lesson shows a draft notice, so every step's commit keeps CI green. 1.3 no longer has it.
+  - 1.3 defines basic terms that belong to unwritten earlier lessons (subarray, non-decreasing, amortised analysis) with topic 1.3; they move to 1.1/1.2 in M3.
+  - The bank got 7 new LeetCode review problems for 1.3 and one moved look-alike (details under Bank gaps).
+  - tests/e2e.sh now also tests every real lesson in the browser (tests/e2e/lessons.cjs). While adding it, a failed run deleted the real 1.3 files through the placeholder cleanup (restored from git at once); the placeholder remover now refuses to run unless the placeholder exists.
 - **B1 spot-check (gate).** All 13 banks are in `problem-bank/phase-0/` and `problem-bank/phase-1/` (readable lists) and on the site under Problem bank. Suggested spot-checks: `problem-bank/phase-1/1.3-two-pointers.md` (the exemplar topic) with `notes/bank/1.3.md`, then one Phase 0 topic (0.4) and one thin topic (1.6). For each, check a few problems: does the solution really need the topic, is the tier right, is the note correct?
   - Problems marked † are Codeforces problems checked through the official API only: title and rating are exact, but I could not open the statement, so their notes are from my knowledge of the problem and are marked "(recalled)" where a detail matters. Please open a few † problems and compare with the note.
   - Every bank is `status: short` (Section 11). The usual shortfalls: look-alike pairs (rare where both problems are unused and nearly identical), review and exam problems at tiers 3–4, and Phase 0 tiers 3–5. Details per topic are under Bank gaps. Is `short` acceptable here, or should I relax a rule (for example allow ABC B problems at tier 2 for Phase 0 reserved sets, or ratings up to 2000 for 1.6)?
   - Pattern `fast-io` (0.1) has no problems; suggest folding it into the lesson as a rule rather than a pattern. `real-search` (1.4) has 1 problem.
   - Fixed after B0 approval: the 1.7 pattern `bit-identities` had lost its precondition (a "|" in the text split it during generation). It now reads: "Addition is XOR plus the carries: a carry appears exactly at the bits where both a and b are 1, so a + b = (a ⊕ b) + 2(a & b) and a | b = (a ⊕ b) + (a & b)."
-  - Next: B2–B7 before lessons (the bank plan's order), or M1 (the 1.3 lesson) now with banks running one phase ahead?
-- Review the 48 pattern files in `src/data/bank/patterns/` (readable versions in `problem-bank/phase-*/`). They decide what each topic teaches. Approve the B0 gate here or leave changes in FEEDBACK.md.
 - Hosting: GitHub Pages at https://t3ns0r-ss.github.io/self-engine/ (your server is unreachable). Enable it once: Settings → Pages → Source: "GitHub Actions". The self-hosted files stay as an alternative.
 - Deviations in M0, decided while you were travelling (change any you disagree with):
   - Bank plan Section 12 is applied already (it says "once B1 is merged"): topic data files reference bank problems by id, and title, URL, difficulty, and `checked_on` live only in the bank. Doing it now avoids a schema migration later.

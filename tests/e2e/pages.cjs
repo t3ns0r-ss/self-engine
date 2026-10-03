@@ -52,7 +52,9 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   // Problems page: hidden roles appear after the checkpoint.
   await p.goto(`${BASE}/problems/`);
   await p.waitForSelector('.bank-table');
-  check(await p.locator('td:has-text("checkpoint")').count() === 3, 'checkpoint problems visible after passing');
+  // The island reads storage after hydration, so wait for the rows instead of counting at once.
+  const shown = await p.waitForFunction(() => [...document.querySelectorAll('td')].filter((td) => td.textContent.includes('checkpoint')).length === 3, null, { timeout: 5000 }).then(() => true, () => false);
+  check(shown, 'checkpoint problems visible after passing');
   await p.evaluate(() => localStorage.setItem('cp:v1:topics', '{}'));
   await p.reload();
   await p.waitForSelector('.bank-table');

@@ -38,7 +38,9 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((
     check(await p.locator('.drill li').count() === tf.drill.length, `${T} ${tf.drill.length} drill items`);
 
     // First ladder problem: hint 1 behind the struggle-budget reminder.
-    const first = tf.problems.find((x) => x.role === 'ladder' && x.rung === 1);
+    // The ladder is shown in card order, so the first item is rung 1 of the first card that has rungs.
+    const firstCard = tf.cards.find((c) => tf.problems.some((x) => x.role === 'ladder' && x.card === c.id));
+    const first = tf.problems.find((x) => x.role === 'ladder' && x.card === firstCard.id && x.rung === 1);
     const item = p.locator('.ladder-item').first();
     await item.locator('button:has-text("Hint 1")').click();
     check(await item.locator('text=Struggle budget').isVisible(), `${T} hint 1 shows the reminder`);

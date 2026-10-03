@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1–B5 done; B6 (Phase 6 banks) next
-- Topic: bank 6.2
+- Topic: bank 6.3
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B5, all 4 Phase 5 banks (5.1–5.4: 144 problems, 80 practice, 64 reserved; 5.3 complete), validated and published
 - Next action: B6 (Phase 6 banks), one commit per topic
@@ -62,7 +62,8 @@
 | 5.4 | short | 14 | 2 |
 | 6.1 | short | 20 | 9 |
 | 6.2 | short | 19 | 10 |
-| other 10 (Phases 6–7) | patterns written, no problems yet | 0 | 0 |
+| 6.3 | short | 20 | 16 |
+| other 9 (Phases 6–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -103,6 +104,7 @@
 - 5.4: short: 14 practice and 2 reserved, all from Codeforces (16 recalled notes, †). LeetCode has no free Mo's-algorithm or square-root problems, AtCoder's are ABC G (above the tier table), and most Codeforces block problems are rated 2400+. Pattern `blocks` has 3 practice problems. Suggestion: keep 5.4 as a short optional topic, or accept 2500–2700 Codeforces problems as tier 5 here.
 - 6.1: short: reserved has 9 of 24 (drill 1, lookalike 2, checkpoint 1, review 5), and `hash-length-search` has 3 practice problems over tiers 3–4. In-band hashing problems on LeetCode and AtCoder are few; most Codeforces ones are 2200+. 11 Codeforces notes are recalled (†).
 - 6.2: short: 19 practice and 10 reserved (lookalike 4 — two LeetCode easy/hard version pairs — drill 2, review 2, checkpoint 1, exam 1). Pattern `prefix-counts` has 1 problem (Codeforces Prefixes and Suffixes) and `z-compare` spans tiers 3–4. Suggestion: merge `prefix-counts` into `period-border`. 8 Codeforces notes are recalled (†).
+- 6.3: short: reserved has 16 of 24 (drill 3, later_drill 3, review 6, checkpoint 2, exam 2, no look-alike pair); `dictionary-split` has 3 practice problems and `xor-count` 2 (counting XOR pairs below a bound has few dedicated problems). Suggestion: merge `xor-count` into `max-xor`. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
 - Allowed: —

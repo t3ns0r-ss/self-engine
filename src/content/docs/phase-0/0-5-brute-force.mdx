@@ -18,15 +18,137 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. There are $n \le 20$ apples with weights up to $10^9$. Split them into two groups so that the difference of the group weights is as small as possible.
+
+Is there a clever rule? "Put each apple into the lighter group" fails: for weights $3, 3, 2, 2, 2$ it builds $\{3, 2, 2\}$ and $\{3, 2\}$ (difference 2), while $\{3, 3\}$ and $\{2, 2, 2\}$ have difference 0. Finding a rule that always works is hard. But there are only $2^{20} \approx 10^6$ ways to split 20 apples, and checking one split takes 20 additions: about $2 \cdot 10^7$ steps, a fraction of a second (topic 0.2).
+
+This topic is about such exhaustive search, called **brute force**: list every candidate, check each one, keep the best. It is often the whole solution when the input is small, and it is always the reference to test a faster solution against (every template in this course has a brute force next to it). Brute force needs two things: a count of the candidates, to know it fits the budget; and a systematic way to list them, so that none is missed. This lesson gives four ways to list candidates: nested loops, bitmasks for subsets, `next_permutation` for orders, and recursion for sequences of choices.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming (CP): `long long`, since subset sums of 20 weights up to $10^9$ reach $2 \cdot 10^{10}$.
+- Topic 0.2, complexity analysis: the step budget, used here to decide whether the number of candidates is small enough.
+- Topic 0.3, implementation and simulation: checking one candidate is often a small simulation or a grid scan.
+- Topic 0.4: remainders and divisibility appear in many checks.
+
 ### What this topic does not cover
+
+- Cutting off a search early when a partial choice cannot lead to a solution (backtracking with pruning). Covered in topic 3.1.
+- Remembering the results of repeated subproblems so that the search is not exponential (memoisation, dynamic programming). Covered in topic 3.2; over subsets, bitmask dp in topic 3.7.
+- Fast operations on bits (XOR, counting bits by tricks). Covered in topic 1.7; here only shifting and testing single bits is needed.
 
 ## 3. Definitions
 
+- The **search space** of a problem is the set of all candidates that might be the answer. Example: for "choose some of 3 apples", the search space has $2^3 = 8$ subsets.
+- **Brute force** (exhaustive search) checks every candidate in the search space.
+- A **bitmask** is an integer used as a set: element $i$ belongs to the set exactly when bit $i$ of the integer is 1. Bit $i$ of `mask` is `(mask >> i) & 1`, and `1 << i` is the number with only bit $i$ set. Example: with $n = 4$, the mask $11 = 1011_2$ is the set $\{0, 1, 3\}$.
+- A **permutation** of a list is an arrangement of all its elements in some order. Example: $(2, 0, 1)$ is a permutation of $(0, 1, 2)$; there are $n!$ permutations of $n$ different elements.
+- **Lexicographic order** compares two sequences at the first position where they differ, like words in a dictionary. Example: $(1, 3, 2) < (2, 1, 3)$ because $1 < 2$ at the first position.
+- A function is **recursive** if it calls itself. Each call must make the problem smaller, and a **base case** handles the smallest problem without a further call. The **recursion depth** is the largest number of calls active at the same time.
+
 ## 4. Theory and proofs
+
+### 4.1 Exhaustive search and counting candidates
+
+**Theorem 0.5.1 (exhaustive search).**
+1. If every candidate in the search space is checked, and the answer is one of the candidates (or a best value over them), then exhaustive search returns the correct answer.
+2. Its cost is (number of candidates) × (cost of checking one), plus the cost of listing them.
+3. The common search spaces have these sizes: pairs $i < j$ of $n$ items: $n(n-1)/2$; triples $i < j < k$: $n(n-1)(n-2)/6$; subsets: $2^n$; orders: $n!$; sequences of length $L$ with $k$ choices per position: $k^L$.
+
+*Proof.* 1. Every candidate is examined and the best one (or the one that passes) is kept, so the result is the best over the whole search space, which contains the answer. 2. Add the cost of each check. 3. Pairs: each of the $n(n-1)$ ordered pairs with $i \ne j$ is counted twice, once in each order. Triples: the $n(n-1)(n-2)$ ordered triples of different items contain each unordered triple $3! = 6$ times. Subsets: each of the $n$ items is in or out, independently: $2^n$. Orders: $n$ choices for the first position, $n - 1$ for the second, and so on: $n!$. Sequences: $k$ choices at each of $L$ positions: $k^L$. $\square$
+
+:::note[This proof needs]
+1. The search space really contains the answer: no candidate is missing and no constraint of the statement is dropped.
+2. The number of candidates times the cost of one check fits the budget.
+:::
+
+Rough limits for about $10^8$ simple steps:
+
+| search space | size | largest $n$ |
+|---|---|---|
+| pairs | $n^2/2$ | about $10^4$ |
+| triples | $n^3/6$ | about 800 |
+| subsets, checked in $O(n)$ | $2^n \cdot n$ | about 20–22 |
+| orders, checked in $O(n)$ | $n! \cdot n$ | about 9–10 |
+
+**Fixing all but one variable.** If a candidate is a tuple $(x, y, z)$ with $x + y + z = S$, loop over $x$ and $y$ only and compute $z = S - x - y$, then check that $z$ is allowed. The search space shrinks from $(S+1)^3$ to $(S+1)^2$ without missing anything, because $z$ is determined by the others. This is often the step that makes nested loops fit.
+
+### 4.2 Subsets as bitmasks
+
+**Theorem 0.5.2 (bitmasks).** For $n$ items numbered $0, \dots, n-1$, the integers $0, 1, \dots, 2^n - 1$ correspond one-to-one to the subsets of the items: the subset of `mask` contains item $i$ exactly when `(mask >> i) & 1` is 1. So the loop `for (mask = 0; mask < (1 << n); mask++)` lists every subset exactly once, and checking each in $O(n)$ costs $O(2^n \cdot n)$.
+
+*Proof.* Every integer in $[0, 2^n)$ has a unique binary representation with $n$ digits (bits $0$ to $n-1$), and every choice of $n$ bits is the representation of exactly one integer in that range. Reading bit $i$ as "item $i$ is in" turns each integer into a subset and each subset into an integer, and these two maps undo each other. `mask >> i` shifts bit $i$ into position 0, and `& 1` keeps only that bit. $\square$
+
+:::note[This proof needs]
+1. $n$ is small enough that `1 << n` fits the type: $n \le 30$ for `int`, $n \le 62$ for `1LL << n`, and in practice $2^n \cdot n$ must fit the budget.
+2. Each subset can be checked on its own, without knowing the results of other subsets.
+:::
+
+A trace for $n = 3$:
+
+| mask | binary (bits 2, 1, 0) | subset |
+|---|---|---|
+| 0 | 000 | $\{\}$ |
+| 1 | 001 | $\{0\}$ |
+| 2 | 010 | $\{1\}$ |
+| 3 | 011 | $\{0, 1\}$ |
+| 4 | 100 | $\{2\}$ |
+| 5 | 101 | $\{0, 2\}$ |
+| 6 | 110 | $\{1, 2\}$ |
+| 7 | 111 | $\{0, 1, 2\}$ |
+
+The complement of `mask` (the items not in it) is `((1 << n) - 1) ^ mask`: `(1 << n) - 1` has all $n$ bits set, and `^` (exclusive or) sets a bit of the result exactly when one of the two numbers has it, so every bit of `mask` is flipped; for a split into two groups, the second group is the complement of the first.
+
+### 4.3 All orders with `next_permutation`
+
+**Theorem 0.5.3 (next permutation).** Let $a$ be a sequence that is not in decreasing order. Let $i$ be the largest index with $a_i < a_{i+1}$, and $j$ the largest index with $a_j > a_i$. Swapping $a_i$ and $a_j$ and then reversing $a_{i+1}, \dots, a_{n-1}$ produces the smallest arrangement of the same elements that is lexicographically greater than $a$. Consequently, starting from the sorted sequence and repeating this step until the sequence is in decreasing order visits every distinct arrangement exactly once, in increasing lexicographic order. C++'s `next_permutation(a.begin(), a.end())` does this step and returns `false` (after sorting the sequence back) when $a$ was already the largest.
+
+*Proof.* By the choice of $i$, the suffix $a_{i+1} \ge a_{i+2} \ge \dots \ge a_{n-1}$ is in non-increasing order, which is the largest possible arrangement of its elements. So no arrangement that keeps $a_0, \dots, a_i$ is greater than $a$; a greater one must change some position $\le i$. Keeping $a_0, \dots, a_{i-1}$ and putting at position $i$ a larger value from the suffix gives greater arrangements, and any arrangement that changes an earlier position upward is greater than all of those. The smallest choice at position $i$ is the smallest suffix value that exceeds $a_i$; since the suffix is non-increasing, that is $a_j$ with $j$ the *largest* index with $a_j > a_i$. After the swap, the suffix is still non-increasing (the value $a_i$ moved into position $j$ is at least $a_{j+1}$ and less than $a_{j-1}$, by the choice of $j$), and the smallest arrangement of it is its increasing order, which the reversal produces. Each step moves to the immediate successor, so starting from the smallest arrangement (sorted) the loop visits every arrangement once, in order, until the largest (decreasing). $\square$
+
+:::note[This proof needs]
+1. The loop starts from the sorted sequence; otherwise the arrangements before the starting one are skipped.
+2. The number of distinct arrangements (at most $n!$) times the cost of checking one fits the budget. With repeated values each distinct arrangement is visited once, so there are fewer than $n!$.
+:::
+
+A trace for $(1, 2, 3)$: $123 \to 132 \to 213 \to 231 \to 312 \to 321$, then `next_permutation` returns `false`. For $(1, 1, 2)$ it gives only $112 \to 121 \to 211$: three distinct arrangements, not $3! = 6$.
+
+### 4.4 Recursive generation
+
+**Theorem 0.5.4 (recursive choices).** Consider the function
+
+```
+rec(pos):
+    if pos == L: check the current sequence c[0..L-1]; return
+    for each allowed choice v at position pos:
+        c[pos] = v
+        rec(pos + 1)
+```
+
+Called as `rec(0)`, it checks every sequence $c_0, \dots, c_{L-1}$ with each $c_p$ allowed, exactly once. With $k$ choices per position, it checks $k^L$ sequences, makes fewer than $2k^L$ calls when $k \ge 2$, and its recursion depth is $L + 1$.
+
+*Proof.* By induction on $L - pos$, a call `rec(pos)` with $c_0, \dots, c_{pos-1}$ fixed checks every completion $c_{pos}, \dots, c_{L-1}$ exactly once. If $pos = L$ there is exactly one completion (the empty one), and the base case checks it. Otherwise the loop tries each allowed $c_{pos}$ once, and for each, by induction, `rec(pos + 1)` checks every completion of the rest exactly once; different values of $c_{pos}$ give different sequences. For the count, level $p$ of the recursion has $k^p$ calls, and $1 + k + \dots + k^L = (k^{L+1} - 1)/(k - 1) < 2k^L$ for $k \ge 2$. $\square$
+
+:::note[This proof needs]
+1. The allowed choices at position $pos$ may depend on the earlier choices (for example "at least $c_{pos-1}$" for a non-decreasing sequence), but the loop must try all of them.
+2. The number of sequences times the check fits the budget, and the depth $L$ is small (a few thousand calls deep is safe; very deep recursion can overflow the call stack).
+:::
+
+Recursion is the tool when the number of positions $L$ is part of the input: nested loops would need $L$ loops written in the code. When each position has exactly 2 choices, a bitmask (Section 4.2) lists the same sequences without recursion.
+
+### 4.5 Enumerating the answer
+
+**Theorem 0.5.5 (trying every answer).** If the answer is the smallest integer $x$ in a known range $[lo, hi]$ that satisfies a property $P$, then testing $x = lo, lo + 1, \dots$ and stopping at the first $x$ with $P(x)$ true returns the answer after $(x - lo + 1)$ tests; if no $x \le hi$ passes, there is no answer.
+
+*Proof.* Every $x$ smaller than the returned one was tested and failed, and the returned one passes, so it is the smallest. If the loop reaches $hi$ without success, every value in the range was tested and failed. $\square$
+
+:::note[This proof needs]
+1. A proven bound $[lo, hi]$ that contains the answer if it exists; the bound often comes from the constraints (for example "the answer is at most 1000" or "the price is at most $10^4$").
+2. The range size times the cost of one test fits the budget.
+:::
+
+The same idea applies when the answer is not searched directly but one key quantity is: for "how many pizzas of the mixed kind to buy" or "which value to put first", try every value of that one quantity and compute the rest (Section 4.1).
 
 ## 5. Recognition Cards
 

@@ -18,15 +18,142 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. Read $n$ integers $a_1, \dots, a_n$ with $n \le 2 \cdot 10^5$ and $1 \le a_i \le 10^9$, and print their sum.
+
+The idea is a single loop, and it is correct. Yet a program that keeps the sum in an `int` prints a wrong answer: the sum can reach $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$, and an `int` cannot hold numbers above about $2.1 \cdot 10^9$. If the same program reads its input with default settings and the input has a million numbers, it can also run out of time before the loop even matters.
+
+Most early failures in **competitive programming (CP)**, solving well-defined problems under time and memory limits, are of this kind: the idea is right, but a number does not fit its type, a division rounds the wrong way, or the input is read too slowly. This topic covers the parts of C++ that decide whether a correct idea is accepted: how a judge runs your program, how big each integer type is, how C++ divides and rounds, how to read many test cases from one input, and how to read and write quickly. Every later topic assumes them.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Basic programming in any language: variables, `if`, loops, functions, and arrays.
+- A C++ compiler. Every program on this site compiles with `g++ -std=c++17 -O2 -Wall -Wextra`, the settings most judges use.
+
 ### What this topic does not cover
+
+- Estimating whether an algorithm is fast enough from the constraints (big-O notation, operations per second). Covered in topic 0.2.
+- Turning a long description of a process into code (simulation). Covered in topic 0.3.
+- Divisibility, GCD (greatest common divisor), and arithmetic modulo a number. Covered in topic 0.4.
+- The containers of the C++ standard library beyond `vector` and `string` (`set`, `map`, `priority_queue`, …). Covered in topic 0.6.
 
 ## 3. Definitions
 
+- A **compiler** turns your C++ source file into a program the computer can run. If the source breaks a rule of the language, it reports a **compile error** and makes no program.
+- An **online judge** is a website that compiles your source, runs it on hidden tests, and compares its output with the expected output. Codeforces, AtCoder, CSES, and LeetCode are judges.
+- **Standard input** is the text a program reads (with `cin`); **standard output** is the text it writes (with `cout`). Judges feed the test through standard input and read your answer from standard output, so programs must not print anything else (no "Enter n:").
+- A **verdict** is the judge's result for a submission:
+  - **Accepted (AC)**: correct on every test.
+  - **Wrong Answer (WA)**: some output differs from the expected one.
+  - **Time Limit Exceeded (TLE)**: the program ran longer than allowed (usually 1–2 seconds).
+  - **Memory Limit Exceeded (MLE)**: it used more memory than allowed.
+  - **Runtime Error (RE)**: it crashed, for example by reading outside an array or dividing by zero.
+  - **Compilation Error (CE)**: it did not compile.
+- A **test case** is one complete input instance. When one input file contains several, the first number is usually their count $t$, and the program answers each in turn: this is a **multi-test** input.
+- A **bit** is a binary digit, 0 or 1. An integer type with $b$ bits has $2^b$ possible values.
+- A **signed type** holds negative and positive values; an **unsigned** type holds only values $\ge 0$. `int` is a 32-bit signed type, `long long` a 64-bit signed type, and `unsigned long long` a 64-bit unsigned type.
+- **Overflow** happens when the exact result of an arithmetic step does not fit in its type. Example: in `int`, $50000 \cdot 50000 = 2.5 \cdot 10^9$ does not fit.
+- **Integer division** `a / b` in C++, for integers, gives an integer; the **remainder** `a % b` satisfies `a == (a / b) * b + a % b`. Example: `7 / 2 == 3`, `7 % 2 == 1`.
+- The **floor** $\lfloor x \rfloor$ of a real number $x$ is the largest integer $\le x$; the **ceiling** $\lceil x \rceil$ is the smallest integer $\ge x$. Example: $\lfloor -3.5 \rfloor = -4$, $\lceil -3.5 \rceil = -3$, $\lfloor 3.5 \rfloor = 3$.
+- A **floating-point number** (C++ `double`) stores a real number approximately, as a binary fraction with 53 significant bits times a power of two.
+- The **integer square root** of $x \ge 0$ is $\lfloor \sqrt{x} \rfloor$. Example: the integer square root of 10 is 3.
+
 ## 4. Theory and proofs
+
+### 4.1 How big an integer type is
+
+**Theorem 0.1.1 (integer ranges).** A $b$-bit signed type as used by C++ compilers holds exactly the integers from $-2^{b-1}$ to $2^{b-1} - 1$, and a $b$-bit unsigned type the integers from $0$ to $2^b - 1$. In particular:
+
+| type | bits | largest value | about |
+|---|---|---|---|
+| `int` | 32 | $2^{31} - 1 = 2\,147\,483\,647$ | $2.1 \cdot 10^9$ |
+| `long long` | 64 | $2^{63} - 1 = 9\,223\,372\,036\,854\,775\,807$ | $9.2 \cdot 10^{18}$ |
+| `unsigned long long` | 64 | $2^{64} - 1$ | $1.8 \cdot 10^{19}$ |
+
+*Proof.* $b$ bits have $2^b$ patterns, so a $b$-bit type holds at most $2^b$ values. An unsigned type uses them for $0, 1, \dots, 2^b - 1$. A signed type uses *two's complement*: the patterns whose top bit is 1 stand for the negative numbers $-2^{b-1}, \dots, -1$ (that is $2^{b-1}$ values), and those whose top bit is 0 for $0, \dots, 2^{b-1} - 1$ (another $2^{b-1}$ values). That accounts for all $2^b$ patterns, so no other value fits. Substituting $b = 32$ and $b = 64$ gives the table. $\square$
+
+:::note[This proof needs]
+1. Every intermediate value of the computation, not only the final answer, lies within the type's range.
+2. The type of each step is the type C++ computes it in: `int * int` is computed in `int` even when the result is then stored in a `long long`.
+:::
+
+**Consequences.** A product of two values up to $10^9$ is at most $10^{18}$: it fits `long long` but not `int`. A product of three such values ($10^{27}$) fits no built-in type. A sum of $2 \cdot 10^5$ values up to $10^9$ needs `long long`. When a signed type overflows, C++ does not promise any result (the behaviour is *undefined*); in practice the value usually wraps around to a large negative number.
+
+**The type of an expression.** In `long long x = a * b;` with `int a, b`, the multiplication happens in `int`, overflows, and only the broken result is copied into `x`. Write `1LL * a * b` or `(long long)a * b`: the first operand is then a `long long`, so the multiplication happens in 64 bits. `1LL` is the number 1 as a `long long`.
+
+**Theorem 0.1.2 (checking a product without overflow).** Let $a \ge 0$, $b \ge 1$, and $L \ge 0$ be integers. Then $a \cdot b > L$ if and only if $a > \lfloor L / b \rfloor$.
+
+*Proof.* Write $q = \lfloor L / b \rfloor$, so $q \cdot b \le L < (q + 1) \cdot b$. If $a > q$, then $a \ge q + 1$ and $a \cdot b \ge (q + 1) \cdot b > L$. If $a \le q$, then $a \cdot b \le q \cdot b \le L$. $\square$
+
+:::note[This proof needs]
+1. $a \ge 0$ and $b \ge 1$ (for $b = 0$ the product is 0 and needs no check).
+2. $L$ itself fits the type, so $\lfloor L / b \rfloor$ can be computed exactly.
+:::
+
+So to multiply many numbers and stop once the product passes $L = 10^{18}$, test `prod > L / x` *before* computing `prod * x`; the product itself never leaves the range.
+
+### 4.2 Many test cases in one input
+
+**Theorem 0.1.3 (cost of multi-test inputs).** Suppose an input has $t$ test cases of sizes $n_1, \dots, n_t$ and the statement promises $n_1 + \dots + n_t \le N$. If a program spends at most $c \cdot n_i$ steps on test $i$, it spends at most $c \cdot N$ steps in total. If instead it spends $c \cdot M$ steps on every test for some fixed $M$ (for example, clearing a global array of size $M$), the total is $c \cdot t \cdot M$.
+
+*Proof.* Add the per-test bounds: $c n_1 + \dots + c n_t = c (n_1 + \dots + n_t) \le c N$. In the second case each of the $t$ tests costs $c M$, so the total is $c t M$. $\square$
+
+:::note[This proof needs]
+1. The statement bounds the *sum* of the sizes over all tests (not just each size).
+2. The work for a test depends only on that test's size, never on the largest possible size.
+:::
+
+**Example.** With $t \le 10^4$ and the sum of $n$ at most $2 \cdot 10^5$, a loop over each test's own array costs $2 \cdot 10^5$ steps in total. Clearing a global array of $2 \cdot 10^5$ entries in every test costs up to $10^4 \cdot 2 \cdot 10^5 = 2 \cdot 10^9$ steps, which is too slow. Creating a `vector<int> a(n)` inside the test loop avoids both the clearing and the leftovers from the previous test.
+
+### 4.3 Division and rounding
+
+C++ integer division of $a$ by $b \ne 0$ *truncates toward zero*: it drops the fractional part. So `7 / 2 == 3` but `-7 / 2 == -3`, while $\lfloor -3.5 \rfloor = -4$. The remainder takes the sign of $a$: `-7 % 2 == -1`.
+
+**Theorem 0.1.4 (floor and ceiling division).** Let $a$ and $b$ be integers with $b > 0$.
+1. If $a \ge 0$, then `a / b` $= \lfloor a/b \rfloor$ and `(a + b - 1) / b` $= \lceil a/b \rceil$.
+2. For any sign of $a$: $\lfloor a/b \rfloor$ equals `a / b` when `a % b == 0` or $a > 0$, and `a / b - 1` otherwise; and $\lceil a/b \rceil = -\lfloor -a/b \rfloor$.
+
+*Proof.* 1. Write $a = qb + r$ with $0 \le r < b$ (division with remainder). Then $\lfloor a/b \rfloor = q$, which is what truncation gives for $a \ge 0$. If $r = 0$, then $a + b - 1 = qb + (b - 1)$ and truncation gives $q = \lceil a/b \rceil$. If $r \ge 1$, then $a + b - 1 = (q + 1) b + (r - 1)$ with $0 \le r - 1 < b$, so truncation gives $q + 1 = \lceil a/b \rceil$.
+
+2. Truncation and floor agree when $a/b$ is a whole number or positive. When $a < 0$ and $b$ does not divide $a$, $a/b$ lies strictly between two integers and truncation rounds it *up* (toward zero), so the floor is one less. For the ceiling, $\lceil x \rceil = -\lfloor -x \rfloor$ holds for every real $x$, because negating reverses the order, so "smallest integer $\ge x$" becomes "largest integer $\le -x$" after negating. $\square$
+
+:::note[This proof needs]
+1. $b > 0$ (for $b < 0$, divide $-a$ by $-b$ instead, which gives the same quotient).
+2. For the shortcut `(a + b - 1) / b`: $a \ge 0$, and $a + b - 1$ fits the type.
+:::
+
+**Counterexample for a negative $a$.** With $a = -6$ and $b = 4$: $\lceil -1.5 \rceil = -1$, but `(-6 + 4 - 1) / 4` is `-3 / 4`, which truncates to `0`.
+
+### 4.4 Floating-point numbers and square roots
+
+**Theorem 0.1.5 (exact integers in a `double`, and a safe integer square root).**
+1. A `double` stores every integer $x$ with $|x| \le 2^{53} \approx 9 \cdot 10^{15}$ exactly, but not every integer above $2^{53}$.
+2. For an integer $0 \le x \le 10^{18}$, start from any guess $r \ge 0$ (for example the rounded `sqrtl(x)`), then decrease $r$ while $r^2 > x$ and increase it while $(r+1)^2 \le x$. The result is $\lfloor \sqrt{x} \rfloor$.
+
+*Proof.* 1. A `double` has 53 significant bits, so every integer that needs at most 53 bits is stored as is. The integer $2^{53} + 1$ needs 54 bits; the nearest values a `double` can hold are $2^{53}$ and $2^{53} + 2$, so it is rounded to one of them.
+
+2. Let $s = \lfloor \sqrt{x} \rfloor$, the unique integer with $s^2 \le x < (s+1)^2$. If $r > s$, then $r^2 \ge (s+1)^2 > x$, so the first loop decreases $r$; it stops at the first $r$ with $r^2 \le x$, which is $s$. If $r < s$, then $(r+1)^2 \le s^2 \le x$, so the second loop increases $r$ until $(r+1)^2 > x$, which first happens at $r = s$. If $r = s$, neither loop moves. Each product fits a `long long` because $r$ stays at most about $10^9 + 1$. $\square$
+
+:::note[This proof needs]
+1. $x \ge 0$, and $x$ small enough that $(r+1)^2$ fits the type ($x \le 10^{18}$ is safe in `long long`).
+2. All comparisons are done on integers, never on the floating-point square root itself.
+:::
+
+**Why the correction is needed.** For $x = 10^{18} - 1$, the true answer is $999\,999\,999$, but `(long long)sqrt((double)x)` gives $1\,000\,000\,000$: converting $x$ to `double` already rounds it up to $10^{18}$. The rule that follows: *if every quantity in a problem is an integer, compute with integers*. Use floating point only when the answer itself is a real number.
+
+### 4.5 Fast input and output
+
+C++ streams are kept in step with C's `printf` and `scanf` by default, and `cin` empties `cout`'s buffer before every read. Both make reading a million numbers take several seconds. Two lines at the start of `main` turn this off:
+
+```cpp
+ios::sync_with_stdio(false);  // stop synchronising with printf/scanf
+cin.tie(nullptr);             // stop flushing cout before every cin read
+```
+
+After them, do not mix `cin`/`cout` with `scanf`/`printf` in the same program. Also end lines with `"\n"` rather than `endl`: `endl` writes a newline *and* forces the output to be sent immediately (a *flush*), which is slow when done $10^6$ times. Every template on this site that reads large input starts with these two lines (Section 6).
+
+**Rule, not a card.** Fast input and output is not a decision you make per problem; always include the two lines. That is why this topic has no Recognition Card for it.
 
 ## 5. Recognition Cards
 

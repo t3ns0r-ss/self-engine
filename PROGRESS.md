@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
-- Topic: 0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs
+- Topic: Phase 0 intro and exam
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.6 steps 8–9 (self-test, section intros, decision map)
-- Next action: 0.6 step 10 (self-review)
+- Last completed step: 0.6 step 10 (self-review: draft removed; validate, unit tests, build, e2e all pass)
+- Next action: Phase 0 intro (phase-0/index.mdx) and Phase 0 exam page (phase-0/exam.mdx)
 
 ## Gates
 | Gate | Status | Date |
@@ -28,7 +28,7 @@
 | 0.3 | done (on this session's branch) | — |
 | 0.4 | done (on this session's branch) | — |
 | 0.5 | done (on this session's branch) | — |
-| 0.6 | in progress (step 9 of 10) | — |
+| 0.6 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

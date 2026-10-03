@@ -4,8 +4,8 @@
 - Milestone: M1 (topic 1.3 exemplar)
 - Topic: 1.3 Two pointers and sliding window
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.3 step 8 (drill, look-alikes, self-test, checkpoint, reviews): 8 self-test questions with checked counterexamples; section intros
-- Next action: 1.3 step 9 (decision map)
+- Last completed step: 1.3 step 9 (decision map): six entries, rendered in the lesson and the Handbook
+- Next action: 1.3 step 10 (self-review): remove draft flag, full tests, browser check, read-through
 
 ## Gates
 | Gate | Status | Date |
@@ -22,7 +22,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | in progress (step 8 of 10) | — |
+| 1.3 | in progress (step 9 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

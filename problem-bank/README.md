@@ -43,7 +43,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 1 | 4 | 8 | 17 | 30 | complete |
 | 5 | [5.4 Square-root decomposition, Mo's algorithm](phase-5/5.4-sqrt-decomposition.md) | 0 | 1 | 4 | 4 | 5 | 14 | short |
 | 6 | [6.1 Polynomial hashing](phase-6/6.1-string-hashing.md) | 0 | 2 | 8 | 7 | 3 | 20 | short |
-| 6 | [6.2 Prefix function (KMP) and Z-function](phase-6/6.2-prefix-function.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 6 | [6.2 Prefix function (KMP) and Z-function](phase-6/6.2-prefix-function.md) | 4 | 3 | 3 | 7 | 2 | 19 | short |
 | 6 | [6.3 Trie, binary trie for max-XOR](phase-6/6.3-trie.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 6 | [6.4 Suffix array and LCP array](phase-6/6.4-suffix-array.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 7 | [7.1 DP on trees, rerooting](phase-7/7.1-tree-dp.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

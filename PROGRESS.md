@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.4 Parity, divisibility, GCD via Euclid, basic modular arithmetic
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.4 step 1 (scope: lesson skeleton, draft data file, bank gaps)
-- Next action: 0.4 step 2 (theory)
+- Last completed step: 0.4 step 2 (theory: Theorems 0.4.1–0.4.6, 10 glossary terms)
+- Next action: 0.4 step 3 (recognition cards)
 
 ## Gates
 | Gate | Status | Date |
@@ -26,7 +26,7 @@
 | 0.1 | done (on this session's branch) | — |
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
-| 0.4 | in progress (step 1 of 10) | — |
+| 0.4 | in progress (step 2 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

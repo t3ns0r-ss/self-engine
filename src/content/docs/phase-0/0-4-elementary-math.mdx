@@ -18,15 +18,134 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. Two numbers $a$ and $b$, each up to $10^{18}$, are given. Find the largest number that divides both.
+
+The direct method tries $d = \min(a, b), \min(a, b) - 1, \dots$ until some $d$ divides both. With $a = 10^{18}$ and $b = 10^{18} - 1$ the answer is 1, so the loop runs about $10^{18}$ times: at $10^8$ steps per second (topic 0.2), that is more than 300 years. Even trying only $d \le \sqrt{b}$ in pairs (Theorem 0.2.2) needs $10^9$ steps and still does not find the largest common divisor directly.
+
+The key idea is that the common divisors of $a$ and $b$ are exactly the common divisors of $b$ and the remainder of $a$ divided by $b$. Replacing $(a, b)$ by $(b, a \bmod b)$ keeps the answer and makes the numbers shrink fast: the first number at least halves every two steps, so about 120 steps suffice for numbers up to $10^{18}$. This topic is about such facts on remainders: whether a quantity is even or odd, whether one number divides another, how remainders behave under addition and multiplication, and the greatest common divisor and least common multiple.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming (CP): `long long`, overflow, and how C++ rounds integer division and `%` for negative numbers (Theorem 0.1.4).
+- Topic 0.2, complexity analysis: the step budget and closed forms; counting multiples below is a closed form.
+- Topic 0.3, implementation and simulation: processes that repeat (Theorem 0.3.1) and case analysis; remainders often explain why a process repeats.
+
 ### What this topic does not cover
+
+- Listing all primes up to $N$ (the sieve of Eratosthenes), factorising numbers into primes, and the smallest prime factor table. Covered in topic 2.1.
+- Solving $ax + by = \gcd(a, b)$ for integers $x, y$ (extended Euclid). Covered in topic 2.1.
+- Dividing modulo $m$ (the modular inverse), raising to huge powers modulo $m$ (binary exponentiation), and Fermat's little theorem. Covered in topic 2.2.
+- Counting the numbers divisible by at least one of several values in general (inclusion-exclusion). Covered in topic 2.3; this lesson needs only the case of two values, proved directly.
 
 ## 3. Definitions
 
+- For integers $a$ and $b$, $a$ **divides** $b$, written $a \mid b$, if $b = ka$ for some integer $k$. Then $b$ is a **multiple** of $a$. Example: $3 \mid 12$ and $3 \nmid 13$; $0$ is a multiple of every integer.
+- For an integer $a$ and a positive integer $m$, the **remainder** $a \bmod m$ is the unique $r$ with $0 \le r < m$ and $a = qm + r$ for an integer $q$. Example: $17 \bmod 5 = 2$ and $-7 \bmod 5 = 3$ (since $-7 = -2 \cdot 5 + 3$). Note: in C++ `-7 % 5` is `-2`, not 3 (Section 4.1).
+- Two integers are **congruent modulo $m$**, written $a \equiv b \pmod m$, if $m \mid (a - b)$, that is if $a \bmod m = b \bmod m$. Example: $17 \equiv 2 \equiv -3 \pmod 5$.
+- The **parity** of an integer is whether it is **even** (divisible by 2) or **odd**. Example: $-3$ is odd, $0$ is even.
+- An **invariant** of a process is a quantity that no step changes. Example: when two coins are flipped at a time, the parity of the number of heads is an invariant.
+- The **GCD** (greatest common divisor) $\gcd(a, b)$ of integers $a, b$, not both 0, is the largest integer dividing both. By convention $\gcd(a, 0) = |a|$. Example: $\gcd(12, 18) = 6$, $\gcd(7, 0) = 7$.
+- Two integers are **coprime** if their GCD is 1. Example: 8 and 15.
+- The **LCM** (least common multiple) $\operatorname{lcm}(a, b)$ of positive integers $a, b$ is the smallest positive integer that is a multiple of both. Example: $\operatorname{lcm}(4, 6) = 12$.
+- The **Euclidean algorithm** computes $\gcd(a, b)$ by replacing $(a, b)$ with $(b, a \bmod b)$ until the second number is 0 (Section 4.4).
+
 ## 4. Theory and proofs
+
+### 4.1 Remainders in C++
+
+**Theorem 0.4.1 (division with remainder).** Let $m > 0$.
+1. For every integer $a$ there are unique integers $q$ and $r$ with $a = qm + r$ and $0 \le r < m$; here $q = \lfloor a/m \rfloor$ and $r = a \bmod m$.
+2. In C++, `a % m` equals $a \bmod m$ when $a \ge 0$. When $a < 0$, `a % m` is in $(-m, 0]$, and `((a % m) + m) % m` equals $a \bmod m$ for every $a$.
+
+*Proof.* 1. Let $q = \lfloor a/m \rfloor$, so $q \le a/m < q + 1$; multiplying by $m$ gives $qm \le a < qm + m$, so $r = a - qm$ satisfies $0 \le r < m$. If also $a = q'm + r'$ with $0 \le r' < m$, then $(q - q')m = r' - r$, and $|r' - r| < m$ forces $q = q'$ and $r = r'$. 2. C++ defines `a / m` by rounding toward zero and `a % m` as `a - (a / m) * m` (Theorem 0.1.4). For $a \ge 0$ this is the floor, so `a % m` $= a \bmod m$. For $a < 0$ the quotient is rounded up, so `a % m` $= a - \lceil a/m \rceil m$ lies in $(-m, 0]$. In both cases `a % m` $\equiv a \pmod m$; adding $m$ gives a value in $(0, 2m)$ that is still congruent to $a$, and the last `% m` reduces it into $[0, m)$, which by part 1 is $a \bmod m$. $\square$
+
+:::note[This proof needs]
+1. The divisor $m$ is positive.
+2. `a % m + m` does not overflow: $|a \% m| < m$, so it is enough that $2m$ fits in the type.
+:::
+
+**Theorem 0.4.2 (counting multiples).** Let $k \ge 1$. For $n \ge 0$, the number of multiples of $k$ in $\{1, 2, \dots, n\}$ is $\lfloor n/k \rfloor$. For $1 \le l \le r$, the number of multiples of $k$ in $\{l, \dots, r\}$ is $\lfloor r/k \rfloor - \lfloor (l-1)/k \rfloor$.
+
+*Proof.* The positive multiples of $k$ are $k, 2k, 3k, \dots$, and $jk \le n$ exactly when $j \le n/k$, that is $j \le \lfloor n/k \rfloor$. For the range, the multiples in $\{l, \dots, r\}$ are those in $\{1, \dots, r\}$ minus those in $\{1, \dots, l - 1\}$. $\square$
+
+:::note[This proof needs]
+1. $k \ge 1$, and the range starts at $l \ge 1$, so $l - 1 \ge 0$ and C++ division equals the floor (Theorem 0.1.4). If $l$ can be 0 or negative, use the floor rule of Theorem 0.1.4 or count 0 separately.
+:::
+
+Example: multiples of 7 in $\{20, \dots, 100\}$: $\lfloor 100/7 \rfloor - \lfloor 19/7 \rfloor = 14 - 2 = 12$ (they are $21, 28, \dots, 98$).
+
+### 4.2 Parity
+
+**Theorem 0.4.3 (parity).**
+1. A sum of integers is odd exactly when an odd number of its terms are odd. In particular $a + b$ and $a - b$ are even exactly when $a$ and $b$ have the same parity.
+2. If every step of a process changes an integer quantity $Q$ by an even amount, the parity of $Q$ is an invariant: a state in which $Q$ has the other parity can never be reached.
+
+*Proof.* 1. Even terms contribute multiples of 2. Each odd term is $2j + 1$, so $t$ odd terms add up to an even number plus $t$; the sum is odd exactly when $t$ is odd. $a - b = a + b - 2b$ has the parity of $a + b$. 2. If $Q$ changes by $2j$, then $Q \bmod 2$ does not change; by induction it never changes. $\square$
+
+:::note[This proof needs]
+1. For part 2: every allowed step changes $Q$ by an even amount (or every step flips its parity, and then the parity depends only on the number of steps).
+:::
+
+Example: a chess knight starts at $(0, 0)$. Each move changes $x + y$ by $\pm 1$ or $\pm 3$, always an odd amount, so after $t$ moves $x + y$ has the parity of $t$. After exactly 7 moves it can never be back at $(0, 0)$.
+
+### 4.3 Arithmetic modulo $m$
+
+**Theorem 0.4.4 (sums and products modulo $m$).** Let $m > 0$. If $a \equiv a' \pmod m$ and $b \equiv b' \pmod m$, then $a + b \equiv a' + b'$, $a - b \equiv a' - b'$ and $a \cdot b \equiv a' \cdot b' \pmod m$. So $(a + b) \bmod m$ and $(a \cdot b) \bmod m$ can be computed from $a \bmod m$ and $b \bmod m$, reducing after every operation.
+
+*Proof.* Write $a = a' + km$ and $b = b' + lm$. Then $a + b = a' + b' + (k + l)m$ and $a - b = a' - b' + (k - l)m$. For the product, $ab = a'b' + (a'l + kb' + klm)m$. In each case the difference is a multiple of $m$. $\square$
+
+:::note[This proof needs]
+1. Only addition, subtraction and multiplication. Division is not covered: $10 / 2 = 5$, but with $m = 6$, $(10 \bmod 6) / 2 = 2 \ne 5 \bmod 6$.
+2. In code, every intermediate value must fit in its type: with both factors in $[0, m)$, the product is below $m^2$, which fits in `long long` when $m \le 3 \cdot 10^9$.
+3. After a subtraction, the result can be negative: add $m$ before taking `%` again (Theorem 0.4.1).
+:::
+
+Example: $123 \cdot 456 \bmod 7$. Since $123 \bmod 7 = 4$ and $456 \bmod 7 = 1$, the answer is $4 \cdot 1 \bmod 7 = 4$; indeed $123 \cdot 456 = 56088 = 7 \cdot 8012 + 4$. The same rule computes $n! \bmod (10^9 + 7)$ for $n = 10^6$ in $10^6$ multiplications, although $n!$ itself has more than 5 million digits.
+
+### 4.4 The Euclidean algorithm
+
+**Theorem 0.4.5 (Euclid).**
+1. For integers $a$ and $b > 0$: $\gcd(a, b) = \gcd(b, a \bmod b)$. Also $\gcd(a, b) = \gcd(a, b - a)$.
+2. The loop "while $b \ne 0$: $(a, b) \leftarrow (b, a \bmod b)$; answer $a$", started with $a, b \ge 0$, returns $\gcd(a, b)$ and runs at most $2 \log_2 \max(a, b) + 2$ times.
+
+*Proof.* 1. Let $r = a \bmod b = a - qb$. If $d \mid a$ and $d \mid b$, then $d \mid a - qb = r$. If $d \mid b$ and $d \mid r$, then $d \mid qb + r = a$. So the pairs $(a, b)$ and $(b, r)$ have exactly the same common divisors, and hence the same greatest one. The same argument with $b - a$ in place of $r$ gives the second claim.
+
+2. Each step keeps the GCD by part 1, and the loop ends with $(g, 0)$, whose GCD is $g$. For the count: after the first step $a \ge b$ (if $a < b$ the first step just swaps them). For $a \ge b > 0$, $a \bmod b < a/2$: if $b \le a/2$, the remainder is less than $b \le a/2$; if $b > a/2$, the remainder is $a - b < a/2$. Two steps turn $(a, b)$ into $(a \bmod b, \cdot)$, so the first number at least halves every two steps, and after $2 \log_2 a + 2$ steps it would be below 1. $\square$
+
+:::note[This proof needs]
+1. $a, b \ge 0$ (for negative inputs, use $|a|$ and $|b|$).
+2. Not both numbers are 0 if the answer must be positive ($\gcd(0, 0)$ is returned as 0).
+:::
+
+A trace for $(1071, 462)$:
+
+| step | $a$ | $b$ | $a \bmod b$ |
+|---|---|---|---|
+| 1 | 1071 | 462 | 147 |
+| 2 | 462 | 147 | 21 |
+| 3 | 147 | 21 | 0 |
+| 4 | 21 | 0 | stop |
+
+So $\gcd(1071, 462) = 21$: indeed $1071 = 51 \cdot 21$ and $462 = 22 \cdot 21$. For numbers up to $10^{18}$ the loop runs at most 121 times. The GCD of an array is computed left to right, $g \leftarrow \gcd(g, a_i)$, because the common divisors of $a_1, \dots, a_i$ are the common divisors of $\gcd(a_1, \dots, a_{i-1})$ and $a_i$ (part 1 applied to the definition, by induction).
+
+### 4.5 The least common multiple
+
+**Theorem 0.4.6 (LCM).** Let $a, b \ge 1$ and $L = \operatorname{lcm}(a, b)$.
+1. Every common multiple of $a$ and $b$ is a multiple of $L$.
+2. $L \cdot \gcd(a, b) = a \cdot b$, so $L = (a / \gcd(a, b)) \cdot b$.
+
+*Proof.* 1. Let $M$ be a common multiple and $r = M \bmod L = M - qL$ with $q = \lfloor M/L \rfloor$. Both $M$ and $qL$ are multiples of $a$ and of $b$, so $r = M - qL$ is too. Since $0 \le r < L$ and $L$ is the smallest *positive* common multiple, $r = 0$.
+
+2. Let $g = \gcd(a, b)$. The number $ab/g = (a/g) \cdot b = a \cdot (b/g)$ is an integer and a common multiple, so $L \le ab/g$. Also $ab$ is a common multiple, so by part 1 $L \mid ab$; let $d = ab/L$. Then $a/d = L/b$ and $b/d = L/a$ are integers, so $d$ is a common divisor and $d \le g$, which gives $L = ab/d \ge ab/g$. Together, $L = ab/g$. $\square$
+
+:::note[This proof needs]
+1. $a, b \ge 1$.
+2. In code, divide before multiplying: `a / g * b` is at most the LCM itself, while `a * b` can overflow even when the LCM fits. The LCM of several numbers grows fast; check against the bound you care about after every step.
+:::
+
+Example: $\operatorname{lcm}(12, 18) = 12 / 6 \cdot 18 = 36$. For an array, $L \leftarrow \operatorname{lcm}(L, a_i)$ left to right, by part 1 (a number is a common multiple of $a_1, \dots, a_i$ exactly when it is a multiple of $\operatorname{lcm}(a_1, \dots, a_{i-1})$ and of $a_i$).
 
 ## 5. Recognition Cards
 

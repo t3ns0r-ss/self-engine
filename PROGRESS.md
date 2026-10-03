@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1–B6 done; B7 (Phase 7 banks, then the final bank review gate) next
-- Topic: bank 7.5
+- Topic: bank 7.6
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B6, all 4 Phase 6 banks (6.1–6.4: 109 problems, 72 practice, 37 reserved), validated and published
 - Next action: B7 (Phase 7 banks 7.1–7.8), one commit per topic, ending at the "Final bank review" gate
@@ -69,7 +69,8 @@
 | 7.3 | short | 16 | 3 |
 | 7.4 | short | 20 | 9 |
 | 7.5 | short | 20 | 10 |
-| other 3 (Phases 7–7) | patterns written, no problems yet | 0 | 0 |
+| 7.6 | short | 18 | 7 |
+| other 2 (Phases 7–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -117,6 +118,7 @@
 - 7.3: short: 16 practice and 3 reserved. Problems where a Fenwick or segment tree speeds up a DP are mostly rated 2300+ on Codeforces or ABC F/G; many LeetCode candidates have O(n²) or deque solutions. 7 Codeforces notes are recalled (†).
 - 7.4: short: reserved has 9 of 24; `merge-smallest` has 1 problem (CSES Stick Divisions; LeetCode's version is premium) and `regret` 3. Several heap-greedy problems use 'marginal gain' or 'best-first enumeration', which match no pattern here. Suggestion: add a pattern `marginal-gain` (repeatedly apply the step with the largest gain from a heap). 5 Codeforces notes are recalled (†).
 - 7.5: short: reserved has 10 of 24; `nim-sum` and `grundy-sum` have 3 practice problems each. In-band Grundy-sum problems are few (most game problems are win-lose or ad hoc). 12 Codeforces notes are recalled (†).
+- 7.6: short: 18 practice and 7 reserved (two look-alike pairs: LeetCode Transformations I/II and LeetCode/CSES Fibonacci). `min-plus` has 2 practice problems and `augmented-matrix` 2. Most in-band matrix problems are Codeforces (14 recalled notes, †).
 
 ## Scope notes for current topic
 - Allowed: —

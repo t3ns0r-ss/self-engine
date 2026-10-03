@@ -54,3 +54,18 @@ test('later keywords allowed only in the "does not cover" subsection', () => {
 });
 test('headingsOf ignores fenced code', () => assert.deepEqual(headingsOf('## A\n```\n## not\n```\n### B'), ['## A', '### B']));
 test('keyword scan skips frontmatter and imports', () => assert.equal(textForKeywordScan('---\ntitle: x\n---\nimport a from "b";\nhello').trim(), 'hello'));
+
+// The Phase 0 exam lives in the real 0.6 data file.
+const run06 = (mutate) => {
+  const d = structuredClone(base);
+  d.topics = { '0.6': d.topics['0.6'] };
+  d.lessons = { '0.6': d.lessons['0.6'] };
+  mutate?.(d, d.topics['0.6']);
+  return validateTopics(d);
+};
+test('topic 0.6 with the Phase 0 exam is valid', () => assert.deepEqual(run06(), []));
+test('exam card must belong to the topic it tests', () => expectError(run06((d, t) => { t.problems.find((p) => p.id === 'ac-abc129_d').card = 'map-counting'; }), /ac-abc129_d: exam problems need the card of topic 0.3/));
+test('exam covers every topic of the phase', () => expectError(run06((d, t) => {
+  const i = t.problems.findIndex((p) => p.id === 'ac-abc129_d');
+  t.problems.splice(i, 1);
+}), /phase exam has no problem from topic 0.3/));

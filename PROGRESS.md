@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
-- Topic: Phase 0 intro and exam
+- Topic: — (M2 complete; waiting at the M2 gate)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.6 step 10 (self-review: draft removed; validate, unit tests, build, e2e all pass)
-- Next action: Phase 0 intro (phase-0/index.mdx) and Phase 0 exam page (phase-0/exam.mdx)
+- Last completed step: Phase 0 intro (phase-0/index.mdx) and Phase 0 exam (phase-0/exam.mdx, 7 problems, remediation map); validate, tests, build, e2e all pass
+- Next action: ⏸ wait for Saurabh at the M2 gate (Phase 0 review); then M3 (1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 
 ## Gates
 | Gate | Status | Date |
@@ -15,9 +15,10 @@
 | B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |
 | Final bank review | approved ("Let's begin with material building") | 2026-10-03 |
 | M1 exemplar review | approved ("for beginning this is good enough"; patterns and other changes to come later) | 2026-10-03 |
+| M2 Phase 0 review | waiting | 2026-10-03 |
 
 ## Saurabh is studying
-- Topic: —
+- Topic: — (M2 complete; waiting at the M2 gate)
 
 ## Topics
 | id | status | merged commit |
@@ -29,6 +30,7 @@
 | 0.4 | done (on this session's branch) | — |
 | 0.5 | done (on this session's branch) | — |
 | 0.6 | done (on this session's branch) | — |
+| Phase 0 intro and exam | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -145,6 +147,10 @@
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
 ## Questions for Saurabh
+- M2 (Phase 0) is ready for review: lessons 0.1–0.6, the Phase 0 intro and the Phase 0 exam (7 problems, one or two per topic, mixed order, 3 hours, pass at 5 of 7 with no Recognition miss). Suggested reading order: the intro, then 0.4 or 0.6 as a sample lesson, then the exam page. Changes made along the way that you may want to check:
+  - Phase 0 banks gained look-alike pairs, reviews and exam problems at each topic's step 1 (details under "Scope notes" history in the commits `topic(0.x): step 1 scope`).
+  - The exam keeps its state under a new storage key `cp:v1:exams` (exported and imported with the rest; older exports without it still import).
+  - The validator now checks that each exam problem carries the card of the topic it tests and that the exam covers every topic of the phase.
 - Keyword scan and ordered sets (0.6): `lower_bound` and `upper_bound` are keywords of 1.4 (binary search), but topic 0.6 needs the `set`/`map` member functions of the same name. The scan now ignores a keyword written as a member call (preceded by a dot, as in `s.lower_bound(x)`); the free functions on arrays stay reserved for 1.4. Say if you would rather keep the scan strict and have 0.6 describe these calls without naming them.
 - Changes made while building 1.3 (change any you disagree with):
   - Topic data files may carry `draft: true` while a lesson is being written: count rules are skipped and the lesson shows a draft notice, so every step's commit keeps CI green. 1.3 no longer has it.

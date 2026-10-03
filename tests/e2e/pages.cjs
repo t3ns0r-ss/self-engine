@@ -121,12 +121,36 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   const fb = await p.locator('.feedback-box').inputValue();
   check(/## \d{4}-\d{2}-\d{2} — topic 1\.3\n- Type: confusing\n- Where: card Shrinkable window \(problems cf-9001A\)\n- What: 1 × Recognition miss\. Notes: cf-9001A: missed closure\n- Status: open/.test(fb), 'feedback snippet in FEEDBACK.md format');
 
+  // Phase 0 exam: problems hidden before start, timer, pass rule, remediation map.
+  await p.goto(`${BASE}/phase-0/exam/`);
+  await p.waitForSelector('.exam');
+  check(await p.locator('.exam a').count() === 0, 'exam problems hidden before start');
+  await p.locator('button:has-text("Start the 3-hour exam")').click();
+  check(await p.locator('.exam .timer').isVisible(), 'exam timer runs');
+  const examCount = await p.locator('.exam li a').count();
+  check(examCount >= 6 && examCount <= 10, `exam shows ${examCount} problems after start`);
+  await p.locator('button:has-text("done early")').click();
+  const solvedBoxes = p.locator('.exam-row label:has-text("Solved") input');
+  for (let i = 0; i < Math.ceil(examCount * 0.6); i++) await solvedBoxes.nth(i).check();
+  await p.locator('.exam-row label:has-text("Recognition miss") input').first().check();
+  await p.locator('button:has-text("Submit results")').click();
+  check(await p.locator('text=Not passed yet').isVisible(), 'a Recognition miss on a solved problem fails the exam');
+  await p.locator('button:has-text("Show the remediation map")').click();
+  check(await p.locator('.exam-map tbody tr').count() === examCount, 'remediation map lists every exam problem');
+  await p.locator('button:has-text("Start the 3-hour exam")').click();
+  await p.locator('button:has-text("done early")').click();
+  for (let i = 0; i < Math.ceil(examCount * 0.6); i++) await solvedBoxes.nth(i).check();
+  await p.locator('button:has-text("Submit results")').click();
+  check(await p.locator('.exam >> text=Passed on').isVisible(), 'exam passes with 60% solved and no Recognition miss');
+  await p.goto(`${BASE}/phase-0/`);
+  check(await p.locator('a[href$="exam/"]').first().isVisible(), 'phase intro links the exam');
+
   // Method page.
   await p.goto(`${BASE}/method/`);
   check(await p.locator('.katex').count() > 0, 'method page renders math');
 
   const m = await b.newPage({ viewport: { width: 375, height: 800 }, colorScheme: 'dark' });
-  for (const u of ['/', '/problems/', '/handbook/', '/progress/', '/contests/']) {
+  for (const u of ['/', '/problems/', '/handbook/', '/progress/', '/contests/', '/phase-0/', '/phase-0/exam/']) {
     await m.goto(`${BASE}${u}`);
     await m.waitForTimeout(300);
     check(!(await m.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)), `no horizontal page scroll at 375px on ${u}`);

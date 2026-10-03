@@ -125,6 +125,9 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
         for (const r of t.requires) if (!b.techniques.includes(r)) err(F, `${p.id}: Phase 7 problems must use the combined topics; missing ${r}`);
       if (p.card && (p.role === 'ladder' || p.role === 'checkpoint' || p.role === 'review') && !own.has(p.card))
         err(F, `${p.id}: card ${p.card} is not a card of topic ${tid}`);
+      // Exam problems test earlier topics of the phase: their card belongs to the topic of their bank.
+      if (p.role === 'exam' && (!p.card || !cardsOf(b.bankTopic).has(p.card)))
+        err(F, `${p.id}: exam problems need the card of topic ${b.bankTopic} they test (found ${p.card})`);
     }
     const ofRole = (r) => tf.problems.filter((p) => p.role === r);
 
@@ -159,6 +162,8 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
         const last = curriculum.filter((x) => x.phase === t.phase).at(-1);
         if (last.id !== tid) err(F, `exam problems belong in the phase's last topic (${last.id})`);
         if (exam.length < 6 || exam.length > 10) err(F, `phase exam has ${exam.length} problems; 6–10 required`);
+        const covered = new Set(exam.map((p) => bankById.get(p.id)?.bankTopic));
+        for (const x of curriculum.filter((c) => c.phase === t.phase)) if (!covered.has(x.id)) err(F, `phase exam has no problem from topic ${x.id}`);
       }
     }
 

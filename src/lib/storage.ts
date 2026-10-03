@@ -7,6 +7,7 @@ export const KEYS = {
   drills: 'cp:v1:drills',
   contests: 'cp:v1:contests',
   settings: 'cp:v1:settings',
+  exams: 'cp:v1:exams',
 } as const;
 
 export type ProblemStatus = 'attempted' | 'solved' | 'solved_hints' | 'editorial';
@@ -87,6 +88,18 @@ export interface TopicState {
   /** True once the timer ran out or the learner finished early, until results are submitted. */
   checkpointFinished?: boolean;
 }
+/** One phase exam attempt (PLAN.md Section 11.3), keyed by phase number. */
+export interface ExamState {
+  /** Epoch milliseconds when the exam timer started. */
+  startedAt?: number | null;
+  /** True once the timer ran out or the learner finished early, until results are submitted. */
+  finished?: boolean;
+  solved?: string[];
+  /** Solved problems where the first tool tried was the wrong one. */
+  recognitionMisses?: string[];
+  passedOn?: string | null;
+  lastAttemptOn?: string | null;
+}
 export interface DrillState {
   chosenCard?: string;
   property?: string;
@@ -113,6 +126,12 @@ export function saveTopic(id: string, patch: Partial<TopicState>): boolean {
   return write(KEYS.topics, all);
 }
 
+export const getExams = () => asRecord<ExamState>(read(KEYS.exams, {}));
+export function saveExam(phase: string, patch: Partial<ExamState>): boolean {
+  const all = getExams();
+  all[phase] = { ...all[phase], ...patch };
+  return write(KEYS.exams, all);
+}
 export const getDrills = () => asRecord<DrillState>(read(KEYS.drills, {}));
 export function saveDrill(id: string, patch: Partial<DrillState>): boolean {
   const all = getDrills();
@@ -144,6 +163,8 @@ export function importAll(data: unknown): string | null {
   const d = data as Record<string, unknown>;
   const isObj = (v: unknown) => v === null || (typeof v === 'object' && !Array.isArray(v));
   for (const k of [KEYS.problems, KEYS.topics, KEYS.drills, KEYS.settings]) if (!isObj(d[k])) return `Field ${k} has the wrong shape.`;
+  // Exports made before the phase exams existed have no exams field.
+  if (d[KEYS.exams] !== undefined && !isObj(d[KEYS.exams])) return `Field ${KEYS.exams} has the wrong shape.`;
   if (!(d[KEYS.contests] === null || Array.isArray(d[KEYS.contests]))) return `Field ${KEYS.contests} has the wrong shape.`;
   try {
     for (const k of Object.values(KEYS)) {

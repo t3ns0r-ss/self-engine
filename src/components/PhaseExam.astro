@@ -1,0 +1,28 @@
+---
+// Phase exam (PLAN.md Section 11.3). Usage in MDX: <PhaseExam phase={0} />
+// The exam problems live in the data file of the phase's last topic, with the card of the topic
+// they test; their order is shuffled (stably, from the ids) so the topics are not in course order.
+import { loadData, problemsOf, lessonHref } from '../lib/data';
+import ExamIsland, { type ExamProblem } from './ExamIsland';
+
+const { phase } = Astro.props as { phase: number };
+const data = await loadData();
+const inPhase = data.curriculum.filter((t) => t.phase === phase);
+const last = inPhase.at(-1)!;
+const bankTopicOf = (id: string) => Object.values(data.banks).find((b) => b.problems.some((p) => p.id === id))!.topic;
+const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+const problems: ExamProblem[] = problemsOf(data, last.id, ['exam'])
+  .map((p) => {
+    const tid = bankTopicOf(p.id);
+    const t = data.curriculum.find((x) => x.id === tid)!;
+    const card = data.topics[tid]?.cards.find((c) => c.id === p.card);
+    return {
+      id: p.id, title: p.title, url: p.url, source: p.source, difficulty: p.difficulty,
+      topic: tid, topicTitle: t.title, cardName: card?.name ?? p.card ?? '', theorem: card?.from_theorem ?? 'Section 4',
+      cardsHref: `${lessonHref(t)}#5-recognition-cards`,
+    };
+  })
+  .sort((a, b) => hash(a.id) - hash(b.id));
+const hours = phase <= 1 ? 3 : 4;
+---
+<ExamIsland client:load phase={String(phase)} hours={hours} problems={problems} />

@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.4 Parity, divisibility, GCD via Euclid, basic modular arithmetic
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.4 step 4 (templates: count-multiples, exact-steps, gcd-lcm, mod-sum-product; 5000/5000 each)
-- Next action: 0.4 step 5 (bug catalogue)
+- Last completed step: 0.4 step 5 (bug catalogue: 7 bugs, each found by stress.sh)
+- Next action: 0.4 step 6 (problems)
 
 ## Gates
 | Gate | Status | Date |
@@ -26,7 +26,7 @@
 | 0.1 | done (on this session's branch) | — |
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
-| 0.4 | in progress (step 4 of 10) | — |
+| 0.4 | in progress (step 5 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

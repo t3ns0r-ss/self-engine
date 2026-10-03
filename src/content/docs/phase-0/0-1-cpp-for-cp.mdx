@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import bigSum from '../../../../code/0.1/big-sum/solution.cpp?raw';
+import cappedProduct from '../../../../code/0.1/capped-product/solution.cpp?raw';
+import multiTest from '../../../../code/0.1/multi-test/solution.cpp?raw';
+import floorCeil from '../../../../code/0.1/floor-ceil/solution.cpp?raw';
+import isqrtCode from '../../../../code/0.1/isqrt/solution.cpp?raw';
 
 <TopicHeader topic="0.1" />
 
@@ -162,6 +167,84 @@ Each card names one decision to make while reading a problem. The **decisive pro
 <Cards topic="0.1" />
 
 ## 6. Templates
+
+Five short programs, one for each mechanism in Section 4. Each reads a small made-up problem from standard input. They are the shape every later program on this site follows.
+
+### Program skeleton and a large sum (Theorem 0.1.1, Section 4.5)
+
+<Code code={bigSum} lang="cpp" title="big-sum/solution.cpp" />
+
+**How it works.** The two fast-I/O lines come first. The sum lives in a `long long`, because $2 \cdot 10^5$ values of size $10^9$ add up to $2 \cdot 10^{14}$. Each value is read into a `long long` too, so the addition `sum += x` happens entirely in 64 bits.
+
+**C++ details explained.**
+- `#include <bits/stdc++.h>` includes the whole standard library in one line. It works with `g++`, the compiler judges use; it is slow to compile but that does not count against your time.
+- `using namespace std;` lets you write `cin` and `vector` instead of `std::cin` and `std::vector`.
+- `int main()` is where the program starts. Returning from it (or reaching its end) ends the program; reaching the end returns 0, which tells the judge the program finished normally.
+- `cin >> n` reads the next number from standard input; `cout << sum << "\n"` writes `sum` and a newline.
+- `ios::sync_with_stdio(false); cin.tie(nullptr);` are the fast-I/O lines (Section 4.5). `nullptr` means "no stream".
+- `long long` is the 64-bit signed integer type (Theorem 0.1.1).
+
+**Tested.** Stress-tested against a brute force that adds the numbers as decimal strings digit by digit (so it cannot overflow), on 5000 random inputs ($n \le 8$; values small, near $\pm 10^9$, or mixed), plus 4 fixed tests including four values of $10^9$ (sum $4 \cdot 10^9$) and three of $-10^9$.
+
+**Alternative formulation.** None needed: a sum has one natural loop. The point of the template is the type of `sum`.
+
+### Product with a limit (Theorem 0.1.2)
+
+<Code code={cappedProduct} lang="cpp" title="capped-product/solution.cpp" />
+
+**How it works.** A zero anywhere makes the product 0, even if an earlier part of the product was already above $10^{18}$, so zeros are handled first. Then the loop multiplies one value at a time, but only after checking `prod > LIMIT / x`; by Theorem 0.1.2 that is exactly the case where `prod * x` would exceed $10^{18}$. So `prod` never goes above $10^{18}$ and the multiplication never overflows.
+
+**C++ details explained.**
+- `vector<long long> a(n);` is an array of `n` values of type `long long`; `a[i]` is element `i`.
+- `for (auto& x : a) cin >> x;` visits every element; `auto&` makes `x` a *reference*, another name for the element itself, so reading into `x` fills `a`. `for (long long x : a)` visits copies, which is fine when only reading.
+- `const long long LIMIT = 1000000000000000000LL;` names a value that cannot change. The suffix `LL` makes the literal a `long long`.
+- `return 0;` inside `main` ends the program early.
+
+**Tested.** Stress-tested against a brute force using `__int128`, a 128-bit integer type that `g++` provides, on 5000 random inputs ($n \le 6$; values drawn from boundary values such as $0$, $1$, $10^9$, $10^9 + 1$, $10^{18} - 1$, $10^{18}$, and random ones), plus 5 fixed tests: $10^9 \cdot 10^9$ (exactly the limit), one step over it, a zero after huge values, $n = 1$, and $10^{18} \cdot 1$.
+
+**Alternative formulation.** With `__int128` you could multiply first and compare after, since $10^{18} \cdot 10^{18}$ fits in 128 bits. It is not standard C++ and not every judge supports it; the division check works everywhere.
+
+### Many test cases (Theorem 0.1.3)
+
+<Code code={multiTest} lang="cpp" title="multi-test/solution.cpp" />
+
+**How it works.** `while (t--)` repeats the body $t$ times. Everything a test needs is created inside the loop: the vector `a` of exactly `n` elements and the variables `sum` and `count`. The work per test is a constant times its own $n$, so by Theorem 0.1.3 the total is bounded by the sum of $n$. To compare an element with the average without dividing (the average may not be a whole number), the code compares `x * n` with `sum`; both are at most $2 \cdot 10^{14}$.
+
+**C++ details explained.**
+- `while (t--)` tests `t` and then decreases it, so the loop body runs exactly $t$ times.
+- `vector<long long> a(n);` inside the loop is created anew for every test and destroyed at the end of the iteration, so nothing from the previous test remains.
+
+**Tested.** Stress-tested against a brute force that, for each element, adds up its differences from every other element (positive exactly when the element is above the average), on 5000 random inputs with up to 4 tests each and values near $10^9$ in one test of three, plus 3 fixed tests.
+
+**Alternative formulation.** Some people declare arrays once, globally, with the maximum size, and reset only the first `n` entries per test. It is correct when the reset really covers everything used, and Theorem 0.1.3 shows it is fast only if the reset is sized by `n`, not by the maximum. The local `vector` makes both mistakes impossible.
+
+### Floor and ceiling division (Theorem 0.1.4)
+
+<Code code={floorCeil} lang="cpp" title="floor-ceil/solution.cpp" />
+
+**How it works.** `floorDiv` first makes the divisor positive (dividing $-a$ by $-b$ gives the same real quotient). C++'s `a / b` then truncates toward zero; for a negative `a` that is not a multiple of `b`, truncation rounded up, so the code subtracts one. `ceilDiv` uses $\lceil a/b \rceil = -\lfloor -a/b \rfloor$.
+
+**C++ details explained.**
+- `long long floorDiv(long long a, long long b) { … }` defines a *function*: it takes two `long long` values and gives back (`return`s) one. Inside, `a` and `b` are copies, so changing them does not change the caller's variables.
+- `a % b != 0 && a < 0` is true when both conditions hold (`&&` means "and").
+
+**Tested.** Stress-tested against a brute force that checks the definition of floor ($q b \le a < (q+1) b$) and of ceiling directly, with products in 128 bits, on 5000 random inputs: small values of every sign, values up to $\pm 10^{18}$, divisors up to $\pm 10^{18}$, and exact multiples. Plus 3 fixed tests, including $-6 / 4$ (floor $-2$, ceiling $-1$) and $6 / -4$.
+
+**Alternative formulation.** For $a \ge 0$ and $b > 0$ only, the shortcut `(a + b - 1) / b` gives the ceiling (Theorem 0.1.4, part 1). It is shorter but breaks for negative $a$ (Section 7).
+
+### Integer square root (Theorem 0.1.5)
+
+<Code code={isqrtCode} lang="cpp" title="isqrt/solution.cpp" />
+
+**How it works.** `sqrtl` computes a square root in `long double`, a floating-point type usually more precise than `double`. Its result is only a guess, so the two loops correct it until $r^2 \le x < (r+1)^2$, which by Theorem 0.1.5 makes `r` the exact answer.
+
+**C++ details explained.**
+- `long long r = sqrtl((long double)x);` converts `x` to `long double`, takes the square root, and converts the result back to `long long`, dropping the fractional part.
+- `(long double)x` is a *cast*: it converts a value to another type.
+
+**Tested.** Stress-tested against a brute force that builds the root bit by bit with 128-bit squares, on 5000 random inputs: small values, random values up to $10^{18}$, and values equal to, one below, or one above a perfect square up to $10^{18}$. Plus 3 fixed tests including $10^{18} - 1$ (answer $999\,999\,999$), $10^{18}$, and $999\,999\,998\,000\,000\,001 = 999\,999\,999^2$.
+
+**Alternative formulation.** Start from $r = 0$ and increase while $(r+1)^2 \le x$. It needs no floating point at all and is correct by the same loop argument, but it takes up to $10^9$ steps for $x = 10^{18}$; it is fine only when $x$ is small (up to about $10^{12}$, so $10^6$ steps).
 
 ## 7. Bug catalogue
 

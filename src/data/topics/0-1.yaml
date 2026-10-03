@@ -367,14 +367,48 @@ lookalike_pairs:
     a_tool: "integer-rounding (0.1): floor"
     b_tool: "integer-rounding (0.1): ceiling"
     flipping_difference: B asks for the ceiling. C++ truncation equals the floor only for X ≥ 0 and the ceiling only for X ≤ 0, so each problem breaks on the other sign.
-self_test: []
+self_test:
+  - q: What does this print, and why? int a = 100000, b = 100000; long long c = a * b; cout << c;
+    a: It prints 1410065408 on the usual compilers (formally the behaviour is undefined). a * b is computed in int because both operands are int; 10^10 does not fit, and the wrapped value 10^10 − 2·2^32 is what gets copied into c. Write 1LL * a * b.
+  - q: Why is -7 / 2 equal to -3 in C++, while ⌊−3.5⌋ = −4? How do you compute the floor?
+    a: "C++ integer division truncates toward zero. For a negative quotient that is not whole, truncation rounds up, so the floor is one less: q = a / b; if (a % b != 0 && a < 0) q--; (for b > 0)."
+  - q: An input has t ≤ 10^4 tests with the sum of n at most 2·10^5. A program clears a global array of 2·10^5 entries at the start of every test. How many steps does the clearing take in the worst case?
+    a: Up to 10^4 · 2·10^5 = 2·10^9 steps, far too slow, even though the real data is only 2·10^5 numbers. Clear only the first n entries, or use a vector of size n created inside the test loop (Theorem 0.1.3).
+  - q: Is (long long)sqrt((double)x) always the integer square root for 0 ≤ x ≤ 10^18? Give a counterexample.
+    a: No. For x = 10^18 − 1 it gives 10^9 instead of 999 999 999, because converting x to double already rounds it up to 10^18. Correct the guess with integer comparisons (Theorem 0.1.5).
+  - q: Three values, each at most 10^6, are multiplied. Which type do you need for the product? And for four such values?
+    a: "Three: up to 10^18, which fits long long (below 9.2·10^18) but not int. Four: up to 10^24, which fits no built-in type; check with division before multiplying (Theorem 0.1.2), or reduce modulo something if the problem asks for it."
+  - q: |-
+      Why end lines with "
+      " instead of endl when printing 10^6 lines?
+    a: |-
+      endl writes a newline and also flushes the output buffer, sending it to the system immediately. Flushing 10^6 times is slow; "
+      " only adds the newline and lets the buffer fill up first.
+  - q: What does (a + b − 1) / b give for a = −6, b = 4, and what is ⌈−6/4⌉?
+    a: (−6 + 3) / 4 = −3 / 4, which truncates to 0. The true ceiling of −1.5 is −1. The shortcut is valid only for a ≥ 0; in general use −⌊−a/b⌋.
 checkpoint:
   time_limit_minutes: 90
   problems:
     - lc-string-to-integer-atoi
     - cf-1418A
     - cf-1555A
-decision_map: []
+decision_map:
+  - weak_signal: Values up to 10^9 or 10^18 in the constraints
+    choose: overflow-64bit
+    when: Some sum, product, or count can pass about 2.1·10^9 (use long long) or even 9.2·10^18 (check by division before multiplying).
+    over:
+      - card: integer-rounding
+        because: Rounding is the issue only when a division, square root or decimal is involved; size alone is this card.
+  - weak_signal: '"Round up", "at least how many", divisions with possibly negative values, square roots of large integers'
+    choose: integer-rounding
+    when: All quantities are integers, so the floor, ceiling, or square root can be computed exactly; the sign of the values decides which formula is safe.
+    over:
+      - card: overflow-64bit
+        because: The values may also need long long, but the decisive risk is the direction of rounding or floating-point error.
+  - weak_signal: The first line is t, the number of test cases
+    choose: multi-test
+    when: The statement bounds the sum of sizes over all tests, so per-test work must depend only on that test; nothing may carry over between tests.
+    over: []
 glossary_added:
   - CP
   - compiler

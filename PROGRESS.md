@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.1 C++ for competitive programming
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.1 step 6 (problems): ladder 16, worked examples 3, drill 8, look-alike pairs 2, checkpoint 3, reviews 3+3+3
-- Next action: 0.1 step 7 (worked examples)
+- Last completed step: 0.1 step 7 (worked examples)
+- Next action: 0.1 step 8 (self-test, section intros)
 
 ## Gates
 | Gate | Status | Date |
@@ -23,7 +23,7 @@
 | id | status | merged commit |
 |---|---|---|
 | 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
-| 0.1 | in progress (step 6 of 10) | — |
+| 0.1 | in progress (step 7 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

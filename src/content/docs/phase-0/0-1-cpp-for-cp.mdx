@@ -18,6 +18,9 @@ import cappedProduct from '../../../../code/0.1/capped-product/solution.cpp?raw'
 import multiTest from '../../../../code/0.1/multi-test/solution.cpp?raw';
 import floorCeil from '../../../../code/0.1/floor-ceil/solution.cpp?raw';
 import isqrtCode from '../../../../code/0.1/isqrt/solution.cpp?raw';
+import example1 from '../../../../code/0.1/example-1/solution.cpp?raw';
+import example2 from '../../../../code/0.1/example-2/solution.cpp?raw';
+import example3 from '../../../../code/0.1/example-3/solution.cpp?raw';
 
 <TopicHeader topic="0.1" />
 
@@ -401,6 +404,98 @@ Wrong output `140214085`, correct output `140214084`. $x$ is just below $140\,21
 **Fix:** correct the guess with integer comparisons (Theorem 0.1.5, part 2).
 
 ## 8. Worked examples
+
+Each example follows the routine from the Method page: limits first, then candidate approaches, then the property that decides, and only then code. In this topic the "property" is almost always the size of a value or the sign in a division.
+
+### Example 1: Weird Algorithm
+
+[CSES 1068 Weird Algorithm](https://cses.fi/problemset/task/1068) (CSES is the Code Submission Evaluation System problem set). In short: starting from $n$, halve it when even and replace it by $3n + 1$ when odd, until it reaches 1, printing every value.
+
+#### Step 1: Constraints → budget
+
+$n \le 10^6$. The process is known to reach 1 for every such $n$, after at most a few hundred steps, so the number of steps is no concern. The question is how large the values get.
+
+#### Step 2: Question form → candidate tools
+
+"Repeat a rule and print the values" needs a plain loop. The candidates are about types: an `int` for $n$, or a `long long` (Theorem 0.1.1).
+
+#### Step 3: Property check → decision
+
+Starting below $10^6$, the values can climb far above the start: for $n = 113\,383$ the sequence reaches $2\,482\,111\,348$, above the largest `int` ($2\,147\,483\,647$). Since every value is below about $6 \cdot 10^{10}$ for starts up to $10^6$ (checked by running all of them), `long long` is enough. Decision: `long long n`.
+
+#### Step 4: Proof for this problem
+
+The loop applies the rule exactly as stated and prints each value, so the output is correct as long as no value overflows. Every value fits in `long long` by the check in Step 3, so no step overflows (Theorem 0.1.1, condition 1). With `int`, $3n + 1$ for $n = 827\,370\,449$ (a value the sequence from $113\,383$ passes through) would overflow.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `n /= 2` is short for `n = n / 2`. `cout << n;` then `cout << " " << n;` prints the values separated by single spaces with no space at the end. Tested on the sample from the problem page, $n = 1$, $n = 2$, and $n = 113\,383$ (whose sequence passes $2^{31}$), and on 5000 random starts against a brute force using 128-bit arithmetic.
+
+#### Step 6: Alternative approach
+
+`unsigned long long` would also work, since all values are positive. There is no meaningfully different algorithm: the statement asks for every value, so the program must produce them one by one.
+
+### Example 2: Multi Test Cases
+
+[AtCoder Beginner Contest (ABC) 284, problem B: Multi Test Cases](https://atcoder.jp/contests/abc284/tasks/abc284_b). In short: for each of $T$ tests, count the odd numbers among the $N$ given.
+
+#### Step 1: Constraints → budget
+
+$T \le 100$ and $N \le 100$, so at most $10^4$ numbers in total. Values are up to $10^9$, which fits in `int`.
+
+#### Step 2: Question form → candidate tools
+
+"An input file contains multiple test cases" is the weak signal for the multi-test card (Theorem 0.1.3). The alternatives are about structure: read all tests first and then answer, or answer each test as soon as it is read.
+
+#### Step 3: Property check → decision
+
+The tests are independent and each needs only its own numbers, so each test can be answered as soon as it is read, with a counter that starts at 0 for every test. Nothing has to be cleared, because nothing is kept between tests.
+
+#### Step 4: Proof for this problem
+
+For each test, the loop reads exactly $N$ numbers and adds 1 to `odd` for each one with remainder 1 when divided by 2, which is exactly the odd ones (all values are positive, so the remainder is 0 or 1). `odd` is declared inside the test loop, so it starts at 0 for every test. The total work is the total count of numbers, at most $10^4$ (Theorem 0.1.3).
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** None beyond Section 6. Tested on the sample from the problem page (four tests), one test with one number, and a test with values near $10^9$, and on 5000 random inputs against a brute force that reads all tests before answering.
+
+#### Step 6: Alternative approach
+
+Read every test into a `vector<vector<int>>` first and answer afterwards (the brute force does this). It is correct and uses more memory; answering immediately is simpler.
+
+### Example 3: Between a and b ...
+
+[AtCoder Beginner Contest (ABC) 48, problem B: Between a and b ...](https://atcoder.jp/contests/abc048/tasks/abc048_b). In short: count the integers in $[a, b]$ divisible by $x$, with $0 \le a \le b \le 10^{18}$ and $1 \le x \le 10^{18}$.
+
+#### Step 1: Constraints → budget
+
+$b - a$ can be $10^{18}$, so checking every integer is impossible: even $10^9$ steps would take seconds. The answer needs a formula, and all values need `long long`.
+
+#### Step 2: Question form → candidate tools
+
+"How many multiples of $x$ in a range" suggests a floor division (integer-rounding card, Theorem 0.1.4). Another candidate: compute $a / x$ and $b / x$ as `double` values and round them; Theorem 0.1.5 rules that out, because values near $10^{18}$ are not exact in a `double`.
+
+#### Step 3: Property check → decision
+
+The multiples of $x$ in $[0, v]$ are $0, x, 2x, \dots, \lfloor v / x \rfloor x$, so there are $\lfloor v / x \rfloor + 1$ of them for $v \ge 0$. The count in $[a, b]$ is the count in $[0, b]$ minus the count in $[0, a - 1]$. The only trap is $a = 0$: then $a - 1 = -1$, and C++ would compute `-1 / x` as 0, not $\lfloor -1/x \rfloor = -1$. Handle it separately: there are no multiples in $[0, -1]$. All quantities are non-negative integers below $10^{18}$, so plain `/` is the floor.
+
+#### Step 4: Proof for this problem
+
+For $v \ge 0$, the multiples of $x$ in $[0, v]$ are $kx$ with $0 \le k \le \lfloor v/x \rfloor$, a total of $\lfloor v/x \rfloor + 1$. The integers in $[a, b]$ are those in $[0, b]$ that are not in $[0, a-1]$, so subtracting the two counts gives the answer. For $a = 0$ the second count is 0. Every intermediate value is at most $10^{18} + 1$, which fits `long long`.
+
+#### Step 5: Code
+
+<Code code={example3} lang="cpp" title="example-3/solution.cpp" />
+
+**C++ details explained.** `(a == 0) ? 0 : (a - 1) / x + 1` uses the conditional operator: if `a == 0` the value is 0, otherwise the second expression. Tested on the four samples from the problem page (including $b = 10^{18}$, $x = 3$) and $a = b = 0$ with $x = 10^{18}$, and on 5000 random inputs with short ranges at random positions up to $10^{18}$ against a brute force that checks every integer in the range.
+
+#### Step 6: Alternative approach
+
+Count with the ceiling instead: the first multiple at least $a$ is $\lceil a/x \rceil x$, the last at most $b$ is $\lfloor b/x \rfloor x$, so the answer is $\lfloor b/x \rfloor - \lceil a/x \rceil + 1$, computed with `(a + x - 1) / x` for the ceiling (safe since $a \ge 0$ and $a + x - 1 < 2 \cdot 10^{18}$). It needs no special case for $a = 0$.
 
 ## 9. Problem ladder
 

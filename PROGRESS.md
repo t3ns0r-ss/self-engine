@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.6 step 3 (recognition cards: set-membership, map-counting, ordered-set-lookup, heap-extract, stack-queue)
-- Next action: 0.6 step 4 (templates and stress tests)
+- Last completed step: 0.6 step 4 (templates: distinct-queries, equal-pairs, nearest-in-set, merge-smallest, bracket-partners, round-robin; 5000/5000 each)
+- Next action: 0.6 step 5 (bug catalogue)
 
 ## Gates
 | Gate | Status | Date |
@@ -28,7 +28,7 @@
 | 0.3 | done (on this session's branch) | — |
 | 0.4 | done (on this session's branch) | — |
 | 0.5 | done (on this session's branch) | — |
-| 0.6 | in progress (step 3 of 10) | — |
+| 0.6 | in progress (step 4 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

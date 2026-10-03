@@ -13,6 +13,10 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import divisorsCode from '../../../../code/0.2/divisors/solution.cpp?raw';
+import runsCode from '../../../../code/0.2/runs/solution.cpp?raw';
+import divisorCounts from '../../../../code/0.2/divisor-counts/solution.cpp?raw';
+import arithSum from '../../../../code/0.2/arith-sum/solution.cpp?raw';
 
 <TopicHeader topic="0.2" />
 
@@ -157,6 +161,63 @@ Each card names one way of fitting a solution into the budget. The **decisive pr
 <Cards topic="0.2" />
 
 ## 6. Templates
+
+Four short programs, one for each way of fitting the budget in Section 4.
+
+### Divisors up to the square root (Theorem 0.2.2)
+
+<Code code={divisorsCode} lang="cpp" title="divisors/solution.cpp" />
+
+**How it works.** `d` runs while `d * d <= n`, that is up to $\lfloor \sqrt n \rfloor$, at most $10^6$ values for $n \le 10^{12}$. Each divisor `d` found there is the smaller half of a pair; its partner `n / d` goes into `large`. The partner equals `d` exactly when $n = d^2$, and is then skipped, so a square root is printed once. `small` comes out increasing and `large` decreasing, so printing `large` backwards gives the whole list in order.
+
+**C++ details explained.**
+- `d * d <= n` avoids computing a square root (and its rounding problems, Theorem 0.1.5). Both sides are `long long`, so `d * d` cannot overflow for $d \le 10^6 + 1$.
+- `v.push_back(x)` appends `x` to the vector `v`; `v.size()` is its length.
+- `for (int i = (int)large.size() - 1; i >= 0; i--)` walks the vector from the last element to the first. The cast to `int` matters: `size()` is unsigned, and an unsigned `0 - 1` would be a huge number instead of $-1$.
+
+**Tested.** Stress-tested against a brute force that tries every $d$ from 1 to $N$, on 5000 random inputs (small $N$, perfect squares up to $300^2$, numbers with many divisors such as 5040 and 83160, primes), plus 5 fixed tests including $N = 1$, $N = 36$, a prime, and $N = 10^{12}$ (169 divisors, listed by a separate script).
+
+**Alternative formulation.** Collect all divisors in one vector and sort it (topic 1.1). It is shorter, costs an extra $O(k \log k)$ for $k$ divisors (at most a few thousand), and is equally correct.
+
+### Maximal runs (Theorem 0.2.4)
+
+<Code code={runsCode} lang="cpp" title="runs/solution.cpp" />
+
+**How it works.** `i` is the start of the current block. The inner loop moves `j` forward while the character equals `s[i]`, so `s[i..j-1]` is a maximal block. Then `i` jumps to `j`. Since `j` only moves forward through the string, the two loops together take $O(n)$ steps (Theorem 0.2.4). A block of length $L$ contains $L(L+1)/2$ substrings that use one repeated character (Theorem 0.2.3: one of length $L$, two of length $L - 1$, …).
+
+**C++ details explained.**
+- `string s; cin >> s;` reads one word; `s.size()` is its length and `s[j]` its `j`-th character.
+- `long long len = j - i;` makes the product `len * (len + 1)` happen in 64 bits: a block of $10^6$ characters gives $5 \cdot 10^{11}$.
+
+**Tested.** Stress-tested against a brute force that checks every substring, on 5000 random strings of length up to 12 over 1–3 letters, plus 4 fixed tests (mixed blocks, one character, one long block, alternating letters).
+
+**Alternative formulation.** Use one loop and compare each character with the previous one: when they differ, a new block starts; keep the current block length in a counter. It is the same $O(n)$ pass, written without the inner loop.
+
+### Divisor counts of all numbers up to n (Theorem 0.2.5)
+
+<Code code={divisorCounts} lang="cpp" title="divisor-counts/solution.cpp" />
+
+**How it works.** Instead of finding the divisors of each `k`, the loop turns the question around: for each `i`, it visits every multiple `j` of `i` and records that `i` divides `j`. After all `i`, `cnt[k]` holds the number of divisors of `k`. The inner loop for `i` runs about $n/i$ times, so the total is at most $n(1 + \ln n)$ (Theorem 0.2.5).
+
+**C++ details explained.**
+- `vector<int> cnt(n + 1, 0);` makes `n + 1` counters, all 0, so that `cnt[n]` exists (indices run from 0 to `n`).
+- `j += i` is short for `j = j + i`.
+
+**Tested.** Stress-tested against a brute force that counts the divisors of each $k$ by trying every $d \le k$, on 5000 random $n \le 300$, plus 4 fixed tests including $n = 10^7$: sum $162\,725\,364$, largest count 448 (the number 8648640). That test also checks that the program runs within about a second.
+
+**Alternative formulation.** For each $k$, count its divisors with Theorem 0.2.2 ($\sqrt k$ steps each). The total is about $\frac23 n^{3/2} \approx 2 \cdot 10^{10}$ for $n = 10^7$, too slow; it is fine only up to about $n = 10^5$.
+
+### Arithmetic sum (Theorem 0.2.3)
+
+<Code code={arithSum} lang="cpp" title="arith-sum/solution.cpp" />
+
+**How it works.** The formula of Theorem 0.2.3 replaces the loop over $n$ terms. The product is computed before the division by 2, because $n(2a + (n-1)d)$ is always even while $n/2$ alone may not be a whole number.
+
+**C++ details explained.** None beyond earlier templates. All three inputs are `long long`, so the products stay in 64 bits.
+
+**Tested.** Stress-tested against a brute force that adds the terms one by one, on 5000 random inputs (small values, or values up to $10^6$ in absolute value with $n$ up to $10^6$), plus 4 fixed tests including $1 + \dots + 100 = 5050$, a negative first term, and the largest case ($5.000005 \cdot 10^{17}$).
+
+**Alternative formulation.** $n \cdot a + d \cdot \frac{(n-1)n}{2}$: the sum of $n$ copies of $a$ plus $d$ times $0 + 1 + \dots + (n-1)$. Here $(n-1)n$ is even, so dividing it by 2 first is safe.
 
 ## 7. Bug catalogue
 

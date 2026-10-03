@@ -19,6 +19,8 @@ import nearestInSet from '../../../../code/0.6/nearest-in-set/solution.cpp?raw';
 import mergeSmallest from '../../../../code/0.6/merge-smallest/solution.cpp?raw';
 import bracketPartners from '../../../../code/0.6/bracket-partners/solution.cpp?raw';
 import roundRobin from '../../../../code/0.6/round-robin/solution.cpp?raw';
+import example1 from '../../../../code/0.6/example-1/solution.cpp?raw';
+import example2 from '../../../../code/0.6/example-2/solution.cpp?raw';
 
 <TopicHeader topic="0.6" />
 
@@ -353,6 +355,66 @@ Wrong output `-1 -1`, correct output `NO`. Every closing bracket was matched (th
 **Fix:** after the loop, require an empty stack (Theorem 0.6.6: the stack must be empty at the end).
 
 ## 8. Worked examples
+
+### Example 1: Sum of Two Values
+
+[CSES 1640 Sum of Two Values](https://cses.fi/problemset/task/1640) (CSES is the Code Submission Evaluation System problem set). In short: an array of $n \le 2 \cdot 10^5$ values up to $10^9$ and a target $x$; print two different positions whose values add up to $x$, or IMPOSSIBLE.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$: all pairs are $2 \cdot 10^{10}$, far over the budget. We need about $O(n \log n)$.
+
+#### Step 2: Question form → candidate tools
+
+Checking every pair (nested loops, topic 0.5) is the first candidate, ruled out by the budget. The second: for each position $j$, the partner must have the value $x - a_j$, so the question becomes "has the value $x - a_j$ appeared before?", which is membership in a set or a map (Theorems 0.6.2 and 0.6.3).
+
+#### Step 3: Property check → decision
+
+A set of earlier values would say *whether* a partner exists, but the output needs its *position*. So the container must map each value to a position where it occurred: a `map` from value to its first position. Each step is one lookup and at most one insertion. Decision: one pass with a map.
+
+#### Step 4: Proof for this problem
+
+Before position $j$ is processed, the map holds every value among $a_1, \dots, a_{j-1}$ with the first position where it occurs. If some $i < j$ has $a_i + a_j = x$, then $a_i = x - a_j$ is in the map, and the stored position is the smallest such $i$; the program prints it with $j$. Every valid pair $i < j$ is found at its $j$, so if the loop ends without printing, no pair exists. The first $j$ that succeeds is the smallest $j$ of any valid pair. There are $n$ steps of $O(\log n)$: $O(n \log n)$.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `firstPos.find(x - a)` returns an iterator to the entry with that key, or `firstPos.end()`; `it->second` is the stored position (`it->first` would be the key). Using `find` instead of `firstPos[x - a]` avoids creating an entry for every value that was only looked up. `x - a` is computed in `long long` because both are read as `long long`. Tested on the sample from the problem page, on $n = 1$, on two values of $5 \cdot 10^8$ that add up to $x = 10^9$, on equal values, and on 5000 random inputs (half with a pair planted) against a brute force that tries every pair, smallest $j$ first. Since any valid pair is accepted, both programs print the same canonical pair: smallest $j$, then smallest $i$.
+
+#### Step 6: Alternative approach
+
+Sort the pairs (value, position) and move one index from each end of the sorted array towards the middle. That is also $O(n \log n)$, but it needs sorting (topic 1.1) and an argument from topic 1.3; the map needs only this topic.
+
+### Example 2: LR insertion
+
+[AtCoder Beginner Contest (ABC) 237, problem D: LR insertion](https://atcoder.jp/contests/abc237/tasks/abc237_d). In short: start with the sequence $(0)$; for $i = 1, \dots, N$ ($N \le 5 \cdot 10^5$), insert $i$ immediately to the left of $i - 1$ if $S_i$ is `L`, or immediately to the right if it is `R`. Print the final sequence.
+
+#### Step 1: Constraints → budget
+
+$N = 5 \cdot 10^5$. Inserting into the middle of a `vector` costs $O(N)$ per insertion (everything after it moves), $O(N^2) \approx 2.5 \cdot 10^{11}$ in total: too slow. We need $O(1)$ or $O(\log N)$ per element.
+
+#### Step 2: Question form → candidate tools
+
+Following the process step by step (simulation, topic 0.3) with a `vector` is the brute force. The insertions happen next to the previous number, never at a fixed end, so neither a stack nor a queue fits the process as stated. But a `deque` adds at both ends in $O(1)$ (Theorem 0.6.6, a container used at its ends), if the process can be rearranged so that every insertion is at an end.
+
+#### Step 3: Property check → decision
+
+Look at the numbers from the last one backwards. All numbers $k, k+1, \dots, N$ were inserted after $k - 1$, each next to a number of that same group, so in the final sequence they form one contiguous block, and the block sits on the side of $k - 1$ given by $S_k$: to its right if $S_k$ is `R`, to its left if `L`. So, processing $k = N, N - 1, \dots, 1$, the number $k - 1$ is placed directly at one end of the block built so far: at the front if $S_k$ is `R`, at the back if `L`. Decision: build the sequence backwards with a deque.
+
+#### Step 4: Proof for this problem
+
+Claim: for every $k$, in the final sequence the numbers $k, \dots, N$ are contiguous and lie on the $S_k$ side of $k - 1$, next to it. By induction on the insertions: right after inserting $k$, the block is $\{k\}$, on side $S_k$ of $k - 1$ and adjacent to it. Each later number $j + 1$ is inserted directly next to $j$, which is in the block; it lands either at the edge of the block or inside it, and in both cases between the block and anything outside, so the block stays contiguous, adjacent to $k - 1$, on the same side. Numbers smaller than $k - 1$ are never inserted after this point. Therefore the final sequence restricted to $k - 1, \dots, N$ is $k - 1$ followed by the block (if $S_k$ is `R`) or the block followed by $k - 1$ (if `L`), which is exactly what the deque builds when it adds $k - 1$ at the front or the back. With $k = 1$ this is the whole sequence. Each step is $O(1)$: $O(N)$ in total.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `deque<int> d = {n};` creates a deque holding the single value $n$. `push_front` and `push_back` add at the two ends in $O(1)$, and `d[k]` reads the $k$-th element, also in $O(1)$. Tested on the two samples from the problem page, on $N = 1$, and on 5000 random strings ($N \le 12$) against a brute force that inserts into a `vector` exactly as described.
+
+#### Step 6: Alternative approach
+
+Keep a doubly linked list: for each number store its left and right neighbours in two arrays, and insert $i$ next to $i - 1$ by updating four links in $O(1)$; then walk the links from the leftmost number. It follows the process forwards, at the cost of more bookkeeping than the backwards deque.
 
 ## 9. Problem ladder
 

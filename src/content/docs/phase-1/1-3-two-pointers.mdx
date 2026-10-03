@@ -22,6 +22,9 @@ import pairSum from '../../../../code/1.3/pair-sum/solution.cpp?raw';
 import pairsAtMost from '../../../../code/1.3/pairs-at-most/solution.cpp?raw';
 import twoSorted from '../../../../code/1.3/two-sorted/solution.cpp?raw';
 import subsequence from '../../../../code/1.3/subsequence/solution.cpp?raw';
+import example1 from '../../../../code/1.3/example-1/solution.cpp?raw';
+import example2 from '../../../../code/1.3/example-2/solution.cpp?raw';
+import example3 from '../../../../code/1.3/example-3/solution.cpp?raw';
 
 <TopicHeader topic="1.3" />
 
@@ -534,6 +537,100 @@ Wrong output `4` and `0`, correct output `2` and `0`. The pair count should incl
 Changing `while (sum > K)` to `if (sum > K)` in the longest-window template passes all 5000 random tests. This is not a weak generator: the variant is correct, and Section 6 proves it (the non-shrinking window). It is a bug only when you need the window itself to be valid, for example to print it.
 
 ## 8. Worked examples
+
+Each example follows the routine from the Method page: budget first, then candidate tools, then the property that decides between them, and only then code.
+
+### Example 1: Playlist
+
+[CSES 1141 Playlist](https://cses.fi/problemset/task/1141). In short: given $n$ song ids, find the longest run of consecutive songs in which no song repeats.
+
+#### Step 1: Constraints → budget
+
+$n \le 2 \cdot 10^5$ and ids up to $10^9$. Checking every run is about $n^2/2 = 2 \cdot 10^{10}$ pairs, far too slow. We need about $O(n \log n)$: at most a few million operations, each possibly a `map` lookup.
+
+#### Step 2: Question form → candidate tools
+
+"Longest run of consecutive elements with a property" is the weak signal for a shrinkable window (Theorem 1.3.1). Other candidates: prefix sums (topic 1.2), but the property is not a sum; trying every start with a `set` (topic 0.6), which is $O(n^2 \log n)$ in the worst case.
+
+#### Step 3: Property check → decision
+
+Validity is "no id repeats inside the window". Take a valid window and remove its first or last song: the remaining songs are still all different, so validity is closed under shrinking. The empty window is valid. When song $k_r$ enters, the window can be rechecked by looking at the count of $k_r$ alone, since every other song was already unique. All three conditions of Theorem 1.3.1 hold, so we use the shrinkable window. Prefix sums do not apply, and the per-start `set` is too slow.
+
+#### Step 4: Proof for this problem
+
+By Theorem 1.3.1, after the `while` loop for right end $r$, `l` is the smallest left end such that $k_l, \dots, k_r$ are all different, so `r - l + 1` is the longest valid run ending at $r$. The answer is the largest of these over all $r$. The loop condition `cnt[k[r]] > 1` is the same as "the window is invalid" because before $k_r$ entered, the window $[l, r-1]$ was valid (it was $[L(r-1), r-1]$, and $l$ has not moved since), so the only possible repeat is $k_r$.
+
+Each pointer moves at most $n$ times, and each move does one `map` operation, so the total is $O(n \log n)$.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `ios::sync_with_stdio(false); cin.tie(nullptr);` makes `cin` and `cout` faster on large inputs (topic 0.1 explains both lines); the other templates in this lesson read little input and do without. Everything else appeared in Section 6. Tested on the sample from the problem page, three edge cases ($n = 1$, all ids equal, all ids different), and 5000 random inputs against a brute force.
+
+#### Step 6: Alternative approach
+
+Instead of counts, store for each id its last position, `last[id]`. When $k_r$ arrives, if `last[k[r]] >= l`, jump `l` straight to `last[k[r]] + 1`; then set `last[k[r]] = r`. This is the same window with the left end moved in one step instead of one element at a time. It is correct for the same reason: every left end before the earlier copy of $k_r$ gives an invalid window, and the window starting just after it is valid.
+
+### Example 2: Enough Array
+
+[AtCoder ABC 130 D Enough Array](https://atcoder.jp/contests/abc130/tasks/abc130_d). In short: given $N$ positive integers and $K$, count the contiguous subarrays whose sum is at least $K$.
+
+#### Step 1: Constraints → budget
+
+$N \le 10^5$, $a_i \le 10^5$, $K \le 10^{10}$. There are about $5 \cdot 10^9$ subarrays, so they cannot be listed; the answer itself can be that large, so it needs `long long`. We need $O(N)$ or $O(N \log N)$.
+
+#### Step 2: Question form → candidate tools
+
+"Count the subarrays satisfying a condition" is the weak signal for counting windows (Theorem 1.3.2). Other candidates: prefix sums (topic 1.2), which give each subarray's sum in $O(1)$ but still leave $5 \cdot 10^9$ subarrays to check; and the shrinkable window, which finds one best window rather than counting all of them.
+
+#### Step 3: Property check → decision
+
+"Sum at least $K$" is closed under *extension*, not under shrinking: removing an element of a valid window can drop its sum below $K$. Its opposite, "sum less than $K$", is closed under shrinking because all values are positive, and the empty window (sum 0) satisfies it because $K \ge 1$. So Theorem 1.3.2 counts the windows with sum less than $K$, and the answer is $N(N+1)/2$ minus that count. Prefix sums alone are too slow.
+
+#### Step 4: Proof for this problem
+
+Apply Theorem 1.3.2 to the condition "sum less than $K$". After the `while` loop for right end $r$, `l` $= L(r)$ is the smallest left end with sum less than $K$, and the windows ending at $r$ with sum less than $K$ are exactly those starting at $L(r), \dots, r$, so `r - l + 1` of them. Adding over all $r$ counts every window with sum less than $K$ exactly once. Every one of the $N(N+1)/2$ non-empty windows has sum either less than $K$ or at least $K$, so subtracting gives the answer. The loop does $O(N)$ steps in total.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `(long long)n * (n + 1) / 2` converts `n` to `long long` *before* multiplying. Writing `n * (n + 1) / 2` would multiply two `int` values, and $10^5 \cdot (10^5 + 1)$ overflows `int` before the result is stored. Tested on the three samples from the problem page, $N = 1$, a $K$ larger than the total, and 5000 random inputs against a brute force.
+
+#### Step 6: Alternative approach
+
+Count the valid windows directly. For each right end $r$, let $g(r)$ be the largest left end with $a_{g(r)} + \dots + a_r \ge K$ (if any). Because validity is closed under extension, every left end $0, \dots, g(r)$ works, giving $g(r) + 1$ windows, and $g(r)$ never decreases as $r$ grows. In code: after adding $a_r$, move `l` right while the window *without* $a_l$ still reaches $K$; then, if the window reaches $K$, add `l + 1`. Both versions are $O(N)$; the complement version is easier to get right because its loop is exactly the template from Section 6.
+
+### Example 3: Container With Most Water
+
+[LeetCode Container With Most Water](https://leetcode.com/problems/container-with-most-water/). In short: given $n$ heights, choose two positions $i < j$ to maximise $(j - i) \cdot \min(h_i, h_j)$.
+
+#### Step 1: Constraints → budget
+
+$n \le 10^5$, heights up to $10^4$. All pairs is about $5 \cdot 10^9$, too slow. We need $O(n)$ or $O(n \log n)$. The largest area is at most $10^5 \cdot 10^4 = 10^9$, which fits in `int`, but only just.
+
+#### Step 2: Question form → candidate tools
+
+"Best pair of positions" suggests opposite ends (Theorem 1.3.4). Other candidates: a sliding window (topics so far), but the two chosen lines are not a window with a property, they are its two ends; and sorting (topic 1.1), since the shorter of the two lines decides the height.
+
+#### Step 3: Property check → decision
+
+The array is not sorted, and sorting would destroy the positions that give the width, so Theorem 1.3.4 does not apply as stated. But its second condition can be checked directly: start with $l = 0$, $r = n - 1$ and ask whether one end can be ruled out. Suppose $h_l \le h_r$. Any container that uses line $l$ with another line $j$, $l < j < r$, has width $j - l < r - l$ and height $\min(h_l, h_j) \le h_l = \min(h_l, h_r)$. So it is no better than the container $(l, r)$ we just measured, and line $l$ can be discarded. The symmetric argument discards $r$ when $h_r < h_l$. The discard property holds, so opposite ends works without sorting.
+
+#### Step 4: Proof for this problem
+
+Invariant: some optimal pair either has already been measured or lies inside $[l, r]$. It holds at the start. In each step we measure $(l, r)$ and discard the shorter end; by Step 3, every pair using the discarded end inside $[l, r]$ is no better than $(l, r)$, which is now measured. So the invariant holds after the step. When $l = r$ no pairs remain inside, so the best measured area is optimal. There are $n - 1$ steps, so $O(n)$.
+
+#### Step 5: Code
+
+<Code code={example3} lang="cpp" title="example-3/solution.cpp" />
+
+**C++ details explained.** LeetCode gives the heights to a function; this unit reads them from standard input instead, so it can be tested like the others. `(long long)(r - l) * min(h[l], h[r])` converts before multiplying. On ties (`h[l] == h[r]`) either end may be discarded; the code moves `l`. Tested on the two examples from the problem page, all-zero heights, two tall lines far apart, and 5000 random inputs (with many ties) against a brute force.
+
+#### Step 6: Alternative approach
+
+Sort the positions by height, from tallest to shortest (topic 1.1). Process them in that order, keeping the smallest and largest position seen so far. When position $p$ is processed, every line seen so far is at least as tall, so if $p$ is the shorter line of the best container, its partner is the seen position farthest from $p$: either the smallest or the largest. The area is $h_p \cdot \max(p - \text{smallest}, \text{largest} - p)$. Taking the best over all $p$ gives the answer in $O(n \log n)$. It is a correct alternative, but longer than the two-pointer version.
 
 ## 9. Problem ladder
 

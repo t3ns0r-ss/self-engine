@@ -237,6 +237,82 @@ Five short programs, one for each card. Each brute force lists the same search s
 
 ## 7. Bug catalogue
 
+Each bug was made by changing a template from Section 6 (one line, or the two lines of one loop) and running `scripts/stress.sh` on the broken copy. The input shown is the first one the script found.
+
+### Bug: forgetting a bound on the computed variable
+
+Template: nested loops, computing the last variable.
+
+```cpp
+if (0 <= x) count++;
+```
+
+Input: `5 25`
+
+Wrong output `36`, correct output `5`. The computed $x = S - 2y - 3z$ can be larger than $K$ (for $y = z = 0$ it is 25), and such triples are not in the search space. When a variable is computed instead of looped over, every constraint the loop would have enforced must be checked by hand.
+
+**Fix:** `if (0 <= x && x <= k)`: the computed variable must satisfy all of its own bounds (Theorem 0.5.1, condition 1).
+
+### Bug: stopping one mask early
+
+Template: all subsets with a bitmask.
+
+```cpp
+for (int mask = 0; mask < (1 << n) - 1; mask++) {
+```
+
+Input: `3 21 28` and the values `4 10 13`.
+
+Wrong output `1`, correct output `2`. The subsets with sums in $[21, 28]$ are $\{10, 13\}$ (23) and $\{4, 10, 13\}$ (27). The last mask, $2^n - 1 = 111_2$, is the set of all items, and the loop never reaches it.
+
+**Fix:** `mask < (1 << n)`: the masks are $0, \dots, 2^n - 1$ inclusive (Theorem 0.5.2).
+
+### Bug: testing bit i with mask & i
+
+Template: all subsets with a bitmask.
+
+```cpp
+if (mask & i) sum += a[i];
+```
+
+Input: `6 26 34` and the values `8 15 9 11 5 15`.
+
+Wrong output `0`, correct output `15`. `mask & i` tests whether `mask` and the *number* $i$ share a bit, not whether bit $i$ is set. For $i = 0$ it is always 0, so item 0 is never taken; for $i = 3 = 11_2$ it is true whenever bit 0 or bit 1 is set.
+
+**Fix:** `(mask >> i) & 1`, or equivalently `mask & (1 << i)`: compare with the number whose only set bit is bit $i$.
+
+### Bug: a while loop around next_permutation
+
+Template: all orders.
+
+```cpp
+while (next_permutation(order.begin(), order.end())) {
+    // check the current order
+}
+```
+
+Input: `2`, then the costs `0 17` and `18 0`.
+
+Wrong output `18`, correct output `17`. `next_permutation` changes the order *before* the first check, so the sorted order $(0, 1)$ is never examined, and here it is the best one.
+
+**Fix:** `do { … } while (next_permutation(…));`, so the first order is checked before the first step (Theorem 0.5.3, condition 1).
+
+### Bug: a base case without return
+
+Template: recursive generation.
+
+```cpp
+if (pos == L) {
+    found.push_back(c);
+}
+```
+
+Input: `5 1 0`
+
+Wrong output: the program crashes (segmentation fault). Correct output `1` and the sequence `1 1 1 1 1`. After recording the sequence, the call falls through into the loop, reads `c[pos - 1]` and writes `c[pos]` with `pos == L`, outside the vector, and keeps recursing deeper.
+
+**Fix:** `return;` right after handling the base case. Every recursive function needs a base case that stops without a further call (Theorem 0.5.4).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

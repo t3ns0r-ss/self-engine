@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1–B6 done; B7 (Phase 7 banks, then the final bank review gate) next
-- Topic: bank 7.1
+- Topic: bank 7.2
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B6, all 4 Phase 6 banks (6.1–6.4: 109 problems, 72 practice, 37 reserved), validated and published
 - Next action: B7 (Phase 7 banks 7.1–7.8), one commit per topic, ending at the "Final bank review" gate
@@ -65,7 +65,8 @@
 | 6.3 | short | 20 | 16 |
 | 6.4 | short | 13 | 2 |
 | 7.1 | short | 24 | 27 |
-| other 7 (Phases 7–7) | patterns written, no problems yet | 0 | 0 |
+| 7.2 | short | 20 | 5 |
+| other 6 (Phases 7–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -109,6 +110,7 @@
 - 6.3: short: reserved has 16 of 24 (drill 3, later_drill 3, review 6, checkpoint 2, exam 2, no look-alike pair); `dictionary-split` has 3 practice problems and `xor-count` 2 (counting XOR pairs below a bound has few dedicated problems). Suggestion: merge `xor-count` into `max-xor`. 9 Codeforces notes are recalled (†).
 - 6.4: short: 13 practice and 2 reserved. Suffix-array problems in band are scarce: LeetCode has almost none in its free set, AtCoder's are mostly ABC F/G, and most Codeforces ones are rated 2400+. Suggestion: treat 6.4 as a short topic with a CSES-centred ladder, or accept 2600+ Codeforces problems as tier 5 here. 3 Codeforces notes are recalled (†).
 - 7.1: short only for look-alikes (0 of 4): no near-identical pair needing a different tool was found that is not already used. 20 Codeforces notes are recalled (†); the cf-1929D recurrence is flagged in its note for a brute-force check.
+- 7.2: short: reserved has 5 of 24; `count-paths` (3) and `state-dag` (3, all tier 4) are thin, `condensation-dp` spans tiers 3–4. Many classic DAG-DP problems were already used as 4.2/4.3 practice. 7 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
 - Allowed: —

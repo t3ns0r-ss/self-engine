@@ -248,6 +248,158 @@ Five short programs, one for each mechanism in Section 4. Each reads a small mad
 
 ## 7. Bug catalogue
 
+Each bug was made by changing one part of a template from Section 6 and running `scripts/stress.sh` on the broken copy, which compares it with the brute force on random inputs. The input shown is the first one the script found (for crashes, the first failing input of the same generator; for multi-query inputs, the failing query alone, rechecked on its own).
+
+### Bug: sum kept in an `int`
+
+Template: program skeleton and a large sum.
+
+```cpp
+int sum = 0;
+```
+
+Input:
+
+```
+6
+93770123 -994696634 -999508737 -449709687 298508491 -709153661
+```
+
+Wrong output `1534177191`, correct output `-2760790105`. The true sum is below $-2.1 \cdot 10^9$, the smallest `int`, so it wraps around to a positive number.
+
+**Fix:** `long long sum = 0;`. The sum of up to $2 \cdot 10^5$ values of size $10^9$ needs 64 bits (Theorem 0.1.1).
+
+### Bug: multiplying first, checking after
+
+Template: product with a limit.
+
+```cpp
+if (prod * x > LIMIT) {
+```
+
+Input:
+
+```
+4
+1000000001 238117800350661441 1448941 231951276716096835
+```
+
+Wrong output `-2442754943246816057`, correct output `-1`. The product $1\,000\,000\,001 \cdot 238\,117\,800\,350\,661\,441$ is about $2.4 \cdot 10^{26}$; computing it overflows before the comparison can see it, and the wrapped value happens to be small enough to pass.
+
+**Fix:** compare `prod > LIMIT / x`, which never computes the large product (Theorem 0.1.2).
+
+### Bug: zero not handled first
+
+Template: product with a limit. The loop that looks for a zero is removed.
+
+Input:
+
+```
+3
+1081043 0 500000000000000000
+```
+
+Wrong output: the program crashes ("Floating point exception", which on Linux is the message for an integer division by zero). Correct output `0`. When `x` is 0, `LIMIT / x` divides by zero.
+
+**Fix:** handle zeros before the loop. A zero also makes the answer 0 even when the product of the values before it was already over the limit, so the check must look at all values first, not stop at the first overflow.
+
+### Bug: values stored as `int`, multiplied by `n`
+
+Template: many test cases.
+
+```cpp
+for (int x : a)
+    if (x * n > sum) count++;
+```
+
+Input:
+
+```
+2
+4
+999999993 999999991 999999995 999999991
+1
+999999991
+```
+
+Wrong output `0` and `0`, correct output `2` and `0`. `x * n` multiplies two `int` values, about $4 \cdot 10^9$, which overflows to a negative number, so no element looks above the average. The comparison with the `long long` `sum` happens only after the overflow.
+
+**Fix:** keep the values in `long long`, or write `1LL * x * n`. The type of `x * n` is decided by `x` and `n`, not by `sum` (Section 4.1). (This bug first passed 5000 tests in a version that still read the values back as `long long`; the version above, with `int` in both places, fails.)
+
+### Bug: sum declared once, outside the test loop
+
+Template: many test cases.
+
+```cpp
+long long sum = 0;  // declared once, before the tests
+while (t--) {
+```
+
+Input:
+
+```
+3
+4
+1 1 1 2
+6
+2 1 5 2 5 1
+6
+1 3 1 2 1 3
+```
+
+Wrong output `1 2 0` (one per line), correct output `1 2 3`. The second test still carries the first test's sum (5), and the third test carries both (21). The second answer happens to be right, which is why a single sample can hide this bug.
+
+**Fix:** declare every per-test variable inside the loop (Theorem 0.1.3, condition 2).
+
+### Bug: truncation used as the floor
+
+Template: floor and ceiling division. The line `if (a % b != 0 && a < 0) q--;` is removed.
+
+Input:
+
+```
+1
+372899666868390665 717947711864209419
+```
+
+Wrong output `0 0`, correct output `0 1`. The floor of a positive value is still right, but the ceiling is computed as $-\lfloor -a/b \rfloor$, and $-a$ is negative, so the missing correction breaks it: $-a/b \approx -0.52$ truncates to $0$ instead of flooring to $-1$.
+
+**Fix:** keep the correction. Truncation equals the floor only for non-negative results or exact multiples (Theorem 0.1.4, part 2).
+
+### Bug: `(a + b - 1) / b` for every sign
+
+Template: floor and ceiling division. `ceilDiv` is replaced by the shortcut.
+
+Input:
+
+```
+1
+-6 6
+```
+
+Wrong output `-1 0`, correct output `-1 -1`. $-6/6 = -1$ exactly, so the ceiling is $-1$, but $(-6 + 5) / 6 = -1/6$ truncates to $0$.
+
+**Fix:** use the shortcut only for $a \ge 0$ (Theorem 0.1.4, part 1); otherwise use $-\lfloor -a/b \rfloor$.
+
+### Bug: floating-point square root without correction
+
+Template: integer square root.
+
+```cpp
+long long r = sqrt((double)x);
+```
+
+Input:
+
+```
+1
+19659989632387224
+```
+
+Wrong output `140214085`, correct output `140214084`. $x$ is just below $140\,214\,085^2$, but it is larger than $2^{53}$, so converting it to `double` rounds it to a nearby value at or above that square.
+
+**Fix:** correct the guess with integer comparisons (Theorem 0.1.5, part 2).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

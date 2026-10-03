@@ -12,12 +12,14 @@ int main(int argc, char** argv) {
     };
     int n = randInt(1, 8);
     int maxV = randInt(1, 10);
-    vector<int> a(n);
+    vector<int> a(n);  // values before scaling
     for (auto& x : a) x = randInt(1, maxV);
     if (randInt(0, 4) == 0) fill(a.begin(), a.end(), a[0]);  // all equal
-    int total = accumulate(a.begin(), a.end(), 0);
-    int S = randInt(1, total + 2);
+    long long scale = randInt(0, 4) == 0 ? 100000000 : 1;    // sometimes values up to 10^9, sums past int
+    long long total = 0;
+    for (int x : a) total += x * scale;
+    long long S = 1 + (long long)(rng() % (unsigned long long)(total + 2));
     if (randInt(0, 4) == 0) S = total;  // boundary: only the whole array may reach S
     cout << n << " " << S << "\n";
-    for (int i = 0; i < n; i++) cout << a[i] << (i + 1 < n ? ' ' : '\n');
+    for (int i = 0; i < n; i++) cout << a[i] * scale << (i + 1 < n ? ' ' : '\n');
 }

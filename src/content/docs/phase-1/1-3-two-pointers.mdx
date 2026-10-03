@@ -248,7 +248,7 @@ All nine start with `#include <bits/stdc++.h>` (one line that includes the whole
 - `max(best, r - l + 1)` returns the larger of two values of the same type.
 - `long long K` with the comment: $K$ can be larger than about $2.1 \cdot 10^9$, the largest `int`.
 
-**Tested.** Stress-tested against a brute force that sums every subarray, on 5000 random inputs ($n \le 8$, values $\le 10$, $K$ sometimes equal to one element), plus 4 fixed tests: the trace from Section 4.1, a single element larger than $K$, all values equal, and values of $10^9$ whose sum needs `long long`.
+**Tested.** Stress-tested against a brute force that sums every subarray, on 5000 random inputs ($n \le 8$, values up to 10, or in one case of five up to $10^9$ so that sums pass the `int` range; $K$ sometimes equal to one element), plus 4 fixed tests: the trace from Section 4.1, a single element larger than $K$, all values equal, and values of $10^9$ whose sum needs `long long`.
 
 **Alternative formulation (non-shrinking window).** Replace `while (sum > K)` with `if (sum > K)`. The window then moves right by one place when it is invalid, instead of shrinking, and its length never decreases. The answer is still `best` (equivalently, the final `r - l + 1`), but the window itself may be invalid at the end.
 
@@ -268,7 +268,7 @@ The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in c
 - `cond ? x : y` (the conditional operator) is `x` if `cond` is true and `y` otherwise. Here it prints 0 when `best` was never updated.
 - `min(best, r - l + 1)` returns the smaller value.
 
-**Tested.** Stress-tested against a brute force on 5000 random inputs ($n \le 8$, values $\le 10$, $S$ sometimes equal to the total so only the whole array works), plus 4 fixed tests: the trace array, a single element below $S$, all values equal, and three values of $10^9$ with $S = 3 \cdot 10^9$.
+**Tested.** Stress-tested against a brute force on 5000 random inputs ($n \le 8$, values up to 10 or, in one case of five, up to $10^9$; $S$ sometimes equal to the total so only the whole array works), plus 4 fixed tests: the trace array, a single element below $S$, all values equal, and three values of $10^9$ with $S = 3 \cdot 10^9$.
 
 **Alternative formulation.** Use the shape of Theorem 1.3.1 directly: keep a `while (sum - a[l] >= S)` loop that drops the first element only while the rest still reaches $S$, then record `r - l + 1` if `sum >= S`. It keeps the window valid instead of stepping one past it. Both are correct by the same theorem (the variant was also stress-tested on 5000 inputs). The first element is never dropped from a one-element window, because then `sum - a[l]` is 0, which is less than $S \ge 1$.
 
@@ -373,6 +373,165 @@ The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in c
 **Alternative formulation.** For many queries $t$ against the same $s$, store for each letter the sorted list of its positions in $s$ and jump to the next position after the current one. That needs a faster lookup than a forward walk and is left to topic 1.4.
 
 ## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy, which compares it with the brute force on random inputs. The input shown is the one the script found (or, for crashes, the first failing input of the same generator).
+
+### Bug: answer recorded before shrinking
+
+Template: longest window. The wrong line is added just after `sum += a[r];`:
+
+```cpp
+best = max(best, r - l + 1);  // window may still be invalid here
+```
+
+Input:
+
+```
+6 7
+5 9 4 4 2 2
+```
+
+Wrong output `3`, correct output `2`. At `r = 5` the window is $4, 2, 2$ with sum 8, which is more than 7, but its length 3 is recorded before the `while` loop removes the 4.
+
+**Fix:** record the answer only after the `while` loop, because only then is `[l, r]` known to be valid (Theorem 1.3.1, part 2).
+
+### Bug: `>=` instead of `>` in the shrink condition
+
+Template: longest window.
+
+```cpp
+while (sum >= K) {
+```
+
+Input:
+
+```
+3 2
+2 2 2
+```
+
+Wrong output `0`, correct output `1`. A window with sum exactly 2 is valid ("at most $K$"), but this loop removes it.
+
+**Fix:** the loop condition must be exactly "the window is invalid", here `sum > K`. Write the validity condition first, then negate it for the loop.
+
+### Bug: window sum kept in an `int`
+
+Template: longest window.
+
+```cpp
+int sum = 0;  // sum of a[l..r]
+```
+
+Input:
+
+```
+8 2772667053
+400000000 900000000 200000000 500000000 700000000 400000000 800000000 100000000
+```
+
+Wrong output `8`, correct output `6`. The full sum is $4 \cdot 10^9$, more than the largest `int` (about $2.1 \cdot 10^9$). The addition overflows to a negative number, so the whole array looks valid.
+
+**Fix:** `long long sum`. Any sum of up to $2 \cdot 10^5$ values of size $10^9$ needs 64 bits. (This bug passed 5000 tests at first, because the generator only made values up to 10. A deliberate bug that passes random tests usually means the generator is too weak, so the generator now makes values up to $10^9$ in one case of five, and the bug is caught.)
+
+### Bug: count left at zero instead of erased
+
+Template: counting windows.
+
+```cpp
+--cnt[a[l]];  // the key stays in the map with count 0
+```
+
+Input:
+
+```
+5 2
+-1 -3 -1 2 -2
+```
+
+Wrong output: the program crashes with a *segmentation fault* (it read memory outside the array). Correct output `10`. At `r = 3` the map holds $-1, -3, 2$, so `cnt.size()` is 3. Removing elements lowers counts but never removes keys, so `cnt.size()` stays 3, the `while` loop never stops, and `l` runs past the end of the array.
+
+**Fix:** erase a key when its count reaches 0, so `cnt.size()` is the number of distinct values *in the window*. A loop whose exit depends on a summary must have that summary match the window exactly.
+
+### Bug: `erase(value)` removes every copy
+
+Template: maximum of each fixed-size window.
+
+```cpp
+if (r >= k) window.erase(a[r - k]);
+```
+
+Input:
+
+```
+2 1
+-3 -3
+```
+
+Wrong output: the program crashes. Correct output `-3 -3`. At `r = 1` the multiset holds two copies of $-3$; `erase(-3)` removes both, the multiset is empty, and reading `*window.rbegin()` from an empty multiset is *undefined behaviour*: the C++ standard does not say what happens, and here the program crashed.
+
+**Fix:** `window.erase(window.find(a[r - k]))`, which removes exactly one copy. The leaving element appears once in the window's history, so exactly one copy must go (Theorem 1.3.3, condition 2).
+
+### Bug: wrong element leaves the window
+
+Template: fixed-size window.
+
+```cpp
+if (--cnt[a[r - k + 1]] == 0) cnt.erase(a[r - k + 1]);
+```
+
+Input:
+
+```
+6 3
+1 2 2 2 3 2
+```
+
+Wrong output `3`, correct output `2`. The element at `r - k + 1` is the first element of the *new* window, so it stays; the one that leaves is at `r - k`. With the wrong index, the summary drifts away from the window and reports 3 distinct values where no window of length 3 has more than 2.
+
+**Fix:** remove `a[r - k]`. Check index arithmetic on a tiny case: with $k = 3$ and $r = 3$ the window is $[1, 3]$, so index $0 = r - k$ leaves.
+
+### Bug: pointers allowed to meet
+
+Template: pair with a given sum.
+
+```cpp
+while (l <= r) {
+```
+
+Input:
+
+```
+1 -4
+-2
+```
+
+Wrong output `YES`, correct output `NO`. With one element, `l = r = 0` and $a_0 + a_0 = -4$ matches the target, but a pair needs two different positions.
+
+**Fix:** `while (l < r)`. In Theorem 1.3.4 the range $[l, r]$ holds a pair only while it has at least two indices.
+
+### Bug: walking past equal values
+
+Template: walking two sorted lists.
+
+```cpp
+while (j < m && b[j] <= a[i]) j++;
+```
+
+Input:
+
+```
+1 4
+1
+0 0 1 1
+```
+
+Wrong output `4` and `0`, correct output `2` and `0`. The pair count should include only $b$ values *less than* $a_i = 1$, but `<=` also counts the two 1s. The closest distance is still right, which is why a test that checks only one output line can miss this bug.
+
+**Fix:** use the comparison that matches the definition of $p(i)$ in Theorem 1.3.5: strictly less. When a problem says "at most" or "less than", decide which one before writing the loop.
+
+### Not a bug: `if` instead of `while`
+
+Changing `while (sum > K)` to `if (sum > K)` in the longest-window template passes all 5000 random tests. This is not a weak generator: the variant is correct, and Section 6 proves it (the non-shrinking window). It is a bug only when you need the window itself to be valid, for example to print it.
 
 ## 8. Worked examples
 

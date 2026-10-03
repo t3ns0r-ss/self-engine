@@ -4,8 +4,8 @@
 - Milestone: M1 (topic 1.3 exemplar)
 - Topic: 1.3 Two pointers and sliding window
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.3 step 4 (templates): nine code units, each stress-tested 5000/5000 plus 4–5 fixed tests; lesson Section 6
-- Next action: 1.3 step 5 (bug catalogue)
+- Last completed step: 1.3 step 5 (bug catalogue): 8 bugs found by stress.sh on broken copies, plus the non-shrinking variant documented as not a bug
+- Next action: 1.3 step 6 (problems): choose ladder, drill, look-alikes, checkpoint, reviews from the bank
 
 ## Gates
 | Gate | Status | Date |
@@ -22,7 +22,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | in progress (step 4 of 10) | — |
+| 1.3 | in progress (step 5 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

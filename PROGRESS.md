@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
-- Topic: 0.5 Brute force: loops, bitmask subsets, permutations, simple recursion
+- Topic: 0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.5 steps 8–9 (self-test, section intros, decision map)
-- Next action: 0.5 step 10 (self-review)
+- Last completed step: 0.5 step 10 (self-review: draft removed; validate, unit tests, build, e2e all pass)
+- Next action: 0.6 step 1 (scope, bank gaps: look-alike pairs, exam problems for the Phase 0 exam)
 
 ## Gates
 | Gate | Status | Date |
@@ -27,7 +27,7 @@
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
 | 0.4 | done (on this session's branch) | — |
-| 0.5 | in progress (step 9 of 10) | — |
+| 0.5 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

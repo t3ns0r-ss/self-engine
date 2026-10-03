@@ -13,6 +13,10 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import countMultiples from '../../../../code/0.4/count-multiples/solution.cpp?raw';
+import exactSteps from '../../../../code/0.4/exact-steps/solution.cpp?raw';
+import gcdLcm from '../../../../code/0.4/gcd-lcm/solution.cpp?raw';
+import modSumProduct from '../../../../code/0.4/mod-sum-product/solution.cpp?raw';
 
 <TopicHeader topic="0.4" />
 
@@ -154,6 +158,62 @@ Each card names one use of remainders. The **decisive property** is the precondi
 <Cards topic="0.4" />
 
 ## 6. Templates
+
+Four short programs, one for each card.
+
+### Counting multiples in a range (Theorem 0.4.2)
+
+<Code code={countMultiples} lang="cpp" title="count-multiples/solution.cpp" />
+
+**How it works.** The multiples of `k` in `[l, r]` are those up to `r` minus those up to `l - 1`. For any integers $a \le b$, the multiples $jk$ with $a < jk \le b$ are those with $\lfloor a/k \rfloor < j \le \lfloor b/k \rfloor$, so there are $\lfloor b/k \rfloor - \lfloor a/k \rfloor$ of them; with $a = l - 1$ and $b = r$ this is the formula of Theorem 0.4.2, now for any sign of `l` and `r`, as long as the division rounds *down*. `floorDiv` does that for negative numbers too: C++ rounds toward zero, so for a negative `a` that `b` does not divide, the truncated quotient is one too large (Theorem 0.1.4).
+
+**C++ details explained.**
+- `a % b != 0 && a < 0 ? 1 : 0` is 1 exactly when truncation rounded up, that is when the quotient is negative and not exact.
+- The result can be $2 \cdot 10^{18} + 1$ (for $l = -10^{18}$, $r = 10^{18}$, $k = 1$), which still fits in `long long` (up to about $9.2 \cdot 10^{18}$).
+
+**Tested.** Stress-tested against a brute force that tests every $x$ in $[l, r]$ with the mathematical remainder, on 5000 random inputs ($-30 \le l \le r \le 70$, $k \le 12$), plus 3 fixed tests computed by hand, including the full range $[-10^{18}, 10^{18}]$ and ranges of only negative numbers.
+
+**Alternative formulation.** For $l \ge 1$ the plain `r / k - (l - 1) / k` is enough, because both divisions have non-negative numerators. Another correct form is "first multiple $\ge l$ is $f = \lceil l/k \rceil k$; the count is $\lfloor (r - f)/k \rfloor + 1$ if $f \le r$, else 0", which needs the same care with negative ceilings.
+
+### Exactly t steps on a grid (Theorem 0.4.3)
+
+<Code code={exactSteps} lang="cpp" title="exact-steps/solution.cpp" />
+
+**How it works.** The fewest steps is $d = |t_x - s_x| + |t_y - s_y|$: each step changes one coordinate by 1, so it reduces this distance by at most 1. Each step also changes $x + y$ by $\pm 1$, which flips its parity, so after $t$ steps $x + y$ has the parity of $s_x + s_y + t$. The target is reachable in exactly $t$ steps only if $d \le t$ and $t$ has the parity of $d$ (since $d \equiv (t_x + t_y) - (s_x + s_y) \pmod 2$). Both conditions are also enough: walk a shortest path ($d$ steps), then step away and back $(t - d)/2$ times.
+
+**C++ details explained.** `llabs` is the absolute value for `long long` (plain `abs` of a `long long` also works when `<cstdlib>` overloads are visible, but `llabs` makes the type explicit).
+
+**Tested.** Stress-tested against a brute force that keeps the set of cells reachable in exactly $s$ steps for $s = 0, \dots, t$, on 5000 random inputs (coordinates in $[-3, 3]$, $t \le 9$), plus 2 fixed tests computed by hand with coordinates up to $10^9$ and $t = 10^{18}$.
+
+**Alternative formulation.** Compare $(s_x + s_y + t) \bmod 2$ with $(t_x + t_y) \bmod 2$ instead of $(t - d) \bmod 2$. Same condition; with negative coordinates use the normalised remainder (Theorem 0.4.1) or compare `& 1`.
+
+### GCD and LCM of an array (Theorems 0.4.5 and 0.4.6)
+
+<Code code={gcdLcm} lang="cpp" title="gcd-lcm/solution.cpp" />
+
+**How it works.** `gcdLL` is the Euclidean algorithm: it replaces `(a, b)` with `(b, a % b)` until `b` is 0. The GCD of the array is folded from the left, starting from $\gcd(0, x) = x$. The LCM is folded the same way, starting from 1: $\operatorname{lcm}(L, a) = (L / \gcd(L, a)) \cdot a$. Before multiplying, the program checks whether the product would exceed `C` by comparing `q` with `C / a`: for positive integers, $q \cdot a > C$ exactly when $q > \lfloor C/a \rfloor$. Once the LCM is too big it stays too big (it only grows), so the flag is final.
+
+**C++ details explained.**
+- `std::gcd(a, b)` from `<numeric>` (C++17) computes the same value as `gcdLL`; writing the loop once shows what it does and how many steps it takes.
+- `(tooBig ? -1 : L)` has type `long long` because `L` is a `long long`; the `-1` is converted.
+
+**Tested.** Stress-tested against a brute force that tries every candidate divisor from the smallest element down and every candidate multiple from 1 up to `C`, on 5000 random arrays (up to 5 values up to 48, `C` up to 3000; 25% of the cases print $-1$), plus 7 fixed tests, including $\operatorname{lcm}(10^{18}, 10^{18} - 1) > 10^{18}$ (where `a * b` would overflow) and two primes near $10^9$ with an LCM of $999\,999\,943\,999\,999\,559$.
+
+**Alternative formulation.** The recursive form `gcd(a, b) = b == 0 ? a : gcd(b, a % b)` is the same algorithm. For the overflow check, `__int128` (a 128-bit integer type that GCC provides) can hold the product exactly before comparing with `C`.
+
+### A sum of products modulo m (Theorem 0.4.4)
+
+<Code code={modSumProduct} lang="cpp" title="mod-sum-product/solution.cpp" />
+
+**How it works.** Every input value is first brought into $[0, m)$ by `norm` (Theorem 0.4.1), so negative inputs are handled. The product of two reduced values is below $m^2 \le 4 \cdot 10^{18}$, which fits in `long long`, and the running sum is reduced after every addition. By Theorem 0.4.4 the result is the remainder of the exact sum, which itself could be as large as $10^{41}$.
+
+**C++ details explained.**
+- `auto norm = [&](long long x) { … };` is a lambda (a small function written inside `main`); `[&]` lets it use `m`.
+- `x % m + m` cannot overflow because $|x \% m| < m \le 2 \cdot 10^9$.
+
+**Tested.** Stress-tested against a brute force that computes the exact sum with `__int128` and then the mathematical remainder, on 5000 random inputs (values up to $10^{18}$ in absolute value or up to 50, $m$ up to 20 or up to $2 \cdot 10^9$), plus 4 fixed tests computed by hand, including $m = 1$ and $m = 2 \cdot 10^9$.
+
+**Alternative formulation.** With `__int128` the product of two values up to $10^{18}$ can be taken before reducing. That is fine when the type is available, but reducing first works with any 64-bit compiler and is the habit to keep: the product of two *unreduced* `long long` values overflows.
 
 ## 7. Bug catalogue
 

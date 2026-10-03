@@ -4,7 +4,7 @@
 - Milestone: M0 done; B0 approved; B1, B2, B3 and B4 done; B5 (Phase 5 banks) next
 - Topic: bank 4.7
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: B4, all 7 Phase 4 banks (4.1–4.7: 418 problems, 242 practice, 176 reserved; 4.1, 4.4 and 4.5 complete), validated and published
+- Last completed step: B4, all 7 Phase 4 banks (4.1–4.7: 420 problems, 243 practice, 177 reserved; 4.1, 4.2, 4.4 and 4.5 complete), validated and published
 - Next action: B5 (Phase 5 banks), one commit per topic
 
 ## Gates
@@ -50,12 +50,12 @@
 | 3.7 | short | 19 | 9 |
 | 3.8 | short | 17 | 10 |
 | 4.1 | complete | 64 | 34 |
-| 4.2 | short | 24 | 34 |
+| 4.2 | complete | 24 | 34 |
 | 4.3 | short | 42 | 32 |
 | 4.4 | complete | 36 | 31 |
 | 4.5 | complete | 33 | 31 |
 | 4.6 | short | 23 | 10 |
-| 4.7 | short | 20 | 4 |
+| 4.7 | short | 21 | 5 |
 | other 16 (Phases 5–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
@@ -85,12 +85,12 @@
 - 3.7: practice 19 of 20, reserved 9 of 24: bitmask DP below rating 1700 is rare, so tiers 1–2 are empty and most candidates went to practice. `group-mask` has 2 practice problems (two others are in 3.1 as backtracking), `submask-mask` 3. No drill beyond 1, no later_drill, no look-alike pair (the natural partner, Boats to Save People, is used in an earlier bank).
 - 3.8: practice 17 of 20, reserved 10 of 24: digit DP is rare below rating 1700, so most problems are tier 3–5 and went to practice. Drill 1 of 8, review 3 of 10, no later_drill; one look-alike pair (Count Numbers with Unique Digits vs Count Special Integers). `neighbour-digits` and `digit-aggregate` practice each span 2 tiers.
 - 4.1: complete (all counts and composition rules met). 20 Codeforces notes are recalled from memory (†) and need a spot-check against the statement pages.
-- 4.2: short only because pattern `smallest-order` has 1 practice problem (needs 4 over 3 tiers): lexicographically-smallest topological sort problems are rare in band, and two of the three found are used as checkpoint and look-alike. Suggestion: merge `smallest-order` into `dependency-order` as a variant. 17 Codeforces notes are recalled (†).
+- 4.2: complete. Pattern `smallest-order` was merged into `dependency-order` as a variant (owner decision, 2026-10-03). 17 Codeforces notes are recalled (†).
 - 4.3: short only because pattern `negative-edges` has 4 practice problems in tiers 3–4 only (needs 3 tiers): no tier-2 or tier-5 Bellman–Ford problem was found that does not need a later topic. 18 Codeforces notes are recalled (†).
 - 4.4: complete (all counts and composition rules met). 17 Codeforces notes are recalled (†).
 - 4.5: complete (all counts and composition rules met). 19 Codeforces notes are recalled (†).
-- 4.6: short: reserved has 10 of 24 (drill 2, later_drill 1, lookalike 2, checkpoint 2, review 3, exam 0). Patterns `lca-query` (3 practice, tiers 2–3) and `path-aggregate` (5 practice, tiers 4–5) span only 2 tiers; `path-updates` has 1 practice problem: offline path updates by subtree sums are rare in band. LCA problems in band are scarce once those needing sparse tables, Fenwick trees or tree DP are excluded. Suggestion: merge `path-updates` into `path-aggregate`. 12 Codeforces notes are recalled (†).
-- 4.7: short: reserved has 4 of 24 (lookalike 2, checkpoint 1, review 1); every in-band problem found was needed to reach 20 practice. Pattern `cut-vertices` has 3 practice problems. SCC, bridge and cut-vertex problems in band are scarce on the four platforms once SCC+DAG-DP problems (7.2) are excluded. Suggestion: allow ARC/AtCoder Library tasks and older Codeforces problems for this topic, or lower its reserved minimums. 13 Codeforces notes are recalled (†).
+- 4.6: short: reserved has 10 of 24 (drill 2, later_drill 1, lookalike 2, checkpoint 2, review 3, exam 0), and pattern `lca-query` has 3 practice problems over tiers 2–3. Pattern `path-updates` was merged into `path-aggregate` (owner decision, 2026-10-03). LCA problems in band are scarce once those needing sparse tables, Fenwick trees or tree DP are excluded. 12 Codeforces notes are recalled (†).
+- 4.7: short: reserved has 5 of 24 (lookalike 2, checkpoint 1, review 2); pattern `cut-vertices` has 3 practice problems. ARC is allowed for this topic (owner decision, 2026-10-03): all 328 ARC B–E tasks with difficulty 1300–2400 were searched and 2 fit (ARC 111 D, ARC 143 D). 13 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
 - Allowed: —

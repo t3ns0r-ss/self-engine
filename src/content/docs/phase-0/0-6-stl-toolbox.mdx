@@ -255,6 +255,103 @@ Six short programs: one for each card, and a second one for stack-queue so that 
 
 ## 7. Bug catalogue
 
+Each bug was made by changing a template from Section 6 (one line, or the lines of one small block) and running `scripts/stress.sh` on the broken copy. The input shown is the first one the script found.
+
+### Bug: counting after incrementing
+
+Template: counting with `map`.
+
+```cpp
+cnt[a]++;
+pairs += cnt[a];
+```
+
+Input: `6`, then `1 0 0 3 -3 2`.
+
+Wrong output `7 0`, correct output `1 0`. After the increment, `cnt[a]` includes the current element itself, so every element is paired with itself once: 6 extra pairs on top of the one real pair (the two zeros).
+
+**Fix:** read the count before incrementing (Theorem 0.6.3, part 2): it then counts only the *earlier* equal elements.
+
+### Bug: erasing every copy from a multiset
+
+Template: nearest values with `multiset`.
+
+```cpp
+s.erase(x);
+```
+
+Input: 14 queries; the decisive ones are `1 8`, `1 8` (two copies of 8), then `2 8`, then `3 8`.
+
+Wrong output for the last query `4`, correct output `8`. `s.erase(x)` with a value removes *all* copies of that value, so both 8s disappear although only one should.
+
+**Fix:** `s.erase(s.find(x))`: `find` points to one copy, and erasing through an iterator removes exactly that element (Theorem 0.6.4, condition 3).
+
+### Bug: stepping back from begin()
+
+Template: nearest values with `multiset`.
+
+```cpp
+cout << *prev(it) << "\n";
+```
+
+Input: 11 queries, the first being `3 8` while the multiset is still empty.
+
+Wrong output: the program crashes (segmentation fault). Correct output `-1` for that query. In an empty multiset (or when every element is greater than $x$), `s.upper_bound(x)` is `s.begin()`, and `prev(s.begin())` points before the first element: reading it is undefined behaviour.
+
+**Fix:** check `it == s.begin()` before `prev(it)` (Theorem 0.6.4, condition 2).
+
+### Bug: a priority queue that gives the largest
+
+Template: repeatedly taking the smallest.
+
+```cpp
+priority_queue<long long> pq;
+```
+
+Input: `6`, then `5 9 4 4 2 2`.
+
+Wrong output `104`, correct output `64`. The default `priority_queue` puts the *largest* element on top, so the program merges the two largest piles each time, a different process from the one in the statement.
+
+**Fix:** `priority_queue<long long, vector<long long>, greater<long long>>`, whose top is the smallest (Theorem 0.6.5, condition 2).
+
+### Bug: the cost in int
+
+Template: repeatedly taking the smallest.
+
+```cpp
+int cost = 0;
+```
+
+Input: `7`, then `41471738 607553668 249426361 521102281 193987841 445173526 835177982`.
+
+Wrong output `-1151742813`, correct output `7438191779`. Merged piles hold sums of up to $n$ sizes of $10^9$, and the total cost passes the `int` maximum of about $2.1 \cdot 10^9$ (topic 0.1).
+
+**Fix:** `long long cost`: estimate the largest value a counter can reach before choosing its type.
+
+### Bug: matching any closing bracket to any opening one
+
+Template: matching brackets with `stack`.
+
+```cpp
+if (open.empty()) {
+```
+
+Input: `(}`
+
+Wrong output `1 0`, correct output `NO`. A stack of positions remembers *which* bracket is waiting; the kind of the closing bracket must be compared with the kind on top of the stack.
+
+**Fix:** also reject when `s[open.top()]` is not the opening bracket of the same kind as the closing one.
+
+### Bug: forgetting the brackets still open at the end
+
+Template: matching brackets with `stack`. The final `if (!open.empty())` check is removed.
+
+Input: `({`
+
+Wrong output `-1 -1`, correct output `NO`. Every closing bracket was matched (there are none), but two opening brackets are never closed.
+
+**Fix:** after the loop, require an empty stack (Theorem 0.6.6: the stack must be empty at the end).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

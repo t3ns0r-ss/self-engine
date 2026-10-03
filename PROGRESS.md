@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: M0 done; B0 approved; B1, B2, B3 and B4 done; B5 (Phase 5 banks) next
-- Topic: bank 4.7
+- Topic: bank 5.1
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: B4, all 7 Phase 4 banks (4.1–4.7: 420 problems, 243 practice, 177 reserved; 4.1, 4.2, 4.4 and 4.5 complete), validated and published
 - Next action: B5 (Phase 5 banks), one commit per topic
@@ -56,7 +56,8 @@
 | 4.5 | complete | 33 | 31 |
 | 4.6 | short | 23 | 10 |
 | 4.7 | short | 21 | 5 |
-| other 16 (Phases 5–7) | patterns written, no problems yet | 0 | 0 |
+| 5.1 | short | 14 | 5 |
+| other 15 (Phases 5–7) | patterns written, no problems yet | 0 | 0 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -91,6 +92,7 @@
 - 4.5: complete (all counts and composition rules met). 19 Codeforces notes are recalled (†).
 - 4.6: short: reserved has 10 of 24 (drill 2, later_drill 1, lookalike 2, checkpoint 2, review 3, exam 0), and pattern `lca-query` has 3 practice problems over tiers 2–3. Pattern `path-updates` was merged into `path-aggregate` (owner decision, 2026-10-03). LCA problems in band are scarce once those needing sparse tables, Fenwick trees or tree DP are excluded. 12 Codeforces notes are recalled (†).
 - 4.7: short: reserved has 5 of 24 (lookalike 2, checkpoint 1, review 2); pattern `cut-vertices` has 3 practice problems. ARC is allowed for this topic (owner decision, 2026-10-03): all 328 ARC B–E tasks with difficulty 1300–2400 were searched and 2 fit (ARC 111 D, ARC 143 D). 13 Codeforces notes are recalled (†).
+- 5.1: short: 14 practice of 20 and 5 reserved of 24 (review 3, checkpoint 1, exam 1). Static range-query problems are few once monotonic-deque (1.6) and segment-tree (5.3) problems are excluded; LeetCode and AtCoder have almost none (searched cached ABC/ARC statements). Suggestion: fold 5.1 into 5.3 as a lesson section, or accept a small bank. 13 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
 - Allowed: —
@@ -126,3 +128,4 @@
   - Pattern files are also checked for later-topic keywords (PLAN.md Section 4).
   - Topic 7.8 has an empty pattern file, since its problems use `{topic}:{pattern-id}`.
   - Bank pages use `/bank/1-3/` (dash, not dot) so `.3` isn't read as a file extension by web servers.
+- Decisions received (2026-10-03): merge 4.2 `smallest-order` into `dependency-order` and 4.6 `path-updates` into `path-aggregate` (done); ARC tasks are allowed in all banks from B5 on (and in 4.7), tiered by judgement from the AtCoder Problems difficulty.

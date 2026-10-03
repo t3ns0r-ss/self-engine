@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.3 Implementation and simulation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.3 step 1 (scope)
-- Next action: 0.3 step 2 (theory)
+- Last completed step: 0.3 step 2 (theory)
+- Next action: 0.3 step 3 (cards)
 
 ## Gates
 | Gate | Status | Date |
@@ -25,7 +25,7 @@
 | 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
 | 0.1 | done (on this session's branch) | — |
 | 0.2 | done (on this session's branch) | — |
-| 0.3 | in progress (step 1 of 10) | — |
+| 0.3 | in progress (step 2 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

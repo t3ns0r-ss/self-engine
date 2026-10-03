@@ -18,15 +18,101 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A robot starts at $(0, 0)$ facing north on an infinite grid. It reads a string of commands: `F` moves one cell forward, `L` and `R` turn 90 degrees left or right. After the string ends, print its position.
+
+There is no clever idea to find: the statement says exactly what happens, and the program does it step by step. Yet such problems are where many contest points are lost, because a careless direction table, a wrong boundary, or a missed case gives a Wrong Answer that is hard to find. With $10^5$ commands the direct method costs $10^5$ steps, well inside the budget of topic 0.2; the difficulty is only in writing it correctly.
+
+This topic is about implementing a described process exactly. It gives four habits: count the steps of the process before writing it (and notice when a process repeats, so it need not be followed to the end); handle grids with direction arrays and one bounds check; process strings in one pass with a small amount of remembered state; and split the input into cases that together cover everything.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming (CP): input and output, `long long`, integer division.
+- Topic 0.2, complexity analysis: the step budget of about $10^8$ per second, used here to decide whether the process can be followed step by step.
+
 ### What this topic does not cover
+
+- Remainders, divisibility and GCD (greatest common divisor) as tools for shortening a process. Covered in topic 0.4.
+- Trying every possible choice (all subsets, all orders). Covered in topic 0.5.
+- Containers that keep elements sorted or give quick lookups (`set`, `map`, `priority_queue`). Covered in topic 0.6.
+- Shortest routes in a grid (breadth-first search). Covered in topic 4.1.
 
 ## 3. Definitions
 
+- A **simulation** is a program that carries out a described process step by step, keeping the process's **state** (all the values that determine what happens next) in variables.
+- A process is **deterministic** if the next state depends only on the current state.
+- A sequence of states is **eventually periodic** if, from some index $\mu$ on, it repeats with some **period** $\lambda \ge 1$: $x_{i + \lambda} = x_i$ for all $i \ge \mu$. Example: $3, 5, 2, 7, 2, 7, 2, \dots$ has $\mu = 2$ (counting from 0) and $\lambda = 2$.
+- The **pigeonhole principle**: if more than $K$ objects are put into $K$ boxes, some box holds at least two. Example: among any 13 people, two share a birth month.
+- A **grid** with $H$ rows and $W$ columns has cells $(r, c)$ with $0 \le r < H$ and $0 \le c < W$. Two cells are **4-neighbours** if they share a side and **8-neighbours** if they share a side or a corner.
+- A **direction array** lists the row and column changes for each direction, for example `dr = {-1, 0, 1, 0}`, `dc = {0, 1, 0, -1}` for up, right, down, left.
+- A **one-pass scan** reads a string or array once from left to right, updating a fixed small set of variables.
+- A **case analysis** splits all possible inputs into groups (cases) and solves each group by its own rule.
+
 ## 4. Theory and proofs
+
+### 4.1 The cost of a simulation, and processes that repeat
+
+**Theorem 0.3.1 (cost and repetition).**
+1. A simulation of $S$ steps, each costing at most $c$ simple steps, costs at most $c \cdot S$ (Theorem 0.2.1).
+2. A deterministic process whose state is always one of $K$ possible values repeats a state within its first $K + 1$ states. From the first repeated state on, the sequence of states is periodic: if $x_\mu = x_{\mu + \lambda}$ is the first repeat, then $x_{i + \lambda} = x_i$ for every $i \ge \mu$.
+3. So the state after $T$ steps (for any $T$, even $10^{18}$) is $x_T$ if $T < \mu$, and $x_{\mu + (T - \mu) \bmod \lambda}$ otherwise.
+
+*Proof.* 1. Add the costs of the steps. 2. Among $K + 1$ states there are only $K$ possible values, so two are equal (the pigeonhole principle, Section 3): some $x_\mu = x_{\mu + \lambda}$ with $\lambda \ge 1$ and $\mu + \lambda \le K$. Since the next state depends only on the current one, $x_{\mu + 1} = x_{\mu + \lambda + 1}$, and so on by induction: $x_{i} = x_{i + \lambda}$ for all $i \ge \mu$. 3. For $T \ge \mu$, write $T = \mu + q\lambda + r$ with $r = (T - \mu) \bmod \lambda$; applying the periodicity $q$ times gives $x_T = x_{\mu + r}$. $\square$
+
+:::note[This proof needs]
+1. The process is deterministic: the next state depends only on the current state, not on the step number.
+2. The number of possible states $K$ is small enough to store one mark per state (or to record the step at which each state was first seen).
+:::
+
+**Using it.** Record for each state the step at which it first appeared (an array of size $K$ filled with $-1$). Follow the process until a state is seen again: that gives $\mu$ and $\lambda$ in at most $K + 1$ steps. Section 6 has the code.
+
+### 4.2 Grids
+
+**Theorem 0.3.2 (grid scans).** A scan that visits every cell of an $H \times W$ grid and looks at its at most 8 neighbours does at most $9HW$ cell inspections. If every neighbour $(r + \Delta r, c + \Delta c)$ is used only after checking $0 \le r + \Delta r < H$ and $0 \le c + \Delta c < W$, no inspection reads outside the grid.
+
+*Proof.* Each of the $HW$ cells is visited once and inspects itself and at most 8 neighbours, so at most $9HW$ inspections. A cell is inside the grid exactly when its row is in $[0, H)$ and its column in $[0, W)$, which is what the check tests. $\square$
+
+:::note[This proof needs]
+1. Each cell is visited a constant number of times.
+2. Every neighbour access is guarded by the bounds check (or the grid is padded with a border of dummy cells).
+:::
+
+**Direction arrays.** Writing the 4 or 8 directions as arrays turns eight copied `if` blocks into one loop, so a typo in one direction cannot hide. Turning right is moving to the next direction: `d = (d + 1) % 4`; turning left is `d = (d + 3) % 4` (adding 3 instead of subtracting 1 keeps the value non-negative, since `%` of a negative number is negative in C++, Theorem 0.1.4).
+
+### 4.3 One-pass string processing
+
+**Theorem 0.3.3 (one-pass scans).** Suppose the answer for a string $s$ is $g(\mathit{st}_n)$, where $\mathit{st}_0$ is a fixed starting state and $\mathit{st}_{i+1} = \mathrm{update}(\mathit{st}_i, s_i)$. Then the scan
+
+```
+st = start
+for i = 0 .. n-1: st = update(st, s[i])
+answer g(st)
+```
+
+computes the answer in $n$ updates, and after step $i$ the variable `st` equals $\mathit{st}_{i+1}$, the state of the prefix $s_0 \dots s_i$.
+
+*Proof.* By induction on $i$: before the loop `st` $= \mathit{st}_0$; if `st` $= \mathit{st}_i$ before step $i$, the update makes it $\mathit{st}_{i+1}$. After the last step it is $\mathit{st}_n$. $\square$
+
+:::note[This proof needs]
+1. A state that summarises the prefix read so far: the rest of the answer depends on the prefix only through this state.
+2. An update rule that computes the new state from the old state and the next character alone.
+:::
+
+**Example: bracket sequences.** For a string of `(` and `)`, the state "current depth" (opens minus closes so far) decides validity: the string is a valid bracket sequence exactly when the depth never goes below 0 and ends at 0. Section 6 has the code and a proof.
+
+### 4.4 Case analysis
+
+**Theorem 0.3.4 (case analysis).** If the cases $C_1, \dots, C_k$ together contain every allowed input, and on each case $C_j$ the rule used for it gives the correct answer, then the program is correct on every input.
+
+*Proof.* Any allowed input lies in some case $C_j$ (the cases cover everything), and the rule for $C_j$ is correct on it. $\square$
+
+:::note[This proof needs]
+1. The cases cover every input allowed by the constraints, including the boundaries (equal values, zero, the smallest $n$).
+2. Each case's rule is proved for every input in that case.
+:::
+
+**In practice.** Write the cases as a list before coding, and check the boundaries between them: does "$x < y$" or "$x \le y$" decide which case an input with $x = y$ falls into, and is that case's rule right for it? A brute force on small inputs (Section 6) is the best check that no case is missing.
 
 ## 5. Recognition Cards
 

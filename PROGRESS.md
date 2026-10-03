@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 approved; B1–B6 done; B7 (Phase 7 banks, then the final bank review gate) next
-- Topic: bank 7.7
+- Milestone: M0 done; B0 approved; B1–B7 done; waiting at the "Final bank review" gate
+- Topic: bank 7.8
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: B6, all 4 Phase 6 banks (6.1–6.4: 109 problems, 72 practice, 37 reserved), validated and published
-- Next action: B7 (Phase 7 banks 7.1–7.8), one commit per topic, ending at the "Final bank review" gate
+- Last completed step: B7, all 8 Phase 7 banks (7.1–7.8: 268 problems, 143 practice, 125 reserved; 7.8 complete), validated and published. Whole bank: 48 topics, 1983 problems
+- Next action: ⏸ Final bank review by Saurabh (bank plan Section 9, gate after B7). Then M1 per PLAN.md
 
 ## Gates
 | Gate | Status | Date |
@@ -13,6 +13,7 @@
 | B0 pattern lists review | approved | 2026-10-02 |
 | M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
 | B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |
+| Final bank review | waiting for Saurabh | — |
 
 ## Saurabh is studying
 - Topic: —
@@ -71,7 +72,7 @@
 | 7.5 | short | 20 | 10 |
 | 7.6 | short | 18 | 7 |
 | 7.7 | short | 25 | 24 |
-| other 1 (Phases 7–7) | patterns written, no problems yet | 0 | 0 |
+| 7.8 | complete | 0 | 40 |
 
 ### Bank gaps (status: short)
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
@@ -121,6 +122,7 @@
 - 7.5: short: reserved has 10 of 24; `nim-sum` and `grundy-sum` have 3 practice problems each. In-band Grundy-sum problems are few (most game problems are win-lose or ad hoc). 12 Codeforces notes are recalled (†).
 - 7.6: short: 18 practice and 7 reserved (two look-alike pairs: LeetCode Transformations I/II and LeetCode/CSES Fibonacci). `min-plus` has 2 practice problems and `augmented-matrix` 2. Most in-band matrix problems are Codeforces (14 recalled notes, †).
 - 7.7: short: drill 5 of 8, review 8 of 10, one look-alike pair (LeetCode DI String Match / Construct Smallest Number From DI String); `permutation-build` and `operation-sequence` span 2 tiers. Practice skews to tiers 1–2 (only constructions recalled reliably were chosen, since 33 Codeforces notes are recalled, †); harder ARC/CF constructions should be added after a statement check.
+- 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
 - Allowed: —

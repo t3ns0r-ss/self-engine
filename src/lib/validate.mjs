@@ -63,7 +63,9 @@ export const fileId = (topic) => topic.replace('.', '-');
 
 function keywordRegex(kw) {
   const esc = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pre = /^\w/.test(kw) ? '\\b' : '';
+  // A keyword written as a member call (s.lower_bound) names a container operation, not the
+  // later technique: set and map members belong to topic 0.6, the free functions to 1.4.
+  const pre = /^\w/.test(kw) ? '(?<!\\.)\\b' : '';
   const post = /\w$/.test(kw) ? '\\b' : '';
   return new RegExp(pre + esc + post, 'i');
 }

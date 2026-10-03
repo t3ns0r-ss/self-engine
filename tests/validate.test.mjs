@@ -97,6 +97,8 @@ test('keyword scan finds later-topic words only', () => {
   assert.deepEqual(laterKeywordHits('use a sliding window', 9, real.curriculum), []);
   assert.match(laterKeywordHits('then binary search the answer', 9, real.curriculum).join(), /binary search/);
   assert.deepEqual(laterKeywordHits('minimum of the window', 1, real.curriculum), [], '"nim" must not match inside "minimum"');
+  assert.deepEqual(laterKeywordHits('`s.lower_bound(x)` finds it', 6, real.curriculum), [], 'a set member call is not the 1.4 technique');
+  assert.match(laterKeywordHits('call lower_bound on the array', 6, real.curriculum).join(), /lower_bound/);
 });
 test('pattern files reject later-topic keywords', () => {
   const d = base();

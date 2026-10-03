@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.5 step 10 (self-review: draft removed; validate, unit tests, build, e2e all pass)
-- Next action: 0.6 step 1 (scope, bank gaps: look-alike pairs, exam problems for the Phase 0 exam)
+- Last completed step: 0.6 step 1 (scope: lesson skeleton, draft data file, bank gaps, keyword-scan change)
+- Next action: 0.6 step 2 (theory)
 
 ## Gates
 | Gate | Status | Date |
@@ -28,6 +28,7 @@
 | 0.3 | done (on this session's branch) | — |
 | 0.4 | done (on this session's branch) | — |
 | 0.5 | done (on this session's branch) | — |
+| 0.6 | in progress (step 1 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -37,7 +38,7 @@
 | 0.3 | short | 45 | 24 |
 | 0.4 | short | 23 | 28 |
 | 0.5 | short | 30 | 26 |
-| 0.6 | short | 36 | 27 |
+| 0.6 | short | 35 | 29 |
 | 1.1 | short | 24 | 20 |
 | 1.2 | short | 22 | 22 |
 | 1.3 | short | 24 | 32 |
@@ -87,7 +88,7 @@
 - 0.3: reserved has 24 (the minimum) but no look-alike pair and no exam problems; review has 9 of 10 (no tier-4 problem besides one LeetCode Hard).
 - 0.4: reserved has 28: two look-alike pairs, 3 of 4 later_drill, review 9 of 10, exam 1 (after topic step 1).
 - 0.5: reserved has 26: two look-alike pairs, review 9 of 10, exam 1 of 2 (after topic step 1). Pattern `permutations` spans only tiers 2–3 in practice.
-- 0.6: all reserved purposes are met except look-alikes (none found), so the status is short only for that.
+- 0.6: two look-alike pairs added at topic step 1; review 9 of 10 after that.
 - 1.1: reserved 20 of 24: no look-alike pair, 3 of 4 later_drill, review 6 of 10, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
 - 1.2: reserved 22 of 24: one look-alike pair (2 of 4), review 6 of 10, later_drill 3 of 4 (lc-contiguous-array moved to 1.3 as a look-alike), no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
 - 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
@@ -132,11 +133,11 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1, 0.2, 0.3, 0.4.
-- New: trying every candidate: nested loops over pairs and triples, all subsets as bitmasks, all orders with next_permutation, recursive generation of choice sequences, enumerating the answer. Cards: nested-loops, subset-bitmask, permutations, recursive-choices, enumerate-answer.
-- Forbidden keywords: every keyword of topics 0.6–7.8 (priority_queue, multiset, prefix sum, two pointers, binary search, backtracking and pruning (3.1), memoisation and dynamic programming (3.2), bitmask dp (3.7), …).
-- Glossary terms already defined: 0.1–0.4 (and 1.3).
-- Bank 0.5 (step 1): look-alike pairs ac-abc263_c / ac-abc165_c (strictly increasing vs non-decreasing; moved from drill and review) and ac-abc374_c / ac-abc119_c (two vs four choices per item; moved from drill and checkpoint); ac-abc232_c moved from drill to checkpoint; reviews ac-abc276_c, ac-abc080_c, ac-abc136_b, lc-letter-case-permutation (new). (ac-abc215_c and ac-abc363_c were added at step 1 and removed at step 6: they need the letters sorted first, which the bank keeps for 1.1.)
+- Allowed: 0.1–0.5.
+- New: the containers vector, pair, set, map, unordered_set/unordered_map, multiset, priority_queue, stack, queue, deque, and the cost of each operation. Cards: set-membership, map-counting, ordered-set-lookup, heap-extract, stack-queue.
+- Forbidden keywords: every keyword of topics 1.1–7.8 (comparator, coordinate compression, prefix sum, two pointers, sliding window, binary search, lower_bound/upper_bound as free functions, monotonic stack, …). Member calls such as `s.lower_bound(x)` are allowed (validator change, see Questions).
+- Glossary terms already defined: 0.1–0.5 (and 1.3).
+- Bank 0.6 (step 1): look-alike pairs lc-contains-duplicate / lc-contains-duplicate-ii (new; the first moved from practice) and ac-abc141_d / cses-1091 (moved from review); review lc-kth-largest-element-in-an-array (new).
 - Phase 0 decisions (M2, made while Saurabh is travelling): any tier may fill Phase 0 reserved purposes (ABC A–B are tier 1, so tier 3–4 reviews are rare); the earlier-topic drill minimum is min(3, order − 1), so 0.1 needs none, 0.2 one, 0.3 two.
 
 ## Blocked
@@ -144,6 +145,7 @@
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
 ## Questions for Saurabh
+- Keyword scan and ordered sets (0.6): `lower_bound` and `upper_bound` are keywords of 1.4 (binary search), but topic 0.6 needs the `set`/`map` member functions of the same name. The scan now ignores a keyword written as a member call (preceded by a dot, as in `s.lower_bound(x)`); the free functions on arrays stay reserved for 1.4. Say if you would rather keep the scan strict and have 0.6 describe these calls without naming them.
 - Changes made while building 1.3 (change any you disagree with):
   - Topic data files may carry `draft: true` while a lesson is being written: count rules are skipped and the lesson shows a draft notice, so every step's commit keeps CI green. 1.3 no longer has it.
   - 1.3 defines basic terms that belong to unwritten earlier lessons (subarray, non-decreasing, amortised analysis) with topic 1.3; they move to 1.1/1.2 in M3.

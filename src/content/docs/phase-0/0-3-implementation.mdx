@@ -18,6 +18,8 @@ import robotWalk from '../../../../code/0.3/robot-walk/solution.cpp?raw';
 import neighbourCount from '../../../../code/0.3/neighbour-count/solution.cpp?raw';
 import bracketsCode from '../../../../code/0.3/brackets/solution.cpp?raw';
 import intervalCases from '../../../../code/0.3/interval-cases/solution.cpp?raw';
+import example1 from '../../../../code/0.3/example-1/solution.cpp?raw';
+import example2 from '../../../../code/0.3/example-2/solution.cpp?raw';
 
 <TopicHeader topic="0.3" />
 
@@ -283,6 +285,66 @@ Wrong output `DISJOINT`, correct output `TOUCH`. The second interval is the sing
 Removing `if (dr == 0 && dc == 0) continue;` from the neighbour count passes all 5000 tests. It is not a weak generator: the program counts only free cells, and a free cell is never a mine, so including it adds 0. The line documents the intent; in a variant where mines also get a count, it would matter.
 
 ## 8. Worked examples
+
+### Example 1: Cross
+
+[AtCoder Beginner Contest (ABC) 300, problem C: Cross](https://atcoder.jp/contests/abc300/tasks/abc300_c). In short: an $H \times W$ grid ($3 \le H, W \le 100$) of `#` and `.` is made of diagonal crosses. A cross of size $n$ centred at $(a, b)$ is the centre plus the four diagonal arms $(a \pm d, b \pm d)$ for $1 \le d \le n$, all `#`, and at least one of the four cells at distance $n + 1$ is `.` (cells outside the grid count as `.`). Cells of different crosses never share even a corner. Print how many crosses there are of each size $1, \dots, \min(H, W)$.
+
+#### Step 1: Constraints → budget
+
+$HW \le 10^4$ cells, and an arm is at most $\min(H, W)/2 = 50$ cells long. Anything up to $HW \cdot 50 = 5 \cdot 10^5$ cell inspections is far inside the budget. The counts are at most $10^4$, so `int` is fine.
+
+#### Step 2: Question form → candidate tools
+
+The input is a grid of `#` and `.`, and the definition talks about diagonal neighbours and cells outside the grid: grid processing (Theorem 0.3.2). A second candidate is to follow the definition literally: for every cell and every $n$, check all $4n + 1$ cells. It also fits ($10^4 \cdot 50 \cdot 200 = 10^8$ is close, but fine), and it is what the brute force does.
+
+#### Step 3: Property check → decision
+
+For each centre, the size is the number of steps the four arms can be extended together. Growing from $d = 1$ and stopping at the first $d$ where some arm cell is `.` gives exactly $n$, and the cells outside the grid are handled by one helper that returns "not black" for them. The remaining question is how to recognise a centre. A cell that is not a centre is either `.` or an arm cell at distance $d \ge 1$; its four diagonal neighbours are $(a + d \pm 1, b \pm d \pm 1)$-type cells, and at most two of them lie on its own cross (row offset and column offset must be equal in size). Cells of other crosses never touch it. So only a centre has all four diagonal neighbours black. Decision: scan every cell, grow the arms, and count a cross when the size is at least 1.
+
+#### Step 4: Proof for this problem
+
+Take any cell. If it is a centre of a cross of size $n$, the loop extends while all four cells at distance $\text{size} + 1$ are black; by the definition this holds for $\text{size} = 0, \dots, n - 1$ and fails at $\text{size} = n$, so the loop stops with $\text{size} = n$ and the cross is counted once, under $n$. If it is not a centre, Step 3 shows that some diagonal neighbour is not black, so the loop stops at $\text{size} = 0$ and nothing is counted. Every access goes through `black`, which checks the bounds first (Theorem 0.3.2). The loop inspects at most $4 \cdot 51$ cells per cell, about $2 \cdot 10^6$ in total.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `auto black = [&](int r, int c) { … };` is a *lambda*, a small function written inside `main`; `[&]` lets it read `g`, `h` and `w` from the surrounding code. The `&&` in its body evaluates left to right and stops at the first false condition, so `g[r][c]` is read only after all four bounds checks have passed. Tested on the three samples from the problem page, on a $15 \times 20$ grid with crosses touching the borders (expected counts from the brute force), and on 5000 random grids of non-touching crosses up to size 3 (up to $12 \times 12$) against a brute force that checks the definition literally for every cell and size.
+
+#### Step 6: Alternative approach
+
+Pad the grid with a border of `.` that is as wide as the longest possible arm, so that every access is inside the array and no bounds check is needed (the padding variant of Theorem 0.3.2). It works, but the border must be 50 cells wide here, and an off-by-one in the padding width brings back the out-of-range read. The lambda with the check is shorter and safer.
+
+### Example 2: String Delimiter
+
+[AtCoder Beginner Contest (ABC) 282, problem C: String Delimiter](https://atcoder.jp/contests/abc282/tasks/abc282_c). In short: a string $S$ ($N \le 2 \cdot 10^5$) of lowercase letters, commas and an even number of double quotes. The characters from the 1st to the 2nd quote, from the 3rd to the 4th, and so on, are *enclosed*. Replace every comma that is not enclosed by a dot.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$. One pass is $2 \cdot 10^5$ steps. Counting the quotes before each comma separately is $O(N^2) = 4 \cdot 10^{10}$ in the worst case: too slow.
+
+#### Step 2: Question form → candidate tools
+
+A string is transformed character by character, and whether a comma changes depends on what came before it: a one-pass scan (Theorem 0.3.3). The other candidate is the definition taken literally (count the quotes before each comma), which is the brute force.
+
+#### Step 3: Property check → decision
+
+What do we need to know about the prefix before a comma? Only whether an odd number of quotes has been read, that is whether we are between an opening and a closing quote. That is one boolean, and it changes only at a quote. Decision: one pass with a flag `inside`.
+
+#### Step 4: Proof for this problem
+
+Let $\mathit{st}_i$ be "the number of quotes among the first $i$ characters is odd". Then $\mathit{st}_0$ is false and $\mathit{st}_{i+1}$ is $\mathit{st}_i$ flipped when $s_i$ is a quote, unchanged otherwise. A comma at position $i$ is enclosed exactly when it lies between the $(2k-1)$-th and $(2k)$-th quote for some $k$, that is when an odd number of quotes comes before it, that is when $\mathit{st}_i$ is true. The scan keeps exactly $\mathit{st}_i$ when it reaches position $i$ (Theorem 0.3.3), so it changes exactly the commas that are not enclosed. It runs in $O(N)$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `'"'` is the character literal for a double quote; inside single quotes it needs no backslash. `for (char& ch : s)` takes each character *by reference*, so `ch = '.'` changes the string itself; without the `&`, it would change a copy. `inside = !inside` flips a boolean. Tested on the three samples from the problem page and on 5000 random strings of up to 13 characters against a brute force that counts the quotes before each comma.
+
+#### Step 6: Alternative approach
+
+Find the positions of all quotes first, then for each pair $(q_{2k-1}, q_{2k})$ mark the characters between them as enclosed, and finally replace the unmarked commas. Each character is marked at most once, so this is also $O(N)$, but it needs an extra array and two passes where one flag is enough.
 
 ## 9. Problem ladder
 

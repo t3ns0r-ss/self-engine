@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.5 Brute force: loops, bitmask subsets, permutations, simple recursion
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.5 step 6 (problems: ladder of 19, 2 worked examples, 9 drill items, 2 look-alike pairs, checkpoint, 3 review sets)
-- Next action: 0.5 step 7 (worked examples)
+- Last completed step: 0.5 step 7 (worked examples: Apple Division, One-stroke Path)
+- Next action: 0.5 steps 8–9 (self-test, section intros, decision map)
 
 ## Gates
 | Gate | Status | Date |
@@ -27,7 +27,7 @@
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
 | 0.4 | done (on this session's branch) | — |
-| 0.5 | in progress (step 6 of 10) | — |
+| 0.5 | in progress (step 7 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

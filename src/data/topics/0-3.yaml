@@ -434,14 +434,58 @@ lookalike_pairs:
     a_tool: "direct-simulation (0.3): apply the rule until a value repeats"
     b_tool: case-analysis (0.3)
     flipping_difference: B applies the rule 5·10^15 times to a growing string, which cannot be followed; but every digit other than 1 grows past 10^18 copies, so the answer is 1 if the first K characters are all 1, else the first other digit.
-self_test: []
+self_test:
+  - q: A process moves a value through the states 0..9999 by a fixed rule and asks for the state after K = 10^18 steps. Why is the answer computable, and in how many steps?
+    a: "The next state depends only on the current one and there are 10^4 states, so within 10^4 + 1 steps some state repeats (pigeonhole principle). With the first repeat μ and period λ, the state after K ≥ μ steps is the state after μ + (K − μ) mod λ steps (Theorem 0.3.1): about 2·10^4 steps in all."
+  - q: In a grid scan, why must `0 <= nr && nr < h && 0 <= nc && nc < w && g[nr][nc] == '#'` be written in this order?
+    a: "&& stops at the first false condition, so g[nr][nc] is read only when the indices are inside the grid. With the cell test first, an out-of-range index is read before it is checked: undefined behaviour, often a wrong answer rather than a crash."
+  - q: 'Every second, each B directly in front of a G swaps with it, all at once. What goes wrong with "for i: if s[i] == B and s[i+1] == G, swap" and how is it fixed?'
+    a: After a swap at i, the B is now at i + 1 and may swap again with a G at i + 2 in the same second. Either skip i + 1 after a swap, or build the next state in a separate copy from the old one.
+  - q: You scan a bracket string keeping only the final depth, and answer "balanced" when it is 0. Give an input where this is wrong and name the missing part of the state.
+    a: '")(" ends at depth 0 but is not balanced: the depth went below zero after the first character. The state must also record whether the depth was ever negative (Theorem 0.3.3: the state must decide the answer for every prefix, not only the end).'
+  - q: 'Two intervals [a, b] and [c, d] with integer ends: list cases that decide "they share at least one point", and check the boundary b = c.'
+    a: They are disjoint exactly when b < c or d < a; otherwise they share a point. At b = c neither disjoint case holds, so they share the point b. Writing b <= c for the first case would wrongly call touching intervals disjoint.
+  - q: A string of length 10^6 needs one replacement rule applied to each character, and there are 10^6 rules to apply in order, each "replace every x by y". Why is changing the string per rule too slow, and what state replaces it?
+    a: "That is 10^12 character updates. The rules act on letters, not positions: keep for each of the 26 letters what it has become (26 updates per rule), and rewrite the string once at the end."
+  - q: When is case analysis preferable to following the process step by step, and how do you test that your cases are complete?
+    a: When the number of steps is huge (or infinite) but the inputs are few, so the answer depends on a small number of comparisons. List the cases before coding, check each boundary input against exactly one case, and compare with a brute force that follows the process on small inputs.
 checkpoint:
   time_limit_minutes: 90
   problems:
     - ac-abc199_c
     - ac-abc375_c
     - ac-abc324_c
-decision_map: []
+decision_map:
+  - weak_signal: The statement describes a process in detail ("each second …", "after the operations, print …")
+    choose: direct-simulation
+    when: Steps times the cost of one step fits the budget, or the process is deterministic on few states so it repeats (Theorem 0.3.1).
+    over:
+      - card: closed-form
+        because: A formula is needed only when the steps are too many and the state space is huge too.
+      - card: case-analysis
+        because: Reasoning about cases is riskier than following a short process; use it only when stepping is impossible.
+  - weak_signal: Input is H lines of W characters; neighbours, directions, walking until a wall
+    choose: grid-processing
+    when: H·W fits the budget and every neighbour access goes through a bounds check or a padding border (Theorem 0.3.2).
+    over:
+      - card: direct-simulation
+        because: A walker on a grid is a simulation too; the grid card adds the direction array and the bounds check that make it safe.
+  - weak_signal: "Transform or check a string: brackets, separators, replacements, case changes"
+    choose: string-processing
+    when: A small state summarising the prefix decides each next step, so one left-to-right scan answers (Theorem 0.3.3).
+    over:
+      - card: budget-from-constraints
+        because: Re-scanning the prefix for every position is O(n²); a state carried along the scan replaces it.
+      - card: case-analysis
+        because: "If the characters may be reordered, only the letter counts matter: decide by cases on the counts."
+  - weak_signal: Few inputs with huge values; YES/NO or a small number as the answer
+    choose: case-analysis
+    when: The inputs split into a few cases covering every allowed input, each with a direct answer (Theorem 0.3.4).
+    over:
+      - card: direct-simulation
+        because: Stepping is impossible with values up to 10^18 unless the states repeat quickly.
+      - card: closed-form
+        because: When one formula covers every input, no cases are needed; cases appear when signs, parities or positions change the rule.
 glossary_added:
   - simulation
   - state

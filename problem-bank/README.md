@@ -49,7 +49,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 7 | [7.1 DP on trees, rerooting](phase-7/7.1-tree-dp.md) | 2 | 6 | 4 | 6 | 6 | 24 | short |
 | 7 | [7.2 DP on DAGs](phase-7/7.2-dag-dp.md) | 1 | 6 | 5 | 8 | 0 | 20 | short |
 | 7 | [7.3 DP sped up with Fenwick or segment trees](phase-7/7.3-dp-with-ds.md) | 0 | 1 | 7 | 6 | 2 | 16 | short |
-| 7 | [7.4 Greedy II: priority-queue greedy, regret greedy](phase-7/7.4-greedy-2.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
+| 7 | [7.4 Greedy II: priority-queue greedy, regret greedy](phase-7/7.4-greedy-2.md) | 1 | 1 | 10 | 7 | 1 | 20 | short |
 | 7 | [7.5 Sprague–Grundy theorem](phase-7/7.5-game-theory.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 7 | [7.6 Matrix exponentiation for linear recurrences](phase-7/7.6-matrix-exponentiation.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |
 | 7 | [7.7 Constructive algorithms](phase-7/7.7-constructive.md) | 0 | 0 | 0 | 0 | 0 | 0 | not started |

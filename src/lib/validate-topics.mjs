@@ -142,7 +142,9 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
       }
       if (tf.drill.length < 8 || tf.drill.length > 12) err(F, `drill has ${tf.drill.length} items; 8–12 required`);
       const earlier = tf.drill.filter((d) => byId.get(d.answer_topic) && byId.get(d.answer_topic).order < t.order).length;
-      if (!is78 && earlier < 3) err(F, `drill has ${earlier} earlier-topic answers; at least 3 required`);
+      // The first topics have few earlier topics to draw from: 0.1 needs none, 0.2 one, 0.3 two.
+      const needEarlier = Math.min(3, t.order - 1);
+      if (!is78 && earlier < needEarlier) err(F, `drill has ${earlier} earlier-topic answers; at least ${needEarlier} required`);
       if (tf.lookalike_pairs.length < 2 || tf.lookalike_pairs.length > 4) err(F, `has ${tf.lookalike_pairs.length} look-alike pairs; 2–4 required`);
       if (tf.self_test.length < 5 || tf.self_test.length > 8) err(F, `has ${tf.self_test.length} self-test questions; 5–8 required`);
       if (tf.checkpoint.problems.length !== 3) err(F, `checkpoint has ${tf.checkpoint.problems.length} problems; exactly 3 required`);

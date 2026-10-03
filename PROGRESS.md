@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M1 (topic 1.3 exemplar) done; waiting at the "M1 exemplar review" gate
-- Topic: 1.3 Two pointers and sliding window
+- Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
+- Topic: 0.1 C++ for competitive programming
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.3 step 10 (self-review): draft flag removed, all checks pass (build, 48 validator tests, 12 code units with 5000-case stress, browser tests of the real lesson and the placeholder), keyword search clean, read-through on desktop and 375px dark
-- Next action: ⏸ M1 exemplar review by Saurabh. After approval (and any FEEDBACK.md items): M2, Phase 0 (0.1–0.6), phase intro, Phase 0 exam
+- Last completed step: 0.1 step 1 (scope)
+- Next action: 0.1 step 2 (theory)
 
 ## Gates
 | Gate | Status | Date |
@@ -14,7 +14,7 @@
 | M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
 | B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |
 | Final bank review | approved ("Let's begin with material building") | 2026-10-03 |
-| M1 exemplar review | waiting for Saurabh | — |
+| M1 exemplar review | approved ("for beginning this is good enough"; patterns and other changes to come later) | 2026-10-03 |
 
 ## Saurabh is studying
 - Topic: —
@@ -22,7 +22,8 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | done, awaiting M1 review (not merged to main or tagged: work stays on this session's branch until Saurabh merges it) | — |
+| 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
+| 0.1 | in progress (step 1 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -127,23 +128,17 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6 (Phase 0), 1.1 sorting, 1.2 prefix sums and difference arrays. None of these lessons is written yet; links to them show "coming soon".
-- New: two pointers (same direction and opposite ends), sliding window (shrinkable, fixed size), counting windows, walking two sorted sequences. Cards come from the five bank patterns: shrinkable-window, fixed-window, count-windows, opposite-ends, merge-walk.
-- Forbidden keywords: every keyword of topics 1.4–7.8 (curriculum.yaml), for example binary search, lower_bound, upper_bound, exchange argument, monotonic stack, monotonic deque, next greater element, prefix xor, dynamic programming, segment tree. The validator scans the lesson outside "What this topic does not cover".
-- Glossary terms already defined: none (the glossary is empty; earlier lessons are not written). 1.3 defines the basic terms it needs (subarray, window, pointer, …) with topic 1.3; when 1.1 and 1.2 are written in M3, terms that belong there move to those topics.
-- Draft flag: the topic data file carries `draft: true` until step 10, so the build passes while sections are empty (count rules skipped, lesson shows a draft notice). Not in PLAN.md; added so every step's commit keeps CI green.
+- Allowed: nothing earlier (0.1 is the first topic).
+- New: integer types and overflow, fast input and output, multiple test cases per input, exact integer rounding (floor and ceiling division, integer square root), compiling and judge verdicts. Cards: overflow-64bit, multi-test, integer-rounding. The bank pattern fast-io has no problems; it is taught as a rule in the lesson (fast-I/O lines in every program), not as a card.
+- Forbidden keywords: every keyword of topics 0.2–7.8.
+- Glossary terms already defined: those of 1.3 (subarray, window, …). 0.1 must not use them before 1.3 defines them; it defines its own.
+- Phase 0 decisions (M2, made while Saurabh is travelling): any tier may fill Phase 0 reserved purposes (ABC A–B are tier 1, so tier 3–4 reviews are rare); the earlier-topic drill minimum is min(3, order − 1), so 0.1 needs none, 0.2 one, 0.3 two.
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
 ## Questions for Saurabh
-- **M1 exemplar review (gate).** Topic 1.3 is the template every other lesson will copy, so this is the review that matters most. Open it on the site (Phase 1 → 1.3) and try:
-  - Read Sections 1–4 as a beginner. Are the definitions and the six theorems clear, and are the proofs the right length?
-  - Section 6: is the "C++ details explained" level right (too much, too little)?
-  - Section 9: open a few hints and log a problem; Section 10: do the drill; Section 13: start and finish the checkpoint; then open a review set.
-  - Problem choices: ladder order and twists, and whether any drill item feels unfair.
-  - Leave notes in FEEDBACK.md (one item per issue), or reply in chat. Set the gate to `approved` when happy.
 - Changes made while building 1.3 (change any you disagree with):
   - Topic data files may carry `draft: true` while a lesson is being written: count rules are skipped and the lesson shows a draft notice, so every step's commit keeps CI green. 1.3 no longer has it.
   - 1.3 defines basic terms that belong to unwritten earlier lessons (subarray, non-decreasing, amortised analysis) with topic 1.3; they move to 1.1/1.2 in M3.

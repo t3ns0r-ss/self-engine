@@ -219,7 +219,10 @@ export function validateAll({ curriculum, patterns, banks, notes }) {
       if (is78) {
         if (p.tier < 3) err(F, `${P}: topic 7.8 problems must be tier 3–5`);
       } else if (p.reserved_for) {
-        const [a, b] = RESERVED_TIERS[p.reserved_for];
+        // Phase 0 has almost no problems above tier 2 (ABC A–B are tier 1), so any tier may fill its
+        // reserved purposes (decision recorded in PROGRESS.md, M2).
+        const [a0, b] = RESERVED_TIERS[p.reserved_for];
+        const a = t.phase === 0 ? 1 : a0;
         if (p.tier < a || p.tier > b) err(F, `${P}: reserved_for ${p.reserved_for} needs tier ${a}–${b}, got ${p.tier}`);
       }
 

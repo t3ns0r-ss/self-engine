@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.5 Brute force: loops, bitmask subsets, permutations, simple recursion
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.4 step 10 (self-review: draft removed; validate, unit tests, build, e2e all pass)
-- Next action: 0.5 step 1 (scope, bank gaps: look-alike pairs, review sets)
+- Last completed step: 0.5 step 1 (scope: lesson skeleton, draft data file, bank gaps)
+- Next action: 0.5 step 2 (theory)
 
 ## Gates
 | Gate | Status | Date |
@@ -27,6 +27,7 @@
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
 | 0.4 | done (on this session's branch) | — |
+| 0.5 | in progress (step 1 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -35,7 +36,7 @@
 | 0.2 | short | 27 | 20 |
 | 0.3 | short | 45 | 24 |
 | 0.4 | short | 23 | 28 |
-| 0.5 | short | 30 | 22 |
+| 0.5 | short | 30 | 27 |
 | 0.6 | short | 36 | 27 |
 | 1.1 | short | 24 | 20 |
 | 1.2 | short | 22 | 22 |
@@ -85,7 +86,7 @@
 - 0.2: reserved has 20 of 24: no look-alike pair (no near-identical earlier-topic partner exists; the natural partners need later topics), 2 of 4 later_drill, review 7 of 10, no exam problems. Practice platform mix is 59% AtCoder.
 - 0.3: reserved has 24 (the minimum) but no look-alike pair and no exam problems; review has 9 of 10 (no tier-4 problem besides one LeetCode Hard).
 - 0.4: reserved has 28: two look-alike pairs, 3 of 4 later_drill, review 9 of 10, exam 1 (after topic step 1).
-- 0.5: reserved has 22 of 24: no look-alike pair, review 6 of 10, exam 1 of 2. Pattern `permutations` spans only tiers 2–3 in practice.
+- 0.5: reserved has 27: two look-alike pairs, review 9 of 10, exam 1 of 2 (after topic step 1). Pattern `permutations` spans only tiers 2–3 in practice.
 - 0.6: all reserved purposes are met except look-alikes (none found), so the status is short only for that.
 - 1.1: reserved 20 of 24: no look-alike pair, 3 of 4 later_drill, review 6 of 10, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
 - 1.2: reserved 22 of 24: one look-alike pair (2 of 4), review 6 of 10, later_drill 3 of 4 (lc-contiguous-array moved to 1.3 as a look-alike), no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
@@ -131,11 +132,11 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1, 0.2, 0.3.
-- New: parity arguments, divisibility and counting multiples, gcd and lcm via the Euclidean algorithm, remainders and basic modular arithmetic (sums and products modulo m, negative remainders). Cards: parity, divisibility, gcd-lcm, mod-arithmetic-basic.
-- Forbidden keywords: every keyword of topics 0.5–7.8 (next_permutation, subset enumeration, multiset, priority_queue, prefix sum, two pointers, binary search, …). Modular inverse, fast exponentiation and sieves belong to Phase 2.
-- Glossary terms already defined: 0.1, 0.2, 0.3 (and 1.3).
-- Bank 0.4 (step 1): look-alike pair ac-abc148_c / ac-abc060_b (new); reviews ac-abc162_c, ac-abc171_c, cf-1343B, cf-1294A (new); ac-abc150_d moved to exam.
+- Allowed: 0.1, 0.2, 0.3, 0.4.
+- New: trying every candidate: nested loops over pairs and triples, all subsets as bitmasks, all orders with next_permutation, recursive generation of choice sequences, enumerating the answer. Cards: nested-loops, subset-bitmask, permutations, recursive-choices, enumerate-answer.
+- Forbidden keywords: every keyword of topics 0.6–7.8 (priority_queue, multiset, prefix sum, two pointers, binary search, backtracking and pruning (3.1), memoisation and dynamic programming (3.2), bitmask dp (3.7), …).
+- Glossary terms already defined: 0.1–0.4 (and 1.3).
+- Bank 0.5 (step 1): look-alike pairs ac-abc263_c / ac-abc165_c (strictly increasing vs non-decreasing; moved from drill and review) and ac-abc374_c / ac-abc119_c (two vs four choices per item; moved from drill and checkpoint); checkpoint ac-abc363_c and reviews ac-abc215_c, ac-abc080_c, ac-abc136_b, lc-letter-case-permutation (new).
 - Phase 0 decisions (M2, made while Saurabh is travelling): any tier may fill Phase 0 reserved purposes (ABC A–B are tier 1, so tier 3–4 reviews are rare); the earlier-topic drill minimum is min(3, order − 1), so 0.1 needs none, 0.2 one, 0.3 two.
 
 ## Blocked

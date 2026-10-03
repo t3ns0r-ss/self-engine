@@ -442,14 +442,60 @@ lookalike_pairs:
     a_tool: "gcd-lcm (0.4): lcm(A, B)"
     b_tool: "mod-arithmetic-basic (0.4): remainders of kA modulo B repeat"
     flipping_difference: A asks for one common multiple; B asks which remainders the multiples of A can leave modulo B, which repeat after B steps, so trying k = 1..B decides it.
-self_test: []
+self_test:
+  - q: What does C++ print for -7 % 3, and how do you get the remainder in [0, 3)?
+    a: It prints −1, because C++ rounds −7/3 toward zero (to −2) and −7 − (−2)·3 = −1. The remainder in [0, 3) is ((−7 % 3) + 3) % 3 = 2 (Theorem 0.4.1).
+  - q: How many multiples of 6 lie in [10, 50]? Compute with the formula and check the boundaries.
+    a: "⌊50/6⌋ − ⌊9/6⌋ = 8 − 1 = 7: they are 12, 18, 24, 30, 36, 42, 48. Using ⌊10/6⌋ instead of ⌊9/6⌋ would also give 7 here only because 10 is not a multiple; for [12, 50] it would lose 12."
+  - q: Five coins show heads; a move flips exactly two coins. Can all five show tails? Name the invariant.
+    a: No. Each move changes the number of heads by −2, 0 or +2, so its parity is invariant (Theorem 0.4.3). It starts odd (5) and the target 0 is even.
+  - q: Why is (a·b) mod m computed as ((a mod m)·(b mod m)) mod m, and when can this product still overflow?
+    a: Theorem 0.4.4 says the remainder of a product depends only on the factors' remainders, and reducing first keeps the factors below m. The product is then below m², which overflows long long when m is larger than about 3·10^9.
+  - q: Can you compute (a / b) mod m as ((a mod m) / b) mod m? Give a counterexample.
+    a: "No. With a = 10, b = 2, m = 6: 10/2 = 5, but (10 mod 6)/2 = 2. Theorem 0.4.4 covers only addition, subtraction and multiplication; division modulo m needs a later tool (topic 2.2)."
+  - q: Trace Euclid on (252, 105) and give the number of loop steps.
+    a: "(252, 105) → (105, 42) → (42, 21) → (21, 0): three steps, gcd = 21. Each step replaces (a, b) by (b, a mod b); 252 mod 105 = 42, 105 mod 42 = 21, 42 mod 21 = 0."
+  - q: Why is lcm(a, b) computed as a / gcd(a, b) · b rather than a · b / gcd(a, b)?
+    a: "Both are equal mathematically (Theorem 0.4.6), but a · b can overflow even when the LCM fits: for a = b = 10^18 the LCM is 10^18, while a · b = 10^36. Dividing first keeps every intermediate value at most the LCM."
 checkpoint:
   time_limit_minutes: 90
   problems:
     - ac-abc136_d
     - lc-check-if-array-pairs-are-divisible-by-k
     - ac-abc253_d
-decision_map: []
+decision_map:
+  - weak_signal: '"Is it possible to reach …?" with moves that change two things at once'
+    choose: parity
+    when: Every move changes some quantity by an even amount, so its parity is fixed (Theorem 0.4.3).
+    over:
+      - card: direct-simulation
+        because: Following moves cannot prove impossibility; an invariant can.
+      - card: case-analysis
+        because: Parity is often the first case split; the remaining cases still need a construction.
+  - weak_signal: '"divisible by", "multiple of", counts in a huge range [l, r]'
+    choose: divisibility
+    when: Only remainders modulo k matter, or the count of multiples is ⌊r/k⌋ − ⌊(l−1)/k⌋ (Theorem 0.4.2).
+    over:
+      - card: closed-form
+        because: Counting multiples is a closed form of its own; use the floor formula with care for l ≤ 0.
+      - card: budget-from-constraints
+        because: Looping over the range is too slow for r up to 10^18.
+  - weak_signal: Repeated subtraction of the smaller from the larger; periods that must coincide
+    choose: gcd-lcm
+    when: Subtractions and remainders keep the GCD (Theorem 0.4.5); common multiples are multiples of the LCM (Theorem 0.4.6).
+    over:
+      - card: direct-simulation
+        because: Subtracting one at a time can take 10^18 steps; Euclid replaces a run of subtractions by one remainder.
+      - card: divisibility
+        because: With two divisors at once, the LCM decides what is divisible by both.
+  - weak_signal: '"print the answer modulo 10^9 + 7"; huge sums, products or counts'
+    choose: mod-arithmetic-basic
+    when: Only additions, subtractions and multiplications are needed, reduced after every step (Theorem 0.4.4).
+    over:
+      - card: overflow-64bit
+        because: long long alone cannot hold the exact value; reducing modulo m keeps every number small.
+      - card: direct-simulation
+        because: When a process on remainders must stop, the remainders repeat within m steps (Theorem 0.3.1).
 glossary_added:
   - divides
   - multiple

@@ -4,8 +4,8 @@
 - Milestone: M1 (topic 1.3 exemplar)
 - Topic: 1.3 Two pointers and sliding window
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.3 step 7 (worked examples): Playlist, Enough Array, Container With Most Water, each a code unit tested on the page samples plus stress 5000
-- Next action: 1.3 step 8 (self-test questions; drill, look-alikes, checkpoint and reviews are already in the data file)
+- Last completed step: 1.3 step 8 (drill, look-alikes, self-test, checkpoint, reviews): 8 self-test questions with checked counterexamples; section intros
+- Next action: 1.3 step 9 (decision map)
 
 ## Gates
 | Gate | Status | Date |
@@ -22,7 +22,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | in progress (step 7 of 10) | — |
+| 1.3 | in progress (step 8 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

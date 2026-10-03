@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
-- Topic: 0.1 C++ for competitive programming
+- Topic: 0.2 Complexity analysis and reading constraints
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.1 steps 8–9 (self-test 7 questions, section intros, decision map 3 entries)
-- Next action: 0.1 step 10 (self-review)
+- Last completed step: 0.1 step 10 (self-review): draft removed, build, 48 tests, code units, browser tests all pass
+- Next action: 0.2 step 1 (scope)
 
 ## Gates
 | Gate | Status | Date |
@@ -23,7 +23,7 @@
 | id | status | merged commit |
 |---|---|---|
 | 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
-| 0.1 | in progress (step 9 of 10) | — |
+| 0.1 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

@@ -2,7 +2,7 @@
 // (PLAN.md milestone M0). All problems are fake (ids cf-9xxxA, titles "Placeholder …") and
 // must never stay in the repository: tests/e2e.sh creates them, builds, tests, and removes them.
 import { writeFileSync, rmSync, mkdirSync, readFileSync, existsSync, cpSync, readdirSync } from 'node:fs';
-import { stringify } from 'yaml';
+import { parse, stringify } from 'yaml';
 
 const FILES = [
   'src/data/bank/1-2.yaml',
@@ -128,9 +128,16 @@ writeFileSync('notes/bank/1.3.md', notes(bank13));
 writeFileSync('notes/bank/1.2.md', notes(bank12));
 writeFileSync('src/data/topics/1-3.yaml', header + stringify(topic));
 if (!existsSync(GLOSSARY_BACKUP)) writeFileSync(GLOSSARY_BACKUP, readFileSync(GLOSSARY, 'utf8'));
+// Real lessons stay in place during the test, so their glossary terms stay too; the placeholder
+// adds only the terms it needs that are not there yet.
+const realGlossary = parse(readFileSync(GLOSSARY_BACKUP, 'utf8')) ?? [];
+const have = new Set(realGlossary.map((g) => g.term.toLowerCase()));
 writeFileSync(GLOSSARY, stringify([
-  { term: 'window', definition: 'A contiguous segment a[l..r] of an array.', topic: '1.3' },
-  { term: 'GCD', expansion: 'greatest common divisor', definition: 'The largest positive integer dividing both numbers.', topic: '0.4' },
+  ...realGlossary,
+  ...[
+    { term: 'window', definition: 'A contiguous segment a[l..r] of an array.', topic: '1.3' },
+    { term: 'GCD', expansion: 'greatest common divisor', definition: 'The largest positive integer dividing both numbers.', topic: '0.4' },
+  ].filter((g) => !have.has(g.term.toLowerCase())),
 ]));
 cpSync('tests/placeholder/window-sum', `${CODE}/window-sum`, { recursive: true });
 mkdirSync('src/content/docs/phase-1', { recursive: true });

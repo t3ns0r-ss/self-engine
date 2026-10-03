@@ -14,7 +14,10 @@ before(() => {
 after(() => execFileSync('node', ['tests/placeholder/make.mjs', '--remove']));
 
 const run = (mutate) => {
+  // Only the placeholder topic is checked here; real lessons are tested by the build.
   const d = structuredClone(base);
+  d.topics = { '1.3': d.topics['1.3'] };
+  d.lessons = { '1.3': d.lessons['1.3'] };
   mutate?.(d, d.topics['1.3']);
   return validateTopics(d);
 };
@@ -39,8 +42,8 @@ test('checkpoint time limit by phase', () => expectError(run((d, t) => { t.check
 test('checkpoint lists checkpoint problems', () => expectError(run((d, t) => { t.checkpoint.problems[0] = t.problems[0].id; }), /not a problem with role checkpoint/));
 test('review sets of 3–4', () => expectError(run((d, t) => { t.problems.find((p) => p.review_set === 2).review_set = 1; }), /review set 2 has 2 problems/));
 test('glossary term must exist with the topic', () => {
-  expectError(run((d, t) => { t.glossary_added.push('pointer'); }), /"pointer" is not in glossary.yaml/);
-  expectError(run((d) => { d.glossary[0].topic = '1.2'; }), /has topic 1.2 in glossary.yaml/);
+  expectError(run((d, t) => { t.glossary_added.push('no-such-term'); }), /"no-such-term" is not in glossary.yaml/);
+  expectError(run((d) => { d.glossary.find((g) => g.term === 'window').topic = '1.2'; }), /has topic 1.2 in glossary.yaml/);
 });
 test('decision map choices', () => expectError(run((d, t) => { t.decision_map[0].choose = 'prefix-count-lookup'; }), /not a card of 1.3/));
 test('lesson headings in order', () => expectError(run((d) => { d.lessons['1.3'].text = d.lessons['1.3'].text.replace('## 7. Bug catalogue', '## 7. Bugs'); }), /missing or out-of-order heading "## 7. Bug catalogue"/));

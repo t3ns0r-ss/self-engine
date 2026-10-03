@@ -7,6 +7,12 @@ const OUT = process.env.SHOTS || path.join(__dirname, '.shots');
 fs.mkdirSync(OUT, { recursive: true });
 let failures = 0;
 const check = (cond, msg) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`); if (!cond) failures++; };
+// Ladder problems in every topic file present during the test (real lessons plus the placeholder).
+const { parse } = require('yaml');
+const topicDir = path.join(__dirname, '..', '..', 'src', 'data', 'topics');
+const topicFiles = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((f) => parse(fs.readFileSync(path.join(topicDir, f), 'utf8')));
+const ladderTotal = topicFiles.reduce((a, t) => a + t.problems.filter((x) => x.role === 'ladder').length, 0);
+const cardTotal = topicFiles.reduce((a, t) => a + t.cards.length, 0);
 const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
 
 (async () => {
@@ -61,7 +67,7 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   check(await p.locator('td:has-text("checkpoint")').count() === 0, 'checkpoint problems hidden before passing');
   check(await p.locator('text=hidden until their topic').isVisible(), 'hidden count explained');
   await p.locator('select[aria-label=Role]').selectOption('ladder');
-  check(await p.locator('tbody tr').count() === 12, 'role filter');
+  check(await p.locator('tbody tr').count() === ladderTotal, `role filter (${ladderTotal} ladder problems)`);
   await p.locator('button.th-sort:has-text("Difficulty")').click();
   await p.locator('button.th-sort:has-text("Difficulty")').click();
   check((await p.locator('tbody tr').first().textContent()).includes('1600'), 'sort by difficulty, descending');
@@ -71,15 +77,15 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   await p.waitForSelector('.handbook');
   check(await p.locator('h3:has-text("Longest/shortest contiguous segment")').isVisible(), 'handbook groups by weak signal');
   await p.locator('button:has-text("By topic")').click();
-  check(await p.locator('.recognition-card').count() === 3, 'handbook lists cards by topic');
+  check(await p.locator('.recognition-card').count() === cardTotal, `handbook lists cards by topic (${cardTotal})`);
   await p.locator('button:has-text("Flashcards")').click();
   await p.locator('button:has-text("Show the card")').click();
   check(await p.locator('.flashcard:has-text("Decisive property")').count() === 1, 'flashcard flips');
 
   // Glossary.
   await p.goto(`${BASE}/glossary/`);
-  check(await p.locator('dt:has-text("GCD")').isVisible() && await p.locator('text=greatest common divisor').isVisible(), 'glossary shows expansions');
-  check(await p.locator('a:has-text("Introduced in 1.3")').isVisible(), 'glossary links the introducing lesson');
+  check(await p.locator('dt:has-text("GCD")').first().isVisible() && await p.locator('text=greatest common divisor').first().isVisible(), 'glossary shows expansions');
+  check(await p.locator('a:has-text("Introduced in 1.3")').first().isVisible(), 'glossary links the introducing lesson');
 
   // Contest log.
   await p.goto(`${BASE}/contests/`);

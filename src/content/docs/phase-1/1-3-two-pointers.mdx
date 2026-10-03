@@ -13,6 +13,15 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import longestWindow from '../../../../code/1.3/longest-window/solution.cpp?raw';
+import shortestWindow from '../../../../code/1.3/shortest-window/solution.cpp?raw';
+import countWindows from '../../../../code/1.3/count-windows/solution.cpp?raw';
+import fixedWindow from '../../../../code/1.3/fixed-window/solution.cpp?raw';
+import windowMax from '../../../../code/1.3/window-max/solution.cpp?raw';
+import pairSum from '../../../../code/1.3/pair-sum/solution.cpp?raw';
+import pairsAtMost from '../../../../code/1.3/pairs-at-most/solution.cpp?raw';
+import twoSorted from '../../../../code/1.3/two-sorted/solution.cpp?raw';
+import subsequence from '../../../../code/1.3/subsequence/solution.cpp?raw';
 
 <TopicHeader topic="1.3" />
 
@@ -222,6 +231,146 @@ Each card names one form of the method. The **decisive property** is the precond
 <Cards topic="1.3" />
 
 ## 6. Templates
+
+Nine short programs, one for each mechanism in Section 4. Each reads a small made-up problem from standard input, so it can be tested on its own. In a contest you copy the loop, not the whole program.
+
+All nine start with `#include <bits/stdc++.h>` (one line that includes the whole standard library) and `using namespace std;` (so `vector` can be written instead of `std::vector`). Topic 0.1 explains both. They read numbers with `cin >> x` and write with `cout << x << "\n"`.
+
+### Longest window (Theorem 1.3.1)
+
+<Code code={longestWindow} lang="cpp" title="longest-window/solution.cpp" />
+
+**How it works.** `sum` always equals $a_l + \dots + a_r$. For each `r`, the new element is added to `sum`. While the window is invalid (`sum > K`), its first element is removed and `l` moves right. After the loop, `[l, r]` is the longest valid window ending at `r` (Theorem 1.3.1, part 2), so `r - l + 1` is a candidate for `best`. If even $a_r$ alone exceeds $K$, the loop empties the window (`l = r + 1`) and the candidate is 0.
+
+**C++ details explained.**
+- `vector<long long> a(n);` makes an array of `n` values of type `long long`, all 0.
+- `for (auto& x : a) cin >> x;` visits every element of `a`. `auto` lets the compiler work out the type (`long long`); the `&` makes `x` a *reference*, another name for the element itself, so reading into `x` writes into `a`. Without `&`, `x` would be a copy and `a` would stay all zeros.
+- `max(best, r - l + 1)` returns the larger of two values of the same type.
+- `long long K` with the comment: $K$ can be larger than about $2.1 \cdot 10^9$, the largest `int`.
+
+**Tested.** Stress-tested against a brute force that sums every subarray, on 5000 random inputs ($n \le 8$, values $\le 10$, $K$ sometimes equal to one element), plus 4 fixed tests: the trace from Section 4.1, a single element larger than $K$, all values equal, and values of $10^9$ whose sum needs `long long`.
+
+**Alternative formulation (non-shrinking window).** Replace `while (sum > K)` with `if (sum > K)`. The window then moves right by one place when it is invalid, instead of shrinking, and its length never decreases. The answer is still `best` (equivalently, the final `r - l + 1`), but the window itself may be invalid at the end.
+
+*Proof.* Let $B(r)$ be the length of the longest valid window inside $[0, r]$, and let $w$ be the window length after iteration $r - 1$; assume $w = B(r-1)$ (true before the first iteration with $w = 0$). Iteration $r$ first makes the window $[r - w, r]$, of length $w + 1$.
+- If it is valid, $B(r) \ge w + 1$. Also $B(r) \le w + 1$: any valid window of length $L$ ending at $r$ has the valid sub-window of length $L - 1$ ending at $r - 1$ (closure under shrinking), so $L - 1 \le B(r - 1) = w$. The window is kept, with length $w + 1 = B(r)$.
+- If it is invalid, no valid window ending at $r$ has length $w + 1$ or more, because each such window contains $[r - w, r]$ and would make it valid by closure under shrinking. So $B(r) = w$, and the `if` removes one element, leaving length $w$. $\square$
+
+The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in complexity, but you will meet it in other people's code, and Section 7 explains why changing `while` to `if` is *not* a bug here.
+
+### Shortest window (Theorem 1.3.1, opposite condition)
+
+<Code code={shortestWindow} lang="cpp" title="shortest-window/solution.cpp" />
+
+**How it works.** After adding $a_r$, the `while` loop runs as long as the window still reaches $S$. Each pass records the current length (a window ending at `r` that reaches $S$) and then removes $a_l$. When the loop stops, `sum` $< S$, so `l` is the smallest left end whose window falls short (Theorem 1.3.1 applied to "sum less than $S$"), and the last length recorded, for the window starting at `l - 1`, is the shortest one ending at `r` that reaches $S$. `best` starts at `n + 1`, a value no real answer can have, so "nothing found" can be told apart.
+
+**C++ details explained.**
+- `cond ? x : y` (the conditional operator) is `x` if `cond` is true and `y` otherwise. Here it prints 0 when `best` was never updated.
+- `min(best, r - l + 1)` returns the smaller value.
+
+**Tested.** Stress-tested against a brute force on 5000 random inputs ($n \le 8$, values $\le 10$, $S$ sometimes equal to the total so only the whole array works), plus 4 fixed tests: the trace array, a single element below $S$, all values equal, and three values of $10^9$ with $S = 3 \cdot 10^9$.
+
+**Alternative formulation.** Use the shape of Theorem 1.3.1 directly: keep a `while (sum - a[l] >= S)` loop that drops the first element only while the rest still reaches $S$, then record `r - l + 1` if `sum >= S`. It keeps the window valid instead of stepping one past it. Both are correct by the same theorem (the variant was also stress-tested on 5000 inputs). The first element is never dropped from a one-element window, because then `sum - a[l]` is 0, which is less than $S \ge 1$.
+
+### Counting windows (Theorem 1.3.2)
+
+<Code code={countWindows} lang="cpp" title="count-windows/solution.cpp" />
+
+**How it works.** The validity condition is "at most $k$ distinct values", which is closed under shrinking (removing elements cannot add new values), and the empty window has 0 distinct values. `cnt` maps each value in the window to how many times it occurs, so `cnt.size()` is the number of distinct values. A value whose count drops to 0 is erased, so it no longer counts. After the `while` loop, `l` $= L(r)$, and Theorem 1.3.2 says the valid windows ending at `r` are exactly those starting at `l, l + 1, …, r`: `r - l + 1` of them.
+
+**C++ details explained.**
+- `map<int, int> cnt;` stores pairs (key, value) sorted by key; here key = an array value, value = its count. Topic 0.6 covers its costs: each operation is $O(\log n)$.
+- `cnt[a[r]]++` looks up `a[r]`. If the key is missing, `[]` first inserts it with count 0, then `++` adds 1.
+- `--cnt[a[l]] == 0` subtracts 1 *before* comparing (pre-decrement), so it asks "did the count just reach 0?".
+- `cnt.erase(a[l])` removes the key; `cnt.size()` is the number of keys. `(int)` converts the size (an unsigned type) to `int` before comparing with `k`, which avoids a compiler warning about mixing signed and unsigned numbers.
+
+**Tested.** Stress-tested against a brute force that builds a `set` of every subarray, on 5000 random inputs ($n \le 9$, values in $[-5, 5]$, $k$ from 0 to 4), plus 4 fixed tests: a mixed array checked by hand (11 windows), $n = 1$, all values equal ($k = 1$ gives all 10 windows), and $k = 0$ (no non-empty window).
+
+**Alternative formulation.** For "exactly $k$ distinct values", which is not closed under shrinking, count "at most $k$" minus "at most $k - 1$". Every window with exactly $k$ distinct values is counted by the first and not by the second.
+
+### Fixed-size window (Theorem 1.3.3)
+
+<Code code={fixedWindow} lang="cpp" title="fixed-window/solution.cpp" />
+
+**How it works.** The summary is the map of counts. At step `r`, `a[r]` enters; from `r = k` on, `a[r - k]` leaves, so the window is always the last `k` elements (Theorem 1.3.3). From `r = k - 1` on, the window is complete and its number of distinct values, `cnt.size()`, is a candidate.
+
+**C++ details explained.** None beyond the previous template.
+
+**Tested.** Stress-tested against a brute force on 5000 random inputs ($n \le 9$, $k$ sometimes equal to $n$), plus 4 fixed tests: a hand-checked array, $n = k = 1$, all values equal, and values $\pm 10^9$.
+
+**Alternative formulation.** When the summary is a sum, prefix sums (topic 1.2) give each window's sum as $P_{r+1} - P_{r-k+1}$ with no add or remove at all. Counts of distinct values have no such formula, which is why the sliding update is needed here.
+
+### Maximum of each fixed-size window (Theorem 1.3.3 with a multiset)
+
+<Code code={windowMax} lang="cpp" title="window-max/solution.cpp" />
+
+**How it works.** A single "maximum so far" variable cannot remove an element (Section 4.3), so the window's values are kept in a `multiset`, a sorted collection that keeps duplicates. Adding is `insert`; removing the leaving element is `erase` of *one* copy; the maximum is the last element.
+
+**C++ details explained.**
+- `multiset<int> window;` keeps its elements sorted and allows equal elements (topic 0.6). Insert, find, and erase each cost $O(\log k)$.
+- `window.find(x)` returns an *iterator* (a position in the collection) of one element equal to `x`. `window.erase(iterator)` removes only that element. `window.erase(x)` with a value would remove *every* copy of `x`, which is a bug (Section 7).
+- `window.rbegin()` is an iterator to the last (largest) element; `*` reads the value at that position.
+- `out.push_back(x)` appends `x` to the vector `out`.
+
+**Tested.** Stress-tested against a brute force using `max_element` on 5000 random inputs ($n \le 9$, values in $[-6, 6]$, many duplicates), plus 4 fixed tests including all-equal values and a pattern `5 1 5 1` where a duplicate maximum leaves the window.
+
+**Alternative formulation.** Topic 1.6 gives an $O(n)$ method. Within this topic the `multiset` is the natural choice; $O(n \log k)$ is fast enough for $n \le 2 \cdot 10^5$.
+
+### Pair with a given sum (Theorem 1.3.4)
+
+<Code code={pairSum} lang="cpp" title="pair-sum/solution.cpp" />
+
+**How it works.** After sorting, `l` and `r` start at the two ends. If the sum is too small, no partner inside `[l, r]` can help `a[l]` (all are at most `a[r]`), so `l` moves in; if too large, `a[r]` is discarded the same way. The loop stops when the pointers meet, so an element is never paired with itself.
+
+**C++ details explained.**
+- `sort(a.begin(), a.end())` sorts the whole vector in increasing order in $O(n \log n)$ (topic 1.1). `begin()` and `end()` are iterators to the first element and one past the last.
+- `break` leaves the `while` loop at once.
+
+**Tested.** Stress-tested against a brute force over all pairs on 5000 random inputs ($n \le 8$, values in $[-10, 10]$, and often $T = 2a_i$, which tempts pairing $a_i$ with itself), plus 5 fixed tests including $n = 1$, all values equal, a negative value, and two values of $10^9$.
+
+**Alternative formulation.** Scan the array once, keeping a `set` of the values seen so far; for each $a_j$, the answer is YES if $T - a_j$ is already in the set. Correct because a pair $i < j$ is found exactly when $a_j$ is scanned. It costs $O(n \log n)$ too, needs no sort, and also works when the original positions must be reported. The two-pointer version needs only $O(1)$ extra memory after sorting.
+
+### Counting pairs with sum at most T (Theorem 1.3.4, counting form)
+
+<Code code={pairsAtMost} lang="cpp" title="pairs-at-most/solution.cpp" />
+
+**How it works.** If `a[l] + a[r] <= T`, then `a[l]` plus any element between them is also at most $T$ (the array is sorted), so all `r - l` pairs $(l, j)$ with $l < j \le r$ count, and `l` is finished. Otherwise `a[r]` plus even the smallest remaining element is too big, so `r` is finished. Each pair $(i, j)$ is counted once: when its left index $i$ is finished.
+
+**C++ details explained.** None beyond the previous templates.
+
+**Tested.** Stress-tested against a brute force on 5000 random inputs ($n \le 8$, values in $[-10, 10]$, $T$ often equal to the sum of two elements), plus 4 fixed tests including $n = 1$, all values equal, and values of $-10^9$ whose sum needs `long long`.
+
+**Alternative formulation.** Counting pairs $(i, j)$ with $a_i + a_j \le T$ is the same as counting, for each $i$, the elements at most $T - a_i$. With a second pointer walking down as $a_i$ grows, this is the forward-only walk of Theorem 1.3.5 run in the opposite direction; the code is the same loop written differently.
+
+### Walking two sorted lists (Theorem 1.3.5)
+
+<Code code={twoSorted} lang="cpp" title="two-sorted/solution.cpp" />
+
+**How it works.** Both lists are sorted. For each `a[i]` in increasing order, `j` advances past every `b` value smaller than `a[i]`; afterwards `j` is $p(i)$, the number of such values, so `pairs += j` counts them. The closest `b` value to `a[i]` is either `b[j]` (the first that is at least `a[i]`) or `b[j - 1]` (the last below it), whichever exists. `j` never moves back because `a` is sorted (Theorem 1.3.5).
+
+**C++ details explained.**
+- `vector<long long> a(n), b(m);` declares two vectors in one line.
+- `LLONG_MAX` is the largest `long long` value, used as "no candidate yet".
+- The two `if` checks guard the indices: `b[j]` exists only if `j < m`, and `b[j - 1]` only if `j > 0`.
+
+**Tested.** Stress-tested against a brute force over all pairs on 5000 random inputs ($n, m \le 7$, values in $[-12, 12]$, sometimes all of `b` equal to a value of `a`), plus 4 fixed tests including equal single values and values $\pm 10^9$ whose difference needs `long long`.
+
+**Alternative formulation.** Merge the two sorted lists into one, remembering which list each value came from; the closest pair across the lists is then adjacent in the merged order. This is the same forward-only walk, with output.
+
+### Subsequence check (Theorem 1.3.6)
+
+<Code code={subsequence} lang="cpp" title="subsequence/solution.cpp" />
+
+**How it works.** `j` counts how many characters of `t` are matched. Each character of `s` is compared with the next unmatched character `t[j]`; if they are equal, it is matched at this earliest possible position. Theorem 1.3.6 shows that earliest matching never loses a solution.
+
+**C++ details explained.**
+- `string s, t; cin >> s >> t;` reads two words.
+- `size_t` is the unsigned integer type that `t.size()` returns; using it for `j` avoids comparing signed with unsigned values.
+- `for (char c : s)` visits every character of `s` in order (a copy is fine here because nothing is written).
+
+**Tested.** Stress-tested against a brute force that tries every set of kept positions of `s` ($|s| \le 10$, so at most 1024 sets), on 5000 random inputs over 1–3 letters with $t$ often built as a real subsequence, plus 4 fixed tests: a yes case, a no case with the right letters in the wrong order, equal one-letter strings, and $t$ longer than $s$.
+
+**Alternative formulation.** For many queries $t$ against the same $s$, store for each letter the sorted list of its positions in $s$ and jump to the next position after the current one. That needs a faster lookup than a forward walk and is left to topic 1.4.
 
 ## 7. Bug catalogue
 

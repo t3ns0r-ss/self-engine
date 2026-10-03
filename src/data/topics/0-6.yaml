@@ -488,14 +488,64 @@ lookalike_pairs:
     a_tool: heap-extract (0.6)
     b_tool: ordered-set-lookup (0.6)
     flipping_difference: In B each customer needs the largest price within their own budget, not the overall largest, so a multiset searched with s.upper_bound replaces the priority queue.
-self_test: []
+self_test:
+  - q: n = 2·10^5 values, each followed by the question "has this value appeared before?". Compare a vector scan, a set and an array indexed by value when values go up to 10^9.
+    a: "Vector scan: up to n²/2 = 2·10^10 steps, too slow. Array: 10^9 entries, too much memory. set: n·log n ≈ 3.6·10^6 comparisons, fine."
+  - q: After cnt[x]++ for every element of (5, 2, 5, 5, 2), how many pairs i < j have equal values? Compute it from the counts.
+    a: "Counts: 5 → 3, 2 → 2. Pairs: 3·2/2 + 2·1/2 = 3 + 1 = 4."
+  - q: Why can "if (cnt[x] > 0)" make a map grow, and what should be used instead for a pure check?
+    a: cnt[x] inserts the key x with value 0 if it is missing, so checking many absent values fills the map with zeros (more memory, slower iteration, a wrong size()). Use cnt.count(x) or cnt.find(x) != cnt.end().
+  - q: In a multiset {1, 4, 4, 9}, what are *s.lower_bound(4), *s.upper_bound(4), and the largest element ≤ 3? What does s.erase(4) leave?
+    a: lower_bound(4) → the first 4; upper_bound(4) → 9; the largest ≤ 3 is the element before upper_bound(3) (which points to the first 4), namely 1. s.erase(4) removes both 4s, leaving {1, 9}; s.erase(s.find(4)) would leave {1, 4, 9}.
+  - q: A process repeatedly removes the largest element and inserts half of it. Why is a priority queue enough here, but not for "remove the largest element that is at most x"?
+    a: A priority queue only gives the overall largest element. The first process needs exactly that (Theorem 0.6.5); the second needs a search by value below a bound, which needs an ordered set (Theorem 0.6.4).
+  - q: Why is push_back on a vector O(1) on average even though it sometimes copies the whole vector?
+    a: The capacity doubles when it is full, so the copies over n calls total 1 + 2 + 4 + … < 2n (Theorem 0.6.1); spread over n calls that is less than 2 copies per call.
+  - q: "Is a stack or a queue right for: (a) undoing the last action, (b) serving customers in order of arrival, (c) matching brackets?"
+    a: "(a) stack: the last action is undone first. (b) queue: the earliest arrival is served first. (c) stack: a closing bracket matches the most recent unmatched opening one (Theorem 0.6.6)."
 checkpoint:
   time_limit_minutes: 90
   problems:
     - ac-abc217_d
     - ac-abc212_d
     - ac-abc343_d
-decision_map: []
+decision_map:
+  - weak_signal: '"Has this appeared before?", "how many different …", values too large for an array'
+    choose: set-membership
+    when: Only whether a value occurred matters (Theorem 0.6.2).
+    over:
+      - card: map-counting
+        because: Counts or positions per value need a map; a set forgets them.
+      - card: nested-loops
+        because: Comparing every pair costs n²/2, too slow for n = 2·10^5.
+  - weak_signal: '"How many times", pairs with equal keys, grouping by a key'
+    choose: map-counting
+    when: The answer is a function of the count (or first/last position) per key (Theorem 0.6.3).
+    over:
+      - card: set-membership
+        because: A set only records presence.
+      - card: divisibility
+        because: When the key is a remainder (topic 0.4), counting per remainder is still a map, or an array of size k.
+  - weak_signal: '"The smallest … at least x", "the closest", min and max of a changing collection'
+    choose: ordered-set-lookup
+    when: Queries about order are mixed with insertions and deletions (Theorem 0.6.4).
+    over:
+      - card: heap-extract
+        because: A priority queue gives only the overall extreme, not the nearest value to x, and cannot erase by value.
+  - weak_signal: '"Each time take the largest/smallest", merging the two smallest'
+    choose: heap-extract
+    when: Every step needs only the current extreme element (Theorem 0.6.5).
+    over:
+      - card: ordered-set-lookup
+        because: A multiset also works but is slower and longer to write; use it when values must be found or erased by value.
+      - card: direct-simulation
+        because: Following the process with a scan for the largest element costs O(n) per step.
+  - weak_signal: Brackets, undo, "the last one", "in order of arrival"
+    choose: stack-queue
+    when: Each step touches only the newest item (stack) or the oldest (queue) (Theorem 0.6.6).
+    over:
+      - card: string-processing
+        because: One bracket kind needs only a depth counter (topic 0.3); several kinds, or positions of partners, need a stack.
 glossary_added:
   - STL
   - container

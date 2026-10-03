@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.3 Implementation and simulation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.2 step 10 (self-review): all checks pass
-- Next action: 0.3 step 1 (scope)
+- Last completed step: 0.3 step 1 (scope)
+- Next action: 0.3 step 2 (theory)
 
 ## Gates
 | Gate | Status | Date |
@@ -25,6 +25,7 @@
 | 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
 | 0.1 | done (on this session's branch) | — |
 | 0.2 | done (on this session's branch) | — |
+| 0.3 | in progress (step 1 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -129,11 +130,11 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1.
-- New: step counting and big-O, the 10^8-steps-per-second budget, closed forms for sums, amortised totals, harmonic loops over multiples, divisors up to √N. Cards: budget-from-constraints, closed-form, amortised-total, harmonic-loops.
-- Forbidden keywords: every keyword of topics 0.3–7.8 (for example simulation, gcd, sieve of eratosthenes, two pointers, prefix sum).
-- Glossary terms already defined: 0.1's terms (and 1.3's). "amortised analysis" moves from 1.3 to 0.2.
-- Bank 0.2 (step 1): new look-alikes ac-abc144_b (partner ac-abc144_c) and ac-abc106_b (partner ac-abc172_d); cf-1366A and cf-1342A to review; ac-abc296_d to exam.
+- Allowed: 0.1, 0.2.
+- New: careful step-by-step implementation (simulation), cycles in deterministic processes, grids (direction arrays, bounds), one-pass string processing with a small state, case analysis. Cards: direct-simulation, grid-processing, string-processing, case-analysis.
+- Forbidden keywords: every keyword of topics 0.4–7.8 (gcd, next_permutation, multiset, priority_queue, prefix sum, two pointers, breadth-first search, …).
+- Glossary terms already defined: 0.1, 0.2 (and 1.3).
+- Bank 0.3 (step 1): look-alike pairs ac-abc237_c / cses-1755 (pattern of cses-1755 changed to case-analysis) and ac-abc116_b / ac-abc106_c, moved from practice; ac-abc129_d moved to exam.
 - Phase 0 decisions (M2, made while Saurabh is travelling): any tier may fill Phase 0 reserved purposes (ABC A–B are tier 1, so tier 3–4 reviews are rare); the earlier-topic drill minimum is min(3, order − 1), so 0.1 needs none, 0.2 one, 0.3 two.
 
 ## Blocked

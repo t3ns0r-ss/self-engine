@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.4 Parity, divisibility, GCD via Euclid, basic modular arithmetic
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.3 step 10 (self-review: draft removed; validate, unit tests, build, e2e all pass)
-- Next action: 0.4 step 1 (scope, bank gaps: look-alike pairs, review sets, exam problem)
+- Last completed step: 0.4 step 1 (scope: lesson skeleton, draft data file, bank gaps)
+- Next action: 0.4 step 2 (theory)
 
 ## Gates
 | Gate | Status | Date |
@@ -26,6 +26,7 @@
 | 0.1 | done (on this session's branch) | — |
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
+| 0.4 | in progress (step 1 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -33,7 +34,7 @@
 | 0.1 | short | 34 | 13 |
 | 0.2 | short | 27 | 20 |
 | 0.3 | short | 45 | 24 |
-| 0.4 | short | 23 | 22 |
+| 0.4 | short | 23 | 28 |
 | 0.5 | short | 30 | 22 |
 | 0.6 | short | 36 | 27 |
 | 1.1 | short | 24 | 20 |
@@ -83,7 +84,7 @@
 - 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
 - 0.2: reserved has 20 of 24: no look-alike pair (no near-identical earlier-topic partner exists; the natural partners need later topics), 2 of 4 later_drill, review 7 of 10, no exam problems. Practice platform mix is 59% AtCoder.
 - 0.3: reserved has 24 (the minimum) but no look-alike pair and no exam problems; review has 9 of 10 (no tier-4 problem besides one LeetCode Hard).
-- 0.4: reserved has 22 of 24: one look-alike pair (2 of 4), 3 of 4 later_drill, review 6 of 10, no exam problems.
+- 0.4: reserved has 28: two look-alike pairs, 3 of 4 later_drill, review 9 of 10, exam 1 (after topic step 1).
 - 0.5: reserved has 22 of 24: no look-alike pair, review 6 of 10, exam 1 of 2. Pattern `permutations` spans only tiers 2–3 in practice.
 - 0.6: all reserved purposes are met except look-alikes (none found), so the status is short only for that.
 - 1.1: reserved 20 of 24: no look-alike pair, 3 of 4 later_drill, review 6 of 10, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
@@ -130,11 +131,11 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1, 0.2.
-- New: careful step-by-step implementation (simulation), cycles in deterministic processes, grids (direction arrays, bounds), one-pass string processing with a small state, case analysis. Cards: direct-simulation, grid-processing, string-processing, case-analysis.
-- Forbidden keywords: every keyword of topics 0.4–7.8 (gcd, next_permutation, multiset, priority_queue, prefix sum, two pointers, breadth-first search, …).
-- Glossary terms already defined: 0.1, 0.2 (and 1.3).
-- Bank 0.3 (step 1): look-alike pairs ac-abc237_c / cses-1755 (pattern of cses-1755 changed to case-analysis) and ac-abc116_b / ac-abc106_c, moved from practice; ac-abc129_d moved to exam.
+- Allowed: 0.1, 0.2, 0.3.
+- New: parity arguments, divisibility and counting multiples, gcd and lcm via the Euclidean algorithm, remainders and basic modular arithmetic (sums and products modulo m, negative remainders). Cards: parity, divisibility, gcd-lcm, mod-arithmetic-basic.
+- Forbidden keywords: every keyword of topics 0.5–7.8 (next_permutation, subset enumeration, multiset, priority_queue, prefix sum, two pointers, binary search, …). Modular inverse, fast exponentiation and sieves belong to Phase 2.
+- Glossary terms already defined: 0.1, 0.2, 0.3 (and 1.3).
+- Bank 0.4 (step 1): look-alike pair ac-abc148_c / ac-abc060_b (new); reviews ac-abc162_c, ac-abc171_c, cf-1343B, cf-1294A (new); ac-abc150_d moved to exam.
 - Phase 0 decisions (M2, made while Saurabh is travelling): any tier may fill Phase 0 reserved purposes (ABC A–B are tier 1, so tier 3–4 reviews are rare); the earlier-topic drill minimum is min(3, order − 1), so 0.1 needs none, 0.2 one, 0.3 two.
 
 ## Blocked

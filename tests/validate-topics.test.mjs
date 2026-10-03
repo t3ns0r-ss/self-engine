@@ -32,6 +32,7 @@ test('difficulty non-decreasing along rungs', () => expectError(run((d, t) => {
   d.banks['1.3'].problems.find((p) => p.id === r2.id).tier = 2;
 }), /is easier than earlier rung/));
 test('drill needs 3 earlier-topic answers', () => expectError(run((d, t) => { t.drill.forEach((x) => { x.answer_topic = '1.3'; x.answer_card = 'shrinkable-window'; }); }), /0 earlier-topic answers/));
+test('draft topics skip count rules', () => assert.deepEqual(run((d, t) => { t.draft = true; t.drill = []; t.problems = t.problems.filter((p) => p.role !== 'drill' && p.role !== 'review'); }), []));
 test('drill answer must be a known card or pattern', () => expectError(run((d, t) => { t.drill[0].answer_card = 'nope'; }), /nope is not a card or pattern of topic 1.3/));
 test('drill answer cannot be a later topic', () => expectError(run((d, t) => { t.drill[0].answer_topic = '1.4'; t.drill[0].answer_card = 'answer-search'; }), /answer_topic 1.4 must be this or an earlier topic/));
 test('checkpoint time limit by phase', () => expectError(run((d, t) => { t.checkpoint.time_limit_minutes = 120; }), /must be 90 minutes for phase 1/));

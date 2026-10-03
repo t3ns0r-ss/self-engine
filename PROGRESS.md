@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M0 done; B0 approved; B1–B7 done; waiting at the "Final bank review" gate
-- Topic: bank 7.8
+- Milestone: M1 (topic 1.3 exemplar)
+- Topic: 1.3 Two pointers and sliding window
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: B7, all 8 Phase 7 banks (7.1–7.8: 268 problems, 143 practice, 125 reserved; 7.8 complete), validated and published. Whole bank: 48 topics, 1983 problems
-- Next action: ⏸ Final bank review by Saurabh (bank plan Section 9, gate after B7). Then M1 per PLAN.md
+- Last completed step: 1.3 step 1 (scope): lesson skeleton, draft data file, code folder
+- Next action: 1.3 step 2 (theory): lesson Sections 1–4 and glossary entries
 
 ## Gates
 | Gate | Status | Date |
@@ -13,7 +13,8 @@
 | B0 pattern lists review | approved | 2026-10-02 |
 | M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
 | B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |
-| Final bank review | waiting for Saurabh | — |
+| Final bank review | approved ("Let's begin with material building") | 2026-10-03 |
+| M1 exemplar review | not reached | — |
 
 ## Saurabh is studying
 - Topic: —
@@ -21,6 +22,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
+| 1.3 | in progress (step 1 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -125,9 +127,11 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: —
-- New: —
-- Forbidden keywords: —
+- Allowed: 0.1–0.6 (Phase 0), 1.1 sorting, 1.2 prefix sums and difference arrays. None of these lessons is written yet; links to them show "coming soon".
+- New: two pointers (same direction and opposite ends), sliding window (shrinkable, fixed size), counting windows, walking two sorted sequences. Cards come from the five bank patterns: shrinkable-window, fixed-window, count-windows, opposite-ends, merge-walk.
+- Forbidden keywords: every keyword of topics 1.4–7.8 (curriculum.yaml), for example binary search, lower_bound, upper_bound, exchange argument, monotonic stack, monotonic deque, next greater element, prefix xor, dynamic programming, segment tree. The validator scans the lesson outside "What this topic does not cover".
+- Glossary terms already defined: none (the glossary is empty; earlier lessons are not written). 1.3 defines the basic terms it needs (subarray, window, pointer, …) with topic 1.3; when 1.1 and 1.2 are written in M3, terms that belong there move to those topics.
+- Draft flag: the topic data file carries `draft: true` until step 10, so the build passes while sections are empty (count rules skipped, lesson shows a draft notice). Not in PLAN.md; added so every step's commit keeps CI green.
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

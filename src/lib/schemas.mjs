@@ -116,6 +116,9 @@ export const topicProblem = z
 
 export const topicFile = z.strictObject({
   id: topicId,
+  // true while the per-topic pipeline (PLAN.md Section 13) is under way: count rules are skipped
+  // and the lesson shows a draft notice. Removed at step 10.
+  draft: z.boolean().default(false),
   cards: z.array(card),
   problems: z.array(topicProblem),
   drill: z.array(z.strictObject({

@@ -27,7 +27,7 @@ export type TopicProblem = {
   hints: string[] | null; editorial_url: string | null; review_set: 1 | 2 | 3 | null;
 };
 export type TopicFile = {
-  id: string; cards: Card[]; problems: TopicProblem[];
+  id: string; draft: boolean; cards: Card[]; problems: TopicProblem[];
   drill: { problem: string; answer_card: string; answer_topic: string; property: string; why_others_fail: string }[];
   lookalike_pairs: { a: string; b: string; a_tool: string; b_tool: string; flipping_difference: string }[];
   self_test: { q: string; a: string }[];

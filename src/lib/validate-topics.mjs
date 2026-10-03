@@ -129,32 +129,35 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
     const ofRole = (r) => tf.problems.filter((p) => p.role === r);
 
     // Counts (PLAN.md Section 12.3).
-    if (!is78 && (tf.cards.length < 3 || tf.cards.length > 6)) err(F, `has ${tf.cards.length} cards; 3–6 required`);
     const ladder = ofRole('ladder');
-    if (!is78) {
-      if (ladder.length < 12 || ladder.length > 20) err(F, `ladder has ${ladder.length} problems; 12–20 required`);
-      for (const c of tf.cards) {
-        const n = ladder.filter((p) => p.card === c.id).length;
-        if (n < 3) err(F, `card ${c.id} has ${n} ladder problems; at least 3 required`);
+    // Skipped while the topic is a draft (pipeline steps 1–9).
+    if (!tf.draft) {
+      if (!is78 && (tf.cards.length < 3 || tf.cards.length > 6)) err(F, `has ${tf.cards.length} cards; 3–6 required`);
+      if (!is78) {
+        if (ladder.length < 12 || ladder.length > 20) err(F, `ladder has ${ladder.length} problems; 12–20 required`);
+        for (const c of tf.cards) {
+          const n = ladder.filter((p) => p.card === c.id).length;
+          if (n < 3) err(F, `card ${c.id} has ${n} ladder problems; at least 3 required`);
+        }
       }
-    }
-    if (tf.drill.length < 8 || tf.drill.length > 12) err(F, `drill has ${tf.drill.length} items; 8–12 required`);
-    const earlier = tf.drill.filter((d) => byId.get(d.answer_topic) && byId.get(d.answer_topic).order < t.order).length;
-    if (!is78 && earlier < 3) err(F, `drill has ${earlier} earlier-topic answers; at least 3 required`);
-    if (tf.lookalike_pairs.length < 2 || tf.lookalike_pairs.length > 4) err(F, `has ${tf.lookalike_pairs.length} look-alike pairs; 2–4 required`);
-    if (tf.self_test.length < 5 || tf.self_test.length > 8) err(F, `has ${tf.self_test.length} self-test questions; 5–8 required`);
-    if (tf.checkpoint.problems.length !== 3) err(F, `checkpoint has ${tf.checkpoint.problems.length} problems; exactly 3 required`);
-    if (tf.checkpoint.time_limit_minutes !== checkpointMinutes(t.phase))
-      err(F, `checkpoint time limit must be ${checkpointMinutes(t.phase)} minutes for phase ${t.phase}`);
-    for (const s of [1, 2, 3]) {
-      const n = ofRole('review').filter((p) => p.review_set === s).length;
-      if (n < 3 || n > 4) err(F, `review set ${s} has ${n} problems; 3–4 required`);
-    }
-    const exam = ofRole('exam');
-    if (exam.length) {
-      const last = curriculum.filter((x) => x.phase === t.phase).at(-1);
-      if (last.id !== tid) err(F, `exam problems belong in the phase's last topic (${last.id})`);
-      if (exam.length < 6 || exam.length > 10) err(F, `phase exam has ${exam.length} problems; 6–10 required`);
+      if (tf.drill.length < 8 || tf.drill.length > 12) err(F, `drill has ${tf.drill.length} items; 8–12 required`);
+      const earlier = tf.drill.filter((d) => byId.get(d.answer_topic) && byId.get(d.answer_topic).order < t.order).length;
+      if (!is78 && earlier < 3) err(F, `drill has ${earlier} earlier-topic answers; at least 3 required`);
+      if (tf.lookalike_pairs.length < 2 || tf.lookalike_pairs.length > 4) err(F, `has ${tf.lookalike_pairs.length} look-alike pairs; 2–4 required`);
+      if (tf.self_test.length < 5 || tf.self_test.length > 8) err(F, `has ${tf.self_test.length} self-test questions; 5–8 required`);
+      if (tf.checkpoint.problems.length !== 3) err(F, `checkpoint has ${tf.checkpoint.problems.length} problems; exactly 3 required`);
+      if (tf.checkpoint.time_limit_minutes !== checkpointMinutes(t.phase))
+        err(F, `checkpoint time limit must be ${checkpointMinutes(t.phase)} minutes for phase ${t.phase}`);
+      for (const s of [1, 2, 3]) {
+        const n = ofRole('review').filter((p) => p.review_set === s).length;
+        if (n < 3 || n > 4) err(F, `review set ${s} has ${n} problems; 3–4 required`);
+      }
+      const exam = ofRole('exam');
+      if (exam.length) {
+        const last = curriculum.filter((x) => x.phase === t.phase).at(-1);
+        if (last.id !== tid) err(F, `exam problems belong in the phase's last topic (${last.id})`);
+        if (exam.length < 6 || exam.length > 10) err(F, `phase exam has ${exam.length} problems; 6–10 required`);
+      }
     }
 
     // References between sections.

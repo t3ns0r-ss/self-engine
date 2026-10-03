@@ -20,6 +20,11 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((
   const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
   if (!topics.length) console.log('no lessons yet');
   for (const tf of topics) {
+    // A draft lesson is still being written: its sections may be empty, so it is not tested yet.
+    if (tf.draft) {
+      console.log(`skip [${tf.id}] (draft)`);
+      continue;
+    }
     const t = curriculum.find((x) => x.id === tf.id);
     const slug = tf.id.replace('.', '-');
     const lesson = `${BASE}/phase-${t.phase}/${slug}-${t.slug}/`;

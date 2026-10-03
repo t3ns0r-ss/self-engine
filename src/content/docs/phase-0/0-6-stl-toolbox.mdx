@@ -18,15 +18,138 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. You receive $q = 2 \cdot 10^5$ queries. Each one either adds a number $x$ (up to $10^9$) to a collection, or asks whether $x$ is already in it.
+
+The direct method keeps the numbers in a `vector` and answers each question by scanning it. A scan of up to $2 \cdot 10^5$ numbers for each of up to $2 \cdot 10^5$ questions is $4 \cdot 10^{10}$ steps, about 400 seconds (topic 0.2). An array indexed by $x$ would answer in one step, but it needs $10^9$ entries, 4 GB of memory. A `set` keeps the numbers in a structure where both adding and looking up cost about $\log_2 (2 \cdot 10^5) \approx 18$ steps, so all queries take about $4 \cdot 10^6$ steps.
+
+The C++ Standard Template Library (STL) provides a handful of such containers, each built to make a few operations fast. This topic is about choosing the container whose fast operations are exactly the ones the problem asks for, and about knowing what each operation costs, so that the budget check of topic 0.2 can be done before writing any code.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming (CP): `vector`, `long long`, fast input and output.
+- Topic 0.2, complexity analysis: the step budget, $O(\log n)$, and amortised analysis (Theorem 0.2.4).
+- Topic 0.3, implementation and simulation: many problems here are simulations whose state lives in a container.
+- Topic 0.5, brute force: the reference solutions in this lesson's tests.
+
 ### What this topic does not cover
+
+- Sorting an array, with a custom comparator, and coordinate compression. Covered in topic 1.1. (A `set` keeps its own elements sorted; sorting a `vector` is a separate tool.)
+- Binary search on a sorted array, including the free functions `lower_bound` and `upper_bound`. Covered in topic 1.4. This lesson uses only the member functions of `set` and `map` with those names.
+- Stacks and deques that keep their elements in increasing order (monotonic stack, monotonic deque). Covered in topic 1.6.
+- Building your own trees for range queries (segment tree, Fenwick tree). Covered in Phase 5.
 
 ## 3. Definitions
 
+- A **container** is an object that stores a collection of elements, such as `vector<int>` or `set<int>`.
+- An **iterator** points to one element of a container; `*it` is that element, `++it` moves to the next one, and `c.end()` is the position just past the last element (it points to no element).
+- An **ordered set** (`set`) stores distinct values in increasing order; a **multiset** allows repeated values. A **map** stores pairs (key, value) with distinct keys, ordered by key.
+- A **hash table** (`unordered_set`, `unordered_map`) stores elements in buckets chosen by a hash function of the value; it keeps no order.
+- A **stack** gives access only to the most recently added element (last in, first out). A **queue** gives access only to the oldest element (first in, first out). A **deque** (double-ended queue) allows adding and removing at both ends.
+- A **priority queue** (`priority_queue`) gives access only to its largest element and allows adding elements and removing the largest. It is built on a **heap**, a tree stored in an array in which every parent is at least as large as its children.
+
 ## 4. Theory and proofs
+
+### 4.1 What each operation costs
+
+The C++ standard guarantees the following costs, where $n$ is the current number of elements. We take these guarantees as given (they come from the data structures inside the library: balanced search trees for `set` and `map`, hash tables for the `unordered_` containers, a binary heap for `priority_queue`).
+
+| container | fast operations | cost |
+|---|---|---|
+| `vector` | `v[i]`, `push_back`, `pop_back` | $O(1)$ (`push_back` amortised) |
+| `set`, `multiset`, `map` | `insert`, `erase`, `find`, `count`, `s.lower_bound(x)`, `s.upper_bound(x)`, `begin`, `prev(end)` | $O(\log n)$ |
+| `unordered_set`, `unordered_map` | `insert`, `erase`, `find`, `count` | $O(1)$ on average |
+| `priority_queue` | `push`, `pop` | $O(\log n)$; `top` is $O(1)$ |
+| `stack`, `queue`, `deque` | add and remove at the allowed ends | $O(1)$ |
+
+Operations that are *not* fast: inserting or erasing in the middle of a `vector` ($O(n)$, everything after it moves), searching a `vector` for a value ($O(n)$), and asking a `priority_queue` for anything but its largest element (not supported).
+
+**Theorem 0.6.1 (amortised `push_back`).** If a vector doubles its capacity whenever it is full, then $n$ calls of `push_back`, starting from an empty vector, copy fewer than $2n$ elements in total, so each call costs $O(1)$ on average.
+
+*Proof.* Copies happen only when the capacity grows from $c$ to $2c$, and then $c$ elements are copied. The capacities that occur are $1, 2, 4, \dots, 2^k$ with $2^k < n$, so the total number of copies is at most $1 + 2 + 4 + \dots + 2^k = 2^{k+1} - 1 < 2n$. Each call also writes one element, so the total work is less than $3n$ (Theorem 0.2.4). $\square$
+
+:::note[This proof needs]
+1. The capacity grows by a constant factor (here 2); growing by a constant amount would cost $O(n^2)$ in total.
+2. The bound is for the whole sequence of calls; a single `push_back` that triggers a copy costs $O(n)$.
+:::
+
+**Costs of a whole solution.** A program that performs $q$ operations on a container of at most $n$ elements, each costing $O(\log n)$, runs in $O(q \log n)$: for $q = n = 2 \cdot 10^5$, about $4 \cdot 10^6$ steps times a constant. The constants of tree-based containers are larger than those of arrays (each step follows pointers in memory), so $10^6$ to $10^7$ such operations per second is a safer estimate than $10^8$.
+
+**Hash tables.** "$O(1)$ on average" assumes the values spread evenly over the buckets. Inputs built on purpose to collide can make each operation $O(n)$; on sites where other contestants can submit such tests against your solution, the ordered `set` and `map` are the safe choice. In this course both are fine unless a lesson says otherwise.
+
+### 4.2 Membership and distinct values
+
+**Theorem 0.6.2 (sets).** After inserting $a_1, \dots, a_n$ into a `set`, it contains each distinct value exactly once, so `s.size()` is the number of distinct values, and `s.count(x)` is 1 exactly when $x$ equals some $a_i$. Building it costs $O(n \log n)$; each later query costs $O(\log n)$.
+
+*Proof.* Inserting a value that is already present leaves the set unchanged, and inserting a new value adds it; by induction on the number of insertions, the set holds exactly the distinct values inserted so far. The costs follow from the table. $\square$
+
+:::note[This proof needs]
+1. Only whether a value occurs matters, not how many times (otherwise use a `map` of counts, Theorem 0.6.3).
+2. The values can be compared (numbers, strings, pairs) or hashed for `unordered_set`.
+:::
+
+### 4.3 Counting by key
+
+**Theorem 0.6.3 (counting with a map).** Process $a_1, \dots, a_n$ in order, and before the step for $a_i$ let `cnt[x]` be the number of indices $j < i$ with $a_j = x$ (missing keys count as 0). Then:
+1. After `cnt[a_i]++` for every $i$, `cnt[x]` is the number of occurrences of $x$.
+2. The number of pairs $j < i$ with $a_j = a_i$ is the sum over $i$ of `cnt[a_i]` read just before incrementing it, which equals $\sum_x c_x (c_x - 1)/2$, where $c_x$ is the final count of $x$.
+
+All of this costs $O(n \log n)$ with `map`.
+
+*Proof.* 1. Each index increments the count of its own value once. 2. When $a_i$ is processed, `cnt[a_i]` counts exactly the earlier indices with the same value, so adding it over all $i$ counts each pair $j < i$ once, at its larger index. A value with $c_x$ occurrences contributes $0 + 1 + \dots + (c_x - 1) = c_x(c_x - 1)/2$. $\square$
+
+:::note[This proof needs]
+1. The answer depends only on the count per key (or on a list of indices per key, kept the same way).
+2. Reading `cnt[x]` with `[]` inserts the key $x$ with value 0 if it is missing; use `count` or `find` when only checking presence, so the map does not fill up with zero entries.
+3. Counts of pairs can reach $n^2/2 = 2 \cdot 10^{10}$ for $n = 2 \cdot 10^5$: `long long`.
+:::
+
+Example: for $a = (3, 1, 3, 3)$, the counts read before each increment are $0, 0, 1, 2$, so there are $3$ pairs of equal values; and $c_3 = 3$ gives $3 \cdot 2 / 2 = 3$.
+
+### 4.4 Nearest values in a changing set
+
+**Theorem 0.6.4 (ordered lookups).** In a `set` or `multiset` $s$:
+1. `s.lower_bound(x)` points to the smallest element $\ge x$, and `s.upper_bound(x)` to the smallest element $> x$; either is `s.end()` if no such element exists.
+2. The largest element $\le x$ is the one just before `s.upper_bound(x)`, if that iterator is not `s.begin()`; the largest element $< x$ is the one just before `s.lower_bound(x)`.
+3. The smallest element is `*s.begin()` and the largest is `*prev(s.end())` (`*s.rbegin()`).
+
+Each of these costs $O(\log n)$, and they stay correct after any number of insertions and deletions.
+
+*Proof.* The container keeps its elements in increasing order at all times. 1. This is the definition of the two member functions. 2. All elements before `s.upper_bound(x)` are $\le x$ and all elements from it on are $> x$; so the last element before it is the largest $\le x$, and it exists exactly when the iterator is not the first position. The same argument with $\ge$ gives the largest element $< x$. 3. The first and last elements in increasing order are the smallest and largest. $\square$
+
+:::note[This proof needs]
+1. The question is about the order of values (nearest, smallest, largest), and the collection changes between questions; a sorted `vector` would need $O(n)$ per insertion.
+2. Before moving back from an iterator (`prev(it)`), check that it is not `s.begin()`; before reading `*it`, check that it is not `s.end()`.
+3. In a `multiset`, `s.erase(x)` removes *every* copy of $x$; to remove one copy, use `s.erase(s.find(x))`.
+:::
+
+### 4.5 Repeatedly taking the largest
+
+**Theorem 0.6.5 (priority queues).** Suppose a process holds a collection of numbers and, at each step, removes the largest one and possibly inserts new ones. A `priority_queue` performs each step with `top`, `pop` and `push` in $O(\log n)$, so $k$ steps cost $O(k \log n)$, and the sequence of removed elements is exactly the one the process describes.
+
+*Proof.* `top` always returns a largest element currently stored, `pop` removes it, and `push` adds an element; so after every step the queue holds exactly the process's collection, and the element removed at each step is a largest one, as the process requires (if several are equal, any of them is a largest one, and they are equal values). The costs come from the table. $\square$
+
+:::note[This proof needs]
+1. The statement (or a proof) says which element to take: always the largest, or always the smallest.
+2. For the smallest instead of the largest, use `priority_queue<long long, vector<long long>, greater<long long>>`, or push negated values.
+3. Only the extreme element is needed; a query such as "the largest element at most $x$" needs an ordered set (Theorem 0.6.4).
+:::
+
+Example: halve the largest of $(8, 3, 5)$ (rounding down) three times. The queue holds $8, 3, 5$; take 8, push 4; take 5, push 2; take 4, push 2. What remains is $3, 2, 2$, sum 7.
+
+### 4.6 Stacks and queues
+
+**Theorem 0.6.6 (last in, first out).** Read a string of brackets `(` and `)` left to right, pushing the position of each `(` onto a stack and, at each `)`, popping the top position. If the stack is never empty at a `)` and is empty at the end, every `)` has been matched with the nearest unmatched `(` before it, and these matches form properly nested pairs.
+
+*Proof.* The top of the stack is always the most recent `(` not yet matched, because each push adds the newest `(` on top and each pop removes the top. So each `)` is matched with the nearest unmatched `(` before it. Two matched pairs $(p, q)$ and $(p', q')$ with $p < p' < q$ satisfy $q' < q$: when the `)` at $q$ is read, the `(` at $p'$ was pushed after $p$, so it is above $p$ in the stack and must have been popped already, by some `)` at $q' < q$. So pairs never cross. $\square$
+
+:::note[This proof needs]
+1. The process only ever uses the most recent unfinished item (stack) or the oldest waiting item (queue).
+2. Before `top()` or `pop()` (stack) and `front()` or `pop()` (queue), check that the container is not empty; calling them on an empty container is undefined behaviour.
+:::
+
+A **queue** is the same idea for "first come, first served": elements leave in the order they arrived, so a process that always serves the earliest waiting item is simulated with `push` at the back and `pop` at the front, $O(1)$ each.
 
 ## 5. Recognition Cards
 

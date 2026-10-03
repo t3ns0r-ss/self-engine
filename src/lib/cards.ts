@@ -1,12 +1,12 @@
-// Card lookup across topics. A topic without a written lesson has no cards yet; its bank
-// patterns stand in for them (same ids, same preconditions).
+// Card lookup across topics. A topic without a written lesson (or a draft that has no cards
+// yet) has no cards; its bank patterns stand in for them (same ids, same preconditions).
 import type { SiteData } from './data';
 
 export type CardRef = { topic: string; id: string; name: string; property: string };
 
 export function cardsOfTopic(data: SiteData, topic: string): CardRef[] {
   const tf = data.topics[topic];
-  if (tf) return tf.cards.map((c) => ({ topic, id: c.id, name: c.name, property: c.decisive_property }));
+  if (tf?.cards.length) return tf.cards.map((c) => ({ topic, id: c.id, name: c.name, property: c.decisive_property }));
   return (data.patterns[topic]?.patterns ?? []).map((p) => ({ topic, id: p.id, name: p.name, property: p.precondition }));
 }
 

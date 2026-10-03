@@ -6,6 +6,7 @@
 //
 //   node scripts/fetch_problem.mjs ac-abc300_c cses-1068 lc-two-sum cf-4A
 //   node scripts/fetch_problem.mjs --brief ...   (title and difficulty only)
+//   node scripts/fetch_problem.mjs --full ...    (statement with its samples, for worked-example tests)
 //
 // Sources: AtCoder and CSES problem pages; AtCoder difficulty from AtCoder Problems
 // (kenkoooo problem-models.json, cached for the day outside the repository); LeetCode's own
@@ -100,7 +101,7 @@ function leetcode(slug) {
   const res = JSON.parse(curl('https://leetcode.com/graphql', ['-X', 'POST', '-H', 'Content-Type: application/json', '-H', `Referer: ${url}`, '--data', body]));
   const q = res.data?.question;
   if (!q) throw new Error(`${url}: no such question`);
-  return { id: `lc-${slug}`, source: 'leetcode', url, title: q.title, difficulty: q.difficulty, premium: q.isPaidOnly, statement: q.isPaidOnly ? '(premium: do not use)' : lcStatement(text(q.content ?? '')) };
+  return { id: `lc-${slug}`, source: 'leetcode', url, title: q.title, difficulty: q.difficulty, premium: q.isPaidOnly, statement: q.isPaidOnly ? '(premium: do not use)' : lcStatement(text(q.content ?? '')), full: q.isPaidOnly ? undefined : text(q.content ?? '') };
 }
 
 function codeforces(contest, index) {
@@ -127,12 +128,15 @@ export function fetchProblem(id) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const brief = process.argv.includes('--brief');
+  // --full keeps the samples (needed for worked-example tests, PLAN.md Section 6.8).
+  const full = process.argv.includes('--full');
   for (const id of process.argv.slice(2).filter((a) => !a.startsWith('--'))) {
     try {
       const p = fetchProblem(id);
       console.log(`=== ${p.id} | ${p.title} | ${p.source} ${p.difficulty}${p.tags ? ` | tags: ${p.tags.join(', ')} | solved ${p.solved}` : ''}${p.premium ? ' | PREMIUM' : ''} | checked ${today()}`);
       // Samples are left out: the task, input format, and constraints come before them.
-      if (!brief) console.log(`${p.statement.split(/\n(?:Sample Input 1|Example 1:|Example\n)/)[0].trim()}\n`);
+      if (full) console.log(`${(p.full ?? p.statement).trim()}\n`);
+      else if (!brief) console.log(`${p.statement.split(/\n(?:Sample Input 1|Example 1:|Example\n)/)[0].trim()}\n`);
     } catch (e) {
       console.log(`=== ${id} | ERROR ${e.message}`);
     }

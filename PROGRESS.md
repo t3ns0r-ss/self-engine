@@ -4,8 +4,8 @@
 - Milestone: M1 (topic 1.3 exemplar)
 - Topic: 1.3 Two pointers and sliding window
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.3 step 5 (bug catalogue): 8 bugs found by stress.sh on broken copies, plus the non-shrinking variant documented as not a bug
-- Next action: 1.3 step 6 (problems): choose ladder, drill, look-alikes, checkpoint, reviews from the bank
+- Last completed step: 1.3 step 6 (problems): ladder 20 (5 cards), 3 worked examples, drill 10 (3 earlier-topic), 2 look-alike pairs, checkpoint 3, review sets 4+4+4; 7 review problems added to the bank
+- Next action: 1.3 step 7 (worked examples): Section 8 with three tested code units
 
 ## Gates
 | Gate | Status | Date |
@@ -22,7 +22,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | in progress (step 5 of 10) | — |
+| 1.3 | in progress (step 6 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -34,8 +34,8 @@
 | 0.5 | short | 30 | 22 |
 | 0.6 | short | 36 | 27 |
 | 1.1 | short | 24 | 20 |
-| 1.2 | short | 22 | 23 |
-| 1.3 | short | 24 | 24 |
+| 1.2 | short | 22 | 22 |
+| 1.3 | short | 24 | 32 |
 | 1.4 | short | 21 | 19 |
 | 1.5 | short | 21 | 22 |
 | 1.6 | short | 16 | 10 |
@@ -84,8 +84,8 @@
 - 0.5: reserved has 22 of 24: no look-alike pair, review 6 of 10, exam 1 of 2. Pattern `permutations` spans only tiers 2–3 in practice.
 - 0.6: all reserved purposes are met except look-alikes (none found), so the status is short only for that.
 - 1.1: reserved 20 of 24: no look-alike pair, 3 of 4 later_drill, review 6 of 10, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
-- 1.2: reserved 23 of 24: one look-alike pair (2 of 4), review 6 of 10, no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
-- 1.3: reserved 24, but one look-alike pair (2 of 4) and review 5 of 10.
+- 1.2: reserved 22 of 24: one look-alike pair (2 of 4), review 6 of 10, later_drill 3 of 4 (lc-contiguous-array moved to 1.3 as a look-alike), no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
+- 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
 - 1.4: reserved 19 of 24: no look-alike pair, review 4 of 10, no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
 - 1.5: reserved 22 of 24: no look-alike pair (the natural partners, merge vs. remove intervals, are already used in 1.1), review 7 of 10, no exam problems.
 - 1.6: the thinnest Phase 1 topic. Practice 16 of 20, reserved 10 of 24 (drill 5, checkpoint 3, review 2; no look-alike, later_drill or exam). Patterns `min-max-span` and `deque-window-condition` have 1 practice problem each, `histogram-rectangle` 2. Pure stack/deque problems at ratings 1000–1800 are scarce on these platforms; harder ones (e.g. Codeforces 1313C2, 1900) are above the Phase 1 tier range. Suggest allowing tier-5 problems up to 2000 for this topic, or accepting the gap.

@@ -4,8 +4,8 @@
 - Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
 - Topic: 0.3 Implementation and simulation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 0.3 step 4 (templates): five code units, 5000/5000 each
-- Next action: 0.3 step 5 (bug catalogue)
+- Last completed step: 0.3 step 5 (bug catalogue): 5 bugs found by stress.sh, 1 documented as not a bug
+- Next action: 0.3 step 6 (problems)
 
 ## Gates
 | Gate | Status | Date |
@@ -25,7 +25,7 @@
 | 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
 | 0.1 | done (on this session's branch) | — |
 | 0.2 | done (on this session's branch) | — |
-| 0.3 | in progress (step 4 of 10) | — |
+| 0.3 | in progress (step 5 of 10) | — |
 
 ## Bank
 | topic | status | practice | reserved |

@@ -199,6 +199,89 @@ Five short programs, one for each part of Section 4.
 
 ## 7. Bug catalogue
 
+Each bug was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy. The input shown is the first one the script found (for the crash, the first failing input of the same generator).
+
+### Bug: forgetting the part before the cycle
+
+Template: state after T steps.
+
+```cpp
+cout << order[t % lambda] << "\n";
+```
+
+Input:
+
+```
+4 0 37
+2 3 3 1
+```
+
+Wrong output `2`, correct output `1`. From state 0 the process goes $0 \to 2 \to 3 \to 1 \to 3 \to 1 \dots$: the cycle is $3, 1$ ($\lambda = 2$) and starts after $\mu = 2$ steps. `t % lambda` treats the sequence as if it were periodic from the start.
+
+**Fix:** `order[mu + (t - mu) % lambda]` (Theorem 0.3.1, part 3): count the steps inside the cycle only after the cycle has been entered.
+
+### Bug: turning left with `- 1`
+
+Template: robot with a direction array.
+
+```cpp
+else if (ch == 'L') d = (d - 1) % 4;
+```
+
+Input:
+
+```
+1 5 0 4
+##...
+FFFRFFLFLFLFL
+```
+
+Wrong output `0 4`, correct output `0 3`. After turning right and then left, `d` goes from 1 to 0, and the next left turn computes `(0 - 1) % 4`, which is $-1$ in C++ (the remainder takes the sign of the left side, Theorem 0.1.4). `dr[-1]` reads outside the array: the program's behaviour is undefined, and here the robot never moves left.
+
+**Fix:** `(d + 3) % 4`, which is the same turn and never negative.
+
+### Bug: reading the cell before checking the bounds
+
+Template: robot with a direction array.
+
+```cpp
+if (g[nr][nc] != '#' && nr >= 0 && nr < h && nc >= 0 && nc < w) {
+```
+
+Input: the same as the previous bug.
+
+Wrong output: the program crashes (segmentation fault). Correct output `0 3`. The robot starts in row 0 facing up, so the first `F` targets row $-1$; `g[-1]` is read before the bounds are checked.
+
+**Fix:** check the bounds first. `&&` stops at the first false condition, so the order of the conditions decides whether the out-of-range read happens (Theorem 0.3.2, condition 2).
+
+### Bug: checking only the final depth
+
+Template: bracket string. The line `if (depth < 0) ok = false;` is removed.
+
+Input: `)(()()))((`
+
+Wrong output `YES 1`, correct output `NO`. The depth ends at 0, but it went negative at the very first character: a `)` with nothing open before it.
+
+**Fix:** keep the state check at every step. The state must capture every condition of validity, including the ones that can fail in the middle (Theorem 0.3.3, condition 1).
+
+### Bug: touching intervals counted as disjoint
+
+Template: cases for two intervals.
+
+```cpp
+if (lo >= hi) cout << "DISJOINT\n";
+```
+
+Input: `8 11 11 11`
+
+Wrong output `DISJOINT`, correct output `TOUCH`. The second interval is the single point 11, which lies in the first; the shared part is $[11, 11]$ with $lo = hi$, which belongs to the TOUCH case.
+
+**Fix:** `lo > hi`. A boundary input must fall into exactly the case whose rule is right for it (Theorem 0.3.4, condition 1).
+
+### Not a bug: counting the cell itself among its neighbours
+
+Removing `if (dr == 0 && dc == 0) continue;` from the neighbour count passes all 5000 tests. It is not a weak generator: the program counts only free cells, and a free cell is never a mine, so including it adds 0. The line documents the intent; in a variant where mines also get a count, it would matter.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

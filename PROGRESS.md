@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.4 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
-- Next action: 1.5 step 1 scope
+- Last completed step: 1.5 step 1 scope (skeleton, draft data file, bank look-alike pairs and reviews)
+- Next action: 1.5 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -35,6 +35,7 @@
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
+| 1.5 | in progress (step 1) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -49,7 +50,7 @@
 | 1.2 | short | 22 | 28 |
 | 1.3 | short | 24 | 32 |
 | 1.4 | short | 20 | 29 |
-| 1.5 | short | 21 | 22 |
+| 1.5 | short | 20 | 28 |
 | 1.6 | short | 16 | 10 |
 | 1.7 | short | 22 | 15 |
 | 2.1 | short | 24 | 14 |
@@ -99,7 +100,7 @@
 - 1.2: reserved 28: at lesson step 1, a second look-alike pair (LeetCode Shifting Letters / Shifting Letters II) and 4 LeetCode reviews were added (review 10 of 10). Still short: later_drill 3 of 4, no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
 - 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
 - 1.4: reserved 28: at lesson step 1, two look-alike pairs (LeetCode Search a 2D Matrix I / II; Find K Pairs with Smallest Sums / Kth Smallest Number in Multiplication Table, the latter moved from practice) and 6 LeetCode reviews were added (review 10 of 10). Still short: no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
-- 1.5: reserved 22 of 24: no look-alike pair (the natural partners, merge vs. remove intervals, are already used in 1.1), review 7 of 10, no exam problems.
+- 1.5: reserved 26: at lesson step 1, two look-alike pairs (LeetCode Non-overlapping Intervals, moved from practice, / Divide Intervals Into Minimum Number of Groups; Best Time to Buy and Sell Stock II / Maximum Difference Between Increasing Elements) and 2 LeetCode reviews (Reduce Array Size to The Half, Hand of Straights) were added (review 9 of 10). Still short: no exam problems.
 - 1.6: the thinnest Phase 1 topic. Practice 16 of 20, reserved 10 of 24 (drill 5, checkpoint 3, review 2; no look-alike, later_drill or exam). Patterns `min-max-span` and `deque-window-condition` have 1 practice problem each, `histogram-rectangle` 2. Pure stack/deque problems at ratings 1000–1800 are scarce on these platforms; harder ones (e.g. Codeforces 1313C2, 1900) are above the Phase 1 tier range. Suggest allowing tier-5 problems up to 2000 for this topic, or accepting the gap.
 - 1.7: reserved 15 of 24: two look-alike pairs (complete), drill 8, checkpoint 3; no later_drill, review or exam problems left at tier 3–4. Practice is LeetCode-heavy (12 of 22, 55%).
 - 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.
@@ -139,10 +140,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.3.
-- New: the half-open invariant template (lo false, hi true), first true of a monotone predicate, lower_bound and upper_bound, search on the answer with a monotone feasibility check (and the greedy fill lemma for "split into consecutive parts" checks, proved here), real-valued search with a fixed number of halvings, k-th smallest by counting. Cards: sorted-search, answer-search, kth-by-counting. The bank patterns real-search (1 practice problem) and first-reaching-index (2) are too thin for a ladder card of their own (≥ 3), so they are folded into answer-search and sorted-search (PLAN Section 18).
-- Forbidden keywords: every keyword of topics 1.5–7.8 (exchange argument, greedy stays ahead, monotonic stack, monotonic deque, next greater element, prefix xor, bitwise contribution, …). The greedy check lemma is proved directly, without the 1.5 vocabulary.
-- Glossary terms already defined: 0.1–0.6, 1.1–1.3.
+- Allowed: 0.1–0.6, 1.1–1.4.
+- New: what a greedy algorithm is and why it needs a proof; the exchange argument (adjacent swaps, sorting by a key or a pairwise rule); greedy stays ahead (interval selection by earliest end, interval stabbing); extreme-first choices; matching two sorted lists without crossing; left-to-right forced choices. Counterexamples for wrong greedy rules. Cards: exchange-order, interval-selection, extreme-first, sorted-matching, left-to-right-forced (the bank's pattern ids).
+- Forbidden keywords: every keyword of topics 1.6–7.8 (monotonic stack, next greater element, prefix xor, dynamic programming, knapsack, regret greedy, minimum spanning tree, kruskal, dijkstra, …). Counterexamples that need knapsack-style problems name them only under "does not cover".
+- Glossary terms already defined: 0.1–0.6, 1.1–1.4.
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

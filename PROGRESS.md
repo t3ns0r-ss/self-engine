@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.6 Monotonic stack and deque
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.5 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
-- Next action: 1.6 step 1 scope
+- Last completed step: 1.6 step 1 scope (skeleton, draft data file, bank look-alike pairs and reviews)
+- Next action: 1.6 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -36,6 +36,7 @@
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
+| 1.6 | in progress (step 1) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -51,7 +52,7 @@
 | 1.3 | short | 24 | 32 |
 | 1.4 | short | 20 | 29 |
 | 1.5 | short | 20 | 29 |
-| 1.6 | short | 16 | 10 |
+| 1.6 | short | 15 | 21 |
 | 1.7 | short | 22 | 15 |
 | 2.1 | short | 24 | 14 |
 | 2.2 | short | 14 | 3 |
@@ -101,7 +102,7 @@
 - 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
 - 1.4: reserved 28: at lesson step 1, two look-alike pairs (LeetCode Search a 2D Matrix I / II; Find K Pairs with Smallest Sums / Kth Smallest Number in Multiplication Table, the latter moved from practice) and 6 LeetCode reviews were added (review 10 of 10). Still short: no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
 - 1.5: reserved 26: at lesson step 1, two look-alike pairs (LeetCode Non-overlapping Intervals, moved from practice, / Divide Intervals Into Minimum Number of Groups; Best Time to Buy and Sell Stock II / Maximum Difference Between Increasing Elements) and 3 LeetCode reviews (Reduce Array Size to The Half, Hand of Straights, Task Scheduler) were added (review 10 of 10; CF 1526C1 is not used, since its solution is regret greedy, topic 7.4). Still short: no exam problems.
-- 1.6: the thinnest Phase 1 topic. Practice 16 of 20, reserved 10 of 24 (drill 5, checkpoint 3, review 2; no look-alike, later_drill or exam). Patterns `min-max-span` and `deque-window-condition` have 1 practice problem each, `histogram-rectangle` 2. Pure stack/deque problems at ratings 1000–1800 are scarce on these platforms; harder ones (e.g. Codeforces 1313C2, 1900) are above the Phase 1 tier range. Suggest allowing tier-5 problems up to 2000 for this topic, or accepting the gap.
+- 1.6: the thinnest Phase 1 topic. At lesson step 1, two look-alike pairs (LeetCode Beautiful Towers I / II; Sliding Window Maximum, moved from practice, / Sliding Window Median) and 7 LeetCode reviews were added (review 9 of 10). Practice is 15 after the move; patterns `min-max-span`, `histogram-rectangle` and `deque-window-condition` have 1–2 practice problems each, so the lesson merges them into three cards. Still short: drill 5 of 8 (the lesson adds 3 earlier-topic items), no later_drill or exam problems.
 - 1.7: reserved 15 of 24: two look-alike pairs (complete), drill 8, checkpoint 3; no later_drill, review or exam problems left at tier 3–4. Practice is LeetCode-heavy (12 of 22, 55%).
 - 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.
 - 2.2: very thin. Practice 14 of 20, reserved 3 (checkpoint only). Most modular-arithmetic problems also need nCr (2.3), expectation (2.4) or DP, so they belong later. `inverse-general` has no problems (the fitting ones use extended Euclid and are in 2.1). Suggest merging 2.2's bank with 2.3's for practice purposes, or accepting the gap.
@@ -140,10 +141,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.4.
-- New: what a greedy algorithm is and why it needs a proof; the exchange argument (adjacent swaps, sorting by a key or a pairwise rule); greedy stays ahead (interval selection by earliest end, interval stabbing); extreme-first choices; matching two sorted lists without crossing; left-to-right forced choices. Counterexamples for wrong greedy rules. Cards: exchange-order, interval-selection, extreme-first, sorted-matching, left-to-right-forced (the bank's pattern ids).
-- Forbidden keywords: every keyword of topics 1.6–7.8 (monotonic stack, next greater element, prefix xor, dynamic programming, knapsack, regret greedy, minimum spanning tree, kruskal, dijkstra, …). Counterexamples that need knapsack-style problems name them only under "does not cover".
-- Glossary terms already defined: 0.1–0.6, 1.1–1.4.
+- Allowed: 0.1–0.6, 1.1–1.5.
+- New: the monotonic stack (each element pushed and popped once), nearest greater/smaller elements on either side, the span where an element is the minimum (subarray minimum sums, largest rectangle in a histogram) with a tie rule, the monotonic deque for window maxima and minima, and deques inside a shrinking window. Cards: nearest-greater, element-span (bank patterns min-max-span and histogram-rectangle), window-deque (bank patterns window-extreme-deque and deque-window-condition).
+- Forbidden keywords: every keyword of topics 1.7–7.8 (prefix xor, bitwise contribution, sparse table, range minimum query, segment tree, dynamic programming, …).
+- Glossary terms already defined: 0.1–0.6, 1.1–1.5.
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

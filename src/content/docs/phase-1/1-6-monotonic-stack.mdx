@@ -18,6 +18,8 @@ import subarrayMinSum from '../../../../code/1.6/subarray-min-sum/solution.cpp?r
 import histogram from '../../../../code/1.6/histogram/solution.cpp?raw';
 import windowMax from '../../../../code/1.6/window-max/solution.cpp?raw';
 import spreadWindow from '../../../../code/1.6/spread-window/solution.cpp?raw';
+import example1 from '../../../../code/1.6/example-1/solution.cpp?raw';
+import example2 from '../../../../code/1.6/example-2/solution.cpp?raw';
 
 <TopicHeader topic="1.6" />
 
@@ -301,6 +303,66 @@ Wrong output `1`, correct output `2`. At $r = 1$ the window $[0, 1]$ has spread 
 **Fix:** after every step of $l$, check the front of every deque that describes the window.
 
 ## 8. Worked examples
+
+### Example 1: Buildings
+
+[AtCoder Beginner Contest (ABC) 372, problem D: Buildings](https://atcoder.jp/contests/abc372/tasks/abc372_d). In short: $N \le 2 \cdot 10^5$ buildings in a row with distinct heights; for each building $i$, count the buildings $j > i$ such that no building strictly between $i$ and $j$ is taller than $j$.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$: $O(N)$ or $O(N \log N)$. Checking every pair is $O(N^2) = 4 \cdot 10^{10}$, far too slow. The counts are at most $N$: `int`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force: for each pair $(i, j)$, check the buildings between them (topic 0.5), $O(N^3)$. The condition says that building $j$ is taller than everything between $i$ and $j$; read from position $i + 1$ to the right, the counted buildings are the new records (each taller than all before it). That is a question about the nearest taller building, the shape of Theorem 1.6.1. A second reading: building $j$ is counted for every $i$ from its previous taller building up to $j - 1$, so the counts are range additions (difference array, topic 1.2).
+
+#### Step 3: Property check → decision
+
+Process $i$ from right to left, keeping the records of the suffix $i + 1, \dots, N$ on a stack, the nearest on top. Their heights increase from top to bottom, and $c_i$ is their number. To move to $i - 1$, building $i$ joins the suffix: it is a record (nothing before it), and an old record stays a record exactly when it is taller than $h_i$. The old records that are shorter are all on top, so popping them and pushing $i$ gives the new stack. Decision: one right-to-left scan, $c_i$ = stack size before building $i$ is added.
+
+#### Step 4: Proof for this problem
+
+Invariant: before step $i$ (0-based, from $N - 1$ down to 0), the stack holds exactly the $j > i$ with $h_j > h_k$ for all $i < k < j$, from the nearest at the top to the farthest at the bottom, with increasing heights. It holds before step $N - 1$ (empty stack, no $j$). At step $i$, the answer $c_i$ is the stack size, by the invariant. For step $i - 1$ the counted set becomes: $i$ itself (no building lies between $i - 1$ and $i$), plus those $j$ of the old set that are also taller than $h_i$. Since heights increase from top to bottom, the old elements shorter than $h_i$ form the top of the stack, and the loop pops exactly them; pushing $i$ puts the nearest element on top, and its height is smaller than all heights below it. Each building is pushed and popped at most once: $O(N)$ (Theorem 0.2.4).
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `c[i] = st.size();` stores a `size_t` (unsigned) in an `int`; the value is at most $2 \cdot 10^5$, so the conversion is exact. Tested on the three samples from the problem page, on $N = 1$, on decreasing and increasing heights with $N = 2 \cdot 10^5$, and on 5000 random permutations ($N \le 10$) against a brute force that checks every pair.
+
+#### Step 6: Alternative approach
+
+Compute $P_j$, the previous taller building of each $j$ (Theorem 1.6.1, scanning left to right). Building $j$ is counted exactly for $i = \max(P_j, 0), \dots, j - 1$ (with $P_j = -1$ when there is none), so add 1 on that range with a difference array and take prefix sums (Theorem 1.2.3). It is also $O(N)$, and it separates the stack step from the counting.
+
+### Example 2: Maximum Subarray Sum II
+
+[CSES 1644 Maximum Subarray Sum II](https://cses.fi/problemset/task/1644). In short: an array of $n \le 2 \cdot 10^5$ integers with $|x_i| \le 10^9$; print the largest sum of a subarray whose length is between $a$ and $b$.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$: $O(n)$ or $O(n \log n)$. All pairs of ends is $O(n^2)$ when $b - a$ is large. Sums reach $2 \cdot 10^{14}$ in absolute value: `long long`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force over both ends (topic 0.5). A subarray sum is a difference of prefix sums, $p_r - p_l$ (topic 1.2). For a fixed right end $r$, the best start is the $l$ with the smallest $p_l$ among $r - b \le l \le r - a$. As $r$ grows, that range of allowed starts moves right by one: a sliding window over $p$, whose minimum Theorem 1.6.3 maintains.
+
+#### Step 3: Property check → decision
+
+Theorem 1.6.3 needs a window whose ends only move to the right, and only its minimum. Both hold: at step $r$, start $r - a$ joins and start $r - b - 1$ leaves. The window of starts is never empty, since $r - a \ge r - b$ and $r \ge a$. Decision: prefix sums, then one pass over $r$ with a deque of starts whose prefix sums increase from front to back.
+
+#### Step 4: Proof for this problem
+
+The subarrays with right end $r$ (prefix positions, $1 \le r \le n$) and an allowed length are exactly those $(l, r]$ with $\max(0, r - b) \le l \le r - a$, and their sums are $p_r - p_l$. For fixed $r$, the largest sum uses the smallest $p_l$ in that range. By Theorem 1.6.3, with the comparisons reversed for the minimum, the deque's front is a position of that minimum, provided every start of the range has been pushed and the front is not below $r - b$. At step $r$ the program pushes $r - a$, so all starts up to $r - a$ have been pushed, and the range's lower end moves by at most one per step, so popping at most one front is enough. The answer is the maximum over all $r$. Each start enters and leaves the deque once: $O(n)$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `best` starts at `LLONG_MIN`, below every possible sum, because the answer may be negative (all values negative). The deque stores start positions $l$ of the prefix array, from 0 to $n - a$. Tested on the sample from the problem page, on all-negative values, on $a = b = n$, on $2 \cdot 10^5$ values of $10^9$ with $b = n$ and of $-10^9$ with $a = n$, and on 5000 random inputs ($n \le 10$) against a brute force that adds up every allowed subarray.
+
+#### Step 6: Alternative approach
+
+Keep the allowed prefix sums $p_l$ in a `multiset` (topic 0.6): insert $p_{r - a}$, erase $p_{r - b - 1}$, and read the smallest with `begin()`. It is $O(n \log n)$ and fast enough here; the deque is shorter and $O(n)$.
 
 ## 9. Problem ladder
 

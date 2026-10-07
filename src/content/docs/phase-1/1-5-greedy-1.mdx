@@ -13,6 +13,12 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import weightedOrder from '../../../../code/1.5/weighted-order/solution.cpp?raw';
+import intervalSelect from '../../../../code/1.5/interval-select/solution.cpp?raw';
+import fewestItems from '../../../../code/1.5/fewest-items/solution.cpp?raw';
+import bestUnits from '../../../../code/1.5/best-units/solution.cpp?raw';
+import assignCookies from '../../../../code/1.5/assign-cookies/solution.cpp?raw';
+import coverSegment from '../../../../code/1.5/cover-segment/solution.cpp?raw';
 
 <TopicHeader topic="1.5" />
 
@@ -141,6 +147,82 @@ A greedy rule without a proof is a guess. Before relying on one, write a brute f
 <Cards topic="1.5" />
 
 ## 6. Templates
+
+Six short programs, one for each theorem (two for Theorem 1.5.3). Every brute force tries all orders, subsets or assignments; this is how greedy rules are tested in this course, and Section 7 shows the wrong rules it catches.
+
+### Order by an exchange argument (Theorem 1.5.1)
+
+<Code code={weightedOrder} lang="cpp" title="weighted-order/solution.cpp" />
+
+**How it works.** For two adjacent jobs $x$, $y$ starting at time $t$, the order $x, y$ contributes $w_x (t + t_x) + w_y (t + t_x + t_y)$, and $y, x$ contributes $w_y (t + t_y) + w_x (t + t_x + t_y)$. The difference, $(y, x) - (x, y) = w_x t_y - w_y t_x$, does not depend on $t$ or on the other jobs, and it is at least 0 exactly when $t_x / w_x \le t_y / w_y$. So by Theorem 1.5.1 sorting by the ratio $t / w$ is optimal. The comparator compares the ratios exactly by cross-multiplication (Theorem 1.1.3, condition 2), then one pass adds up the weighted finishing times.
+
+**C++ details explained.**
+- `for (auto& [t, w] : job) cin >> t >> w;` reads into both parts of each pair through a structured binding by reference (`&`), so the reads change the vector.
+- The comparator is a lambda taking two pairs by `const` reference. It is a strict weak ordering because it compares the key $t / w$ (Theorem 1.1.3, part 1) without rounding.
+
+**Tested.** Stress-tested against a brute force that tries every order with `next_permutation` (topic 0.5), on 5000 random inputs ($n \le 7$, values up to 3 so that equal ratios are common, or up to $10^4$), plus 4 fixed tests including $n = 1$, equal weights (shortest first), equal ratios, and $2 \cdot 10^5$ jobs with a total of $2 \cdot 10^{18}$.
+
+**Alternative formulation.** With all weights equal to 1 the rule becomes "shortest job first", the example of Section 4.1; with all durations equal it becomes "heaviest job first".
+
+### Earliest end first (Theorem 1.5.2)
+
+<Code code={intervalSelect} lang="cpp" title="interval-select/solution.cpp" />
+
+**How it works.** Storing each interval as (end, start) makes the default pair sort order them by end. The scan keeps `lastEnd`, the end of the last chosen interval. An interval is compatible exactly when it starts after `lastEnd` (intervals that share a point overlap here), and the first compatible interval in end order is the one that ends first. By part 2 of the theorem, the same number is the fewest hitting points, and the points are the ends of the chosen intervals.
+
+**C++ details explained.** `lastEnd` starts at $-1$, below every start, so the first interval is always compatible. It is a `long long` only for safety in comparisons; the values fit in `int`.
+
+**Tested.** Stress-tested against a brute force that tries every subset for the largest compatible set and every set of interval ends for the fewest hitting points, on 5000 random inputs ($n \le 9$, coordinates up to 8 or $10^9$), plus 5 fixed tests including the counterexamples of Section 1, intervals that only touch ($[1, 3]$ and $[3, 5]$ overlap at 3), and $2 \cdot 10^5$ separate points.
+
+**Alternative formulation.** Sorting by start and scanning from the right, always taking the compatible interval that starts last, is the same rule seen in a mirror and equally correct.
+
+### The fewest items to reach a target (Theorem 1.5.3, part 1)
+
+<Code code={fewestItems} lang="cpp" title="fewest-items/solution.cpp" />
+
+**How it works.** Sorted from largest to smallest, the first $k$ items have the largest sum of any $k$ items. So the first $k$ for which the running sum reaches $T$ is the fewest possible; if even all items fall short, no choice reaches $T$.
+
+**C++ details explained.** `sort(v.rbegin(), v.rend())` sorts with reverse iterators, which walk the vector from the back: sorting the reversed view in increasing order leaves the vector in decreasing order.
+
+**Tested.** Stress-tested against a brute force that tries every subset, on 5000 random inputs ($n \le 10$, values up to 5 or $10^9$, targets that sometimes cannot be reached), plus 4 fixed tests including an unreachable target and $2 \cdot 10^5$ items that are all needed.
+
+**Alternative formulation.** `nth_element` can place the $k$ largest first without sorting the rest, but $k$ is not known in advance here, so a full sort is the simplest.
+
+### Splittable goods (Theorem 1.5.3, part 2)
+
+<Code code={bestUnits} lang="cpp" title="best-units/solution.cpp" />
+
+**How it works.** The goods are sorted by value per unit, most valuable first, and each takes as many units as still fit. By the exchange argument of part 2, a selection that leaves a more valuable unit for a less valuable one can always be improved, so this one is optimal.
+
+**C++ details explained.** The pair stores (value per unit, units) in that order so that sorting compares values first; `rbegin` and `rend` sort from largest to smallest, as in the previous template.
+
+**Tested.** Stress-tested against a brute force that tries every number of units of every good, on 5000 random inputs ($n \le 5$, at most 4 units each, $W \le 12$), plus 4 fixed tests including $W = 0$, a capacity larger than all goods, and $2 \cdot 10^5$ goods worth $2 \cdot 10^{18}$ in total.
+
+**Alternative formulation.** Instead of subtracting from $W$, compute the running number of units taken and stop at the good where it would pass $W$; the result is the same.
+
+### Matching two sorted lists (Theorem 1.5.4)
+
+<Code code={assignCookies} lang="cpp" title="assign-cookies/solution.cpp" />
+
+**How it works.** Children are taken in increasing greed. For each, `j` skips the cookies that are too small: they are too small for every later child as well, since greed only grows. The first cookie left is the smallest sufficient one, and it is given to the child. When no cookie is left, the children that remain cannot be satisfied.
+
+**C++ details explained.** None beyond earlier topics: the inner `while` moves `j` forward only, the walk of topic 1.3, so the loop is $O(n + m)$ after sorting.
+
+**Tested.** Stress-tested against a brute force that tries every assignment of cookies to children by recursion, on 5000 random inputs ($n, m \le 6$, values up to 5 or $10^9$), plus 4 fixed tests including a child that nothing satisfies and $2 \cdot 10^5$ children who all get a cookie.
+
+**Alternative formulation.** Go through the cookies in increasing size and give each to the least greedy unsatisfied child it can satisfy; the same exchange argument proves it.
+
+### Left to right: covering a segment (Theorem 1.5.5)
+
+<Code code={coverSegment} lang="cpp" title="cover-segment/solution.cpp" />
+
+**How it works.** `reach` is how far $[0, \text{reach}]$ is covered. Every segment that starts at or before `reach` can continue the cover; among them, the program takes the one that ends farthest. A larger reach dominates a smaller one (every segment usable later from the smaller reach is usable from the larger one), so by Theorem 1.5.5 the greedy uses the fewest segments. If no segment extends the reach, there is a gap and the answer is $-1$.
+
+**C++ details explained.** `seg[i++]` reads `seg[i]` and then moves `i` forward; because the segments are sorted by left end, each one is examined once over the whole run.
+
+**Tested.** Stress-tested against a brute force that tries every subset of segments and checks that their union covers $[0, L]$, on 5000 random inputs ($n \le 10$, $L \le 12$), plus 5 fixed tests including segments that only touch ($[0, 2]$, $[2, 4]$, $[4, 5]$ cover $[0, 5]$), a gap, and $2 \cdot 10^5$ unit segments.
+
+**Alternative formulation.** For every left end compute the farthest right end of a segment starting there, then walk positions like Jump Game; it is the same rule organised by position instead of by segment.
 
 ## 7. Bug catalogue
 

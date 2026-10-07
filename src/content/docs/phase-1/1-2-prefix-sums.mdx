@@ -13,6 +13,12 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import rangeSum from '../../../../code/1.2/range-sum/solution.cpp?raw';
+import countSubarrays from '../../../../code/1.2/count-subarrays/solution.cpp?raw';
+import rangeAdd from '../../../../code/1.2/range-add/solution.cpp?raw';
+import rectSum from '../../../../code/1.2/rect-sum/solution.cpp?raw';
+import rectAdd from '../../../../code/1.2/rect-add/solution.cpp?raw';
+import bestBeforeAfter from '../../../../code/1.2/best-before-after/solution.cpp?raw';
 
 <TopicHeader topic="1.2" />
 
@@ -158,6 +164,85 @@ Example: $a = (3, -5, 4, -1, 2)$, $P = (0, 3, -2, 2, 1, 3)$. The running minimum
 <Cards topic="1.2" />
 
 ## 6. Templates
+
+Six short programs: one for each card, and a second one for the 2D card so that both rectangle sums and rectangle updates appear in code. Every brute force adds up the ranges, rectangles or subarrays element by element, which is slow but easy to trust.
+
+### Range sums (Theorem 1.2.1)
+
+<Code code={rangeSum} lang="cpp" title="range-sum/solution.cpp" />
+
+**How it works.** `P[i + 1] = P[i] + a` builds the prefix sums while reading the array, with `P[0] = 0`. The statement numbers elements from 1, so the elements $l..r$ are the first $r$ elements minus the first $l - 1$, and the answer is `P[r] - P[l - 1]`.
+
+**C++ details explained.**
+- `vector<long long> P(n + 1, 0)` makes $n + 1$ entries, all 0: one prefix sum per boundary, including $P_0$.
+- `while (q--)` repeats the body $q$ times: `q--` tests the old value of $q$ and then decreases it, so the loop stops after the test that sees 0.
+
+**Tested.** Stress-tested against a brute force that adds up every queried range element by element, on 5000 random inputs ($n, q \le 10$, values in $[-5, 5]$ or up to $10^9$ in absolute value), plus 4 fixed tests including $n = 1$, $2 \cdot 10^5$ values of $10^9$ (sum $2 \cdot 10^{14}$), and $2 \cdot 10^5$ random queries.
+
+**Alternative formulation.** With 0-based queries $[l, r]$ the same array gives `P[r + 1] - P[l]`. Pick one convention per program and convert the input to it once.
+
+### Counting subarrays by prefix pairs (Theorem 1.2.2)
+
+<Code code={countSubarrays} lang="cpp" title="count-subarrays/solution.cpp" />
+
+**How it works.** `P` is the prefix sum of the elements read so far, $P_j$. Before it is recorded, the map `seen` holds how many earlier prefix sums had each value, starting with $P_0 = 0$. A subarray ending here has sum $K$ exactly when it starts after an earlier prefix with value $P_j - K$, so the program adds that count. For divisibility, `seenMod` counts earlier remainders, and every earlier prefix with the same remainder starts a subarray whose sum is a multiple of $m$.
+
+**C++ details explained.**
+- `seen.find(P - K)` looks the key up without inserting it; `it->second` is its count. For `seenMod[r]`, using `[]` is fine because `r` is inserted right after anyway.
+- `(P % m + m) % m`: in C++, `%` of a negative number is negative or zero (for example $-7 \bmod 3$ gives $-1$), so adding $m$ and taking the remainder again gives a value in $[0, m - 1]$ (topic 0.4).
+- The counts are `long long`: with $2 \cdot 10^5$ zeros and $K = 0$, every one of the $2 \cdot 10^{10}$ subarrays counts.
+
+**Tested.** Stress-tested against a brute force that tries every subarray, on 5000 random inputs ($n \le 10$, values in $[-3, 3]$ so that many subarrays hit $K$, or up to $10^9$; $K$ in $[-6, 6]$, $m \le 5$), plus 5 fixed tests including $n = 1$, all zeros ($2 \cdot 10^{10}$ subarrays), and negative values with a negative $K$.
+
+**Alternative formulation.** For non-negative values only, both ends of the subarray can move forward together (topic 1.3). The prefix-pair method needs no sign condition, which is why it is the tool for negative values.
+
+### Many range updates (Theorem 1.2.3)
+
+<Code code={rangeAdd} lang="cpp" title="range-add/solution.cpp" />
+
+**How it works.** Each update touches two entries: `d[l] += v` starts the added value at position $l$, and `d[r + 1] -= v` stops it after $r$. After all updates, the running sum `cur` of `d` is the final value at each position.
+
+**C++ details explained.** `d` has $n + 2$ entries (indices $0..n+1$) so that an update ending at $r = n$ can write to `d[n + 1]` without a special case; that entry is never read.
+
+**Tested.** Stress-tested against a brute force that applies every update element by element, on 5000 random inputs ($n, q \le 10$, a quarter of the updates reaching position $n$), plus 4 fixed tests including $n = 1$, a value that reaches $2 \cdot 10^9$ and comes back down by 1, and $2 \cdot 10^5$ updates of $10^9$ over the whole array ($2 \cdot 10^{14}$ per element).
+
+**Alternative formulation.** Store the updates as events and run the sweep of Theorem 1.1.6; it is the same computation, with a sort instead of an array indexed by position, and it also works for positions up to $10^9$.
+
+### Rectangle sums (Theorem 1.2.4, parts 1 and 2)
+
+<Code code={rectSum} lang="cpp" title="rect-sum/solution.cpp" />
+
+**How it works.** `S[x][y]` is the sum of rows $1..x$ and columns $1..y$; row 0 and column 0 stay 0, which removes all special cases. Each entry adds the cell to the rectangle above and the rectangle to the left, and subtracts their overlap, which was added twice. A query takes the big rectangle up to $(x_2, y_2)$, removes the strip above row $x_1$ and the strip left of column $y_1$, and adds back the corner removed twice.
+
+**C++ details explained.** `vector<vector<long long>> S(R + 1, vector<long long>(C + 1, 0))` is a grid of $R + 1$ rows, each a vector of $C + 1$ zeros; `S[x][y]` is row $x$, column $y$.
+
+**Tested.** Stress-tested against a brute force that adds up each queried rectangle cell by cell, on 5000 random inputs (grids up to $5 \times 5$, values in $[-5, 5]$ or up to $10^9$), plus 4 fixed tests including a $1 \times 1$ grid, a grid of equal values, and a $1000 \times 1000$ grid of $10^9$ (sum $10^{15}$).
+
+**Alternative formulation.** Prefix sums of each row alone give a rectangle sum in $O(\text{rows})$ per query, by adding one range sum per row. That is enough when the number of queries times the number of rows fits the budget, and it needs only the 1D idea.
+
+### Rectangle updates (Theorem 1.2.4, part 3)
+
+<Code code={rectAdd} lang="cpp" title="rect-add/solution.cpp" />
+
+**How it works.** Each update writes its four corners into the difference grid `d`: $+v$ at the top-left corner and at the cell diagonally past the bottom-right corner, $-v$ just right of the top-right corner and just below the bottom-left corner. Taking 2D prefix sums of `d` in place (the same recurrence as in the previous template) turns each update back into $+v$ on exactly its rectangle.
+
+**C++ details explained.** The grid has $R + 2$ rows and $C + 2$ columns so that the corners at row $x_2 + 1$ and column $y_2 + 1$ always exist. The prefix sums overwrite `d`: when `d[x][y]` is updated, the three entries it reads have already become prefix sums.
+
+**Tested.** Stress-tested against a brute force that adds $v$ cell by cell, on 5000 random inputs (grids up to $5 \times 5$, up to 8 updates, values in $[-5, 5]$ or up to $10^9$), plus 3 fixed tests including a $1 \times 1$ grid and cells that reach $2 \cdot 10^9$.
+
+**Alternative formulation.** Apply the 1D difference array of Theorem 1.2.3 to each row of the rectangle separately: two changes per row, $O(\text{rows})$ per update instead of $O(1)$, then a running sum along each row.
+
+### Best value before or after a position (Theorem 1.2.5)
+
+<Code code={bestBeforeAfter} lang="cpp" title="best-before-after/solution.cpp" />
+
+**How it works.** For the largest subarray sum, the loop keeps the prefix sum `P` and the smallest earlier prefix sum `minP`. The order of the three lines matters: first `P` becomes $P_{j+1}$, then the best subarray ending at $j$ is $P_{j+1}$ minus the smallest of $P_0, \dots, P_j$, and only then is $P_{j+1}$ allowed as a start for later ends, so a subarray is never empty. For the second question, `pre[i]` is the maximum of the elements before position $i$ and `suf[i + 1]` the maximum of those after it; the answer for $i$ is the larger of the two.
+
+**C++ details explained.** `LLONG_MIN`, the smallest `long long`, stands for "no element": an empty prefix or suffix loses every comparison with a real value.
+
+**Tested.** Stress-tested against a brute force that tries every subarray and scans all other elements for each $i$, on 5000 random inputs ($n \le 10$, a quarter of them all negative), plus 4 fixed tests including two negative values (the best subarray is the larger single value, $-3$), equal values, and $2 \cdot 10^5$ values of $10^9$.
+
+**Alternative formulation.** Keep the best sum of a subarray ending at the current position: it is the current value plus the previous best if that is positive, or the current value alone. This running form gives the same answer without prefix sums; its proof is the same split, "the best start for this end".
 
 ## 7. Bug catalogue
 

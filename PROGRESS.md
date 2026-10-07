@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.7 Bits: XOR properties, prefix XOR, per-bit contribution
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.6 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
-- Next action: 1.7 step 1 scope
+- Last completed step: 1.7 step 1 scope (skeleton, draft data file, 10 LeetCode reviews added to the bank)
+- Next action: 1.7 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -37,6 +37,7 @@
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
 | 1.6 | done (on this session's branch) | — |
+| 1.7 | in progress (step 1) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -53,7 +54,7 @@
 | 1.4 | short | 20 | 29 |
 | 1.5 | short | 20 | 29 |
 | 1.6 | short | 16 | 20 |
-| 1.7 | short | 22 | 15 |
+| 1.7 | short | 22 | 25 |
 | 2.1 | short | 24 | 14 |
 | 2.2 | short | 14 | 3 |
 | 2.3 | short | 21 | 19 |
@@ -103,7 +104,7 @@
 - 1.4: reserved 28: at lesson step 1, two look-alike pairs (LeetCode Search a 2D Matrix I / II; Find K Pairs with Smallest Sums / Kth Smallest Number in Multiplication Table, the latter moved from practice) and 6 LeetCode reviews were added (review 10 of 10). Still short: no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
 - 1.5: reserved 26: at lesson step 1, two look-alike pairs (LeetCode Non-overlapping Intervals, moved from practice, / Divide Intervals Into Minimum Number of Groups; Best Time to Buy and Sell Stock II / Maximum Difference Between Increasing Elements) and 3 LeetCode reviews (Reduce Array Size to The Half, Hand of Straights, Task Scheduler) were added (review 10 of 10; CF 1526C1 is not used, since its solution is regret greedy, topic 7.4). Still short: no exam problems.
 - 1.6: the thinnest Phase 1 topic. At lesson step 1, two look-alike pairs (LeetCode Beautiful Towers I / II; Sliding Window Maximum, moved from practice, / Sliding Window Median) and 7 LeetCode reviews were added (review 9 of 10). Practice is 15 after the move; patterns `min-max-span`, `histogram-rectangle` and `deque-window-condition` have 1–2 practice problems each, so the lesson merges them into three cards. Still short: drill 5 of 8 (the lesson adds 3 earlier-topic items), no later_drill or exam problems. At step 7, LeetCode Continuous Subarrays moved from drill to practice so that the deque card has three ladder rungs; the drill takes one more earlier-topic item instead.
-- 1.7: reserved 15 of 24: two look-alike pairs (complete), drill 8, checkpoint 3; no later_drill, review or exam problems left at tier 3–4. Practice is LeetCode-heavy (12 of 22, 55%).
+- 1.7: reserved 25: two look-alike pairs (complete), drill 8, checkpoint 3; at lesson step 1, 10 LeetCode Medium reviews were added (review 10 of 10). Still short: no later_drill or exam problems. Practice is LeetCode-heavy (12 of 22, 55%).
 - 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.
 - 2.2: very thin. Practice 14 of 20, reserved 3 (checkpoint only). Most modular-arithmetic problems also need nCr (2.3), expectation (2.4) or DP, so they belong later. `inverse-general` has no problems (the fitting ones use extended Euclid and are in 2.1). Suggest merging 2.2's bank with 2.3's for practice purposes, or accepting the gap.
 - 2.3: reserved 19 of 24: no look-alike or later_drill problems. Practice is tier-5 heavy (7 of 21).
@@ -141,10 +142,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.5.
-- New: the monotonic stack (each element pushed and popped once), nearest greater/smaller elements on either side, the span where an element is the minimum (subarray minimum sums, largest rectangle in a histogram) with a tie rule, the monotonic deque for window maxima and minima, and deques inside a shrinking window. Cards: nearest-greater, element-span (bank patterns min-max-span and histogram-rectangle), window-deque (bank patterns window-extreme-deque and deque-window-condition).
-- Forbidden keywords: every keyword of topics 1.7–7.8 (prefix xor, bitwise contribution, sparse table, range minimum query, segment tree, dynamic programming, …).
-- Glossary terms already defined: 0.1–0.6, 1.1–1.5.
+- Allowed: 0.1–0.6, 1.1–1.6.
+- New: the bitwise operators on whole numbers (and, or, xor, not, shifts), XOR identities (each value is its own inverse, so pairs cancel), prefix XOR (the XOR of a subarray is a pair of prefix values; counting pairs with a map as in 1.2), one bit at a time (sums over pairs or subarrays of XOR, AND or OR from per-bit counts), highest bit first (2^b exceeds the sum of all lower bits, so a greedy from the top bit decides maxima and minima), and the identities a + b = (a ⊕ b) + 2(a & b), a | b = (a ⊕ b) + (a & b). Also popcount and the lowest set bit x & −x. Cards: decided at step 3 from the five bank patterns.
+- Forbidden keywords: every keyword of topics 2.1–7.8 (sieve of eratosthenes, modular inverse, binary exponentiation, inclusion-exclusion, dynamic programming, segment tree, fenwick tree, trie, …).
+- Glossary terms already defined: 0.1–0.6, 1.1–1.6 (bit and bitmask are 0.1 and 0.5 terms).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

@@ -123,9 +123,12 @@ const topic = {
 const notes = (list) => list.map((p) => `## ${p.id} ${p.title} (tier ${p.tier}, pattern ${p.pattern}, set ${p.set})\n- Placeholder note.\n`).join('\n');
 const header = '# PLACEHOLDER created by tests/placeholder/make.mjs. Must not be committed.\n';
 writeFileSync('src/data/bank/1-3.yaml', header + stringify({ topic: '1.3', status: 'in_progress', problems: bank13 }));
-writeFileSync('src/data/bank/1-2.yaml', header + stringify({ topic: '1.2', status: 'in_progress', problems: bank12 }));
+// The real 1.2 bank stays (the real 1.2 lesson uses it); the placeholder's later_drill items are
+// appended to it, and the whole file is restored by --remove.
+const real12 = parse(readFileSync(backupOf('src/data/bank/1-2.yaml'), 'utf8'));
+writeFileSync('src/data/bank/1-2.yaml', header + stringify({ ...real12, problems: [...real12.problems, ...bank12] }));
 writeFileSync('notes/bank/1.3.md', notes(bank13));
-writeFileSync('notes/bank/1.2.md', notes(bank12));
+writeFileSync('notes/bank/1.2.md', readFileSync(backupOf('notes/bank/1.2.md'), 'utf8') + '\n' + notes(bank12));
 writeFileSync('src/data/topics/1-3.yaml', header + stringify(topic));
 if (!existsSync(GLOSSARY_BACKUP)) writeFileSync(GLOSSARY_BACKUP, readFileSync(GLOSSARY, 'utf8'));
 // Real lessons stay in place during the test, so their glossary terms stay too; the placeholder

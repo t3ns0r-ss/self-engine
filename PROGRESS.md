@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.6 Monotonic stack and deque
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.6 step 6 worked examples (ABC 372 D, CSES 1644)
-- Next action: 1.6 step 7 problem ladder
+- Last completed step: 1.6 step 7 problem ladder (13 problems)
+- Next action: 1.6 step 8 drill and look-alike pairs
 
 ## Gates
 | Gate | Status | Date |
@@ -36,7 +36,7 @@
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
-| 1.6 | in progress (step 6) | — |
+| 1.6 | in progress (step 7) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -102,7 +102,7 @@
 - 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
 - 1.4: reserved 28: at lesson step 1, two look-alike pairs (LeetCode Search a 2D Matrix I / II; Find K Pairs with Smallest Sums / Kth Smallest Number in Multiplication Table, the latter moved from practice) and 6 LeetCode reviews were added (review 10 of 10). Still short: no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
 - 1.5: reserved 26: at lesson step 1, two look-alike pairs (LeetCode Non-overlapping Intervals, moved from practice, / Divide Intervals Into Minimum Number of Groups; Best Time to Buy and Sell Stock II / Maximum Difference Between Increasing Elements) and 3 LeetCode reviews (Reduce Array Size to The Half, Hand of Straights, Task Scheduler) were added (review 10 of 10; CF 1526C1 is not used, since its solution is regret greedy, topic 7.4). Still short: no exam problems.
-- 1.6: the thinnest Phase 1 topic. At lesson step 1, two look-alike pairs (LeetCode Beautiful Towers I / II; Sliding Window Maximum, moved from practice, / Sliding Window Median) and 7 LeetCode reviews were added (review 9 of 10). Practice is 15 after the move; patterns `min-max-span`, `histogram-rectangle` and `deque-window-condition` have 1–2 practice problems each, so the lesson merges them into three cards. Still short: drill 5 of 8 (the lesson adds 3 earlier-topic items), no later_drill or exam problems.
+- 1.6: the thinnest Phase 1 topic. At lesson step 1, two look-alike pairs (LeetCode Beautiful Towers I / II; Sliding Window Maximum, moved from practice, / Sliding Window Median) and 7 LeetCode reviews were added (review 9 of 10). Practice is 15 after the move; patterns `min-max-span`, `histogram-rectangle` and `deque-window-condition` have 1–2 practice problems each, so the lesson merges them into three cards. Still short: drill 5 of 8 (the lesson adds 3 earlier-topic items), no later_drill or exam problems. At step 7, LeetCode Continuous Subarrays moved from drill to practice so that the deque card has three ladder rungs; the drill takes one more earlier-topic item instead.
 - 1.7: reserved 15 of 24: two look-alike pairs (complete), drill 8, checkpoint 3; no later_drill, review or exam problems left at tier 3–4. Practice is LeetCode-heavy (12 of 22, 55%).
 - 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.
 - 2.2: very thin. Practice 14 of 20, reserved 3 (checkpoint only). Most modular-arithmetic problems also need nCr (2.3), expectation (2.4) or DP, so they belong later. `inverse-general` has no problems (the fitting ones use extended Euclid and are in 2.1). Suggest merging 2.2's bank with 2.3's for practice purposes, or accepting the gap.

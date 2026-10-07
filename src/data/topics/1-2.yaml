@@ -459,11 +459,63 @@ lookalike_pairs:
     a_tool: "range-sum (1.2): suffix sums of the shifts"
     b_tool: difference-array (1.2)
     flipping_difference: In A every shift covers a prefix, so a letter's total is a suffix sum; in B shifts cover arbitrary ranges in both directions, so a difference array records them.
-self_test: []
+self_test:
+  - q: "Why can prefix sums give the sum of a[l..r] but prefix maxima cannot give the maximum of a[l..r]? Use a = (5, 1, 2) and the range [1, 2]."
+    a: "A sum can be undone: sum(1..2) = P_3 − P_1. A maximum cannot: the prefix maxima are (5, 5, 5), and M_3 = M_1 = 5 says nothing about max(1, 2) = 2. Prefix maxima only answer ranges that start at position 0."
+  - q: "For a = (1, −1, 1, −1), count the subarrays with sum 0 using prefix sums, and check by listing them."
+    a: "P = (0, 1, 0, 1, 0). The value 0 occurs 3 times (3 pairs) and 1 occurs twice (1 pair): 4. The subarrays are [0, 1], [1, 2], [2, 3] and [0, 3]."
+  - q: For a = (3) and K = 3, what does the map-counting scan return if P_0 = 0 is not put into the map first?
+    a: "0 instead of 1. The only subarray is [0, 0], whose prefix pair is (P_0, P_1) = (0, 3); without P_0 in the map, P_1 − K = 0 is never found."
+  - q: Can the map scan of Theorem 1.2.2 count the subarrays with sum at most K? Why or why not?
+    a: "Not as it stands: the condition becomes P_i ≥ P_j − K, an inequality, and a map of exact values answers only equality. Counting earlier values above a bound needs the prefix values kept in order (later topics); for non-negative values topic 1.3 has a simpler way."
+  - q: q = 2·10^5 updates "add v on [l, r]" alternate with 2·10^5 queries "print a_i". What does a difference array cost here, and why?
+    a: "Each query needs the running sum of d up to i, O(n) per query, so about 4·10^10 in total. Theorem 1.2.3 needs all updates before the reads (offline); interleaved updates and reads need a tree structure from Phase 5."
+  - q: "For the grid with rows (1, 2) and (3, 4), compute S and use the four-corner formula for the single cell in row 1, column 1 (0-based)."
+    a: "S rows: (0, 0, 0), (0, 1, 3), (0, 4, 10). The cell is rows 1..1, columns 1..1: S_{2,2} − S_{1,2} − S_{2,1} + S_{1,1} = 10 − 3 − 4 + 1 = 4."
+  - q: "A program for the largest subarray sum starts with best = 0. What does it print for (−3, −1), and what should it print?"
+    a: "It prints 0, the sum of the empty subarray, which the statement does not allow; the answer is −1. Start best at the smallest possible value (or at a_0) and update it before the current prefix sum becomes a possible start."
 checkpoint:
   time_limit_minutes: 90
   problems: [ac-abc233_d, ac-abc388_d, ac-abc366_d]
-decision_map: []
+decision_map:
+  - weak_signal: Many queries asking for the sum or count over a range [l, r] of a fixed array or string
+    choose: range-sum
+    when: Nothing changes between queries and the quantity is a sum or a count (Theorem 1.2.1).
+    over:
+      - card: direct-simulation
+        because: Scanning each range is O(n) per query, 4·10^10 for n = q = 2·10^5.
+      - card: ordered-set-lookup
+        because: A set finds the positions near a bound, but counting how many lie between two bounds is not one of its fast operations.
+  - weak_signal: Count the segments (subarrays, substrings) that satisfy a condition
+    choose: prefix-count-lookup
+    when: The condition is an exact sum, a sum divisible by k, or a balance of two kinds, i.e. a condition on the pair (P_l, P_{r+1}) alone; values may be negative (Theorem 1.2.2).
+    over:
+      - card: nested-loops
+        because: All subarrays are n²/2, about 2·10^10.
+      - card: map-counting
+        because: Counting equal keys of the elements counts pairs of positions; subarrays need equal keys of the prefix sums.
+  - weak_signal: '"Add v to every element from l to r" many times, then print the array; coverage counts on a short line'
+    choose: difference-array
+    when: All updates come before the reads and the positions fit in an array (Theorem 1.2.3).
+    over:
+      - card: direct-simulation
+        because: Applying each update element by element is O(n) per update.
+      - card: event-sweep
+        because: Events need a sort; when positions are small, an array indexed by position does the same job without sorting. Keep the sweep for coordinates up to 10^9.
+  - weak_signal: Input is H lines of W characters; neighbours, directions, walking until a wall
+    choose: prefix-2d
+    when: The questions are sums or counts over many axis-parallel rectangles of a grid that does not change.
+    over:
+      - card: grid-processing
+        because: Counting each rectangle cell by cell costs its area per query.
+  - weak_signal: '"Buy before you sell", the best value before or after each position, the largest subarray sum'
+    choose: prefix-extremes
+    when: Each question needs the maximum or minimum of a prefix or a suffix, never of a middle range (Theorem 1.2.5).
+    over:
+      - card: nested-loops
+        because: Trying every pair of positions is n²/2.
+      - card: sort-then-scan
+        because: The order matters ("before", "after"), so the input must not be sorted.
 glossary_added:
   - subarray
   - prefix sum

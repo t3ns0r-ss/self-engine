@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.4 Binary search: invariant template, search on the answer
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.4 step 2 theory (Theorems 1.4.1–1.4.6 with Lemma 1.4.4, 7 glossary terms)
-- Next action: 1.4 step 3 recognition cards
+- Last completed step: 1.4 step 3 recognition cards (3 cards)
+- Next action: 1.4 step 4 templates and stress tests
 
 ## Gates
 | Gate | Status | Date |
@@ -34,7 +34,7 @@
 | Phase 0 intro and exam | done (on this session's branch) | — |
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
-| 1.4 | in progress (step 2) | — |
+| 1.4 | in progress (step 3) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -140,7 +140,7 @@
 
 ## Scope notes for current topic
 - Allowed: 0.1–0.6, 1.1–1.3.
-- New: the half-open invariant template (lo false, hi true), first true of a monotone predicate, lower_bound and upper_bound, search on the answer with a monotone feasibility check (and the greedy fill lemma for "split into consecutive parts" checks, proved here), real-valued search with a fixed number of halvings, k-th smallest by counting. Cards: sorted-search, answer-search, real-search, kth-by-counting, first-reaching-index (the bank's pattern ids).
+- New: the half-open invariant template (lo false, hi true), first true of a monotone predicate, lower_bound and upper_bound, search on the answer with a monotone feasibility check (and the greedy fill lemma for "split into consecutive parts" checks, proved here), real-valued search with a fixed number of halvings, k-th smallest by counting. Cards: sorted-search, answer-search, kth-by-counting. The bank patterns real-search (1 practice problem) and first-reaching-index (2) are too thin for a ladder card of their own (≥ 3), so they are folded into answer-search and sorted-search (PLAN Section 18).
 - Forbidden keywords: every keyword of topics 1.5–7.8 (exchange argument, greedy stays ahead, monotonic stack, monotonic deque, next greater element, prefix xor, bitwise contribution, …). The greedy check lemma is proved directly, without the 1.5 vocabulary.
 - Glossary terms already defined: 0.1–0.6, 1.1–1.3.
 

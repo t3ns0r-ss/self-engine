@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.1 Sorting, comparators, coordinate compression
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.1 step 7 worked examples (Stick Lengths, Online games)
-- Next action: 1.1 steps 8-9 self-test, section intros, decision map
+- Last completed step: 1.1 steps 8-9 (7 self-test questions, section intros, 6 decision map entries, two joining Phase 0 groups)
+- Next action: 1.1 step 10 self-review
 
 ## Gates
 | Gate | Status | Date |
@@ -32,7 +32,7 @@
 | 0.5 | done (on this session's branch) | — |
 | 0.6 | done (on this session's branch) | — |
 | Phase 0 intro and exam | done (on this session's branch) | — |
-| 1.1 | in progress (step 7) | — |
+| 1.1 | in progress (step 9) | — |
 
 ## Bank
 | topic | status | practice | reserved |

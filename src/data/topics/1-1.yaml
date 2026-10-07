@@ -458,11 +458,69 @@ lookalike_pairs:
     a_tool: sort-then-scan (1.1)
     b_tool: "one-pass scan (0.3): the input is already sorted"
     flipping_difference: B's intervals are already sorted by start and disjoint, so the sort is not needed and one scan suffices.
-self_test: []
+self_test:
+  - q: Is "count the pairs i < j with a_i > a_j" order-free? Answer with two arrays holding the same values.
+    a: "No. (1, 2) has 0 such pairs and (2, 1) has 1, although both hold the values 1 and 2. The answer depends on positions, so the input must not be sorted first (counting such pairs fast needs later tools)."
+  - q: "What is wrong with sorting by the comparator [](int x, int y) { return x <= y; }?"
+    a: "It is not a strict weak ordering: less(5, 5) is true, so 5 must come before itself. sort then has no valid result to produce; with many equal values it can read past the end of the vector and crash. Use x < y."
+  - q: "Treat two numbers as equivalent when they differ by at most 1, and otherwise compare them with <. Show with three numbers that this is not a strict weak ordering."
+    a: "1 and 2 are equivalent, 2 and 3 are equivalent, but 1 < 3, so 1 and 3 are not equivalent: equivalence is not transitive (condition 3 of the definition). sort's guarantees then no longer hold, and its result is unspecified."
+  - q: "Which question can be answered after coordinate compression, and which cannot: (a) the largest number of the intervals [1, 2], [100, 200], [150, 160] that share a point; (b) the total length they cover?"
+    a: "(a) Yes: overlap depends only on the order of the endpoints, which ranks keep. (b) No: lengths need the real coordinates; after compression [1, 2] and [100, 200] could both have length 1. Use the event sweep with real coordinates (Theorem 1.1.6, part 3)."
+  - q: "The closed intervals [1, 3] and [3, 5] share the point 3. With events (start, +1) and (end, −1), without shifting ends by one, which tie order gives the right largest overlap?"
+    a: "Starts before ends at equal times: at time 3 the counter goes 1 → 2 (start of [3, 5]) → 1 (end of [1, 3]), so it reaches 2. With ends first it goes 1 → 0 → 1 and reports 1. Shifting closed ends to e + 1 and putting ends first is the same rule."
+  - q: "You sort pairs (score, name) to rank players by score, and the statement says that equal scores keep the input order. What goes wrong, and give two fixes."
+    a: "Equal scores are then ordered by name, not by input order. Fixes: sort (score, index) pairs instead (Theorem 1.1.4), or stable_sort with a comparator on the score alone."
+  - q: "Two arrays A and B. Show that a closest pair a ∈ A, b ∈ B can be found among neighbours of the sorted order of all values together."
+    a: "Take a closest cross pair a ≤ b (the other case is symmetric) and suppose some c lies strictly between them in the merged order. If c is from A, then (c, b) is a cross pair at least as close; if c is from B, then (a, c) is. Repeating with the new pair (it spans fewer elements) ends at a closest cross pair with nothing between, which is two neighbours with different labels. So sort the values labelled by array and scan neighbours with different labels."
 checkpoint:
   time_limit_minutes: 90
   problems: [ac-abc308_c, ac-abc188_d, ac-abc186_d]
-decision_map: []
+decision_map:
+  - weak_signal: The closest two values, the smallest difference, choose k values with the smallest spread
+    choose: sort-then-scan
+    when: The question is order-free; in sorted order the best pair is two neighbours and the best group is a block (Theorem 1.1.2).
+    over:
+      - card: nested-loops
+        because: Comparing every pair is n²/2, about 2·10^10 for n = 2·10^5.
+      - card: ordered-set-lookup
+        because: A multiset also finds neighbours, but it is needed only when values arrive between questions; for a fixed list one sort is simpler.
+  - weak_signal: '"The smallest … at least x", "the closest", min and max of a changing collection'
+    choose: sort-then-scan
+    when: All values are known before any question and nothing is inserted or erased; then the collection is a sorted array, not a changing set.
+    over:
+      - card: ordered-set-lookup
+        because: A set pays O(log n) per insertion to stay sorted while changing; a fixed list is sorted once.
+  - weak_signal: '"Sorted by …, and for ties by …"; rankings, standings, leaderboards'
+    choose: custom-order
+    when: The statement fixes the order by keys or by a pairwise rule that reduces to a key; every tie-break goes into the comparator (Theorem 1.1.3).
+    over:
+      - card: heap-extract
+        because: A priority queue gives only the current best and suits orders that change as items are removed; a fixed ranking needs one sort.
+      - card: direct-simulation
+        because: Re-scanning for the best remaining item each time is O(n²).
+  - weak_signal: Print a result for each element in input order, but the work needs value order
+    choose: sort-with-index
+    when: Every element carries its index through the sort, and results are written back by index (Theorem 1.1.4).
+    over:
+      - card: sort-then-scan
+        because: Sorting the values alone loses which value came from where, especially among equal values.
+  - weak_signal: '"Has this appeared before?", "how many different …", values too large for an array'
+    choose: coordinate-compression
+    when: Beyond equality, the order of the values matters (ranks, "how many distinct values are smaller"), and they must index an array.
+    over:
+      - card: set-membership
+        because: A set answers presence; ranks need the sorted distinct values.
+      - card: map-counting
+        because: A hash map keeps no order; an ordered map walked in key order is the same compression.
+  - weak_signal: Intervals or time ranges with coordinates up to 10^9; the busiest moment; totals per day
+    choose: event-sweep
+    when: The quantity changes only at interval ends, so 2n sorted events with the statement's tie order describe it everywhere (Theorem 1.1.6).
+    over:
+      - card: direct-simulation
+        because: Walking every time point costs the whole coordinate range, up to 10^9 per interval.
+      - card: sort-then-scan
+        because: Sorting intervals by start answers merging questions, but the count at each moment needs starts and ends as separate events.
 glossary_added:
   - non-decreasing
   - merging

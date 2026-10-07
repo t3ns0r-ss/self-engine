@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: Phase 1 intro and exam
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.7 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
-- Next action: Phase 1 intro page and exam (exam problems in the 1.7 data file)
+- Last completed step: Phase 1 intro page, exam page and 8 exam problems (e2e for the exam not run yet)
+- Next action: run tests/e2e.sh (new Phase 1 exam checks), then stop at the M3 gate
 
 ## Gates
 | Gate | Status | Date |

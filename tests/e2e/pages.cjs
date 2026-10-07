@@ -153,12 +153,26 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   await p.goto(`${BASE}/phase-0/`);
   check(await p.locator('a[href$="exam/"]').first().isVisible(), 'phase intro links the exam');
 
+  // Phase 1 exam: 8 problems from all seven topics, remediation map for each.
+  await p.goto(`${BASE}/phase-1/exam/`);
+  await p.waitForSelector('.exam');
+  await p.locator('button:has-text("Start the 3-hour exam")').click();
+  const exam1 = await p.locator('.exam li a').count();
+  check(exam1 === 8, `Phase 1 exam shows ${exam1} of 8 problems after start`);
+  await p.locator('button:has-text("done early")').click();
+  await p.locator('button:has-text("Submit results")').click();
+  await p.locator('button:has-text("Show the remediation map")').click();
+  const topics1 = new Set((await p.locator('.exam-map tbody tr td:nth-child(2)').allInnerTexts()).map((s) => s.trim().slice(0, 3)));
+  check(topics1.size === 7, `Phase 1 remediation map covers ${topics1.size} of 7 topics`);
+  await p.goto(`${BASE}/phase-1/`);
+  check(await p.locator('a[href$="exam/"]').first().isVisible(), 'Phase 1 intro links the exam');
+
   // Method page.
   await p.goto(`${BASE}/method/`);
   check(await p.locator('.katex').count() > 0, 'method page renders math');
 
   const m = await b.newPage({ viewport: { width: 375, height: 800 }, colorScheme: 'dark' });
-  for (const u of ['/', '/problems/', '/handbook/', '/progress/', '/contests/', '/phase-0/', '/phase-0/exam/']) {
+  for (const u of ['/', '/problems/', '/handbook/', '/progress/', '/contests/', '/phase-0/', '/phase-0/exam/', '/phase-1/', '/phase-1/exam/']) {
     await m.goto(`${BASE}${u}`);
     await m.waitForTimeout(300);
     check(!(await m.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)), `no horizontal page scroll at 375px on ${u}`);

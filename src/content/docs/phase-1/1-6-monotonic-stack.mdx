@@ -194,6 +194,112 @@ Five short programs: Theorem 1.6.1, the two uses of Theorem 1.6.2, the sliding-w
 
 ## 7. Bug catalogue
 
+Monotonic-stack bugs are mostly one character: `<` against `<=` in a pop condition, a default value one off, a front checked at the wrong distance. The code still runs in $O(n)$ and gives plausible answers, so only a brute force finds them. Each bug was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: popping equal values
+
+Template: next greater and previous greater-or-equal.
+
+```cpp
+while (!st.empty() && a[st.back()] <= a[i]) {
+```
+
+Input: `2`, then `0 0`.
+
+Wrong output `2 0` / `0 0`, correct output `0 0` / `0 1`. The second 0 pops the first and records itself as its "next greater" element, though it is only equal. With the first 0 gone, the second finds no previous greater-or-equal element either.
+
+**Fix:** decide for each answer whether ties count, and make the pop condition say exactly that: pop while strictly smaller for "next strictly greater" (Theorem 1.6.1). Test with repeated values.
+
+### Bug: the same tie rule on both sides
+
+Template: sum of subarray minima. The right scan also pops equal values, so $R_i$ becomes the next strictly smaller position.
+
+```cpp
+while (!st.empty() && a[st.back()] >= a[i]) st.pop_back();
+```
+
+Input: `2`, then `2 2`.
+
+Wrong output `8`, correct output `6`. The subarray $(2, 2)$ has two minima, and with strict comparisons on both sides each of them counts it: $2 \cdot 2 + 2 \cdot 2$ instead of $2 + 2 + 2$.
+
+**Fix:** strict on one side, non-strict on the other, so that every subarray is counted for exactly one minimum, its rightmost (Theorem 1.6.2, part 1).
+
+### Bug: a missing value is one position short
+
+Template: sum of subarray minima. With no smaller-or-equal element to the right, $R_i$ is set to $n - 1$ instead of $n$.
+
+```cpp
+R[i] = st.empty() ? n - 1 : st.back();
+```
+
+Input: `1`, then `1`.
+
+Wrong output `0`, correct output `1`. The only element has $R_0 = 0$, so its count $(0 - (-1)) \cdot (0 - 0)$ is 0.
+
+**Fix:** "none" must be the position just outside the array, $-1$ on the left and $n$ on the right, so that the formulas $i - L_i$ and $R_i - i$ count the elements up to the end.
+
+### Bug: the stack is not cleared between scans
+
+Template: largest rectangle in a histogram. The `st.clear()` between the two scans is removed.
+
+Input: `2`, then `0 2`.
+
+Wrong output `0`, correct output `2`. The right-to-left scan starts with the positions left over from the first scan. For bar 1 it finds position 0 as the "next lower bar to the right", which is in fact to its left; the width becomes $0 - 0 - 1 = -1$ and the real rectangle of area 2 is lost.
+
+**Fix:** every scan starts with an empty stack. Write it as `st.clear()`, or declare a new stack for each scan.
+
+### Bug: equal bars stop the rectangle
+
+Template: largest rectangle in a histogram. Both scans pop only strictly higher bars, so $L_i$ and $R_i$ are the nearest bars of height at most $h_i$.
+
+```cpp
+while (!st.empty() && h[st.back()] > h[i]) st.pop_back();
+```
+
+Input: `2`, then `3 3`.
+
+Wrong output `3`, correct output `6`. Each bar stops at its equal neighbour, so no candidate covers both bars.
+
+**Fix:** a rectangle of height $h_i$ extends over every bar at least as high, so it stops only at strictly lower bars: pop everything $\ge h_i$ (Theorem 1.6.2, part 3). Unlike in the sum of minima, using the same rule on both sides is correct here, because a maximum is not affected by repeats.
+
+### Bug: the window is one too wide
+
+Template: sliding-window maximum.
+
+```cpp
+if (dq.front() < i - k) dq.pop_front();
+```
+
+Input: `2 1`, then `4 1`.
+
+Wrong output `4 4`, correct output `4 1`. The window ending at $i$ is $[i - k + 1, i]$, so position $i - k$ is already outside it, but the check keeps it.
+
+**Fix:** write the window's first position, $i - k + 1$, and remove every position before it: `dq.front() < i - k + 1`, which is `dq.front() <= i - k`.
+
+### Bug: reading the back of the deque
+
+Template: sliding-window maximum.
+
+```cpp
+if (i >= k - 1) out.push_back(a[dq.back()]);
+```
+
+Input: `2 2`, then `2 1`.
+
+Wrong output `1`, correct output `2`. The back is always the newest position $i$; the maximum is at the front, where values are largest.
+
+**Fix:** the deque's values decrease from front to back, so the maximum is the front (Theorem 1.6.3). Writing that invariant in a comment next to the deque prevents this bug.
+
+### Bug: only one front is checked
+
+Template: longest window with a bounded spread. The line that pops the minimum deque's front is removed.
+
+Input: `3 1`, then `0 3 3`.
+
+Wrong output `1`, correct output `2`. At $r = 1$ the window $[0, 1]$ has spread 3, so $l$ moves to 1. But the minimum deque still has position 0 at its front, so the spread still reads as 3, and $l$ keeps moving, past $r$, until the maximum deque is empty. Reading an empty deque's front is undefined behaviour: here it printed a wrong answer, and on other inputs it crashed.
+
+**Fix:** after every step of $l$, check the front of every deque that describes the window.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.5 step 5 bug catalogue (8 bugs)
-- Next action: 1.5 step 6 problems
+- Last completed step: 1.5 step 6 problems (ladder of 18, 2 worked examples, 11 drill items, 2 look-alike pairs, checkpoint, 3 review sets)
+- Next action: 1.5 step 7 worked examples
 
 ## Gates
 | Gate | Status | Date |
@@ -35,7 +35,7 @@
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
-| 1.5 | in progress (step 5) | — |
+| 1.5 | in progress (step 6) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -50,7 +50,7 @@
 | 1.2 | short | 22 | 28 |
 | 1.3 | short | 24 | 32 |
 | 1.4 | short | 20 | 29 |
-| 1.5 | short | 20 | 28 |
+| 1.5 | short | 20 | 29 |
 | 1.6 | short | 16 | 10 |
 | 1.7 | short | 22 | 15 |
 | 2.1 | short | 24 | 14 |
@@ -100,7 +100,7 @@
 - 1.2: reserved 28: at lesson step 1, a second look-alike pair (LeetCode Shifting Letters / Shifting Letters II) and 4 LeetCode reviews were added (review 10 of 10). Still short: later_drill 3 of 4, no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
 - 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
 - 1.4: reserved 28: at lesson step 1, two look-alike pairs (LeetCode Search a 2D Matrix I / II; Find K Pairs with Smallest Sums / Kth Smallest Number in Multiplication Table, the latter moved from practice) and 6 LeetCode reviews were added (review 10 of 10). Still short: no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
-- 1.5: reserved 26: at lesson step 1, two look-alike pairs (LeetCode Non-overlapping Intervals, moved from practice, / Divide Intervals Into Minimum Number of Groups; Best Time to Buy and Sell Stock II / Maximum Difference Between Increasing Elements) and 2 LeetCode reviews (Reduce Array Size to The Half, Hand of Straights) were added (review 9 of 10). Still short: no exam problems.
+- 1.5: reserved 26: at lesson step 1, two look-alike pairs (LeetCode Non-overlapping Intervals, moved from practice, / Divide Intervals Into Minimum Number of Groups; Best Time to Buy and Sell Stock II / Maximum Difference Between Increasing Elements) and 3 LeetCode reviews (Reduce Array Size to The Half, Hand of Straights, Task Scheduler) were added (review 10 of 10; CF 1526C1 is not used, since its solution is regret greedy, topic 7.4). Still short: no exam problems.
 - 1.6: the thinnest Phase 1 topic. Practice 16 of 20, reserved 10 of 24 (drill 5, checkpoint 3, review 2; no look-alike, later_drill or exam). Patterns `min-max-span` and `deque-window-condition` have 1 practice problem each, `histogram-rectangle` 2. Pure stack/deque problems at ratings 1000–1800 are scarce on these platforms; harder ones (e.g. Codeforces 1313C2, 1900) are above the Phase 1 tier range. Suggest allowing tier-5 problems up to 2000 for this topic, or accepting the gap.
 - 1.7: reserved 15 of 24: two look-alike pairs (complete), drill 8, checkpoint 3; no later_drill, review or exam problems left at tier 3–4. Practice is LeetCode-heavy (12 of 22, 55%).
 - 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.

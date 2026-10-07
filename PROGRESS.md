@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.6 Monotonic stack and deque
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.6 step 7 problem ladder (13 problems)
-- Next action: 1.6 step 8 drill and look-alike pairs
+- Last completed step: 1.6 step 8 drill (8 items, 4 from earlier topics) and 2 look-alike pairs
+- Next action: 1.6 step 9 self-test, checkpoint, decision map
 
 ## Gates
 | Gate | Status | Date |
@@ -36,7 +36,7 @@
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
-| 1.6 | in progress (step 7) | — |
+| 1.6 | in progress (step 8) | — |
 
 ## Bank
 | topic | status | practice | reserved |

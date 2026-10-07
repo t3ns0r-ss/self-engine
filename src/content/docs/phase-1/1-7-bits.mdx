@@ -18,6 +18,8 @@ import subarrayXor from '../../../../code/1.7/subarray-xor/solution.cpp?raw';
 import pairSums from '../../../../code/1.7/pair-sums/solution.cpp?raw';
 import maxAndPair from '../../../../code/1.7/max-and-pair/solution.cpp?raw';
 import sumAndXor from '../../../../code/1.7/sum-and-xor/solution.cpp?raw';
+import example1 from '../../../../code/1.7/example-1/solution.cpp?raw';
+import example2 from '../../../../code/1.7/example-2/solution.cpp?raw';
 
 <TopicHeader topic="1.7" />
 
@@ -312,6 +314,66 @@ Wrong output `23 23`, correct output `-1`. Here $c = 23 = 10111_2$ and $x = 2 = 
 **Fix:** check that $c \,\&\, x = 0$, and test a few outputs by computing $a + b$ and $a \oplus b$ back.
 
 ## 8. Worked examples
+
+### Example 1: Red Scarf
+
+[AtCoder Beginner Contest (ABC) 171, problem E: Red Scarf](https://atcoder.jp/contests/abc171/tasks/abc171_e). In short: $N$ cats ($N$ even, $N \le 2 \cdot 10^5$) each have a hidden integer $x_i$; you are given $a_i$, the XOR of all hidden integers except $x_i$. Print the hidden integers.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$: $O(N)$ or $O(N \log N)$. Values up to $10^9 < 2^{30}$: `int`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force over the hidden values (topic 0.5) is hopeless: each has $10^9$ choices. Computing each $a_i$ from scratch would be $O(N^2)$ even if the $x$ were known. The data are all XORs of almost everything, and XOR cancels repeated values (xor-identities card, Theorem 1.7.1). The unknown that ties them together is $X$, the XOR of all hidden values.
+
+#### Step 3: Property check → decision
+
+"All except $x_i$" is $X$ with $x_i$ removed, and removing a value from a XOR is XOR-ing it again: $a_i = X \oplus x_i$. So $x_i = a_i \oplus X$ (Theorem 1.7.1, part 3), and everything reduces to finding $X$. XOR all the $a_i$: each $x_j$ appears in every $a_i$ except $a_j$, that is $N - 1$ times, an odd number because $N$ is even. Decision: $X = a_1 \oplus \dots \oplus a_N$, then $x_i = a_i \oplus X$.
+
+#### Step 4: Proof for this problem
+
+Let $X = x_1 \oplus \dots \oplus x_N$. By Theorem 1.7.1, parts 1 and 2, $a_i = X \oplus x_i$, because XOR-ing $x_i$ into $X$ cancels it. Then $a_1 \oplus \dots \oplus a_N$ is a XOR in which each $x_j$ appears $N - 1$ times (once in every $a_i$ with $i \ne j$). By part 4, only values that appear an odd number of times remain, and $N - 1$ is odd, so the XOR of all $a_i$ is $X$. Finally $x_i = a_i \oplus X$ by part 3. The values found satisfy every equation and are the only possible ones. Two passes: $O(N)$.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `all ^= v` inside the reading loop XORs every value as it arrives; `^=` is to `^` what `+=` is to `+`. Tested on the sample from the problem page, on two zeros, on two values near $10^9$, on $2 \cdot 10^5$ random values, and on 5000 random inputs ($N \le 6$, values below 8) against a brute force that tries every assignment of hidden values.
+
+#### Step 6: Alternative approach
+
+Work with differences: $a_i \oplus a_j = x_i \oplus x_j$, since $X$ cancels. So once $x_1$ is known, $x_j = x_1 \oplus a_1 \oplus a_j$. Substituting these into $a_1 = x_2 \oplus \dots \oplus x_N$ gives $N - 1$ (an odd number of) copies of $x_1 \oplus a_1$, so $a_1 = x_1 \oplus a_1 \oplus a_2 \oplus \dots \oplus a_N$, that is, $x_1 = a_2 \oplus \dots \oplus a_N$. It reaches the same formula with more algebra.
+
+### Example 2: Masked Popcount
+
+[AtCoder Beginner Contest (ABC) 356, problem D: Masked Popcount](https://atcoder.jp/contests/abc356/tasks/abc356_d). In short: given $N$ and $M$ below $2^{60}$, print the sum of $\text{popcount}(k \,\&\, M)$ over $k = 0, 1, \dots, N$, modulo $998244353$.
+
+#### Step 1: Constraints → budget
+
+$N$ up to $2^{60} \approx 10^{18}$: even $O(N)$ is impossible. Only about 60 bits exist, so $O(60)$ or $O(60^2)$ is the budget. `long long` for $N$, $M$ and the counts.
+
+#### Step 2: Question form → candidate tools
+
+A sum over many terms of a bitwise result, and popcount just counts set bits: the per-bit-contribution card (Theorem 1.7.3). Each term's popcount is the number of bits $b$ set in $k \,\&\, M$. Exchanging the two sums turns the total into a count per bit.
+
+#### Step 3: Property check → decision
+
+Bit $b$ of $k \,\&\, M$ is 1 exactly when $M$ has bit $b$ and $k$ has bit $b$: a condition on bit $b$ alone. So the answer is the sum, over the bits $b$ of $M$, of the number of $k \in [0, N]$ with bit $b$ set. That count has a formula: counting up from 0, bit $b$ is $2^b$ zeros, then $2^b$ ones, repeating with period $2^{b+1}$. Decision: for each bit of $M$, count the full periods in the $N + 1$ numbers and the ones in the partial period.
+
+#### Step 4: Proof for this problem
+
+$\sum_k \text{popcount}(k \,\&\, M) = \sum_k \sum_b [\text{bit } b \text{ of } k \,\&\, M] = \sum_b \#\{k \le N : k_b = 1 \text{ and } M_b = 1\}$, by exchanging the sums (Theorem 1.7.3, part 3, with weight 1 for every bit instead of $2^b$). For a bit $b$ of $M$: bit $b$ of $k$ is $\lfloor k / 2^b \rfloor \bmod 2$, so as $k$ runs through $0, 1, 2, \dots$ it takes the value 0 for $2^b$ consecutive numbers, then 1 for $2^b$, and so on. The $N + 1$ numbers $0, \dots, N$ contain $q = \lfloor (N + 1) / 2^{b+1} \rfloor$ full periods, each with $2^b$ ones, and a partial period of $r = (N + 1) \bmod 2^{b+1}$ numbers, whose ones are the last $\max(0, r - 2^b)$. Adding these counts modulo $998244353$ gives the answer in $O(60)$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `1LL << (b + 1)` must be a `long long` shift: with `1 << (b + 1)` the value is an `int` and overflows from $b = 30$ on. `n + 1` is at most $2^{60}$, which fits in `long long`. `cnt % MOD` reduces each count (up to $2^{59}$) before it is added, so `total` never overflows. Tested on the three samples from the problem page, on $M = 0$, on $N = 10^{18}$ with $M = 1$ (the odd numbers), and on 5000 random inputs ($N \le 5000$) against a brute force that adds every term.
+
+#### Step 6: Alternative approach
+
+Count bit by bit from the top of $N$: for each bit where $N$ has a 1, the numbers below $N$ that agree with it above that bit and have 0 there form a block in which all lower bits take every value equally often. It gives the same counts, written as a walk over the bits of $N$ (Theorem 1.7.4 style). The period formula above is shorter.
 
 ## 9. Problem ladder
 

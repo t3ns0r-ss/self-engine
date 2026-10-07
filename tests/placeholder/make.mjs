@@ -122,12 +122,18 @@ const topic = {
 
 const notes = (list) => list.map((p) => `## ${p.id} ${p.title} (tier ${p.tier}, pattern ${p.pattern}, set ${p.set})\n- Placeholder note.\n`).join('\n');
 const header = '# PLACEHOLDER created by tests/placeholder/make.mjs. Must not be committed.\n';
-writeFileSync('src/data/bank/1-3.yaml', header + stringify({ topic: '1.3', status: 'in_progress', problems: bank13 }));
+// Later lessons draw drill items from the real 1.3 bank's later_drill problems, so those stay
+// (with their notes) next to the placeholder's problems.
+const real13 = existsSync(backupOf('src/data/bank/1-3.yaml')) ? parse(readFileSync(backupOf('src/data/bank/1-3.yaml'), 'utf8')).problems : [];
+const keep13 = real13.filter((p) => p.reserved_for === 'later_drill');
+const realNotes13 = existsSync(backupOf('notes/bank/1.3.md')) ? readFileSync(backupOf('notes/bank/1.3.md'), 'utf8') : '';
+const keepNotes13 = keep13.map((p) => (realNotes13.match(new RegExp(`^## ${p.id} .*\\n(?:(?!## ).*\\n)*`, 'm')) || [''])[0]).join('\n');
+writeFileSync('src/data/bank/1-3.yaml', header + stringify({ topic: '1.3', status: 'in_progress', problems: [...bank13, ...keep13] }));
 // The real 1.2 bank stays (the real 1.2 lesson uses it); the placeholder's later_drill items are
 // appended to it, and the whole file is restored by --remove.
 const real12 = parse(readFileSync(backupOf('src/data/bank/1-2.yaml'), 'utf8'));
 writeFileSync('src/data/bank/1-2.yaml', header + stringify({ ...real12, problems: [...real12.problems, ...bank12] }));
-writeFileSync('notes/bank/1.3.md', notes(bank13));
+writeFileSync('notes/bank/1.3.md', notes(bank13) + '\n' + keepNotes13);
 writeFileSync('notes/bank/1.2.md', readFileSync(backupOf('notes/bank/1.2.md'), 'utf8') + '\n' + notes(bank12));
 writeFileSync('src/data/topics/1-3.yaml', header + stringify(topic));
 if (!existsSync(GLOSSARY_BACKUP)) writeFileSync(GLOSSARY_BACKUP, readFileSync(GLOSSARY, 'utf8'));

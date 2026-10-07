@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
-- Topic: 1.6 Monotonic stack and deque
+- Topic: 1.7 Bits: XOR properties, prefix XOR, per-bit contribution
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.6 step 9 self-test (7), checkpoint, 3 review sets, decision map
-- Next action: 1.6 step 10 review and publish
+- Last completed step: 1.6 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
+- Next action: 1.7 step 1 scope
 
 ## Gates
 | Gate | Status | Date |
@@ -36,7 +36,7 @@
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
-| 1.6 | in progress (step 9) | — |
+| 1.6 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -52,7 +52,7 @@
 | 1.3 | short | 24 | 32 |
 | 1.4 | short | 20 | 29 |
 | 1.5 | short | 20 | 29 |
-| 1.6 | short | 15 | 21 |
+| 1.6 | short | 16 | 20 |
 | 1.7 | short | 22 | 15 |
 | 2.1 | short | 24 | 14 |
 | 2.2 | short | 14 | 3 |

@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.7 Bits: XOR properties, prefix XOR, per-bit contribution
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.7 step 8 drill (11 items, 3 from earlier topics) and 2 look-alike pairs
-- Next action: 1.7 step 9 self-test, checkpoint, reviews, decision map
+- Last completed step: 1.7 step 9 self-test (7), checkpoint, 3 review sets (4/3/3), decision map
+- Next action: 1.7 step 10 self-review
 
 ## Gates
 | Gate | Status | Date |
@@ -37,7 +37,7 @@
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
 | 1.6 | done (on this session's branch) | — |
-| 1.7 | in progress (step 8) | — |
+| 1.7 | in progress (step 9) | — |
 
 ## Bank
 | topic | status | practice | reserved |

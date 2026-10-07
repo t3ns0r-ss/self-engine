@@ -13,6 +13,12 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import mergeSort from '../../../../code/1.1/merge-sort/solution.cpp?raw';
+import closestValues from '../../../../code/1.1/closest-values/solution.cpp?raw';
+import standings from '../../../../code/1.1/standings/solution.cpp?raw';
+import sortedPositions from '../../../../code/1.1/sorted-positions/solution.cpp?raw';
+import compress from '../../../../code/1.1/compress/solution.cpp?raw';
+import maxOverlap from '../../../../code/1.1/max-overlap/solution.cpp?raw';
 
 <TopicHeader topic="1.1" />
 
@@ -182,6 +188,95 @@ Example: $[1, 4), [2, 5), [4, 6)$. Events sorted: $(1, +1), (2, +1), (4, -1), (4
 <Cards topic="1.1" />
 
 ## 6. Templates
+
+Six short programs: merge sort, to see the method behind `sort`, and one program for each card. Every brute force avoids the idea it checks: it compares all pairs, tries all subsets, or counts from the definition, so its answers are easy to trust.
+
+### Merge sort (Theorem 1.1.1)
+
+<Code code={mergeSort} lang="cpp" title="merge-sort/solution.cpp" />
+
+**How it works.** `mergeSort(lo, hi)` sorts the part `a[lo .. hi - 1]`. A part of length at most 1 is already sorted. Otherwise both halves are sorted by the same function, and the merge walks `i` through the left half and `j` through the right half, writing the smaller front element into `buf`. When one half runs out, the rest of the other is copied, and `buf` is copied back into `a`. The right element is taken only when it is strictly smaller, so equal elements keep their order (stable).
+
+**C++ details explained.**
+- `a` and `buf` are global `vector`s, so the recursive function can use them without passing them as parameters. `a.resize(n)` gives a vector $n$ elements.
+- `buf[k++] = a[j++];` copies the element and then moves both indices forward by one: `k++` uses the old value of `k` and then increases it.
+- The function calls itself on smaller parts (recursion, topic 0.5); the depth is about $\log_2 n \approx 18$.
+
+**Tested.** Stress-tested against a selection sort (repeatedly move the smallest remaining value to the front) on 5000 random arrays ($n \le 10$, values in $[-3, 3]$ or up to $10^9$), plus 4 fixed tests including $n = 1$, all values equal, and $2 \cdot 10^5$ values.
+
+**Alternative formulation.** In contests, `sort(a.begin(), a.end())` does the same in one line, and `stable_sort` when the order of equal elements matters.
+
+### Sort, then look at neighbours (Theorem 1.1.2)
+
+<Code code={closestValues} lang="cpp" title="closest-values/solution.cpp" />
+
+**How it works.** The smallest difference is order-free, so the program sorts. By Theorem 1.1.2 the closest pair is a pair of neighbours, `a[i]` and `a[i + 1]`, and the best $k$ values form a block `a[i] .. a[i + k - 1]`, whose spread is its last element minus its first. Two scans try every neighbour pair and every block.
+
+**C++ details explained.**
+- `sort(a.begin(), a.end())` sorts the whole vector in non-decreasing order in $O(n \log n)$. `a.begin()` and `a.end()` are iterators (topic 0.6) to the first element and to just past the last, and `sort` sorts everything between them.
+- `LLONG_MAX` is the largest `long long`, a start value that any real difference beats.
+- The values are stored as `long long` because a difference of two values in $[-10^9, 10^9]$ reaches $2 \cdot 10^9$, more than an `int` holds.
+
+**Tested.** Stress-tested against a brute force that compares all pairs and tries every subset of exactly $k$ values with a bitmask, on 5000 random inputs ($n \le 10$, values in $[-5, 5]$ or up to $10^9$ in absolute value), plus 4 fixed tests including $-10^9$ and $10^9$ (difference $2 \cdot 10^9$), all values equal, and $n = 2 \cdot 10^5$.
+
+**Alternative formulation.** Insert the values into a `multiset` one by one and compare each with its neighbours in the set (topic 0.6). It also costs $O(n \log n)$, and it still works when values arrive between questions; for a fixed list, one sort is simpler.
+
+### Sort by your own rule (Theorem 1.1.3)
+
+<Code code={standings} lang="cpp" title="standings/solution.cpp" />
+
+**How it works.** The comparator `before(x, y)` answers "must $x$ come before $y$?" by looking at the keys in turn: the first key on which they differ decides, and the contestant number is the last key, so no two contestants are equivalent and the order is fully fixed. It is a lexicographic comparison of (−solved, penalty, id), so it is a strict weak ordering (Theorem 1.1.3).
+
+**C++ details explained.**
+- `struct Contestant { int solved, penalty, id; };` defines a record type with three named fields, read as `c[i].solved` and so on.
+- `auto before = [](const Contestant& x, const Contestant& y) { … };` is a *lambda*: a small function written inside `main` and stored in the variable `before`. `[]` means it uses no variables from outside; `const Contestant&` passes each record by reference without copying it and promises not to change it.
+- `sort(c.begin(), c.end(), before)` sorts with that comparator instead of `<`.
+- Every `return` compares with `<` or `>`, never `<=`: for two equal records the lambda must return false.
+
+**Tested.** Stress-tested against a brute force that repeatedly picks the best contestant not yet printed, checking the three rules with `if` statements, on 5000 random inputs ($n \le 10$, with small value ranges in half of them so that ties on the first two keys are frequent), plus 4 fixed tests including $n = 1$, contestants equal except for their number, and $2 \cdot 10^5$ contestants.
+
+**Alternative formulation.** Build a `tuple<int, int, int>` key $(-s_i, p_i, i)$ for each contestant and sort the tuples with the default `<`: negating the first key turns "more solved first" into increasing order (Theorem 1.1.3, part 2).
+
+### Sort but remember positions (Theorem 1.1.4)
+
+<Code code={sortedPositions} lang="cpp" title="sorted-positions/solution.cpp" />
+
+**How it works.** Each value is stored together with its index in a `pair`. Sorting the pairs orders them by value and, among equal values, by index. Reading the second components in order gives the indices in sorted order; writing `place[v[k].second] = k` records, for each original index, where its value ended up.
+
+**C++ details explained.**
+- `vector<pair<int, int>> v(n)` holds $n$ pairs; `v[i].first` is the value and `v[i].second` the index.
+- `sort` on pairs uses the pair comparison: by `first`, then by `second` (Theorem 1.1.3, part 2).
+- The program works with indices from 0 and prints them from 1, as the statement asks.
+
+**Tested.** Stress-tested against a brute force that computes each place from the definition (the number of $j$ with $a_j < a_i$, or $a_j = a_i$ and $j < i$), on 5000 random arrays ($n \le 10$, values in $[-3, 3]$ or up to $10^9$), plus 4 fixed tests including $n = 1$, all values equal, and $2 \cdot 10^5$ values with many repeats.
+
+**Alternative formulation.** Sort a vector of indices `idx` $= 0, \dots, n-1$ with the comparator "`a[i] < a[j]`, or equal values and `i < j`"; it gives the same order without copying the values.
+
+### Replace values by ranks (Theorem 1.1.5)
+
+<Code code={compress} lang="cpp" title="compress/solution.cpp" />
+
+**How it works.** After sorting the (value, index) pairs, equal values are next to each other. The counter `r` starts at 0 and goes up by one whenever a value differs from the one before it, so it always equals the number of distinct values seen before the current one, which is the rank. The rank is stored at the element's original index. At the end, `r + 1` is the number of distinct values.
+
+**C++ details explained.** None beyond earlier topics and the previous template.
+
+**Tested.** Stress-tested against a brute force that counts, for each value, the smaller values that do not occur at an earlier index (so each distinct smaller value is counted once), on 5000 random arrays ($n \le 10$, values in $[-3, 3]$ or up to $10^9$), plus 4 fixed tests including $n = 1$, $\pm 10^9$, and $2 \cdot 10^5$ values.
+
+**Alternative formulation.** Insert all values into a `map<int, int>` as keys, then walk the map in increasing key order and set each value to $0, 1, 2, \dots$; afterwards `rank[x]` is one lookup (topic 0.6). Same cost, and later queries about values that were inserted can be answered without another sort.
+
+### Intervals as sorted events (Theorem 1.1.6)
+
+<Code code={maxOverlap} lang="cpp" title="max-overlap/solution.cpp" />
+
+**How it works.** The closed integer interval $[l, r]$ is the half-open $[l, r + 1)$, so it becomes the events $(l, +1)$ and $(r + 1, -1)$. Sorting the pairs puts them in time order, and at equal times $-1$ comes before $+1$ because $-1 < +1$: exactly the tie order Theorem 1.1.6 needs. While sweeping, `cur` is the number of intervals covering the current point; its largest value is the answer to the first question. Between one event and the next the count does not change, so if it is positive, all `events[k + 1].first - events[k].first` integers in between are covered.
+
+**C++ details explained.**
+- `events.push_back({l, +1})` adds a pair written with braces.
+- The times and the covered count are `long long`. Here they stay below $1.1 \cdot 10^9$, which an `int` holds, but sweeps often add up gaps times counts (Theorem 1.1.6, part 3), and those sums pass $2 \cdot 10^9$ quickly; `long long` costs nothing here.
+
+**Tested.** Stress-tested against a brute force that walks every integer point from 0 to the largest $r$ and counts the intervals containing it, on 5000 random inputs ($n \le 8$, coordinates up to 6 or 20, a quarter of the intervals single points), plus 5 fixed tests including $[0, 10^9]$, intervals that only touch ($[1, 2]$ and $[3, 4]$ cover the integers 1 to 4 without overlapping), and two copies of the same point.
+
+**Alternative formulation.** If the coordinates are at most about $10^6$, an array `cnt` over all points with `cnt[x]++` for every covered point is a direct simulation, at a cost of the total interval length; the sweep's cost does not depend on the coordinates.
 
 ## 7. Bug catalogue
 

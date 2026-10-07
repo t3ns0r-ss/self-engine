@@ -18,15 +18,164 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. You are given $n = 2 \cdot 10^5$ numbers up to $10^9$. Find the smallest difference between two of them.
+
+The direct method compares every pair: about $n^2 / 2 = 2 \cdot 10^{10}$ pairs, about 200 seconds at $10^8$ simple steps per second (topic 0.2). But once the numbers are sorted, the closest pair must be two neighbours in sorted order: if $a \le b \le c$, then $b - a$ and $c - b$ are both at most $c - a$. So it is enough to sort, which costs about $n \log_2 n \approx 3.6 \cdot 10^6$ comparisons, and then look at the $n - 1$ neighbouring pairs.
+
+That is the idea of this topic. Many questions do not depend on the order in which the input lists its items: the answer stays the same if the items are shuffled. Such questions can be asked about the sorted list instead, and in sorted order the items that matter to each other often sit next to each other. The lesson covers how sorting works and what it costs, sorting by your own rule (a comparator), sorting while remembering where each item came from, replacing values by their ranks (coordinate compression), and turning intervals into sorted events.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming (CP): `vector`, `long long`, fast input and output.
+- Topic 0.2, complexity analysis: the step budget and $O(n \log n)$.
+- Topic 0.3, implementation and simulation: one-pass scans, which do most of the work after sorting.
+- Topic 0.5, brute force: lexicographic order, and the reference solutions in the tests.
+- Topic 0.6, STL toolbox: `pair`, `set`, `map`, and the cost of each operation. A `set` already keeps its elements sorted; this lesson sorts a `vector` once instead of keeping a structure sorted while it changes.
+
 ### What this topic does not cover
+
+- Finding a value in a sorted array in $O(\log n)$ (binary search, and the free functions `lower_bound` and `upper_bound`). Covered in topic 1.4. This lesson assigns ranks with a scan or a `map` instead.
+- Moving two indices through a sorted array (two pointers). Covered in topic 1.3.
+- Proving that a chosen order is optimal for an optimisation problem (exchange argument). Covered in topic 1.5. The orders in this lesson are given by the statement or follow directly from it.
+- Running sums of a sorted array, and marking intervals on a small number line (prefix sums, difference arrays). Covered in topic 1.2.
+- Counting the pairs that are out of order with a Fenwick tree. Covered in topic 5.2.
 
 ## 3. Definitions
 
+- A sequence $a_0, a_1, \dots, a_{n-1}$ is **non-decreasing** (sorted) if $i < j$ implies $a_i \le a_j$; equivalently, $a_i \le a_{i+1}$ for every $i$. It is **non-increasing** if $i < j$ implies $a_i \ge a_j$. Example: $(1, 3, 3, 7)$ is non-decreasing. The same words apply to a function $f$ on indices: $f$ is non-decreasing if $i < j$ implies $f(i) \le f(j)$.
+- **Merging** two sorted sequences means producing one sorted sequence that contains the elements of both. Example: merging $(1, 4)$ and $(2, 3, 5)$ gives $(1, 2, 3, 4, 5)$. **Merge sort** sorts an array by sorting its two halves (by the same method) and merging them.
+- A question about a list is **order-free** if shuffling the list never changes the answer: the answer depends only on which values occur and how often. Example: "the smallest difference between two values" is order-free; "the smallest difference between two adjacent values of the input" is not.
+- A **comparator** is a function `less(x, y)` that returns true when $x$ must come before $y$. `sort` puts the elements in an order where no element is "less" than an element before it.
+- A comparator is a **strict weak ordering** if (1) `less(x, x)` is false for every $x$; (2) `less(x, y)` and `less(y, z)` imply `less(x, z)`; (3) calling $x$ and $y$ **equivalent** when neither `less(x, y)` nor `less(y, x)` holds, equivalence is transitive. Example: "$x$ has fewer digits than $y$" is a strict weak ordering in which 12 and 47 are equivalent.
+- A sort is **stable** if equivalent elements keep their original relative order. Example: sorting the people (Ann, 30), (Bob, 25), (Cid, 30) by age, a stable sort must give Bob, Ann, Cid, never Bob, Cid, Ann.
+- The **rank** of a value $x$ in a collection is the number of distinct values in the collection that are smaller than $x$. Example: in $(50, 10, 50, 7)$, the ranks of $7, 10, 50$ are $0, 1, 2$.
+- **Coordinate compression** replaces every value by its rank. Example: $(50, 10, 50, 7)$ becomes $(2, 1, 2, 0)$.
+- An **event** is a point in time (or on a line) where a quantity changes, recorded as a pair (time, change). A **sweep** processes events in sorted order while keeping the current value of the quantity.
+
 ## 4. Theory and proofs
+
+### 4.1 What sorting costs, and merge sort
+
+`sort(v.begin(), v.end())` puts a `vector` in non-decreasing order. The C++ standard guarantees $O(n \log n)$ comparisons. For numbers each comparison is one step; for strings of length up to $L$ it can take $L$ steps, so sorting $n$ strings costs $O(n L \log n)$.
+
+To see where $n \log n$ comes from, here is a sorting method you can write yourself, merge sort: split the array into two halves, sort each half by the same method, then merge the two sorted halves. Merging walks through both halves with one index each and repeatedly takes the smaller front element.
+
+**Theorem 1.1.1 (merge sort).** Merge sort returns the elements in non-decreasing order, and on $n$ elements it performs at most $n \lceil \log_2 n \rceil$ comparisons. If ties are taken from the left half first, it is stable.
+
+*Proof.* *Merging is correct.* Let the halves be $L$ and $R$, both sorted. Each step outputs the smaller of the two front elements. This element is at most every element still waiting: at most the other front element by the choice, and at most everything behind its own front because its half is sorted. So each output element is at most every later output element, and the output is sorted. Each comparison outputs one element, so merging $m$ elements costs fewer than $m$ comparisons.
+
+*Merge sort is correct,* by induction on $n$: one element is sorted; for $n \ge 2$, both halves are smaller, so by induction they come back sorted, and merging them gives a sorted array.
+
+*Cost.* Draw the calls as levels: level 0 is the whole array, level 1 the two halves, and so on. The pieces on one level are disjoint, so the merges on one level handle at most $n$ elements in total, fewer than $n$ comparisons. Halving reaches pieces of size 1 after $\lceil \log_2 n \rceil$ levels. In total, at most $n \lceil \log_2 n \rceil$ comparisons.
+
+*Stability.* Equivalent elements in the same half keep their order by induction. If $x$ is in the left half and an equivalent $y$ in the right half, then $x$ was before $y$ originally, and a merge that takes the left element on a tie outputs $x$ first. $\square$
+
+:::note[This proof needs]
+1. Comparisons are consistent: the comparator is a strict weak ordering (Section 4.3).
+2. Merging needs a second array of size $n$ for the output; the merged result is then copied back.
+3. Stability needs ties to be taken from the left half: take the right front element only when it is strictly smaller than the left one.
+:::
+
+Trace on $(5, 2, 4, 1)$: the halves $(5, 2)$ and $(4, 1)$ become $(2, 5)$ and $(1, 4)$; merging compares $2$ with $1$ (take 1), $2$ with $4$ (take 2), $5$ with $4$ (take 4), and then copies 5. Result $(1, 2, 4, 5)$ with 3 comparisons at the top level and 1 in each half.
+
+In contests you call `sort`, which is faster in practice; merge sort is here because its proof shows what $O(n \log n)$ sorting looks like, and because Section 4.4 needs stability. The library also has `stable_sort`, a stable sort with the same cost.
+
+### 4.2 When order does not matter: neighbours in sorted order
+
+For an order-free question (Section 3) we may sort the input first: the sorted list is one of the shuffles, so it has the same answer.
+
+**Theorem 1.1.2 (sorted neighbours).** Let $a_0 \le a_1 \le \dots \le a_{n-1}$.
+1. For $i < j$, $a_j - a_i \ge a_{i+1} - a_i$ and $a_j - a_i \ge a_j - a_{j-1}$. Hence the smallest difference between two elements is $\min_i (a_{i+1} - a_i)$.
+2. For $1 \le k \le n$, among all choices of $k$ elements, the smallest possible value of (largest chosen − smallest chosen) is $\min_i (a_{i+k-1} - a_i)$: some optimal choice is a block of $k$ consecutive elements.
+
+*Proof.* 1. Since $a_j \ge a_{i+1}$ when $j \ge i + 1$, we get $a_j - a_i \ge a_{i+1} - a_i$; the second inequality is the same argument from the other side. So no pair is closer than the closest adjacent pair, and the adjacent pairs are pairs themselves.
+2. Take any choice of $k$ elements with indices $i_1 < i_2 < \dots < i_k$ in the sorted array. Its spread is $a_{i_k} - a_{i_1}$. The block $a_{i_1}, \dots, a_{i_1 + k - 1}$ has $i_1 + k - 1 \le i_k$ (there are $k$ distinct indices from $i_1$ to $i_k$), so its spread $a_{i_1 + k - 1} - a_{i_1}$ is at most $a_{i_k} - a_{i_1}$. So for every choice there is a block at least as good. $\square$
+
+:::note[This proof needs]
+1. The question is order-free: the answer depends only on the values, not on their positions in the input.
+2. The quantity only grows as the two elements get farther apart in sorted order (a difference, a spread), so the best candidates are neighbours or blocks.
+:::
+
+Example: for $(10, 1, 7, 3, 8)$, sorted $(1, 3, 7, 8, 10)$; the closest pair is $7, 8$ (difference 1), and the best 3 elements are $7, 8, 10$ (spread 3).
+
+**Complexity.** $O(n \log n)$ to sort, then $O(n)$ for the scan.
+
+### 4.3 Sorting by your own rule
+
+`sort(v.begin(), v.end(), less)` sorts with a comparator. The library assumes `less` is a strict weak ordering; if it is not, the result is not specified and the program may even crash. (The most common way to break it is to write `<=`: then `less(x, x)` is true.)
+
+**Theorem 1.1.3 (comparators).**
+1. *Key comparison.* For any function $k$ with values that can be compared (numbers, strings), `less(x, y)` $= k(x) < k(y)$ is a strict weak ordering; $x$ and $y$ are equivalent exactly when $k(x) = k(y)$.
+2. *Lexicographic comparison.* Comparing pairs (or tuples) by the first component, and by the second only when the first components are equal, is a strict weak ordering. This is how `pair` and `tuple` compare with `<`.
+3. If `less` is a strict weak ordering, the sorted result $b_0, \dots, b_{n-1}$ has `less(b_j, b_i)` false for all $i < j$, and the equivalent elements form consecutive blocks.
+
+*Proof.* 1. $k(x) < k(x)$ is false. If $k(x) < k(y) < k(z)$ then $k(x) < k(z)$. Neither $k(x) < k(y)$ nor $k(y) < k(x)$ means $k(x) = k(y)$, and equality is transitive.
+2. Irreflexive: $(p, q) < (p, q)$ would need $p < p$ or $q < q$. Transitive: if $(p_1, q_1) < (p_2, q_2) < (p_3, q_3)$, then $p_1 \le p_2 \le p_3$; if $p_1 < p_3$ the claim holds; otherwise $p_1 = p_2 = p_3$ and both comparisons were decided by the second component, so $q_1 < q_2 < q_3$. Two pairs are equivalent exactly when both components are equal, which is transitive. Tuples follow by applying the same argument to (first component, rest of the tuple).
+3. The first part is what the standard guarantees for `sort`. For the blocks: if $b_i$ and $b_j$ ($i < j$) are equivalent and $b_m$ lies between them, then `less(b_m, b_i)` and `less(b_j, b_m)` are false; if `less(b_i, b_m)` were true, then since $b_j$ is equivalent to $b_i$ one gets `less(b_j, b_m)` (a strict weak ordering respects equivalence), a contradiction; so $b_m$ is equivalent to $b_i$. $\square$
+
+:::note[This proof needs]
+1. The comparator is a strict weak ordering: irreflexive (never `<=`), transitive, with transitive equivalence. Comparing by a key, or by several keys in turn, gives one automatically.
+2. Keys are compared exactly. Ratios $p/q$ are compared by cross-multiplication $p_1 q_2 < p_2 q_1$ (for positive $q$, in `long long`), not with `double`, which can round two different ratios to the same number.
+3. `sort` is not stable: the order inside a block of equivalent elements is unspecified. If the statement fixes it ("ties by index"), add that key or use `stable_sort`.
+:::
+
+**A rule that looks pairwise but is a key.** To arrange numbers so that their concatenation is as large as possible, compare two numbers as strings $x, y$ by "$x$ before $y$ when $xy > yx$". This looks like a rule about pairs, which might not be transitive. But writing $|x|$ for the number of digits, $xy = x \cdot 10^{|y|} + y$, so $xy > yx$ means $x (10^{|y|} - 1) > y (10^{|x|} - 1)$, that is $\frac{x}{10^{|x|} - 1} > \frac{y}{10^{|y|} - 1}$. So the rule compares the key $x / (10^{|x|} - 1)$, and by part 1 it is a strict weak ordering.
+
+### 4.4 Sorting while remembering positions
+
+Often the processing must happen in value order, but the answer must be printed in input order, or must name the original positions.
+
+**Theorem 1.1.4 (sorting with indices).** Sort the pairs $(a_i, i)$ for $i = 0, \dots, n-1$ with the pair comparison, and let the result be $(a_{p_0}, p_0), (a_{p_1}, p_1), \dots$. Then:
+1. $a_{p_0} \le a_{p_1} \le \dots$, and among equal values the indices increase: the order is the one a stable sort of the values gives.
+2. Setting $\text{pos}[p_k] = k$ for every $k$ gives, for each original index $i$, the place of $a_i$ in that order. $\text{pos}[i]$ equals the number of indices $j$ with $a_j < a_i$, or with $a_j = a_i$ and $j < i$.
+
+*Proof.* 1. All pairs are different (the indices are), so by Theorem 1.1.3 (part 2) the sorted pairs are ordered by value and, for equal values, by index. 2. $p$ lists every index exactly once, so pos is well defined. The pairs before $(a_i, i)$ in sorted order are exactly the pairs smaller than it, namely those with $a_j < a_i$, or $a_j = a_i$ and $j < i$; their number is its place $k$. $\square$
+
+:::note[This proof needs]
+1. The work needs value order, while the output refers to original positions (or ties must be broken by position).
+2. Each element carries its index through the sort; sorting the values alone loses which equal value came from where.
+:::
+
+**Complexity.** $O(n \log n)$ to sort the pairs, $O(n)$ to fill pos.
+
+### 4.5 Replacing values by ranks
+
+Values up to $10^9$ cannot index an array. If only their order matters, ranks can be used instead, and ranks are less than $n$.
+
+**Theorem 1.1.5 (coordinate compression).** Let $r(x)$ be the rank of $x$ among the values $a_0, \dots, a_{n-1}$, and let $d$ be the number of distinct values. Then $0 \le r(x) \le d - 1$, and for any two of the values, $x < y \iff r(x) < r(y)$ and $x = y \iff r(x) = r(y)$. The ranks are computed in $O(n \log n)$: sort the pairs $(a_i, i)$, walk through them in order with a counter that starts at 0 and increases by one each time the value differs from the previous value, and store the counter as the rank of index $i$.
+
+*Proof.* If $x < y$, every distinct value smaller than $x$ is smaller than $y$, and $x$ itself is smaller than $y$ but not than $x$, so $r(y) \ge r(x) + 1$. Swapping roles, $y < x$ gives $r(y) < r(x)$, and $x = y$ gives equal ranks; these three cases cover everything, which proves both equivalences. The smallest value has rank 0 and the largest has $d - 1$ smaller distinct values. In the walk, the values come in non-decreasing order (Theorem 1.1.4), so the counter at a pair equals the number of distinct values seen before its value, which are exactly the distinct values smaller than it. $\square$
+
+:::note[This proof needs]
+1. The answer depends only on comparisons between values (which is smaller, which are equal), not on their differences or sizes.
+2. The values that must be compared later (queries, interval ends) are compressed together with the input, so that each of them has a rank.
+:::
+
+Example: $(50, 10, 50, 7)$; sorted pairs $(7, 3), (10, 1), (50, 0), (50, 2)$; ranks $0, 1, 2, 2$; so the compressed array is $(2, 1, 2, 0)$.
+
+**Complexity.** $O(n \log n)$. A `map` from value to rank (topic 0.6), filled in increasing key order, gives the same ranks with the same cost; it also answers "what is the rank of this value" for values read later, as long as they were inserted first.
+
+### 4.6 Intervals as sorted events
+
+**Theorem 1.1.6 (event sweep).** Let $[s_1, e_1), \dots, [s_n, e_n)$ be half-open intervals ($s_i < e_i$). Let $c(t)$ be the number of intervals containing the point $t$. Make the events $(s_i, +1)$ and $(e_i, -1)$, sort them by time with $-1$ before $+1$ at equal times, and process them in order, adding each change to a counter that starts at 0. Then:
+1. After all events with time $\le t$ have been processed, the counter equals $c(t)$.
+2. The largest value the counter takes is $\max_t c(t)$.
+3. Between two consecutive event times $u < v$, the coverage $c(t)$ is constant for $u \le t < v$.
+
+*Proof.* 1. Interval $i$ contains $t$ exactly when $s_i \le t$ and not $e_i \le t$. After the events with time $\le t$, the counter has received $+1$ from every interval with $s_i \le t$ and $-1$ from every interval with $e_i \le t$; since $s_i < e_i$, the intervals with $e_i \le t$ are among those with $s_i \le t$, so the counter is the number with $s_i \le t < e_i$, which is $c(t)$.
+3. No event lies strictly between $u$ and $v$, so the set of processed events, and by part 1 the coverage, is the same for every $t$ in $[u, v)$.
+2. Within the events at one time $t$, the $-1$ changes come first, so the counter first goes down from $c(t^-)$ (the coverage just before $t$, which by part 3 is the coverage at the previous event time) and then up to $c(t)$; every value in between is at most $\max(c(t^-), c(t))$. So no value of the counter exceeds the largest coverage, and each $c(t)$ is itself taken, after the last event at time $\le t$. $\square$
+
+:::note[This proof needs]
+1. The quantity changes only at the events, so between events nothing needs to be looked at.
+2. The tie order matches the statement: for half-open intervals ends come before starts. Closed intervals $[s, e]$ of integers are the half-open $[s, e + 1)$; if the statement says that touching intervals overlap, starts must come before ends at equal times instead.
+:::
+
+Example: $[1, 4), [2, 5), [4, 6)$. Events sorted: $(1, +1), (2, +1), (4, -1), (4, +1), (5, -1), (6, -1)$. The counter goes $1, 2, 1, 2, 1, 0$, so the largest coverage is 2. Processing $(4, +1)$ before $(4, -1)$ would give 3 for a moment, a coverage that never exists.
+
+**Complexity.** $O(n \log n)$ to sort $2n$ events, then $O(n)$. The coordinates can be up to $10^9$ because only the $2n$ event times are ever touched. Part 3 also gives totals over time: the coverage is constant on $[u, v)$, so it contributes $c(u) \cdot (v - u)$ to the sum over all points.
 
 ## 5. Recognition Cards
 

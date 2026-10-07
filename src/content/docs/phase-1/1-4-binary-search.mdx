@@ -18,15 +18,144 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A sorted array holds $n = 2 \cdot 10^5$ numbers, and there are $q = 2 \cdot 10^5$ questions "how many numbers are at most $x$?".
+
+Scanning the array for every question costs $n \cdot q = 4 \cdot 10^{10}$ steps, about 400 seconds (topic 0.2). But in a sorted array the numbers at most $x$ form a prefix, so the answer is the length of that prefix, and the prefix can be found the way one looks up a word in a dictionary: open the middle, see on which side the word must be, and throw the other half away. Each look halves the part that is left, so after about $\log_2(2 \cdot 10^5) \approx 18$ looks one position remains: about $3.6 \cdot 10^6$ steps for all questions.
+
+This halving, binary search, works far beyond sorted arrays. It needs only a yes/no question about positions (or about numbers) whose answers are "no" up to some point and "yes" from then on. The most important case is searching on the answer: when "can the answer be $x$?" is easy to check and gets easier as $x$ grows, the smallest good $x$ can be found with about 60 checks even if $x$ ranges up to $10^{18}$.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 0.1](../../phase-0/0-1-cpp-for-cp/), C++ for competitive programming (CP): `long long`, and the overflow of `lo + hi`.
+- [Topic 0.2](../../phase-0/0-2-complexity/), complexity analysis: logarithms and the step budget.
+- [Topic 0.4](../../phase-0/0-4-elementary-math/), elementary mathematics: invariants, and rounding in integer division.
+- [Topic 1.1](../1-1-sorting/), sorting: sorted arrays, which this lesson searches.
+- [Topic 1.2](../1-2-prefix-sums/), prefix sums: prefix sums of non-negative values form a sorted sequence that can be searched.
+- [Topic 1.3](../1-3-two-pointers/), two pointers: the forward-only walk, which this lesson replaces when each query must be answered on its own.
+
 ### What this topic does not cover
+
+- Proving that a greedy choice is optimal in general (exchange argument, greedy stays ahead). Covered in topic 1.5. This lesson proves the one greedy check it needs (Lemma 1.4.4) directly.
+- Searching on the answer when the check itself is a dynamic programming computation. Covered in Phase 3; the method here is the same, only the check is harder.
+- Searching inside a tree structure instead of an array (segment tree descent). Covered in topic 5.3.
 
 ## 3. Definitions
 
+- A **predicate** on a range of integers is a function that answers each integer with true or false. Example: $p(i) = (a_i \ge 5)$ on the indices of an array.
+- A predicate is **monotone** if once it is true it stays true: $p(i)$ true and $i < j$ imply $p(j)$ true. Its values then look like false, …, false, true, …, true. Example: on the sorted array $(1, 3, 5, 5, 8)$, $p(i) = (a_i \ge 5)$ gives false, false, true, true, true.
+- The **first true** position of a monotone predicate is the smallest $i$ with $p(i)$ true (or the end of the range if there is none).
+- **Binary search** finds the first true position of a monotone predicate by repeatedly testing the middle of the range where it can still be, and keeping only the half that can contain it.
+- In a sorted array $a$, the **lower bound** of $x$ is the first index $i$ with $a_i \ge x$, and the **upper bound** of $x$ is the first index with $a_i > x$ (both $n$ if there is none). The C++ functions `lower_bound` and `upper_bound` return them. Example: in $(1, 3, 5, 5, 8)$, the lower bound of 5 is 2 and the upper bound is 4.
+- A **feasibility check** for an optimisation problem is a predicate $\text{ok}(x)$: "can the job be done with answer $x$?". **Searching on the answer** means finding the best $x$ with $\text{ok}(x)$ true by binary search over $x$.
+
 ## 4. Theory and proofs
+
+### 4.1 The template and its invariant
+
+All binary searches in this course use one template. Two integers `lo` and `hi` bracket the first true position, and the loop keeps this **invariant** (a statement that stays true, topic 0.4):
+
+$$p(\text{lo}) \text{ is false}, \qquad p(\text{hi}) \text{ is true}.$$
+
+```text
+lo = (a position where p is false, or one before the range)
+hi = (a position where p is true, or one after the range)
+while hi - lo > 1:
+    mid = lo + (hi - lo) / 2
+    if p(mid): hi = mid  else: lo = mid
+answer: hi
+```
+
+Positions outside the range are never tested: "one before the range" is treated as false and "one after the range" as true, by agreement.
+
+**Theorem 1.4.1 (binary search).** Let $p$ be monotone on the integers $L..R$, and start with $\text{lo} = L - 1$, $\text{hi} = R + 1$ (or any $\text{lo} < \text{hi}$ satisfying the invariant). Then the loop ends with $\text{hi}$ equal to the first true position (or $R + 1$ if $p$ is false everywhere), after at most $\lceil \log_2(\text{hi} - \text{lo}) \rceil$ tests of $p$, and $p$ is only tested strictly between the initial $\text{lo}$ and $\text{hi}$.
+
+*Proof.* *The invariant holds throughout.* It holds at the start. If $p(\text{mid})$ is true, setting $\text{hi} = \text{mid}$ keeps "$p(\text{hi})$ is true"; otherwise $\text{lo} = \text{mid}$ keeps "$p(\text{lo})$ is false".
+
+*Each step shrinks the gap.* While $\text{hi} - \text{lo} \ge 2$, $\text{mid} = \text{lo} + \lfloor (\text{hi} - \text{lo}) / 2 \rfloor$ satisfies $\text{lo} < \text{mid} < \text{hi}$, so $\text{mid}$ is inside the original range and the new gap is at most $\lceil (\text{hi} - \text{lo}) / 2 \rceil$, smaller than before. A gap of $g$ thus reaches 1 after at most $\lceil \log_2 g \rceil$ steps, and the loop ends.
+
+*The result.* At the end $\text{hi} = \text{lo} + 1$, $p(\text{lo})$ is false and $p(\text{hi})$ is true. By monotonicity every position up to $\text{lo}$ is false (a true one would make $\text{lo}$ true), so $\text{hi}$ is the first true position. If $p$ is false everywhere, $\text{lo}$ can only move, so $\text{hi}$ stays at $R + 1$. $\square$
+
+:::note[This proof needs]
+1. The predicate is monotone: false, …, false, true, …, true. Check this on the problem before writing any code.
+2. The invariant holds at the start: $p(\text{lo})$ false and $p(\text{hi})$ true, using positions just outside the range when needed.
+3. $\text{mid}$ is strictly between $\text{lo}$ and $\text{hi}$; computing it as `lo + (hi - lo) / 2` also avoids the overflow of `lo + hi` near the top of the type's range (topic 0.1).
+:::
+
+Trace: find the first index with $a_i \ge 5$ in $a = (1, 3, 5, 5, 8)$. Start $\text{lo} = -1$, $\text{hi} = 5$. $\text{mid} = 1$: $a_1 = 3$, false, $\text{lo} = 1$. $\text{mid} = 3$: true, $\text{hi} = 3$. $\text{mid} = 2$: true, $\text{hi} = 2$. Now $\text{hi} - \text{lo} = 1$: the answer is 2, after 3 tests ($\lceil \log_2 6 \rceil = 3$).
+
+**For the last true of a predicate that goes true, …, true, false, …, false** (for example "the largest $x$ that works"), keep $p(\text{lo})$ true and $p(\text{hi})$ false, and swap the two assignments; the answer is then $\text{lo}$. It is the same theorem applied to "not $p$".
+
+### 4.2 Sorted arrays
+
+**Theorem 1.4.2 (searching a sorted array).** Let $a_0 \le a_1 \le \dots \le a_{n-1}$.
+1. $p(i) = (a_i \ge x)$ is monotone, so the lower bound of $x$ is found in $O(\log n)$; it equals the number of elements less than $x$. Likewise the upper bound (with $a_i > x$) equals the number of elements at most $x$.
+2. The number of elements in $[L, R]$ is $\text{upper}(R) - \text{lower}(L)$; the largest element at most $x$ (if any) is at index $\text{upper}(x) - 1$, and the smallest at least $x$ at index $\text{lower}(x)$.
+3. Any non-decreasing sequence can be searched the same way, for example the prefix sums of non-negative values (topic 1.2): the first $k$ with $P_k \ge t$ is the first index where a running total reaches $t$.
+
+*Proof.* 1. If $a_i \ge x$ and $j > i$, then $a_j \ge a_i \ge x$: monotone. The elements less than $x$ are exactly those before the first index with $a_i \ge x$, so their number is that index. The same argument works for $>$. 2. The elements in $[L, R]$ are those at most $R$ minus those less than $L$. The elements at most $x$ are the indices below $\text{upper}(x)$, the last of which is $\text{upper}(x) - 1$. 3. Part 1 used only $a_i \le a_j$ for $i < j$. $\square$
+
+:::note[This proof needs]
+1. The array (or derived sequence) is sorted in the direction the predicate assumes; for a non-increasing array, flip the comparison.
+2. The array does not change between queries; a changing collection needs a `set` (topic 0.6).
+3. Prefix sums are sorted only when no value is negative.
+:::
+
+In C++, `lower_bound(a.begin(), a.end(), x)` returns an iterator to the lower bound, and subtracting `a.begin()` turns it into an index. The template of Section 6 writes the loop by hand once, so that the invariant is visible.
+
+### 4.3 Searching on the answer
+
+Many optimisation problems ask for the smallest $x$ that works ("the least capacity", "the shortest time") or the largest ("the biggest minimum gap"). Checking one candidate $x$ is often much easier than finding the best one directly.
+
+**Theorem 1.4.3 (search on the answer).** Let $\text{ok}(x)$ be monotone on the integers $L..R$ (if $x$ works, every larger $x$ works), with $\text{ok}(R)$ true. Then the smallest $x$ with $\text{ok}(x)$ is found with $\lceil \log_2(R - L + 2) \rceil$ calls of the check, for a total of $O(C \log(R - L))$ where $C$ is the cost of one check.
+
+*Proof.* This is Theorem 1.4.1 with $p = \text{ok}$, $\text{lo} = L - 1$, $\text{hi} = R + 1$ (or $\text{hi} = R$, since $\text{ok}(R)$ is known to be true). $\square$
+
+:::note[This proof needs]
+1. Monotonicity in $x$: prove "if $x$ works then $x + 1$ works" for the problem at hand. It usually holds because a larger capacity, time or budget can do everything a smaller one can.
+2. A range $L..R$ that surely contains the answer, with $\text{ok}$ true at its top (for example the sum of everything, or $10^{18}$).
+3. The check must not overflow for large $x$ (counts like $\sum \lfloor x / t_i \rfloor$ can pass $10^{18}$: stop adding once the target is reached).
+:::
+
+For $x$ up to $10^{18}$ that is at most 60 checks; with a check of $O(n)$ for $n = 2 \cdot 10^5$, about $1.2 \cdot 10^7$ steps.
+
+Checks often split an array into consecutive parts. The next lemma shows that, for such checks, filling each part as much as possible is the best one can do, so the check is a single pass.
+
+**Lemma 1.4.4 (filling parts greedily).** Let $a_0, \dots, a_{n-1}$ be non-negative and $x \ge \max a_i$. Cut the array into consecutive parts, each with sum at most $x$. The rule "keep adding the next element to the current part while its sum stays at most $x$, otherwise start a new part" uses the fewest parts possible. Consequently "can the array be cut into at most $k$ parts with sums at most $x$?" is answered by one pass, and it is monotone in $x$.
+
+*Proof.* Let the rule's parts end at indices $g_1 < g_2 < \dots < g_m = n - 1$, and let any valid cutting into $k$ parts end at $o_1 < \dots < o_k = n - 1$. We show by induction that $g_j \ge o_j$ for every $j \le \min(m, k)$. For $j = 1$: the elements $a_0..a_{o_1}$ have sum at most $x$ (they form a valid part), so the rule never has to start a new part before index $o_1$: $g_1 \ge o_1$. For $j > 1$: the rule's $j$-th part starts at $g_{j-1} + 1 \ge o_{j-1} + 1$, and the elements from there to $o_j$ lie inside the valid part $o_{j-1} + 1..o_j$; since values are non-negative, their sum is at most that part's sum, at most $x$. So the rule reaches at least $o_j$: $g_j \ge o_j$. In particular $g_k \ge o_k = n - 1$, so the rule finishes within $k$ parts: $m \le k$. Monotone in $x$: a cutting valid for $x$ is valid for every larger $x$. $\square$
+
+:::note[This proof needs]
+1. Values are non-negative, so a piece of a valid part is valid too.
+2. $x$ is at least the largest element; otherwise some element fits in no part and the answer is "impossible" at once.
+:::
+
+The same argument proves the check for "place $m$ points among sorted positions with every gap at least $d$": always take the next position that is far enough from the last chosen one.
+
+### 4.4 Real-valued answers
+
+**Theorem 1.4.5 (searching over the reals).** Let $p$ be monotone on the real interval $[\text{lo}, \text{hi}]$ with $p(\text{lo})$ false and $p(\text{hi})$ true. After $k$ halving steps ($\text{mid} = (\text{lo} + \text{hi}) / 2$, keeping the invariant), the first true point lies in an interval of length $(\text{hi} - \text{lo}) / 2^k$.
+
+*Proof.* The invariant is kept as in Theorem 1.4.1, so the boundary between false and true always lies in $[\text{lo}, \text{hi}]$, and each step halves the length. $\square$
+
+:::note[This proof needs]
+1. The required precision is known, so the number of steps can be fixed in advance: from length $10^9$ to $10^{-9}$ takes 60 halvings; 100 is a safe default.
+2. Stop after a fixed number of steps, not "while hi − lo > eps": with floating-point rounding, $\text{mid}$ can equal $\text{lo}$ or $\text{hi}$ and the gap can stop shrinking, which loops forever.
+:::
+
+### 4.5 The k-th smallest by counting
+
+**Theorem 1.4.6 (k-th smallest by counting).** Let $S$ be a collection of $m$ integers (with repeats allowed), $1 \le k \le m$, and $c(x)$ the number of elements of $S$ that are at most $x$. Then $c$ is non-decreasing, and the $k$-th smallest element of $S$ is the smallest integer $x$ with $c(x) \ge k$.
+
+*Proof.* Raising $x$ can only add elements to those counted, so $c$ is non-decreasing. Sort $S$ as $s_1 \le \dots \le s_m$ and let $v = s_k$. Then $s_1, \dots, s_k \le v$, so $c(v) \ge k$. For $x < v$, every element at most $x$ is less than $s_k$, so it is among $s_1, \dots, s_{k-1}$: $c(x) \le k - 1$. So $v$ is the smallest $x$ with $c(x) \ge k$. $\square$
+
+:::note[This proof needs]
+1. $c(x)$ can be computed much faster than listing $S$ (for example in $O(n)$ for the $n^2$ entries of a multiplication table).
+2. The search range of $x$ contains all elements of $S$; its lower end has $c$ below $k$.
+:::
+
+Example: the $n \times n$ multiplication table holds $i \cdot j$ for $1 \le i, j \le n$. Row $i$ contains $\min(n, \lfloor x / i \rfloor)$ entries at most $x$, so $c(x) = \sum_i \min(n, \lfloor x / i \rfloor)$ in $O(n)$, and the $k$-th smallest of the $n^2$ entries takes $O(n \log n^2)$.
 
 ## 5. Recognition Cards
 

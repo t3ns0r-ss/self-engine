@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.4 Binary search: invariant template, search on the answer
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.4 step 1 scope (skeleton, draft data file, bank look-alike pairs and reviews)
-- Next action: 1.4 step 2 theory
+- Last completed step: 1.4 step 2 theory (Theorems 1.4.1–1.4.6 with Lemma 1.4.4, 7 glossary terms)
+- Next action: 1.4 step 3 recognition cards
 
 ## Gates
 | Gate | Status | Date |
@@ -34,7 +34,7 @@
 | Phase 0 intro and exam | done (on this session's branch) | — |
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
-| 1.4 | in progress (step 1) | — |
+| 1.4 | in progress (step 2) | — |
 
 ## Bank
 | topic | status | practice | reserved |

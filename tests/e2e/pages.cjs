@@ -80,7 +80,12 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   await p.waitForSelector('.handbook');
   check(await p.locator('h3:has-text("Longest/shortest contiguous segment")').isVisible(), 'handbook groups by weak signal');
   await p.locator('button:has-text("By topic")').click();
-  check(await p.locator('.recognition-card').count() === cardTotal, `handbook lists cards by topic (${cardTotal})`);
+  // The filter starts at the learner's current topic; show every topic before counting.
+  const asOf = p.locator('.handbook select').first();
+  const orders = await asOf.locator('option').evaluateAll((os) => os.map((o) => o.value));
+  await asOf.selectOption(orders[orders.length - 1]);
+  const shownCards = await p.locator('.recognition-card').count();
+  check(shownCards === cardTotal, `handbook lists cards by topic (${shownCards} of ${cardTotal})`);
   await p.locator('button:has-text("Flashcards")').click();
   await p.locator('button:has-text("Show the card")').click();
   check(await p.locator('.flashcard:has-text("Decisive property")').count() === 1, 'flashcard flips');

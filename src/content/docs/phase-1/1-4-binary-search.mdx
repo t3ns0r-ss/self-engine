@@ -18,6 +18,8 @@ import nearestValue from '../../../../code/1.4/nearest-value/solution.cpp?raw';
 import maxMinGap from '../../../../code/1.4/max-min-gap/solution.cpp?raw';
 import cubeRoot from '../../../../code/1.4/cube-root/solution.cpp?raw';
 import kthPairSum from '../../../../code/1.4/kth-pair-sum/solution.cpp?raw';
+import example1 from '../../../../code/1.4/example-1/solution.cpp?raw';
+import example2 from '../../../../code/1.4/example-2/solution.cpp?raw';
 
 <TopicHeader topic="1.4" />
 
@@ -320,6 +322,66 @@ Wrong output `6.896435`, correct output `6.896434`. The cube root of 328 is $6.8
 **Fix:** a fixed number of halvings, many more than the precision needs (Theorem 1.4.5, condition 1). One hundred halvings of an interval of length $2 \cdot 10^6$ leave less than $10^{-23}$, far below any printed digit.
 
 ## 8. Worked examples
+
+### Example 1: Triangles
+
+[AtCoder Beginner Contest (ABC) 143, problem D: Triangles](https://atcoder.jp/contests/abc143/tasks/abc143_d). In short: $N \le 2000$ sticks with lengths up to 1000; count the sets of three sticks that form a triangle (each length less than the sum of the other two).
+
+#### Step 1: Constraints → budget
+
+All triples are $N^3 / 6 \approx 1.3 \cdot 10^9$: too slow. All pairs are $2 \cdot 10^6$, so $O(N^2 \log N) \approx 2.2 \cdot 10^7$ fits easily. The count itself can reach $1.3 \cdot 10^9$: `long long` to be safe.
+
+#### Step 2: Question form → candidate tools
+
+Brute force over triples (topic 0.5) is the reference. The answer counts sets of sticks, so the order is irrelevant: sorting is allowed (topic 1.1). After sorting, for each pair, the third sticks that work might form a range of indices, which a sorted search can count (Theorem 1.4.2).
+
+#### Step 3: Property check → decision
+
+Sort so that $L_i \le L_j \le L_k$ for $i < j < k$. Then $L_i < L_j + L_k$ and $L_j < L_k + L_i$ hold automatically (each left side is at most $L_k$, and the other side is $L_k$ plus a positive number). Only $L_k < L_i + L_j$ can fail, and since $L$ is sorted, the indices $k > j$ satisfying it form a prefix of $j + 1..N-1$: the predicate "$L_k \ge L_i + L_j$" is monotone in $k$. Decision: sort, and for each pair $(i, j)$ count the $k$ before the lower bound of $L_i + L_j$ in the part after $j$.
+
+#### Step 4: Proof for this problem
+
+Every triangle, as a set of three sticks, is counted exactly once: at the pair formed by its two smallest indices in sorted order, with $k$ its largest index. By Step 3 the three inequalities are equivalent to $L_k < L_i + L_j$. Among $k = j + 1, \dots, N - 1$, the values $L_k$ are non-decreasing, so the ones below $L_i + L_j$ are exactly those before the first index with $L_k \ge L_i + L_j$ (Theorem 1.4.2, part 1, applied to the part after $j$). Summing these counts over all pairs gives the answer in $O(N^2 \log N)$.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `lower_bound(L.begin() + j + 1, L.end(), …)` searches only the part of the vector after index $j$: `L.begin() + j + 1` is an iterator $j + 1$ places after the first element. The result minus `L.begin()` is an index in the whole vector, so the count is that index minus $j + 1$. Tested on the three samples from the problem page, on $(1, 2, 3)$ (a degenerate triangle, not counted), on 2000 equal sticks ($C(2000, 3) \approx 1.3 \cdot 10^9$ triangles), and on 5000 random inputs ($N \le 12$, lengths up to 5 or 1000) against a brute force that tries every triple.
+
+#### Step 6: Alternative approach
+
+For a fixed $i$, as $j$ grows, $L_i + L_j$ grows, so the end of the valid $k$ range only moves right: the search can be replaced by a second index that walks forward (topic 1.3), for $O(N^2)$ in total. With $N \le 2000$ both are fast.
+
+### Example 2: Array Division
+
+[CSES 1085 Array Division](https://cses.fi/problemset/task/1085) (CSES is the Code Submission Evaluation System problem set). In short: $n \le 2 \cdot 10^5$ positive integers up to $10^9$; cut the array into $k$ consecutive parts so that the largest part sum is as small as possible, and print it.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$: trying all ways to place $k - 1$ cuts is hopeless. Part sums reach $2 \cdot 10^{14}$: `long long`. An $O(n)$ check repeated about 48 times (the answer is at most $2 \cdot 10^{14} < 2^{48}$) is about $10^7$ steps.
+
+#### Step 2: Question form → candidate tools
+
+"Minimise the largest part" is a weak signal for searching on the answer (Theorem 1.4.3). Other candidates: brute force over the cut positions (topic 0.5), far too many; prefix sums (topic 1.2), which give each part's sum quickly but do not say where to cut.
+
+#### Step 3: Property check → decision
+
+Define $\text{ok}(s)$: "the array can be cut into at most $k$ parts with sums at most $s$". It is monotone: a cutting that works for $s$ works for every larger $s$. It can be checked in $O(n)$: fill parts greedily (Lemma 1.4.4, which needs non-negative values, true here). At most $k$ parts is the same as exactly $k$: with positive values, splitting a part further keeps every sum at most $s$, and $k \le n$ leaves enough elements to split. Decision: search the smallest $s$ with $\text{ok}(s)$.
+
+#### Step 4: Proof for this problem
+
+$\text{ok}(0)$ is false (every value is positive) and $\text{ok}(\text{total})$ is true (one part, $k \ge 1$), so $\text{lo} = 0$ and $\text{hi} = \text{total}$ satisfy the invariant of Theorem 1.4.1, and the search returns the smallest $s$ with $\text{ok}(s)$ true. By Lemma 1.4.4 the greedy check answers $\text{ok}(s)$ exactly; an element larger than $s$ makes it false at once. So the printed $s$ is the smallest largest part sum over all cuttings into at most $k$ parts, which equals the answer for exactly $k$ parts by Step 3. The search makes at most 48 checks of $O(n)$ each.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** The lambda `ok` uses `return false` inside the loop to stop as soon as one element exceeds $s$. `hi` is the total of all values, computed in `long long` before the search. Tested on the sample from the problem page, on $n = 1$, on $k = n$ (the answer is the largest element), on $2 \cdot 10^5$ values of $10^9$ with $k = 1$ and $k = 2$ (answers $2 \cdot 10^{14}$ and $10^{14}$), and on 5000 random inputs ($n \le 10$) against a brute force that tries every placement of the $k - 1$ cuts.
+
+#### Step 6: Alternative approach
+
+For small $k$, a table "best largest sum for the first $i$ elements in $j$ parts" can be filled in $O(n^2 k)$ with a method from Phase 3; it is far too slow here. The search on the answer is the natural solution.
 
 ## 9. Problem ladder
 

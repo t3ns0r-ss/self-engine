@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import countInRange from '../../../../code/1.4/count-in-range/solution.cpp?raw';
+import nearestValue from '../../../../code/1.4/nearest-value/solution.cpp?raw';
+import maxMinGap from '../../../../code/1.4/max-min-gap/solution.cpp?raw';
+import cubeRoot from '../../../../code/1.4/cube-root/solution.cpp?raw';
+import kthPairSum from '../../../../code/1.4/kth-pair-sum/solution.cpp?raw';
 
 <TopicHeader topic="1.4" />
 
@@ -162,6 +167,77 @@ Example: the $n \times n$ multiplication table holds $i \cdot j$ for $1 \le i, j
 <Cards topic="1.4" />
 
 ## 6. Templates
+
+Five short programs. The first writes the loop of Theorem 1.4.1 by hand; the others use it (or the library's `lower_bound` and `upper_bound`) for each card, plus one search over real numbers. Every brute force scans everything or lists every candidate.
+
+### The invariant template: counting values in a range (Theorems 1.4.1 and 1.4.2)
+
+<Code code={countInRange} lang="cpp" title="count-in-range/solution.cpp" />
+
+**How it works.** `firstAtLeast(x)` is the template with $p(i) = (a_i \ge x)$. `lo` starts at $-1$ and `hi` at $n$, the two positions just outside the array, so the invariant holds before any test. Each test of `a[mid]` moves one end to `mid`, and the loop stops when the two ends are neighbours; `hi` is then the first index with $a_i \ge x$. The number of values in $[L, R]$ is the number below $R + 1$ minus the number below $L$.
+
+**C++ details explained.**
+- `a` and `n` are global so that the function `firstAtLeast` can read them without parameters.
+- `lo + (hi - lo) / 2` is the middle rounded down; for $\text{hi} - \text{lo} \ge 2$ it is strictly between them.
+- `R + 1` is computed in `long long`, so $R = 10^9$ causes no trouble.
+
+**Tested.** Stress-tested against a brute force that scans the array for every query, on 5000 random inputs ($n, q \le 10$, values in $[-5, 5]$ or up to $10^9$, query ends one beyond the values), plus 4 fixed tests including $n = 1$, all values equal, and $2 \cdot 10^5$ random values and queries.
+
+**Alternative formulation.** `upper_bound(a.begin(), a.end(), R) - lower_bound(a.begin(), a.end(), L)` gives the same count with the library functions.
+
+### Nearest value with lower_bound (Theorem 1.4.2)
+
+<Code code={nearestValue} lang="cpp" title="nearest-value/solution.cpp" />
+
+**How it works.** `lower_bound` returns the first value at least $x$. Every other value at least $x$ comes after it and is farther, and every value below $x$ is at most `a[i - 1]`, which is the closest of them. So the answer is one of these two, and the program compares them, preferring the smaller on a tie. When `i` is $n$ or 0, only one of them exists.
+
+**C++ details explained.**
+- `lower_bound(a.begin(), a.end(), x)` returns an iterator (topic 0.6) to the first element not less than $x$; subtracting `a.begin()` turns it into an index from 0 to $n$.
+- The checks `i == n` and `i == 0` come before any use of `a[i]` or `a[i - 1]`, so the program never reads outside the vector.
+
+**Tested.** Stress-tested against a brute force that scans every value for every query, on 5000 random inputs ($n, q \le 10$, values in $[-6, 6]$ so that ties are frequent, or up to $10^9$), plus 3 fixed tests including $n = 1$ with $x = \pm 10^9$ and a tie between two values.
+
+**Alternative formulation.** The same answer comes from `upper_bound` on $x$: the largest value at most $x$ is just before it, and the smallest above $x$ is at it. Either form is correct as long as both neighbours are compared.
+
+### Search on the answer: the largest smallest gap (Theorem 1.4.3, Lemma 1.4.4)
+
+<Code code={maxMinGap} lang="cpp" title="max-min-gap/solution.cpp" />
+
+**How it works.** The check `ok(d)` asks whether $m$ positions can be chosen with every gap at least $d$. It takes the first position and then, scanning in sorted order, every position at least $d$ after the last one taken. Taking the earliest possible position never hurts (Lemma 1.4.4, second form), so the check is exact. A smaller $d$ is easier, so `ok` goes true, …, true, false, …: the search keeps `ok(lo)` true and `ok(hi)` false, and the answer is `lo`. The start values are safe: `ok(0)` is true, and a gap larger than the whole span is impossible.
+
+**C++ details explained.**
+- `auto ok = [&](long long d) { … };` is a lambda that uses `p`, `n` and `m` from `main`; `[&]` means it reads them directly (by reference) instead of copying them.
+- The bounds are `long long` so that `hi` $= 10^9 + 1$ and `lo + (hi - lo) / 2` never overflow.
+
+**Tested.** Stress-tested against a brute force that tries every subset of exactly $m$ positions with a bitmask (topic 0.5), on 5000 random inputs ($n \le 10$, positions up to 20 or up to $10^9$, given in random order), plus 5 fixed tests including two positions at 0 and $10^9$, $m = n$, and $2 \cdot 10^5$ positions.
+
+**Alternative formulation.** Search for the smallest $d$ with `ok(d)` false and print $d - 1$. It is the same search with the roles of true and false exchanged; choose whichever makes the invariant easier to state.
+
+### Searching over real numbers (Theorem 1.4.5)
+
+<Code code={cubeRoot} lang="cpp" title="cube-root/solution.cpp" />
+
+**How it works.** $x^3$ increases with $x$, so "$x^3 \ge c$" is false below the cube root and true above it. Starting from an interval that surely contains the root ($10^6$ cubed is $10^{18}$), 100 halvings shrink it by $2^{100}$, far below the $10^{-6}$ required. The loop runs a fixed number of times, so it ends even if rounding stops the interval from shrinking.
+
+**C++ details explained.**
+- `long double` is a floating-point type with more precision than `double` (64 bits of mantissa on common compilers), so the cube of numbers near $10^6$ is computed accurately enough.
+- `printf("%.6Lf\n", hi)` prints a `long double` (`L`) as a fixed-point number (`f`) with 6 digits after the point.
+
+**Tested.** Stress-tested against the library function `cbrtl`, on 5000 random values of $c$ (small values, exact cubes, and products up to $10^{18}$ in absolute value), plus 5 fixed tests including $c = 0$, $c = -8$, $c = 2$ and $c = 10^{18}$.
+
+**Alternative formulation.** For an integer answer (the largest integer $x$ with $x^3 \le c$), use the integer template instead; integer searches have no rounding at all.
+
+### k-th smallest by counting: pair sums (Theorem 1.4.6)
+
+<Code code={kthPairSum} lang="cpp" title="kth-pair-sum/solution.cpp" />
+
+**How it works.** `count(x)` adds, for each $A_i$, the number of $B_j$ at most $x - A_i$, an upper bound in the sorted $B$: $O(n \log m)$. The search finds the smallest $x$ with at least $k$ sums at most $x$, which by Theorem 1.4.6 is the $k$-th smallest sum. Sums lie in $[-2 \cdot 10^9, 2 \cdot 10^9]$, so about 32 counts are needed, $O(n \log m \log (\text{range}))$ in total.
+
+**C++ details explained.** `upper_bound(B.begin(), B.end(), x - a) - B.begin()` is the number of elements of $B$ that are at most $x - a$. The count `c` and `k` are `long long`, since $n \cdot m$ can be $10^{10}$.
+
+**Tested.** Stress-tested against a brute force that lists all $n \cdot m$ sums and sorts them, on 5000 random inputs ($n, m \le 8$, values in $[-4, 4]$ or up to $10^9$), plus 3 fixed tests including one pair and sums of $2 \cdot 10^9$.
+
+**Alternative formulation.** Since $A$ can be sorted too, `count(x)` can walk $A$ upwards and $B$ downwards with two indices (topic 1.3) in $O(n + m)$ instead of $O(n \log m)$.
 
 ## 7. Bug catalogue
 

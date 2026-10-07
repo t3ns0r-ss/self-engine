@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
-- Topic: 1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)
+- Topic: 1.6 Monotonic stack and deque
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.5 steps 8-9 (7 self-test questions, section intros, 7 decision map entries, two joining earlier groups)
-- Next action: 1.5 step 10 self-review
+- Last completed step: 1.5 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
+- Next action: 1.6 step 1 scope
 
 ## Gates
 | Gate | Status | Date |
@@ -35,7 +35,7 @@
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
-| 1.5 | in progress (step 9) | — |
+| 1.5 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import xorRange from '../../../../code/1.7/xor-range/solution.cpp?raw';
+import subarrayXor from '../../../../code/1.7/subarray-xor/solution.cpp?raw';
+import pairSums from '../../../../code/1.7/pair-sums/solution.cpp?raw';
+import maxAndPair from '../../../../code/1.7/max-and-pair/solution.cpp?raw';
+import sumAndXor from '../../../../code/1.7/sum-and-xor/solution.cpp?raw';
 
 <TopicHeader topic="1.7" />
 
@@ -137,6 +142,76 @@ Example: $a = 6 = 110_2$, $b = 3 = 011_2$. Then $a \oplus b = 101_2 = 5$ and $a 
 <Cards topic="1.7" />
 
 ## 6. Templates
+
+Five short programs, one for each theorem. The brute forces loop over every value, pair or subarray directly.
+
+### The XOR of a range of integers (Theorem 1.7.1)
+
+<Code code={xorRange} lang="cpp" title="xor-range/solution.cpp" />
+
+**How it works.** The XOR of $0, 1, \dots, n$ repeats with period 4: it is $n$, $1$, $n + 1$ or $0$ (Section 4.1). The XOR of $0, \dots, R$ is the XOR of $0, \dots, L - 1$ followed by the XOR of $L, \dots, R$. XOR-ing it with the first part cancels that part (Theorem 1.7.1, part 2), and what remains is the answer.
+
+**C++ details explained.**
+- `^` is XOR in C++. It binds more weakly than `==` and `+`, so write parentheses: `(xorUpTo(R) ^ below)`, and `(x & want) == want` in later templates.
+- `switch (n % 4)` jumps to the `case` whose value equals `n % 4`; `default` catches the remaining value 3. Each `case` ends with `return`, so control never runs into the next one.
+- The case $L = 0$ is handled separately because $L - 1 = -1$ has no prefix.
+
+**Tested.** Stress-tested against a brute force that XORs every integer of the range, on 5000 random inputs (ranges below 80, and windows of up to 60 numbers just below $10^{18}$). There are also 4 fixed tests: $L = R = 0$, small ranges, the range $0, \dots, 10^{18}$, and $2 \cdot 10^5$ random queries up to $10^{18}$.
+
+**Alternative formulation.** Compute the answer bit by bit: bit $b$ of the XOR is the parity of the number of integers in $[L, R]$ with bit $b$ set, which can be counted with a formula for each bit (Theorem 1.7.3). It is longer, but it works for any per-bit count, not only for XOR.
+
+### Counting subarrays with XOR k (Theorem 1.7.2)
+
+<Code code={subarrayXor} lang="cpp" title="subarray-xor/solution.cpp" />
+
+**How it works.** The loop keeps `P`, the prefix XOR up to the current position $j$. The subarrays that end at $j$ and have XOR $k$ start just after the earlier prefixes $P_i$ with $P_i = P_j \oplus k$. The map counts the earlier prefixes by value, so their number is one lookup. Then $P_j$ is recorded for later positions. `seen[0] = 1` stands for $P_0 = 0$.
+
+**C++ details explained.**
+- `seen.find(P ^ k)` returns an iterator to the entry, or `seen.end()` when there is none. Unlike `seen[P ^ k]`, it does not insert a zero entry for every value looked up.
+- `count` is `long long`: with all values 0 and $k = 0$, every one of the $n(n + 1)/2 \approx 2 \cdot 10^{10}$ subarrays counts.
+
+**Tested.** Stress-tested against a brute force that XORs every subarray, on 5000 random inputs ($n \le 10$, values below 4 so that equal prefixes are common, or below $2^{30}$). There are also 5 fixed tests: $n = 1$, small arrays with and without answers, $2 \cdot 10^5$ zeros, and $2 \cdot 10^5$ random values.
+
+**Alternative formulation.** With an `unordered_map` (topic 0.6), each lookup is $O(1)$ on average. When the values are below $2^{20}$, a `vector<int>` of size $2^{20}$ indexed by the prefix value is faster still.
+
+### Sums over all pairs, bit by bit (Theorem 1.7.3)
+
+<Code code={pairSums} lang="cpp" title="pair-sums/solution.cpp" />
+
+**How it works.** For each bit $b$, `c` counts the values that have it. Of the $\binom{n}{2}$ pairs, $c (n - c)$ have exactly one value with bit $b$ (XOR), $\binom{c}{2}$ have both (AND), and all but the $\binom{n - c}{2}$ pairs with neither have at least one (OR). Each such pair adds $2^b$.
+
+**C++ details explained.**
+- `c` is `long long`, so `c * (n - c)` is computed in `long long` (with `int`, it would overflow at $n = 10^5$).
+- `1LL << b` makes the shifted value a `long long`; `1 << b` is an `int` and overflows at $b = 31$.
+- The parentheses in `w * (c * (n - c))` make the count first; the product stays below the final total, which is below $6 \cdot 10^{18}$.
+
+**Tested.** Stress-tested against a brute force that adds up all pairs, on 5000 random inputs ($n \le 10$, values below 8 or below $2^{30}$). There are also 4 fixed tests: $n = 1$ (no pairs), the example $(1, 2, 3)$ of Section 4.3, all zeros, and $10^5$ values alternating between 0 and $2^{30} - 1$.
+
+**Alternative formulation.** Count all bits in one pass while reading, into an array `c[30]` (`c[b] += (x >> b) & 1` for every bit of every value), then apply the same formulas. The array of values is then not needed at all.
+
+### The largest AND of a pair (Theorem 1.7.4)
+
+<Code code={maxAndPair} lang="cpp" title="max-and-pair/solution.cpp" />
+
+**How it works.** `ans` holds the bits decided so far, from the top. For bit $b$, the program asks whether at least two values contain all decided bits and bit $b$: then their AND has them all, and bit $b$ can be kept. Otherwise no pair with the decided higher bits has bit $b$, and it stays 0. By Theorem 1.7.4, this gives the largest AND.
+
+**C++ details explained.** `(x & want) == want` tests that `x` contains every bit of `want`. Without the parentheses, `x & (want == want)` would be computed, because `==` binds more strongly than `&`.
+
+**Tested.** Stress-tested against a brute force that tries every pair, on 5000 random inputs ($n \le 10$, values below 16 or below $2^{30}$). There are also 4 fixed tests: two zeros, the example $(5, 6, 3)$ of Section 4.4, four powers of two (answer 0), and $2 \cdot 10^5$ values with exactly two copies of $2^{30} - 1$.
+
+**Alternative formulation.** Instead of counting over all values at every bit, keep only the values that contain `want` once a bit is kept; the list shrinks, and the result is the same.
+
+### Rebuilding a and b from their sum and XOR (Theorem 1.7.5)
+
+<Code code={sumAndXor} lang="cpp" title="sum-and-xor/solution.cpp" />
+
+**How it works.** By Theorem 1.7.5, $s = x + 2c$ with $c = a \,\&\, b$. So a solution needs $s \ge x$ and $s - x$ even, and then $c = (s - x)/2$. A bit cannot be both common to $a$ and $b$ and in exactly one of them, so also $c \,\&\, x = 0$. When all of this holds, $a = c$ and $b = c \mid x$ work: they share exactly the bits of $c$ and differ exactly at the bits of $x$. Every solution contains all bits of $c$ in $a$, so $a = c$ is the smallest.
+
+**C++ details explained.** `if (c & x)` is true when the AND is not zero: an integer used as a condition means "not zero".
+
+**Tested.** Stress-tested against a brute force that tries every $a$ from 0 to $s$, on 5000 random inputs (half of them built from a real pair, half random). There are also 4 fixed tests: $s = x = 0$, small cases with and without solutions, $s = 10^{18}$ with $x = 0$ and $x = s$, and $10^5$ random tests up to $10^{18}$.
+
+**Alternative formulation.** Decide $a$ and $b$ bit by bit from the lowest bit, tracking the carry: at each bit, the bits of $s$ and $x$ and the incoming carry force the two bits or show there is no solution. It is the same reasoning written as a loop over bits.
 
 ## 7. Bug catalogue
 

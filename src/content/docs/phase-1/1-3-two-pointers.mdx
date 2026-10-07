@@ -32,7 +32,7 @@ import example3 from '../../../../code/1.3/example-3/solution.cpp?raw';
 
 Here is a small problem. You are given $n$ positive integers $a_0, a_1, \dots, a_{n-1}$ and a number $K$. Find the length of the longest run of consecutive elements whose sum is at most $K$. The limits are $n \le 2 \cdot 10^5$ and $a_i \le 10^9$.
 
-The direct method tries every start $l$ and every end $r$. There are about $n^2 / 2 = 2 \cdot 10^{10}$ pairs. Even if each pair's sum takes one step (with the prefix sums of topic 1.2), that is about 200 seconds at $10^8$ simple operations per second. The time limit is usually 1 or 2 seconds.
+The direct method tries every start $l$ and every end $r$. There are about $n^2 / 2 = 2 \cdot 10^{10}$ pairs. Even if each pair's sum takes one step (with the prefix sums of topic 1.2, Theorem 1.2.1), that is about 200 seconds at $10^8$ simple operations per second. The time limit is usually 1 or 2 seconds.
 
 The key idea: if a run of elements has sum at most $K$, then every shorter run inside it also has sum at most $K$, because all values are positive and removing one can only lower the sum. So when we move the end of the run to the right, the best start for the new end is never to the left of the best start for the old end. We keep two indices, a left one and a right one, and both only ever move to the right. Each moves at most $n$ times, so the whole search costs about $2n$ steps instead of $n^2/2$.
 
@@ -42,24 +42,23 @@ This lesson turns that idea into proofs and templates, and shows the three other
 
 ### What you need
 
-- Topic 0.1, C++ for competitive programming: reading input, `long long` for sums that pass about $2 \cdot 10^9$.
-- Topic 0.2, complexity analysis: turning $n \le 2 \cdot 10^5$ into "about $10^6$ to $10^7$ operations are fine, $n^2$ is not".
-- Topic 0.6, STL (Standard Template Library) toolbox: `map` and `multiset` to keep counts of the values inside a window.
-- Topic 1.1, sorting: two of this lesson's four forms work on sorted arrays.
-- Topic 1.2, prefix sums: the standard alternative when a condition is an exact sum or values can be negative. Several look-alike problems in this lesson need it instead of two pointers.
+- [Topic 0.1](../../phase-0/0-1-cpp-for-cp/), C++ for competitive programming: reading input, `long long` for sums that pass about $2 \cdot 10^9$.
+- [Topic 0.2](../../phase-0/0-2-complexity/), complexity analysis: turning $n \le 2 \cdot 10^5$ into "about $10^6$ to $10^7$ operations are fine, $n^2$ is not".
+- [Topic 0.6](../../phase-0/0-6-stl-toolbox/), STL (Standard Template Library) toolbox: `map` and `multiset` to keep counts of the values inside a window.
+- [Topic 1.1](../1-1-sorting/), sorting: two of this lesson's four forms work on sorted arrays, which `sort` produces in $O(n \log n)$ (Theorem 1.1.1); the definition of a non-decreasing sequence.
+- [Topic 1.2](../1-2-prefix-sums/), prefix sums: subarrays, and the standard alternative when a condition is an exact sum or values can be negative (Theorem 1.2.2). Several look-alike problems in this lesson need it instead of two pointers.
 
 ### What this topic does not cover
 
 - For each start, finding the farthest end with binary search on the prefix sums. It costs $O(n \log n)$ and works in the same situations as Theorem 1.3.1. Covered in topic 1.4 (binary search).
 - The maximum or minimum of every window of fixed length in $O(n)$ total, using a monotonic deque. Here a `multiset` does it in $O(n \log n)$. Covered in topic 1.6.
 - Proving that a pairing such as "heaviest with lightest" is optimal by an exchange argument. The ladder problems that need such a pairing give the short argument in their hints; the general method is covered in topic 1.5 (greedy I).
-- Counting segments whose sum is exactly $K$ when values may be negative. This needs prefix sums and a hash map (topic 1.2), not two pointers. Section 11 contrasts the two.
 
 ## 3. Definitions
 
 Indices start at 0. For an array $a$ of length $n$:
 
-- A **subarray** (also **segment**) is a run of consecutive elements $a_l, a_{l+1}, \dots, a_r$ with $0 \le l \le r \le n-1$. We write it $[l, r]$; both ends are included. Example: in $a = [3, 1, 2]$, the subarray $[1, 2]$ is $1, 2$. Choosing elements 0 and 2 without element 1 is not a subarray.
+- A subarray $[l, r]$ is the run $a_l, \dots, a_r$ with both ends included (topic 1.2). Example: in $a = [3, 1, 2]$, the subarray $[1, 2]$ is $1, 2$.
 - A **window** is a subarray we are currently looking at, described by two indices $l$ and $r$. The **length** of $[l, r]$ is $r - l + 1$. We also allow the **empty window** $l = r + 1$, of length 0.
 - A **pointer** here means an integer variable holding an index into an array (not a C++ pointer type). **Two pointers** is the method of keeping two such indices and moving each in only one direction.
 - A **sliding window** is a window whose ends both move right as the algorithm runs.
@@ -68,8 +67,8 @@ Indices start at 0. For an array $a$ of length $n$:
 - A validity condition is **closed under shrinking** if every sub-window of a valid window is valid. Example: "sum at most $K$" with positive values is closed under shrinking. With values $[5, -4]$ and $K = 2$, the window $[0, 1]$ has sum 1 and is valid, but its sub-window $[0, 0]$ has sum 5 and is not, so with negative values the condition is not closed under shrinking.
 - A validity condition is **closed under extension** if every window that contains a valid window is valid. Example: "sum at least $S$" with positive values. A condition is closed under extension exactly when its opposite ("not valid") is closed under shrinking.
 - A **subsequence** of a sequence is what remains after deleting some elements, keeping the order of the rest. Example: `ace` is a subsequence of `abcde`; `aec` is not. Unlike a subarray, a subsequence may skip elements.
-- A function $f$ on indices is **non-decreasing** if $i < j$ implies $f(i) \le f(j)$.
-- **Amortised analysis** bounds the total cost of a sequence of steps instead of each step alone. Example: one `while` loop inside a `for` loop can run many times for one value of `r`, but if each run moves `l` right and `l` never passes $n$, all runs together are at most $n$.
+- Non-decreasing (topic 1.1) is used for functions on indices too: $f$ is non-decreasing if $i < j$ implies $f(i) \le f(j)$.
+- Amortised analysis (topic 0.2, Theorem 0.2.4) bounds the total cost of a sequence of steps instead of each step alone. Example: one `while` loop inside a `for` loop can run many times for one value of `r`, but if each run moves `l` right and `l` never passes $n$, all runs together are at most $n$.
 
 ## 4. Theory and proofs
 
@@ -301,7 +300,7 @@ The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in c
 
 **Tested.** Stress-tested against a brute force on 5000 random inputs ($n \le 9$, $k$ sometimes equal to $n$), plus 4 fixed tests: a hand-checked array, $n = k = 1$, all values equal, and values $\pm 10^9$.
 
-**Alternative formulation.** When the summary is a sum, prefix sums (topic 1.2) give each window's sum as $P_{r+1} - P_{r-k+1}$ with no add or remove at all. Counts of distinct values have no such formula, which is why the sliding update is needed here.
+**Alternative formulation.** When the summary is a sum, prefix sums (Theorem 1.2.1) give each window's sum as $P_{r+1} - P_{r-k+1}$ with no add or remove at all. Counts of distinct values have no such formula, which is why the sliding update is needed here.
 
 ### Maximum of each fixed-size window (Theorem 1.3.3 with a multiset)
 
@@ -326,7 +325,7 @@ The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in c
 **How it works.** After sorting, `l` and `r` start at the two ends. If the sum is too small, no partner inside `[l, r]` can help `a[l]` (all are at most `a[r]`), so `l` moves in; if too large, `a[r]` is discarded the same way. The loop stops when the pointers meet, so an element is never paired with itself.
 
 **C++ details explained.**
-- `sort(a.begin(), a.end())` sorts the whole vector in increasing order in $O(n \log n)$ (topic 1.1). `begin()` and `end()` are iterators to the first element and one past the last.
+- `sort(a.begin(), a.end())` sorts the whole vector in non-decreasing order in $O(n \log n)$ (Theorem 1.1.1). `begin()` and `end()` are iterators to the first element and one past the last.
 - `break` leaves the `while` loop at once.
 
 **Tested.** Stress-tested against a brute force over all pairs on 5000 random inputs ($n \le 8$, values in $[-10, 10]$, and often $T = 2a_i$, which tempts pairing $a_i$ with itself), plus 5 fixed tests including $n = 1$, all values equal, a negative value, and two values of $10^9$.
@@ -358,7 +357,7 @@ The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in c
 
 **Tested.** Stress-tested against a brute force over all pairs on 5000 random inputs ($n, m \le 7$, values in $[-12, 12]$, sometimes all of `b` equal to a value of `a`), plus 4 fixed tests including equal single values and values $\pm 10^9$ whose difference needs `long long`.
 
-**Alternative formulation.** Merge the two sorted lists into one, remembering which list each value came from; the closest pair across the lists is then adjacent in the merged order. This is the same forward-only walk, with output.
+**Alternative formulation.** Merge the two sorted lists into one, remembering which list each value came from; the closest pair across the lists is then adjacent in the merged order (topic 1.1, self-test question 7). This is the same forward-only walk, with output.
 
 ### Subsequence check (Theorem 1.3.6)
 
@@ -550,7 +549,7 @@ $n \le 2 \cdot 10^5$ and ids up to $10^9$. Checking every run is about $n^2/2 = 
 
 #### Step 2: Question form → candidate tools
 
-"Longest run of consecutive elements with a property" is the weak signal for a shrinkable window (Theorem 1.3.1). Other candidates: prefix sums (topic 1.2), but the property is not a sum; trying every start with a `set` (topic 0.6), which is $O(n^2 \log n)$ in the worst case.
+"Longest run of consecutive elements with a property" is the weak signal for a shrinkable window (Theorem 1.3.1). Other candidates: prefix sums (Theorem 1.2.1), but the property is not a sum; trying every start with a `set` (topic 0.6), which is $O(n^2 \log n)$ in the worst case.
 
 #### Step 3: Property check → decision
 
@@ -582,7 +581,7 @@ $N \le 10^5$, $a_i \le 10^5$, $K \le 10^{10}$. There are about $5 \cdot 10^9$ su
 
 #### Step 2: Question form → candidate tools
 
-"Count the subarrays satisfying a condition" is the weak signal for counting windows (Theorem 1.3.2). Other candidates: prefix sums (topic 1.2), which give each subarray's sum in $O(1)$ but still leave $5 \cdot 10^9$ subarrays to check; and the shrinkable window, which finds one best window rather than counting all of them.
+"Count the subarrays satisfying a condition" is the weak signal for counting windows (Theorem 1.3.2). Other candidates: prefix sums (Theorem 1.2.1), which give each subarray's sum in $O(1)$ but still leave $5 \cdot 10^9$ subarrays to check; and the shrinkable window, which finds one best window rather than counting all of them.
 
 #### Step 3: Property check → decision
 
@@ -630,7 +629,7 @@ Invariant: some optimal pair either has already been measured or lies inside $[l
 
 #### Step 6: Alternative approach
 
-Sort the positions by height, from tallest to shortest (topic 1.1). Process them in that order, keeping the smallest and largest position seen so far. When position $p$ is processed, every line seen so far is at least as tall, so if $p$ is the shorter line of the best container, its partner is the seen position farthest from $p$: either the smallest or the largest. The area is $h_p \cdot \max(p - \text{smallest}, \text{largest} - p)$. Taking the best over all $p$ gives the answer in $O(n \log n)$. It is a correct alternative, but longer than the two-pointer version.
+Sort the positions by height, from tallest to shortest, keeping each position with its height (Theorem 1.1.4). Process them in that order, keeping the smallest and largest position seen so far. When position $p$ is processed, every line seen so far is at least as tall, so if $p$ is the shorter line of the best container, its partner is the seen position farthest from $p$: either the smallest or the largest. The area is $h_p \cdot \max(p - \text{smallest}, \text{largest} - p)$. Taking the best over all $p$ gives the answer in $O(n \log n)$. It is a correct alternative, but longer than the two-pointer version.
 
 ## 9. Problem ladder
 

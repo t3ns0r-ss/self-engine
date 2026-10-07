@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
-- Topic: 1.3 revision (links, terms and theorem citations from 1.1 and 1.2)
+- Topic: 1.4 Binary search: invariant template, search on the answer
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.2 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
-- Next action: revise 1.3 to match 1.1/1.2 (links, terms, theorem citations), then 1.4
+- Last completed step: 1.3 revised for 1.1 and 1.2 (theorem citations, terms now defined earlier, prerequisite links in every lesson)
+- Next action: 1.4 step 1 scope
 
 ## Gates
 | Gate | Status | Date |
@@ -24,7 +24,7 @@
 ## Topics
 | id | status | merged commit |
 |---|---|---|
-| 1.3 | done (M1 approved; on this session's branch, not merged to main or tagged) | — |
+| 1.3 | done (M1 approved; revised in M3 for 1.1 and 1.2; on this session's branch) | — |
 | 0.1 | done (on this session's branch) | — |
 | 0.2 | done (on this session's branch) | — |
 | 0.3 | done (on this session's branch) | — |
@@ -151,7 +151,7 @@
 - Keyword scan and ordered sets (0.6): `lower_bound` and `upper_bound` are keywords of 1.4 (binary search), but topic 0.6 needs the `set`/`map` member functions of the same name. The scan now ignores a keyword written as a member call (preceded by a dot, as in `s.lower_bound(x)`); the free functions on arrays stay reserved for 1.4. Say if you would rather keep the scan strict and have 0.6 describe these calls without naming them.
 - Changes made while building 1.3 (change any you disagree with):
   - Topic data files may carry `draft: true` while a lesson is being written: count rules are skipped and the lesson shows a draft notice, so every step's commit keeps CI green. 1.3 no longer has it.
-  - 1.3 defines basic terms that belong to unwritten earlier lessons (subarray, non-decreasing, amortised analysis) with topic 1.3; they move to 1.1/1.2 in M3.
+  - 1.3 defined basic terms that belonged to unwritten earlier lessons; in M3 subarray moved to 1.2 and non-decreasing to 1.1 (amortised analysis was already 0.2's).
   - The bank got 7 new LeetCode review problems for 1.3 and one moved look-alike (details under Bank gaps).
   - tests/e2e.sh now also tests every real lesson in the browser (tests/e2e/lessons.cjs). While adding it, a failed run deleted the real 1.3 files through the placeholder cleanup (restored from git at once); the placeholder remover now refuses to run unless the placeholder exists.
 - **B1 spot-check (gate).** All 13 banks are in `problem-bank/phase-0/` and `problem-bank/phase-1/` (readable lists) and on the site under Problem bank. Suggested spot-checks: `problem-bank/phase-1/1.3-two-pointers.md` (the exemplar topic) with `notes/bank/1.3.md`, then one Phase 0 topic (0.4) and one thin topic (1.6). For each, check a few problems: does the solution really need the topic, is the tier right, is the note correct?

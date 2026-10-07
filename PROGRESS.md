@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: Phase 1 intro and exam
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: Phase 1 intro page, exam page and 8 exam problems (e2e for the exam not run yet)
-- Next action: run tests/e2e.sh (new Phase 1 exam checks), then stop at the M3 gate
+- Last completed step: Phase 1 intro page, exam page and 8 exam problems; e2e passes (placeholder keeps the 1.3 exam problem, exam-link check scoped to page content)
+- Next action: ⏸ M3 gate — wait for the Phase 1 review
 
 ## Gates
 | Gate | Status | Date |
@@ -16,7 +16,7 @@
 | Final bank review | approved ("Let's begin with material building") | 2026-10-03 |
 | M1 exemplar review | approved ("for beginning this is good enough"; patterns and other changes to come later) | 2026-10-03 |
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
-| M3 Phase 1 review | not reached | — |
+| M3 Phase 1 review | waiting for review | — |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)

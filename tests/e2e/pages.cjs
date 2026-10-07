@@ -151,7 +151,7 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   await p.locator('button:has-text("Submit results")').click();
   check(await p.locator('.exam >> text=Passed on').isVisible(), 'exam passes with 60% solved and no Recognition miss');
   await p.goto(`${BASE}/phase-0/`);
-  check(await p.locator('a[href$="exam/"]').first().isVisible(), 'phase intro links the exam');
+  check(await p.locator('.sl-markdown-content a[href="exam/"]').first().isVisible(), 'phase intro links the exam');
 
   // Phase 1 exam: 8 problems from all seven topics, remediation map for each.
   await p.goto(`${BASE}/phase-1/exam/`);
@@ -165,7 +165,7 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   const topics1 = new Set((await p.locator('.exam-map tbody tr td:nth-child(2)').allInnerTexts()).map((s) => s.trim().slice(0, 3)));
   check(topics1.size === 7, `Phase 1 remediation map covers ${topics1.size} of 7 topics`);
   await p.goto(`${BASE}/phase-1/`);
-  check(await p.locator('a[href$="exam/"]').first().isVisible(), 'Phase 1 intro links the exam');
+  check(await p.locator('.sl-markdown-content a[href="exam/"]').first().isVisible(), 'Phase 1 intro links the exam');
 
   // Method page.
   await p.goto(`${BASE}/method/`);

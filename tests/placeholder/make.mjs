@@ -122,10 +122,10 @@ const topic = {
 
 const notes = (list) => list.map((p) => `## ${p.id} ${p.title} (tier ${p.tier}, pattern ${p.pattern}, set ${p.set})\n- Placeholder note.\n`).join('\n');
 const header = '# PLACEHOLDER created by tests/placeholder/make.mjs. Must not be committed.\n';
-// Later lessons draw drill items from the real 1.3 bank's later_drill problems, so those stay
-// (with their notes) next to the placeholder's problems.
+// Later lessons draw drill items from the real 1.3 bank's later_drill problems, and the phase
+// exam uses its exam problems, so those stay (with their notes) next to the placeholder's problems.
 const real13 = existsSync(backupOf('src/data/bank/1-3.yaml')) ? parse(readFileSync(backupOf('src/data/bank/1-3.yaml'), 'utf8')).problems : [];
-const keep13 = real13.filter((p) => p.reserved_for === 'later_drill');
+const keep13 = real13.filter((p) => ['later_drill', 'exam'].includes(p.reserved_for));
 const realNotes13 = existsSync(backupOf('notes/bank/1.3.md')) ? readFileSync(backupOf('notes/bank/1.3.md'), 'utf8') : '';
 const keepNotes13 = keep13.map((p) => (realNotes13.match(new RegExp(`^## ${p.id} .*\\n(?:(?!## ).*\\n)*`, 'm')) || [''])[0]).join('\n');
 writeFileSync('src/data/bank/1-3.yaml', header + stringify({ topic: '1.3', status: 'in_progress', problems: [...bank13, ...keep13] }));

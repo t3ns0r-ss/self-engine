@@ -18,15 +18,96 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. For each of $n = 2 \cdot 10^5$ daily temperatures, find how many days you wait until a warmer day.
+
+The direct method scans forward from each day until it meets a larger value. On a decreasing sequence every scan runs to the end: about $n^2 / 2 = 2 \cdot 10^{10}$ steps, some 200 seconds (topic 0.2). But look at what the scans have in common. Once a day $j$ meets a warmer day $i$, $j$ is finished. And while $j$ is still waiting, every day between $j$ and today that is also waiting is at most as warm as $j$ (otherwise it would have finished $j$). So the waiting days form a pile whose values decrease from bottom to top, and a new day finishes waiting days from the top of the pile down, stopping at the first one at least as warm. Every day enters the pile once and leaves it at most once: $O(n)$ in total.
+
+That pile is a monotonic stack. This topic covers it and its uses: the nearest greater or smaller element on either side, the stretch of a subarray in which an element is the minimum (for sums over all subarrays and for the largest rectangle under a histogram), and its two-ended version, the monotonic deque, which keeps the maximum of a sliding window in $O(1)$ per step.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 0.2](../../phase-0/0-2-complexity/), complexity analysis: amortised analysis (Theorem 0.2.4), which bounds the total number of pops.
+- [Topic 0.6](../../phase-0/0-6-stl-toolbox/), STL toolbox: `stack`, `vector` used as a stack, and `deque`.
+- [Topic 1.2](../1-2-prefix-sums/), prefix sums: sums over the stretch where an element is the minimum.
+- [Topic 1.3](../1-3-two-pointers/), two pointers: fixed and shrinkable windows, which the deque equips with their maximum and minimum.
+- [Topic 1.5](../1-5-greedy-1/), greedy: a few stack problems are greedy rules whose proof is a dominance argument.
+
 ### What this topic does not cover
+
+- The minimum or maximum of arbitrary ranges given as queries (sparse table, range minimum query). Covered in topic 5.1; a monotonic stack answers only questions about the nearest smaller or larger element.
+- Changing arrays with range queries (segment tree). Covered in topic 5.3.
+- Using a monotonic deque to speed up a recurrence over all previous positions (dynamic programming optimisation). Covered in Phase 3 and topic 7.3.
 
 ## 3. Definitions
 
+- For a position $i$ of an array $a$, the **next greater element** is the nearest position $j > i$ with $a_j > a_i$; the **previous greater element** is the nearest $j < i$ with $a_j > a_i$. "Next smaller" and "previous smaller" are defined the same way with $<$, and variants with $\ge$ or $\le$ are used to break ties. Example: in $(2, 5, 3, 4)$, the next greater element of position 2 (value 3) is position 3 (value 4); position 1 (value 5) has none.
+- A **monotonic stack** is a stack whose values, read from bottom to top, only decrease (or only increase). Example: $(9, 6, 6, 2)$ is a non-increasing stack.
+- The **span** of position $i$ (for minima) is the longest subarray containing $i$ in which $a_i$ is a minimum: it stretches from just after the previous smaller element to just before the next smaller element.
+- A **monotonic deque** is a deque (topic 0.6) whose values from front to back only decrease (or only increase); elements are added at the back and removed from both ends.
+- In a window that moves right, an element is **dominated** if a later element of the window is at least as large; a dominated element can never again be the maximum of a window.
+
 ## 4. Theory and proofs
+
+### 4.1 The next greater element
+
+**Theorem 1.6.1 (monotonic stack).** Scan $i = 0, 1, \dots, n - 1$ and keep a stack of positions. At step $i$, pop every position $j$ on top with $a_j < a_i$ and record $\text{next}[j] = i$; then push $i$. After the scan, the positions still on the stack have no next greater element. Then:
+1. The values on the stack never increase from bottom to top.
+2. Each recorded $\text{next}[j]$ is the next greater element of $j$.
+3. Just after the pops at step $i$, the top of the stack (if any) is the previous greater-or-equal element of $i$: the nearest $j < i$ with $a_j \ge a_i$.
+4. The whole scan takes $O(n)$ time.
+
+*Proof.* 1. Before $i$ is pushed, every remaining top has $a_j \ge a_i$, so pushing $i$ keeps the order. 2. A position $j$ is still on the stack at step $i$ only if no $k$ with $j < k < i$ had $a_k > a_j$: such a $k$ would have popped $j$ (every position above $j$ has a value at most $a_j < a_k$, so the pops at step $k$ reach $j$). So when $a_i > a_j$ pops $j$, $i$ is the first position after $j$ that is greater. A position never popped has no greater position after it. 3. Let $t$ be the top after the pops at step $i$; then $a_t \ge a_i$, since popping stopped there. Take any position $k$ with $t < k < i$. It is not on the stack, so some step $m \le i$ popped it, with $a_k < a_m$. If $m = i$, then $a_k < a_i$. Otherwise $k < m < i$, and $m$ is not on the stack either (nothing lies above $t$), so the same holds for $m$: a chain $k < m < m' < \dots$ of positions with increasing values, which ends at a position popped at step $i$, whose value is less than $a_i$. So every position strictly between $t$ and $i$ has a value less than $a_i$, and $t$ is the nearest earlier position with a value at least $a_i$. 4. Each position is pushed once and popped at most once, so the pops total at most $n$ over the whole scan (Theorem 0.2.4). $\square$
+
+:::note[This proof needs]
+1. The question is about the *nearest* greater (or smaller) element in one direction, not about a range given in advance.
+2. The comparison used to pop decides the tie rule: popping on $a_j < a_i$ gives "next strictly greater"; popping on $a_j \le a_i$ gives "next greater or equal".
+3. Scanning from the right gives the same answers in the other direction.
+:::
+
+Trace on $a = (2, 1, 4, 3, 5)$, positions $0..4$:
+
+| step $i$ | $a_i$ | popped (next = $i$) | stack after (values) |
+|---|---|---|---|
+| 0 | 2 | — | 2 |
+| 1 | 1 | — | 2, 1 |
+| 2 | 4 | 1, then 0 | 4 |
+| 3 | 3 | — | 4, 3 |
+| 4 | 5 | 3, then 2 | 5 |
+
+So next $= (2, 2, 4, 4, \text{none})$.
+
+### 4.2 The span of a minimum
+
+**Theorem 1.6.2 (contribution of each minimum).** For each $i$ let $L_i$ be the previous position with $a_{L_i} < a_i$ (or $-1$) and $R_i$ the next position with $a_{R_i} \le a_i$ (or $n$). Then:
+1. The subarrays $[l, r]$ with $L_i < l \le i \le r < R_i$ are exactly those in which $i$ is the rightmost position of the minimum value. There are $(i - L_i)(R_i - i)$ of them, and every subarray is counted for exactly one $i$.
+2. Hence the sum of the minima of all subarrays is $\sum_i a_i (i - L_i)(R_i - i)$, computed in $O(n)$ with two monotonic stacks.
+3. For bars of heights $h_i$, the largest rectangle under the bars has area $\max_i h_i (R'_i - L_i - 1)$, where $R'_i$ is the next position with $h < h_i$.
+
+*Proof.* 1. In $[l, r]$, position $i$ is the rightmost minimum exactly when every element left of $i$ in the subarray is at least $a_i$ and every element right of it is greater than $a_i$. The first condition says that the subarray starts after the previous strictly smaller element ($l > L_i$), the second that it ends before the next smaller-or-equal element ($r < R_i$). There are $i - L_i$ choices of $l$ and $R_i - i$ of $r$. Every subarray has exactly one rightmost minimum, so it is counted once. 2. Sum part 1's count times $a_i$; both $L$ and $R$ come from Theorem 1.6.1 with the comparisons reversed (smaller instead of greater). 3. The best rectangle has some lowest bar $i$ inside it, and its height is at most $h_i$; with height $h_i$ it can be widened to every bar of height at least $h_i$ around $i$, that is, to $(L_i, R'_i)$. So the best area is the largest of these candidates, each of which is a valid rectangle. $\square$
+
+:::note[This proof needs]
+1. The quantity summed over subarrays is the minimum (or maximum); its value is decided by one element, and the subarrays where that element decides form a rectangle of choices $l \times r$.
+2. Ties are broken on exactly one side (strict on one side, non-strict on the other), or subarrays with repeated minima are counted twice.
+3. Counts reach $n^2/4$ and sums $10^9 \cdot n^2 / 4$: `long long`, and often a modulus.
+:::
+
+Example: $a = (3, 1, 2)$. For position 1 (value 1): $L = -1$, $R = 3$, count $2 \cdot 2 = 4$. Position 0: $L = -1$, $R = 1$, count 1. Position 2: $L = 1$, $R = 3$, count 1. The sum of minima is $3 \cdot 1 + 1 \cdot 4 + 2 \cdot 1 = 9$; directly, the subarrays $(3), (1), (2), (3, 1), (1, 2), (3, 1, 2)$ have minima $3 + 1 + 2 + 1 + 1 + 1 = 9$.
+
+### 4.3 The maximum of a sliding window
+
+**Theorem 1.6.3 (monotonic deque).** For the windows $[i - k + 1, i]$ of a fixed length $k$, keep a deque of positions. At step $i$: pop from the back every position $j$ with $a_j \le a_i$, push $i$ at the back, and pop the front if it is $\le i - k$ (outside the window). Then the front is a position of the window's maximum. Each step is $O(1)$ amortised, $O(n)$ in total.
+
+*Proof.* *Invariant:* after step $i$, the deque holds, in increasing order of position, exactly the positions of the window that are not dominated (no later position in the window has a value at least as large), and their values strictly decrease from front to back. A position popped from the back at step $i$ is dominated by $i$, and it stays dominated in every later window that contains it, since such a window also contains $i$. The front is removed only when it leaves the window. New positions are never dominated when they arrive. So the deque holds exactly the non-dominated positions, and the first of them, the front, has the largest value: every other position of the window is dominated by some position whose value is at least as large, ending at a non-dominated one. Each position enters and leaves the deque at most once (Theorem 0.2.4). $\square$
+
+:::note[This proof needs]
+1. The window moves only to the right, so a dominated element never becomes useful again.
+2. Only the maximum (or minimum) is needed; other order statistics, such as the median, need a `multiset` (topic 0.6).
+3. Before reading the front, the deque must not be empty and its front must be inside the window.
+:::
+
+The same deque works for windows whose left end moves irregularly, as in the shrinkable windows of topic 1.3: when the left end passes the front's position, pop the front. Two deques, one for the maximum and one for the minimum, give a window's spread $\max - \min$ in $O(1)$, which decides conditions like "max − min ≤ k" while both ends move.
 
 ## 5. Recognition Cards
 

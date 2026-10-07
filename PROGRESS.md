@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.6 Monotonic stack and deque
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.6 step 1 scope (skeleton, draft data file, bank look-alike pairs and reviews)
-- Next action: 1.6 step 2 theory
+- Last completed step: 1.6 step 2 theory (Theorems 1.6.1–1.6.3, 5 glossary terms)
+- Next action: 1.6 step 3 recognition cards
 
 ## Gates
 | Gate | Status | Date |
@@ -36,7 +36,7 @@
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
-| 1.6 | in progress (step 1) | — |
+| 1.6 | in progress (step 2) | — |
 
 ## Bank
 | topic | status | practice | reserved |

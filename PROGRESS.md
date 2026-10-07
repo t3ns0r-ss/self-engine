@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.1 Sorting, comparators, coordinate compression
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.1 step 2 theory (Theorems 1.1.1–1.1.6, 11 glossary terms; non-decreasing moved from 1.3)
-- Next action: 1.1 step 3 recognition cards
+- Last completed step: 1.1 step 3 recognition cards (5 cards)
+- Next action: 1.1 step 4 templates and stress tests
 
 ## Gates
 | Gate | Status | Date |
@@ -32,7 +32,7 @@
 | 0.5 | done (on this session's branch) | — |
 | 0.6 | done (on this session's branch) | — |
 | Phase 0 intro and exam | done (on this session's branch) | — |
-| 1.1 | in progress (step 2) | — |
+| 1.1 | in progress (step 3) | — |
 
 ## Bank
 | topic | status | practice | reserved |

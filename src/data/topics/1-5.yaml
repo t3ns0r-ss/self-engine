@@ -443,11 +443,77 @@ lookalike_pairs:
     a_tool: left-to-right-forced (1.5)
     b_tool: "prefix-extremes (1.2)"
     flipping_difference: A allows any number of trades, so every daily rise is taken; B allows one pair of days, so it is the best value minus the prefix minimum.
-self_test: []
+self_test:
+  - q: "Coins of values 1, 3 and 4 (any number of each). Does \"take the largest coin that fits\" give the fewest coins for the amount 6?"
+    a: "No: it takes 4, 1, 1 (three coins), while 3 + 3 uses two. The largest-first rule is correct only for special coin systems; in general this is a Phase 3 problem."
+  - q: In Tasks and Deadlines (reward = deadline − finishing time), why do the deadlines not influence the best order?
+    a: "The total reward is Σ deadlines − Σ finishing times. The first sum is the same for every order, so only Σ finishing times matters, and shortest first minimises it (Theorem 1.5.1)."
+  - q: Why can no set of points that hits every interval be smaller than a set of pairwise disjoint intervals?
+    a: "Disjoint intervals share no point, so each of them needs its own point. Hence (fewest points) ≥ (most disjoint intervals), and Theorem 1.5.2 shows equality."
+  - q: "Greeds (1, 2) and cookies (1, 3). What goes wrong if the least greedy child gets the largest cookie?"
+    a: "Child 1 takes cookie 3, and child 2 is left with cookie 1, which is too small: 1 child satisfied. Giving child 1 the cookie 1 and child 2 the cookie 3 satisfies both. Theorem 1.5.4 gives each child the smallest sufficient cookie."
+  - q: In Missing Coin Sum, what does the scan answer for the coins (2, 1) if they are not sorted first, and what is correct?
+    a: "It sees 2 > 0 + 1 and answers 1; but 1 can be made with the second coin. Sorted, (1, 2) gives reach 1, then 3, so the answer is 4. The invariant needs every later coin to be at least the current one."
+  - q: A greedy rule passes 5000 random tests against a brute force. What has that shown, and what has it not?
+    a: "It has shown that the rule is very likely right on small inputs, and it would have caught most wrong rules (Section 7). It is not a proof: a rule can fail only on large or special inputs, so the exchange or stays-ahead argument is still needed."
+  - q: "For which kind of goal does earliest end first fail? Give intervals with weights where it chooses badly."
+    a: "When intervals have weights and the total weight counts. [1, 2] with weight 1 and [1, 10] with weight 100: earliest end first takes [1, 2] and then nothing else fits, for 1 instead of 100."
 checkpoint:
   time_limit_minutes: 90
   problems: [cf-492C, cf-545C, cses-1632]
-decision_map: []
+decision_map:
+  - weak_signal: '"In which order should the tasks be done", total waiting time, deadlines and durations'
+    choose: exchange-order
+    when: Comparing two adjacent items in both orders gives a key, independent of the others (Theorem 1.5.1).
+    over:
+      - card: permutations
+        because: Trying all n! orders works only for n up to about 10.
+      - card: custom-order
+        because: A custom sort applies an order the statement gives; here the order must first be derived and proved.
+  - weak_signal: The most non-overlapping intervals, or the fewest points that hit every interval
+    choose: interval-selection
+    when: Every interval counts the same, and overlap follows the statement's rule for touching ends (Theorem 1.5.2).
+    over:
+      - card: subset-bitmask
+        because: All subsets of intervals are 2^n.
+      - card: event-sweep
+        because: A sweep measures overlap at each moment; choosing which intervals to keep needs the earliest-end rule.
+  - weak_signal: Intervals or time ranges with coordinates up to 10^9; the busiest moment; totals per day
+    choose: interval-selection
+    when: The question is which intervals to keep (or where to place points), not how many overlap at a time.
+    over:
+      - card: event-sweep
+        because: The maximum overlap answers "how many groups", but not "how many can be kept".
+  - weak_signal: '"The fewest items to reach a total", "the largest total with at most k items", goods that can be split'
+    choose: extreme-first
+    when: Items (or units) contribute independently and the only limit is their number (Theorem 1.5.3).
+    over:
+      - card: subset-bitmask
+        because: Subsets are 2^n; independence makes the k best items optimal without trying them.
+      - card: sort-then-scan
+        because: Sorting is the same first step, but the proof that the extreme items are best is what licenses stopping early.
+  - weak_signal: 'Children and cookies, people and seats: pair items of two lists, each used at most once'
+    choose: sorted-matching
+    when: Whether a pair works is a threshold in one sorted order, so pairs never need to cross (Theorem 1.5.4).
+    over:
+      - card: merge-walk
+        because: The walk is the implementation; the matching proof says which partner to take when several work.
+      - card: permutations
+        because: Trying all assignments is n!.
+  - weak_signal: '"Minimise the maximum", "maximise the minimum", "the least time / capacity / speed such that …"'
+    choose: sorted-matching
+    when: The quantity is decided by how two sorted lists (or one list with itself) are paired, as in "minimise the largest pair sum".
+    over:
+      - card: answer-search
+        because: A search needs a check; when the best pairing is known directly, the check is unnecessary.
+  - weak_signal: '"Can you reach the end", the fewest jumps or segments to cover, fix the first violation from the left'
+    choose: left-to-right-forced
+    when: A small state after each position (a reach, the change in the till) decides the rest, and the greedy choice reaches the best state (Theorem 1.5.5).
+    over:
+      - card: direct-simulation
+        because: Simulating every possible sequence of choices branches; the dominating state removes the branching.
+      - card: recursive-choices
+        because: Recursion over all choices is exponential.
 glossary_added:
   - greedy algorithm
   - counterexample

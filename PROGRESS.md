@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.5 step 6 problems (ladder of 18, 2 worked examples, 11 drill items, 2 look-alike pairs, checkpoint, 3 review sets)
-- Next action: 1.5 step 7 worked examples
+- Last completed step: 1.5 step 7 worked examples (Blue Spring, Missing Coin Sum)
+- Next action: 1.5 steps 8-9 self-test, section intros, decision map
 
 ## Gates
 | Gate | Status | Date |
@@ -35,7 +35,7 @@
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
-| 1.5 | in progress (step 6) | — |
+| 1.5 | in progress (step 7) | — |
 
 ## Bank
 | topic | status | practice | reserved |

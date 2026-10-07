@@ -19,6 +19,8 @@ import fewestItems from '../../../../code/1.5/fewest-items/solution.cpp?raw';
 import bestUnits from '../../../../code/1.5/best-units/solution.cpp?raw';
 import assignCookies from '../../../../code/1.5/assign-cookies/solution.cpp?raw';
 import coverSegment from '../../../../code/1.5/cover-segment/solution.cpp?raw';
+import example1 from '../../../../code/1.5/example-1/solution.cpp?raw';
+import example2 from '../../../../code/1.5/example-2/solution.cpp?raw';
 
 <TopicHeader topic="1.5" />
 
@@ -329,6 +331,66 @@ Wrong output `2`, correct output `1`. Both segments start at 0; the rule takes $
 **Fix:** among all segments that start inside the covered part, take the one that reaches farthest; that choice dominates every other (Theorem 1.5.5).
 
 ## 8. Worked examples
+
+### Example 1: Blue Spring
+
+[AtCoder Beginner Contest (ABC) 318, problem C: Blue Spring](https://atcoder.jp/contests/abc318/tasks/abc318_c). In short: an $N$-day trip ($N \le 2 \cdot 10^5$) with a fare $F_i$ for each day; one-day passes are sold only in batches of $D$ for $P$ yen, usable on any days, leftovers allowed. Print the least total cost.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$: $O(N \log N)$. The cost can reach $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$: `long long`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force over which days to cover (topic 0.5): $2^N$ choices. Two decisions are hidden in the problem: how many batches to buy, and which days to cover with them. For the second, extreme-first (Theorem 1.5.3) suggests covering the most expensive days. For the first, every number of batches $k$ could be tried with prefix sums of the sorted fares (topic 1.2).
+
+#### Step 3: Property check → decision
+
+With $k$ batches, the covered days save their fares, and the saving is the sum of the covered fares: independent values, limited only by a count ($kD$ days). So the best days to cover are the $kD$ most expensive (Theorem 1.5.3, part 1). Sort the fares in decreasing order and cut them into blocks of $D$; buying $k$ batches covers the first $k$ blocks. Each block either gets a batch (cost $P$) or not (cost its sum), and block sums only shrink along the sorted order, so a block-by-block choice of the cheaper option is consistent. Decision: sort, cut into blocks, add $\min(\text{block sum}, P)$ per block.
+
+#### Step 4: Proof for this problem
+
+Sort so that $f_1 \ge f_2 \ge \dots \ge f_N$ and let $S_0, S_1, \dots$ be the sums of the consecutive blocks of $D$ (the last block may be shorter). Every element of block $j$ is at least every element of block $j + 1$, and block $j$ has at least as many elements, so $S_j \ge S_{j+1}$. With $k$ batches the best cost is $kP + (\text{fares outside the first } k \text{ blocks}) = \sum_{j < k} P + \sum_{j \ge k} S_j$ by Step 3. Each term is at least $\min(P, S_j)$, so every $k$ costs at least $\sum_j \min(P, S_j)$. That sum is reached: the blocks with $S_j > P$ form a prefix (block sums only decrease), and taking $k$ equal to its length gives exactly $\sum_j \min(P, S_j)$. Sorting costs $O(N \log N)$ and the blocks $O(N)$.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** The outer loop `for (int start = 0; start < n; start += d)` jumps from block to block; `min(n, start + d)` stops the last block at the end of the array. Tested on the three samples from the problem page, on one day cheaper with a pass, on $2 \cdot 10^5$ days with $D = 1$ (total $2 \cdot 10^{14}$), and on 5000 random inputs ($N \le 10$) against a brute force that tries every set of covered days and buys the batches it needs.
+
+#### Step 6: Alternative approach
+
+Try every number of batches $k$ from 0 to $\lceil N / D \rceil$ and compute $kP$ plus the fares outside the first $kD$ sorted days with prefix sums (topic 1.2), taking the minimum. It needs the same sorting and Step 3's argument, but no argument about blocks.
+
+### Example 2: Missing Coin Sum
+
+[CSES 2183 Missing Coin Sum](https://cses.fi/problemset/task/2183) (CSES is the Code Submission Evaluation System problem set). In short: $n \le 2 \cdot 10^5$ coins with values up to $10^9$; print the smallest positive sum that no subset of the coins makes.
+
+#### Step 1: Constraints → budget
+
+Subsets are $2^n$; listing all possible sums is hopeless. We need $O(n \log n)$. The sums reach $2 \cdot 10^{14}$: `long long`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force over subsets (topic 0.5), only for tiny $n$. The question is order-free (any subset counts), so the coins can be sorted (topic 1.1). Processing them from the smallest, a left-to-right scan with a small state (Theorem 1.5.5) is a candidate: the state "every sum from 0 to $r$ can be made".
+
+#### Step 3: Property check → decision
+
+Suppose the coins seen so far make exactly every sum $0..r$ (and no more, since they add up to $r$). A new coin $x$ adds the sums $x..x + r$. If $x \le r + 1$, these join with $0..r$ without a gap: now $0..r + x$. If $x > r + 1$, nothing can ever make $r + 1$: the coins seen add up to only $r$, and every other coin is at least $x > r + 1$ (they come in increasing order). Decision: sort, scan, stop at the first coin larger than $r + 1$.
+
+#### Step 4: Proof for this problem
+
+Invariant: after processing the $j$ smallest coins without stopping, $r$ is their sum and every integer from 0 to $r$ is a subset sum of them. It holds for $j = 0$ ($r = 0$). If the next coin $x$ satisfies $x \le r + 1$: a sum $s \le r$ is made as before, and a sum $s$ with $r < s \le r + x$ is $x$ plus the sum $s - x$, which lies in $0..r$ because $s - x \le r$ and $s - x \ge r + 1 - x \ge 0$. So the invariant holds with $r + x$. If the scan stops at a coin $x > r + 1$, or runs out of coins, then $r + 1$ is missing: a subset using only the processed coins sums to at most $r$, and a subset using any other coin sums to at least $x > r + 1$. So the answer is $r + 1$. Sorting is $O(n \log n)$ and the scan $O(n)$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `break` leaves the loop at the first coin that leaves a gap; the answer is then printed as `reach + 1`, the same as when the loop ends normally. Tested on the sample from the problem page, on one coin of value 2 (answer 1), on four coins of 1 (answer 5), on $2 \cdot 10^5$ coins of $10^9$ (answer 1) and of 1 (answer $2 \cdot 10^5 + 1$), and on 5000 random inputs ($n \le 10$) against a brute force that lists all subset sums.
+
+#### Step 6: Alternative approach
+
+There is no natural second approach within these topics: tracking every reachable sum is the subset-sum table of Phase 3, which needs memory proportional to the total value, up to $2 \cdot 10^{14}$ here. The invariant is what makes the problem small.
 
 ## 9. Problem ladder
 

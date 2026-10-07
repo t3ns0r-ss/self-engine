@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.2 Prefix sums and difference arrays (1D, 2D)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.1 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
-- Next action: 1.2 step 1 scope
+- Last completed step: 1.2 step 1 scope (skeleton, draft data file, bank look-alike pair and reviews)
+- Next action: 1.2 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -33,6 +33,7 @@
 | 0.6 | done (on this session's branch) | — |
 | Phase 0 intro and exam | done (on this session's branch) | — |
 | 1.1 | done (on this session's branch) | — |
+| 1.2 | in progress (step 1) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -44,7 +45,7 @@
 | 0.5 | short | 30 | 26 |
 | 0.6 | short | 35 | 30 |
 | 1.1 | short | 23 | 27 |
-| 1.2 | short | 22 | 22 |
+| 1.2 | short | 22 | 28 |
 | 1.3 | short | 24 | 32 |
 | 1.4 | short | 21 | 19 |
 | 1.5 | short | 21 | 22 |
@@ -94,7 +95,7 @@
 - 0.5: reserved has 26: two look-alike pairs, review 9 of 10, exam 1 of 2 (after topic step 1). Pattern `permutations` spans only tiers 2–3 in practice.
 - 0.6: two look-alike pairs added at topic step 1; review 9 of 10 after that.
 - 1.1: reserved 27: at lesson step 1, two look-alike pairs were made (LeetCode Minimum Absolute Difference, moved from practice, with its index-distance version; Merge Intervals, moved from drill, with Insert Interval) and 4 LeetCode reviews added (review 10 of 10). Still short: drill 7 of 8, later_drill 3 of 4, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
-- 1.2: reserved 22 of 24: one look-alike pair (2 of 4), review 6 of 10, later_drill 3 of 4 (lc-contiguous-array moved to 1.3 as a look-alike), no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
+- 1.2: reserved 28: at lesson step 1, a second look-alike pair (LeetCode Shifting Letters / Shifting Letters II) and 4 LeetCode reviews were added (review 10 of 10). Still short: later_drill 3 of 4, no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
 - 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
 - 1.4: reserved 19 of 24: no look-alike pair, review 4 of 10, no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
 - 1.5: reserved 22 of 24: no look-alike pair (the natural partners, merge vs. remove intervals, are already used in 1.1), review 7 of 10, no exam problems.
@@ -137,11 +138,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6.
-- New: std::sort and its cost (merge sort as the proof model), sorted order and adjacent elements, comparators (strict weak ordering, tie-breaks, pairs and tuples), sorting with original indices and stability, coordinate compression (by a scan of sorted pairs, or a map), sorted events with a running counter. Cards: sort-then-scan, custom-order, sort-with-index, coordinate-compression, event-sweep (the bank's pattern ids, so 1.3's drill keeps resolving).
-- Forbidden keywords: every keyword of topics 1.2–7.8 (prefix sum, difference array, two pointers, sliding window, binary search, free lower_bound/upper_bound, exchange argument, greedy stays ahead, monotonic stack, prefix xor, …). Compression therefore assigns ranks by a scan or a map, not with the free lower_bound (named under "does not cover").
-- Glossary terms already defined: 0.1–0.6 and 1.3. "non-decreasing" (defined with 1.3 at M1) moves to 1.1 here; "subarray" moves to 1.2.
-- Phase 0 decisions carried into Phase 1: none needed so far (1.1 drill needs 3 earlier-topic items, from Phase 0 later_drill sets).
+- Allowed: 0.1–0.6, 1.1.
+- New: prefix sums and range sums (half-open convention P[0] = 0), subarray conditions as conditions on two prefix values (counted with a map), difference arrays for offline range updates, 2D prefix sums and 2D difference arrays, prefix and suffix maxima/minima. Cards: range-sum, prefix-count-lookup, difference-array, prefix-2d, prefix-extremes (the bank's pattern ids).
+- Forbidden keywords: every keyword of topics 1.3–7.8 (two pointers, sliding window, binary search, free lower_bound/upper_bound, exchange argument, monotonic stack, prefix xor, bitwise contribution, sparse table, range minimum query, fenwick tree, segment tree, …).
+- Glossary terms already defined: 0.1–0.6, 1.1 and 1.3. "subarray" (defined with 1.3 at M1) moves to 1.2 here.
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

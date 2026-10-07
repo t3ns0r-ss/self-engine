@@ -18,15 +18,119 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. Given $n = 2 \cdot 10^5$ numbers below $2^{30}$, find the sum of $a_i \oplus a_j$ (exclusive or) over all pairs $i < j$.
+
+The direct method computes every pair: $n^2 / 2 = 2 \cdot 10^{10}$ operations, about 200 seconds (topic 0.2). But exclusive or works on each binary digit separately: bit $b$ of $a_i \oplus a_j$ is 1 exactly when one of the two numbers has bit $b$ and the other does not. If $c_b$ of the numbers have bit $b$, then exactly $c_b (n - c_b)$ pairs have bit $b$ set in their XOR, and each of them adds $2^b$. So the answer is $\sum_b 2^b \, c_b (n - c_b)$: 30 counts, $O(30 n)$ in total.
+
+This topic is about such arguments: operations that act on each bit separately, and what follows from that. XOR cancels equal values, so XORs over ranges come from prefix values just as sums do (topic 1.2). Sums over pairs or subarrays split into one count per bit. And since bit $b$ is worth more than all lower bits together, the best value is decided from the highest bit down.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 0.1](../../phase-0/0-1-cpp-for-cp/), C++ for competitive programming (CP): integer types and their sizes, `long long`, overflow.
+- [Topic 0.4](../../phase-0/0-4-elementary-math/), elementary mathematics: parity and remainders (a XOR of bits is their sum modulo 2).
+- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: bitmasks, `1 << i`, and testing a bit with `(mask >> i) & 1`.
+- [Topic 0.6](../../phase-0/0-6-stl-toolbox/), STL (Standard Template Library) toolbox: `map` and `unordered_map` for counting values.
+- [Topic 1.2](../1-2-prefix-sums/), prefix sums: a range as the difference of two prefix values, and counting subarrays by pairs of equal prefix values (Theorem 1.2.2).
+- [Topic 1.5](../1-5-greedy-1/), greedy: deciding one choice at a time when the first choice dominates all later ones.
+
 ### What this topic does not cover
+
+- The largest XOR of a value with any element of a changing set, using a binary tree of bits (binary trie). Covered in topic 6.3; here the same question is answered offline, bit by bit.
+- Dynamic programming over subsets stored as bitmasks. Covered in topic 3.7.
+- Counting with prefix sums of a tree of bits (Fenwick tree). Covered in topic 5.2.
+- Linear algebra over bits (the XOR basis of a set of numbers). It is not part of this course.
 
 ## 3. Definitions
 
+- The **bitwise operators** apply a rule to each bit position separately. For integers $x$ and $y$: bit $b$ of $x \,\&\, y$ (AND) is 1 when both bits are 1; of $x \mid y$ (OR) when at least one is 1; of $x \oplus y$ (exclusive or, XOR, written `x ^ y` in C++) when exactly one is 1; `~x` (NOT) flips every bit. Example: $12 = 1100_2$ and $10 = 1010_2$ give $12 \,\&\, 10 = 8$, $12 \mid 10 = 14$, $12 \oplus 10 = 6$.
+- We write $x_b$ for bit $b$ of $x$, so $x = \sum_b x_b 2^b$; in C++, `(x >> b) & 1`.
+- The **prefix XOR** of an array $a_1, \dots, a_n$ is $P_0 = 0$, $P_i = a_1 \oplus \dots \oplus a_i$. Example: for $(3, 5, 6)$ it is $(0, 3, 6, 0)$.
+- The **popcount** of $x \ge 0$ is the number of 1 bits in it: `__builtin_popcount(x)` for `int`, `__builtin_popcountll(x)` for `long long`. Example: the popcount of $13 = 1101_2$ is 3.
+- The **lowest set bit** of $x > 0$ is $2^b$ for the smallest $b$ with $x_b = 1$; it equals `x & -x`. Example: for $12 = 1100_2$ it is $4$.
+
 ## 4. Theory and proofs
+
+### 4.1 XOR as addition without carries
+
+**Theorem 1.7.1 (XOR identities).** For all integers $x, y, z \ge 0$:
+1. $x \oplus y = y \oplus x$ and $(x \oplus y) \oplus z = x \oplus (y \oplus z)$, so a XOR of many values does not depend on their order or grouping.
+2. $x \oplus 0 = x$ and $x \oplus x = 0$.
+3. $x \oplus y = z$ exactly when $x = y \oplus z$.
+4. The XOR of a list of values equals the XOR of the values that appear in it an odd number of times.
+
+*Proof.* Each statement concerns each bit separately, and bit $b$ of a XOR of several values is 1 exactly when an odd number of them have bit $b$ set, that is, it is the sum of their bits modulo 2 (topic 0.4). Sums modulo 2 do not depend on order or grouping, which gives 1. Adding 0 changes nothing, and $x_b + x_b = 2 x_b$ is even, which gives 2. For 3, XOR both sides of $x \oplus y = z$ with $y$: by 1 and 2, $x \oplus y \oplus y = x \oplus 0 = x$, so $x = z \oplus y$; the converse is the same step. For 4, reorder the list by 1 so that equal values stand together; each pair of equal values gives 0 by 2, and 0 changes nothing. $\square$
+
+:::note[This proof needs]
+1. The values are combined with XOR only. AND and OR have no inverse: from $x \mid y$ and $y$ you cannot recover $x$.
+2. For signed types, negative values have their highest bit set; the identities still hold bit by bit, but comparisons and sums of such values need care. Use non-negative values (or `unsigned`) when bits are the point.
+:::
+
+Example: in $(4, 7, 4, 2, 7)$ every value except 2 appears twice, so the XOR of the list is 2. A useful consequence, proved by checking the four cases of $n \bmod 4$ by induction: the XOR $0 \oplus 1 \oplus \dots \oplus n$ is $n$, $1$, $n + 1$ or $0$ when $n \bmod 4$ is $0$, $1$, $2$ or $3$.
+
+### 4.2 Prefix XOR
+
+**Theorem 1.7.2 (prefix XOR).** Let $P$ be the prefix XOR of $a_1, \dots, a_n$. Then:
+1. The XOR of $a_l, \dots, a_r$ is $P_r \oplus P_{l-1}$, for $1 \le l \le r \le n$.
+2. That XOR equals $k$ exactly when $P_{l-1} = P_r \oplus k$. So the number of subarrays with XOR $k$ is the number of pairs $i < j$ with $P_i = P_j \oplus k$, counted in one pass with a map from prefix values to their counts, in $O(n \log n)$.
+
+*Proof.* 1. $P_r = P_{l-1} \oplus (a_l \oplus \dots \oplus a_r)$ by grouping (Theorem 1.7.1, part 1). XOR both sides with $P_{l-1}$: since $P_{l-1} \oplus P_{l-1} = 0$, the result follows. 2. By part 3 of Theorem 1.7.1, $P_r \oplus P_{l-1} = k$ exactly when $P_{l-1} = P_r \oplus k$. Each subarray $[l, r]$ corresponds to the pair $(i, j) = (l - 1, r)$ with $0 \le i < j \le n$, and back. The counting is the same as Theorem 1.2.2 with $\oplus$ in place of $-$: process $j = 0, 1, \dots, n$, add the count of $P_j \oplus k$ seen so far, then record $P_j$. $\square$
+
+:::note[This proof needs]
+1. $P_0 = 0$ is part of the prefix list; forgetting it loses every subarray that starts at position 1.
+2. The condition is on the XOR of the subarray, equal to a fixed $k$. For "XOR at most $k$", prefix values have no order that helps; that needs the bit tree of topic 6.3.
+3. The count can reach $n(n+1)/2$: `long long`.
+:::
+
+Prefix XOR values stay below $2^{30}$ when the inputs do, so when the values are small (for example bitmasks of a few letters) an array indexed by value can replace the map. A related use: a string's letters have even counts in a substring exactly when the XOR of the bitmasks (bit $c$ for letter $c$) over the substring is 0, so "every letter an even number of times" is a pair of equal prefix masks.
+
+### 4.3 One bit at a time
+
+**Theorem 1.7.3 (per-bit contribution).** Let $a_1, \dots, a_n$ be non-negative and let $c_b$ be the number of them with bit $b$ set. Then:
+1. $\sum_{i < j} (a_i \oplus a_j) = \sum_b 2^b \, c_b (n - c_b)$.
+2. Writing $\binom{m}{2} = m(m-1)/2$ for the number of pairs among $m$ items, $\sum_{i < j} (a_i \,\&\, a_j) = \sum_b 2^b \binom{c_b}{2}$, and $\sum_{i < j} (a_i \mid a_j) = \sum_b 2^b \left(\binom{n}{2} - \binom{n - c_b}{2}\right)$.
+3. More generally, for any quantity that is a sum of $2^b$ times a condition on bit $b$ alone, the total over pairs, subarrays or subsets is the sum over $b$ of $2^b$ times the number of them that meet the condition at bit $b$.
+
+*Proof.* Write each term as $\sum_b 2^b t_b$, where $t_b$ is bit $b$ of the term; for a bitwise operator, $t_b$ depends only on the operands' bits $b$. Exchange the order of the two sums: the total is $\sum_b 2^b \cdot (\text{number of terms with } t_b = 1)$, which is part 3. For XOR, $t_b = 1$ when exactly one of the two numbers has bit $b$: $c_b (n - c_b)$ pairs. For AND, both have it: $\binom{c_b}{2}$ pairs. For OR, all pairs except those where neither has it: $\binom{n}{2} - \binom{n - c_b}{2}$. $\square$
+
+:::note[This proof needs]
+1. The operation acts on each bit separately (AND, OR, XOR, NOT, shifts by a fixed amount are fine). Addition is not bitwise: carries move between bits, so $\sum (a_i + a_j)$ is computed directly, not per bit.
+2. Each bit's count is computed from information about that bit only, such as how many numbers have it.
+3. The totals reach $2^{30} \cdot n^2 / 4 \approx 10^{19}$ for $n = 2 \cdot 10^5$: check the bound against `long long` ($9.2 \cdot 10^{18}$), or take the modulus the problem asks for (topic 0.4).
+:::
+
+Example: $a = (1, 2, 3)$. Bit 0 is set in 1 and 3 ($c_0 = 2$), bit 1 in 2 and 3 ($c_1 = 2$). The XOR sum is $1 \cdot 2 \cdot 1 + 2 \cdot 2 \cdot 1 = 6$; directly, $1 \oplus 2 + 1 \oplus 3 + 2 \oplus 3 = 3 + 2 + 1 = 6$.
+
+### 4.4 Highest bit first
+
+**Theorem 1.7.4 (the highest differing bit decides).** For integers $0 \le x, y < 2^B$ with $x \ne y$, let $b$ be the highest bit where they differ. Then $x > y$ exactly when $x_b = 1$. Consequently, among a set of candidates described bit by bit, the largest is found by deciding bits from $B - 1$ down to 0: set bit $b$ to 1 if some candidate agrees with the bits already decided and has bit $b$ equal to 1, otherwise set it to 0.
+
+*Proof.* Above $b$ the two numbers agree, so $x - y = \sum_{j \le b} (x_j - y_j) 2^j$. If $x_b = 1$ and $y_b = 0$, this is $2^b + \sum_{j < b} (x_j - y_j) 2^j \ge 2^b - \sum_{j < b} 2^j = 2^b - (2^b - 1) = 1 > 0$. The case $x_b = 0$ is symmetric. For the greedy: suppose bits above $b$ are decided as in the largest candidate $m$. If some candidate agreeing with those bits has bit $b$ equal to 1, then $m_b = 1$, because otherwise that candidate would be larger than $m$ by the first part. If none has, $m_b = 0$. By induction from the top bit, the decided bits are those of $m$. $\square$
+
+:::note[This proof needs]
+1. All candidates are compared as non-negative numbers below the same $2^B$; choose $B$ large enough (31 for `int`, 61 for values up to $2 \cdot 10^{18}$).
+2. At each bit you can decide whether some candidate with the decided prefix has that bit, usually by counting or by building the candidate.
+3. For the smallest value, the same greedy sets a bit to 0 whenever possible.
+:::
+
+Example: the largest AND of two numbers from $(5, 6, 3)$, that is $101_2, 110_2, 011_2$. Bit 2: two numbers (5 and 6) have it, so it can be 1; keep only them. Bit 1: among 5 and 6 only 6 has it, so it is 0. Bit 0: only 5 has it, so it is 0. Answer $100_2 = 4 = 5 \,\&\, 6$.
+
+### 4.5 Sums and bits
+
+**Theorem 1.7.5 (sum identities).** For integers $a, b \ge 0$:
+1. $a + b = (a \oplus b) + 2 (a \,\&\, b)$, and $a \mid b = (a \oplus b) + (a \,\&\, b)$.
+2. $x \,\&\, (x - 1)$ is $x$ with its lowest set bit cleared, for $x > 0$. So $x > 0$ is a power of two exactly when $x \,\&\, (x - 1) = 0$.
+3. `x & -x` is the lowest set bit of $x > 0$, for the two's-complement integers that C++ uses.
+
+*Proof.* 1. For each bit, $a_j + b_j = (a_j \oplus b_j) + 2 (a_j \,\&\, b_j)$: check the four cases (0 + 0, 0 + 1, 1 + 0, 1 + 1 = 0 + 2). Multiply by $2^j$ and sum over $j$. Similarly, $a_j \mid b_j = (a_j \oplus b_j) + (a_j \,\&\, b_j)$ bit by bit, and at each bit at most one of the two terms is 1, so no carries arise. 2. Let $2^k$ be the lowest set bit. Then $x - 1$ has the same bits as $x$ above $k$, a 0 at $k$, and 1s below $k$, where $x$ has 0s. The AND keeps the bits above $k$ and clears the rest. A power of two has only one set bit, so it becomes 0; any other $x > 0$ keeps a higher bit. 3. In two's complement, $-x$ is $\sim x + 1$. The NOT turns the trailing 0s below $k$ into 1s and bit $k$ into 0; adding 1 carries through those 1s and stops at bit $k$. So $-x$ agrees with $x$ at bit $k$ and below (bit $k$ set, lower bits 0) and is opposite above it, and the AND leaves only bit $k$. $\square$
+
+:::note[This proof needs]
+1. Part 1 holds for every pair of non-negative integers; to recover $a$ and $b$ from $s = a + b$ and $x = a \oplus b$, the carries $(s - x)/2$ must be a non-negative integer with no bit in common with $x$.
+2. Part 3 uses the signed type of $x$ (or unsigned negation); for `long long` values write `x & -x` with `x` a `long long`, not an `int`.
+:::
+
+Example: $a = 6 = 110_2$, $b = 3 = 011_2$. Then $a \oplus b = 101_2 = 5$ and $a \,\&\, b = 010_2 = 2$, and indeed $6 + 3 = 5 + 2 \cdot 2 = 9$ and $6 \mid 3 = 7 = 5 + 2$.
 
 ## 5. Recognition Cards
 

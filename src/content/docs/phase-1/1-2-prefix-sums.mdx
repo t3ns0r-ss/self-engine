@@ -18,15 +18,140 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. An array has $n = 2 \cdot 10^5$ numbers, and there are $q = 2 \cdot 10^5$ questions, each asking for the sum of the elements from position $l$ to position $r$.
+
+Adding up each range directly costs up to $n$ steps per question, $n \cdot q = 4 \cdot 10^{10}$ in total: about 400 seconds at $10^8$ simple steps per second (topic 0.2). But every range sum is the difference of two sums that start at the beginning of the array: the sum up to $r$ minus the sum up to just before $l$. There are only $n + 1$ such starting sums, and each one is the previous one plus one element, so all of them take $n$ additions. After that, each question is one subtraction: $n + q = 4 \cdot 10^5$ steps in total.
+
+These starting sums are called prefix sums. This topic covers them and the ideas built on them: counting subarrays whose sum has a property by looking at pairs of prefix sums, applying many range updates at once with a difference array, the same tools in two dimensions for rectangles in a grid, and prefix and suffix maxima for questions of the form "the best value before (or after) position $i$".
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- Topic 0.1, C++ for competitive programming (CP): `long long`, since sums of $2 \cdot 10^5$ values up to $10^9$ reach $2 \cdot 10^{14}$.
+- Topic 0.2, complexity analysis: the step budget.
+- Topic 0.3, implementation and simulation: one-pass scans and grids.
+- Topic 0.4, elementary mathematics: remainders, for sums divisible by $k$.
+- Topic 0.6, the Standard Template Library (STL) toolbox: counting with a `map` (Theorem 0.6.3), which Section 4.2 applies to prefix sums.
+- Topic 1.1, sorting: the event sweep (Theorem 1.1.6), which a difference array replaces when the coordinates are small.
+
 ### What this topic does not cover
+
+- Finding, for each start, the farthest end whose sum stays at most $K$ by searching the prefix sums (binary search). Covered in topic 1.4.
+- Moving both ends of a segment forward together when all values are non-negative (two pointers, sliding window). Covered in topic 1.3.
+- Prefix sums for XOR (prefix xor). Covered in topic 1.7.
+- Minimum or maximum of an arbitrary range of a fixed array in $O(1)$ (sparse table, range minimum query). Covered in topic 5.1. Prefix maxima here answer only ranges that start at the beginning or end at the end.
+- Range sums while the array changes (Fenwick tree, segment tree). Covered in topics 5.2 and 5.3.
 
 ## 3. Definitions
 
+- A **subarray** (also called a segment) is a run of consecutive elements $a_l, a_{l+1}, \dots, a_r$ of an array, written $[l, r]$ with both ends included. Example: $(5, 1)$ is a subarray of $(3, 5, 1, 4)$; $(3, 1)$ is not.
+- The **prefix sums** of $a_0, \dots, a_{n-1}$ are $P_0 = 0$ and $P_k = a_0 + a_1 + \dots + a_{k-1}$ for $k = 1, \dots, n$: $P_k$ is the sum of the first $k$ elements. Example: for $a = (3, 5, 1, 4)$, $P = (0, 3, 8, 9, 13)$. **Suffix sums** are the same from the other end.
+- A **range sum** is the sum of a subarray, $a_l + \dots + a_r$.
+- The **difference array** of $a$ is $d_0 = a_0$ and $d_i = a_i - a_{i-1}$ for $i \ge 1$. Example: for $a = (3, 5, 1, 4)$, $d = (3, 2, -4, 3)$.
+- An **offline** problem gives all its operations before any answer is needed, so they can be processed in any convenient order; an **online** one must answer each query before the next is read.
+- The **2D prefix sum** of a grid $a$ is $S_{x,y}$, the sum of all cells in rows $0..x-1$ and columns $0..y-1$ (with $S_{x,y} = 0$ when $x = 0$ or $y = 0$).
+- The **prefix maximum** $M_k = \max(a_0, \dots, a_{k-1})$ is the largest of the first $k$ elements; prefix minima and suffix maxima and minima are defined the same way.
+
 ## 4. Theory and proofs
+
+### 4.1 Range sums
+
+**Theorem 1.2.1 (prefix sums).** For $0 \le l \le r < n$,
+
+$$a_l + a_{l+1} + \dots + a_r = P_{r+1} - P_l.$$
+
+All $P_k$ are computed in $O(n)$ by $P_{k+1} = P_k + a_k$, and then each range sum costs $O(1)$.
+
+*Proof.* $P_{r+1} = a_0 + \dots + a_{l-1} + a_l + \dots + a_r$ and $P_l = a_0 + \dots + a_{l-1}$. Subtracting, the first $l$ terms cancel. The recurrence holds because $P_{k+1}$ adds exactly one element, $a_k$, to the sum of the first $k$. $\square$
+
+:::note[This proof needs]
+1. The array does not change after the prefix sums are built.
+2. The operation can be undone by subtraction (sums, counts). Maxima and minima cannot be "subtracted" (Section 4.5 handles only prefixes and suffixes of them).
+3. Sums can exceed $2 \cdot 10^9$: `long long` for $P$.
+:::
+
+Trace on $a = (3, 5, 1, 4)$: $P = (0, 3, 8, 9, 13)$, and the sum of $a_1..a_2 = 5 + 1$ is $P_3 - P_1 = 9 - 3 = 6$.
+
+**Counts are sums too.** To answer "how many positions in $[l, r]$ have a property", sum the array that holds 1 where the property holds and 0 elsewhere. Example: the number of `A` letters in a range of a string is a range sum of the 0/1 array "is this letter `A`".
+
+**Why $P_0 = 0$.** With it, the ranges starting at position 0 need no special case ($P_{r+1} - P_0$), and there is exactly one prefix sum per boundary between elements, including the two ends. Section 4.2 relies on this.
+
+### 4.2 Subarray conditions as pairs of prefix sums
+
+By Theorem 1.2.1, the subarray $[l, r]$ corresponds to the pair of prefix indices $(i, j) = (l, r + 1)$ with $0 \le i < j \le n$, and its sum is $P_j - P_i$. Every subarray gives one such pair and every such pair gives one subarray. So a question about subarrays can become a question about pairs of prefix values.
+
+**Theorem 1.2.2 (counting subarrays by prefix pairs).**
+1. The number of subarrays with sum exactly $K$ equals the number of pairs $i < j$ with $P_i = P_j - K$.
+2. The number of subarrays whose sum is divisible by $k$ equals the number of pairs $i < j$ with $P_i \bmod k = P_j \bmod k$.
+3. Both counts are found in one pass over $j = 0, 1, \dots, n$ with a `map` `cnt` holding how many earlier prefix sums (or remainders) had each value: before inserting $P_j$, add `cnt[`$P_j - K$`]` (or `cnt[`$P_j \bmod k$`]`) to the answer. Cost $O(n \log n)$.
+
+*Proof.* 1 and 2 follow from the correspondence above: the subarray sum $P_j - P_i$ equals $K$ exactly when $P_i = P_j - K$, and $k$ divides $P_j - P_i$ exactly when $P_i$ and $P_j$ have the same remainder (topic 0.4). 3. When $j$ is processed, `cnt` holds exactly $P_0, \dots, P_{j-1}$, so the added number is the count of $i < j$ satisfying the condition; summing over $j$ counts each pair once, at its larger index (the same argument as Theorem 0.6.3). $\square$
+
+:::note[This proof needs]
+1. The condition on the subarray $[l, r]$ depends only on the pair $(P_l, P_{r+1})$: an exact difference, or equal remainders.
+2. $P_0 = 0$ is in the map before the first element, or the subarrays starting at position 0 are missed.
+3. With negative values the remainder `P % k` in C++ can be negative; use `((P % k) + k) % k` (topic 0.4).
+:::
+
+This works for any values, including negative ones. Trace for $K = 3$ on $a = (1, 2, -1, 2)$: $P = (0, 1, 3, 2, 4)$. At $j = 2$ ($P_2 = 3$), the map holds $\{0, 1\}$ and contains $3 - 3 = 0$ once: subarray $[0, 1] = 1 + 2$. At $j = 4$ ($P_4 = 4$) it contains $4 - 3 = 1$ once: subarray $[1, 3] = 2 - 1 + 2$. Total 2.
+
+The same pairing answers other questions: the longest subarray with sum $K$ keeps the *first* index of each prefix value instead of a count (topic 0.6, map from value to first position).
+
+### 4.3 Many range updates, then one read
+
+**Theorem 1.2.3 (difference arrays).** Let $d$ be the difference array of $a$.
+1. $a_i = d_0 + d_1 + \dots + d_i$: the array is the running sum of its difference array.
+2. Adding $v$ to every element of $a_l, \dots, a_r$ changes $d$ in at most two places: $d_l$ increases by $v$, and $d_{r+1}$ (if $r + 1 < n$) decreases by $v$.
+3. So $q$ such updates followed by reading the whole array cost $O(n + q)$.
+
+*Proof.* 1. The sum $d_0 + \dots + d_i = a_0 + (a_1 - a_0) + \dots + (a_i - a_{i-1})$ telescopes to $a_i$. 2. $d_i = a_i - a_{i-1}$ changes only if exactly one of $a_i, a_{i-1}$ changes. After the update that happens only for $i = l$ ($a_l$ grew by $v$, $a_{l-1}$ did not) and for $i = r + 1$ ($a_r$ grew, $a_{r+1}$ did not). 3. Each update is two changes; one running sum then rebuilds $a$ in $O(n)$. $\square$
+
+:::note[This proof needs]
+1. All updates come before the reads (offline). A read between updates would need the running sum again, $O(n)$ per read.
+2. The update adds a value (it can be undone by subtracting). "Set every element of $[l, r]$ to $v$" is not an addition.
+3. Positions are small enough to index an array; for coordinates up to $10^9$, sort the events instead (Theorem 1.1.6) or compress them first (Theorem 1.1.5).
+:::
+
+Trace: $n = 5$, all zeros; add 2 on $[1, 3]$ and 5 on $[2, 4]$. Then $d = (0, 2, 5, 0, -2)$ (the $-5$ would go to $d_5$, past the end, and is dropped), and the running sums give $a = (0, 2, 7, 7, 5)$.
+
+A difference array is an event sweep on a small number line: $d_l \mathrel{+}= v$ is a start event, $d_{r+1} \mathrel{-}= v$ an end event at the half-open end, and the running sum is the sweep counter. Storing events in an array indexed by position replaces the sort.
+
+### 4.4 Rectangles in a grid
+
+**Theorem 1.2.4 (2D prefix sums).** For a grid $a$ with $R$ rows and $C$ columns:
+1. $S_{x+1,y+1} = S_{x,y+1} + S_{x+1,y} - S_{x,y} + a_{x,y}$, so all $S$ are computed in $O(RC)$.
+2. The sum of the rectangle with rows $x_1..x_2$ and columns $y_1..y_2$ is
+$$S_{x_2+1, y_2+1} - S_{x_1, y_2+1} - S_{x_2+1, y_1} + S_{x_1, y_1}.$$
+3. Adding $v$ to every cell of that rectangle changes the 2D difference array in four places: $+v$ at $(x_1, y_1)$ and $(x_2+1, y_2+1)$, $-v$ at $(x_1, y_2+1)$ and $(x_2+1, y_1)$; the 2D prefix sums of the difference array then give the grid.
+
+*Proof.* Count how often each cell is added on each side. 1. A cell in rows $< x$ and columns $< y$ is counted in $S_{x,y+1}$, in $S_{x+1,y}$ and in $S_{x,y}$: $1 + 1 - 1 = 1$ time. A cell in row $x$ with column $< y$ is counted only in $S_{x+1,y}$, once; a cell in column $y$ with row $< x$ only in $S_{x,y+1}$, once; the cell $(x, y)$ only by the term $a_{x,y}$. These are exactly the cells of $S_{x+1,y+1}$, each once. 2. A cell inside the rectangle is counted only by the first term. A cell above the rectangle (row $< x_1$, column in $[y_1, y_2]$) is counted by the first and second terms: $1 - 1 = 0$; to the left, by the first and third: $0$; above and to the left, by all four: $1 - 1 - 1 + 1 = 0$. Cells to the right of column $y_2$ or below row $x_2$ are in none of the four. 3. By part 2 applied to the difference grid, the prefix sum at a cell $(i, j)$ receives $+v$ from $(x_1, y_1)$ when $i \ge x_1, j \ge y_1$, and the other three corners cancel it exactly when $i > x_2$ or $j > y_2$; so it receives $v$ exactly inside the rectangle. $\square$
+
+:::note[This proof needs]
+1. The grid does not change between the queries (for part 3: all updates before the reads).
+2. Indices are shifted by one so that row 0 and column 0 of $S$ are zero; then no query needs a special case.
+3. Sums of up to $R \cdot C$ cells: `long long` when they can pass $2 \cdot 10^9$.
+:::
+
+Example: the $2 \times 3$ grid with rows $(1, 2, 3)$ and $(4, 5, 6)$ has $S$ rows $(0, 0, 0, 0)$, $(0, 1, 3, 6)$, $(0, 5, 12, 21)$. The rectangle of rows $0..1$, columns $1..2$ has sum $S_{2,3} - S_{0,3} - S_{2,1} + S_{0,1} = 21 - 0 - 5 + 0 = 16 = 2 + 3 + 5 + 6$.
+
+### 4.5 The best value before or after a position
+
+**Theorem 1.2.5 (prefix and suffix extremes).**
+1. The prefix maxima satisfy $M_1 = a_0$ and $M_{k+1} = \max(M_k, a_k)$, so all are computed in $O(n)$; the same holds for minima and, from the right end, for suffix maxima and minima.
+2. The largest element other than $a_i$ is $\max(M_i, X_{i+1})$, where $X_{i+1} = \max(a_{i+1}, \dots, a_{n-1})$ is a suffix maximum (an empty prefix or suffix counts as $-\infty$).
+3. The largest $a_j - a_i$ over $i < j$ is $\max_{j \ge 1} (a_j - m_j)$, where $m_j = \min(a_0, \dots, a_{j-1})$ is a prefix minimum.
+4. The largest subarray sum is $\max_{1 \le j \le n} (P_j - \min_{0 \le i < j} P_i)$, computed in one pass with a running minimum of the prefix sums.
+
+*Proof.* 1. The first $k + 1$ elements are the first $k$ and $a_k$, so their maximum is the larger of $M_k$ and $a_k$. 2. The elements other than $a_i$ are exactly those before it (a prefix of length $i$) and those after it (a suffix starting at $i + 1$). 3. For a fixed $j$, the best $i < j$ is the one with the smallest $a_i$, which is $m_j$; then take the best $j$. 4. By Section 4.2 the subarray sums are the values $P_j - P_i$ with $i < j$, and part 3 applied to the sequence $P_0, \dots, P_n$ gives their maximum. $\square$
+
+:::note[This proof needs]
+1. Every question involves a prefix or a suffix (everything before $i$, everything after $i$), not an arbitrary range in the middle.
+2. The extreme of a prefix can be updated with one comparison when the prefix grows; it cannot be "subtracted" like a sum.
+3. For "other than $a_i$", the prefix and suffix exclude position $i$ itself.
+:::
+
+Example: $a = (3, -5, 4, -1, 2)$, $P = (0, 3, -2, 2, 1, 3)$. The running minimum of $P$ before each $j$ is $0, 0, -2, -2, -2$, and $P_j$ minus it is $3, -2, 4, 3, 5$. The best is 5, from $P_5 - P_2$: the subarray $[2, 4] = 4 - 1 + 2$.
 
 ## 5. Recognition Cards
 

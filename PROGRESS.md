@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.2 Prefix sums and difference arrays (1D, 2D)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.2 step 1 scope (skeleton, draft data file, bank look-alike pair and reviews)
-- Next action: 1.2 step 2 theory
+- Last completed step: 1.2 step 2 theory (Theorems 1.2.1–1.2.5, 7 glossary terms; subarray moved from 1.3)
+- Next action: 1.2 step 3 recognition cards
 
 ## Gates
 | Gate | Status | Date |
@@ -33,7 +33,7 @@
 | 0.6 | done (on this session's branch) | — |
 | Phase 0 intro and exam | done (on this session's branch) | — |
 | 1.1 | done (on this session's branch) | — |
-| 1.2 | in progress (step 1) | — |
+| 1.2 | in progress (step 2) | — |
 
 ## Bank
 | topic | status | practice | reserved |

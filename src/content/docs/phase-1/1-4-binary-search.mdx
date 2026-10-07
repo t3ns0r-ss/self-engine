@@ -241,6 +241,84 @@ Five short programs. The first writes the loop of Theorem 1.4.1 by hand; the oth
 
 ## 7. Bug catalogue
 
+Each bug was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: jumping past mid
+
+Template: the invariant template.
+
+```cpp
+else lo = mid + 1;
+```
+
+Input: `2 1`, the values `-5 5`, and the query `0 6`.
+
+Wrong output `0`, correct output `1`. Looking for the first value at least 0: $a_0 = -5$ is too small, so `lo` becomes $0 + 1 = 1$. But $a_1 = 5$ is at least 0, so "$p(\text{lo})$ is false" no longer holds, and the loop stops with `hi` $= 2$, past the right answer 1.
+
+**Fix:** `lo = mid`. Every assignment must keep the invariant (Theorem 1.4.1); `mid + 1` belongs to a different template with a different invariant, and mixing the two is the usual source of off-by-one errors.
+
+### Bug: starting inside the array
+
+Template: the invariant template.
+
+```cpp
+int lo = 0, hi = n - 1;
+```
+
+Input: `1 1`, the value `0`, and the query `0 1`.
+
+Wrong output `0`, correct output `1`. Starting with `hi` $= n - 1$ claims that the last value is at least $x$, which is false for $x = 2$ here, and the answer "none, $n$" can never be returned. Starting with `lo` $= 0$ claims that the first value is below $x$, which is also not always true.
+
+**Fix:** start one position outside the array on each side, $-1$ and $n$, where the invariant holds by agreement (Theorem 1.4.1, condition 2).
+
+### Bug: searching an unsorted array
+
+Template: the invariant template. The `sort` line is removed.
+
+Input: `2 1`, the values `1 -1`, and the query `0 1`.
+
+Wrong output `2`, correct output `1`. On $(1, -1)$ the predicate "$a_i \ge 0$" is true, false: not monotone. The search tests index 0, sees true, and concludes that index 0 is the first value at least 0, so it counts $-1$ as being in $[0, 1]$.
+
+**Fix:** sort first. Binary search is only correct for a monotone predicate (Theorem 1.4.1, condition 1).
+
+### Bug: no check for the end
+
+Template: nearest value. The case `i == n` is removed.
+
+Input: `1 1`, the value `4`, and the query `5`.
+
+Wrong output `0` (any value can appear), correct output `4`. Every value is below 5, so `lower_bound` returns the end, $i = n = 1$, and the program reads `a[1]`, past the end of the vector: undefined behaviour.
+
+**Fix:** handle $i = n$ (no value at least $x$) and $i = 0$ (no value below $x$) before reading `a[i]` or `a[i - 1]` (Theorem 1.4.2, condition 1: the bounds can be $n$).
+
+### Bug: an upper end that is not infeasible
+
+Template: search on the answer.
+
+```cpp
+long long lo = 0, hi = p[n - 1] - p[0];
+```
+
+Input: `2 2`, the positions `1 8`.
+
+Wrong output `6`, correct output `7`. Here the template keeps `ok(hi)` false, but the gap $7$, the whole span, is feasible (choose both positions). The search never tests `hi`, so it can only return values below it.
+
+**Fix:** start `hi` at a value known to fail, the span plus 1 (Theorem 1.4.3, condition 2). When unsure, take a larger bound: each doubling of the range costs only one more check.
+
+### Bug: stopping at the printed precision
+
+Template: searching over real numbers.
+
+```cpp
+while (hi - lo > 1e-7) {
+```
+
+Input: `328`.
+
+Wrong output `6.896435`, correct output `6.896434`. The cube root of 328 is $6.8964344\ldots$. Stopping when the interval is $10^{-7}$ wide leaves `hi` up to $10^{-7}$ above the root, which is enough to round the sixth digit up.
+
+**Fix:** a fixed number of halvings, many more than the precision needs (Theorem 1.4.5, condition 1). One hundred halvings of an interval of length $2 \cdot 10^6$ leave less than $10^{-23}$, far below any printed digit.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M2 (Phase 0: topics 0.1–0.6, phase intro, Phase 0 exam)
-- Topic: — (M2 complete; waiting at the M2 gate)
+- Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
+- Topic: 1.1 Sorting, comparators, coordinate compression
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: Phase 0 intro (phase-0/index.mdx) and Phase 0 exam (phase-0/exam.mdx, 7 problems, remediation map); validate, tests, build, e2e all pass
-- Next action: ⏸ wait for Saurabh at the M2 gate (Phase 0 review); then M3 (1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
+- Last completed step: 1.1 step 1 scope (skeleton, draft data file, bank look-alike pairs and reviews)
+- Next action: 1.1 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -15,10 +15,11 @@
 | B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |
 | Final bank review | approved ("Let's begin with material building") | 2026-10-03 |
 | M1 exemplar review | approved ("for beginning this is good enough"; patterns and other changes to come later) | 2026-10-03 |
-| M2 Phase 0 review | waiting | 2026-10-03 |
+| M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
+| M3 Phase 1 review | not reached | — |
 
 ## Saurabh is studying
-- Topic: — (M2 complete; waiting at the M2 gate)
+- Topic: — (not reported yet)
 
 ## Topics
 | id | status | merged commit |
@@ -31,6 +32,7 @@
 | 0.5 | done (on this session's branch) | — |
 | 0.6 | done (on this session's branch) | — |
 | Phase 0 intro and exam | done (on this session's branch) | — |
+| 1.1 | in progress (step 1) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -41,7 +43,7 @@
 | 0.4 | short | 23 | 28 |
 | 0.5 | short | 30 | 26 |
 | 0.6 | short | 35 | 30 |
-| 1.1 | short | 24 | 20 |
+| 1.1 | short | 23 | 27 |
 | 1.2 | short | 22 | 22 |
 | 1.3 | short | 24 | 32 |
 | 1.4 | short | 21 | 19 |
@@ -91,7 +93,7 @@
 - 0.4: reserved has 28: two look-alike pairs, 3 of 4 later_drill, review 9 of 10, exam 1 (after topic step 1).
 - 0.5: reserved has 26: two look-alike pairs, review 9 of 10, exam 1 of 2 (after topic step 1). Pattern `permutations` spans only tiers 2–3 in practice.
 - 0.6: two look-alike pairs added at topic step 1; review 9 of 10 after that.
-- 1.1: reserved 20 of 24: no look-alike pair, 3 of 4 later_drill, review 6 of 10, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
+- 1.1: reserved 27: at lesson step 1, two look-alike pairs were made (LeetCode Minimum Absolute Difference, moved from practice, with its index-distance version; Merge Intervals, moved from drill, with Insert Interval) and 4 LeetCode reviews added (review 10 of 10). Still short: drill 7 of 8, later_drill 3 of 4, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
 - 1.2: reserved 22 of 24: one look-alike pair (2 of 4), review 6 of 10, later_drill 3 of 4 (lc-contiguous-array moved to 1.3 as a look-alike), no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
 - 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
 - 1.4: reserved 19 of 24: no look-alike pair, review 4 of 10, no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
@@ -135,22 +137,17 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.5.
-- New: the containers vector, pair, set, map, unordered_set/unordered_map, multiset, priority_queue, stack, queue, deque, and the cost of each operation. Cards: set-membership, map-counting, ordered-set-lookup, heap-extract, stack-queue.
-- Forbidden keywords: every keyword of topics 1.1–7.8 (comparator, coordinate compression, prefix sum, two pointers, sliding window, binary search, lower_bound/upper_bound as free functions, monotonic stack, …). Member calls such as `s.lower_bound(x)` are allowed (validator change, see Questions).
-- Glossary terms already defined: 0.1–0.5 (and 1.3).
-- Bank 0.6 (step 1): look-alike pairs lc-contains-duplicate / lc-contains-duplicate-ii (new; the first moved from practice) and ac-abc141_d / cses-1091 (moved from review); review lc-kth-largest-element-in-an-array (new).
-- Phase 0 decisions (M2, made while Saurabh is travelling): any tier may fill Phase 0 reserved purposes (ABC A–B are tier 1, so tier 3–4 reviews are rare); the earlier-topic drill minimum is min(3, order − 1), so 0.1 needs none, 0.2 one, 0.3 two.
+- Allowed: 0.1–0.6.
+- New: std::sort and its cost (merge sort as the proof model), sorted order and adjacent elements, comparators (strict weak ordering, tie-breaks, pairs and tuples), sorting with original indices and stability, coordinate compression (by a scan of sorted pairs, or a map), sorted events with a running counter. Cards: sort-then-scan, custom-order, sort-with-index, coordinate-compression, event-sweep (the bank's pattern ids, so 1.3's drill keeps resolving).
+- Forbidden keywords: every keyword of topics 1.2–7.8 (prefix sum, difference array, two pointers, sliding window, binary search, free lower_bound/upper_bound, exchange argument, greedy stays ahead, monotonic stack, prefix xor, …). Compression therefore assigns ranks by a scan or a map, not with the free lower_bound (named under "does not cover").
+- Glossary terms already defined: 0.1–0.6 and 1.3. "non-decreasing" (defined with 1.3 at M1) moves to 1.1 here; "subarray" moves to 1.2.
+- Phase 0 decisions carried into Phase 1: none needed so far (1.1 drill needs 3 earlier-topic items, from Phase 0 later_drill sets).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
 ## Questions for Saurabh
-- M2 (Phase 0) is ready for review: lessons 0.1–0.6, the Phase 0 intro and the Phase 0 exam (7 problems, one or two per topic, mixed order, 3 hours, pass at 5 of 7 with no Recognition miss). Suggested reading order: the intro, then 0.4 or 0.6 as a sample lesson, then the exam page. Changes made along the way that you may want to check:
-  - Phase 0 banks gained look-alike pairs, reviews and exam problems at each topic's step 1 (details under "Scope notes" history in the commits `topic(0.x): step 1 scope`).
-  - The exam keeps its state under a new storage key `cp:v1:exams` (exported and imported with the rest; older exports without it still import).
-  - The validator now checks that each exam problem carries the card of the topic it tests and that the exam covers every topic of the phase.
 - Keyword scan and ordered sets (0.6): `lower_bound` and `upper_bound` are keywords of 1.4 (binary search), but topic 0.6 needs the `set`/`map` member functions of the same name. The scan now ignores a keyword written as a member call (preceded by a dot, as in `s.lower_bound(x)`); the free functions on arrays stay reserved for 1.4. Say if you would rather keep the scan strict and have 0.6 describe these calls without naming them.
 - Changes made while building 1.3 (change any you disagree with):
   - Topic data files may carry `draft: true` while a lesson is being written: count rules are skipped and the lesson shows a draft notice, so every step's commit keeps CI green. 1.3 no longer has it.

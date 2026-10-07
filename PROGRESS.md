@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.6 Monotonic stack and deque
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.6 step 3 recognition cards (3 cards)
-- Next action: 1.6 step 4 templates and stress tests
+- Last completed step: 1.6 step 4 templates (5 units, stress 5000 each)
+- Next action: 1.6 step 5 bug catalogue
 
 ## Gates
 | Gate | Status | Date |
@@ -36,7 +36,7 @@
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
-| 1.6 | in progress (step 3) | — |
+| 1.6 | in progress (step 4) | — |
 
 ## Bank
 | topic | status | practice | reserved |

@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import nextGreater from '../../../../code/1.6/next-greater/solution.cpp?raw';
+import subarrayMinSum from '../../../../code/1.6/subarray-min-sum/solution.cpp?raw';
+import histogram from '../../../../code/1.6/histogram/solution.cpp?raw';
+import windowMax from '../../../../code/1.6/window-max/solution.cpp?raw';
+import spreadWindow from '../../../../code/1.6/spread-window/solution.cpp?raw';
 
 <TopicHeader topic="1.6" />
 
@@ -114,6 +119,78 @@ The same deque works for windows whose left end moves irregularly, as in the shr
 <Cards topic="1.6" />
 
 ## 6. Templates
+
+Five short programs: Theorem 1.6.1, the two uses of Theorem 1.6.2, the sliding-window maximum of Theorem 1.6.3, and a window with two deques whose left end moves as in topic 1.3. Every brute force scans every position or subarray directly, in $O(n^2)$.
+
+### Next greater and previous greater-or-equal (Theorem 1.6.1)
+
+<Code code={nextGreater} lang="cpp" title="next-greater/solution.cpp" />
+
+**How it works.** The stack holds the positions still waiting for a greater value; their values never increase from bottom to top. At position $i$, every waiting position with a smaller value has found its next greater element. These positions are all on top, so they are popped. What remains on top, if anything, is the nearest earlier position whose value is at least $a_i$ (part 3 of the theorem). It is recorded before $i$ is pushed, so one scan gives both answers.
+
+**C++ details explained.**
+- `vector<int> st` is used as a stack: `push_back`, `back` and `pop_back` are push, top and pop. Unlike `std::stack`, a `vector` lets you print the whole stack while debugging.
+- Positions, not values, go on the stack: the answer is a position, and the value is always `a[st.back()]`.
+- `-1` means "none"; printing `nxt[i] + 1` turns it into the 0 of the 1-based output.
+
+**Tested.** Stress-tested against a brute force that scans outwards from every position, on 5000 random inputs ($n \le 10$, values up to 4 so that ties are common, or up to $10^9$). There are also 4 fixed tests: $n = 1$, all values equal (no next greater; the previous greater-or-equal is the left neighbour), and a decreasing array of $2 \cdot 10^5$ elements.
+
+**Alternative formulation.** Scan from the right instead. Keep a stack of candidates and pop every candidate $\le a_i$ (for every position further left, $a_i$ hides them); the top is then $i$'s next greater element. Both directions are $O(n)$. The left-to-right version finds an element's answer when the element is popped, the right-to-left version when it is pushed.
+
+### Sum of subarray minima (Theorem 1.6.2, parts 1–2)
+
+<Code code={subarrayMinSum} lang="cpp" title="subarray-min-sum/solution.cpp" />
+
+**How it works.** The first scan finds $L_i$, the previous strictly smaller position: it pops everything $\ge a_i$, so the top that remains is $< a_i$. The second scan, from the right, finds $R_i$, the next smaller-or-equal position: it pops only what is $> a_i$. Position $i$ is then the rightmost minimum of exactly $(i - L_i)(R_i - i)$ subarrays, and the answer adds $a_i$ times that count.
+
+**C++ details explained.**
+- The two loops differ only in `>=` versus `>`. That one character is the tie rule of the theorem; Section 7 shows what happens with the same comparison on both sides.
+- `a` is `vector<long long>`, so `a[i] * (i - L[i]) * (R[i] - i)` is computed in `long long` from the left. The largest term, $10^6 \cdot 10^5 \cdot 10^5 = 10^{16}$, fits. With `int` values the first product would overflow.
+
+**Tested.** Stress-tested against a brute force that takes the minimum of every subarray, on 5000 random inputs ($n \le 10$, values up to 3, or up to $10^6$). There are also 4 fixed tests: the example $(3, 1, 2)$ of Section 4.2, all values equal, and $2 \cdot 10^5$ copies of $10^6$ (the answer is about $2 \cdot 10^{16}$).
+
+**Alternative formulation.** The sum of maxima uses the same code with every comparison reversed. The sum of $\max - \min$ over all subarrays is the difference of the two sums.
+
+### Largest rectangle in a histogram (Theorem 1.6.2, part 3)
+
+<Code code={histogram} lang="cpp" title="histogram/solution.cpp" />
+
+**How it works.** For each bar, the two scans find the nearest strictly lower bar on each side. The widest rectangle of height $h_i$ that contains bar $i$ covers every bar strictly between them, $R_i - L_i - 1$ bars, and the best rectangle is one of these $n$ candidates. Ties need no care here. Equal bars that share a rectangle each produce the same candidate, and a maximum is not changed by repeats.
+
+**C++ details explained.** `h` is `vector<long long>` for the same reason as before: areas reach $10^9 \cdot 2 \cdot 10^5 = 2 \cdot 10^{14}$.
+
+**Tested.** Stress-tested against a brute force that tries every range of bars with its lowest height, on 5000 random inputs ($n \le 10$, heights up to 4, or up to $10^9$). There are also 4 fixed tests: a single bar of height 0, all bars equal, and $2 \cdot 10^5$ bars of height $10^9$.
+
+**Alternative formulation.** One scan is enough. When bar $j$ is popped by bar $i$, its right boundary is $i$ and its left boundary is the new top. A final bar of height 0 at the end empties the stack.
+
+### Sliding-window maximum (Theorem 1.6.3)
+
+<Code code={windowMax} lang="cpp" title="window-max/solution.cpp" />
+
+**How it works.** The deque holds the window's positions that are not dominated, with values decreasing from front to back. The new position first removes from the back every position it dominates, then joins. If the front has slid out of the window, it is removed. Only the front can be outside the window, because positions are in increasing order and the window moves by one. The front is then the maximum.
+
+**C++ details explained.**
+- `deque<int>` supports `push_back`, `pop_back`, `pop_front`, `front` and `back` in $O(1)$. A `vector` cannot remove its first element cheaply.
+- The check `dq.front() <= i - k` runs after the push, so the deque is never empty when the front is read.
+
+**Tested.** Stress-tested against a brute force that takes the maximum of every window, on 5000 random inputs ($n \le 10$, any $k$, values up to 4, or up to $10^9$). There are also 4 fixed tests: $n = k = 1$, repeated maxima, $k = n$, and $k = 1$ with $2 \cdot 10^5$ elements.
+
+**Alternative formulation.** For the minimum, reverse the comparison (`>=`). For windows of a fixed length only, you can also cut the array into blocks of $k$ and use prefix and suffix maxima inside each block (the prefix idea of topic 1.2). The deque is simpler and also works when the window's length changes.
+
+### Longest window with a bounded spread (Theorem 1.6.3 with topic 1.3)
+
+<Code code={spreadWindow} lang="cpp" title="spread-window/solution.cpp" />
+
+**How it works.** This is the shrinkable window of topic 1.3: if a window has $\max - \min \le K$, so does every window inside it. For each right end $r$, the left end $l$ moves right until the condition holds, and $[l, r]$ is then the longest valid window ending at $r$. Two deques give the maximum and the minimum while both ends move. When $l$ passes a front's position, that front is popped.
+
+**C++ details explained.**
+- Inside the `while`, each step of $l$ can push at most one front out of the window, so checking each front once per step is enough.
+- The loop always stops: when $l = r$ both fronts are $r$, and the spread is $0 \le K$.
+- `K` and `a` are `long long` because $\max - \min$ reaches $2 \cdot 10^9$.
+
+**Tested.** Stress-tested against a brute force that checks every subarray, on 5000 random inputs ($n \le 10$, values up to 5 or $10^9$, small or large $K$). There are also 5 fixed tests: $n = 1$, $K = 0$ (the longest run of equal values), a spread of exactly $2 \cdot 10^9$, and $2 \cdot 10^5$ values that are all one window.
+
+**Alternative formulation.** A `multiset` of the window's values (topic 0.6) gives the maximum and minimum in $O(\log n)$ each. It is easier to write, and $O(n \log n)$ overall is fast enough for $n = 2 \cdot 10^5$.
 
 ## 7. Bug catalogue
 

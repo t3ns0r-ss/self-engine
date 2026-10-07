@@ -10,7 +10,9 @@ int main(int argc, char** argv) {
     auto randInt = [&](int lo, int hi) {
         return (int)(rng() % (unsigned)(hi - lo + 1)) + lo;
     };
-    int n = randInt(1, 10), hs = randInt(0, 1) ? 2 : 100, hp = randInt(0, 1) ? 2 : 1000000000;
+    // sometimes more than 16 contestants: below that, sort switches to a stable insertion sort,
+    // which would hide a missing tie-break
+    int n = randInt(0, 1) ? randInt(1, 10) : randInt(17, 40), hs = randInt(0, 1) ? 2 : 100, hp = randInt(0, 1) ? 2 : 1000000000;
     cout << n << "\n";
     for (int i = 0; i < n; i++) cout << randInt(0, hs) << " " << randInt(0, hp) << "\n";
 }

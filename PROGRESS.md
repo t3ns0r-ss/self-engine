@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.2 Prefix sums and difference arrays (1D, 2D)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.2 step 5 bug catalogue (8 bugs)
-- Next action: 1.2 step 6 problems
+- Last completed step: 1.2 step 6 problems (ladder of 19, 2 worked examples, 11 drill items, 2 look-alike pairs, checkpoint, 3 review sets)
+- Next action: 1.2 step 7 worked examples
 
 ## Gates
 | Gate | Status | Date |
@@ -33,7 +33,7 @@
 | 0.6 | done (on this session's branch) | — |
 | Phase 0 intro and exam | done (on this session's branch) | — |
 | 1.1 | done (on this session's branch) | — |
-| 1.2 | in progress (step 5) | — |
+| 1.2 | in progress (step 6) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -43,7 +43,7 @@
 | 0.3 | short | 45 | 24 |
 | 0.4 | short | 23 | 28 |
 | 0.5 | short | 30 | 26 |
-| 0.6 | short | 35 | 30 |
+| 0.6 | short | 35 | 31 |
 | 1.1 | short | 23 | 27 |
 | 1.2 | short | 22 | 28 |
 | 1.3 | short | 24 | 32 |

@@ -11,6 +11,7 @@ cards:
       - Many queries "sum (or number of …) from l to r"
       - A split point i with "everything before i" and "everything after i" measured by sums or counts
       - n and q both up to 2·10^5
+      - Substring queries counting a local pattern (two equal neighbours, an "AC"), turned into a 0/1 mark per position
     kill_signals:
       - Values change between queries (later topics)
       - The query asks for a maximum or minimum of a middle range
@@ -79,6 +80,7 @@ cards:
       - '"Buy before you sell", the largest a_j − a_i with i < j'
       - '"The best value excluding position i", "the best split point"'
       - The largest subarray sum
+      - '"Remove (or replace) one element", then the gcd, maximum or minimum of the rest: prefix and suffix versions of an operation that cannot be undone'
     kill_signals:
       - The maximum of an arbitrary range [l, r] is needed (topic 5.1, later)
     lookalikes:
@@ -86,13 +88,381 @@ cards:
         needs: range-sum (1.2)
         flipping_difference: A fixed length fixes the start, so each candidate is one range sum; no running minimum is needed.
     complexity: O(n) for all prefixes and suffixes.
-problems: []
-drill: []
-lookalike_pairs: []
+problems:
+  - id: lc-running-sum-of-1d-array
+    role: ladder
+    card: range-sum
+    rung: 1
+    twist: Base case of the card
+    summary: "Return the running sums of an array of n ≤ 1000 values: the i-th output is the sum of the first i + 1 values."
+    hints:
+      - How does the i-th running sum relate to the (i − 1)-th?
+      - "It is the previous one plus nums[i]: the recurrence P_{k+1} = P_k + a_k of Theorem 1.2.1."
+      - Keep one running total and write it after each element.
+  - id: lc-range-sum-query-immutable
+    role: ladder
+    card: range-sum
+    rung: 2
+    twist: Many range-sum queries on the same array.
+    summary: Answer up to 10^4 queries "sum of nums[left..right]" on a fixed array of n ≤ 10^4 values.
+    hints:
+      - What can be prepared once so that each query is fast?
+      - "Prefix sums with P_0 = 0; the sum of nums[left..right] is P_{right+1} − P_left (Theorem 1.2.1)."
+      - "Build P in the constructor (size n + 1) and return P[right + 1] − P[left]."
+  - id: cses-1646
+    role: ladder
+    card: range-sum
+    rung: 3
+    twist: 1-based queries, 2·10^5 of them, and sums beyond int.
+    summary: n, q ≤ 2·10^5; values up to 10^9; print the sum of each queried range [a, b] (1-based).
+    hints:
+      - How large can a range sum be?
+      - "Up to 2·10^5 · 10^9 = 2·10^14: long long. With 1-based queries, the sum of [a, b] is P[b] − P[a − 1]."
+      - Read with fast input, build P, answer each query in O(1).
+  - id: lc-left-and-right-sum-differences
+    role: ladder
+    card: range-sum
+    rung: 4
+    twist: Every position needs both the sum before it and the sum after it.
+    summary: "For each i of an array (n ≤ 1000), the absolute difference between the sum of the elements left of i and the sum right of i."
+    hints:
+      - Express "the sum right of i" with the total and a prefix sum.
+      - "Left sum is P_i; right sum is total − P_{i+1}."
+      - "One pass for the total, one pass keeping P_i; answer |P_i − (total − P_i − nums[i])|."
+  - id: lc-find-pivot-index
+    role: ladder
+    card: range-sum
+    rung: 5
+    twist: Search for the first position where the two sides are equal, with negative values.
+    summary: The leftmost index of an array (n ≤ 10^4, values in [−1000, 1000]) where the sum of the elements before it equals the sum after it, or −1.
+    hints:
+      - Same two sums as the previous rung. Which position do you return?
+      - The first i with P_i = total − P_i − nums[i]; negative values only change nothing in the formula.
+      - Scan i from 0 with a running left sum and return at the first match.
+  - id: lc-number-of-ways-to-split-array
+    role: ladder
+    card: range-sum
+    rung: 6
+    twist: Count the split points instead of finding one, and the sums can pass int.
+    summary: Count the indices i < n − 1 where the sum of the first i + 1 elements is at least the sum of the rest (n ≤ 10^5, |values| ≤ 10^5).
+    hints:
+      - How large can the sums get, and how do you get both sides at every split?
+      - "Up to 10^10: long long. Left = P_{i+1}, right = total − P_{i+1}."
+      - Scan i from 0 to n − 2 with a running sum and count the splits with left ≥ right.
+  - id: lc-subarray-sum-equals-k
+    role: ladder
+    card: prefix-count-lookup
+    rung: 1
+    twist: Base case of the card
+    summary: Count the subarrays with sum exactly k in an array of n ≤ 2·10^4 values that may be negative.
+    hints:
+      - Write the sum of a subarray with two prefix sums. What must hold for it to equal k?
+      - "P_j − P_i = k, i.e. P_i = P_j − k: count earlier prefix sums equal to P_j − k (Theorem 1.2.2)."
+      - "Scan with a map of prefix-sum counts starting with {0: 1}; add count[P − k] before inserting P."
+  - id: lc-count-number-of-nice-subarrays
+    role: ladder
+    card: prefix-count-lookup
+    rung: 2
+    twist: The quantity summed is "is this element odd", not the element.
+    summary: Count the subarrays containing exactly k odd numbers (n ≤ 5·10^4).
+    hints:
+      - Replace each number by something whose sum over a subarray is the number of odd elements.
+      - "1 for odd, 0 for even. Now it is \"subarrays with sum exactly k\"."
+      - Apply the previous rung's scan to the 0/1 array (an array of counts works instead of a map, since prefix values are at most n).
+  - id: cf-1398C
+    role: ladder
+    card: prefix-count-lookup
+    rung: 3
+    twist: The condition compares the sum with the length; subtracting 1 from every element turns it into "sum zero".
+    summary: "Count the subarrays of a digit string whose digit sum equals their length (sum of lengths ≤ 10^5, t test cases)."
+    hints:
+      - "Sum = length means Σ a_i = Σ 1 over the subarray. Move everything to one side."
+      - "Σ (a_i − 1) = 0: subarrays with sum 0 of the shifted values, i.e. pairs of equal prefix sums."
+      - "Count equal prefix sums of (digit − 1) with a map starting from {0: 1}; the count needs long long."
+  - id: cf-466C
+    role: ladder
+    card: prefix-count-lookup
+    rung: 4
+    twist: Two cut points must be chosen in order, so the count of earlier good first cuts is kept while scanning for the second cut.
+    summary: "Count the ways to cut an array (n ≤ 5·10^5) into three non-empty consecutive parts with equal sums."
+    hints:
+      - If the total is S, what must the prefix sums be at the two cuts?
+      - "S/3 at the first cut and 2S/3 at the second (S must be divisible by 3), with the first cut strictly before the second."
+      - "Scan the cut positions; at a position with P = 2S/3, add the number of earlier positions with P = S/3; then, if P = S/3 here, count it. long long."
+  - id: lc-corporate-flight-bookings
+    role: ladder
+    card: difference-array
+    rung: 1
+    twist: Base case of the card
+    summary: "n ≤ 2·10^4 flights and 2·10^4 bookings, each reserving s seats on every flight from first to last; the total seats per flight."
+    hints:
+      - Adding s to every flight of every booking can cost 4·10^8. What changes only at the ends of a booking?
+      - "The difference between neighbouring flights: +s at first, −s after last (Theorem 1.2.3)."
+      - "d[first] += s, d[last + 1] −= s for each booking, then a running sum over the flights."
+  - id: ac-abc183_d
+    role: ladder
+    card: difference-array
+    rung: 2
+    twist: The read is a check of every time against a capacity, and the intervals are half-open.
+    summary: N ≤ 2·10^5 people each use P_i litres per minute from time S_i to T_i (exclusive, times ≤ 2·10^5); can a heater of W litres per minute supply everyone?
+    hints:
+      - Times are small. What do you need to know at every minute?
+      - "The total use at that minute: a sum of range additions [S_i, T_i), all known in advance."
+      - "d[S] += P, d[T] −= P; a running sum over the times; answer No if it ever exceeds W. long long."
+  - id: cf-295A
+    role: ladder
+    card: difference-array
+    rung: 3
+    twist: The updates are themselves applied in ranges, so two difference arrays are nested.
+    summary: "An array (n ≤ 10^5), m operations \"add d on [l, r]\", and k queries each applying the operations x..y once; print the final array."
+    hints:
+      - First find out how many times each operation is applied in total.
+      - "Each query adds 1 to a range of operations: a difference array over the operations gives each operation's count c."
+      - "Then apply each operation once with value c·d through a difference array over the elements. long long."
+  - id: cses-1652
+    role: ladder
+    card: prefix-2d
+    rung: 1
+    twist: Base case of the card
+    summary: In an n × n forest map (n ≤ 1000) of trees and empty squares, count the trees in each of q ≤ 2·10^5 rectangles.
+    hints:
+      - Turn the map into numbers first. What is a rectangle count then?
+      - "1 for a tree, 0 otherwise; a count is a rectangle sum, given by four 2D prefix sums (Theorem 1.2.4)."
+      - "Build S with a zero row and column, and answer S[y2][x2] − S[y1−1][x2] − S[y2][x1−1] + S[y1−1][x1−1]."
+  - id: lc-range-sum-query-2d-immutable
+    role: ladder
+    card: prefix-2d
+    rung: 2
+    twist: 0-based coordinates and negative values, behind a class interface.
+    summary: Answer up to 10^4 queries "sum of the sub-rectangle (row1, col1)–(row2, col2)" on a fixed matrix of at most 200 × 200 values (negative allowed).
+    hints:
+      - Which index shift makes all four corner terms exist without special cases?
+      - "S[x][y] = sum of rows < x and columns < y, sized (m + 1) × (n + 1)."
+      - "Return S[row2+1][col2+1] − S[row1][col2+1] − S[row2+1][col1] + S[row1][col1]."
+  - id: ac-abc331_d
+    role: ladder
+    card: prefix-2d
+    rung: 3
+    twist: The grid is 10^9 × 10^9 but repeats an N × N pattern, so counts of whole periods are combined with prefix sums of the pattern.
+    summary: A 10^9 × 10^9 grid colours square (i, j) by the N × N pattern (N ≤ 1000) at (i mod N, j mod N); answer Q ≤ 2·10^5 black-square counts of rectangles.
+    hints:
+      - "Answer a simpler question first: the black squares in the rectangle from (0, 0) to (x − 1, y − 1). How many full copies of the pattern does it contain?"
+      - "(x / N)·(y / N) full copies, plus strips: f(x, y) uses the pattern's 2D prefix sums for the remainders x mod N, y mod N and multiples of the full row and column sums."
+      - "Write f(x, y) for the rectangle from the origin, then use the four-corner formula on f. long long."
+  - id: lc-best-time-to-buy-and-sell-stock
+    role: ladder
+    card: prefix-extremes
+    rung: 1
+    twist: Base case of the card
+    summary: "Prices for n ≤ 10^5 days; the largest profit from buying on one day and selling on a later day (0 if none)."
+    hints:
+      - Fix the selling day. Which buying day is best?
+      - The cheapest day before it, a prefix minimum (Theorem 1.2.5, part 3).
+      - Scan the days keeping the smallest price so far; the answer is the largest price − minimum, at least 0.
+  - id: lc-minimum-value-to-get-positive-step-by-step-sum
+    role: ladder
+    card: prefix-extremes
+    rung: 2
+    twist: The extreme is taken over the prefix sums, not the elements.
+    summary: The smallest positive start value such that start + (each running sum of an array of n ≤ 100 values) stays at least 1.
+    hints:
+      - Which running sum is the dangerous one?
+      - "The smallest prefix sum m: start + m ≥ 1 must hold, and start ≥ 1."
+      - "Answer max(1, 1 − m), with m the minimum of the running sums."
+  - id: lc-maximum-subarray
+    role: ladder
+    card: prefix-extremes
+    rung: 3
+    twist: Both parts together, the best of P_j minus the smallest earlier prefix sum.
+    summary: The largest sum of a non-empty subarray of n ≤ 10^5 values (negative allowed).
+    hints:
+      - Write a subarray sum with prefix sums. For a fixed end j, which start is best?
+      - "The one with the smallest earlier prefix sum P_i, i < j (Theorem 1.2.5, part 4)."
+      - Scan, keeping the minimum of P_0..P_{j−1} and updating the best P_j − minimum before adding P_j to the minimum.
+  - id: ac-abc122_c
+    role: worked_example
+    summary: For a string of length N ≤ 10^5 over A, C, G, T and Q ≤ 10^5 queries [l, r], count the occurrences of "AC" inside S[l..r].
+  - id: lc-trapping-rain-water
+    role: worked_example
+    summary: Bars of width 1 with n ≤ 2·10^4 heights; how much rain water stays on top of them?
+  - id: ac-abc328_c
+    role: drill
+    summary: For a string of length N ≤ 3·10^5 and Q ≤ 3·10^5 queries [l, r], count the positions p in [l, r − 1] with S_p = S_{p+1}.
+  - id: ac-abc401_c
+    role: drill
+    summary: A_i = 1 for i < K and A_i = sum of the previous K terms; print A_N mod 10^9 (N, K ≤ 10^6).
+  - id: ac-abc265_d
+    role: drill
+    summary: N ≤ 2·10^5 positive values; are there x < y < z < w with the sums of [x, y), [y, z), [z, w) equal to P, Q, R in order?
+  - id: lc-matrix-block-sum
+    role: drill
+    summary: For every cell of an m × n matrix (≤ 100 × 100), the sum of the cells within distance k in both row and column.
+  - id: cses-1643
+    role: drill
+    summary: The largest sum of a non-empty contiguous part of n ≤ 2·10^5 values in [−10^9, 10^9].
+  - id: ac-abc125_c
+    role: drill
+    summary: Replace one of N ≤ 10^5 numbers by any number to make the greatest common divisor of all of them as large as possible.
+  - id: lc-subarray-sums-divisible-by-k
+    role: drill
+    summary: Count the subarrays (n ≤ 3·10^4, negative values allowed) whose sum is divisible by k.
+  - id: cf-313B
+    role: drill
+    summary: "A string of . and # (n ≤ 10^5) and m ≤ 10^5 queries [l, r]: count the positions i in [l, r) with s_i = s_{i+1}."
+  - id: ac-abc365_c
+    role: drill
+    summary: The largest cap x with Σ min(x, A_i) ≤ M over N ≤ 2·10^5 costs (M ≤ 2·10^14), or "infinite".
+  - id: ac-abc312_c
+    role: drill
+    summary: N sellers with minimum prices and M buyers with maximum prices (≤ 2·10^5 each); the smallest price X at which sellers willing are at least buyers willing.
+  - id: lc-count-number-of-bad-pairs
+    role: drill
+    summary: Count the pairs i < j (n ≤ 10^5) with j − i ≠ nums[j] − nums[i].
+  - id: ac-abc127_c
+    role: lookalike
+    summary: N ≤ 10^5 cards and M gates, each gate opened by the cards L_i..R_i; how many cards open every gate alone?
+  - id: ac-abc408_c
+    role: lookalike
+    summary: N ≤ 10^6 walls and M ≤ 2·10^5 turrets, each guarding walls L_i..R_i; the fewest turrets to destroy so that some wall is unguarded.
+  - id: lc-shifting-letters
+    role: lookalike
+    summary: For a string (length ≤ 10^5), shifts[i] means "shift the first i + 1 letters forward shifts[i] times"; the final string.
+  - id: lc-shifting-letters-ii
+    role: lookalike
+    summary: "For a string (length ≤ 5·10^4), each of ≤ 5·10^4 operations shifts the letters from start to end forward or backward by one; the final string."
+  - id: ac-abc233_d
+    role: checkpoint
+    card: prefix-count-lookup
+    summary: Count the contiguous parts with sum exactly K of N ≤ 2·10^5 values (|A_i| ≤ 10^9, |K| ≤ 10^15).
+  - id: ac-abc388_d
+    role: checkpoint
+    card: difference-array
+    summary: N ≤ 5·10^5 aliens become adults in order; each new adult receives one stone from every adult who still has a stone; final stone counts.
+  - id: ac-abc366_d
+    role: checkpoint
+    card: prefix-2d
+    summary: Sums over Q ≤ 2·10^5 boxes of an N × N × N array of numbers (N ≤ 100).
+  - id: ac-abc089_d
+    role: review
+    card: range-sum
+    review_set: 1
+    summary: "An H × W grid holds 1..HW; Q ≤ 10^5 tests move a piece from number L to R in steps of D, paying the Manhattan distance of each step; the cost of each test."
+  - id: lc-minimum-penalty-for-a-shop
+    role: review
+    card: range-sum
+    review_set: 1
+    summary: "A log of hours with or without customers (n ≤ 10^5); the earliest closing hour minimising (open hours without customers) + (closed hours with customers)."
+  - id: lc-increment-submatrices-by-one
+    role: review
+    card: prefix-2d
+    review_set: 1
+    summary: Add 1 to each of up to 10^4 sub-rectangles of an n × n zero matrix (n ≤ 500); the final matrix.
+  - id: cses-1662
+    role: review
+    card: prefix-count-lookup
+    review_set: 1
+    summary: Count the subarrays of n ≤ 2·10^5 values (negative allowed) whose sum is divisible by n.
+  - id: ac-abc105_d
+    role: review
+    card: prefix-count-lookup
+    review_set: 2
+    summary: Count the pairs (l, r) for which the candies in boxes l..r (N ≤ 10^5) can be split evenly among M ≤ 10^9 children.
+  - id: lc-grid-game
+    role: review
+    card: prefix-extremes
+    review_set: 2
+    summary: Two robots cross a 2 × n grid (n ≤ 5·10^4) moving right or down; the first clears its path to minimise what the second can then collect; the second's total.
+  - id: cf-816B
+    role: review
+    card: difference-array
+    review_set: 2
+    summary: "n recipes each recommend a temperature range; for q queries [a, b], count the temperatures in the range recommended by at least k recipes (values ≤ 2·10^5)."
+  - id: ac-abc106_d
+    role: review
+    card: prefix-2d
+    review_set: 3
+    summary: M ≤ 2·10^5 trains on N ≤ 500 cities, each from L to R; Q ≤ 10^5 queries count the trains with p ≤ L and R ≤ q.
+  - id: cf-1426D
+    role: review
+    card: prefix-count-lookup
+    review_set: 3
+    summary: The fewest insertions between elements of an array (n ≤ 2·10^5, no zeros) so that no subarray has sum 0.
+  - id: lc-make-sum-divisible-by-p
+    role: review
+    card: prefix-count-lookup
+    review_set: 3
+    summary: The length of the shortest subarray to remove (not the whole array) so that the remaining sum is divisible by p (n ≤ 10^5), or −1.
+drill:
+  - problem: ac-abc328_c
+    answer_card: range-sum
+    answer_topic: "1.2"
+    property: "Mark each p with S_p = S_{p+1}; a query counts marks at p in [l, r − 1], a range sum of a fixed 0/1 array."
+    why_others_fail: Scanning each query is 9·10^10 steps; nothing changes between queries, so no structure beyond prefix sums is needed.
+  - problem: ac-abc401_c
+    answer_card: range-sum
+    answer_topic: "1.2"
+    property: "Each new term is the sum of the previous K terms, a range sum of the sequence built so far: keep prefix sums (mod 10^9) and take P_i − P_{i−K}."
+    why_others_fail: Adding K terms for each of N terms is 10^12 steps; there is no order to sort.
+  - problem: ac-abc265_d
+    answer_card: prefix-count-lookup
+    answer_topic: "1.2"
+    property: "Every condition is P_y − P_x = P (and so on), a lookup of one prefix value; values are positive, so a set of prefix sums answers \"is P_x + P a prefix sum?\" for every x."
+    why_others_fail: Trying all (x, y, z, w) is far too many; the sums are exact values, not inequalities.
+  - problem: lc-matrix-block-sum
+    answer_card: prefix-2d
+    answer_topic: "1.2"
+    property: Every answer is the sum of a rectangle (clipped to the matrix) of a fixed grid, given by four 2D prefix sums.
+    why_others_fail: "Summing each block directly is up to (2k+1)² per cell; 1D prefix sums alone still cost a loop over rows."
+  - problem: cses-1643
+    answer_card: prefix-extremes
+    answer_topic: "1.2"
+    property: For each end j the best start has the smallest earlier prefix sum, so a running minimum of the prefix sums gives the answer in one pass.
+    why_others_fail: "All subarrays are 2·10^10; with negative values no counting of exact sums helps."
+  - problem: ac-abc125_c
+    answer_card: prefix-extremes
+    answer_topic: "1.2"
+    property: "Replacing a_i means taking the gcd of all others, the gcd of a prefix before i and a suffix after i; prefix and suffix gcds are built with one step each, like prefix maxima."
+    why_others_fail: "Recomputing the gcd of N − 1 numbers for each i is O(N²); a gcd cannot be undone like a sum, so prefix sums do not apply."
+  - problem: lc-subarray-sums-divisible-by-k
+    answer_card: prefix-count-lookup
+    answer_topic: "1.2"
+    property: A subarray sum is divisible by k exactly when its two prefix sums have the same remainder, so count equal remainders with a map (fixing negative remainders).
+    why_others_fail: All subarrays are about 4.5·10^8, and negative values rule out moving both ends forward.
+  - problem: cf-313B
+    answer_card: range-sum
+    answer_topic: "1.2"
+    property: Mark positions where a character equals the next one; each query is a range sum of the marks over [l, r − 1].
+    why_others_fail: Scanning each query is up to 10^10 steps.
+  - problem: ac-abc365_c
+    answer_card: sort-then-scan
+    answer_topic: "1.1"
+    property: "The total Σ min(x, A_i) does not depend on the order of the A_i; sorted, the people below the cap are a prefix, and one scan finds where the budget runs out."
+    why_others_fail: Prefix sums of the input order do not separate the people below the cap from those above it; that needs the values in sorted order.
+  - problem: ac-abc312_c
+    answer_card: event-sweep
+    answer_topic: "1.1"
+    property: The numbers of willing sellers and buyers change only at the values A_i and B_i + 1; sweeping these sorted values with two counters finds the first X that works.
+    why_others_fail: Prices go up to 10^9, so a difference array over all prices is too large; only the event values matter.
+  - problem: lc-count-number-of-bad-pairs
+    answer_card: map-counting
+    answer_topic: "0.6"
+    property: "j − i = nums[j] − nums[i] means nums[i] − i = nums[j] − j: count pairs with equal keys nums[i] − i, and subtract from all pairs."
+    why_others_fail: The pairs are any two positions, not subarrays, so no prefix sums are involved; it is counting by key.
+lookalike_pairs:
+  - a: ac-abc127_c
+    b: ac-abc408_c
+    a_tool: "one-pass scan (0.3): intersect the intervals"
+    b_tool: difference-array (1.2)
+    flipping_difference: A asks for walls in every interval (one intersection, max of L and min of R); B asks how many intervals cover each wall, which needs the full coverage counts.
+  - a: lc-shifting-letters
+    b: lc-shifting-letters-ii
+    a_tool: "range-sum (1.2): suffix sums of the shifts"
+    b_tool: difference-array (1.2)
+    flipping_difference: In A every shift covers a prefix, so a letter's total is a suffix sum; in B shifts cover arbitrary ranges in both directions, so a difference array records them.
 self_test: []
 checkpoint:
   time_limit_minutes: 90
-  problems: []
+  problems: [ac-abc233_d, ac-abc388_d, ac-abc366_d]
 decision_map: []
 glossary_added:
   - subarray

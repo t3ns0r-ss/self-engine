@@ -70,7 +70,10 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   check(await p.locator('tbody tr').count() === ladderTotal, `role filter (${ladderTotal} ladder problems)`);
   await p.locator('button.th-sort:has-text("Difficulty")').click();
   await p.locator('button.th-sort:has-text("Difficulty")').click();
-  check((await p.locator('tbody tr').first().textContent()).includes('1600'), 'sort by difficulty, descending');
+  // The first row must hold the largest numeric difficulty among the ladder rows (data-independent).
+  const diffs = await p.locator('tbody tr td:nth-child(3)').allTextContents();
+  const nums = diffs.map(Number).filter((x) => !Number.isNaN(x));
+  check(nums.length > 0 && Number(diffs[0]) === Math.max(...nums), `sort by difficulty, descending (top ${diffs[0]})`);
 
   // Handbook.
   await p.goto(`${BASE}/handbook/`);

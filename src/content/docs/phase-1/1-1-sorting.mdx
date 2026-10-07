@@ -19,6 +19,8 @@ import standings from '../../../../code/1.1/standings/solution.cpp?raw';
 import sortedPositions from '../../../../code/1.1/sorted-positions/solution.cpp?raw';
 import compress from '../../../../code/1.1/compress/solution.cpp?raw';
 import maxOverlap from '../../../../code/1.1/max-overlap/solution.cpp?raw';
+import example1 from '../../../../code/1.1/example-1/solution.cpp?raw';
+import example2 from '../../../../code/1.1/example-2/solution.cpp?raw';
 
 <TopicHeader topic="1.1" />
 
@@ -377,6 +379,74 @@ Wrong output `3 6`, correct output `4 7`. The point 3 lies in $[3, 4]$, $[0, 6]$
 **Fix:** the integers $l, \dots, r$ form the half-open interval $[l, r + 1)$, so the end event is at $r + 1$ (Theorem 1.1.6, condition 2).
 
 ## 8. Worked examples
+
+### Example 1: Stick Lengths
+
+[CSES 1074 Stick Lengths](https://cses.fi/problemset/task/1074) (CSES is the Code Submission Evaluation System problem set). In short: $n \le 2 \cdot 10^5$ sticks with lengths up to $10^9$; make them all the same length, where lengthening or shortening a stick by $x$ costs $x$; print the least total cost.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$, so $O(n \log n)$ is fine and $O(n^2) = 4 \cdot 10^{10}$ is not. The total cost can reach $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$: `long long`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force over the answer (topic 0.5): try every target length $x$ and compute the cost in $O(n)$. Lengths go up to $10^9$, far too many; even trying only the $n$ given lengths as targets costs $O(n^2)$. Second candidate: the cost $\sum_i |p_i - x|$ does not depend on the order of the sticks, so the question is order-free and the sticks may be sorted (sort-then-scan, Theorem 1.1.2). What remains is to find which target the sorted order points to.
+
+#### Step 3: Property check → decision
+
+Order-free: yes, the cost is a sum over the sticks. In sorted order, the cost of a target pairs up nicely: the shortest and the longest stick together cost at least their difference wherever the target is, and exactly that when the target lies between them. The middle element of the sorted list lies between every such pair. Decision: sort, take the median $p_{\lfloor n/2 \rfloor}$ as the target, and add up the distances.
+
+#### Step 4: Proof for this problem
+
+Sort so that $p_0 \le p_1 \le \dots \le p_{n-1}$, and let $m = p_{\lfloor n/2 \rfloor}$. For any target $x$ and any $i < n - 1 - i$:
+
+$$|p_i - x| + |p_{n-1-i} - x| \ge p_{n-1-i} - p_i,$$
+
+because the distance from $p_i$ to $p_{n-1-i}$ is at most the distance from $p_i$ to $x$ plus the distance from $x$ to $p_{n-1-i}$. Equality holds when $p_i \le x \le p_{n-1-i}$. Group the sticks into these pairs $(0, n-1), (1, n-2), \dots$; if $n$ is odd, the middle stick $p_{(n-1)/2}$ is left alone, and its cost $|p_{(n-1)/2} - x|$ is at least 0. So for every $x$, the total cost is at least $\sum_{i < n - 1 - i} (p_{n-1-i} - p_i)$.
+
+For $x = m$: every pair has $i < \lfloor n/2 \rfloor \le n - 1 - i$, so $p_i \le m \le p_{n-1-i}$ and each pair costs exactly its lower bound; if $n$ is odd, $m$ is the middle stick, which costs 0. So $m$ reaches the lower bound and is optimal. Sorting is $O(n \log n)$ and the sum is $O(n)$.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `llabs` is the absolute value of a `long long` (`abs` would also work in C++17, but `llabs` makes the type visible). `for (long long x : p)` goes through the elements of `p` by value. Tested on the sample from the problem page, on $n = 1$, on lengths $1, 1, 10^9, 10^9$, on $2 \cdot 10^5$ sticks half of length 1 and half of $10^9$ (cost about $10^{14}$), and on 5000 random inputs ($n \le 9$, lengths up to 30) against a brute force that tries every target length.
+
+#### Step 6: Alternative approach
+
+The median can be found without sorting everything: `nth_element(p.begin(), p.begin() + n / 2, p.end())` moves the element that belongs at place $n/2$ there, with smaller or equal elements before it and larger or equal after it, in $O(n)$ on average. The rest of the solution is the same.
+
+### Example 2: Online games
+
+[AtCoder Beginner Contest (ABC) 221, problem D: Online games](https://atcoder.jp/contests/abc221/tasks/abc221_d). In short: $N \le 2 \cdot 10^5$ players; player $i$ logged in on the $B_i$ consecutive days starting with day $A_i$ ($A_i, B_i \le 10^9$). For every $k = 1, \dots, N$, print how many days had exactly $k$ players logged in.
+
+#### Step 1: Constraints → budget
+
+Login days reach $A_i + B_i - 1 < 2 \cdot 10^9$, so walking through every day is too slow, and an array indexed by day is too large. $N = 2 \cdot 10^5$ allows $O(N \log N)$. A count of days can reach $2 \cdot 10^9$: `long long`.
+
+#### Step 2: Question form → candidate tools
+
+Simulation (topic 0.3): for each day count the players; ruled out by the number of days. A `map` from day to the number of players logged in (topic 0.6) would still need one entry per day. Event sweep (Theorem 1.1.6): each player is an interval of days, and the number logged in changes only where an interval starts or ends.
+
+#### Step 3: Property check → decision
+
+The quantity, the number of players logged in on a day, changes only at the days $A_i$ (one more) and $A_i + B_i$ (one fewer, the first day after the last login). Writing each player as the half-open interval $[A_i, A_i + B_i)$ fixes the tie order: ends before starts. Between two consecutive event days the count is constant, so each gap adds its length to one $D_k$. Decision: an event sweep that adds gap lengths.
+
+#### Step 4: Proof for this problem
+
+Sort the $2N$ events $(A_i, +1)$ and $(A_i + B_i, -1)$, with $-1$ first at equal days. Let $u < v$ be two consecutive *distinct* event days. By Theorem 1.1.6 (parts 1 and 3), on every day $t$ with $u \le t < v$ exactly $c(u)$ players are logged in, where $c(u)$ is the counter after all events of day $u$. So these $v - u$ days all belong to $D_{c(u)}$. Before the first event and after the last one, nobody is logged in. Every day with at least one player lies in exactly one gap $[u, v)$, so adding $v - u$ to $D_{c(u)}$ for every gap counts each day once.
+
+The code adds, after *every* event $k$, the gap to the next event to `days[cur]`. When the next event has the same day, that gap is 0 and nothing changes; after the last event of a day, `cur` $= c(u)$ and the gap is $v - u$. So it adds exactly the sums above. Sorting is $O(N \log N)$ and the sweep $O(N)$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `vector<long long> days(n + 1, 0)` makes $n + 1$ counters set to 0, indexed by the number of players; `days[0]` collects the gaps with nobody logged in and is not printed. The loop stops one event before the end because the last event has no next event (after it, nobody is logged in). Tested on both samples from the problem page, on $N = 1$, on intervals that touch without overlapping ($[1, 2]$ and $[3, 4]$), on the days $1$ to $10^9$ and $10^9$ to $2 \cdot 10^9 - 1$ (a count near $2 \cdot 10^9$), and on 5000 random inputs ($N \le 7$, days up to 30) against a brute force that walks every day.
+
+#### Step 6: Alternative approach
+
+Store the changes in a `map<long long, int>` from day to the total change on that day (topic 0.6), then walk the map in increasing key order, keeping the running count and adding the gap to the next key. The map keeps the days sorted, so this is the same sweep with the sorting done by the map, also $O(N \log N)$.
 
 ## 9. Problem ladder
 

@@ -226,6 +226,108 @@ Six short programs, one for each theorem (two for Theorem 1.5.3). Every brute fo
 
 ## 7. Bug catalogue
 
+Most bugs in greedy solutions are wrong rules, not wrong code: the program does exactly what it says, and what it says is not optimal. Each entry below changes the rule (or one line) of a template from Section 6; `scripts/stress.sh` found a counterexample within seconds every time. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: shortest job first, ignoring the weights
+
+Template: order by an exchange argument.
+
+```cpp
+return x.first < y.first;
+```
+
+Input: `2`, then the jobs `2 1` and `2 3` (duration, weight).
+
+Wrong output `14`, correct output `10`. Both jobs take 2, so "shortest first" sees a tie and keeps the input order: weights $1 \cdot 2 + 3 \cdot 4 = 14$. Doing the heavy job first gives $3 \cdot 2 + 1 \cdot 4 = 10$.
+
+**Fix:** derive the key from the swap, $t_x w_y$ against $t_y w_x$ (Theorem 1.5.1). A key that looks reasonable is not a proof.
+
+### Bug: rounding the ratio
+
+Template: order by an exchange argument.
+
+```cpp
+return x.first / x.second < y.first / y.second;
+```
+
+Input: `2`, then the jobs `2 3` and `1 2`.
+
+Wrong output `12`, correct output `11`. Integer division turns both ratios $2/3$ and $1/2$ into 0, so the two jobs look equal and the wrong one may go first.
+
+**Fix:** compare by cross-multiplication in `long long` (Theorem 1.1.3, condition 2).
+
+### Bug: earliest start first
+
+Template: earliest end first. The intervals are stored and sorted as (start, end).
+
+Input: `3`, then `4 7`, `1 8`, `2 3`.
+
+Wrong output `1 1`, correct output `2 2`. The interval that starts first, $[1, 8]$, overlaps both others; the rule takes it and nothing else fits. $[2, 3]$ and $[4, 7]$ are compatible.
+
+**Fix:** sort by end. The proof of Theorem 1.5.2 compares where intervals end; nothing in it works for starts.
+
+### Bug: touching intervals treated as compatible
+
+Template: earliest end first.
+
+```cpp
+if (s >= lastEnd) {
+```
+
+Input: `2`, then `3 6` and `6 7`.
+
+Wrong output `2 2`, correct output `1 1`. In this statement intervals that share a point overlap, and $[3, 6]$ and $[6, 7]$ share 6.
+
+**Fix:** use the statement's definition: here the next start must be strictly greater than the last end (Theorem 1.5.2, condition 2). Other statements use half-open intervals, where `>=` is right.
+
+### Bug: smallest first
+
+Template: the fewest items to reach a target.
+
+```cpp
+sort(v.begin(), v.end());
+```
+
+Input: `2 3`, then `4 1`.
+
+Wrong output `2`, correct output `1`. Taking the small item first wastes a pick; the item 4 alone reaches 3.
+
+**Fix:** largest first (Theorem 1.5.3, part 1).
+
+### Bug: most units first
+
+Template: splittable goods. The goods are sorted by the number of units instead of the value per unit.
+
+Input: `2 4`, then the goods `1 3` and `4 1` (units, value per unit).
+
+Wrong output `4`, correct output `6`. The rule fills the capacity with the 4 cheap units; the right choice takes the valuable unit and 3 cheap ones.
+
+**Fix:** sort by value per unit (Theorem 1.5.3, part 2). Only the value of a unit decides which unit to take.
+
+### Bug: giving the same cookie twice
+
+Template: matching two sorted lists. The `j++` after a satisfied child is removed.
+
+Input: `2 1`, the greeds `5 2`, and the single cookie `5`.
+
+Wrong output `2`, correct output `1`. After the child with greed 2 gets cookie 5, `j` still points at it, and the child with greed 5 gets the same cookie.
+
+**Fix:** move past a cookie once it is given (Theorem 1.5.4, condition 2: each cookie is used at most once).
+
+### Bug: taking the first segment that helps
+
+Template: covering a segment. The inner loop stops at the first segment that extends the reach.
+
+```cpp
+while (i < n && seg[i].first <= reach && best == reach) best = max(best, seg[i++].second);
+```
+
+Input: `2 4`, then `0 2` and `0 5`.
+
+Wrong output `2`, correct output `1`. Both segments start at 0; the rule takes $[0, 2]$ because it comes first, then still needs $[0, 5]$, which covers everything on its own.
+
+**Fix:** among all segments that start inside the covered part, take the one that reaches farthest; that choice dominates every other (Theorem 1.5.5).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

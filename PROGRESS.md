@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.4 Binary search: invariant template, search on the answer
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.4 step 5 bug catalogue (6 bugs)
-- Next action: 1.4 step 6 problems
+- Last completed step: 1.4 step 6 problems (ladder of 18, 2 worked examples, 11 drill items, 2 look-alike pairs, checkpoint, 3 review sets)
+- Next action: 1.4 step 7 worked examples
 
 ## Gates
 | Gate | Status | Date |
@@ -34,7 +34,7 @@
 | Phase 0 intro and exam | done (on this session's branch) | — |
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
-| 1.4 | in progress (step 5) | — |
+| 1.4 | in progress (step 6) | — |
 
 ## Bank
 | topic | status | practice | reserved |

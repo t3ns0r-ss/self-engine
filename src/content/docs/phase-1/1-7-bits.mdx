@@ -215,6 +215,102 @@ Five short programs, one for each theorem. The brute forces loop over every valu
 
 ## 7. Bug catalogue
 
+Bit bugs hide well: the program runs, and its answers are numbers of the right size. Each bug below was made by changing one line of a template from Section 6. Seven of them were caught by `scripts/stress.sh`, and the input shown is the shortest failing input among the first 2000 random seeds. One was stopped by the compiler warnings before any test ran.
+
+### Bug: subtracting one prefix too many
+
+Template: the XOR of a range of integers.
+
+```cpp
+long long below = xorUpTo(L);
+```
+
+Input: `1`, then the range `2 9`.
+
+Wrong output `2`, correct output `0`. `xorUpTo(L)` includes $L$ itself, so XOR-ing it out removes $L = 2$ from the range: the program returns $3 \oplus \dots \oplus 9 = 2$ instead of $2 \oplus 3 \oplus \dots \oplus 9 = 0$.
+
+**Fix:** the part to cancel is $0, \dots, L - 1$, exactly as with prefix sums: $P_r \oplus P_{l-1}$ (Theorem 1.7.2).
+
+### Bug: the empty prefix is missing
+
+Template: counting subarrays with XOR k. The line `seen[0] = 1;` is removed.
+
+Input: `1 2`, then `2`.
+
+Wrong output `0`, correct output `1`. The only subarray, $(2)$, has XOR 2. It starts at position 1, so its pair of prefixes is $(P_0, P_1) = (0, 2)$, and $P_0 = 0$ was never recorded.
+
+**Fix:** record $P_0 = 0$ before the loop (Theorem 1.7.2, note 1).
+
+### Bug: recording the prefix before the lookup
+
+Template: counting subarrays with XOR k. `seen[P]++` moves above the lookup.
+
+Input: `1 0`, then `1`.
+
+Wrong output `1`, correct output `0`. With $k = 0$, the lookup searches for $P_j \oplus 0 = P_j$ itself, and finds the entry just recorded: the pair $(j, j)$, an empty subarray.
+
+**Fix:** look up first, then record; the pairs must have $i < j$.
+
+### Bug: counting ordered pairs and self-pairs for AND
+
+Template: sums over all pairs, bit by bit.
+
+```cpp
+sa += w * (c * c);
+```
+
+Input: `1`, then `3`.
+
+Wrong output `0 3 0`, correct output `0 0 0`. With one value there are no pairs, but $c^2 = 1$ counts the "pair" of the value with itself, at bits 0 and 1: $1 + 2 = 3$.
+
+**Fix:** the pairs $i < j$ among $c$ values are $\binom{c}{2} = c(c - 1)/2$ (Theorem 1.7.3, part 2). The XOR count $c(n - c)$ needs no such fix, because a value is never paired with itself there.
+
+### Bug: missing parentheses around a bit test
+
+Template: the largest AND of a pair.
+
+```cpp
+if (x & want == want) c++;
+```
+
+`==` binds more strongly than `&`, so this is `x & (want == want)`, that is, `x & 1`. With `-Wall -Wextra`, g++ warns twice ("suggest parentheses", "self-comparison always evaluates to true"), and `stress.sh` treats warnings as errors, so the broken copy never ran.
+
+**Fix:** put parentheses around every bitwise operation inside a comparison: `(x & want) == want`. Read compiler warnings: they catch this bug before any test does.
+
+### Bug: checking each bit alone
+
+Template: the largest AND of a pair. The test checks only bit $b$, not the bits already decided.
+
+```cpp
+if ((x >> b) & 1) c++;
+```
+
+Input: `3`, then `9 8 5`.
+
+Wrong output `9`, correct output `8`. Bit 3 is in 9 and 8, and bit 0 is in 9 and 5, so the program keeps both. But no single pair has both bits: $9 \,\&\, 8 = 8$, $9 \,\&\, 5 = 1$. The answer 9 is not the AND of any pair.
+
+**Fix:** a lower bit can be kept only by a pair that also keeps all the higher bits already chosen: count the values that contain all of `want` (Theorem 1.7.4).
+
+### Bug: an odd difference
+
+Template: rebuilding a and b from their sum and XOR. The check that $s - x$ is even is removed.
+
+Input: `1`, then `19 0`.
+
+Wrong output `9 9`, correct output `-1`. $x = 0$ means $a = b$, so $a + b$ is even and cannot be 19. The program halves 19 and prints $9 + 9 = 18$.
+
+**Fix:** $s - x = 2(a \,\&\, b)$ is always even (Theorem 1.7.5); when it is odd there is no solution.
+
+### Bug: no check that the common bits and the XOR are disjoint
+
+Template: rebuilding a and b from their sum and XOR. The check `c & x` is removed.
+
+Input: `1`, then `48 2`.
+
+Wrong output `23 23`, correct output `-1`. Here $c = 23 = 10111_2$ and $x = 2 = 10_2$ share bit 1: that bit would have to be in both numbers and in exactly one of them. The printed pair has $23 \oplus 23 = 0 \ne 2$.
+
+**Fix:** check that $c \,\&\, x = 0$, and test a few outputs by computing $a + b$ and $a \oplus b$ back.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

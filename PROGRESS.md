@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
-- Topic: 1.7 Bits: XOR properties, prefix XOR, per-bit contribution
+- Topic: Phase 1 intro and exam
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.7 step 9 self-test (7), checkpoint, 3 review sets (4/3/3), decision map
-- Next action: 1.7 step 10 self-review
+- Last completed step: 1.7 step 10 self-review (draft flag removed; validate, unit tests, build, e2e pass)
+- Next action: Phase 1 intro page and exam (exam problems in the 1.7 data file)
 
 ## Gates
 | Gate | Status | Date |
@@ -37,7 +37,7 @@
 | 1.4 | done (on this session's branch) | — |
 | 1.5 | done (on this session's branch) | — |
 | 1.6 | done (on this session's branch) | — |
-| 1.7 | in progress (step 9) | — |
+| 1.7 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

@@ -246,6 +246,117 @@ Six short programs: one for each card, and a second one for the 2D card so that 
 
 ## 7. Bug catalogue
 
+Each bug was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy. The input shown is the shortest failing input among the first few thousand random seeds.
+
+### Bug: prefix sums in int
+
+Template: range sums.
+
+```cpp
+vector<int> P(n + 1, 0);
+```
+
+Input: `3 3`, the values `-687664591 -841993881 -925524993`, and the queries `2 3`, `1 3`, `1 3`.
+
+Wrong output for the second query `1839783831`, correct output `-2455183465`. The prefix sum of all three values is below $-2^{31}$, so it does not fit in an `int` and wraps around (topic 0.1). The first query happens to come out right: there the subtraction overflows a second time and undoes the first wrap, which is luck, not correctness.
+
+**Fix:** `vector<long long> P`. A prefix sum can be $n$ times the largest value (Theorem 1.2.1, condition 3).
+
+### Bug: one element short
+
+Template: range sums.
+
+```cpp
+cout << P[r] - P[l] << "\n";
+```
+
+Input: `1 1`, the value `2`, and the query `1 1`.
+
+Wrong output `0`, correct output `2`. With 1-based queries, the elements $l..r$ are the first $r$ elements minus the first $l - 1$; subtracting `P[l]` also removes element $l$.
+
+**Fix:** `P[r] - P[l - 1]`. Check every range formula on a range of length 1.
+
+### Bug: forgetting the empty prefix
+
+Template: counting subarrays by prefix pairs. The line `seen[0] = 1;` is removed.
+
+Input: `1 1 3`, then the single value `1`.
+
+Wrong output `0 0`, correct output `1 0`. The subarray $[0, 0]$ has sum $1 = K$, and its pair of prefix sums is $(P_0, P_1) = (0, 1)$. Without $P_0$ in the map, no subarray that starts at position 0 is ever counted.
+
+**Fix:** put $P_0 = 0$ into the map before the first element (Theorem 1.2.2, condition 2).
+
+### Bug: a negative remainder
+
+Template: counting subarrays by prefix pairs.
+
+```cpp
+long long r = P % m;
+```
+
+Input: `2 5 3`, then `-1 3`.
+
+Wrong second number `0`, correct `1`. The subarray $(3)$ is divisible by 3, and its prefix sums are $P_1 = -1$ and $P_2 = 2$, which have the same remainder 2. But in C++ `-1 % 3` is $-1$, not 2, so the two prefixes land under different keys.
+
+**Fix:** `(P % m + m) % m`, which is in $[0, m - 1]$ for negative $P$ too (Theorem 1.2.2, condition 3).
+
+### Bug: the update ends one place early
+
+Template: many range updates.
+
+```cpp
+d[r] -= v;
+```
+
+Input: `2 1`, then the update `1 2 4`.
+
+Wrong output `4 0`, correct output `4 4`. The added value must still be present at position $r$ and disappear at $r + 1$; subtracting at `d[r]` cancels it at $r$ itself.
+
+**Fix:** `d[r + 1] -= v` (Theorem 1.2.3, part 2). The same half-open idea as the end event at $r + 1$ in Theorem 1.1.6.
+
+### Bug: the corner removed twice
+
+Template: rectangle sums.
+
+```cpp
+cout << S[x2][y2] - S[x1 - 1][y2] - S[x2][y1 - 1] << "\n";
+```
+
+Input: a $2 \times 2$ grid with rows `4 0` and `-5 -5`, and the query `2 2 2 2` (the single bottom-right cell).
+
+Wrong output `-9`, correct output `-5`. The cell $(1, 1)$ with value 4 lies both above and to the left of the queried cell, so it is subtracted twice, once with each strip.
+
+**Fix:** add `S[x1 - 1][y1 - 1]` back (Theorem 1.2.4, part 2: the corner region gets $1 - 1 - 1 + 1 = 0$).
+
+### Bug: allowing the empty subarray
+
+Template: best value before or after a position. The two lines in the loop are swapped:
+
+```cpp
+minP = min(minP, P);
+best = max(best, P - minP);
+```
+
+Input: `6`, then `-4 -4 -4 -2 -2 -5`.
+
+Wrong first line `0`, correct `-2`. Updating `minP` with $P_{j+1}$ before using it allows $i = j + 1$, the empty subarray with sum 0, which beats every real subarray when all values are negative.
+
+**Fix:** compute `best` first, with the minimum over $P_0, \dots, P_j$ only (Theorem 1.2.5, part 4 needs $i < j$).
+
+### Bug: the prefix includes position i
+
+Template: best value before or after a position.
+
+```cpp
+cout << max(pre[i + 1], suf[i + 1]) << …;
+```
+
+Input: `2`, then `5 -5`.
+
+Wrong second line `5 5`, correct `-5 5`. `pre[i + 1]` is the maximum of $a_0..a_i$, which includes $a_i$ itself, so for $i = 0$ the answer "largest element other than $a_0$" becomes $a_0 = 5$.
+
+**Fix:** `pre[i]`, the maximum of the elements strictly before $i$ (Theorem 1.2.5, condition 3).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

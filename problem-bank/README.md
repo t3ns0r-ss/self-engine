@@ -15,7 +15,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 1 | [1.1 Sorting, comparators, coordinate compression](phase-1/1.1-sorting.md) | 6 | 11 | 5 | 0 | 1 | 23 | short |
 | 1 | [1.2 Prefix sums and difference arrays (1D, 2D)](phase-1/1.2-prefix-sums.md) | 7 | 3 | 6 | 3 | 3 | 22 | short |
 | 1 | [1.3 Two pointers and sliding window](phase-1/1.3-two-pointers.md) | 3 | 5 | 11 | 2 | 3 | 24 | short |
-| 1 | [1.4 Binary search: invariant template, search on the answer](phase-1/1.4-binary-search.md) | 4 | 3 | 9 | 2 | 3 | 21 | short |
+| 1 | [1.4 Binary search: invariant template, search on the answer](phase-1/1.4-binary-search.md) | 4 | 3 | 9 | 1 | 3 | 20 | short |
 | 1 | [1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)](phase-1/1.5-greedy-1.md) | 3 | 7 | 9 | 0 | 2 | 21 | short |
 | 1 | [1.6 Monotonic stack and deque](phase-1/1.6-monotonic-stack.md) | 2 | 0 | 9 | 3 | 2 | 16 | short |
 | 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 11 | 2 | 1 | 22 | short |

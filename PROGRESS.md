@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.4 Binary search: invariant template, search on the answer
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.4 step 7 worked examples (Triangles, Array Division)
-- Next action: 1.4 steps 8-9 self-test, section intros, decision map
+- Last completed step: 1.4 steps 8-9 (7 self-test questions, section intros, 5 decision map entries, two joining earlier groups)
+- Next action: 1.4 step 10 self-review
 
 ## Gates
 | Gate | Status | Date |
@@ -34,7 +34,7 @@
 | Phase 0 intro and exam | done (on this session's branch) | — |
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
-| 1.4 | in progress (step 7) | — |
+| 1.4 | in progress (step 9) | — |
 
 ## Bank
 | topic | status | practice | reserved |

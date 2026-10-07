@@ -410,11 +410,61 @@ lookalike_pairs:
     a_tool: heap-extract (0.6)
     b_tool: kth-by-counting (1.4)
     flipping_difference: A needs only k ≤ 10^4 items, which a priority queue lists in order; B's k can be 9·10^8, so the k-th must be found by counting.
-self_test: []
+self_test:
+  - q: "In First Bad Version, n can be 2^31 − 1. What goes wrong with mid = (lo + hi) / 2 in int, and what is the fix?"
+    a: "lo + hi can exceed 2^31 − 1 (for example lo = 2·10^9, hi = 2^31 − 1) and overflows to a negative number, so mid is negative. lo + (hi − lo) / 2 never exceeds hi, so it cannot overflow."
+  - q: The template starts with lo = −1 and hi = n. Why does it never read a[−1] or a[n]?
+    a: "It only reads a[mid], and while hi − lo ≥ 2, mid = lo + (hi − lo) / 2 is strictly between lo and hi, so 0 ≤ mid ≤ n − 1. The two outside positions are part of the invariant by agreement but are never tested."
+  - q: "On the array (5, 3, 8), is p(i) = (a_i ≥ 4) monotone? What can binary search return for \"the first index with a_i ≥ 4\" and \"the first index with a_i ≥ 6\"?"
+    a: "p is true, false, true: not monotone. For x = 6 the search tests index 1 (3, false), then index 2 (8, true) and returns 2, which is right by luck; for x = 4 it tests index 1 (false) and returns 2, but the correct answer is 0. Sort first, or prove monotonicity."
+  - q: "For \"maximise the smallest gap d when choosing m positions\", in which direction is ok(d) monotone, and what are safe starting values for lo and hi?"
+    a: "If d works, every smaller d works: ok is true, …, true, false, …. Keep ok(lo) true and ok(hi) false: lo = 0 (always possible) and hi = span + 1 (impossible); the answer is lo."
+  - q: "Why can \"while (hi − lo > 1e-9)\" loop forever for answers near 10^9 with double, while 100 fixed iterations cannot?"
+    a: "Neighbouring doubles near 10^9 are about 1.2·10^-7 apart, so the gap can never drop below 1e-9: once hi and lo are neighbours, mid equals one of them and nothing changes. A fixed count of 100 halvings always ends, and leaves the interval as narrow as the type allows."
+  - q: "S = {1, 2, 2, 3} and k = 2. Why is the k-th smallest the smallest x with count(x) ≥ k, and not an x with count(x) = k?"
+    a: "count(1) = 1 and count(2) = 3: no x has count exactly 2. The 2nd smallest is 2, the first x where the count reaches at least 2 (Theorem 1.4.6)."
+  - q: "In (1, 3, 5, 5, 8), compute the lower and upper bounds of 5 and of 4, and the number of elements in [4, 5]."
+    a: "lower(5) = 2, upper(5) = 4, lower(4) = 2, upper(4) = 2. The elements in [4, 5] number upper(5) − lower(4) = 4 − 2 = 2 (the two 5s)."
 checkpoint:
   time_limit_minutes: 90
   problems: [ac-abc174_e, lc-find-k-th-smallest-pair-distance, cf-1201C]
-decision_map: []
+decision_map:
+  - weak_signal: Many independent queries about a fixed sorted collection, "how many ≤ x", the nearest value
+    choose: sorted-search
+    when: The searched sequence is sorted (or non-decreasing by construction), so each query is one or two bounds (Theorem 1.4.2).
+    over:
+      - card: direct-simulation
+        because: Scanning for every query is O(n) per query.
+      - card: merge-walk
+        because: A forward walk needs the queries sorted too; it fits when all queries are known in advance, the search fits always.
+  - weak_signal: '"The smallest … at least x", "the closest", min and max of a changing collection'
+    choose: sorted-search
+    when: The collection does not change between the questions, so a sorted array and two bounds answer them.
+    over:
+      - card: ordered-set-lookup
+        because: A set pays for keeping order under insertions and erasures; with no changes, a sorted vector is simpler and faster.
+  - weak_signal: '"Minimise the maximum", "maximise the minimum", "the least time / capacity / speed such that …"'
+    choose: answer-search
+    when: The check "can the answer be x?" is monotone in x and much cheaper than solving directly (Theorem 1.4.3).
+    over:
+      - card: enumerate-answer
+        because: Trying every x works only when the range of answers is small; the search needs log of the range checks.
+      - card: sort-then-scan
+        because: A single sorted scan decides the answer only when the best choice is visible in sorted order; a capacity or time limit usually needs the check.
+  - weak_signal: The k-th smallest element of a huge collection (pair sums, products, a table, numbers not in a list)
+    choose: kth-by-counting
+    when: The number of elements at most x can be counted fast, and the collection is too large to list (Theorem 1.4.6).
+    over:
+      - card: heap-extract
+        because: Popping k items from a priority queue works only for small k (about 10^5).
+      - card: sort-then-scan
+        because: Sorting needs the whole collection in memory, impossible for n² elements.
+  - weak_signal: 'Two lists: merge them, match elements, closest element, or pairs across them'
+    choose: sorted-search
+    when: One list is fixed and each element of the other is handled on its own, for example online or with a condition that is not monotone along the second list.
+    over:
+      - card: merge-walk
+        because: The walk needs both lists sorted and a monotone partner index; a search needs only the searched list sorted.
 glossary_added:
   - predicate
   - monotone predicate

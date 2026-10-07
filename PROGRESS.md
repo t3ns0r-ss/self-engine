@@ -4,8 +4,8 @@
 - Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
 - Topic: 1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 1.5 step 2 theory (Theorems 1.5.1–1.5.5, 6 glossary terms)
-- Next action: 1.5 step 3 recognition cards
+- Last completed step: 1.5 step 3 recognition cards (5 cards)
+- Next action: 1.5 step 4 templates and stress tests
 
 ## Gates
 | Gate | Status | Date |
@@ -35,7 +35,7 @@
 | 1.1 | done (on this session's branch) | — |
 | 1.2 | done (on this session's branch) | — |
 | 1.4 | done (on this session's branch) | — |
-| 1.5 | in progress (step 2) | — |
+| 1.5 | in progress (step 3) | — |
 
 ## Bank
 | topic | status | practice | reserved |

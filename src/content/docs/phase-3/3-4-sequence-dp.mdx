@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import lisTails from '../../../../code/3.4/lis-tails/solution.cpp?raw';
+import closeSteps from '../../../../code/3.4/close-steps/solution.cpp?raw';
+import nestedEnvelopes from '../../../../code/3.4/nested-envelopes/solution.cpp?raw';
+import lcsLength from '../../../../code/3.4/lcs-length/solution.cpp?raw';
+import editDistance from '../../../../code/3.4/edit-distance/solution.cpp?raw';
 
 <TopicHeader topic="3.4" />
 
@@ -146,6 +151,68 @@ Trace for "cat" (rows) and "cut" (columns): the last row is $3, 2, 2, 1$, so the
 <Cards topic="3.4" />
 
 ## 6. Templates
+
+Five programs: two for LIS (the tails array and the quadratic table with a general rule), one reduction, and the two prefix-pair tables. The brute forces list subsequences as bitmasks; the edit-distance brute force uses a different description of the answer (choose the kept characters on both sides).
+
+### LIS with the tails array (Theorem 3.4.2)
+
+<Code code={lisTails} lang="cpp" title="lis-tails/solution.cpp" />
+
+**How it works.** `tails[k]` is the smallest value that a valid subsequence of length `k + 1` can end with so far; by Theorem 3.4.2 it is sorted, so the place for a new element is found by binary search. For strictly increasing subsequences, `x` replaces the first tail that is at least `x` (a subsequence ending at that tail cannot be extended by `x`, but one of the same length can now end at `x`); for non-decreasing subsequences, the first tail greater than `x`, because an equal tail can be followed by `x`. If no tail qualifies, `x` extends the longest subsequence. The answer is the number of tails.
+
+**C++ details explained.** `lower_bound` returns an iterator to the first element `≥ x`, `upper_bound` to the first element `> x` (topic 1.4). `*it = x` writes through the iterator into the vector. The conditional `(t == 0) ? … : …` chooses between the two calls; both return the same iterator type, so `auto it` works.
+
+**Tested.** Stress-tested against a brute force over all bitmasks, on 5000 random inputs ($n \le 12$, values from $-3..3$, so equal values are frequent, or up to $10^9$; both modes). There are also 8 fixed tests: the trace of Section 4.2 (4), $(2, 2, 1, 2, 2)$ in both modes (4 non-decreasing, 2 strict), $2 \cdot 10^5$ increasing values, $2 \cdot 10^5$ decreasing values, $2 \cdot 10^5$ equal values (non-strict), and two random arrays of $2 \cdot 10^5$ values.
+
+**Alternative formulation.** For the strict case, replace each value $a_i$ by the pair $(a_i, -i)$ and run the non-strict version on the pairs; equal values then cannot follow each other. It is how the non-strict and strict versions relate.
+
+### A general rule between neighbours (Theorem 3.4.1)
+
+<Code code={closeSteps} lang="cpp" title="close-steps/solution.cpp" />
+
+**How it works.** The rule "consecutive chosen elements differ by at most `k`" is not an order, so the tails array does not apply. `L[i]`, the longest valid subsequence ending at `i`, is one more than the best `L[j]` over the earlier `j` that `a[i]` may follow (Theorem 3.4.1). Time $O(n^2) = 2.5 \cdot 10^7$ for $n = 5000$.
+
+**C++ details explained.** `llabs` is the absolute value of a `long long`; with values up to $10^9$ in absolute value, the difference can reach $2 \cdot 10^9$, which does not fit in `int`.
+
+**Tested.** Stress-tested against a brute force over all bitmasks, on 5000 random inputs ($n \le 12$, values small or up to $10^9$, $k$ often 0). There are also 5 fixed tests: one element, $(1, 10, 2, 9, 3)$ with $k = 1$ (answer 3: 1, 2, 3), 5000 equal values with $k = 0$, and two random arrays of 1500 values; their answers come from a separate program.
+
+**Alternative formulation.** Sort the distinct values and keep, for each value, the best `L` of a subsequence ending with it; the transition then looks up a range of values $[a_i - k, a_i + k]$. With a range-maximum structure this becomes $O(n \log n)$; the structures that answer such range queries are later topics, so the quadratic table is the version here.
+
+### Nested envelopes (Theorem 3.4.3)
+
+<Code code={nestedEnvelopes} lang="cpp" title="nested-envelopes/solution.cpp" />
+
+**How it works.** After sorting by width, a nesting is an increasing sequence of heights, except that two envelopes of equal width must not both be used. Sorting equal widths by *decreasing* height makes that impossible for a strictly increasing subsequence of heights (Theorem 3.4.3), so the answer is the strict LIS of the heights in sorted order.
+
+**C++ details explained.** The `sort` call takes a lambda (topic 0.3) that returns `true` when `p` must come before `q`: by width first, and for equal widths the larger height first. `for (auto& [w, h] : e)` reads both parts of each pair (a structured binding, topic 0.6).
+
+**Tested.** Stress-tested against a brute force that tries every subset, sorts it and checks that both sides strictly increase, on 5000 random inputs ($n \le 12$, sides up to 4, so equal widths and heights are frequent, or up to $10^9$). There are also 6 fixed tests: the example of Section 4.3 (3), one envelope, five equal envelopes (1), $2 \cdot 10^5$ envelopes that all nest, and two random sets of $2 \cdot 10^5$ envelopes.
+
+**Alternative formulation.** Sort by width and then by height increasing, and run the quadratic table with the rule "both sides strictly smaller". It handles any tie order correctly, but costs $O(n^2)$.
+
+### LCS length (Theorem 3.4.4)
+
+<Code code={lcsLength} lang="cpp" title="lcs-length/solution.cpp" />
+
+**How it works.** Row `i` of the table holds $C[i][0..m]$; each entry needs the entry diagonally above-left (a match), above, and to the left, so two rows are enough: `prev` for row $i - 1$ and `cur` for row $i$. After each row they are swapped. Time $O(nm) = 2.5 \cdot 10^7$ for two strings of 5000 characters.
+
+**C++ details explained.** `swap(prev, cur)` exchanges the two vectors in $O(1)$, without copying their contents. `cur[0]` is never written and stays 0, the value of $C[i][0]$.
+
+**Tested.** Stress-tested against a brute force that tries every subsequence of the first string and checks it against the second with two pointers (topic 1.3), on 5000 random pairs (lengths up to 12, alphabets of 1 to 4 letters). There are also 5 fixed tests: "acb"/"abc" (2), the pair "abcbdab"/"bdcaba" (4), two equal strings of 5000 letters, two strings with no common letter (0), and two random strings of 3000 letters.
+
+**Alternative formulation.** Keep the whole table and walk back from the corner to print one LCS (Theorem 3.2.6), as in the trace of Section 4.4. The length needs only two rows; the walk needs all of them, $n \cdot m$ entries.
+
+### Edit distance (Theorem 3.4.5)
+
+<Code code={editDistance} lang="cpp" title="edit-distance/solution.cpp" />
+
+**How it works.** The same two-row scheme. Row 0 is $0, 1, \dots, m$ (insert the first $j$ characters of `b`) and each row starts with $i$ (delete the first $i$ characters of `a`). Each entry takes the cheapest of three last columns: delete `a[i − 1]` (from above), insert `b[j − 1]` (from the left), or line the two up, at cost 0 if they are equal and 1 otherwise (from the diagonal).
+
+**C++ details explained.** `min({x, y, z})` takes the minimum of a list in braces (an initializer list). The comparison `(a[i - 1] != b[j - 1])` is a `bool`, which counts as 1 or 0 when added to an `int`.
+
+**Tested.** Stress-tested against a brute force that describes an edit differently: choose the same number of positions to keep in each string, line them up in order (a replacement where they differ), and delete or insert all the others; every alignment is such a choice. 5000 random pairs (lengths up to 7). There are also 6 fixed tests: "cat"/"cut" (1), "kitten"/"sitting" (3), "a"/"b" (1), 5000 a's against 5000 b's (5000 replacements), "x" against 5000 x's (4999 insertions), and two random strings of 2000 and 2500 letters.
+
+**Alternative formulation.** When only deletions on both sides are allowed, the cheapest cost is $n + m - 2 \cdot \text{LCS}$: the kept characters form a common subsequence. Replacements are what make edit distance smaller than that.
 
 ## 7. Bug catalogue
 

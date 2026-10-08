@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.5
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.5 step 7 problem ladder
-- Next action: 3.5 step 8 drill and look-alike pairs
+- Last completed step: 3.5 step 8 drill and look-alike pairs
+- Next action: 3.5 step 9 self-test, checkpoint, reviews, decision map
 
 ## Gates
 | Gate | Status | Date |
@@ -50,7 +50,7 @@
 | 3.2 | done (on this session's branch) | — |
 | 3.3 | done (on this session's branch) | — |
 | 3.4 | done (on this session's branch) | — |
-| 3.5 | in progress (step 7 done) | — |
+| 3.5 | in progress (step 8 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

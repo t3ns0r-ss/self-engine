@@ -13,6 +13,10 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import gridPaths from '../../../../code/3.5/grid-paths/solution.cpp?raw';
+import runLimit from '../../../../code/3.5/run-limit/solution.cpp?raw';
+import compositions from '../../../../code/3.5/compositions/solution.cpp?raw';
+import boundedShares from '../../../../code/3.5/bounded-shares/solution.cpp?raw';
 
 <TopicHeader topic="3.5" />
 
@@ -145,6 +149,56 @@ When every step is chosen uniformly at random (a knight picks one of its 8 moves
 <Cards topic="3.5" />
 
 ## 6. Templates
+
+Four programs, one per card: paths in a grid, strings with a limit on equal letters in a row, sums of allowed parts with an "at least one" condition, and shares with lower and upper limits. Each brute force lists the objects one by one (by recursion or as numbers in base $k$) and counts them.
+
+### Paths in a grid (Theorem 3.5.1)
+
+<Code code={gridPaths} lang="cpp" title="grid-paths/solution.cpp" />
+
+**How it works.** One row of counts is kept. When cell $(r, c)$ is reached, `ways[c]` still holds the count of the cell above (from the previous row), and `ways[c - 1]` already holds the count of the cell to the left (this row). Their sum is the count for $(r, c)$, by Theorem 3.5.1. A blocked cell gets 0, so no path continues from it. The cells are filled in reading order, which is an acyclic order for right and down moves.
+
+**C++ details explained.** `1'000'000'007` uses digit separators (C++14), which only make the number easier to read. The counts are `long long`: the sum of two remainders below $10^9 + 7$ is about $2 \cdot 10^9$, more than an `int` holds. `for (auto& row : g) cin >> row;` reads each line into the vector by reference.
+
+**Tested.** Stress-tested against a brute force that walks every right/down path by recursion, on 5000 random grids (up to $8 \times 8$, with 0–40% blocked cells, including blocked start or end cells). There are also 5 fixed tests: the grid of Section 4.1 (4), a single cell (1), a blocked start (0), an empty $3000 \times 3000$ grid (checked against $\binom{5998}{2999}$ modulo $10^9 + 7$), and a random $3000 \times 3000$ grid whose answer comes from a separate program.
+
+**Alternative formulation.** Keep the full table `ways[r][c]` with a border row and column of zeros, and set `ways[1][1] = 1`; then every cell is `ways[r-1][c] + ways[r][c-1]` without special cases. It uses $H \cdot W$ memory but is easier to reconstruct a path from.
+
+### Strings with limited runs (Theorem 3.5.2)
+
+<Code code={runLimit} lang="cpp" title="run-limit/solution.cpp" />
+
+**How it works.** The rule "no letter more than $r$ times in a row" only looks at the length of the last run, so that is the state. A new letter either differs from the last one ($k - 1$ choices, the run length becomes 1) or repeats it (one choice, the run grows by 1, allowed only below $r$). The state after adding a letter is determined by the old state and the letter, so each string is counted once (Theorem 3.5.2). Time $O(n \cdot r)$.
+
+**C++ details explained.** `vector<long long> next(r + 1, 0)` builds the new row from the old one, so no entry is read after it has been overwritten; `cnt = next` then copies it over. `total * (k - 1) % MOD` stays below $9.2 \cdot 10^{18}$ because both factors are below $10^9 + 7$ and $26$.
+
+**Tested.** Stress-tested against a brute force that lists all $k^n$ strings as numbers in base $k$, on 5000 random inputs ($k \le 4$, $n$ up to 14, $r \le 5$). There are also 5 fixed tests: $n = 4$, $k = 3$, $r = 1$ ($3 \cdot 2^3 = 24$), one letter of length 1 (1), $n = 10^5$ with one letter (0), and two inputs with $n = 10^5$ whose answers come from a separate program.
+
+**Alternative formulation.** Count by runs instead of letters: a string is a sequence of runs with lengths in $1..r$; the first run has $k$ choices of letter and every later run $k - 1$. With $g[0] = 1$ and $g[m] = (k - 1) \sum_{j = 1}^{\min(r, m)} g[m - j]$ for the later runs, the answer is $k \sum_{j = 1}^{\min(r, n)} g[n - j]$, a sum of parts (Section 4.3) with a weight per part.
+
+### Sums of parts with "at least one" (Theorem 3.5.3)
+
+<Code code={compositions} lang="cpp" title="compositions/solution.cpp" />
+
+**How it works.** `countSums` counts the sums of $n$ that use only the given parts: for ordered sums the totals are the outer loop and each total is split by its last part; for unordered sums the parts are the outer loop (Theorem 3.3.3). The sums with at least one part $\ge d$ are all sums minus the sums that use only parts below $d$ (Theorem 3.5.3); `+ MOD` keeps the difference non-negative.
+
+**C++ details explained.** `t` and `n` are global so that the helper can read them; `const vector<int>&` passes the list without copying it. `small` collects the parts below $d$, possibly none: then `countSums` returns 0 for $n \ge 1$, and the answer is the count of all sums.
+
+**Tested.** Stress-tested against a brute force that builds every sum part by part (for unordered sums, in non-decreasing order so that each multiset is built once), on 5000 random inputs ($n \le 18$, up to 5 allowed parts, both modes). There are also 5 fixed tests: the example of Section 4.3 (6), the same parts unordered (3: 2 + 2, 1 + 1 + 2, 1 + 3), $n = 1$ (1), and $n = 10^5$ with 100 parts in both modes, whose answers come from a separate program.
+
+**Alternative formulation.** Add a flag to the state: $f[m][0]$ counts sums of $m$ with no part $\ge d$ so far and $f[m][1]$ those with one. A part $\ge d$ moves any sum to flag 1. It is the method of Theorem 3.5.2 and works for conditions that are not complements of something easy, such as "exactly two parts $\ge d$".
+
+### Shares with limits (Theorem 3.5.4)
+
+<Code code={boundedShares} lang="cpp" title="bounded-shares/solution.cpp" />
+
+**How it works.** After person $i$, `dp[j]` counts the ways for persons $1..i$ to take $j$ items. Person $i$ takes $t$ items with $lo_i \le t \le hi_i$, so the others took $j - t$, which runs over the range $[j - hi_i, j - lo_i]$ of the previous row. The prefix sums of the previous row give that range in $O(1)$ (Theorem 3.5.4), so each person costs $O(K)$ and the whole table $O(nK) = 10^7$.
+
+**C++ details explained.** The prefix array is rebuilt from the previous row before `dp` is overwritten, so every range sum reads old values. `max(0, j - hi)` clips the range at 0; when `j - lo < 0` the range is empty. `(prefix[to + 1] - prefix[from] + MOD) % MOD` is the subtraction of Theorem 3.5.3.
+
+**Tested.** Stress-tested against a brute force that tries every share by recursion, on 5000 random inputs ($n \le 6$, $K \le 12$, random limits, often $lo = 0$). There are also 5 fixed tests: the example of Section 4.4 (5), two people with at most one item each and $K = 5$ (0), two people with at least two items each and $K = 4$ (1), 100 people with random limits and $K = 10^5$ (from a separate program), and 100 people without limits and $K = 10^5$ (checked against $\binom{10^5 + 99}{99}$, stars and bars).
+
+**Alternative formulation.** Without lower limits ($lo_i = 0$), compare $\text{dp}[i][j]$ with $\text{dp}[i][j - 1]$: their ranges of the previous row, $[j - hi_i, j]$ and $[j - 1 - hi_i, j - 1]$, differ by one entry at each end, so $\text{dp}[i][j] = \text{dp}[i][j-1] + \text{dp}[i-1][j] - \text{dp}[i-1][j - hi_i - 1]$ (the last term only when $j - hi_i - 1 \ge 0$). It is the same idea without a separate prefix array.
 
 ## 7. Bug catalogue
 

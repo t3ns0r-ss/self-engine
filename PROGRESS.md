@@ -4,8 +4,8 @@
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
 - Topic: 2.4
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.4 step 10 self-review (topic done)
-- Next action: Phase 2 intro page and exam
+- Last completed step: Phase 2 intro page, exam page and 6 exam problems
+- Next action: ⏸ M4 gate (Phase 2 review)
 
 ## Gates
 | Gate | Status | Date |
@@ -17,7 +17,7 @@
 | M1 exemplar review | approved ("for beginning this is good enough"; patterns and other changes to come later) | 2026-10-03 |
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
-| M4 Phase 2 review | not reached | — |
+| M4 Phase 2 review | waiting for review | — |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)
@@ -44,6 +44,7 @@
 | 2.2 | done (on this session's branch) | — |
 | 2.3 | done (on this session's branch) | — |
 | 2.4 | done (on this session's branch) | — |
+| Phase 2 intro and exam | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -61,10 +62,10 @@
 | 1.5 | short | 20 | 30 |
 | 1.6 | short | 16 | 20 |
 | 1.7 | short | 22 | 25 |
-| 2.1 | short | 24 | 25 |
-| 2.2 | short | 14 | 17 |
+| 2.1 | short | 24 | 27 |
+| 2.2 | short | 14 | 18 |
 | 2.3 | short | 24 | 25 |
-| 2.4 | short | 15 | 17 |
+| 2.4 | short | 15 | 18 |
 | 3.1 | short | 22 | 18 |
 | 3.2 | short | 33 | 26 |
 | 3.3 | short | 18 | 22 |

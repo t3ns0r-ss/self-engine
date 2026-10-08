@@ -243,6 +243,87 @@ Six programs: a minimum and a count over one index, an extra fact in the state, 
 
 ## 7. Bug catalogue
 
+DP bugs give wrong numbers with no crash, and the wrong numbers often look reasonable. Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: the step loop outside
+
+Template: counting step sequences.
+
+```cpp
+for (int step : s)
+    for (int i = step; i <= n; i++)
+        ways[i] = (ways[i] + ways[i - step]) % MOD;
+```
+
+Input: `6 2`, then `1 3`.
+
+Wrong output `3`, correct output `6`. With steps 1 and 3, the climbs of 6 are $1{+}1{+}1{+}1{+}1{+}1$, the four orders of $3{+}1{+}1{+}1$, and $3{+}3$. With the steps in the outer loop, all 1-steps are used before any 3-step is considered, so each *collection* of steps is counted once in one fixed order: 3 collections, not 6 sequences.
+
+**Fix:** for ordered sequences, split by the last step, which can be any step: the stair loop is outside and every step is tried for each stair (Theorem 3.2.2). The other loop order is right when order does not matter (topic 3.3); decide which objects are counted before writing the loops.
+
+### Bug: the window misses the longest jump
+
+Template: cheapest jumps.
+
+```cpp
+for (int j = max(0, i - k + 1); j < i; j++)
+```
+
+Input: `2 1`, then `3 3`.
+
+Wrong output `9223372036854775807`, correct output `0`. With $k = 1$ the only jump has length exactly $k$, and the loop skips it, so stone 2 is never reached and keeps the marker value `LLONG_MAX`.
+
+**Fix:** list the transitions into state `i` exactly: jumps of length $1..k$ come from $i - 1$ down to $i - k$. Test $k = 1$, where an off-by-one removes every transition.
+
+### Bug: the day alone as the state
+
+Template: no activity twice in a row. The test `q != j` is removed.
+
+Input: `2 2`, then the days `0 2` and `2 3`.
+
+Wrong output `5`, correct output `4`. The program adds day 1's best (activity 2, worth 2) to day 2's activity 2 (worth 3), which repeats an activity. The best total *with a different activity* is $2 + 2 = 4$.
+
+**Fix:** if the rule for the next choice reads the previous choice, the previous choice must be in the state (Theorem 3.2.5), and each transition must check the rule.
+
+### Bug: forgetting the gap
+
+Template: exactly $k$ elements, no two adjacent.
+
+```cpp
+if (j > 0 && dp[i - 1][j - 1] != NONE)
+    dp[i][j] = max(dp[i][j], dp[i - 1][j - 1] + a[i]);
+```
+
+Input: `2 2`, then `0 1`.
+
+Wrong output `1`, correct output `impossible`. Coming from `dp[i − 1]` allows element `i − 1` to be chosen too, so the two neighbours are both taken.
+
+**Fix:** when element `i` is chosen, the previous state must exclude element `i − 1`: come from the first `i − 2` elements, or keep a flag "last element chosen" in the state.
+
+### Bug: unreachable states treated as 0
+
+Template: exactly $k$ elements, no two adjacent. The table is filled with 0 instead of `NONE`.
+
+Input: `1 1`, then `-5`.
+
+Wrong output `0`, correct output `-5`. `dp[0][1]` means "one element chosen among zero elements", which is impossible, but as 0 it looks like a valid choice with sum 0, and it beats the only real choice $-5$.
+
+**Fix:** give unreachable states a value that can never win (or a separate "reachable" flag), and check it before using a state. With only non-negative values the 0 can hide this bug, so test with negative values and with impossible inputs.
+
+### Bug: skipping when skipping is just as good
+
+Template: the smallest optimal choice.
+
+```cpp
+if (best[i + 1] != best[i]) {
+```
+
+Input: `2`, then `3 3`.
+
+Wrong output: position 2; correct: position 1. The walk now takes position `i` only when skipping it would lose value. With $(3, 3)$, skipping position 1 still allows the optimum 3, so the walk skips it and takes position 2, giving the larger list.
+
+**Fix:** for the lexicographically smallest list, prefer *taking* the current position whenever taking it still reaches the optimum (Theorem 3.2.6, note 2). Ties are where these bugs live: test with equal values.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

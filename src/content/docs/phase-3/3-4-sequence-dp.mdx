@@ -18,15 +18,128 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. Given $n = 2 \cdot 10^5$ numbers, find the length of the longest subsequence whose values strictly increase. For $(3, 1, 4, 1, 5, 9, 2, 6)$ one answer is $(1, 4, 5, 9)$, length 4.
+
+There are $2^n$ subsequences, so listing them is hopeless. The table of [topic 3.2](../3-2-dp-foundations/) works: let $L[i]$ be the length of the longest increasing subsequence that *ends* at position $i$; it is one more than the best $L[j]$ over earlier positions $j$ with a smaller value. But each state looks at all earlier positions: $n^2 / 2 = 2 \cdot 10^{10}$ steps, more than three minutes.
+
+The key idea of the first half of this topic: for each length $k$, only one number about the increasing subsequences of length $k$ matters, the smallest value such a subsequence can end with. These numbers increase with $k$, so each new element finds its place by binary search ([topic 1.4](../../phase-1/1-4-binary-search/)), and the whole computation takes $O(n \log n)$. The second half handles two sequences at once: the longest common subsequence and the edit distance, whose states are pairs of prefixes.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 3.2](../3-2-dp-foundations/), dynamic programming (DP) foundations: states, Theorems 3.2.1 and 3.2.3, two-index tables, reconstruction (Theorem 3.2.6).
+- [Topic 1.4](../../phase-1/1-4-binary-search/), binary search: `lower_bound` and `upper_bound` on a sorted array.
+- [Topic 1.1](../../phase-1/1-1-sorting/), sorting: sorting pairs by one key with a chosen tie order.
+- [Topic 1.3](../../phase-1/1-3-two-pointers/): the definition of a subsequence, and checking whether one string is a subsequence of another with two pointers.
+
 ### What this topic does not cover
+
+- Counting increasing subsequences or computing LIS (longest increasing subsequence) values for many ranges with a Fenwick tree or a segment tree: covered in topics 5.2 and 5.3.
+- Faster LCS (longest common subsequence) algorithms with bitsets, and the Hunt–Szymanski method: not part of this course.
+- Edit distance with only a few allowed edits on very long strings (diagonal bands), and string matching with automata: covered in Phase 6 where needed.
 
 ## 3. Definitions
 
+- A **subsequence** keeps some elements of a sequence in their original order (topic 1.3). It is **increasing** if each element is larger than the one before (strictly), or **non-decreasing** if each is at least the one before.
+- A **longest increasing subsequence** (LIS) is an increasing subsequence of the largest possible length. Example: $(3, 1, 4, 1, 5, 9, 2, 6)$ has LIS length 4.
+- A **common subsequence** of two sequences is a sequence that is a subsequence of both. A **longest common subsequence** (LCS) is one of the largest length. Example: "ACB" and "ABC" have the LCSs "AB" and "AC", length 2.
+- The **edit distance** between two strings is the fewest single-character operations (insert, delete, replace) that turn one into the other. Example: "cat" → "cut" is 1 (replace a by u); "kitten" → "sitting" is 3.
+- An **alignment** of two strings lines them up in columns; each column holds a character of the first string, a character of the second, or one of each, and both strings are read in order from left to right. Example: "cat" over "cut" in three columns (c, c), (a, u), (t, t).
+- A **prefix** of length $i$ is the first $i$ elements; for two sequences, the state $(i, j)$ refers to the prefixes of lengths $i$ and $j$.
+
 ## 4. Theory and proofs
+
+### 4.1 LIS with a table
+
+**Theorem 3.4.1 (LIS by ending position).** Let $L[i]$ be the length of the longest increasing subsequence ending at position $i$. Then $L[i] = 1 + \max\{L[j] : j < i, \ a_j < a_i\}$ (the maximum of an empty set is 0), and the LIS length is $\max_i L[i]$. Time $O(n^2)$.
+
+*Proof.* An increasing subsequence ending at $i$ is either $(a_i)$ alone, or an increasing subsequence ending at some $j < i$ with $a_j < a_i$, followed by $a_i$. Whether $a_i$ may follow depends only on the last element $a_j$, so the state "ending position" has condition 1 of Theorem 3.2.1, and the best length for each $j$ can be extended. $\square$
+
+:::note[This proof needs]
+1. The condition between consecutive chosen elements involves only those two elements (here $a_j < a_i$; any such pairwise rule works, such as "differs by at most $k$" or "divides").
+2. $n^2$ fits the budget: $n$ up to a few thousand.
+:::
+
+### 4.2 LIS in O(n log n)
+
+Process the elements from left to right and keep an array `tails`: `tails[k]` is the smallest value that an increasing subsequence of length $k + 1$, among the elements seen so far, can end with.
+
+**Theorem 3.4.2 (tails array).**
+1. `tails` is strictly increasing at every moment.
+2. For a new element $x$, let $k$ be the first index with `tails[k]` $\ge x$ (`lower_bound`). If there is none, append $x$; otherwise set `tails[k]` $= x$. Afterwards `tails` is correct for the longer prefix.
+3. The LIS length is the final size of `tails`. Time $O(n \log n)$.
+
+For non-decreasing subsequences, use the first index with `tails[k]` $> x$ (`upper_bound`) instead.
+
+*Proof.* 1. If `tails[k]` $\ge$ `tails[k + 1]`, take a subsequence of length $k + 2$ ending with `tails[k + 1]`; its first $k + 1$ elements form an increasing subsequence of length $k + 1$ whose last element is smaller than `tails[k + 1]` $\le$ `tails[k]`, contradicting the minimality of `tails[k]`. 2. The new element $x$ can only end subsequences, so only entries that $x$ improves change. $x$ extends a subsequence of length $m$ exactly when that subsequence can end below $x$, that is, when `tails[m − 1]` $< x$. By part 1 these $m$ form an initial block $1, \dots, k$, where $k$ is the first index with `tails[k]` $\ge x$; so the longest subsequence ending at $x$ has length $k + 1$, and $x$ improves the length-$(k + 1)$ entry (it is at most `tails[k]`), and no other entry: shorter lengths already end with values below $x$. 3. `tails` has an entry for every length that some increasing subsequence reaches. $\square$
+
+:::note[This proof needs]
+1. The elements can be compared (any total order), and "increasing" means strictly (`lower_bound`) or non-strictly (`upper_bound`); mixing them up is the classic bug (Section 7).
+2. Only the length (or, with extra arrays, one optimal subsequence) is needed: `tails` itself is usually not a subsequence of the input.
+:::
+
+Trace for $(3, 1, 4, 1, 5, 9, 2, 6)$:
+
+| element | 3 | 1 | 4 | 1 | 5 | 9 | 2 | 6 |
+|---|---|---|---|---|---|---|---|---|
+| `tails` after it | 3 | 1 | 1 4 | 1 4 | 1 4 5 | 1 4 5 9 | 1 2 5 9 | 1 2 5 6 |
+
+The LIS length is 4. The final `tails` $(1, 2, 5, 6)$ is not a subsequence of the input (2 comes after 5 in the input), which is why reconstruction needs extra arrays.
+
+**Reconstruction.** Store with each `tails` entry the index of the element there, and for each element the index of the entry before it at the moment it was placed (`parent[i]` = index stored in `tails[k − 1]`). Walking back from the last entry with `parent` gives an increasing subsequence of the maximum length, by Theorem 3.2.6.
+
+### 4.3 Reducing to LIS
+
+**Theorem 3.4.3 (chains in two keys).** Given pairs $(x_i, y_i)$, a chain is a sequence of pairs with both keys strictly increasing. Sort the pairs by $x$ increasing and, for equal $x$, by $y$ **decreasing**. Then the longest chain has the length of the LIS of the $y$ values in that order.
+
+*Proof.* A chain, listed in sorted order, has strictly increasing $y$ values, so it is an increasing subsequence of the sorted $y$ list. Conversely, take an increasing subsequence of the sorted $y$ list. Two of its pairs cannot have equal $x$: equal $x$ are sorted by decreasing $y$, so their $y$ values could not increase. So their $x$ values strictly increase along the sorted order, and the subsequence is a chain. $\square$
+
+:::note[This proof needs]
+1. The chain condition is "both keys strictly increase" (or can be turned into it, for example by rotating boxes so that their sides are sorted).
+2. The tie order makes pairs with equal first keys unable to follow each other. If equal first keys are allowed to follow each other, sort ties by increasing $y$ and use a non-strict LIS where needed.
+:::
+
+Example: envelopes $(5, 4), (6, 4), (6, 7), (2, 3)$. Sorted: $(2, 3), (5, 4), (6, 7), (6, 4)$, with $y$ list $(3, 4, 7, 4)$; LIS length 3: $(2, 3) \subset (5, 4) \subset (6, 7)$. With ties sorted by increasing $y$ the list would be $(3, 4, 4, 7)$ and a non-strict reading would wrongly chain $(6, 4)$ and $(6, 7)$.
+
+### 4.4 Longest common subsequence
+
+**Theorem 3.4.4 (LCS).** Let $C[i][j]$ be the LCS length of the prefixes $a_1..a_i$ and $b_1..b_j$. Then $C[i][0] = C[0][j] = 0$ and
+$$C[i][j] = \begin{cases} C[i-1][j-1] + 1 & \text{if } a_i = b_j,\\ \max(C[i-1][j], \ C[i][j-1]) & \text{otherwise.} \end{cases}$$
+Time $O(nm)$, filled row by row (Theorem 3.2.3).
+
+*Proof.* Let $Z$ be a common subsequence of the two prefixes, and let its last element be matched to positions $p \le i$ in $a$ and $q \le j$ in $b$. All other elements of $Z$ are matched before $p$ and before $q$, so without its last element $Z$ is a common subsequence of the prefixes $(p - 1, q - 1)$, and $|Z| - 1 \le C[i-1][j-1]$. If $a_i = b_j$, this bound is reached by an LCS of $(i - 1, j - 1)$ followed by the match of $a_i$ with $b_j$, so $C[i][j] = C[i-1][j-1] + 1$. If $a_i \ne b_j$, the last match cannot use both $p = i$ and $q = j$, so $p < i$ or $q < j$: all of $Z$ lies in the prefixes $(i - 1, j)$ or in $(i, j - 1)$, and each of those values is achievable. So $C[i][j] = \max(C[i-1][j], C[i][j-1])$. $\square$
+
+:::note[This proof needs]
+1. The answer for two prefixes depends only on shorter prefixes: an exchange argument shows that matching two equal last characters never hurts.
+2. $n \cdot m$ fits: two strings of length 3000 give $9 \cdot 10^6$ states; $10^5$ each does not.
+:::
+
+Trace for "ACB" (rows) and "ABC" (columns):
+
+| | – | A | B | C |
+|---|---|---|---|---|
+| – | 0 | 0 | 0 | 0 |
+| A | 0 | 1 | 1 | 1 |
+| C | 0 | 1 | 1 | 2 |
+| B | 0 | 1 | 2 | 2 |
+
+The LCS length is 2. Walking back from the corner (Theorem 3.2.6): at (B, C) the characters differ and both neighbours hold 2; moving left reaches (B, B), a match, so B is taken and the walk moves diagonally to (C, A). There the characters differ, the entry above (1) beats the one to the left (0), so the walk moves up to (A, A), a match: A is taken. Read backwards, the LCS is "AB".
+
+### 4.5 Edit distance
+
+**Theorem 3.4.5 (edit distance).** Let $E[i][j]$ be the edit distance between the prefixes $a_1..a_i$ and $b_1..b_j$. Then $E[i][0] = i$, $E[0][j] = j$, and
+$$E[i][j] = \min\left(E[i-1][j] + 1, \ E[i][j-1] + 1, \ E[i-1][j-1] + [a_i \ne b_j]\right),$$
+where $[a_i \ne b_j]$ is 1 if the characters differ and 0 otherwise. Time $O(nm)$.
+
+*Proof.* Write any sequence of edits as an alignment: a list of columns, each a pair (a character of $a$ or nothing, a character of $b$ or nothing), in order, with cost 1 for a column with one side empty (a deletion or an insertion) or with two different characters (a replacement), and 0 for two equal characters. Every edit sequence gives an alignment of at most the same cost, and every alignment can be carried out with that many edits, so the edit distance is the cheapest alignment. The last column of an alignment of the two prefixes is $(a_i, -)$, $(-, b_j)$ or $(a_i, b_j)$; removing it leaves an alignment of $(i - 1, j)$, $(i, j - 1)$ or $(i - 1, j - 1)$. Taking the cheapest in each case gives the formula (Theorem 3.2.1). $\square$
+
+:::note[This proof needs]
+1. Edits act on single characters with the costs above; other costs (for example a cost per replaced pair of letters) change only the three terms.
+2. The base cases: turning a prefix of length $i$ into the empty string takes $i$ deletions.
+:::
+
+Trace for "cat" (rows) and "cut" (columns): the last row is $3, 2, 2, 1$, so the distance is 1. The middle step is the only one with a change: $E[2][2] = E[1][1] + [a \ne u] = 0 + 1$.
 
 ## 5. Recognition Cards
 

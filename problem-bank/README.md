@@ -20,7 +20,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 1 | [1.6 Monotonic stack and deque](phase-1/1.6-monotonic-stack.md) | 2 | 0 | 9 | 3 | 2 | 16 | short |
 | 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 11 | 2 | 1 | 22 | short |
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 11 | 3 | 3 | 24 | short |
-| 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 1 | 2 | 4 | 6 | 1 | 14 | short |
+| 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 2 | 2 | 3 | 5 | 2 | 14 | short |
 | 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 1 | 6 | 5 | 3 | 7 | 22 | short |
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 0 | 7 | 3 | 6 | 17 | short |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 2 | 10 | 4 | 2 | 4 | 22 | short |
@@ -51,6 +51,6 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 7 | [7.3 DP sped up with Fenwick or segment trees](phase-7/7.3-dp-with-ds.md) | 0 | 1 | 7 | 6 | 2 | 16 | short |
 | 7 | [7.4 Greedy II: priority-queue greedy, regret greedy](phase-7/7.4-greedy-2.md) | 1 | 1 | 10 | 7 | 1 | 20 | short |
 | 7 | [7.5 Sprague–Grundy theorem](phase-7/7.5-game-theory.md) | 7 | 3 | 5 | 2 | 3 | 20 | short |
-| 7 | [7.6 Matrix exponentiation for linear recurrences](phase-7/7.6-matrix-exponentiation.md) | 3 | 3 | 8 | 4 | 0 | 18 | short |
+| 7 | [7.6 Matrix exponentiation for linear recurrences](phase-7/7.6-matrix-exponentiation.md) | 1 | 3 | 8 | 4 | 0 | 16 | short |
 | 7 | [7.7 Constructive algorithms](phase-7/7.7-constructive.md) | 15 | 8 | 2 | 0 | 0 | 25 | short |
 | 7 | [7.8 Technique recognition: mixed sets, topic not given](phase-7/7.8-recognition.md) | 0 | 0 | 0 | 0 | 0 | 0 | complete |

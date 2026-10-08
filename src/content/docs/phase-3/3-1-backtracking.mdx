@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import distinctSubsets from '../../../../code/3.1/distinct-subsets/solution.cpp?raw';
+import distinctPermutations from '../../../../code/3.1/distinct-permutations/solution.cpp?raw';
+import queens from '../../../../code/3.1/queens/solution.cpp?raw';
+import minMaxLoad from '../../../../code/3.1/min-max-load/solution.cpp?raw';
+import mitmCount from '../../../../code/3.1/mitm-count/solution.cpp?raw';
 
 <TopicHeader topic="3.1" />
 
@@ -148,6 +153,68 @@ Every tool in this topic is still exhaustive search: it gives the exact answer b
 <Cards topic="3.1" />
 
 ## 6. Templates
+
+Five programs: two that list objects without repeats, one placement search, one branch and bound and one meet in the middle. Each brute force uses a different method: bitmasks, `next_permutation`, or every assignment without any cut.
+
+### Distinct sub-multisets (Theorem 3.1.2)
+
+<Code code={distinctSubsets} lang="cpp" title="distinct-subsets/solution.cpp" />
+
+**How it works.** Every call of `rec` is one sub-multiset, the values in `chosen`; it is recorded at once, and then each possible next value is added in turn. The next index is always larger than the last one taken (`rec(i + 1)`), and inside one loop a value equal to the previous try is skipped (`i > start && a[i] == a[i - 1]`), so each collection of values is produced once (Theorem 3.1.2). After each child call, `chosen.pop_back()` undoes the addition. Because the values are sorted and the loop goes left to right, the collections come out in lexicographic order.
+
+**C++ details explained.** `chosen.push_back(a[i])` and `chosen.pop_back()` add and remove the last element of a vector in $O(1)$, so `chosen` works as a stack of the current choices. `found.push_back(chosen)` stores a copy. `vector<vector<int>>` is a vector whose elements are vectors (topic 0.6).
+
+**Tested.** Stress-tested against a brute force that tries every bitmask (Theorem 0.5.2), sorts each subset and collects them in a `set`, which removes repeats, on 5000 random inputs ($n \le 8$, values from a range of 1 to 11 numbers, so repeats are frequent). There are also 4 fixed tests: one value, $(1, 2, 2)$ from Section 4.2, fifteen equal values (16 collections), and twelve values with many repeats.
+
+**Alternative formulation.** Group equal values: for each distinct value with $c$ copies, choose how many copies to take, from 0 to $c$. A recursion over the distinct values then produces each collection once without any skip rule, and the count is $\prod (c + 1)$, the product rule of topic 2.3.
+
+### Distinct arrangements (Theorem 3.1.2)
+
+<Code code={distinctPermutations} lang="cpp" title="distinct-permutations/solution.cpp" />
+
+**How it works.** `current` holds the values placed so far and `used[i]` tells whether index $i$ is already placed. At each position, every unused index is tried, except that a value is skipped if an equal value at a smaller index is still unused. So equal values are always placed in the order of their indices, and two arrangements that differ only by swapping equal values are not both produced. Both changes, `used[i]` and `current`, are undone after the call.
+
+**C++ details explained.** `vector<bool> used` stores one flag per index; `used.assign(n, false)` sets its size to $n$ and every flag to false. The condition `!used[i - 1]` is the whole trick; Section 7 shows what happens with `used[i - 1]` instead.
+
+**Tested.** Stress-tested against a brute force that runs `next_permutation` from the sorted list (Theorem 0.5.3), on 5000 random inputs ($n \le 7$, values from 1 to at most 4). There are also 5 fixed tests: one value, $(1, 1, 2)$, four equal values, three copies each of 1, 2, 3 ($\frac{9!}{3!\,3!\,3!} = 1680$ arrangements), and seven different values (5040).
+
+**Alternative formulation.** Keep a count for each distinct value instead of `used`: at each position, try each distinct value whose count is positive, decrease its count, and restore it after the call. Each value is tried once per position, so no skip rule is needed.
+
+### Counting queen placements (Theorem 3.1.1)
+
+<Code code={queens} lang="cpp" title="queens/solution.cpp" />
+
+**How it works.** Row `row` gets one queen; a column `c` is tried only if the square is free and no earlier queen uses its column, its diagonal or its anti-diagonal. On one diagonal (down and to the right), `row - c` is the same for every square; on one anti-diagonal, `row + c` is. So three arrays of marks answer the test in $O(1)$; `row - c + n - 1` shifts the diagonal number from $-(n - 1) \dots n - 1$ to $0 \dots 2n - 2$. The test only reads queens already placed, so it never rejects a placement that could be completed, and the marks are cleared after each call (both conditions of Theorem 3.1.1). The function returns the number of completions, so the answer is `rec(0)`.
+
+**C++ details explained.** `colUsed[c] = diagUsed[…] = antiUsed[…] = true;` assigns from right to left, setting all three marks in one statement. `long long rec(int row)` returns a value, unlike the earlier `void` recursions: each call adds up the counts of its children.
+
+**Tested.** Stress-tested against a brute force that tries all $n^n$ ways to give each row a column and checks every pair of queens, on 5000 random boards ($n \le 7$, up to 40% blocked squares). There are also 6 fixed tests: $n = 1$, $n = 2$ (no placement), the free boards for $n = 8, 10, 12$ (92, 724 and 14 200 placements) and a $9 \times 9$ board with blocked squares; the expected values were computed by a separate program that checks each new queen against the earlier ones by a loop.
+
+**Alternative formulation.** Store the occupied columns, diagonals and anti-diagonals of the current partial placement as three bitmasks (topic 1.7); the free columns of the next row are then the zero bits of their bitwise or, shifted. This is the same search with a faster test.
+
+### Smallest largest load (Theorem 3.1.3)
+
+<Code code={minMaxLoad} lang="cpp" title="min-max-load/solution.cpp" />
+
+**How it works.** Job $i$ goes to each worker in turn; `currentMax` is the largest load so far. Loads only grow, so `currentMax` never exceeds the largest load of any completion: it is an optimistic estimate for a minimum, and a branch with `currentMax >= best` is cut (Theorem 3.1.3). Two habits make the cut effective. The jobs are sorted longest first, so loads become large early and branches die near the root. And a worker whose load equals that of an earlier worker is skipped: swapping two workers with equal loads turns any completion into one with the same largest load, so trying one of them is enough (the canonical-order idea of Theorem 3.1.2, applied to workers).
+
+**C++ details explained.** `sort(job.rbegin(), job.rend())` sorts in decreasing order: `rbegin()` and `rend()` walk the vector backwards. `LLONG_MAX` is the largest `long long`, used as "no solution found yet".
+
+**Tested.** Stress-tested against a brute force that tries all $k^n$ assignments without any cut, on 5000 random inputs ($n \le 8$, $k \le 4$, lengths up to 3 or up to 20, so ties between workers are frequent). There are also 6 fixed tests: one job, the example of Section 4.3 (answer 14), twelve equal jobs of length $10^8$ on 3 workers, twelve random long jobs on 3 workers, eleven short jobs on 4 workers, and 7 jobs on 7 workers; their expected values come from a separate program that tries all $k^n$ assignments. On random inputs with $n = 12$ and any $k$, the search takes about 10 milliseconds.
+
+**Alternative formulation.** Binary search on the answer $L$ (topic 1.4) and ask "can the jobs be packed into $k$ workers of capacity $L$?" with the same backtracking; the cut is then "the job does not fit". It is the same search with a different cut, and it can be faster because a fixed capacity rejects a job as soon as it overflows.
+
+### Counting subsets with a bounded sum (Theorem 3.1.4)
+
+<Code code={mitmCount} lang="cpp" title="mitm-count/solution.cpp" />
+
+**How it works.** `subsetSums` lists the $2^{h}$ subset sums of one half: it starts with the empty sum, and each element doubles the list by adding itself to every sum already there. The right half's list is sorted. For each left sum $x \le T$, the right sums $y$ with $x + y \le T$ are exactly those $\le T - x$, a prefix of the sorted list, whose length `upper_bound` returns (Theorem 3.1.4). With $n = 40$, each list has $2^{20} \approx 10^6$ sums.
+
+**C++ details explained.** `const vector<long long>& v` passes the vector by reference without copying it, and `const` promises not to change it (topic 0.6). `upper_bound(…, T - x)` returns an iterator to the first element greater than $T - x$; subtracting `right.begin()` turns it into a count of the elements before it (topic 1.4). `int size = sums.size();` is read once before the loop, because the loop itself makes `sums` longer.
+
+**Tested.** Stress-tested against a brute force that tries all $2^n$ bitmasks, on 5000 random inputs ($n \le 12$, values up to 5 or up to $10^9$, $T$ from 0 to just above the total). There are also 4 fixed tests: one element with $T = 0$, forty ones with $T = 20$ (answer $\sum_{j \le 20} \binom{40}{j}$), forty values $10^9$ with a huge $T$ (all $2^{40}$ subsets), and $1, 2, 4, \dots, 2^{29}$ with ten copies of $2^{30}$, whose answer follows from binary representations.
+
+**Alternative formulation.** Sort both lists and move two pointers (topic 1.3): as $x$ increases through the sorted left list, the largest valid $y$ only moves down. This replaces the binary searches by one $O(2^{n/2})$ pass after sorting.
 
 ## 7. Bug catalogue
 

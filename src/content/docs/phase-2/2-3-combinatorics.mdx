@@ -18,15 +18,145 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. On a grid, walk from the corner $(0, 0)$ to $(1000, 1000)$ with steps one unit right or one unit up. How many different walks are there, modulo $10^9 + 7$?
+
+Brute force (topic 0.5) lists the walks one by one, but there are about $2 \cdot 10^{600}$ of them. Counting needs an argument instead of a list. Every walk has exactly 2000 steps, 1000 of them up, and a walk is fixed by choosing *which* of the 2000 steps go up. So the number of walks is the number of ways to choose 1000 positions out of 2000, the binomial coefficient $\binom{2000}{1000}$. Modulo $10^9 + 7$ it is $72\,475\,738$, computed from a table of factorials and the modular inverses of topic 2.2.
+
+This topic is about counting without listing. Independent choices multiply and separate cases add. Choosing positions gives binomial coefficients, which a precomputed table answers in $O(1)$ each. Splitting identical items among people is a choice of positions for separators. When the objects must avoid several bad properties at once, an alternating sum over the bad properties counts them exactly. And when the objects look complicated, a one-to-one correspondence with a simpler set (a bijection) often turns them into one binomial coefficient.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: permutations ($n!$ orders of $n$ elements) and subsets as bitmasks ($2^n$ of them).
+- [Topic 0.4](../../phase-0/0-4-elementary-math/), elementary mathematics: counting multiples in a range (Theorem 0.4.2) and the two-set count of Theorem 0.4.6, part 3.
+- [Topic 2.1](../2-1-number-theory/), number theory: prime factorisations.
+- [Topic 2.2](../2-2-modular-arithmetic/), modular arithmetic: inverses modulo a prime and fast exponentiation.
+
 ### What this topic does not cover
+
+- Expected values and probability as a sum over outcomes (linearity of expectation). Covered in topic 2.4.
+- Counting with a table of partial answers built step by step (dynamic programming). Covered in Phase 3.
+- Lucas's theorem (binomial coefficients modulo a small prime), Catalan numbers in general, Burnside's lemma and generating functions. They are not part of this course.
 
 ## 3. Definitions
 
+- The **product rule** and the **sum rule** are the two basic counting principles of Theorem 2.3.1: independent choices multiply, disjoint cases add.
+- The **factorial** $n! = 1 \cdot 2 \cdots n$, with $0! = 1$, counts the permutations of $n$ different elements (topic 0.5).
+- The **binomial coefficient** $\binom{n}{r}$ ("$n$ choose $r$") is the number of subsets of size $r$ of a set of $n$ elements, for $0 \le r \le n$; it is 0 for $r < 0$ or $r > n$. Example: $\binom{5}{2} = 10$.
+- The **multinomial coefficient** $\binom{n}{c_1, \dots, c_k} = \frac{n!}{c_1! \cdots c_k!}$, with $c_1 + \dots + c_k = n$, counts the arrangements of a list with $c_i$ copies of value $i$. Example: MISSISSIPPI has $\frac{11!}{1!\,4!\,4!\,2!} = 34\,650$ arrangements.
+- **Stars and bars** counts the ways to split $n$ identical items into $k$ distinct groups (Theorem 2.3.5).
+- **Inclusion–exclusion** counts the objects with none of several properties by an alternating sum over the sets of properties (Theorem 2.3.6).
+- A **bijection** between two sets is a correspondence that pairs every element of one with exactly one element of the other; two sets in bijection have the same size. A **lattice path** is a walk on integer points with unit steps right or up.
+
 ## 4. Theory and proofs
+
+### 4.1 Product and sum rules
+
+**Theorem 2.3.1 (product and sum rules).**
+1. If an object is built by a sequence of $k$ choices, and the $i$-th choice always has $m_i$ options whatever the earlier choices were, then there are $m_1 m_2 \cdots m_k$ objects (each from exactly one sequence of choices).
+2. If a set is split into disjoint parts, its size is the sum of the sizes of the parts.
+3. Consequences: there are $m^k$ sequences of length $k$ over $m$ symbols; $n!$ orders of $n$ different elements; and $n (n-1) \cdots (n-r+1) = \frac{n!}{(n-r)!}$ ordered selections of $r$ different elements out of $n$.
+
+*Proof.* 1. By induction on $k$. For $k = 1$ there are $m_1$ objects. For $k > 1$, split the objects by their first choice (sum rule): each of the $m_1$ first choices is followed by $m_2 \cdots m_k$ completions, by induction, so the total is $m_1 \cdot m_2 \cdots m_k$. 2. Each element is counted in exactly one part. 3. Apply part 1: $m$ options at each of $k$ positions; $n, n-1, \dots, 1$ options for the first, second, … element; and $n, \dots, n - r + 1$ for the first $r$. $\square$
+
+:::note[This proof needs]
+1. The *number* of options at each step must not depend on earlier choices, even if the options themselves do. "Choose a different colour from the previous one" is fine (always $m - 1$); "choose a colour not used before by anyone" is fine; "choose a colour that keeps the total even" may not be.
+2. Each object must come from exactly one sequence of choices. If the same object can be built in two orders, the product counts it twice.
+:::
+
+Example: strings of length 3 over $\{a, b, c\}$ with no two equal neighbours: $3 \cdot 2 \cdot 2 = 12$.
+
+### 4.2 Binomial coefficients
+
+**Theorem 2.3.2 (binomial coefficients).** For $0 \le r \le n$:
+1. $\binom{n}{r} = \frac{n!}{r!\,(n-r)!}$.
+2. $\binom{n}{r} = \binom{n}{n-r}$.
+3. (Pascal's rule) $\binom{n}{r} = \binom{n-1}{r-1} + \binom{n-1}{r}$ for $1 \le r \le n - 1$.
+4. $\binom{n}{0} + \binom{n}{1} + \dots + \binom{n}{n} = 2^n$.
+
+*Proof.* 1. Count the ordered selections of $r$ elements in two ways. By Theorem 2.3.1 there are $\frac{n!}{(n-r)!}$ of them. Each subset of size $r$ gives exactly $r!$ ordered selections (its orders), so $\binom{n}{r} \cdot r! = \frac{n!}{(n-r)!}$. 2. Choosing the $r$ elements to take is the same as choosing the $n - r$ to leave. 3. Split the subsets of size $r$ by whether they contain element $n$ (sum rule): those that do are an element $n$ plus $r - 1$ of the other $n - 1$; those that don't are $r$ of the other $n - 1$. 4. Every subset has some size $r$; there are $2^n$ subsets in all (Theorem 0.5.2). $\square$
+
+:::note[This proof needs]
+1. $0 \le r \le n$; outside that range define $\binom{n}{r} = 0$ and test the range before using the formula.
+2. The elements are distinguishable. Choosing $r$ of $n$ *identical* items has only one outcome.
+:::
+
+Example: $\binom{6}{3} = \frac{720}{6 \cdot 6} = 20 = \binom{5}{2} + \binom{5}{3} = 10 + 10$.
+
+### 4.3 Binomial coefficients modulo a prime
+
+**Theorem 2.3.3 (factorial tables).** Let $p$ be a prime and $N < p$. Compute $f_i = i! \bmod p$ for $0 \le i \le N$, then $g_N = f_N^{\,p-2} \bmod p$ and $g_{i-1} = g_i \cdot i \bmod p$ for $i = N, \dots, 1$. Then $g_i = (i!)^{-1} \bmod p$, and for $0 \le r \le n \le N$,
+$\binom{n}{r} \equiv f_n \, g_r \, g_{n-r} \pmod p$.
+The tables take $O(N + \log p)$ steps, and each binomial coefficient then takes $O(1)$.
+
+*Proof.* Since $N < p$, no factor of $i!$ is a multiple of $p$, so $p \nmid i!$ (Euclid's lemma) and the inverse exists (Theorem 2.2.3). $g_N$ is it by Fermat. For the step down: $(i-1)! = i! / i$, so $((i-1)!)^{-1} = (i!)^{-1} \cdot i$. Then $\binom{n}{r} = n! \cdot (r!)^{-1} \cdot ((n-r)!)^{-1}$ as a fraction with denominator not divisible by $p$, so Theorem 2.2.4 gives its residue. $\square$
+
+:::note[This proof needs]
+1. $p$ is prime and every $n$ used is below $p$. With $n \ge p$, $n!$ is a multiple of $p$ and the formula breaks (that case needs Lucas's theorem, outside this course).
+2. The tables fit in memory: $N$ up to a few million.
+3. For one coefficient with a huge $n$ and a small $r$ (say $n = 10^9$, $r \le 10^6$), use $\binom{n}{r} = \frac{n (n-1) \cdots (n-r+1)}{r!}$ with $r$ factors and one inverse.
+:::
+
+Example: $\binom{2000}{1000} \bmod (10^9 + 7) = f_{2000} \, g_{1000} \, g_{1000} = 72\,475\,738$.
+
+### 4.4 Arrangements with repeated values
+
+**Theorem 2.3.4 (multinomial coefficients).** A list of $n$ items with $c_i$ copies of value $i$ ($c_1 + \dots + c_k = n$) has $\frac{n!}{c_1! \, c_2! \cdots c_k!}$ different arrangements. Equivalently, it is $\binom{n}{c_1} \binom{n - c_1}{c_2} \cdots$.
+
+*Proof.* Label the copies so that all $n$ items differ: $n!$ arrangements. Each arrangement of the unlabelled list comes from exactly $c_1! \cdots c_k!$ labelled ones (permute the labels within each value), so the count is $n!$ divided by that product. For the second form, choose the $c_1$ positions of value 1, then $c_2$ of the remaining positions for value 2, and so on (product rule). $\square$
+
+:::note[This proof needs]
+1. Copies of a value are indistinguishable, and different values are distinguishable.
+2. Modulo a prime, divide with inverse factorials (Theorem 2.3.3): $n < p$.
+:::
+
+Example: the arrangements of AAB are AAB, ABA, BAA: $\frac{3!}{2!\,1!} = 3$.
+
+### 4.5 Stars and bars
+
+**Theorem 2.3.5 (stars and bars).** Let $n \ge 0$ and $k \ge 1$.
+1. The number of solutions of $x_1 + \dots + x_k = n$ in integers $x_i \ge 0$ is $\binom{n + k - 1}{k - 1}$.
+2. With $x_i \ge 1$ for all $i$ (and $n \ge k$), it is $\binom{n - 1}{k - 1}$.
+3. With lower bounds $x_i \ge l_i$, substitute $y_i = x_i - l_i$: it is $\binom{n - L + k - 1}{k - 1}$ with $L = l_1 + \dots + l_k$ (0 if $n < L$).
+
+*Proof.* 1. Write a solution as a row of $n$ stars and $k - 1$ bars: $x_1$ stars, a bar, $x_2$ stars, a bar, …, $x_k$ stars. Every row of $n + k - 1$ symbols with exactly $k - 1$ bars arises from exactly one solution, and back: this is a bijection. The rows are fixed by the positions of the bars, $\binom{n + k - 1}{k - 1}$ choices. 2. Substitute $y_i = x_i - 1 \ge 0$, a bijection onto solutions of $y_1 + \dots + y_k = n - k$; apply part 1. 3. The same substitution. $\square$
+
+:::note[This proof needs]
+1. The items are identical and the groups are distinguishable (labelled). Identical groups (partitions of a number) are a different, harder count.
+2. Only lower bounds shift away. Upper bounds $x_i \le u_i$ need inclusion–exclusion (Section 4.6).
+:::
+
+Example: 7 identical candies for 3 children: $\binom{9}{2} = 36$ ways, or $\binom{6}{2} = 15$ if every child gets at least one.
+
+### 4.6 Inclusion–exclusion
+
+**Theorem 2.3.6 (inclusion–exclusion).** Let $U$ be a finite set and $A_1, \dots, A_m$ subsets of it ("bad properties"). For $S \subseteq \{1, \dots, m\}$ let $N(S)$ be the number of elements in every $A_i$ with $i \in S$ (with $N(\emptyset) = |U|$). Then the number of elements in none of the $A_i$ is
+$\sum_{S} (-1)^{|S|} N(S)$,
+the sum over all $2^m$ sets $S$. For two sets this is $|U| - |A_1| - |A_2| + |A_1 \cap A_2|$.
+
+*Proof.* Take an element $x$ that lies in exactly $t$ of the sets. It is counted in $N(S)$ exactly when $S$ is a subset of those $t$ indices, so its total contribution is $\sum_{j=0}^{t} (-1)^j \binom{t}{j}$. For $t = 0$ this is 1. For $t \ge 1$ it is $(1 - 1)^t = 0$, by the binomial expansion of $(1 + y)^t = \sum_j \binom{t}{j} y^j$ with $y = -1$; the expansion itself follows from choosing, in each of the $t$ factors, either $1$ or $y$ (product rule). So exactly the elements in none of the sets are counted, once each. $\square$
+
+:::note[This proof needs]
+1. $N(S)$ must be computable for every set $S$ of properties, usually by a formula (multiples of a product, stars and bars with some lower bounds raised).
+2. $2^m$ terms: $m$ up to about 20 (bitmasks, topic 0.5), or fewer distinct values of $N(S)$ when it depends only on $|S|$ (then the sum is over $j = |S|$ with $\binom{m}{j}$ sets each).
+3. Signs alternate; modulo $p$ add $p$ before reducing a subtraction.
+:::
+
+Example: among $1, \dots, 100$, the numbers divisible by 2, 3 or 5 are $100$ minus those divisible by none: $50 + 33 + 20 - 16 - 10 - 6 + 3 = 74$ (each $N(S)$ is $\lfloor 100 / \operatorname{lcm} \rfloor$, Theorem 0.4.2). And the permutations of 4 elements with no fixed point: $\sum_{j=0}^{4} (-1)^j \binom{4}{j} (4 - j)! = 24 - 24 + 12 - 4 + 1 = 9$.
+
+### 4.7 Counting by a bijection
+
+**Theorem 2.3.7 (lattice paths).** The number of lattice paths from $(0, 0)$ to $(a, b)$ with $a, b \ge 0$, using steps $(1, 0)$ and $(0, 1)$, is $\binom{a + b}{a}$. Paths from $(x_1, y_1)$ to $(x_2, y_2)$ number $\binom{(x_2 - x_1) + (y_2 - y_1)}{x_2 - x_1}$ when both differences are non-negative, and 0 otherwise.
+
+*Proof.* Every such path has exactly $a + b$ steps, $a$ of them to the right. Map a path to the set of positions (among $1, \dots, a + b$) of its right steps. Different paths give different sets, and every set of $a$ positions comes from the path that steps right exactly there: a bijection with the subsets of size $a$. Shifting the start to the origin gives the second form. $\square$
+
+:::note[This proof needs]
+1. Only the two step types allowed, each of length 1. Paths that must avoid cells need inclusion–exclusion over the forbidden cells, or a step-by-step table (Phase 3).
+2. The general method: find a bijection between the objects and a set you can count, and prove both directions (every object maps somewhere, and every target comes from exactly one object).
+:::
+
+Example: from $(0, 0)$ to $(2, 2)$: $\binom{4}{2} = 6$ paths (RRUU, RURU, RUUR, URRU, URUR, UURR).
 
 ## 5. Recognition Cards
 

@@ -19,6 +19,8 @@ import noRepeat from '../../../../code/3.2/no-repeat/solution.cpp?raw';
 import kNonadjacent from '../../../../code/3.2/k-nonadjacent/solution.cpp?raw';
 import memoCoins from '../../../../code/3.2/memo-coins/solution.cpp?raw';
 import lexSmallest from '../../../../code/3.2/lex-smallest/solution.cpp?raw';
+import example1 from '../../../../code/3.2/example-1/solution.cpp?raw';
+import example2 from '../../../../code/3.2/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.2" />
 
@@ -325,6 +327,70 @@ Wrong output: position 2; correct: position 1. The walk now takes position `i` o
 **Fix:** for the lexicographically smallest list, prefer *taking* the current position whenever taking it still reaches the optimum (Theorem 3.2.6, note 2). Ties are where these bugs live: test with equal values.
 
 ## 8. Worked examples
+
+### Example 1: Flip Cards
+
+[AtCoder Beginner Contest (ABC) 291, problem D: Flip Cards](https://atcoder.jp/contests/abc291/tasks/abc291_d). In short: $N \le 2 \cdot 10^5$ cards in a row each show the number on their front or on their back; count the choices of sides for which neighbouring cards always show different numbers, modulo 998 244 353.
+
+#### Step 1: Constraints → budget
+
+$2^N$ choices with $N = 2 \cdot 10^5$: listing them is impossible. $O(N)$ or $O(N \log N)$ is the budget.
+
+#### Step 2: Question form → candidate tools
+
+- Backtracking over cards (topic 3.1) with the check "differs from the previous card" never rejects a choice that could be completed, but there are still up to $2^N$ valid choices, and a count of that size cannot be reached one choice at a time.
+- A formula (topic 2.3) would need the rule to be the same everywhere; here it depends on the actual numbers of each pair of neighbours.
+- A count by the last choice (Theorem 3.2.2), with the right state.
+
+#### Step 3: Property check → decision
+
+Build the choice card by card. Whether card $i$ may show side $s$ depends only on which number card $i - 1$ shows, which is decided by the side of card $i - 1$. So the position alone is not a state (two partial choices ending on different sides allow different futures), but (position, side of the last card) is: two choices for cards $1..i$ that end on the same side allow exactly the same continuations. The extra fact has 2 values: the extra-small-state card (Theorem 3.2.5). Decision: $\text{ways}[i][s]$ for $s \in \{\text{front}, \text{back}\}$.
+
+#### Step 4: Proof for this problem
+
+Let $\text{ways}[i][s]$ count the valid choices for cards $1..i$ with card $i$ on side $s$. A choice for cards $1..i$ ($i \ge 2$) is valid exactly when the choice for cards $1..i-1$ is valid and card $i$'s number differs from card $i - 1$'s. Split the valid choices ending on side $s$ by the side $t$ of card $i - 1$: the class for $t$ is empty if the numbers $\text{side}_i(s)$ and $\text{side}_{i-1}(t)$ are equal, and otherwise is in one-to-one correspondence with the valid choices counted by $\text{ways}[i-1][t]$ (Theorem 3.2.2). So $\text{ways}[i][s] = \sum_t [\text{side}_i(s) \ne \text{side}_{i-1}(t)] \cdot \text{ways}[i-1][t]$, with $\text{ways}[1][s] = 1$, and the answer is $\text{ways}[N][\text{front}] + \text{ways}[N][\text{back}]$. Each choice of sides is one sequence of choices, so nothing is counted twice. Time $O(N)$.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `array<long long, 2>` is a fixed-size array of two numbers that can be copied with `=`; `ways = next;` replaces the whole row at once, so only two rows are ever stored (Section 4.3, saving memory). `side[i][s]` reads the number on side `s` of card `i`. Tested on the three samples from the problem page, on one card with equal sides (2 choices: no neighbour to compare), five cards all showing 7 on both sides (0), and $2 \cdot 10^5$ cards with all numbers different ($2^N$ modulo the prime); and on 5000 random inputs ($N \le 12$, numbers from tiny ranges so that equal neighbours are frequent) against a brute force over all bitmasks.
+
+#### Step 6: Alternative approach
+
+Count the bad choices instead: inclusion–exclusion over the pairs of equal neighbours (topic 2.3) has $2^{N-1}$ terms, far too many. The table is the natural method here; the only real alternative is the same recurrence written with memoisation (Theorem 3.2.4), which would recurse $2 \cdot 10^5$ calls deep and is risky.
+
+### Example 2: Projects
+
+[CSES 1140: Projects](https://cses.fi/problemset/task/1140). In short: $n \le 2 \cdot 10^5$ projects, each running from day $a_i$ to day $b_i$ (up to $10^9$) and paying $p_i$; attend projects that share no day, maximising the total pay.
+
+#### Step 1: Constraints → budget
+
+$2^n$ subsets: impossible. Days go up to $10^9$, so a table indexed by day is too large. $O(n \log n)$ fits: a sort and a binary search per project.
+
+#### Step 2: Question form → candidate tools
+
+- Greedy "earliest end first" (topic 1.5) maximises the *number* of projects, not the pay: one long project that pays $10^9$ can beat many short ones, so the interval-selection card fails.
+- Backtracking (topic 3.1) over projects: $2^n$ leaves in the worst case.
+- A table over a single index: process the projects in order of their end day and ask, for each prefix of that order, the best pay.
+
+#### Step 3: Property check → decision
+
+Sort by end day. For the first $i$ projects, the best choice either skips project $i$ (then it is a best choice of the first $i - 1$), or takes it; then every other chosen project must end before project $i$ starts. Those are exactly the first $j$ projects in the sorted order, where $j$ is the number of projects ending before $a_i$, because the order is by end day. So the best pay of a prefix depends only on the prefix length: one index per state (Theorem 3.2.1), with $j$ found by binary search (topic 1.4). Decision: sort, then $\text{best}[i] = \max(\text{best}[i-1], \ \text{best}[j] + p_i)$.
+
+#### Step 4: Proof for this problem
+
+Let $\text{best}[i]$ be the largest pay of a set of disjoint projects among the first $i$ in the sorted order. If an optimal set for the first $i$ does not use project $i$, it is a set among the first $i - 1$, so its pay is at most $\text{best}[i-1]$, which is reachable. If it uses project $i$, every other project in it ends before $a_i$: it comes earlier in the sorted order, so it ends no later than $b_i$, and if it ended on day $a_i$ or later, its last day would lie in $[a_i, b_i]$ and be shared with project $i$. So the rest is a disjoint set among the first $j$ projects, of pay at most $\text{best}[j]$; conversely any disjoint set among the first $j$ can be extended by project $i$, because all of them end before $a_i$. This is Theorem 3.2.1 with the state "prefix length". Time: $O(n \log n)$ for the sort and the $n$ binary searches.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** The projects are stored as `array<long long, 3>` in the order {end, start, pay}, so that `sort` (which compares arrays element by element) orders them by end day. `lower_bound(ends.begin(), ends.end(), start)` finds the first project ending on day `start` or later; the number of projects before it, `j`, is the number ending before `start` (topic 1.4). Tested on the sample from the problem page, on $2 \cdot 10^5$ one-day projects on different days (all can be taken), on a long project overlapping two short ones (the short ones win, 7 + 3 against 5), and on two projects sharing their boundary day (only one may be taken); and on 5000 random inputs ($n \le 10$, days from a range of 6 or of $10^9$) against a brute force over all subsets.
+
+#### Step 6: Alternative approach
+
+Index the table by day instead of by project: after coordinate compression of the start and end days (topic 1.1), $\text{best}[d]$ = the best pay using days before $d$, with $\text{best}[d] = \max(\text{best}[d - 1], \ \text{best}[a_i] + p_i)$ over projects ending at day $d - 1$. It has at most $2n$ states and the same transitions.
 
 ## 9. Problem ladder
 

@@ -249,6 +249,117 @@ Five short programs: one for each theorem except Fermat's, which the others use.
 
 ## 7. Bug catalogue
 
+Modular arithmetic bugs print numbers of the right size, so a wrong answer looks like a right one. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: starting the product at 1 instead of $1 \bmod m$
+
+Template: powers modulo $m$.
+
+```cpp
+long long r = 1, x = a % m;
+```
+
+Input: `4`, then the queries `0 52 7`, `785596468592400453 10 4`, `864683813122006490 0 1` and `98261370416415380 39 1398302989`.
+
+Wrong output `0 1 1 1122071432` (one per line), correct output `0 1 0 1122071432`. The third query has $b = 0$ and $m = 1$: the loop never runs, and the program prints the starting value 1, which is not a residue modulo 1.
+
+**Fix:** start at `1 % m`. Every value the program prints must already be reduced.
+
+### Bug: multiplying in `long long` with a large modulus
+
+Template: powers modulo $m$.
+
+```cpp
+return x * y % m;
+```
+
+Input: `1`, then `9 44 56837728943256868`.
+
+Wrong output `-39595250385281799`, correct output `30329093742954381`. The modulus is about $5.7 \cdot 10^{16}$, so two residues multiply to about $10^{33}$, far beyond `long long`. The product overflows before `% m`, and the result is even negative.
+
+**Fix:** multiply in `__int128` when the modulus can exceed about $3 \cdot 10^9$ (Theorem 2.2.1, note 1).
+
+### Bug: squaring before using the bit
+
+Template: powers modulo $m$. The two lines of the loop body are swapped.
+
+```cpp
+x = mulmod(x, x, m);
+if (b & 1) r = mulmod(r, x, m);
+```
+
+Input: `1`, then `4 1 7`.
+
+Wrong output `2`, correct output `4`. With $b = 1$ the program squares first and multiplies $r$ by $4^2 = 16 \equiv 2$ instead of by 4. Bit $k$ of $b$ must be paired with $a^{2^k}$, but the swap pairs it with $a^{2^{k+1}}$.
+
+**Fix:** use `x` for the current bit, then square it for the next one: the order of the invariant in Theorem 2.2.1.
+
+### Bug: inverting without checking the GCD
+
+Template: the inverse modulo any $m$. The result of `ext` is ignored.
+
+```cpp
+ext(a % m, m, x, y);
+```
+
+Input: `1`, then `0 5`.
+
+Wrong output `0`, correct output `-1`. For $a = 0$ the GCD is 5, so there is no inverse, but the program still prints the coefficient $x = 0$; and $0 \cdot 0 \not\equiv 1$.
+
+**Fix:** check $g = 1$ before using $x$ (Theorem 2.2.3, part 1). The same applies to Fermat's formula: $0^{p-2} = 0$ is not an inverse.
+
+### Bug: printing a negative coefficient
+
+Template: the inverse modulo any $m$.
+
+```cpp
+cout << x % m << "\n";
+```
+
+Input: `1`, then `7 8`.
+
+Wrong output `-1`, correct output `7`. The extended Euclidean algorithm gives $7 \cdot (-1) + 8 \cdot 1 = 1$, so $x = -1$, and `-1 % 8` is $-1$ in C++. Worse, $-1$ is also the program's code for "no inverse".
+
+**Fix:** `((x % m) + m) % m` (topic 0.4).
+
+### Bug: reducing the exponent modulo $p$
+
+Template: a power tower modulo a prime.
+
+```cpp
+long long e = power(b, c, p);
+```
+
+Input: `1`, then `2 6 6 5`.
+
+Wrong output `2`, correct output `1`. The exponent is $6^6$. Modulo $p - 1 = 4$ it is 0, so $2^{6^6} \equiv 2^0 = 1 \pmod 5$. Modulo $p = 5$ it is 1, which gives $2^1 = 2$.
+
+**Fix:** exponents of a base modulo $p$ repeat with period $p - 1$, not $p$ (Theorem 2.2.5).
+
+### Bug: reducing the exponent of a multiple of $p$
+
+Template: a power tower modulo a prime. The special case for $p \mid a$ is removed.
+
+Input: `1`, then `4 2 2 2`.
+
+Wrong output `1`, correct output `0`. Here $a = 4$ is a multiple of $p = 2$ and the exponent is $2^2 = 4$. Modulo $p - 1 = 1$ the exponent becomes 0, and $4^0 = 1$. But $4^4 = 256$ is even.
+
+**Fix:** Fermat's theorem needs $p \nmid a$. Treat multiples of $p$ first: their positive powers are 0 (Theorem 2.2.5, part 2).
+
+### Bug: the missing minus sign in the inverse table
+
+Template: the inverses of $1, \dots, n$.
+
+```cpp
+inv[i] = (p / i) * inv[p % i] % p;
+```
+
+Input: `3 5`.
+
+Wrong output `2 0`, correct output `2 1`. Without the minus sign, $\operatorname{inv}[2] = 2 \cdot 1 = 2$, but $2 \cdot 2 = 4 \not\equiv 1 \pmod 5$; the inverse is 3. The last value happens to be right ($\operatorname{inv}[3] = 1 \cdot \operatorname{inv}[2] = 2$, two sign errors cancelling), which is why the test prints the sum as well.
+
+**Fix:** $i^{-1} \equiv -\lfloor p/i \rfloor \cdot (p \bmod i)^{-1}$ (Theorem 2.2.6); make it non-negative by subtracting from $p$.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

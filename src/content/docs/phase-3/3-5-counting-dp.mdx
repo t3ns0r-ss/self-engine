@@ -18,15 +18,127 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A robot walks on an $n \times n$ grid with $n = 1000$, from the top-left cell to the bottom-right cell, moving only right or down. Some cells are blocked. How many different walks are there? Print the number modulo $10^9 + 7$.
+
+Without blocked cells the answer is a binomial coefficient ([topic 2.3](../../phase-2/2-3-combinatorics/)): a walk is a choice of which $n - 1$ of its $2n - 2$ moves go down, $\binom{1998}{999}$, a number with 600 digits. With blocked cells the formula breaks, and listing the walks one by one ([topic 3.1](../3-1-backtracking/)) is hopeless.
+
+The key idea: every walk that reaches a cell arrives either from the cell above or from the cell to the left, and the two groups do not overlap. So the number of walks to a cell is the sum of two numbers already computed, $10^6$ additions in all, each taken modulo the prime ([topic 2.2](../../phase-2/2-2-modular-arithmetic/)). This is the counting form of the tables of [topic 3.2](../3-2-dp-foundations/). The same idea counts strings that obey local rules, sums of allowed parts, and tables whose transitions add up a whole range of earlier entries, which prefix sums make fast.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 3.2](../3-2-dp-foundations/), dynamic programming (DP) foundations: counting by the last choice (Theorem 3.2.2), filling in an acyclic order (Theorem 3.2.3), and adding a small fact to the state (Theorem 3.2.5).
+- [Topic 2.2](../../phase-2/2-2-modular-arithmetic/), modular arithmetic: sums, products and differences modulo a prime.
+- [Topic 1.2](../../phase-1/1-2-prefix-sums/), prefix sums: the sum of a range in $O(1)$.
+- [Topic 3.3](../3-3-knapsack/), knapsack: counting multisets (items outside) against sequences (totals outside), Theorem 3.3.3.
+- [Topic 2.3](../../phase-2/2-3-combinatorics/), combinatorics: binomial coefficients, used here only to check small cases.
+
 ### What this topic does not cover
+
+- Grids where moves go in all four directions, and shortest paths in grids: these walks can revisit cells, so there is no filling order; they are graph searches (topic 4.1).
+- Counting for lengths up to $10^{18}$ with a fixed small state: matrix exponentiation (topic 7.6).
+- Counting over all subsets of a small set of positions (topic 3.7) and counting numbers up to a huge bound digit by digit (topic 3.8).
 
 ## 3. Definitions
 
+- A **monotone path** in a grid moves only right or down (or, in other problems, only in a fixed set of directions that never lead back). Example: in a $2 \times 3$ grid there are 3 monotone paths from the top-left to the bottom-right cell.
+- **Counting modulo $p$** means computing the number of objects, which may be astronomically large, as its remainder modulo a prime $p$ such as $10^9 + 7$ or $998244353$.
+- An **acyclic order** on states is a numbering of the states such that every transition goes from a smaller number to a larger one. Example: in a grid with right and down moves, reading the cells row by row, left to right, is such an order.
+- A **composition** of $n$ is an ordered sum of positive parts equal to $n$; an **integer partition** of $n$ is an unordered one. Example: $3 = 1 + 2 = 2 + 1 = 1 + 1 + 1 = 3$ gives 4 compositions but 3 partitions.
+- A **range transition** is a rule $\text{dp}[i][j] = \sum_{k = l}^{r} \text{dp}[i-1][k]$, where the earlier entries summed form a contiguous range of indices.
+
 ## 4. Theory and proofs
+
+### 4.1 The sum rule
+
+Theorem 3.2.2 already counts objects by their last choice. This section states the rule in the form used for paths and strings, with the two conditions that are easy to break, and adds the remainders.
+
+**Theorem 3.5.1 (counting by the last step).** Suppose every object to be counted (a path, a sequence) ends in a state, and removing its last step gives an object that ends in an earlier state, with the following properties: (a) removing the last step is one-to-one on the objects that end in state $s$ and come from state $t$; (b) each object ending in $s$ comes from exactly one state $t$. Then
+$$\text{cnt}[s] = \sum_{t \to s} \text{cnt}[t],$$
+summed over the states $t$ with a step to $s$. Filling the states in an acyclic order gives every count. All of this can be done modulo $p$: reduce after each addition.
+
+*Proof.* Split the objects ending in $s$ by the state $t$ they come from. By (b) the groups do not overlap and cover everything. By (a), removing the last step maps the group of $t$ one-to-one onto the objects ending in $t$ (every object ending in $t$ can be extended by the step $t \to s$, and two different objects stay different after the same step is added). So the group of $t$ has $\text{cnt}[t]$ objects. In an acyclic order every $t$ comes before $s$, so its count is known when $s$ is filled. Remainders modulo $p$ can be added and reduced at every step without changing the final remainder (topic 2.2). $\square$
+
+:::note[This proof needs]
+1. Every object comes from exactly **one** earlier state. If two different steps could lead to the same object, it is counted twice; if the state does not determine what may come next, objects can be missed.
+2. The steps never lead back, so an acyclic order exists (for a grid with right and down moves: row by row).
+3. For a minimum or a maximum (cheapest path) the same table works with min or max in place of the sum (Theorem 3.2.1).
+:::
+
+Grid with right and down moves, `#` blocked; each cell holds the number of paths from the top-left cell:
+
+| | col 1 | col 2 | col 3 | col 4 |
+|---|---|---|---|---|
+| row 1 | 1 | 1 | 1 | 1 |
+| row 2 | 1 | `#` (0) | 1 | 2 |
+| row 3 | 1 | 1 | 2 | 4 |
+
+The answer is 4. Check with topic 2.3: without the block there are $\binom{5}{2} = 10$ paths; the paths through the blocked cell are $2 \cdot 3 = 6$; $10 - 6 = 4$.
+
+### 4.2 Sequences with a small state
+
+**Theorem 3.5.2 (counting with a state).** Count the sequences of length $n$ over an alphabet, where whether a letter may be added depends only on a **state** of the sequence so far, and the new state is a function $\delta(s, x)$ of the old state $s$ and the letter $x$. Let $\text{cnt}[i][s]$ be the number of valid sequences of length $i$ whose state is $s$. Then
+$$\text{cnt}[i][s'] = \sum_{(s, x):\ x \text{ allowed in } s,\ \delta(s, x) = s'} \text{cnt}[i-1][s],$$
+and the answer is the sum of $\text{cnt}[n][s]$ over all states. Time $O(n \cdot (\text{states}) \cdot (\text{letters}))$.
+
+*Proof.* This is Theorem 3.5.1 with the pairs (length, state) as the states, as in Theorem 3.2.5. A valid sequence of length $i$ has exactly one last letter $x$ and exactly one state $s$ before it, because the state is a function of the sequence; removing $x$ gives a valid sequence of length $i - 1$ with state $s$. Two different sequences with the same $(s, x)$ differ before the last letter, so removing it is one-to-one. $\square$
+
+:::note[This proof needs]
+1. The state is **determined** by the sequence so far (a function, not a guess), so each sequence is counted once; and it holds everything the rules look at.
+2. The number of states is small: the last letter, the length of the current run, a remainder, a few flags.
+:::
+
+Example: strings over $\{a, b, c\}$ with no "ab" inside. The rule only looks at the previous letter, and only at whether it is $a$, so two states are enough: "ends with $a$" and "ends with something else". From "ends with $a$", the letters $a$ (state $a$) and $c$ (other) are allowed; from "other", all three are. Starting with 1 and 2 for length 1:
+
+| length | ends with $a$ | other | total |
+|---|---|---|---|
+| 1 | 1 | 2 | 3 |
+| 2 | 3 | 5 | 8 |
+| 3 | 8 | 13 | 21 |
+| 4 | 21 | 34 | 55 |
+
+### 4.3 Sums of parts, and "at least one"
+
+Counting sums of allowed parts is the counting knapsack of topic 3.3: for compositions (ordered) the totals are the outer loop, $f[m] = \sum_{q} f[m - q]$ over the allowed parts $q \le m$; for partitions (unordered) the parts are the outer loop (Theorem 3.3.3). Many problems add a condition such as "at least one part is at least $d$" or "the last part is even". Two tools handle them: add a flag to the state (Theorem 3.5.2), or count the complement.
+
+**Theorem 3.5.3 (complement modulo a prime).** If $A$ is the number of all objects and $B$ the number of objects that violate the condition, then the number that satisfy it is $A - B$; modulo $p$ it is $(A \bmod p - B \bmod p + p) \bmod p$.
+
+*Proof.* The objects that satisfy the condition and those that violate it split all objects into two disjoint groups, so their counts add up to $A$. The remainder of a difference is the difference of the remainders, adjusted into $0..p-1$ by adding $p$ once, since both remainders lie in $0..p-1$. $\square$
+
+:::note[This proof needs]
+1. Both counts are computed exactly modulo the same $p$, and "satisfies" is exactly "does not violate".
+2. In C++, `(A - B) % p` can be negative when $A < B$ as remainders; add $p$ before the final `% p`.
+:::
+
+Example: compositions of 4 with parts from $\{1, 2, 3\}$: $f = 1, 1, 2, 4, 7$ for $m = 0..4$ (1111, 112, 121, 211, 22, 13, 31). Those with all parts below 2 use only the part 1: one composition. So 6 compositions of 4 use at least one part $\ge 2$.
+
+### 4.4 Range transitions with prefix sums
+
+**Theorem 3.5.4 (prefix sums of a row).** Suppose $\text{dp}[i][j] = \sum_{k = l(j)}^{r(j)} \text{dp}[i-1][k]$ for ranges $[l(j), r(j)]$. Let $P[k] = \text{dp}[i-1][0] + \dots + \text{dp}[i-1][k-1]$, with $P[0] = 0$. Then $\text{dp}[i][j] = P[r(j) + 1] - P[l(j)]$, so each row costs $O(\text{row length})$ instead of $O(\text{row length}^2)$. Modulo $p$, compute $P$ modulo $p$ and subtract as in Theorem 3.5.3.
+
+*Proof.* $P[r + 1] - P[l]$ is the sum of the entries with index $l$ to $r$ (topic 1.2); computing $P$ takes one pass over the row. $\square$
+
+:::note[This proof needs]
+1. The entries summed form a **contiguous** range of one row that is already complete (it belongs to an earlier step).
+2. The range ends are clipped to the row: $l \ge 0$ and $r \le$ the last index.
+3. If the range lies in the same row being filled (for example $\text{dp}[j] = \sum_{k = j - d}^{j - 1} \text{dp}[k]$), keep the prefix sums growing as entries are filled; each entry is used only after it is final.
+:::
+
+Example: give $K = 3$ identical candies to 3 children, who can take at most 2, 1 and 2 candies. Let $\text{dp}[i][j]$ be the ways for the first $i$ children to take $j$ candies; child $i$ with cap $c$ takes $t = 0..c$ candies, so $\text{dp}[i][j] = \sum_{k = j - c}^{j} \text{dp}[i-1][k]$, a range:
+
+| $j$ | 0 | 1 | 2 | 3 |
+|---|---|---|---|---|
+| no child | 1 | 0 | 0 | 0 |
+| child 1 (cap 2) | 1 | 1 | 1 | 0 |
+| child 2 (cap 1) | 1 | 2 | 2 | 1 |
+| child 3 (cap 2) | 1 | 3 | 5 | 5 |
+
+The answer is 5: (2, 1, 0), (2, 0, 1), (1, 1, 1), (1, 0, 2), (0, 1, 2).
+
+### 4.5 Probabilities
+
+When every step is chosen uniformly at random (a knight picks one of its 8 moves), the probability of an outcome after $k$ steps is the number of step sequences that produce it divided by the total number of sequences. So a probability table is the counting table with each transition multiplied by the probability of the step, here $1/8$, computed with doubles or as a fraction modulo $p$ (topic 2.2). Theorems 3.5.1 and 3.5.2 hold with these weights: the proof splits the outcomes by the last step in the same way.
 
 ## 5. Recognition Cards
 

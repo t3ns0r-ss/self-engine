@@ -13,6 +13,12 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import minCostJumps from '../../../../code/3.2/min-cost-jumps/solution.cpp?raw';
+import countSteps from '../../../../code/3.2/count-steps/solution.cpp?raw';
+import noRepeat from '../../../../code/3.2/no-repeat/solution.cpp?raw';
+import kNonadjacent from '../../../../code/3.2/k-nonadjacent/solution.cpp?raw';
+import memoCoins from '../../../../code/3.2/memo-coins/solution.cpp?raw';
+import lexSmallest from '../../../../code/3.2/lex-smallest/solution.cpp?raw';
 
 <TopicHeader topic="3.2" />
 
@@ -160,6 +166,80 @@ The same reasoning gives states over two indices: for two strings, "the first $i
 <Cards topic="3.2" />
 
 ## 6. Templates
+
+Six programs: a minimum and a count over one index, an extra fact in the state, two indices, a recursion with a cache, and a reconstruction. Each brute force solves the same problem without a table, by trying every sequence of choices (topic 3.1) or every bitmask (topic 0.5); the memoised recursion is checked against a full table instead.
+
+### Cheapest jumps (Theorem 3.2.1)
+
+<Code code={minCostJumps} lang="cpp" title="min-cost-jumps/solution.cpp" />
+
+**How it works.** `best[i]` is the smallest cost of any jump sequence from stone 0 to stone `i`. Where the frog came from does not change which jumps it may make next or what they cost, so the stone alone is the state (Theorem 3.2.1). The last jump into `i` comes from one of the `k` stones before it, so `best[i]` is the minimum of `best[j] + |h_i − h_j|` over those `j`. Every `j` is smaller than `i`, so filling `i = 1, 2, …` uses only finished values (Theorem 3.2.3). Time $O(nk)$: $10^7$ steps for the largest input.
+
+**C++ details explained.** `LLONG_MAX` marks "not reached yet"; it is overwritten by the first transition, since every stone after the first can be reached from the stone before it. `max(0, i - k)` keeps the first stone of the window inside the array.
+
+**Tested.** Stress-tested against a brute force that tries every jump sequence by recursion, on 5000 random inputs ($n \le 10$, $k \le 4$, heights up to 3 or up to $10^4$). There are also 5 fixed tests: one stone, the example of Section 4.1 with $k = 2$ (answer 30) and $k = 1$ (answer 50), 1000 equal heights, and $10^5$ random heights with $k = 100$; their expected values come from a separate program.
+
+**Alternative formulation.** Push instead of pull: for each `i` in increasing order, update `best[j]` for the `k` stones after it. Every transition is still used once, from a finished state, so the values are the same.
+
+### Counting step sequences (Theorem 3.2.2)
+
+<Code code={countSteps} lang="cpp" title="count-steps/solution.cpp" />
+
+**How it works.** `ways[i]` counts the step sequences that end exactly at stair `i`. Split them by their last step: a sequence whose last step is `step` is a sequence for stair `i − step` followed by that step, and different last steps give different sequences. So `ways[i]` is the sum of `ways[i − step]` (Theorem 3.2.2), and `ways[0] = 1` counts the empty sequence. Each addition is reduced modulo $10^9 + 7$ (topic 2.2).
+
+**C++ details explained.** `for (int step : s)` visits every allowed step (topic 0.6). Both terms of each sum are below $10^9 + 7$, so the sum fits easily in `long long` before the reduction.
+
+**Tested.** Stress-tested against a brute force that lists every step sequence by recursion and counts those that end exactly at $n$, on 5000 random inputs ($n \le 18$, up to 4 step sizes). There are also 5 fixed tests: $n = 1$, $n = 5$ with steps 1 and 2 (answer 8), $n = 40$ with steps 1 and 2 (the stairs count of Section 4.4), $n = 10$ with the single step 3 (answer 0), and $n = 10^6$ with ten step sizes.
+
+**Alternative formulation.** Split by the *first* step instead: `ways[i]` = number of sequences that climb `i` stairs, which is the sum over the first step of the sequences for the remaining `i − step` stairs. It is the same recurrence read from the other end.
+
+### No activity twice in a row (Theorem 3.2.5)
+
+<Code code={noRepeat} lang="cpp" title="no-repeat/solution.cpp" />
+
+**How it works.** The rule "not the same activity as yesterday" makes the next choice depend on yesterday's activity, so the day alone is not a state (Section 4.5). The state is (day `i`, activity `j` on day `i`), and `dp[i][j]` is the best total of days `0..i` that ends with activity `j`. It comes from the best `dp[i − 1][q]` with `q ≠ j`, plus today's points. The answer is the best entry of the last row.
+
+**C++ details explained.** `vector<vector<long long>> dp(n, vector<long long>(m, 0))` makes an $n \times m$ table of zeros. `*max_element(dp[n − 1].begin(), dp[n − 1].end())` returns the largest entry of the last row; the `*` reads the value the returned iterator points to.
+
+**Tested.** Stress-tested against a brute force that tries all $m^n$ plans and rejects those with a repeat, on 5000 random inputs ($n \le 7$, $m \le 3$, points up to 3 or up to $10^4$). There are also 5 fixed tests: one day, the two-day example of Section 4.5 (answer 11), all points zero, $10^5$ days with all points equal, and $10^5$ random days with 10 activities.
+
+**Alternative formulation.** Keep only the best and second-best entries of the previous row (with the activity of the best): for activity `j`, the best different activity is the best one unless it is `j` itself, in which case it is the second best. This makes each day $O(m)$ instead of $O(m^2)$.
+
+### Exactly k elements, no two adjacent (Theorem 3.2.3)
+
+<Code code={kNonadjacent} lang="cpp" title="k-nonadjacent/solution.cpp" />
+
+**How it works.** The state needs two numbers: how many elements have been considered (`i`) and how many have been chosen (`j`), because the count still allowed depends on `j`. `dp[i][j]` is the best sum choosing exactly `j` of the first `i` elements with no two adjacent. Element `i` is either skipped (from `dp[i − 1][j]`) or chosen; then element `i − 1` is not, so the rest comes from the first `i − 2` elements with `j − 1` chosen. Both transitions go to a smaller `i`, so rows in increasing `i` work (Theorem 3.2.3). `NONE` marks states that no valid choice reaches, such as choosing 2 of the first 2 elements.
+
+**C++ details explained.** `LLONG_MIN` is the smallest `long long`; it is used as a marker, never in an addition, so it cannot overflow. `max(i - 2, 0)` turns "the first $-1$ elements" (when $i = 1$) into the empty prefix.
+
+**Tested.** Stress-tested against a brute force that tries every bitmask with $k$ bits and no two adjacent bits, on 5000 random inputs ($n \le 12$, values from $-5..5$ or $-10^9..10^9$, so "impossible" and negative answers both occur). There are also 6 fixed tests: one element, $(1, 2, 3)$ with $k = 2$ (answer 4) and $k = 3$ (impossible), all negative values, 2000 equal values with $k = 1000$, and 300 random values with $k = 100$, checked against a separate program that recurses over (position, count) with a cache.
+
+**Alternative formulation.** Add a second fact instead of skipping two positions: `dp[i][j][t]`, where `t` says whether element `i` was chosen. Then "chosen" may only follow "not chosen". It has twice the states but transitions only from `i − 1`.
+
+### A recursion with a cache (Theorem 3.2.4)
+
+<Code code={memoCoins} lang="cpp" title="memo-coins/solution.cpp" />
+
+**How it works.** The recursion $g(n) = \max(n, g(\lfloor n/2 \rfloor) + g(\lfloor n/3 \rfloor) + g(\lfloor n/4 \rfloor))$ reaches few different arguments, but reaches them many times: without a cache, $g(10^6)$ makes 9 650 404 calls. With the cache `g` stores each result the first time, and for $n = 10^{12}$ only 437 different arguments are ever computed (Theorem 3.2.4). A table indexed by $0..n$ would need $10^{12}$ entries; the cache stores only the reachable ones.
+
+**C++ details explained.** `map<long long, long long> cache` maps each computed argument to its value (topic 0.6). `cache.find(n)` returns an iterator to the entry for `n`, or `cache.end()` if there is none; `it->second` is the stored value. The argument shrinks by at least half at every call, so the recursion is at most about 40 calls deep.
+
+**Tested.** Stress-tested against a full table $g[0..n]$ filled in increasing order, on 5000 random inputs ($n$ up to 30 or up to $10^6$). There are also 5 fixed tests: $n = 0$, $n = 12$ (answer 13: exchange for 6 + 4 + 3), $n = 2$ (answer 2: selling is better), $n = 10^9$ and $n = 10^{12}$, checked against a separate program with a cache.
+
+**Alternative formulation.** Fill a table for all $n$ below a threshold such as $10^6$ and use the recursion with the cache only above it; small arguments, which are reached most often, then cost one array access.
+
+### The smallest optimal choice (Theorem 3.2.6)
+
+<Code code={lexSmallest} lang="cpp" title="lex-smallest/solution.cpp" />
+
+**How it works.** The table is filled from the end: `best[i]` is the largest sum using only positions `i..n − 1`, either skipping `i` or taking it and jumping to `i + 2`. Then the walk goes forward from position 0: position `i` is taken whenever `a[i] + best[i + 2] == best[i]`, which means that some optimal choice for the rest starts with `i`. Taking the first position that still allows the optimum makes the first chosen position as small as possible, then the second, and so on, which is exactly the lexicographically smallest list (Theorem 3.2.6, note 2). A table filled from the front could only tell where an optimal solution *ends*, not where the smallest one *starts*.
+
+**C++ details explained.** `best` has `n + 2` entries so that `best[i + 2]` exists for the last two positions, where it is 0 (nothing left to choose).
+
+**Tested.** Stress-tested against a brute force that tries every bitmask with no two adjacent bits and keeps the best sum, breaking ties by comparing the position lists, on 5000 random inputs ($n \le 12$, values up to 3, so ties are frequent, or up to $10^9$). There are also 5 fixed tests: one element, $(2, 2, 2)$ (positions 1 and 3), $(3, 1, 1, 3)$ (positions 1 and 4), a mixed example, and $10^5$ equal values (every odd position).
+
+**Alternative formulation.** Record the decision while filling: `take[i] = (a[i] + best[i + 2] == best[i])`, then walk forward through the flags. It is the same walk with the comparison stored. A table filled from the front, walked back from the end, also prints an optimal choice, but its tie-break is decided at the end of the list, so it does not give the smallest list in general: for $(2, 2, 2, 2)$ the front table picks its last position first and can return positions 2 and 4 instead of 1 and 3.
 
 ## 7. Bug catalogue
 

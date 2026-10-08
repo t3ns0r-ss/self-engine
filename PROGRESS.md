@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.2
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.2 step 3 recognition cards
-- Next action: 3.2 step 4 templates
+- Last completed step: 3.2 step 4 templates
+- Next action: 3.2 step 5 bug catalogue
 
 ## Gates
 | Gate | Status | Date |
@@ -47,7 +47,7 @@
 | 2.4 | done (on this session's branch) | — |
 | Phase 2 intro and exam | done (on this session's branch) | — |
 | 3.1 | done (on this session's branch) | — |
-| 3.2 | in progress (step 3 done) | — |
+| 3.2 | in progress (step 4 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

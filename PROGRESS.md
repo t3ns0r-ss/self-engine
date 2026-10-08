@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.6
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.5 step 10 self-review
-- Next action: 3.6 step 1 scope
+- Last completed step: 3.6 step 1 scope
+- Next action: 3.6 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -51,6 +51,7 @@
 | 3.3 | done (on this session's branch) | — |
 | 3.4 | done (on this session's branch) | — |
 | 3.5 | done (on this session's branch) | — |
+| 3.6 | in progress (step 1 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -155,10 +156,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.4 (3.2's tables and the counting loop order; 2.2 for arithmetic modulo a prime, including subtraction; 2.3's binomial coefficients as a check on grid counts; 1.2's prefix sums for range transitions; 3.3's counting of multisets against sequences).
-- New: counting paths in a grid with blocked cells (and minimum-cost paths as the same table); the sum rule over an acyclic order of cells; counting sequences and strings with local rules through a small state (last element, last few characters, a running remainder); ordered against unordered sums of allowed parts; transitions that sum over a contiguous range of earlier states, made O(1) with prefix sums of the table; probabilities as counts divided by a total. Cards: decided at step 3 from the four bank patterns (grid-paths, sequence-counting, partition-counting, range-sum-transition).
-- Forbidden keywords: every keyword of topics 3.6–7.8 (interval dp, bitmask dp, digit dp, breadth-first search, topological sort, segment tree, fenwick tree, matrix exponentiation, …). Grids with moves in all four directions (shortest paths, BFS) and counting with matrix powers for huge lengths are out of scope (named only under "does not cover").
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.4 (DP state, transition, DP, tabulation 3.2; knapsack, subset sum 3.3; LIS, LCS, edit distance, common subsequence, alignment 3.4).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.5 (3.2's tables, memoisation and reconstruction; 1.2's prefix sums for segment sums; 3.4's LCS as the contrast for palindromic subsequences; 3.5's counting for interval counts modulo a prime).
+- New: states that are segments [l, r] of a sequence, filled by increasing length; the best split point of a segment (merging neighbours, cutting, bracketing, the last element to be removed); games and processes that take only from the ends, with the value as a score difference; palindromes inside segments (longest palindromic subsequence, fewest insertions, palindrome tables for partitions); the first element paired with a later equal element, splitting the segment into independent parts. Cards: decided at step 3 from the four bank patterns (merge-split, take-from-ends, palindrome-segment, first-element-match).
+- Forbidden keywords: every keyword of topics 3.7–7.8 (bitmask dp, digit dp, breadth-first search, topological sort, segment tree, fenwick tree, …). The Knuth and quadrangle-inequality speed-ups of split-point DP and Manacher's algorithm are out of scope (named only under "does not cover").
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.5 (DP state, transition, DP, tabulation 3.2; knapsack, subset sum 3.3; LIS, LCS, edit distance, common subsequence, alignment 3.4; monotone path, acyclic order, composition, integer partition, range transition 3.5).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

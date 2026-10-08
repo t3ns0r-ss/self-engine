@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
-- Topic: 3.3
+- Topic: 3.4
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.3 step 10 self-review (topic done)
-- Next action: 3.4 step 1 scope
+- Last completed step: 3.4 step 1 scope
+- Next action: 3.4 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -49,6 +49,7 @@
 | 3.1 | done (on this session's branch) | — |
 | 3.2 | done (on this session's branch) | — |
 | 3.3 | done (on this session's branch) | — |
+| 3.4 | in progress (step 1 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -153,10 +154,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1, 3.2 (3.2's states, transitions and tabulation are the base; 2.2 for counts modulo a prime; 1.7 for bitsets of reachable sums; 1.5's greedy as the contrast).
-- New: the 0/1 knapsack table over (items, capacity) and its one-row form with the capacity loop running downwards; indexing by total value instead of weight when weights are huge; unlimited copies with the capacity loop running upwards; counting combinations (order ignored) versus sequences (order counted); reachable subset sums, also as a bitset; limited copies by splitting counts into powers of two. Cards: decided at step 3 from the five bank patterns (zero-one, value-indexed, unbounded, subset-sums, bounded).
-- Forbidden keywords: every keyword of topics 3.4–7.8 (longest increasing subsequence, longest common subsequence, edit distance, counting dp, grid dp, interval dp, bitmask dp, digit dp, topological sort, segment tree, …). Monotone-queue optimisation of bounded knapsack and convex or SMAWK-style speedups are out of scope (named only under "does not cover").
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1, 3.2 (DP state, transition, DP, tabulation, memoisation, optimal substructure 3.2).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.3 (3.2's two-index tables over prefixes; 1.4's binary search for the tails array; 1.1's sorting for problems that reduce to LIS; 0.6's maps).
+- New: subsequences; the longest increasing subsequence by the O(n²) table and by the O(n log n) tails array (strict and non-strict), with reconstruction; reductions to LIS after sorting by one key (envelopes, boxes, chains); the longest common subsequence over prefix pairs, with reconstruction; edit distance (insert, delete, replace) over prefix pairs; counting variants. Cards: decided at step 3 from the four bank patterns (lis, lis-reduction, lcs, edit-distance).
+- Forbidden keywords: every keyword of topics 3.5–7.8 (counting dp, grid dp, interval dp, bitmask dp, digit dp, segment tree, fenwick tree, binary indexed tree, suffix array, …). LIS with counts by a Fenwick tree, and LCS speedups (bitsets of the Hunt–Szymanski kind) are out of scope (named only under "does not cover").
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.3 (DP state, transition, DP, tabulation 3.2; knapsack, subset sum 3.3).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

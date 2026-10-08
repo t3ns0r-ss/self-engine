@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M3 (Phase 1: 1.1, 1.2, revise 1.3, 1.4–1.7, Phase 1 exam)
-- Topic: Phase 1 intro and exam
+- Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
+- Topic: 2.1
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: Phase 1 intro page, exam page and 8 exam problems; e2e passes (placeholder keeps the 1.3 exam problem, exam-link check scoped to page content)
-- Next action: ⏸ M3 gate — wait for the Phase 1 review
+- Last completed step: 2.1 step 1 scope
+- Next action: 2.1 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -16,7 +16,8 @@
 | Final bank review | approved ("Let's begin with material building") | 2026-10-03 |
 | M1 exemplar review | approved ("for beginning this is good enough"; patterns and other changes to come later) | 2026-10-03 |
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
-| M3 Phase 1 review | waiting for review | — |
+| M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
+| M4 Phase 2 review | not reached | — |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)
@@ -38,6 +39,8 @@
 | 1.5 | done (on this session's branch) | — |
 | 1.6 | done (on this session's branch) | — |
 | 1.7 | done (on this session's branch) | — |
+| Phase 1 intro and exam | done (on this session's branch) | — |
+| 2.1 | in progress (step 1 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -142,10 +145,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.6.
-- New: the bitwise operators on whole numbers (and, or, xor, not, shifts), XOR identities (each value is its own inverse, so pairs cancel), prefix XOR (the XOR of a subarray is a pair of prefix values; counting pairs with a map as in 1.2), one bit at a time (sums over pairs or subarrays of XOR, AND or OR from per-bit counts), highest bit first (2^b exceeds the sum of all lower bits, so a greedy from the top bit decides maxima and minima), and the identities a + b = (a ⊕ b) + 2(a & b), a | b = (a ⊕ b) + (a & b). Also popcount and the lowest set bit x & −x. Cards: decided at step 3 from the five bank patterns.
-- Forbidden keywords: every keyword of topics 2.1–7.8 (sieve of eratosthenes, modular inverse, binary exponentiation, inclusion-exclusion, dynamic programming, segment tree, fenwick tree, trie, …).
-- Glossary terms already defined: 0.1–0.6, 1.1–1.6 (bit and bitmask are 0.1 and 0.5 terms).
+- Allowed: 0.1–0.6, 1.1–1.7 (2.1 requires only 0.4; 0.2's divisor pairs and harmonic loops, 0.4's GCD, LCM and Euclid, 1.2's prefix sums are the main tools reused).
+- New: primes and composite numbers, the sieve of Eratosthenes (marking from p², O(N log log N)), the smallest prime factor table and fast factorisation (each step at least halves x), the prime factorisation (existence and uniqueness, taken as known with a short argument), divisor count and divisor sum from the exponents, trial division up to √n for one large number, work over all multiples of every d (harmonic bound), extended Euclid and Bézout's identity, solving a·x + b·y = c and the general solution. Cards: decided at step 3 from the five bank patterns (sieve, spf-factorise, trial-division, multiples-sieve, bezout).
+- Forbidden keywords: every keyword of topics 2.2–7.8 (modular inverse, binary exponentiation, fermat's little theorem, stars and bars, inclusion-exclusion, binomial coefficient, linearity of expectation, dynamic programming, segment tree, …). Möbius inversion and the Chinese remainder theorem are out of scope (named only under "does not cover").
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7 (divisor 0.2; divides, multiple, remainder, congruent, GCD, coprime, LCM, Euclidean algorithm 0.4; integer square root 0.1; harmonic sum 0.2).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

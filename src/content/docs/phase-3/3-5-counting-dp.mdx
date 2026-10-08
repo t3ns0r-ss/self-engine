@@ -202,6 +202,112 @@ Four programs, one per card: paths in a grid, strings with a limit on equal lett
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6. The first five were caught by `scripts/stress.sh`, and the input shown is a short failing input (the shortest among the first 2000 random seeds, or a hand-made one of the same size). The last two only appear once the counts pass the modulus, which small random inputs never reach; they were caught by the large fixed tests, which is why every template has some.
+
+### Bug: a blocked cell keeps the count from above
+
+Template: paths in a grid.
+
+```cpp
+if (g[r][c] == '#') {
+    continue;
+}
+```
+
+Input: the grid of Section 4.1 (`3 4`, then `....`, `.#..`, `....`).
+
+Wrong output `7`, correct output `4`. With one row of counts, `ways[c]` still holds the count of the cell above when a blocked cell is skipped, so the paths "through" the blocked cell are passed on to its right and below.
+
+**Fix:** set `ways[c] = 0` for a blocked cell. With a single row, every cell must be written in every row, because the old value belongs to a different cell.
+
+### Bug: the start cell checked before the block
+
+Template: paths in a grid.
+
+```cpp
+if (r == 0 && c == 0) {
+    ways[c] = 1;
+} else if (g[r][c] == '#') {
+    ways[c] = 0;
+}
+```
+
+Input: `1 1`, then `#`.
+
+Wrong output `1`, correct output `0`. The base case is written before the block is checked, so a blocked start still has one path.
+
+**Fix:** check the block first, or set the base case only for a free start. Test with a blocked start and a blocked end.
+
+### Bug: a new run with any letter
+
+Template: strings with limited runs.
+
+```cpp
+next[1] = total * k % MOD;
+```
+
+Input: `2 2 5` (length 2, two letters, runs up to 5).
+
+Wrong output `6`, correct output `4`. Repeating the last letter is counted twice: once as "the run grows" (state 2) and once as "a new run starts" (state 1). The new state is no longer determined by the string, and Theorem 3.5.2, note 1, fails.
+
+**Fix:** a new run needs a letter different from the last one, $k - 1$ choices. Check that each object reaches exactly one state: write down the state of a short string by hand.
+
+### Bug: unordered sums with the totals outside
+
+Template: sums of parts.
+
+```cpp
+if (t <= 1) {   // the ordered loops used for both modes
+```
+
+Input: `1 5 2 2`, then the parts `2 3` (unordered).
+
+Wrong output `2`, correct output `1`. With the totals outside, 2 + 3 and 3 + 2 are counted separately, but in the unordered mode they are the same sum.
+
+**Fix:** for unordered sums the parts are the outer loop (Theorem 3.3.3). Test with a total that has two orders of the same parts.
+
+### Bug: the range misses its last entry
+
+Template: shares with limits.
+
+```cpp
+dp[j] = (to < 0) ? 0 : (prefix[to] - prefix[from] + MOD) % MOD;
+```
+
+Input: the example of Section 4.4 (`3 3`, then `0 2`, `0 1`, `0 2`).
+
+Wrong output `1`, correct output `5`. `prefix[x]` is the sum of the first `x` entries, so the range `from..to` is `prefix[to + 1] − prefix[from]`; without the `+ 1` the entry `to`, here the share with the smallest amount for the current person, is lost.
+
+**Fix:** with $P[0] = 0$, the sum of entries $l..r$ is $P[r + 1] - P[l]$ (Theorem 3.5.4). Check one range by hand on a row of three entries.
+
+### Bug: no remainder after an addition
+
+Template: paths in a grid.
+
+```cpp
+ways[c] = ways[c] + ways[c - 1];
+```
+
+Input: an empty $18 \times 18$ grid.
+
+Wrong output `2333606220`, correct output `333606206`. There are $\binom{34}{17} = 2333606220$ paths, more than $10^9 + 7$; the program prints the true count instead of its remainder. On larger grids the counts overflow `long long` and the output is garbage.
+
+**Fix:** reduce after every addition (Theorem 3.5.1). Test with an input whose answer is larger than the modulus: a large empty grid.
+
+### Bug: a negative difference
+
+Template: sums of parts.
+
+```cpp
+cout << (countSums(parts) - countSums(small)) % MOD << "\n";
+```
+
+Input: `0 38 3 3`, then the parts `1 2 3` (ordered sums of 38 with at least one 3).
+
+Wrong output `-16926651`, correct output `983073356`. Both counts are remainders; the remainder of all sums (46319335) happens to be smaller than the remainder of the sums without 3 (63245986), although the true counts are in the opposite order. In C++ `%` of a negative number is negative.
+
+**Fix:** `(A - B + MOD) % MOD` (Theorem 3.5.3, note 2). Any subtraction of remainders needs it, even when the true difference is positive.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

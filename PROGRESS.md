@@ -4,8 +4,8 @@
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
 - Topic: 2.3
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.3 step 2 theory
-- Next action: 2.3 step 3 recognition cards
+- Last completed step: 2.3 step 3 recognition cards
+- Next action: 2.3 step 4 templates
 
 ## Gates
 | Gate | Status | Date |
@@ -42,7 +42,7 @@
 | Phase 1 intro and exam | done (on this session's branch) | — |
 | 2.1 | done (on this session's branch) | — |
 | 2.2 | done (on this session's branch) | — |
-| 2.3 | in progress (step 2 done) | — |
+| 2.3 | in progress (step 3 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

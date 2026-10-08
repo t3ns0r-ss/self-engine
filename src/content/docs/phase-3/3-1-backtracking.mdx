@@ -174,11 +174,13 @@ Five programs: two that list objects without repeats, one placement search, one 
 
 **How it works.** `current` holds the values placed so far and `used[i]` tells whether index $i$ is already placed. At each position, every unused index is tried, except that a value is skipped if an equal value at a smaller index is still unused. So equal values are always placed in the order of their indices, and two arrangements that differ only by swapping equal values are not both produced. Both changes, `used[i]` and `current`, are undone after the call.
 
-**C++ details explained.** `vector<bool> used` stores one flag per index; `used.assign(n, false)` sets its size to $n$ and every flag to false. The condition `!used[i - 1]` is the whole trick; Section 7 shows what happens with `used[i - 1]` instead.
+**C++ details explained.** `vector<bool> used` stores one flag per index; `used.assign(n, false)` sets its size to $n$ and every flag to false. The condition `!used[i - 1]` is the whole trick.
 
 **Tested.** Stress-tested against a brute force that runs `next_permutation` from the sorted list (Theorem 0.5.3), on 5000 random inputs ($n \le 7$, values from 1 to at most 4). There are also 5 fixed tests: one value, $(1, 1, 2)$, four equal values, three copies each of 1, 2, 3 ($\frac{9!}{3!\,3!\,3!} = 1680$ arrangements), and seven different values (5040).
 
-**Alternative formulation.** Keep a count for each distinct value instead of `used`: at each position, try each distinct value whose count is positive, decrease its count, and restore it after the call. Each value is tried once per position, so no skip rule is needed.
+**Alternative formulation.** Writing `used[i - 1]` instead of `!used[i - 1]` is also correct, and it passed the same 5000 stress tests when tried as a bug: it forces equal values to be placed right to left instead of left to right, which again allows exactly one order of the equal copies. But it finds that out late. A copy can be placed only after all the copies to its right, so most branches place a wrong copy first and run into a dead end deeper down: for eight equal values, the version above makes 9 calls and this one 2 781, and for $(1, 1, 1, 2, 2, 2)$ it is 69 calls against 327, for the same 20 arrangements.
+
+Another variant keeps a count for each distinct value instead of `used`: at each position, try each distinct value whose count is positive, decrease its count, and restore it after the call. Each value is tried once per position, so no skip rule is needed.
 
 ### Counting queen placements (Theorem 3.1.1)
 
@@ -217,6 +219,108 @@ Five programs: two that list objects without repeats, one placement search, one 
 **Alternative formulation.** Sort both lists and move two pointers (topic 1.3): as $x$ increases through the sorted left list, the largest valid $y$ only moves down. This replaces the binary searches by one $O(2^{n/2})$ pass after sorting.
 
 ## 7. Bug catalogue
+
+Backtracking bugs rarely crash: the program runs and prints a wrong list or a wrong count, often only on inputs with repeated values or ties. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: skipping equal values across depths
+
+Template: distinct sub-multisets.
+
+```cpp
+if (i > 0 && a[i] == a[i - 1]) continue;
+```
+
+Input: `2`, then `0 0`.
+
+Wrong output: the 2 collections $\{\}$ and $\{0\}$; correct output: 3 collections, also $\{0, 0\}$. The second 0 is the *first* try of the loop in the call where the first 0 was just taken, but the condition compares it with the previous index anyway and skips it.
+
+**Fix:** skip only a repeat within the same loop, `i > start` (Theorem 3.1.2, condition 2): a value equal to the one just taken is a different choice, not a repeat.
+
+### Bug: forgetting to undo
+
+Template: distinct sub-multisets. The line `chosen.pop_back();` is deleted.
+
+Input: `2`, then `0 1`.
+
+Wrong output: the last collection is $\{0, 1, 1\}$; correct: $\{1\}$. After the call for $\{0, 1\}$ returns, the 1 is never removed, then the 0's call ends without removing the 0 either, so the next try adds a 1 to the leftover $\{0, 1\}$.
+
+**Fix:** every change made before a recursive call is undone after it (Theorem 3.1.1, condition 2). Write the undo line right after the call, before anything else.
+
+### Bug: no skip for equal values
+
+Template: distinct arrangements. The skip line is deleted.
+
+Input: `2`, then `1 1`.
+
+Wrong output: `2`, then `1 1` twice; correct output: `1`, then `1 1` once. The two copies of 1 are different indices, so "place index 0, then index 1" and "place index 1, then index 0" are both produced.
+
+**Fix:** fix one order for equal values (Theorem 3.1.2): skip a value when an equal value with a smaller index is still unused.
+
+### Bug: undoing only part of the state
+
+Template: queen placements.
+
+```cpp
+colUsed[c] = false;
+```
+
+Input: `4`, then a free $4 \times 4$ board.
+
+Wrong output `0`, correct output `2`. The diagonal marks of every queen ever tried stay set, so after the first dead end the board is full of stale diagonals and the two real solutions are rejected.
+
+**Fix:** undo every mark that was set before the call. When several arrays are updated together, clear them in one statement that mirrors the one that set them.
+
+### Bug: checking only one diagonal direction
+
+Template: queen placements. The test `antiUsed[row + c]` is removed.
+
+Input: `2`, then a free $2 \times 2$ board.
+
+Wrong output `1`, correct output `0`. The queens at $(0, 1)$ and $(1, 0)$ attack each other along an anti-diagonal ($0 + 1 = 1 + 0$), but only diagonals with equal `row - c` are checked.
+
+**Fix:** list every constraint and check each one when its last item is placed. Two queens share a line in four ways: row (impossible here), column, diagonal, anti-diagonal.
+
+### Bug: a symmetry cut that is too strong
+
+Template: smallest largest load.
+
+```cpp
+if (load[v] <= load[w]) seen = true;
+```
+
+Input: `7 2`, then `2 6 8 14 8 6 9`.
+
+Wrong output `28`, correct output `27` (for example $9 + 8 + 8 + 2$ against $14 + 6 + 6$). Workers with *equal* loads are interchangeable, but a worker with a larger load is not: the cut now forbids giving a job to a worker that is more loaded than an earlier one, which comes close to the greedy rule "always the least loaded worker", and that rule is not optimal.
+
+**Fix:** a symmetry cut may only skip choices that lead to the same set of outcomes. Prove the swap argument before cutting: swapping two workers with equal loads changes nothing; with different loads it does.
+
+### Bug: an estimate that is not optimistic
+
+Template: smallest largest load.
+
+```cpp
+if (i < n && currentMax + job[i] >= best) return;
+```
+
+Input: `3 3`, then `8 1 1`.
+
+Wrong output `9`, correct output `8`. The estimate assumes the next job lands on the most loaded worker, but it can go to an empty one. After the assignment with loads $(9, 1, 0)$ gives `best` $= 9$, the branch $8$ on worker 0 and $1$ on worker 1 has estimate $8 + 1 = 9 \ge 9$ and is cut, although its completion has largest load 8.
+
+**Fix:** the estimate must never be worse than some completion (Theorem 3.1.3, condition 1). The current largest load is safe; "plus the next job" is not.
+
+### Bug: `lower_bound` for "at most"
+
+Template: counting subsets with a bounded sum.
+
+```cpp
+count += lower_bound(right.begin(), right.end(), T - x) - right.begin();
+```
+
+Input: `1 0`, then `4`.
+
+Wrong output `0`, correct output `1` (the empty subset has sum $0 \le 0$). `lower_bound` stops at the first $y \ge T - x$, so it counts only the sums $y < T - x$ and misses every subset whose sum is exactly $T$.
+
+**Fix:** "at most $v$" is the prefix before the first element *greater* than $v$: `upper_bound` (topic 1.4). Test with a $T$ that some subset sum hits exactly.
 
 ## 8. Worked examples
 

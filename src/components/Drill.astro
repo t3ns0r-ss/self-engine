@@ -1,22 +1,27 @@
 ---
 // Identification drill (PLAN.md Sections 6.10 and 10.3). Usage in MDX: <Drill topic="1.3" />
 import { loadData, problemsOf } from '../lib/data';
-import { cardsUpTo, cardsOfTopic } from '../lib/cards';
+import { cardsUpTo, findCard, type CardRef } from '../lib/cards';
 import DrillIsland, { type DrillItem, type CardOption } from './DrillIsland';
 
 const { topic } = Astro.props as { topic: string };
 const data = await loadData();
 const tf = data.topics[topic];
 const probs = new Map(problemsOf(data, topic, ['drill']).map((p) => [p.id, p]));
+const answers: CardRef[] = [];
 const items: DrillItem[] = (tf?.drill ?? []).map((d) => {
   const p = probs.get(d.problem)!;
-  const card = cardsOfTopic(data, d.answer_topic).find((c) => c.id === d.answer_card)!;
+  const card = findCard(data, d.answer_topic, d.answer_card)!;
+  answers.push(card);
   return {
     id: p.id, title: p.title, url: p.url, source: p.source, difficulty: p.difficulty, summary: p.summary,
     answer: `${d.answer_topic}:${d.answer_card}`, answerName: `${card.name} (${d.answer_topic})`,
     property: d.property, why: d.why_others_fail,
   };
 });
-const options: CardOption[] = cardsUpTo(data, topic).map((c) => ({ value: `${c.topic}:${c.id}`, label: `${c.topic} ${c.name}` }));
+const cards = cardsUpTo(data, topic);
+// An answer that is a bank pattern rather than a written card still needs to be selectable.
+for (const a of answers) if (!cards.some((c) => c.topic === a.topic && c.id === a.id)) cards.push(a);
+const options: CardOption[] = cards.map((c) => ({ value: `${c.topic}:${c.id}`, label: `${c.topic} ${c.name}` }));
 ---
 <DrillIsland client:load items={items} options={options} />

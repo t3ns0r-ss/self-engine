@@ -10,6 +10,15 @@ export function cardsOfTopic(data: SiteData, topic: string): CardRef[] {
   return (data.patterns[topic]?.patterns ?? []).map((p) => ({ topic, id: p.id, name: p.name, property: p.precondition }));
 }
 
+/** A card of `topic` by id, falling back to the topic's bank pattern with that id (the validator
+ *  accepts either as a drill answer). */
+export function findCard(data: SiteData, topic: string, id: string): CardRef | undefined {
+  const c = cardsOfTopic(data, topic).find((x) => x.id === id);
+  if (c) return c;
+  const p = (data.patterns[topic]?.patterns ?? []).find((x) => x.id === id);
+  return p && { topic, id: p.id, name: p.name, property: p.precondition };
+}
+
 /** Every card from topics up to and including `topic` (by curriculum order). */
 export function cardsUpTo(data: SiteData, topic: string): CardRef[] {
   const order = data.curriculum.find((t) => t.id === topic)!.order;

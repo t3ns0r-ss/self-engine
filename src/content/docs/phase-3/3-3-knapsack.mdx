@@ -18,15 +18,123 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A shop has $n = 100$ books, book $i$ costing $w_i$ and having $v_i$ pages. With a budget of $W = 10^5$, buy books (each at most once) to get as many pages as possible.
+
+Backtracking ([topic 3.1](../3-1-backtracking/)) tries the $2^{100} \approx 1.3 \cdot 10^{30}$ subsets; branch and bound cuts some, but on bad inputs not nearly enough. Greedy by pages per unit of price ([topic 1.5](../../phase-1/1-5-greedy-1/)) fails: with budget 10 and books (price 6, 60 pages), (price 5, 45 pages), (price 5, 45 pages), the best ratio takes the first book and then nothing fits, 60 pages, while the two others give 90.
+
+The key idea: after deciding about the first $i$ books, the only thing that matters for the rest is how much money has been spent. So the state is (books decided, money spent), at most $101 \cdot (10^5 + 1) \approx 10^7$ states, each with two transitions (skip the book or buy it). This **knapsack** table is the model for a whole family of problems: items with a size and a value, a capacity, and a best total or a count.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 3.2](../3-2-dp-foundations/), dynamic programming (DP) foundations: states, transitions, Theorems 3.2.1–3.2.3, saving memory with rows, and the loop-order bug for counting.
+- [Topic 2.2](../../phase-2/2-2-modular-arithmetic/), modular arithmetic: counts printed modulo a prime.
+- [Topic 1.7](../../phase-1/1-7-bits/), bits: shifts and bitwise or, used here on a bitset of reachable sums (defined in Section 3).
+- [Topic 1.5](../../phase-1/1-5-greedy-1/), greedy: the contrast; greedy is right for divisible goods, not for whole items.
+
 ### What this topic does not cover
+
+- Choosing a subset of items whose order matters, or covering positions of a sequence: sequence problems such as the longest increasing subsequence are in topic 3.4.
+- Counting paths in grids (grid dp, counting dp): topic 3.5.
+- Knapsack over subsets of a small set (bitmask dp): topic 3.7.
+- Speeding up bounded knapsack with a monotone queue per remainder, and other advanced optimisations: not part of this course; power-of-two splitting (Section 4.5) is enough at this level.
 
 ## 3. Definitions
 
+- An **item** has a **weight** $w_i$ (its size, price or cost) and a **value** $v_i$. A **capacity** $W$ bounds the total weight of the chosen items.
+- In the **0/1 knapsack** each item is taken at most once; in the **unbounded knapsack** any number of copies may be taken; in the **bounded knapsack** item $i$ may be taken at most $c_i$ times.
+- A **subset sum** is the total of the numbers in some subset; a sum $s$ is **reachable** if some subset adds up to exactly $s$. Example: from $(2, 3, 7)$ the reachable sums are $0, 2, 3, 5, 7, 9, 10, 12$.
+- A **bitset** stores many true/false values as the bits of machine words, so that a shift or an or acts on 64 of them at once (topic 1.7).
+
 ## 4. Theory and proofs
+
+### 4.1 Each item at most once
+
+Number the items $1..n$ and let $\text{best}[i][c]$ be the largest total value of a subset of the first $i$ items with total weight at most $c$.
+
+**Theorem 3.3.1 (0/1 knapsack).** $\text{best}[0][c] = 0$ for all $c \ge 0$, and for $i \ge 1$
+$$\text{best}[i][c] = \max\left(\text{best}[i-1][c], \ \text{best}[i-1][c - w_i] + v_i\right),$$
+where the second option exists only when $w_i \le c$. The answer is $\text{best}[n][W]$, computed in $O(nW)$ time. The same values are obtained with a single row `best[c]`, updated for each item with $c$ running **downwards** from $W$ to $w_i$.
+
+*Proof.* A subset of the first $i$ items with weight at most $c$ either avoids item $i$, and is then a subset of the first $i - 1$ items with weight at most $c$, or contains it, and then the rest is a subset of the first $i - 1$ items with weight at most $c - w_i$. Both cases are allowed for every such subset of the first $i - 1$ items, so the maximum over all subsets is the larger of the two maxima (Theorem 3.2.1, with the state (items decided, capacity left)). For the single row: when `best[c]` is updated, the entry `best[c − w_i]` has a smaller index, which a downward loop has not yet touched in this round, so it still holds $\text{best}[i-1][c - w_i]$. $\square$
+
+:::note[This proof needs]
+1. Each item is either in or out, independently of the others except through the total weight (no item excludes or requires another).
+2. The capacity is an integer small enough to index: $n \cdot W$ around $10^8$ at most.
+3. For the single row, the loop over $c$ runs downwards, so that each item is used at most once.
+:::
+
+Trace for items (weight, value) $(3, 30), (4, 50), (5, 60)$ and $W = 8$:
+
+| capacity $c$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|---|
+| after $(3, 30)$ | 0 | 0 | 0 | 30 | 30 | 30 | 30 | 30 | 30 |
+| after $(4, 50)$ | 0 | 0 | 0 | 30 | 50 | 50 | 50 | 80 | 80 |
+| after $(5, 60)$ | 0 | 0 | 0 | 30 | 50 | 60 | 60 | 80 | 90 |
+
+The answer is 90 (weights $3 + 5$). If the single row were updated upwards, item $(3, 30)$ alone would already give `best[6] = 60` by taking it twice; Section 7 shows this bug.
+
+### 4.2 Small values, huge weights
+
+When the weights go up to $10^9$ the table over capacities is impossible. But if the values are small, exchange the roles.
+
+**Theorem 3.3.2 (indexing by value).** Let $\text{minw}[i][v]$ be the smallest total weight of a subset of the first $i$ items whose total value is exactly $v$ ($+\infty$ if none). Then $\text{minw}[0][0] = 0$, $\text{minw}[0][v] = \infty$ for $v > 0$, and
+$$\text{minw}[i][v] = \min\left(\text{minw}[i-1][v], \ \text{minw}[i-1][v - v_i] + w_i\right).$$
+The answer is the largest $v$ with $\text{minw}[n][v] \le W$, in $O(n \cdot V)$ time where $V = \sum v_i$.
+
+*Proof.* The same case split as Theorem 3.3.1, with "total value exactly $v$" as the second index and the smallest weight as the quantity. A total value $v$ is achievable within the capacity exactly when the lightest subset of value $v$ fits. $\square$
+
+:::note[This proof needs]
+1. As for Theorem 3.3.1: items are independent except through the totals.
+2. The sum of the values is small enough to index ($n \cdot V$ around $10^8$ at most), even if the weights are huge.
+3. "Exactly $v$" with $\infty$ for impossible values; reading the answer needs the largest feasible $v$, not the last entry.
+:::
+
+Example: 100 items with weights up to $10^9$ and values up to 1000 give $V \le 10^5$ and $10^7$ states, while the capacity table would need $10^{11}$ columns.
+
+### 4.3 Unlimited copies, and counting
+
+**Theorem 3.3.3 (unbounded knapsack).** If every item may be taken any number of times, then with a single row and $c$ running **upwards** from $w_i$ to $W$ for each item,
+`best[c] = max(best[c], best[c − w_i] + v_i)`
+gives the largest value of a multiset of items with total weight at most $c$. The same loops with `+` in place of `max` and `ways[0] = 1` count the multisets of items with total weight exactly $c$, each multiset once.
+
+*Proof.* Process the items in order and let $R_i[c]$ be the row after item $i$: the best over multisets that use only items $1..i$. A multiset of items $1..i$ with weight at most $c$ either uses no copy of item $i$ (value at most $R_{i-1}[c]$) or uses at least one; removing one copy leaves a multiset of items $1..i$ with weight at most $c - w_i$. So $R_i[c] = \max(R_{i-1}[c], R_i[c - w_i] + v_i)$. An upward loop reads `best[c − w_i]` after it was updated in this round, so it reads $R_i[c - w_i]$, as required. For counting, the same split is a partition: multisets without item $i$, and multisets with at least one copy (in bijection with multisets of weight $c - w_i$ by removing one copy). Each multiset is counted once because the items are added in a fixed order, item 1 first. $\square$
+
+:::note[This proof needs]
+1. Copies are unlimited, so after taking one copy the same item is still available: the upward loop reads the current row.
+2. For counting, the order of the items in a solution does not matter (each multiset once), so the item loop is the outer loop. To count ordered sequences instead, put the capacity loop outside and the items inside (Theorem 3.2.2).
+3. For a minimum (fewest coins), use `min` and $+\infty$ for unreachable totals, with `best[0] = 0`.
+:::
+
+Example with coins $1, 2$ and total 3: the item-outer loop counts the multisets $\{1, 1, 1\}$ and $\{1, 2\}$: 2. The capacity-outer loop counts the sequences $111, 12, 21$: 3.
+
+### 4.4 Reachable sums
+
+**Theorem 3.3.4 (subset sums).** Let $\text{reach}$ be a row of booleans with only $\text{reach}[0]$ true. For each number $a_i$, set $\text{reach}[s] \mathrel{|}= \text{reach}[s - a_i]$ for $s$ running downwards from $S$ to $a_i$. Afterwards $\text{reach}[s]$ is true exactly when some subset sums to $s$. With a bitset, one item is the single operation `reach |= reach << a_i`, so the total time is $O(n \cdot S / 64)$.
+
+*Proof.* This is Theorem 3.3.1 with booleans: a sum $s$ is reachable with the first $i$ numbers exactly when it was reachable without $a_i$ or $s - a_i$ was reachable without it. In the bitset form, bit $s$ of `reach << a_i` is bit $s - a_i$ of `reach`, all computed from the old value at once, so each number is used at most once. $\square$
+
+:::note[This proof needs]
+1. Only reachability is asked (or a count, or the closest reachable sum); the numbers are taken at most once.
+2. The range of sums $S$ is small enough: $n \cdot S$ up to about $10^8$, or about $6 \cdot 10^9$ with a bitset, which does 64 sums per operation.
+3. With a bitset, the size must be a constant known when compiling (`bitset<100001>`).
+:::
+
+Example: numbers $(2, 3, 7)$. After 2: $\{0, 2\}$; after 3: $\{0, 2, 3, 5\}$; after 7: $\{0, 2, 3, 5, 7, 9, 10, 12\}$, the list of Section 3.
+
+### 4.5 Limited copies
+
+**Theorem 3.3.5 (power-of-two splitting).** Let $c \ge 1$ and let $k$ be the largest integer with $2^k - 1 \le c$. Split $c$ copies of an item into bundles of $1, 2, 4, \dots, 2^{k-1}$ copies and one bundle of $r = c - (2^k - 1)$ copies (omitted if $r = 0$). Then the counts obtained by choosing some of the bundles are exactly $0, 1, \dots, c$. So the bounded knapsack becomes a 0/1 knapsack with about $\log_2 c$ items per original item, in $O(W \sum_i \log c_i)$ time.
+
+*Proof.* Every bundle choice uses at most all bundles, $1 + 2 + \dots + 2^{k-1} + r = c$ copies, so no count above $c$ appears. Conversely take $0 \le t \le c$. If $t < 2^k$, write $t$ in binary with the bundles $1, \dots, 2^{k-1}$. Otherwise $t \ge 2^k$, and $t - r$ satisfies $0 < 2^k - r \le t - r \le c - r = 2^k - 1$; the inequality $r < 2^k$ holds because $k$ is largest, so $2^{k+1} - 1 > c$, that is $r = c - 2^k + 1 < 2^k$. Write $t - r$ in binary and add the bundle $r$. $\square$
+
+:::note[This proof needs]
+1. Copies of one item are interchangeable, so only the number taken matters.
+2. The 0/1 version (downward loop) is run on the bundles, each bundle as one item of weight (size × $w_i$) and value (size × $v_i$).
+:::
+
+Example: $c = 10$: bundles $1, 2, 4$ and $r = 3$. Then $6 = 2 + 4$, $8 = 1 + 4 + 3$, $10 = 1 + 2 + 4 + 3$.
 
 ## 5. Recognition Cards
 

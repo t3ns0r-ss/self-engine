@@ -17,6 +17,8 @@ import matrixChain from '../../../../code/3.6/matrix-chain/solution.cpp?raw';
 import endGame from '../../../../code/3.6/end-game/solution.cpp?raw';
 import palindromeSubsequence from '../../../../code/3.6/palindrome-subsequence/solution.cpp?raw';
 import bracketPairs from '../../../../code/3.6/bracket-pairs/solution.cpp?raw';
+import example1 from '../../../../code/3.6/example-1/solution.cpp?raw';
+import example2 from '../../../../code/3.6/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.6" />
 
@@ -289,6 +291,72 @@ Wrong output `2`, correct output `0`. A partner must have the matching type; the
 **Fix:** test the pair with `matches`. Test with two bracket types and crossing pairs such as "([)]".
 
 ## 8. Worked examples
+
+### Example 1: Slimes
+
+[AtCoder Educational DP Contest (EDPC), problem N: Slimes](https://atcoder.jp/contests/dp/tasks/dp_n). In short: $N \le 400$ slimes in a row with sizes up to $10^9$; combining two neighbours of sizes $x$ and $y$ gives one slime of size $x + y$ and costs $x + y$. Find the least total cost of combining all of them.
+
+#### Step 1: Constraints → budget
+
+$N = 400$: $O(N^3) \approx 400^3 / 6 \approx 10^7$ steps is fast. The costs reach $400 \cdot 400 \cdot 10^9$, so `long long`.
+
+#### Step 2: Question form → candidate tools
+
+- Trying every order of combinations (topic 3.1): $(N - 1)!$ orders.
+- Greedy "combine the cheapest neighbouring pair" (topic 1.5): fails, as Section 1 shows with $(2, 2, 1, 2)$.
+- Huffman's greedy with a heap (topic 0.6): only valid when any two slimes may be combined, not just neighbours.
+- The best split point (Theorem 3.6.2): the merge-split card.
+
+#### Step 3: Property check → decision
+
+The card needs a last event that splits the segment into independent parts. The last combination joins one slime made from slimes $1..k$ with one made from $k + 1..N$: only neighbours are ever combined, so each side is a contiguous block, and the two blocks never interacted. Its cost is the total size of the row, whatever $k$ is. Decision: $\text{best}[l][r] = \min_k (\text{best}[l][k] + \text{best}[k+1][r]) + S(l, r)$, filled by length.
+
+#### Step 4: Proof for this problem
+
+This is Theorem 3.6.2 word for word, with slimes as piles: the last combination of $[l, r]$ costs $S(l, r) = $ prefix$[r] - $ prefix$[l - 1]$ for every split point, and the two sides are combined independently, each at least at its own best cost, which is achievable. The table is filled by increasing length (Theorem 3.6.1), so both sides are known when $[l, r]$ is computed.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** The sizes are not stored; only their prefix sums are, since the recurrence uses nothing else. `low` collects the best split before the segment's total is added once. Tested on the four samples from the problem page and on 400 random sizes up to $10^9$ (from a separate program); and on 5000 random inputs ($N \le 7$) against a brute force that tries every order of combinations.
+
+#### Step 6: Alternative approach
+
+Memoised recursion over $(l, r)$ (Theorem 3.2.4) gives the same $O(N^3)$. There is also a faster $O(N^2)$ method for this exact cost (Knuth's optimisation, which uses the fact that the best split point moves monotonically), but it needs a proof outside this course; at $N = 400$ the cubic table is enough.
+
+### Example 2: Palindrome Partitioning II
+
+[LeetCode 132: Palindrome Partitioning II](https://leetcode.com/problems/palindrome-partitioning-ii/). In short: cut a string of length up to 2000 into pieces that are all palindromes, using as few cuts as possible.
+
+#### Step 1: Constraints → budget
+
+$n = 2000$: $O(n^2) = 4 \cdot 10^6$ fits; $O(n^3) = 8 \cdot 10^9$ does not.
+
+#### Step 2: Question form → candidate tools
+
+- Trying every set of cuts (topic 0.5): $2^{1999}$ sets.
+- Greedy "take the longest palindrome from the left" (topic 1.5): fails. For "abaab" the longest palindrome at the start is "aba", leaving "a" and "b" (2 cuts), while "a" + "baab" needs only 1.
+- A segment table with a split point (Theorem 3.6.2): correct but $O(n^3)$.
+- The palindrome table of Section 4.4, followed by a one-index table over prefixes (topic 3.2): the palindrome-segment card.
+
+#### Step 3: Property check → decision
+
+The card asks whether the answer depends on palindromes inside segments: here every piece must be a palindrome, and whether $s_l..s_r$ is one depends only on $s_l = s_r$ and the inner segment. So $\text{pal}[l][r]$ is an $O(n^2)$ table. The cuts themselves are a sequence from left to right: the last piece of a prefix is some palindrome $s_j..s_{i-1}$. Decision: the palindrome table, then $\text{pieces}[i] = \min_{j:\ \text{pal}[j][i-1]} \text{pieces}[j] + 1$, both $O(n^2)$.
+
+#### Step 4: Proof for this problem
+
+$\text{pal}[l][r]$ is correct by induction on the length: a string of length at least 2 is a palindrome exactly when its ends are equal and the inside is a palindrome, and lengths 0 and 1 are palindromes. For the pieces: a partition of the prefix of length $i$ into palindromes ends with one piece $s_j..s_{i-1}$, which must be a palindrome, and the rest is a partition of the prefix of length $j$; every such combination is valid. So the fewest pieces is the minimum over valid $j$ of $\text{pieces}[j] + 1$ (Theorem 3.2.1), and the answer is that number minus one, since $k$ pieces need $k - 1$ cuts.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `vector<vector<char>>` stores the $4 \cdot 10^6$ true/false values in 4 MB; `vector<bool>` would also work but is slower to index. The condition `r - l < 2 || pal[l + 1][r - 1]` handles lengths 1 and 2, whose inside is empty. Tested on the three examples from the problem page, on a random string of length 2000 over two letters, and on 1000 a's, one b and 999 a's (1 cut: "a" and the rest); and on 5000 random strings (length $\le 14$) against a brute force that tries every set of cuts.
+
+#### Step 6: Alternative approach
+
+Expand around each centre (as for the longest palindromic substring) and, for every palindrome $s_j..s_{i-1}$ found, relax $\text{pieces}[i]$ from $\text{pieces}[j]$. It visits the same $O(n^2)$ palindromes without storing the table, in $O(n)$ memory.
 
 ## 9. Problem ladder
 

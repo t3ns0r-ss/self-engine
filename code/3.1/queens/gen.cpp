@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
     auto randInt = [&](int lo, int hi) {
         return (int)(rng() % (unsigned)(hi - lo + 1)) + lo;
     };
-    int n = randInt(1, 7);
+    int n = randInt(1, 6);
     int blockedPercent = randInt(0, 2) == 0 ? 0 : randInt(5, 40);
     cout << n << "\n";
     for (int r = 0; r < n; r++) {

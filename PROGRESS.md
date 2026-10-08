@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.1
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.1 step 9 self-test, checkpoint, reviews, decision map
-- Next action: 3.1 step 10 self-review
+- Last completed step: 3.1 step 10 self-review (topic done)
+- Next action: 3.2 step 1 scope
 
 ## Gates
 | Gate | Status | Date |
@@ -46,7 +46,7 @@
 | 2.3 | done (on this session's branch) | — |
 | 2.4 | done (on this session's branch) | — |
 | Phase 2 intro and exam | done (on this session's branch) | — |
-| 3.1 | in progress (step 9 done) | — |
+| 3.1 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

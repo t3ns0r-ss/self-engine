@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.4
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.4 step 5 bug catalogue
-- Next action: 3.4 step 6 problems
+- Last completed step: 3.4 step 6 worked examples
+- Next action: 3.4 step 7 problem ladder
 
 ## Gates
 | Gate | Status | Date |
@@ -49,7 +49,7 @@
 | 3.1 | done (on this session's branch) | — |
 | 3.2 | done (on this session's branch) | — |
 | 3.3 | done (on this session's branch) | — |
-| 3.4 | in progress (step 5 done) | — |
+| 3.4 | in progress (step 6 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -63,7 +63,7 @@
 | 1.1 | short | 23 | 29 |
 | 1.2 | short | 22 | 33 |
 | 1.3 | short | 24 | 34 |
-| 1.4 | short | 20 | 33 |
+| 1.4 | short | 20 | 34 |
 | 1.5 | short | 20 | 31 |
 | 1.6 | short | 16 | 20 |
 | 1.7 | short | 22 | 25 |
@@ -72,9 +72,9 @@
 | 2.3 | short | 24 | 25 |
 | 2.4 | short | 15 | 18 |
 | 3.1 | short | 22 | 27 |
-| 3.2 | short | 33 | 29 |
+| 3.2 | short | 33 | 31 |
 | 3.3 | short | 19 | 27 |
-| 3.4 | short | 20 | 17 |
+| 3.4 | short | 16 | 25 |
 | 3.5 | short | 22 | 30 |
 | 3.6 | short | 21 | 18 |
 | 3.7 | short | 19 | 9 |

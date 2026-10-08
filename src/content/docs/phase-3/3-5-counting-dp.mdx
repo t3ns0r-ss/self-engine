@@ -17,6 +17,8 @@ import gridPaths from '../../../../code/3.5/grid-paths/solution.cpp?raw';
 import runLimit from '../../../../code/3.5/run-limit/solution.cpp?raw';
 import compositions from '../../../../code/3.5/compositions/solution.cpp?raw';
 import boundedShares from '../../../../code/3.5/bounded-shares/solution.cpp?raw';
+import example1 from '../../../../code/3.5/example-1/solution.cpp?raw';
+import example2 from '../../../../code/3.5/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.5" />
 
@@ -309,6 +311,71 @@ Wrong output `-16926651`, correct output `983073356`. Both counts are remainders
 **Fix:** `(A - B + MOD) % MOD` (Theorem 3.5.3, note 2). Any subtraction of remainders needs it, even when the true difference is positive.
 
 ## 8. Worked examples
+
+### Example 1: Grid Paths I
+
+[CSES 1638: Grid Paths I](https://cses.fi/problemset/task/1638) (CSES is the Code Submission Evaluation System problem set). In short: count the paths from the upper-left to the lower-right square of an $n \times n$ grid ($n \le 1000$) that move only right or down and avoid the traps, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$n^2 = 10^6$ cells, so $O(n^2)$ is instant. The number of paths can have about 600 digits, so it must be kept as a remainder.
+
+#### Step 2: Question form → candidate tools
+
+- Listing the paths by backtracking (topic 3.1): there are up to $\binom{1998}{999}$ of them.
+- One binomial coefficient (topic 2.3): correct only without traps.
+- Inclusion–exclusion over the traps (topic 2.3): up to $10^6$ traps, far too many subsets.
+- The sum over the last step (Theorem 3.5.1): the grid-paths card.
+
+#### Step 3: Property check → decision
+
+The card needs moves that never lead back. Right and down moves increase the row or the column, so reading order is an acyclic order. Every path that ends at a free cell other than the start arrives from exactly one of two cells: the one above or the one to the left. Decision: $\text{ways}[r][c] = \text{ways}[r-1][c] + \text{ways}[r][c-1]$ modulo $10^9 + 7$, with 0 on traps.
+
+#### Step 4: Proof for this problem
+
+Apply Theorem 3.5.1 with the cells as states. A path to $(r, c)$ with its last move removed is a path to the cell above or to the left, depending on that move; different paths with the same last move stay different. So the paths to $(r, c)$ are counted once each, as the sum of the two counts. A trap is never entered, so its count is 0 and it contributes nothing. Cells outside the grid count 0, which the border row and column provide. Each cell is filled after the two cells it reads.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** The table has a border: row 0 and column 0 stand for cells outside the grid and stay 0, so every cell reads `ways[r - 1][c] + ways[r][c - 1]` without bounds checks; the grid character of cell $(r, c)$ is `g[r - 1][c - 1]`. `continue` leaves a trap at 0. Tested on the sample from the problem page (3), a single free cell (1), a single trap (0), an empty $1000 \times 1000$ grid (checked against $\binom{1998}{999}$ modulo $10^9 + 7$), and a random $1000 \times 1000$ grid whose answer comes from a separate program; and on 5000 random grids ($n \le 8$) against a brute force that walks every path.
+
+#### Step 6: Alternative approach
+
+The one-row version of Section 6 uses $O(n)$ memory. Another view: count the paths from the end backwards, $\text{back}[r][c] = \text{back}[r+1][c] + \text{back}[r][c+1]$; the answer is $\text{back}$ at the start. Counting from both ends gives, for every cell, the number of paths through it, $\text{ways} \cdot \text{back}$, which answers questions such as "which single trap would block the most paths".
+
+### Example 2: Leaping Tak
+
+[AtCoder Beginner Contest (ABC) 179, problem D: Leaping Tak](https://atcoder.jp/contests/abc179/tasks/abc179_d). In short: cells $1..N$ ($N \le 2 \cdot 10^5$); from cell $i$ you may jump to $i + d$ for any $d$ in the union of $K \le 10$ disjoint segments $[L, R]$, never past cell $N$. Count the ways to go from cell 1 to cell $N$, modulo $998244353$.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$. The allowed jump lengths can number up to $N$, so trying every jump from every cell is $O(N^2) = 4 \cdot 10^{10}$: too slow. $O(N \cdot K) = 2 \cdot 10^6$ is the target.
+
+#### Step 2: Question form → candidate tools
+
+- The sum over the last jump (Theorem 3.5.1): $\text{ways}[i] = \sum_{d \in S} \text{ways}[i - d]$, correct but $O(N \cdot |S|)$.
+- Counting ordered sums of allowed parts (Section 4.3): the same table, the same cost.
+- Prefix sums of the table (Theorem 3.5.4): the range-sum-transition card.
+
+#### Step 3: Property check → decision
+
+The card needs predecessors that form ranges. For one segment $[L, R]$, the cells from which a jump of that segment reaches $i$ are $i - R, \dots, i - L$, a contiguous range of earlier cells. There are $K \le 10$ segments, so $\text{ways}[i]$ is a sum of at most 10 ranges of earlier entries. The table is filled from left to right, so every entry in those ranges is final. Decision: one table with growing prefix sums, $O(NK)$.
+
+#### Step 4: Proof for this problem
+
+A way to reach cell $i > 1$ is a sequence of jumps; its last jump has a length $d$ in exactly one segment (they are disjoint) and starts at $i - d \ge 1$. Removing it gives a way to reach $i - d$, one-to-one (Theorem 3.5.1). So $\text{ways}[i] = \sum_{\text{segments}} \sum_{j = \max(1, i - R)}^{i - L} \text{ways}[j]$, an empty range when $i - L < 1$. With $P[x] = \text{ways}[1] + \dots + \text{ways}[x - 1]$, each range is $P[\text{to} + 1] - P[\text{from}]$ (Theorem 3.5.4, note 3: the prefix sums grow as the row is filled). Disjointness of the segments matters: overlapping segments would count a jump length twice.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `prefix[i + 1]` is written right after `ways[i]` is final, so when cell $i$ is computed, `prefix` is known up to index $i$, which covers every range (its end is at most $i - 1$). The subtraction adds `MOD` before `%` (Theorem 3.5.3, note 2). Tested on the four samples from the problem page and on $N = 2 \cdot 10^5$ with six segments, whose answer comes from a separate program; and on 5000 random inputs ($N \le 120$, up to 10 disjoint segments) against a brute force that tries every jump length.
+
+#### Step 6: Alternative approach
+
+Push instead of pull: when $\text{ways}[i]$ is final, it should be added to every cell in $[i + L, i + R]$ for each segment. Doing that with a difference array (topic 1.2), add at $i + L$ and subtract at $i + R + 1$, and a running sum, gives the same $O(NK)$ algorithm seen from the other side.
 
 ## 9. Problem ladder
 

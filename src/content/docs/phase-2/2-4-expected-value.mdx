@@ -197,6 +197,112 @@ Five short programs: one for indicators, two for contributions, one for tail sum
 
 ## 7. Bug catalogue
 
+Expected values printed modulo a prime are hard to check by eye: a wrong fraction looks like any other residue. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds; the residues are translated back into fractions.
+
+### Bug: counting pairs of equal values
+
+Template: expected inversions of a random order. The line that removes pairs of equal values is deleted.
+
+Input: `2`, then `1 1`.
+
+Wrong output `499122177` (that is, $\frac12$), correct output `0`. Two equal values are never inverted, whatever the order; the symmetry argument "inverted with probability $\frac12$" only holds for different values.
+
+**Fix:** check the probability of each indicator separately (Theorem 2.4.2); equal values give probability 0.
+
+### Bug: forgetting the probability
+
+Template: expected inversions of a random order.
+
+```cpp
+cout << pairs % MOD << "\n";
+```
+
+Input: `2`, then `1 2`.
+
+Wrong output `1`, correct output `499122177` (that is, $\frac12$). The program counted the pairs that *can* be inverted but forgot that each one is inverted only half the time.
+
+**Fix:** an expected count is a sum of probabilities, not of possibilities. Multiply by the inverse of 2.
+
+### Bug: the previous position defaults to 0
+
+Template: distinct values over all subarrays.
+
+```cpp
+long long prev = last.count(a) ? last[a] : 0;
+```
+
+Input: `1`, then `3`.
+
+Wrong output `0`, correct output `1`. With no earlier copy, the start of the subarray may be anywhere from 0 to $i$, which is $i + 1$ choices: the "previous position" must be $-1$, not 0.
+
+**Fix:** use $-1$ for "no previous occurrence", exactly as for nearest greater elements in topic 1.6.
+
+### Bug: the end of the subarray off by one
+
+Template: distinct values over all subarrays.
+
+```cpp
+total += (i - prev) * (n - i - 1);
+```
+
+Input: `1`, then `3`.
+
+Wrong output `0`, correct output `1`. The subarray may end at $i$ itself; with 0-based positions the ends are $i, \dots, n - 1$, which is $n - i$ choices.
+
+**Fix:** count both ranges of ends inclusively and check the formula on $n = 1$ (Theorem 2.4.3, note 2).
+
+### Bug: contributions before sorting
+
+Template: max − min over all subsets. The `sort` is removed.
+
+Input: `2`, then `5 4`.
+
+Wrong output `1000000006` (that is, $-1$), correct output `1`. "The $i$-th element is the maximum of $2^i$ subsets" is true only when the elements before it are smaller. In input order, 5 is treated as the minimum of the pair.
+
+**Fix:** sort first; the count of configurations in which an element contributes depends on its rank.
+
+### Bug: forgetting the minima
+
+Template: max − min over all subsets.
+
+```cpp
+long long c = pw[i];
+```
+
+Input: `1`, then `2`.
+
+Wrong output `2`, correct output `0`. The program adds every subset's maximum but never subtracts its minimum. A single element is both.
+
+**Fix:** a difference of two terms gives two contributions per element: $+2^i$ as a maximum and $-2^{n-1-i}$ as a minimum.
+
+### Bug: the tail sum shifted by one
+
+Template: expected maximum of independent draws.
+
+```cpp
+long long allBelow = power(x, k) * invMk % MOD;
+```
+
+Input: `2 6`.
+
+Wrong output `15597569` (that is, $\frac{63}{64}$), correct output `15597570` (that is, $\frac{127}{64}$). $P(\max \ge x)$ is 1 minus the probability that all draws are *below* $x$, that is at most $x - 1$. Using "at most $x$" computes $P(\max > x)$, and the sum loses exactly 1.
+
+**Fix:** $E[X] = \sum_{x \ge 1} P(X \ge x)$ with $P(X \ge x) = 1 - P(\text{all} \le x - 1)$ (Theorem 2.4.4). Check $m = 1$: the answer must be 1.
+
+### Bug: ignoring the coupons already owned
+
+Template: the coupon collector.
+
+```cpp
+for (long long j = 0; j < n; j++) {
+```
+
+Input: `4 3`.
+
+Wrong output `332748126` (that is, $\frac{25}{3}$), correct output `4`. With 3 of the 4 kinds owned, only the last stage remains: $\frac{4}{1} = 4$ draws. The program adds the stages for $j = 0, 1, 2$ too, giving $4 \left(1 + \frac12 + \frac13 + \frac14\right) = \frac{25}{3}$.
+
+**Fix:** sum only the stages that are still ahead (Theorem 2.4.5, part 2).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

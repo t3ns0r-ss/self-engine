@@ -4,8 +4,8 @@
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
 - Topic: 2.4
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.4 step 4 templates
-- Next action: 2.4 step 5 bug catalogue
+- Last completed step: 2.4 step 5 bug catalogue
+- Next action: 2.4 step 6 problems and worked examples
 
 ## Gates
 | Gate | Status | Date |
@@ -43,7 +43,7 @@
 | 2.1 | done (on this session's branch) | — |
 | 2.2 | done (on this session's branch) | — |
 | 2.3 | done (on this session's branch) | — |
-| 2.4 | in progress (step 4 done) | — |
+| 2.4 | in progress (step 5 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

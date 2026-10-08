@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
-- Topic: 2.3
+- Topic: 2.4
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.3 step 10 self-review (topic done)
-- Next action: 2.4 step 1 scope
+- Last completed step: 2.4 step 1 scope
+- Next action: 2.4 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -43,6 +43,7 @@
 | 2.1 | done (on this session's branch) | — |
 | 2.2 | done (on this session's branch) | — |
 | 2.3 | done (on this session's branch) | — |
+| 2.4 | in progress (step 1 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -147,10 +148,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7, 2.1, 2.2 (0.5's counting of subsets and permutations, 2.2's inverses and fast power, 2.1's factorisation are reused).
-- New: the product and sum rules, permutations and factorials, binomial coefficients (definition as a count, the formula n!/(r!(n−r)!), Pascal's rule, symmetry), computing C(n, r) mod p with factorial and inverse factorial tables, multinomial coefficients (arrangements of a multiset), stars and bars (with and without lower bounds), inclusion–exclusion (two and three sets, then the general alternating sum over subsets of properties), and bijections such as lattice paths ↔ choices of steps. Cards: decided at step 3 from the five bank patterns (ncr-mod-p, product-sum-rules, stars-bars, include-exclude, bijection-paths).
-- Forbidden keywords: every keyword of topics 2.4–7.8 (linearity of expectation, expected value, dynamic programming, segment tree, …). Lucas's theorem, Catalan numbers beyond the bracket count, Burnside's lemma and generating functions are out of scope (named only under "does not cover").
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1, 2.2 (modular inverse, Fermat's little theorem, binary exponentiation 2.2; prime factorisation 2.1).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.3 (2.3's counting and binomial tables, 2.2's fractions modulo a prime, 1.2's prefix sums, 1.6's nearest-greater spans are reused).
+- New: finite probability (uniform outcomes, events, independence), random variables and expected value, linearity of expectation (also for dependent variables), indicator variables, the contribution technique for totals over all subarrays, subsets or pairs (total = Σ value × number of configurations), the expected number of trials until a success (1/p) and sums over stages (coupon collector), and the tail-sum formula E[X] = Σ P(X ≥ x) for maxima and minima. Expected values printed modulo a prime. Cards: decided at step 3 from the four bank patterns (indicator-linearity, contribution-total, geometric-wait, tail-sum).
+- Forbidden keywords: every keyword of topics 3.1–7.8 (backtracking, dynamic programming, memoisation, knapsack, segment tree, …). Expectations computed by a recurrence over states (Phase 3), Markov chains and variance are out of scope (named only under "does not cover").
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.3 (fraction modulo a prime 2.2; binomial coefficient, product rule 2.3).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

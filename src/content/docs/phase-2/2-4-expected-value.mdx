@@ -18,6 +18,8 @@ import distinctInSubarrays from '../../../../code/2.4/distinct-in-subarrays/solu
 import subsetWidths from '../../../../code/2.4/subset-widths/solution.cpp?raw';
 import expectedMax from '../../../../code/2.4/expected-max/solution.cpp?raw';
 import couponCollector from '../../../../code/2.4/coupon-collector/solution.cpp?raw';
+import example1 from '../../../../code/2.4/example-1/solution.cpp?raw';
+import example2 from '../../../../code/2.4/example-2/solution.cpp?raw';
 
 <TopicHeader topic="2.4" />
 
@@ -304,6 +306,68 @@ Wrong output `332748126` (that is, $\frac{25}{3}$), correct output `4`. With 3 o
 **Fix:** sum only the stages that are still ahead (Theorem 2.4.5, part 2).
 
 ## 8. Worked examples
+
+### Example 1: Revenge of "The Salary of AtCoder Inc."
+
+[AtCoder Beginner Contest (ABC) 326, problem E: Revenge of "The Salary of AtCoder Inc."](https://atcoder.jp/contests/abc326/tasks/abc326_e). In short: start with $x = 0$ and roll a fair $N$-sided die repeatedly; while the roll $y$ exceeds $x$, pay $A_y$ and set $x = y$; stop at the first roll $y \le x$. Print the expected total pay modulo $998\,244\,353$ ($N \le 3 \cdot 10^5$).
+
+#### Step 1: Constraints → budget
+
+$N = 3 \cdot 10^5$: $O(N)$ or $O(N \log N)$. The process is random and can follow exponentially many paths, so they cannot be listed. All arithmetic modulo the prime.
+
+#### Step 2: Question form → candidate tools
+
+The pay is a sum: $\sum_y A_y \cdot \mathbb{1}[A_y \text{ is paid}]$. By linearity (Theorem 2.4.2) the expected pay is $\sum_y A_y \cdot P(A_y \text{ is paid})$, even though the events are far from independent. So the whole problem reduces to one probability per value $y$: the indicator-linearity card.
+
+#### Step 3: Property check → decision
+
+The card needs each single probability to have a formula. $A_y$ is paid exactly when, at some moment, $x < y$ and the next roll is $y$. Since $x$ only increases, this happens exactly when the rolls so far form an increasing sequence ending at $y$: some increasing values $t_1 < t_2 < \dots < t_j < y$, then $y$. Decision: compute $P(A_y \text{ is paid})$ in closed form and add $A_y$ times it.
+
+#### Step 4: Proof for this problem
+
+Fix $y$ and a set $T \subseteq \{1, \dots, y - 1\}$ of size $j$. The event "the first $j + 1$ rolls are the elements of $T$ in increasing order, then $y$" has probability $\left(\frac1N\right)^{j+1}$, since the rolls are independent. These events are disjoint for different $T$, and their union is exactly "$A_y$ is paid" (Step 3). By the sum rule and the binomial theorem ($\sum_j \binom{y-1}{j} z^j = (1 + z)^{y - 1}$, from Theorem 2.3.6's proof),
+$P(A_y \text{ is paid}) = \sum_{j=0}^{y-1} \binom{y-1}{j} \frac{1}{N^{j+1}} = \frac1N \left(1 + \frac1N\right)^{y-1}$.
+So $E[\text{pay}] = \sum_{y=1}^{N} A_y \cdot \frac1N \left(1 + \frac1N\right)^{y-1}$, a fraction whose residue Theorem 2.2.4 lets us compute step by step. Time: $O(N)$ after one inverse.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `pw` holds $\left(1 + \frac1N\right)^{y-1}$ and is multiplied by `grow` after each value, so no power is recomputed. `a % MOD` keeps the product of two residues below $2^{60}$. Tested on both samples from the problem page (the first is $\frac{49}{9}$), on $N = 3 \cdot 10^5$ random values, and on 5000 random inputs ($N \le 8$) against a brute force that follows every sequence of rolls with its probability.
+
+#### Step 6: Alternative approach
+
+Let $q_y$ be the probability that the process ever reaches $x = y$. Then $q_y = \frac1N \sum_{x < y} q_x$ with $q_0 = 1$, a running sum that gives the same values. It is a recurrence over states, the Phase 3 method; here the closed form makes it unnecessary.
+
+### Example 2: Cell Distance
+
+[AtCoder Beginner Contest (ABC) 127, problem E: Cell Distance](https://atcoder.jp/contests/abc127/tasks/abc127_e). In short: on an $N \times M$ grid ($NM \le 2 \cdot 10^5$), add up, over all ways to choose $K$ cells, the sum of the Manhattan distances between all pairs of chosen cells, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$\binom{NM}{K}$ choices: astronomically many. $O(NM)$ or $O((N + M) \cdot \text{something small})$ is the budget, plus a factorial table up to $NM$.
+
+#### Step 2: Question form → candidate tools
+
+A total over all configurations, where each configuration's value is a sum over its pairs of cells: exchange the sums (Theorem 2.4.3). Each *pair of cells* contributes its distance times the number of configurations that contain both cells. That number is a binomial coefficient (topic 2.3): the contribution-total card.
+
+#### Step 3: Property check → decision
+
+The contribution technique needs the per-pair count: a fixed pair is in every choice of the remaining $K - 2$ cells among the other $NM - 2$, that is, $\binom{NM - 2}{K - 2}$ configurations, the same for every pair. So the answer is $\binom{NM-2}{K-2}$ times the sum of the distances over all pairs of cells. That sum splits into rows and columns again: two cells whose rows differ by $d$ add $d$, and there are $(N - d) M^2$ such pairs. Decision: two loops over $d$ and one binomial coefficient.
+
+#### Step 4: Proof for this problem
+
+By Theorem 2.4.3, the total equals $\sum_{\text{pairs } \{u, v\}} \operatorname{dist}(u, v) \cdot N_{uv}$ with $N_{uv}$ the number of $K$-sets containing $u$ and $v$, which is $\binom{NM - 2}{K - 2}$ (choose the others). The Manhattan distance is $|r_u - r_v| + |c_u - c_v|$, so the sum over pairs splits into a row part and a column part. Unordered pairs of cells with row difference $d \ge 1$: choose the upper row ($N - d$ ways) and a column for each cell ($M^2$ ways), and each such pair is counted once. So the row part is $\sum_{d=1}^{N-1} d (N - d) M^2$, and symmetrically the column part is $\sum_{d=1}^{M-1} d (M - d) N^2$. Time: $O(NM)$ for the factorials and $O(N + M)$ for the sums.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `d * (n - d) % MOD * (m * m % MOD)` reduces each factor first: $d (n - d) \le 10^{10}$ and $m^2 \le 4 \cdot 10^{10}$ are both reduced below $2^{30}$ before multiplying. Tested on the three samples from the problem page, on a $1 \times 2$ grid, a $200\,000 \times 1$ grid with $K = 10^5$, and a $447 \times 447$ grid with $K = 2$, and on 5000 random inputs ($NM \le 12$) against a brute force that tries every set of cells as a bitmask.
+
+#### Step 6: Alternative approach
+
+Sum the distances over pairs of cells by brute force over row differences and column differences together: $\sum_{dr, dc} (dr + dc) \cdot (\text{number of pairs with those differences})$. It counts the same pairs in $O(NM)$ instead of $O(N + M)$.
 
 ## 9. Problem ladder
 

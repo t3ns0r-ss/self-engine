@@ -18,6 +18,8 @@ import inverseCode from '../../../../code/2.2/inverse/solution.cpp?raw';
 import fractionSum from '../../../../code/2.2/fraction-sum/solution.cpp?raw';
 import powerTower from '../../../../code/2.2/power-tower/solution.cpp?raw';
 import inverseTable from '../../../../code/2.2/inverse-table/solution.cpp?raw';
+import example1 from '../../../../code/2.2/example-1/solution.cpp?raw';
+import example2 from '../../../../code/2.2/example-2/solution.cpp?raw';
 
 <TopicHeader topic="2.2" />
 
@@ -361,6 +363,68 @@ Wrong output `2 0`, correct output `2 1`. Without the minus sign, $\operatorname
 **Fix:** $i^{-1} \equiv -\lfloor p/i \rfloor \cdot (p \bmod i)^{-1}$ (Theorem 2.2.6); make it non-negative by subtracting from $p$.
 
 ## 8. Worked examples
+
+### Example 1: Sum of gcd of Tuples (Hard)
+
+[AtCoder Beginner Contest (ABC) 162, problem E: Sum of gcd of Tuples (Hard)](https://atcoder.jp/contests/abc162/tasks/abc162_e). In short: over all $K^N$ sequences of length $N$ with entries from 1 to $K$ ($N, K \le 10^5$), add up the GCD of each sequence, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$K^N$ sequences is astronomically many, so they cannot be listed. $N, K \le 10^5$: $O(K \log K)$ steps, each possibly with an $O(\log N)$ power, is about $2 \cdot 10^7$. Values modulo $10^9 + 7$ fit in `long long` products.
+
+#### Step 2: Question form → candidate tools
+
+Brute force (topic 0.5) lists all sequences. Instead, group the sequences by their GCD $d$: the answer is $\sum_d d \cdot f(d)$, where $f(d)$ counts the sequences with GCD exactly $d$. "GCD exactly $d$" is hard, but "every entry a multiple of $d$" is easy: each entry has $\lfloor K/d \rfloor$ choices, so there are $\lfloor K/d \rfloor^N$ such sequences. That is the multiples-sieve card of topic 2.1 (Theorem 2.1.6, part 3), with a power whose exponent $N$ is large: the fast-power card (Theorem 2.2.1).
+
+#### Step 3: Property check → decision
+
+The multiples card needs a bound on the values: the GCD is at most $K \le 10^5$, an array size. The fast-power card needs only that the answer is a power modulo $m$: $\lfloor K/d \rfloor^N \bmod (10^9 + 7)$. Decision: for $d$ from $K$ down to 1, set $f(d) = \lfloor K/d \rfloor^N - \sum_{k \ge 2} f(kd)$ modulo $10^9 + 7$, and add $d \cdot f(d)$.
+
+#### Step 4: Proof for this problem
+
+Let $F(d)$ be the number of sequences whose entries are all multiples of $d$. A sequence has all entries divisible by $d$ exactly when $d$ divides its GCD, that is, when its GCD is $kd$ for some $k \ge 1$ (and $kd \le K$). So $F(d) = \sum_{k \ge 1} f(kd)$, and by Theorem 2.1.6, part 3, $f(d) = F(d) - \sum_{k \ge 2} f(kd)$ when $d$ goes from $K$ down. Each entry independently takes one of the $\lfloor K/d \rfloor$ multiples of $d$ in $[1, K]$, so $F(d) = \lfloor K/d \rfloor^N$, computed by Theorem 2.2.1. Every sequence has exactly one GCD, so $\sum_d d \cdot f(d)$ is the requested sum. Subtraction and multiplication modulo $p$ keep congruences (Theorem 0.4.4). Time: $O(K \log K)$ for the subtractions (harmonic bound) plus $K$ fast powers of $O(\log N)$ each.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `(f[d] - f[k] + MOD) % MOD` adds `MOD` before the remainder so the result stays non-negative (topic 0.4). `d % MOD * f[d]` multiplies two numbers below $10^9 + 7$, which fits in `long long`. Tested on the three samples from the problem page, on $K = 1$, and on 5000 random inputs ($N \le 5$, $K \le 12$) against a brute force that lists every sequence.
+
+#### Step 6: Alternative approach
+
+The same $f(d)$ appear for $d$ with equal $\lfloor K/d \rfloor$; for $K$ up to $10^{12}$ one would group those $d$. Here $K \le 10^5$, and the direct loop is simpler.
+
+### Example 2: Divisor Analysis
+
+[CSES 2182 Divisor Analysis](https://cses.fi/problemset/task/2182). In short: a number is given by its prime factorisation, up to $10^5$ distinct primes $x \le 10^6$ with exponents $k \le 10^9$. Print the number, the sum and the product of its divisors, each modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+The number itself has up to $10^5 \cdot 30 \cdot 10^9$ bits: it cannot be built. $O(n \log p)$ work is fine: a few fast powers per prime.
+
+#### Step 2: Question form → candidate tools
+
+The number and sum of divisors come from the exponents (Theorem 2.1.3, part 2): $\prod (k + 1)$ and $\prod (1 + x + \dots + x^k)$. The sum per prime is a geometric sum, $\frac{x^{k+1} - 1}{x - 1}$: a division modulo a prime, the inverse-prime card (Theorems 2.2.3 and 2.2.4). The product of the divisors is a power of each prime whose exponent is itself huge: the exponent-reduction card (Theorem 2.2.5).
+
+#### Step 3: Property check → decision
+
+Division: the modulus $10^9 + 7$ is prime, and the divisor $x - 1$ lies between 1 and $10^6$, so it is not a multiple of $p$ and has an inverse. Exponent reduction: each base $x \le 10^6$ is not a multiple of $p$, so exponents may be reduced modulo $p - 1$. Decision: process the primes one at a time, keeping the count, the sum, the product, and the count again modulo $p - 1$ for use in exponents.
+
+#### Step 4: Proof for this problem
+
+Let $m$ be the product of the primes processed so far, with $c$ divisors and divisor product $P$. Adding a new prime $x$ with exponent $k$, the divisors of $m x^k$ are exactly the $d \cdot x^j$ with $d \mid m$ and $0 \le j \le k$ (Theorem 2.1.3, part 2). Their product is
+$\prod_{d} \prod_{j=0}^{k} d \, x^j = P^{k+1} \cdot x^{(0 + 1 + \dots + k) \, c} = P^{k+1} \cdot x^{c \, k (k+1)/2}$.
+The exponent $c \, k (k+1)/2$ can be enormous, but $x$ is not a multiple of $p$, so by Theorem 2.2.5 it may be taken modulo $p - 1$: the program keeps $c \bmod (p - 1)$ separately, because $c \bmod p$ would be the wrong period. The count is updated to $c (k + 1)$, and the sum is multiplied by $\frac{x^{k+1} - 1}{x - 1}$, computed with the Fermat inverse of $x - 1$ (Theorem 2.2.4 guarantees that the residues of these fractions combine correctly). Time: $O(n \log p)$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `k * (k + 1) / 2` is at most $5 \cdot 10^{17}$, which fits in `long long`, and it is reduced modulo $p - 1$ before it is multiplied by `cntE`. Two counters are kept: `cnt` modulo $p$ for the printed answer and `cntE` modulo $p - 1$ for exponents. Tested on the sample from the problem page, on the single prime 2, on all $78\,498$ primes below $10^6$ with random exponents up to $10^9$ (checked against a Python program using a different formula), on $999\,983^{10^9}$, and on 5000 random inputs ($n \le 10^5$ as a number) against a brute force that lists every divisor.
+
+#### Step 6: Alternative approach
+
+The product of the divisors of $n$ is $n^{d(n)/2}$, since divisors pair up as $(d, n/d)$ (Theorem 0.2.2). Written prime by prime it is $\prod x^{k \, d(n) / 2}$. But $d(n)/2$ is a fraction when $d(n)$ is odd, and dividing by 2 modulo $p - 1$ is not allowed ($p - 1$ is even). The incremental formula above avoids any division in the exponent.
 
 ## 9. Problem ladder
 

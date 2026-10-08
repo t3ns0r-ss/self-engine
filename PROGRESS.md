@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
-- Topic: 2.1
+- Topic: 2.2
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.1 step 10 self-review (topic done)
-- Next action: 2.2 step 1 scope
+- Last completed step: 2.2 step 1 scope
+- Next action: 2.2 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -41,6 +41,7 @@
 | 1.7 | done (on this session's branch) | — |
 | Phase 1 intro and exam | done (on this session's branch) | — |
 | 2.1 | done (on this session's branch) | — |
+| 2.2 | in progress (step 1 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -48,19 +49,19 @@
 | 0.1 | short | 34 | 13 |
 | 0.2 | short | 27 | 20 |
 | 0.3 | short | 45 | 24 |
-| 0.4 | short | 23 | 28 |
+| 0.4 | short | 23 | 30 |
 | 0.5 | short | 30 | 26 |
 | 0.6 | short | 35 | 31 |
 | 1.1 | short | 23 | 27 |
 | 1.2 | short | 22 | 28 |
 | 1.3 | short | 24 | 32 |
-| 1.4 | short | 20 | 29 |
+| 1.4 | short | 20 | 30 |
 | 1.5 | short | 20 | 29 |
 | 1.6 | short | 16 | 20 |
 | 1.7 | short | 22 | 25 |
-| 2.1 | short | 24 | 14 |
+| 2.1 | short | 24 | 22 |
 | 2.2 | short | 14 | 3 |
-| 2.3 | short | 21 | 19 |
+| 2.3 | short | 22 | 19 |
 | 2.4 | short | 16 | 3 |
 | 3.1 | short | 22 | 18 |
 | 3.2 | short | 33 | 26 |
@@ -145,10 +146,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7 (2.1 requires only 0.4; 0.2's divisor pairs and harmonic loops, 0.4's GCD, LCM and Euclid, 1.2's prefix sums are the main tools reused).
-- New: primes and composite numbers, the sieve of Eratosthenes (marking from p², O(N log log N)), the smallest prime factor table and fast factorisation (each step at least halves x), the prime factorisation (existence and uniqueness, taken as known with a short argument), divisor count and divisor sum from the exponents, trial division up to √n for one large number, work over all multiples of every d (harmonic bound), extended Euclid and Bézout's identity, solving a·x + b·y = c and the general solution. Cards: decided at step 3 from the five bank patterns (sieve, spf-factorise, trial-division, multiples-sieve, bezout).
-- Forbidden keywords: every keyword of topics 2.2–7.8 (modular inverse, binary exponentiation, fermat's little theorem, stars and bars, inclusion-exclusion, binomial coefficient, linearity of expectation, dynamic programming, segment tree, …). Möbius inversion and the Chinese remainder theorem are out of scope (named only under "does not cover").
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7 (divisor 0.2; divides, multiple, remainder, congruent, GCD, coprime, LCM, Euclidean algorithm 0.4; integer square root 0.1; harmonic sum 0.2).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1 (0.4's arithmetic modulo m and Theorem 0.4.4 are the base; 2.1's extended Euclid, Euclid's lemma and factorisation are reused).
+- New: binary exponentiation (a^b mod m in O(log b)), Fermat's little theorem with proof, the modular inverse (by Fermat for a prime modulus, by extended Euclid in general; exists exactly when gcd(a, m) = 1), division modulo a prime and rational answers P·Q^(−1) mod p, reducing exponents modulo p − 1, the inverses of 1..n in O(n), and why 998244353 and 10^9 + 7 are used (prime moduli). Cards: decided at step 3 from the five bank patterns (fast-power, inverse-prime, fraction-output, exponent-reduction, inverse-general).
+- Forbidden keywords: every keyword of topics 2.3–7.8 (stars and bars, inclusion-exclusion, binomial coefficient, linearity of expectation, expected value, dynamic programming, segment tree, …). Euler's theorem in general, the Chinese remainder theorem and discrete logarithms are out of scope (named only under "does not cover").
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1 (congruent, remainder, GCD, coprime 0.4; prime, prime factorisation, extended Euclidean algorithm, Bézout coefficients 2.1).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

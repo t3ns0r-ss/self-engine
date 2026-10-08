@@ -18,15 +18,126 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. There are $n = 400$ piles of stones in a row. Two **neighbouring** piles can be merged into one, which costs their total size; the new pile takes their place. Merge everything into one pile as cheaply as possible.
+
+A natural greedy, "merge the neighbouring pair with the smallest total", fails: for piles $(2, 2, 1, 2)$ it merges $2 + 1$ first and pays $3 + 5 + 7 = 15$, while merging $2 + 2$ and $1 + 2$ first pays $4 + 3 + 7 = 14$. Trying every order of merges ([topic 3.1](../3-1-backtracking/)) is hopeless: there are $(n-1)!$ orders.
+
+The key idea: look at the **last** merge. It joins a pile made from piles $1..k$ with a pile made from piles $k+1..n$, for some split point $k$, and the two sides never interacted before. So the best cost for the whole row comes from the best costs of two shorter segments. The states are the segments $[l, r]$, about $n^2 / 2 = 8 \cdot 10^4$ of them, each trying up to $n$ split points: $O(n^3) \approx 2 \cdot 10^7$ steps. This is **interval DP**: tables over segments, filled from short segments to long ones.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 3.2](../3-2-dp-foundations/), dynamic programming (DP) foundations: states and transitions (Theorem 3.2.1), filling in an acyclic order (Theorem 3.2.3), memoisation (Theorem 3.2.4) and reconstruction (Theorem 3.2.6).
+- [Topic 1.2](../../phase-1/1-2-prefix-sums/), prefix sums: the sum of a segment in $O(1)$.
+- [Topic 3.4](../3-4-sequence-dp/), sequence DP: tables over pairs of prefixes, the model for the palindrome tables here.
+- [Topic 3.5](../3-5-counting-dp/), counting DP: interval counts modulo a prime use the same sum rule.
+
 ### What this topic does not cover
+
+- Speed-ups of the split-point recurrence to $O(n^2)$ (Knuth's optimisation, the quadrangle inequality): not part of this course; $n \le 500$ problems need only $O(n^3)$.
+- Finding all palindromic substrings in linear time (Manacher's algorithm) and palindromic trees: covered in Phase 6 where needed.
+- DP over subsets instead of segments, when the order of the items is free (topic 3.7).
 
 ## 3. Definitions
 
+- A **segment** (or interval) $[l, r]$ of a sequence $a_1, \dots, a_n$ is the contiguous part $a_l, \dots, a_r$; its **length** is $r - l + 1$. There are $n(n+1)/2$ non-empty segments.
+- **Interval DP** is DP whose states are segments, where the value of a segment depends only on shorter segments inside it.
+- A **split point** of $[l, r]$ is a $k$ with $l \le k < r$, dividing the segment into $[l, k]$ and $[k+1, r]$.
+- A **palindrome** reads the same forwards and backwards. A **palindromic subsequence** is a subsequence that is a palindrome. Example: "abcab" has the palindromic subsequences "aba", "bcb", "aca", "bab" of length 3, and none longer.
+- In a two-player game where both play as well as possible, the **score difference** of a position is (the total of the player to move) − (the total of the other player) from that position to the end.
+
 ## 4. Theory and proofs
+
+### 4.1 Segments as states
+
+**Theorem 3.6.1 (filling by length).** Suppose the value $f[l][r]$ of every segment is determined by the values of segments strictly inside it (shorter segments $[l', r'] \subset [l, r]$), plus base values for segments of length 1 (or 0). Then computing the segments in order of increasing length computes every value correctly. With $n$ elements there are $O(n^2)$ states; if each takes $O(n)$ work, the total is $O(n^3)$.
+
+*Proof.* Number the segments by length, breaking ties arbitrarily. Every transition goes from a strictly shorter segment to a longer one, so this numbering is an acyclic order, and Theorem 3.2.3 applies. $\square$
+
+:::note[This proof needs]
+1. A segment's value uses only shorter segments. Filling row by row in $l$ from 1 to $n$ is **wrong** here: $f[l][r]$ needs $f[l+1][r]$, which comes later in that order. Loop over the length outside (or over $l$ from $n$ down to 1, with $r$ from $l$ up).
+2. The budget: $n \le 500$ for $O(n^3)$, $n \le 5000$ for $O(n^2)$.
+:::
+
+### 4.2 The best split point
+
+**Theorem 3.6.2 (split point).** Let $\text{best}[l][r]$ be the least cost of merging the piles $l..r$ into one, where merging two neighbouring piles costs their total. Then $\text{best}[l][l] = 0$ and
+$$\text{best}[l][r] = \min_{l \le k < r} \left(\text{best}[l][k] + \text{best}[k+1][r]\right) + S(l, r),$$
+where $S(l, r) = a_l + \dots + a_r$ is computed with prefix sums. Time $O(n^3)$.
+
+*Proof.* Consider any way to merge the piles $l..r$. Its last merge joins two piles; since only neighbours are merged, each of them was built from a contiguous block, so they are $[l, k]$ and $[k+1, r]$ for some $k$, and the merges inside one block never touched the other. The last merge costs $S(l, r)$ whatever $k$ is. So the total is (cost of merging $[l, k]$) + (cost of merging $[k+1, r]$) + $S(l, r)$, and for a fixed $k$ the two parts are minimised independently (Theorem 3.2.1). Every $k$ is possible, so the minimum over $k$ is the answer. $\square$
+
+:::note[This proof needs]
+1. Some last step splits the segment into **independent** sub-segments: what happens inside one does not change the cost of the other.
+2. The cost of the last step depends only on $l$, $r$ (and $k$), not on how the parts were built.
+3. Other problems choose a different "last" event: the last balloon burst inside $(l, r)$, the first cut of a stick, the root of a tree on keys $l..r$. The proof is the same once that event splits the segment into independent parts.
+:::
+
+Trace for piles $(4, 1, 2, 3)$, entry $(l, r)$ = best cost for piles $l..r$:
+
+| | $r = 1$ | $r = 2$ | $r = 3$ | $r = 4$ |
+|---|---|---|---|---|
+| $l = 1$ | 0 | 5 | 10 | 19 |
+| $l = 2$ | | 0 | 3 | 9 |
+| $l = 3$ | | | 0 | 5 |
+| $l = 4$ | | | | 0 |
+
+For $[1, 4]$: $k = 1$ gives $0 + 9$, $k = 2$ gives $5 + 5$, $k = 3$ gives $10 + 0$; the minimum is 9, plus $S = 10$: 19.
+
+### 4.3 Taking from the ends
+
+In some games and processes, items are removed only from the two ends of a row. Then whatever remains is always one segment $[l, r]$.
+
+**Theorem 3.6.3 (score difference).** Two players alternately take the first or the last number of a row; each wants to maximise their own total. Let $D[l][r]$ be the score difference for the player to move when the row is $a_l..a_r$. Then $D[l][l] = a_l$ and
+$$D[l][r] = \max\left(a_l - D[l+1][r], \ a_r - D[l][r-1]\right).$$
+The first player's total is $(S + D[1][n]) / 2$, where $S$ is the sum of all numbers.
+
+*Proof.* By induction on the length. If the player to move takes $a_l$, the opponent faces $[l+1, r]$ and, playing best, ends $D[l+1][r]$ ahead from there; so the mover ends $a_l - D[l+1][r]$ ahead. The same holds for $a_r$. The mover picks the better option. Since the two totals add up to $S$ and differ by $D[1][n]$, the first player's total is $(S + D[1][n])/2$. $\square$
+
+:::note[This proof needs]
+1. Every move removes items from the ends only, so the position is one segment (and whose turn it is follows from the length).
+2. The game is zero-sum in the sense that maximising your total is the same as maximising the difference (the totals add up to a fixed $S$).
+:::
+
+Example: row $(3, 9, 1, 2)$. Greedy "take the larger end" takes 3, the opponent takes 9, then 2 and 1: totals 5 and 10. The table gives $D[1][4] = 7$: take 2 first; the opponent must open the 9 to you (taking 3 or 1), and you finish with 11 against 4.
+
+### 4.4 Palindromes inside segments
+
+**Theorem 3.6.4 (longest palindromic subsequence).** Let $P[l][r]$ be the length of the longest palindromic subsequence of $s_l..s_r$. Then $P[l][l] = 1$, $P[l][l-1] = 0$ (empty segment), and for $l < r$
+$$P[l][r] = \begin{cases} P[l+1][r-1] + 2 & \text{if } s_l = s_r,\\ \max(P[l+1][r], \ P[l][r-1]) & \text{otherwise.} \end{cases}$$
+
+*Proof.* If $s_l \ne s_r$, a palindromic subsequence cannot use both $s_l$ and $s_r$ as its two ends (they differ), and if it used both, they would be its first and last letters. So it avoids $s_l$ or avoids $s_r$, and lies in $[l+1, r]$ or $[l, r-1]$. If $s_l = s_r$, take a longest palindromic subsequence $Z$ of $[l, r]$. If it does not use both ends, replace its first letter by $s_l$ and its last by $s_r$ (or add them if it misses one), as in the exchange argument of Theorem 3.4.4: the result is a palindrome at least as long, made of $s_l$, a palindromic subsequence of $[l+1, r-1]$, and $s_r$. So $P[l][r] = P[l+1][r-1] + 2$. $\square$
+
+:::note[This proof needs]
+1. The answer for a segment depends on its two end characters and the inner segments.
+2. The same table answers "fewest insertions (or deletions) to make $s$ a palindrome": $n - P[1][n]$. It also equals the LCS of $s$ and its reverse (topic 3.4).
+:::
+
+Trace for "abcab": the table gives $P[1][5] = 3$ ("aba", "bcb", "aca" or "bab"). The ends a and b differ, so $P[1][5] = \max(P[2][5], P[1][4]) = \max(3, 3)$; and $P[1][4]$ ("abca") has equal ends a, so it is $P[2][3] + 2 = 1 + 2$.
+
+Another table over segments answers "is $s_l..s_r$ a palindrome?": $\text{pal}[l][r]$ holds when $s_l = s_r$ and $\text{pal}[l+1][r-1]$ (true for lengths 0 and 1). It costs $O(n^2)$ and is the first step of every problem that cuts a string into palindromes.
+
+### 4.5 The first element and its partner
+
+**Theorem 3.6.5 (pairing the first element).** One operation deletes a contiguous block of equal letters (after earlier deletions, letters that were apart may have become neighbours). Let $C[l][r]$ be the fewest operations that delete all of $s_l..s_r$, with $C$ of an empty segment 0. Then
+$$C[l][r] = \min\left(1 + C[l+1][r], \ \min_{l < k \le r,\ s_k = s_l} \left(C[l+1][k-1] + C[k][r]\right)\right).$$
+
+*Proof.* Take an optimal sequence of operations for $[l, r]$ and look at the operation that deletes $s_l$.
+
+Case 1: it deletes no other letter. Since $s_l$ is the leftmost letter, no other operation can use it to join letters, so the other operations delete $[l+1, r]$ on their own: at least $C[l+1][r]$ of them, plus one. Conversely, solving $[l+1, r]$ and then deleting $s_l$ alone works.
+
+Case 2: it also deletes other letters; let $s_k$ be the nearest one to the right, so $s_k = s_l$. When this operation happens, $s_l$ and $s_k$ are neighbours, so every letter of $[l+1, k-1]$ was deleted earlier, by operations that stay inside $[l+1, k-1]$ (to reach outside they would have to cross $s_l$ or $s_k$, which are still present): at least $C[l+1][k-1]$ operations. The remaining operations delete $[k, r]$, with $s_l$ riding along in the operation of $s_k$: at least $C[k][r]$ of them. Conversely, delete $[l+1, k-1]$ first; then $s_l$ is the left neighbour of $s_k$, which stays the leftmost letter of $[k, r]$, so adding $s_l$ to the operation that deletes $s_k$ keeps that block contiguous and equal, at no extra cost.
+
+The optimal solution falls into one of the cases, and every case is achievable, so $C[l][r]$ is the minimum over them. $\square$
+
+:::note[This proof needs]
+1. Fixing the partner $k$ of the first element splits the segment into an inside part $(l, k)$ and an outside part $[k, r]$ that do not interact.
+2. Joining $s_l$ to the operation of its partner costs nothing extra (here: one block of equal letters stays one block). Problems where the cost depends on the size of the block need an extra index (Remove Boxes keeps the number of equal letters attached on the left).
+3. The time is $O(n^3)$: $O(n^2)$ segments, $O(n)$ partners each.
+:::
+
+Example: "abaca" takes 3 operations: delete b, delete c, then the three a's have become neighbours and go in one operation. In the recurrence, the first a pairs with the a at position 3: $C[2][2] + C[3][5] = 1 + 2$.
 
 ## 5. Recognition Cards
 

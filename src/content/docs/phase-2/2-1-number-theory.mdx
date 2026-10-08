@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import primeCount from '../../../../code/2.1/prime-count/solution.cpp?raw';
+import linearEquation from '../../../../code/2.1/linear-equation/solution.cpp?raw';
+import factorise from '../../../../code/2.1/factorise/solution.cpp?raw';
+import spfDivisors from '../../../../code/2.1/spf-divisors/solution.cpp?raw';
+import gcdPairs from '../../../../code/2.1/gcd-pairs/solution.cpp?raw';
 
 <TopicHeader topic="2.1" />
 
@@ -188,6 +193,82 @@ Example: $a = (2, 4, 6, 3)$, $M = 6$. Then $c[1] = 4$, $c[2] = 3$, $c[3] = 2$, $
 <Cards topic="2.1" />
 
 ## 6. Templates
+
+Five short programs, one for each card. The brute forces test every candidate divisor directly, or try every pair.
+
+### Primes in ranges (Theorem 2.1.1)
+
+<Code code={primeCount} lang="cpp" title="prime-count/solution.cpp" />
+
+**How it works.** The sieve marks every composite number up to $N$; the unmarked numbers from 2 on are the primes. `cnt[x]` counts the primes up to $x$, so a range $[l, r]$ is a difference of two prefix counts (topic 1.2).
+
+**C++ details explained.**
+- `vector<char>` stores one byte per number: $10^7$ bytes. `vector<bool>` would use one bit per number, 8 times less memory, but each access is a little slower.
+- `(long long)p * p <= N` keeps the product from overflowing; inside the loop `p * p` is at most $N \le 10^7$ and fits in `int`.
+- `composite[x] ? 0 : 1` is the conditional operator: `0` if `composite[x]` is true, `1` otherwise.
+
+**Tested.** Stress-tested against a brute force that checks every divisor of every number in the range, on 5000 random inputs ($N \le 30$ or $N \le 2000$, up to 5 ranges). There are also 3 fixed tests: $N = 2$, the 25 primes below 100 together with ranges that contain none, and $N = 10^7$ with $2 \cdot 10^5$ ranges.
+
+**Alternative formulation.** Mark from $2p$ instead of $p^2$ and run $p$ up to $N$: same result, about twice the work. To list the primes instead of counting them, push every unmarked $x$ into a vector.
+
+### An integer equation $ax + by = c$ (Theorem 2.1.2)
+
+<Code code={linearEquation} lang="cpp" title="linear-equation/solution.cpp" />
+
+**How it works.** `ext` returns $g = \gcd(a, b)$ and coefficients with $ax + by = g$. If $g$ does not divide $c$ there is no solution (Bézout's identity). Otherwise $x \cdot (c/g)$ is a solution for $x$, and by part 4 of the theorem all solutions for $x$ are congruent modulo $m = b/g$, so the smallest non-negative one is $x \cdot (c/g) \bmod m$. Then $y = (c - ax)/b$.
+
+**C++ details explained.**
+- `long long& x` passes `x` by reference: the function writes into the caller's variable, which is how it returns three values. `which is how it returns three values (topic 0.6 uses references the same way for `auto&`).` makes `x` a reference, another name for the caller's variable (topic 0.1).
+- `((x % m) + m) % m` makes the remainder non-negative, since `%` keeps the sign of `x` (topic 0.4).
+- Both factors of `xm * cm` are below $m \le 10^9$, so the product is below $10^{18}$. Multiplying `x * (c / g)` first could overflow, because $c/g$ can be $10^{18}$.
+
+**Tested.** Stress-tested against a brute force that tries every $x$ from 0 to $b - 1$, on 5000 random inputs (with a shared factor in $a$ and $b$ so that $g > 1$ is common). There are also 2 fixed tests: the example of Section 4.2 together with an equation without solution, and $10^5$ random equations with $a, b$ up to $10^9$ and $c$ up to $10^{18}$, checked against Python's exact integers.
+
+**Alternative formulation.** An iterative version keeps two rows $(r, x, y)$ with $r = ax + by$ and repeats the Euclidean step on them; it avoids recursion and gives the same coefficients.
+
+### Factorising one large number (Theorem 2.1.5)
+
+<Code code={factorise} lang="cpp" title="factorise/solution.cpp" />
+
+**How it works.** The loop tries $d = 2, 3, \dots$ while $d^2 \le n$ and divides each one out completely; by Theorem 2.1.5 every $d$ that divides is prime, and a leftover $n > 1$ is the last prime. The divisor count and sum come from the exponents (Theorem 2.1.3).
+
+**C++ details explained.**
+- `vector<pair<long long, int>>` stores the (prime, exponent) pairs; `auto [p, e] = f[i];` unpacks one into two names (structured bindings, topic 0.6).
+- `d * d <= n` is `long long` because `d` is: for $n = 10^{12}$, $d$ reaches $10^6$.
+- `n /= d, e++` uses the comma operator to do two things in one loop body.
+
+**Tested.** Stress-tested against a brute force that tries every divisor from 1 to $n$ and every prime up to $n$, on 5000 random inputs (small $n$, products of the primes 2, 3, 5, 7, and squares of primes or a prime times a small number). There are also 6 fixed tests: $n = 2$, $n = 360$, $963\,761\,198\,400$ (6720 divisors), the prime $999\,999\,999\,989$, $10^{12}$, and $999\,983^2$.
+
+**Alternative formulation.** Try $d = 2$, then only odd $d$: half the trials. For many numbers, sieve the primes up to $10^6$ once and try only them.
+
+### Divisor counts with the smallest prime factor table (Theorem 2.1.4)
+
+<Code code={spfDivisors} lang="cpp" title="spf-divisors/solution.cpp" />
+
+**How it works.** The table is built once, up to the largest input. Each number is then split by its smallest prime factor; the inner `while` takes the whole run of equal primes, whose length is the exponent $e$, and the divisor count multiplies by $e + 1$.
+
+**C++ details explained.**
+- `*max_element(x.begin(), x.end())` returns the largest value (`max_element` returns an iterator, and `*` reads it).
+- `max(2, ...)` keeps the table non-empty when every input is 1.
+- The table holds `int` values: $4 \cdot 10^7$ bytes for $N = 10^7$, within the usual 256 MB.
+
+**Tested.** Stress-tested against a brute force that tries every divisor, on 5000 random inputs (values up to 20 or up to 5000). There are also 3 fixed tests: the single value 1, a list with 1, a prime, and numbers with many divisors ($720\,720$ and $8\,648\,640$), and $2 \cdot 10^5$ random values up to $10^7$.
+
+**Alternative formulation.** To get $d(x)$ for every $x \le N$ rather than for given numbers, add 1 to each multiple of each $d$ (Theorem 0.2.5); it is $O(N \log N)$ and needs no factorisation.
+
+### Pairs with a given GCD (Theorem 2.1.6)
+
+<Code code={gcdPairs} lang="cpp" title="gcd-pairs/solution.cpp" />
+
+**How it works.** For each $d$ from the largest value down, `c` counts the elements divisible by $d$, and `E[d]` starts as the number of pairs among them. Subtracting the pairs whose GCD is $2d, 3d, \dots$, already known, leaves the pairs with GCD exactly $d$. The largest GCD of a pair is the largest $d$ that divides at least two elements.
+
+**C++ details explained.**
+- `E` holds `long long`: $c (c - 1)/2$ reaches $2 \cdot 10^{10}$.
+- Both inner loops step by `d`, so the work is the harmonic sum $\sum M/d$.
+
+**Tested.** Stress-tested against a brute force that computes the GCD of every pair, on 5000 random inputs (values up to 12 or up to 300). There are also 5 fixed tests: two 1s, the example $(2, 4, 6, 3)$ of Section 4.6, $(6, 10, 15)$ where no pair is coprime, two copies of $10^6$ with $999\,999$, and $2 \cdot 10^5$ random values up to $10^6$ checked by a different formula.
+
+**Alternative formulation.** For the largest GCD alone, no subtraction is needed: scan $d$ downward and stop at the first one that divides two elements.
 
 ## 7. Bug catalogue
 

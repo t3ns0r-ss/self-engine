@@ -18,15 +18,130 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. Place $n = 10$ queens on a $10 \times 10$ chessboard so that no two attack each other (no two share a row, a column or a diagonal), and count the ways.
+
+Brute force from [topic 0.5](../../phase-0/0-5-brute-force/) picks one column for the queen of each row: $10^{10}$ placements, each checked in about 45 pair tests. That is $4.5 \cdot 10^{11}$ operations, more than an hour at $10^8$ per second. But almost all of these placements were dead after two rows: if the queens of rows 0 and 1 already attack each other, none of the $10^8$ ways to fill the other eight rows can help.
+
+The key idea of this topic: build the answer one choice at a time, check the partial solution after every choice, and stop extending it as soon as it cannot succeed. This is **backtracking**. For 10 queens it makes 35 539 calls instead of $10^{10}$ checks, and finds all 724 solutions in a few milliseconds. The same idea, with a sharper check, cuts optimisation searches (stop when even an optimistic guess cannot beat the best answer so far), and a different trick, splitting the choices into two halves, takes $2^{40}$ subsets down to about $2 \cdot 2^{20}$.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: recursion over choices (Theorem 0.5.4), bitmasks for subsets (Theorem 0.5.2), counting candidates against the budget.
+- [Topic 0.2](../../phase-0/0-2-complexity/), complexity: the budget of about $10^8$ simple operations per second.
+- [Topic 1.1](../../phase-1/1-1-sorting/), sorting: sorting the choices so that equal values are next to each other and large values come first.
+- [Topic 1.4](../../phase-1/1-4-binary-search/), binary search: combining two sorted lists in meet in the middle.
+
 ### What this topic does not cover
+
+- Storing the answer of each recursive call so that a repeated call is answered at once (memoisation), and building tables of answers bottom-up: covered in topic 3.2 (dynamic programming foundations).
+- Search over the states of a graph, visiting each state once: covered in topic 4.1 (breadth-first search and depth-first search).
+- Bitmask dynamic programming for "choose an order of $n \le 20$ items": covered in topic 3.7.
+- Randomised search, heuristics such as simulated annealing, and constraint solvers: not part of this course.
 
 ## 3. Definitions
 
+- A **partial solution** is a sequence of the first few choices, $c_0, \dots, c_{p-1}$, of a recursion over choices (Theorem 0.5.4). Example: for queens, the columns of the queens in rows $0, \dots, p - 1$.
+- The **search tree** of a recursion has one node per call: the root is the call with no choices made, and the children of a node are the calls it makes. A node at depth $p$ corresponds to one partial solution of length $p$. Example: for 4 queens without any checks, the search tree has $1 + 4 + 16 + 64 + 256 = 341$ nodes.
+- **Backtracking** is a recursion that extends a partial solution one choice at a time, tests it, and, when the call returns, undoes its last choice so that the shared state is as it was before the call.
+- **Pruning** a node means not calling into it, so that its whole subtree is skipped. A **feasibility check** prunes partial solutions that cannot be completed to a valid one; a **bound** prunes partial solutions that cannot be completed to one better than the best found so far.
+- An **optimistic estimate** for a maximisation problem is a number $U(s)$ for a partial solution $s$ that is at least the value of every complete solution extending $s$. Example: when choosing items with non-negative values, "value so far + values of all items not yet decided" is optimistic.
+- **Branch and bound** is backtracking for an optimisation problem that prunes with an optimistic estimate.
+- **Meet in the middle** splits $n$ choices into two halves, lists all $2^{n/2}$ choices of each half separately, and combines the two lists, usually after sorting one of them.
+
 ## 4. Theory and proofs
+
+### 4.1 Backtracking with a feasibility check
+
+Backtracking adds one line to the recursion of Theorem 0.5.4:
+
+```
+rec(pos):
+    if pos == L: output the current sequence c[0..L-1]; return
+    for each allowed choice v at position pos:
+        c[pos] = v
+        if ok(c[0..pos]): rec(pos + 1)
+```
+
+**Theorem 3.1.1 (pruning by feasibility).** Suppose that on a complete sequence ($pos = L - 1$) `ok` is the full validity check, and that `ok` never rejects a partial solution that has a valid completion; that is, whenever $c_0, \dots, c_p$ can be extended to a valid complete sequence, `ok` returns true. Then `rec(0)` outputs every valid complete sequence exactly once. If, in addition, `ok` is **exact** (it accepts exactly the partial solutions that have a valid completion), then every call lies on the path from the root to some output, so the number of calls is at most $(L + 1) \cdot S$, where $S$ is the number of outputs.
+
+*Proof.* Without the test, Theorem 0.5.4 shows that every sequence is reached exactly once, along the path of its prefixes. A valid sequence has a valid completion at every prefix (itself), so `ok` accepts each of its prefixes and its path is never cut: it is output. An invalid sequence is never output, because it fails the test at $pos = L - 1$, which is the full validity check. So the outputs are exactly the valid sequences, each once. If `ok` is exact, every node that is called has a valid completion, so it is a prefix of some output; each output has $L + 1$ prefixes, so there are at most $(L + 1) S$ calls. $\square$
+
+:::note[This proof needs]
+1. The test never rejects a partial solution that can still be completed: it may only use the choices made so far and must be implied by the final validity condition. A constraint that is checked only when it involves already-placed items has this property.
+2. The shared state (counters, "used" marks) is restored when a call returns, so that each call sees exactly the state of its own partial solution.
+3. For the running time: the number of nodes that pass the test, times the cost of a test, fits the budget. With an exact test, that is at most (depth + 1) × the number of outputs.
+:::
+
+Trace for 4 queens, one queen per row, `ok` = "the new queen attacks none of the earlier ones". The test only looks at placed queens, so it never rejects a placement that could be completed.
+
+| row 0 | row 1 options that pass | what happens |
+|---|---|---|
+| column 0 | 2, 3 | after (0, 2) no column passes in row 2; after (0, 3) the queen at (2, 1) leaves nothing for row 3 |
+| column 1 | 3 | (1, 3, 0, 2) is a solution |
+| column 2 | 0 | (2, 0, 3, 1) is a solution |
+| column 3 | 0, 1 | the mirror image of column 0: dead ends |
+
+In all, 17 calls instead of the 341 nodes of the unpruned tree; for 8 queens 2 057 calls instead of about $1.9 \cdot 10^7$; for 10 queens 35 539 calls instead of about $1.1 \cdot 10^{10}$. The queens test is not exact (row 2 is reached after (0, 2) although nothing can follow), so the count is more than $(L + 1) S$, but still small.
+
+**Undoing.** If the test reads shared arrays, such as "column $j$ is taken", the recursion sets the mark before the call and clears it after. Each call then sees the marks of exactly its own partial solution (precondition 2), and each test costs $O(1)$ instead of a loop over the earlier queens.
+
+### 4.2 Listing without repeats
+
+Many problems ask for all *sets* of choices, not all sequences. Listing sequences then lists every set many times: the set $\{1, 2\}$ appears as $(1, 2)$ and $(2, 1)$.
+
+**Theorem 3.1.2 (canonical order).**
+1. Let the recursion choose the next element only among those with a larger index than the last one chosen. Then every subset of indices is produced exactly once, as its elements in increasing order.
+2. Let the values $a_0 \le a_1 \le \dots \le a_{n-1}$ be sorted, and at each call let the loop skip index $i$ when $i$ is not the first index tried in that loop and $a_i = a_{i-1}$. Then every distinct multiset of values (every sub-multiset of $a$) is produced exactly once.
+
+*Proof.* 1. A subset of indices has exactly one increasing order, and the recursion produces every increasing sequence (Theorem 0.5.4 with the allowed choices "larger than the last"); it produces no other sequence. 2. Fix a multiset $M$ of values. Among the index sequences that give $M$ in non-decreasing order, call the one that uses, for each value, the *leftmost* available indices the canonical one. The skip rule allows exactly the canonical sequence: in one loop, the first index of each run of equal values is tried, and later indices of the same run are skipped. So when a value $x$ is taken at some depth, it is taken at the first index of $x$ after the previous choice, which is what the canonical sequence does; any other sequence for $M$ takes some value at a later index of a run whose first index was available, and is skipped. $\square$
+
+:::note[This proof needs]
+1. Part 1: the output is a set (order does not matter); producing elements in increasing index order is enough.
+2. Part 2: the values are sorted, so equal values are next to each other, and the skip compares with the previous index *within the same loop* (at the same depth), not with the last value taken.
+:::
+
+Example: $a = (1, 2, 2)$. Without the skip, part 1 gives the subsets $\{\}, \{1\}, \{1, 2\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2\}, \{2, 2\}$, with $\{1, 2\}$ and $\{2\}$ twice. With the skip, the second $2$ is never the first choice of a loop where the first $2$ was available, and the six distinct multisets $\{\}, \{1\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2, 2\}$ come out once each.
+
+For permutations of a list with repeated values the same idea works with a "used" array: at one position, try each *value* once (skip index $i$ when $a_i = a_{i-1}$ and index $i - 1$ is not used, so equal values are placed left to right). The number of outputs is then the multinomial coefficient of [topic 2.3](../../phase-2/2-3-combinatorics/) instead of $n!$.
+
+### 4.3 Branch and bound
+
+For an optimisation problem ("the largest total value of a valid choice"), feasibility alone does not cut much: every partial solution may be completable. A bound cuts the partial solutions that are completable but cannot win.
+
+**Theorem 3.1.3 (branch and bound).** Let backtracking keep `best`, the best value of a complete solution found so far (initially $-\infty$), and prune a partial solution $s$ when $U(s) \le$ `best`. If $U$ is optimistic ($U(s) \ge$ the value of every complete solution extending $s$), the search still returns the optimum.
+
+*Proof.* Let $s^*$ be an optimal complete solution, of value $v^*$. If $s^*$ is reached, `best` becomes $v^*$. Otherwise some prefix $s$ of $s^*$ was pruned, at a moment when $U(s) \le$ `best`. Since $U$ is optimistic, $v^* \le U(s) \le$ `best`, so a solution of value at least $v^*$ had already been found, and `best` $= v^*$ because nothing beats the optimum. Pruning on feasibility (Theorem 3.1.1) is kept as well. $\square$
+
+:::note[This proof needs]
+1. The estimate never understates what the rest can achieve (for a maximum: never smaller than the best completion; for a minimum: never larger than the cheapest completion).
+2. `best` is the value of a complete solution actually found, not a guess.
+3. Running time has no useful worst-case guarantee: the bound helps only as much as the estimate is tight, so test the worst inputs. Two habits make it tight sooner: try the most promising choices first (for example the largest items), so that a good `best` is found early, and make the estimate as sharp as an easy formula allows.
+:::
+
+Example: distribute jobs of lengths $(8, 7, 5, 4, 3)$ to 2 workers so that the larger load is as small as possible. This is a minimisation, so the bound is reversed: a partial assignment is cut when its current larger load is already $\ge$ `best`, because loads only grow (the current larger load never exceeds the larger load of any completion). Jobs are tried longest first, each first on the less loaded worker. The first complete assignment is $8 + 4 + 3 = 15$ and $7 + 5 = 12$, so `best` $= 15$. From then on, every branch that puts 8 and 7 on the same worker reaches load 15 at the second job and is cut with its whole subtree of $2^3$ completions. The search ends with `best` $= 14$ ($8 + 5$ against $7 + 4 + 3$), and the total $27$ shows that no assignment does better than $\lceil 27 / 2 \rceil = 14$. A symmetry cut helps too: the first job may go to worker 0 only, because swapping the two workers gives the same loads.
+
+### 4.4 Meet in the middle
+
+**Theorem 3.1.4 (meet in the middle).** Given $n$ numbers and a target $T$, the number of subsets with sum exactly $T$ (or at most $T$, or the subset sum closest to $T$) can be found in $O(2^{n/2} \cdot n)$ time: split the numbers into halves $A$ and $B$, list the $2^{|A|}$ subset sums of $A$ and the $2^{|B|}$ subset sums of $B$, sort the list of $B$, and for each sum $x$ of $A$ look up the sums $y$ of $B$ with $x + y = T$ (or $\le T$, or closest to $T$) by binary search.
+
+*Proof.* Every subset $S$ of the numbers splits uniquely as $S = S_A \cup S_B$ with $S_A \subseteq A$, $S_B \subseteq B$, and $\operatorname{sum}(S) = \operatorname{sum}(S_A) + \operatorname{sum}(S_B)$. So subsets correspond one-to-one to pairs (a sum from the list of $A$, a sum from the list of $B$), each list entry counted with its own subset. The subsets with sum $T$ are the pairs with $x + y = T$; for a fixed $x$, the matching $y$ form one block of the sorted list of $B$, whose two ends binary search finds (Theorem 1.4.1). Lists: $2^{n/2}$ sums each, built in $O(2^{n/2} \cdot n)$ by bitmasks or by recursion; sorting costs $O(2^{n/2} \cdot n)$; the lookups cost $O(2^{n/2} \cdot n)$. $\square$
+
+:::note[This proof needs]
+1. The objective splits into a part from each half that are combined by a simple rule (a sum, an exclusive or, a product), and the question about the combination can be answered from a sorted list (equal to, at most, closest to).
+2. Each half is small enough to list: $2^{20} \approx 10^6$ is comfortable, $2^{25}$ is at the edge of memory.
+:::
+
+Example: $n = 40$. Listing all $2^{40} \approx 1.1 \cdot 10^{12}$ subsets is out of budget, but two lists of $2^{20} \approx 10^6$ sums, a sort, and $10^6$ binary searches of 20 steps are about $5 \cdot 10^7$ operations. A small trace: numbers $(3, 5 \mid 2, 6)$, $T = 8$. Sums of $A$: $0, 3, 5, 8$. Sorted sums of $B$: $0, 2, 6, 8$. Look up $8 - x$: for $x = 0$, the value 8 is found once (the subset $\{2, 6\}$); for $x = 3$ and $x = 5$, the values 5 and 3 are not in the list; for $x = 8$, the value 0 is found once (the subset $\{3, 5\}$). So 2 subsets have sum 8, which a check by hand confirms.
+
+### 4.5 Choosing among the tools
+
+Every tool in this topic is still exhaustive search: it gives the exact answer but its running time depends on how much is cut. Before writing one, estimate the number of nodes:
+- **Generating everything**: at most (depth + 1) × the number of outputs when the check is exact (Theorem 3.1.1). When the problem asks to *print* every object, this is the best possible.
+- **Placement with checks**: no clean formula; small boards (queens up to about 12, a $9 \times 9$ grid puzzle with many givens) are known to be fast, and the worst input should be tried.
+- **Branch and bound**: no guarantee; it is the tool when $n$ is around 10 to 20, the choices are few per step, and a good order and estimate are available.
+- **Meet in the middle**: a guarantee, $O(2^{n/2} n)$, when $n$ is around 30 to 45 and the objective splits (Theorem 3.1.4).
 
 ## 5. Recognition Cards
 

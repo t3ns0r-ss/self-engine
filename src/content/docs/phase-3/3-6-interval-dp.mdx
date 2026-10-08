@@ -201,6 +201,93 @@ Four programs, one per card: the cheapest bracketing of a matrix product (split 
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds. Three of the six are about the order in which the table is filled or read, the most common interval-DP mistake.
+
+### Bug: filling by the left end
+
+Template: cheapest bracketing.
+
+```cpp
+for (int l = 1; l <= n; l++) {
+    for (int r = l + 1; r <= n; r++) {
+```
+
+Input: `3`, then the sizes `2 5 3 3`.
+
+Wrong output `30`, correct output `48`. With $l = 1$ first, `best[1][3]` is computed before `best[2][3]`, which still holds 0: the split $k = 1$ looks free apart from its last multiplication, $2 \cdot 5 \cdot 3 = 30$.
+
+**Fix:** loop over the length outside (or over $l$ downwards), so that every segment is computed after the shorter segments inside it (Theorem 3.6.1, note 1).
+
+### Bug: overwriting a row in the wrong direction
+
+Template: taking from the ends.
+
+```cpp
+for (int l = n - len; l >= 0; l--) {
+```
+
+Input: `3`, then `2 1 8`.
+
+Wrong output `10`, correct output `9` (take 8, the opponent takes 2, you get 1). With one array per length, `diff[l + 1]` must still hold the shorter segment $[l + 1, r]$ when `diff[l]` is computed. Going from right to left, `diff[l + 1]` has already been replaced by the longer segment $[l + 1, r + 1]$.
+
+**Fix:** when one array stores the values of the previous length in place, update it in the direction that reads old entries before they are overwritten: here $l$ increasing. Or keep two arrays.
+
+### Bug: adding the opponent's difference
+
+Template: taking from the ends.
+
+```cpp
+diff[l] = max(a[l] + diff[l + 1], a[r] + diff[l]);
+```
+
+Input: `2`, then `5 6`.
+
+Wrong output `11`, correct output `6`. `diff` is the advantage of the player to move; after your move the opponent moves, so their advantage counts against you.
+
+**Fix:** `a[l] − diff[l + 1]` (Theorem 3.6.3). When the state is "the player to move", every recursive value changes sign once per move.
+
+### Bug: dropping both ends on a mismatch
+
+Template: longest palindromic subsequence.
+
+```cpp
+else cur[r] = (l + 1 <= r - 1 ? next[r - 1] : 0);
+```
+
+Input: `ba`.
+
+Wrong output `0`, correct output `1`. When the ends differ, only one of them must go; dropping both loses palindromes that use one end, here the single letter b (or a).
+
+**Fix:** on a mismatch take the larger of $[l + 1, r]$ and $[l, r - 1]$ (Theorem 3.6.4), as in the LCS table of topic 3.4.
+
+### Bug: forgetting the part after the partner
+
+Template: longest correct bracket subsequence.
+
+```cpp
+if (matches(s[l], s[k])) value = max(value, 2 + get(l + 1, k - 1));
+```
+
+Input: `()()`.
+
+Wrong output `2`, correct output `4`. Matching $s_l$ with $s_k$ splits the segment into the inside $(l, k)$ **and** the outside $[k + 1, r]$; the outside can still hold matched pairs.
+
+**Fix:** add `get(k + 1, r)` (Theorem 3.6.5). After fixing the partner, list every part the segment falls into and make sure each one is counted.
+
+### Bug: any closing bracket as a partner
+
+Template: longest correct bracket subsequence.
+
+```cpp
+if ((s[l] == '(' || s[l] == '[') && (s[k] == ')' || s[k] == ']')) value = ...
+```
+
+Input: `(]`.
+
+Wrong output `2`, correct output `0`. A partner must have the matching type; the pairing is allowed only when the two elements really go together.
+
+**Fix:** test the pair with `matches`. Test with two bracket types and crossing pairs such as "([)]".
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

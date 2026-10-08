@@ -18,6 +18,8 @@ import valueIndexed from '../../../../code/3.3/value-indexed/solution.cpp?raw';
 import coinChange from '../../../../code/3.3/coin-change/solution.cpp?raw';
 import balancedSplit from '../../../../code/3.3/balanced-split/solution.cpp?raw';
 import boundedCopies from '../../../../code/3.3/bounded-copies/solution.cpp?raw';
+import example1 from '../../../../code/3.3/example-1/solution.cpp?raw';
+import example2 from '../../../../code/3.3/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.3" />
 
@@ -296,6 +298,70 @@ Wrong output `5`, correct output `10`. With 2 copies the bundles should be 1 and
 **Fix:** the last bundle is whatever is left, $r = c - (2^k - 1)$ (Theorem 3.3.5); `take = min(size, c)` creates it. Test counts that are not of the form $2^k - 1$.
 
 ## 8. Worked examples
+
+### Example 1: Book Shop
+
+[CSES 1158: Book Shop](https://cses.fi/problemset/task/1158) (CSES is the Code Submission Evaluation System problem set). In short: $n \le 1000$ books with prices and page counts up to 1000; buy each book at most once with total price at most $x \le 10^5$, maximising the pages.
+
+#### Step 1: Constraints → budget
+
+$2^{1000}$ subsets: impossible. $n \cdot x = 10^8$ simple steps fits in about a second; $n \cdot x \cdot$ anything more does not.
+
+#### Step 2: Question form → candidate tools
+
+- Greedy by pages per unit of price (topic 1.5): fails for whole books, as Section 1 showed.
+- Meet in the middle (topic 3.1): only for $n$ around 40.
+- A table over (books decided, money spent): the zero-one card.
+
+#### Step 3: Property check → decision
+
+The card needs independent items and a small capacity. Buying one book never forbids or forces another; only the total price links them, and the budget $x \le 10^5$ can index an array. The sum of the pages, up to $10^6$, could index one too, but $n \cdot 10^6 = 10^9$ is larger than $n \cdot x$. Decision: the 0/1 table over the price, one row, updated downwards.
+
+#### Step 4: Proof for this problem
+
+Theorem 3.3.1 with weights = prices, values = pages and $W = x$: `best[c]` after the first $i$ books is the most pages within price $c$, and the downward loop uses each book at most once. The answer is `best[x]`. Time $O(n x) = 10^8$, memory $x + 1$ integers.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** The pages fit in `int`: at most $1000 \cdot 1000 = 10^6$. The inner loop is the whole program; it does one comparison and one addition per step, which is why $10^8$ steps run in time. Tested on the sample from the problem page (13 pages), on a single book that is too expensive (0), on 1000 identical books with the largest budget (100 books fit), and on 1000 random books; and on 5000 random inputs ($n \le 12$) against a brute force over all bitmasks.
+
+#### Step 6: Alternative approach
+
+Index by pages instead (Theorem 3.3.2): `minPrice[p]` = the cheapest set of books with exactly `p` pages, and the answer is the largest `p` with `minPrice[p] ≤ x`. It is correct, but with up to $10^6$ total pages it costs $10^9$ steps here; it wins only when the prices are huge and the page counts small.
+
+### Example 2: Two Sets II
+
+[CSES 1093: Two Sets II](https://cses.fi/problemset/task/1093). In short: count the ways to divide the numbers $1, 2, \dots, n$ ($n \le 500$) into two sets with equal sums, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$2^{500}$ subsets: impossible. The total is $\frac{n(n+1)}{2} \le 125\,250$, so one set must sum to at most $62\,625$; $n$ times that is about $3 \cdot 10^7$.
+
+#### Step 2: Question form → candidate tools
+
+- A formula (topic 2.3): no closed form is known for these counts.
+- Meet in the middle (topic 3.1): $2^{250}$ per half, still impossible.
+- Counting subsets by their sum, with the sums small: the subset-sums card, as a count.
+
+#### Step 3: Property check → decision
+
+A division into two equal halves is fixed by the set $A$ that has sum $\frac{\text{total}}{2}$ (the other set is the rest). So it is enough to count the subsets of $\{1, \dots, n\}$ with sum exactly $\frac{\text{total}}{2}$: each number is used at most once and the sums are small. Each division is counted twice, once for $A$ and once for its complement, which also has sum $\frac{\text{total}}{2}$. Decision: the subset-sum count, then multiply by the inverse of 2 modulo the prime (Theorem 2.2.4); if the total is odd, the answer is 0.
+
+#### Step 4: Proof for this problem
+
+Let `ways[s]` count the subsets of $\{1, \dots, k\}$ with sum $s$. Splitting by whether $k$ is in the subset gives `ways[s] += ways[s − k]`, with the downward loop so that $k$ is used once (Theorems 3.3.1 and 3.3.4, with a count instead of a maximum). The subsets with sum $\frac{\text{total}}{2}$ come in pairs $\{A, \bar A\}$ with $A \ne \bar A$ (they differ, since $n \ge 1$ belongs to exactly one of them), and each pair is one division. So the number of divisions is `ways[half] / 2`, computed modulo the prime as `ways[half] · inv2`. Time $O(n \cdot \text{half}) \approx 3 \cdot 10^7$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `(MOD + 1) / 2` is the inverse of 2 modulo the odd prime $10^9 + 7$, since $2 \cdot \frac{MOD + 1}{2} = MOD + 1 \equiv 1$ (topic 2.2). The count `ways[half]` is even as an integer, but its residue need not be, so dividing the residue by 2 with `/` would be wrong; multiplying by the inverse is exact. Tested on the sample ($n = 7$: 4 ways), $n = 1$ and $n = 3$ (0 and 1), $n = 500$ and $n = 499$; and on 5000 random inputs ($n \le 20$) against a brute force that tries every subset and halves the count.
+
+#### Step 6: Alternative approach
+
+Avoid the division: put the number $n$ always in the first set, and count the subsets of $\{1, \dots, n - 1\}$ with sum $\frac{\text{total}}{2} - n$. Each division has exactly one set containing $n$, so this counts each division once, with no inverse needed.
 
 ## 9. Problem ladder
 

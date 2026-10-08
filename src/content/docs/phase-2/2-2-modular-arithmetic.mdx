@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import powMod from '../../../../code/2.2/pow-mod/solution.cpp?raw';
+import inverseCode from '../../../../code/2.2/inverse/solution.cpp?raw';
+import fractionSum from '../../../../code/2.2/fraction-sum/solution.cpp?raw';
+import powerTower from '../../../../code/2.2/power-tower/solution.cpp?raw';
+import inverseTable from '../../../../code/2.2/inverse-table/solution.cpp?raw';
 
 <TopicHeader topic="2.2" />
 
@@ -176,6 +181,71 @@ Example, $p = 7$: $\operatorname{inv}[2] = -3 \cdot 1 \equiv 4$, $\operatorname{
 <Cards topic="2.2" />
 
 ## 6. Templates
+
+Five short programs: one for each theorem except Fermat's, which the others use. The brute forces multiply one step at a time or try every candidate.
+
+### Powers modulo $m$ (Theorem 2.2.1)
+
+<Code code={powMod} lang="cpp" title="pow-mod/solution.cpp" />
+
+**How it works.** `power` is the loop of Theorem 2.2.1: `b & 1` reads the lowest bit of the exponent, `x` holds $a^{2^k}$ for the current bit $k$, and `r` collects the powers for the bits that are 1. `mulmod` multiplies two residues without overflow.
+
+**C++ details explained.**
+- `__int128` is a 128-bit integer type of g++ (topic 0.1). A product of two residues below $10^{18}$ is below $10^{36} < 2^{127}$, so it fits; the result after `% m` fits back into `long long`. When the modulus is below about $3 \cdot 10^9$, plain `long long` products are enough and faster.
+- `b >>= 1` shifts the exponent right by one bit, which is `b /= 2` for $b \ge 0$.
+- `1 % m` is 0 when $m = 1$, so every answer modulo 1 is 0.
+
+**Tested.** Stress-tested against a brute force that multiplies $b$ times, on 5000 random inputs ($b \le 60$, moduli up to 10, up to $2 \cdot 10^9$ or up to $10^{18}$). There are also 2 fixed tests: the trace of Section 4.1 together with $0^0$, $m = 1$, $2^{10^{18}} \bmod (10^9 + 7)$ and $10^{18}$-sized values, and $10^5$ random queries with $a, b, m$ up to $10^{18}$, checked against Python's `pow`.
+
+**Alternative formulation.** The recursive form $a^b = (a^{\lfloor b/2 \rfloor})^2 \cdot a^{b \bmod 2}$ computes the same products from the top bit down.
+
+### The inverse modulo any $m$ (Theorem 2.2.3)
+
+<Code code={inverseCode} lang="cpp" title="inverse/solution.cpp" />
+
+**How it works.** The extended Euclidean algorithm of topic 2.1 gives $x, y$ with $(a \bmod m) x + m y = g$. If $g \ne 1$ there is no inverse; otherwise $x$, made non-negative, is the inverse (Theorem 2.2.3, parts 1 and 2).
+
+**C++ details explained.** `a % m` first brings $a$ below $m$; this does not change the GCD or the inverse. The coefficient `x` is at most $m$ in absolute value (Theorem 2.1.2, part 1), so `x % m + m` cannot overflow.
+
+**Tested.** Stress-tested against a brute force that tries every $x$ from 0 to $m - 1$, on 5000 random inputs ($m \le 12$ or $m \le 3000$, $a$ up to $3m$ or up to $10^{18}$). There are also 2 fixed tests: the examples of Section 4.3 ($3^{-1}$ modulo 7 and 10, and no inverse for 4 modulo 10), $a = 0$, $m = 2$, values near $10^{18}$, and $10^5$ random pairs up to $10^{18}$.
+
+**Alternative formulation.** For a prime modulus, `power(a, p - 2, p)` gives the same inverse (Theorem 2.2.3, part 3), but it returns 0 instead of reporting failure when $p \mid a$.
+
+### A sum of fractions modulo a prime (Theorem 2.2.4)
+
+<Code code={fractionSum} lang="cpp" title="fraction-sum/solution.cpp" />
+
+**How it works.** Each fraction $\frac PQ$ becomes $P \cdot Q^{-1} \bmod p$, and the residues are added. By Theorem 2.2.4, the result is the residue of the exact sum, without ever computing that sum.
+
+**C++ details explained.** `P % MOD * inv` reduces $P$ first; both factors are then below $2^{30}$ and the product fits in `long long`. `MOD - 2` is the exponent for Fermat's inverse.
+
+**Tested.** Stress-tested against a brute force that adds the fractions exactly (numerator and denominator in `long long`, reduced by their GCD) and finds the inverse of the final denominator by trying multiples of the modulus, on 5000 random inputs (up to 4 fractions with denominators up to 12). There are also 4 fixed tests: $\frac13$ (the example of Section 1), $\frac12 + \frac13$, $\frac05$, and $2 \cdot 10^5$ random fractions with values up to $10^9$.
+
+**Alternative formulation.** Keep the sum as a fraction $\frac{R}{S}$ modulo $p$ and invert only once at the end: $\frac RS + \frac PQ = \frac{RQ + PS}{SQ}$. This needs one inverse instead of $n$, which matters when inverses are the bottleneck.
+
+### A power tower $a^{b^c}$ modulo a prime (Theorem 2.2.5)
+
+<Code code={powerTower} lang="cpp" title="power-tower/solution.cpp" />
+
+**How it works.** The exponent $b^c$ is far too large, so it is reduced modulo $p - 1$ with fast power, and then $a$ is raised to the reduced exponent. Multiples of $p$ are treated first, because reducing their exponent to 0 would turn 0 into 1 (Theorem 2.2.5, part 2).
+
+**C++ details explained.** `power(b, c, p - 1)` uses the modulus $p - 1$, which can be 1 (for $p = 2$); `1 % m` makes that case return 0. `expZero` is true exactly when $b^c = 0$, that is, $b = 0$ and $c \ge 1$ (with $0^0 = 1$).
+
+**Tested.** Stress-tested against a brute force that computes $b^c$ exactly and multiplies that many times, on 5000 random inputs with the small primes 2 to 13 as moduli, so that exponents larger than $p - 1$ and multiples of $p$ are common. There are also 2 fixed tests: small cases including $0^{0^0}$, $0^{0^5}$, $a = p$, and the largest values, and $10^5$ random queries modulo $10^9 + 7$ or $998\,244\,353$.
+
+**Alternative formulation.** For a tower of three or more levels, apply the reduction one level at a time; each level needs its own modulus ($p - 1$ for the exponent of the base), and $p - 1$ is not prime, so the next level cannot use Fermat again. That case is outside this topic.
+
+### The inverses of $1, \dots, n$ (Theorem 2.2.6)
+
+<Code code={inverseTable} lang="cpp" title="inverse-table/solution.cpp" />
+
+**How it works.** Each `inv[i]` is computed from `inv[p % i]`, an inverse already in the table because $p \bmod i < i$. One pass gives all $n$ inverses.
+
+**C++ details explained.** `(p / i) * inv[p % i] % p` is in $[0, p)$, so `p - …` is in $(0, p]$ and the final `% p` maps $p$ to 0. Both factors are below $p \le 10^9 + 7$, so the product fits in `long long`.
+
+**Tested.** Stress-tested against a brute force that tries every candidate inverse, on 5000 random inputs (primes up to 997, $n$ up to 60). There are also 5 fixed tests: $n = 1$ with $p = 2$, all inverses modulo 7 (the example of Section 4.6), $n = 10^6$ modulo $10^9 + 7$ and modulo $998\,244\,353$, and $n = p - 1$ for $p = 1\,000\,003$.
+
+**Alternative formulation.** Compute the prefix products $1 \cdot 2 \cdots i$, invert only the last one with Fermat, and walk back: $i^{-1} = (\text{product up to } i - 1) \cdot (\text{product up to } i)^{-1}$. It also takes $O(n)$ and works for the inverses of any $n$ numbers, not only $1, \dots, n$.
 
 ## 7. Bug catalogue
 

@@ -272,6 +272,112 @@ Five short programs, one for each card. The brute forces test every candidate di
 
 ## 7. Bug catalogue
 
+Number theory bugs often pass the samples: they only show up on squares of primes, on large prime factors, or on equations whose GCD is not 1. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: stopping the sieve before $p^2 = N$
+
+Template: primes in ranges.
+
+```cpp
+for (int p = 2; (long long)p * p < N; p++) {
+```
+
+Input: `4 1`, then the range `2 4`.
+
+Wrong output `3`, correct output `2`. With $N = 4$, the loop needs $p = 2$ to mark 4, but $2 \cdot 2 < 4$ is false, so nothing is marked and 4 is counted as a prime. The same happens to every $N = p^2$ with $p$ prime.
+
+**Fix:** the loop must reach every $p$ with $p^2 \le N$ (Theorem 2.1.1, part 2: the smallest prime factor of a composite $n$ may be exactly $\sqrt n$).
+
+### Bug: marking from $p$ instead of $p^2$
+
+Template: primes in ranges.
+
+```cpp
+for (int j = p; j <= N; j += p) composite[j] = 1;
+```
+
+Input: `7 1`, then the range `1 7`.
+
+Wrong output `3`, correct output `4`. The inner loop starts at $p$ itself, so 2 marks itself as composite; only 3, 5 and 7 remain.
+
+**Fix:** start at $p^2$, or at $2p$. Never at $p$: the prime itself must stay unmarked.
+
+### Bug: no check that the GCD divides $c$
+
+Template: an integer equation $ax + by = c$. The test `if (c % g != 0)` is removed.
+
+Input: `1`, then `8 62 275`.
+
+Wrong output `11 3`, correct output `-1`. Here $g = 2$ does not divide 275, so there is no solution: $8x + 62y$ is always even. The program still divides, and integer division silently rounds: $8 \cdot 11 + 62 \cdot 3 = 274$, not 275.
+
+**Fix:** test $g \mid c$ first (Bézout's identity, Theorem 2.1.2, part 2). Then check a few outputs by computing $ax + by$ back.
+
+### Bug: reducing $x$ modulo $b$ instead of $b/g$
+
+Template: an integer equation $ax + by = c$.
+
+```cpp
+long long m = b;
+```
+
+Input: `1`, then `6 33 840`.
+
+Wrong output `19 22`, correct output `8 24`. Both pairs are solutions ($114 + 726 = 48 + 792 = 840$), but the solutions for $x$ repeat every $b/g = 11$, not every 33 (Theorem 2.1.2, part 4). Reducing modulo 33 can leave a value that is not the smallest: $19 - 11 = 8$.
+
+**Fix:** reduce modulo $b/g$. When $g = 1$ the two are the same, which is why tests with coprime $a$ and $b$ do not find this bug.
+
+### Bug: a negative remainder
+
+Template: an integer equation $ax + by = c$.
+
+```cpp
+long long xm = x % m, cm = (c / g) % m;
+```
+
+Input: `1`, then `14 5 928`.
+
+Wrong output `-3 194`, correct output `2 180`. The extended Euclidean algorithm gives $14 \cdot (-1) + 5 \cdot 3 = 1$. In C++, $-1 \bmod 5$ is $-1$, not 4, so the "smallest non-negative" $x$ comes out as $-3$.
+
+**Fix:** `((x % m) + m) % m` (topic 0.4). Coefficients from `ext` are often negative.
+
+### Bug: losing the last prime factor
+
+Template: factorising one large number. The line `if (n > 1) f.push_back({n, 1});` is removed.
+
+Input: `7`.
+
+Wrong output: an empty factorisation and `1 1`; correct output `7^1`, then `2 8`. For a prime $n$, the loop tries only $d = 2$ ($4 \le 7$) and stops at $d = 3$ ($9 > 7$), and $n$ itself is never recorded. The same loss happens for every number with one prime factor above its square root, such as $2 \cdot 7 = 14$.
+
+**Fix:** after the loop, a leftover $n > 1$ is a prime factor (Theorem 2.1.5).
+
+### Bug: `d * d < n` in trial division
+
+Template: factorising one large number.
+
+```cpp
+for (long long d = 2; d * d < n; d++) {
+```
+
+Input: `9`.
+
+Wrong output `9^1` and `2 10`, correct output `3^2` and `3 13`. The loop stops before $d = 3$ because $3 \cdot 3 < 9$ is false, and the leftover 9 is recorded as if it were prime.
+
+**Fix:** `d * d <= n`. As with the sieve, squares of primes are the inputs that break a strict comparison; test them on purpose.
+
+### Bug: subtracting multiples in the wrong order
+
+Template: pairs with a given GCD.
+
+```cpp
+for (int d = 1; d <= M; d++) {
+```
+
+Input: `2`, then `9 6`.
+
+Wrong output `1 3`, correct output `0 3`. The pair $(9, 6)$ has GCD 3. Processing $d = 1$ first subtracts $E[2], E[3], \dots$ while they are all still 0, so the pair is counted as coprime.
+
+**Fix:** go from large $d$ to small, so that every $E[kd]$ with $k \ge 2$ is final before $E[d]$ uses it (Theorem 2.1.6, part 2).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

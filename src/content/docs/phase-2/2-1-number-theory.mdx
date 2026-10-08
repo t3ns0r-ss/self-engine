@@ -18,15 +18,170 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. Count the primes up to $N = 10^7$.
+
+The direct method tests each number $k$ by trying every divisor $d$ with $d^2 \le k$ (Theorem 0.2.2). Composite numbers stop early, but each prime $p$ needs all $\sqrt p$ trials: about $1.7 \cdot 10^9$ divisions in total, several seconds. The other way round is much faster. Instead of asking each number for a divisor, let each prime $p$ cross off its multiples. Every number left uncrossed is a prime. For $N = 10^7$ that is $2.3 \cdot 10^7$ crossings, well under a second.
+
+This topic is about the prime structure of integers and how to compute with it. The same crossing-off loop can record each number's smallest prime factor, and then any number up to $N$ splits into its prime factors in a few steps. One large number up to $10^{12}$ splits by trying divisors up to its square root. Many questions about divisors and GCDs of all numbers up to $N$ become loops over multiples. And the Euclidean algorithm of topic 0.4 does more than compute $\gcd(a, b)$: it writes it as $ax + by$, which decides which equations $ax + by = c$ have integer solutions.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 0.1](../../phase-0/0-1-cpp-for-cp/), C++ for competitive programming (CP): `long long`, overflow, and the exact integer square root.
+- [Topic 0.2](../../phase-0/0-2-complexity/), complexity analysis: divisor pairs (Theorem 0.2.2) and loops over multiples (Theorem 0.2.5, the harmonic bound).
+- [Topic 0.4](../../phase-0/0-4-elementary-math/), elementary mathematics: divisibility, remainders, the GCD and the Euclidean algorithm (Theorem 0.4.5), the LCM (Theorem 0.4.6).
+- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: recursive functions.
+- [Topic 1.2](../../phase-1/1-2-prefix-sums/), prefix sums: answering "how many primes in $[l, r]$" for many ranges.
+
 ### What this topic does not cover
+
+- Powers, division and inverses modulo a number (modular inverse, Fermat's little theorem). Covered in topic 2.2, which uses the extended Euclidean algorithm from this topic.
+- Counting by inclusion–exclusion over sets of prime factors. Covered in topic 2.3.
+- The Möbius function, Euler's totient function as a topic of its own, the Chinese remainder theorem, fast primality tests for numbers up to $10^{18}$ (Miller–Rabin) and fast factorisation of such numbers (Pollard's rho). They are not part of this course.
 
 ## 3. Definitions
 
+- An integer $p \ge 2$ is **prime** if its only positive divisors are 1 and $p$. An integer $n \ge 2$ that is not prime is **composite**: it has a divisor $d$ with $1 < d < n$. 1 is neither. Example: 2, 3, 5, 7, 11 are prime; $9 = 3 \cdot 3$ is composite.
+- The **prime factorisation** of $n \ge 2$ is $n = p_1^{e_1} p_2^{e_2} \cdots p_k^{e_k}$ with primes $p_1 < p_2 < \dots < p_k$ and exponents $e_i \ge 1$. Example: $360 = 2^3 \cdot 3^2 \cdot 5$.
+- $d(n)$ is the number of positive divisors of $n$, and $\sigma(n)$ is their sum. Example: the divisors of 12 are 1, 2, 3, 4, 6, 12, so $d(12) = 6$ and $\sigma(12) = 28$.
+- The **sieve of Eratosthenes** finds all primes up to $N$ by crossing off the multiples of each prime (Theorem 2.1.1).
+- The **smallest prime factor** $\operatorname{spf}(x)$ of $x \ge 2$ is its smallest prime divisor. Example: $\operatorname{spf}(45) = 3$, $\operatorname{spf}(13) = 13$.
+- **Trial division** factorises one number $n$ by trying the divisors $d = 2, 3, \dots$ while $d^2 \le n$ (Theorem 2.1.5).
+- The **extended Euclidean algorithm** computes $g = \gcd(a, b)$ together with integers $x, y$ such that $ax + by = g$ (Theorem 2.1.2). Such $x, y$ are called **Bézout coefficients**. Example: $240 \cdot (-9) + 46 \cdot 47 = 2 = \gcd(240, 46)$.
+
 ## 4. Theory and proofs
+
+### 4.1 Primes and the sieve
+
+**Theorem 2.1.1 (primes and the sieve).**
+1. Every integer $n \ge 2$ has a prime divisor: its smallest divisor greater than 1 is prime.
+2. If $n \ge 2$ is composite, its smallest prime divisor $p$ satisfies $p^2 \le n$.
+3. Start with the numbers $2, \dots, N$ unmarked. For $p = 2, 3, \dots$ while $p^2 \le N$: if $p$ is unmarked, mark $p^2, p^2 + p, p^2 + 2p, \dots$ up to $N$. Afterwards the unmarked numbers are exactly the primes up to $N$, and at most $N (1 + \ln N)$ marks were made.
+
+*Proof.* 1. Let $d$ be the smallest divisor of $n$ with $d > 1$ (it exists, since $n$ itself is one). If $d$ had a divisor $e$ with $1 < e < d$, then $e$ would also divide $n$, contradicting the choice of $d$. So $d$ is prime.
+
+2. Write $n = p \cdot m$. Since $n$ is composite, $p < n$, so $m \ge 2$. By part 1, $m$ has a prime divisor $q$, which also divides $n$, so $q \ge p$. Then $m \ge q \ge p$ and $n = p \cdot m \ge p^2$.
+
+3. No prime is marked: every marked number is $p \cdot k$ with $k \ge p \ge 2$, so it has the divisor $p$ with $1 < p < pk$. Every composite $n \le N$ is marked: let $p$ be its smallest prime divisor. By part 2, $p^2 \le n \le N$, so the loop reaches $p$. At that moment $p$ is unmarked (it is prime), and $n$ is a multiple of $p$ with $n \ge p^2$, so $n$ is marked. For the count: the loop for $p$ makes at most $N / p$ marks, so the total is at most $\sum_{p=2}^{N} N/p \le N H_N \le N (1 + \ln N)$ (Theorem 0.2.5). $\square$
+
+:::note[This proof needs]
+1. An array of $N + 1$ flags fits in memory: $10^7$ `char` values take 10 MB.
+2. $p^2$ is compared with $N$ without overflow: write `(long long)p * p <= N`, or `p <= N / p`.
+3. Starting at $p^2$ instead of $2p$ only saves work. Correctness needs that every composite number is marked by its smallest prime divisor, and that numbers are processed in increasing order.
+:::
+
+**Numbers.** For $N = 10^7$ the sieve makes $22\,850\,051$ marks and finds $664\,579$ primes; there are $78\,498$ primes up to $10^6$. The bound $N(1 + \ln N)$ is far from tight: the true count grows like $N \ln \ln N$ (a known result that this course does not prove), because only primes cross off their multiples.
+
+### 4.2 The extended Euclidean algorithm
+
+**Theorem 2.1.2 (extended Euclid and Bézout).** Let $a, b \ge 0$, not both 0, and $g = \gcd(a, b)$.
+1. The recursive function
+
+```
+ext(a, b):
+    if b == 0: return (a, 1, 0)
+    (g, x', y') = ext(b, a mod b)
+    return (g, y', x' - floor(a / b) * y')
+```
+
+returns $g$ and integers $x, y$ with $ax + by = g$, after as many calls as the loop of Theorem 0.4.5 makes steps. For $b \ge 1$, the result satisfies $|x| \le b/g$ and $|y| \le \max(1, a/g)$.
+2. **(Bézout's identity.)** The integers of the form $ax + by$, with $x, y$ integers, are exactly the multiples of $g$. So the equation $ax + by = c$ has an integer solution exactly when $g$ divides $c$.
+3. **(Euclid's lemma.)** If $m$ divides $e f$ and $\gcd(m, e) = 1$, then $m$ divides $f$. In particular, if a prime $p$ divides $ef$, then $p$ divides $e$ or $p$ divides $f$.
+4. Let $a, b \ge 1$. If $(x_0, y_0)$ is one solution of $ax + by = c$, then the solutions are exactly $x = x_0 + k \cdot \frac{b}{g}$, $y = y_0 - k \cdot \frac{a}{g}$ for integers $k$.
+
+*Proof.* 1. By induction on the number of calls. If $b = 0$, then $g = a$ and $a \cdot 1 + 0 \cdot 0 = a$. If $b > 0$, let $q = \lfloor a/b \rfloor$ and $r = a \bmod b = a - qb$. By Theorem 0.4.5, $\gcd(b, r) = g$, and by induction $b x' + r y' = g$. Substituting $r$: $b x' + (a - qb) y' = a y' + b (x' - q y') = g$, which is the returned pair. For the bounds, let $b \ge 1$. If $r = 0$, the inner call returns $(b, 1, 0)$, so $g = b$, $x = 0$ and $y = 1$, which satisfy them. If $r \ge 1$, induction on the call $(b, r)$ gives $|x'| \le r/g$ and $|y'| \le \max(1, b/g) = b/g$. Then $|x| = |y'| \le b/g$ and $|y| \le |x'| + q |y'| \le (r + qb)/g = a/g$.
+
+2. $g$ divides $a$ and $b$, so it divides every $ax + by$. Conversely, part 1 gives $ax + by = g$, so $a (tx) + b (ty) = tg$ for every integer $t$.
+
+3. By part 2 there are $u, v$ with $mu + ev = 1$. Multiply by $f$: $f = m u f + (e f) v$. Both terms are multiples of $m$, so $m$ divides $f$. If $p$ is prime and does not divide $e$, then $\gcd(p, e) = 1$ (the only divisors of $p$ are 1 and $p$), so $p$ divides $f$.
+
+4. Each listed pair is a solution: $a (x_0 + kb/g) + b (y_0 - ka/g) = c + k (ab/g - ba/g) = c$. Conversely, let $(x, y)$ be a solution. Subtracting the two equations gives $a (x - x_0) = b (y_0 - y)$. Divide by $g$ and write $a' = a/g$, $b' = b/g$; these are coprime, because a common divisor $t > 1$ would make $tg$ a common divisor of $a$ and $b$. From $a' (x - x_0) = b' (y_0 - y)$, $a'$ divides $b' (y_0 - y)$, so by part 3 it divides $y_0 - y$: $y_0 - y = k a'$. Then $a' (x - x_0) = b' k a'$, so $x - x_0 = k b'$. $\square$
+
+:::note[This proof needs]
+1. To solve $ax + by = c$, multiply the coefficients by $c/g$. The products can overflow: with $a, b \le 10^9$ the coefficients are below $10^9$, but $c/g$ may be up to $10^{18}$. Reduce $x$ modulo $b/g$ first, or use `__int128`.
+2. The smallest non-negative $x$ is $x \bmod (b/g)$, taken non-negative: `((x % m) + m) % m` with $m = b/g$ (topic 0.4). Then $y = (c - ax)/b$.
+3. Negative $a$ or $b$: solve with $|a|$ and $|b|$, then flip the sign of the matching coefficient.
+:::
+
+Example: $240x + 46y = 10$. The function gives $240 \cdot (-9) + 46 \cdot 47 = 2$, and $2$ divides $10$, so multiply by 5: $(x_0, y_0) = (-45, 235)$. With $b/g = 23$ and $a/g = 120$, all solutions are $(-45 + 23k,\ 235 - 120k)$. For $k = 2$: $(1, -5)$, and $240 - 230 = 10$.
+
+### 4.3 Prime factorisation and divisors
+
+**Theorem 2.1.3 (prime factorisation).**
+1. Every $n \ge 2$ has a prime factorisation $n = p_1^{e_1} \cdots p_k^{e_k}$, and it is unique.
+2. The divisors of $n$ are exactly the numbers $p_1^{f_1} \cdots p_k^{f_k}$ with $0 \le f_i \le e_i$. So
+   $d(n) = (e_1 + 1)(e_2 + 1) \cdots (e_k + 1)$ and $\sigma(n) = \prod_{i=1}^{k} (1 + p_i + p_i^2 + \dots + p_i^{e_i})$.
+3. Write $a, b \ge 1$ over the same primes, allowing exponent 0: $a = \prod p_i^{\alpha_i}$, $b = \prod p_i^{\beta_i}$. Then $\gcd(a, b) = \prod p_i^{\min(\alpha_i, \beta_i)}$ and $\operatorname{lcm}(a, b) = \prod p_i^{\max(\alpha_i, \beta_i)}$.
+
+*Proof.* 1. Existence, by induction on $n$: if $n$ is prime, it is its own factorisation. Otherwise $n = p \cdot m$ with $p$ prime (Theorem 2.1.1) and $2 \le m < n$; factorise $m$ and add $p$. Uniqueness, by induction on $n$: suppose $n = p_1 p_2 \cdots p_s = q_1 q_2 \cdots q_t$ with all factors prime (listed with repetition). Then $p_1$ divides $q_1 \cdot (q_2 \cdots q_t)$, and by Euclid's lemma (Theorem 2.1.2, part 3), applied repeatedly, $p_1$ divides some $q_j$. A prime $q_j$ has no divisor other than 1 and itself, so $p_1 = q_j$. Cancel it from both sides and apply the induction to $n / p_1$.
+
+2. If $p_1^{f_1} \cdots p_k^{f_k}$ has $f_i \le e_i$, multiplying it by $p_1^{e_1 - f_1} \cdots p_k^{e_k - f_k}$ gives $n$, so it is a divisor. Conversely, if $n = d \cdot m$, then the factorisations of $d$ and $m$ multiply to a factorisation of $n$, which by uniqueness is $n$'s. So $d$ uses only the primes $p_i$, each at most $e_i$ times. Each $f_i$ is chosen independently from $e_i + 1$ values, and different choices give different numbers by uniqueness, which gives $d(n)$. Expanding the product for $\sigma(n)$ gives one term $p_1^{f_1} \cdots p_k^{f_k}$ for each choice of the $f_i$, that is, each divisor once.
+
+3. By part 2, a common divisor has exponent at most $\alpha_i$ and at most $\beta_i$ at each prime; the largest one takes the minimum at every prime. A common multiple has exponent at least $\alpha_i$ and $\beta_i$ (both divide it); the smallest takes the maximum. $\square$
+
+:::note[This proof needs]
+1. $n \ge 2$; the number 1 has the empty factorisation, $d(1) = 1$.
+2. The formulas need the factorisation first; Sections 4.4 and 4.5 compute it.
+3. Divisor counts stay small: at most 240 for $n \le 10^6$, 1344 for $n \le 10^9$, 6720 for $n \le 10^{12}$ and 103680 for $n \le 10^{18}$. So listing all divisors of one number is cheap once it is factorised.
+:::
+
+Example: $360 = 2^3 \cdot 3^2 \cdot 5$ has $d(360) = 4 \cdot 3 \cdot 2 = 24$ divisors, with sum $\sigma(360) = 15 \cdot 13 \cdot 6 = 1170$. And $\gcd(360, 84)$, with $84 = 2^2 \cdot 3 \cdot 7$, is $2^2 \cdot 3 = 12$, while $\operatorname{lcm}(360, 84) = 2^3 \cdot 3^2 \cdot 5 \cdot 7 = 2520$.
+
+### 4.4 The smallest prime factor table
+
+**Theorem 2.1.4 (smallest prime factor table).**
+1. Set $\operatorname{spf}[x] = 0$ for $2 \le x \le N$. For $p = 2, \dots, N$: if $\operatorname{spf}[p] = 0$, set $\operatorname{spf}[p] = p$, and for $j = p^2, p^2 + p, \dots \le N$ set $\operatorname{spf}[j] = p$ wherever it is still 0. Afterwards $\operatorname{spf}[x]$ is the smallest prime factor of every $x \le N$, after at most $N (1 + \ln N)$ steps.
+2. For $2 \le x \le N$, replacing $x$ by $x / \operatorname{spf}[x]$ until $x = 1$ divides out the primes of the factorisation of $x$ in increasing order, with at most $\log_2 x$ divisions.
+
+*Proof.* 1. When the loop reaches $p$, exactly as in Theorem 2.1.1, $\operatorname{spf}[p] = 0$ exactly when $p$ is prime. A prime $p$ gets the value $p$, which is right. A composite $j$ gets its value from the first prime $q$ that reaches it, the smallest prime with $q \mid j$ and $q^2 \le j$. Its smallest prime factor $p$ satisfies $p^2 \le j$ (Theorem 2.1.1, part 2), so $q = p$. The step count is the one of Theorem 2.1.1.
+
+2. Each step divides $x$ by a prime factor of it, so the product of the primes divided out is the original $x$; by uniqueness (Theorem 2.1.3) they are its factorisation. If $p = \operatorname{spf}[x]$, every prime factor of $x / p$ divides $x$, so it is at least $p$: the primes come out in increasing order. Each step at least halves $x$, so after $k$ steps $x \le x_0 / 2^k$, and $k \le \log_2 x_0$. $\square$
+
+:::note[This proof needs]
+1. Every number to factorise is at most $N$, and an `int` array of size $N + 1$ fits: $4 \cdot 10^7$ bytes for $N = 10^7$. Larger numbers need trial division (Section 4.5).
+2. As in the sieve, $p^2$ must not overflow: start the inner loop only when `(long long)p * p <= N`.
+3. Equal primes come out one after another, so the exponent of $p$ is the length of the run of $p$.
+:::
+
+Example: $\operatorname{spf}$ gives $360 \to 180 \to 90 \to 45 \to 15 \to 5 \to 1$, dividing by $2, 2, 2, 3, 3, 5$: six divisions, below $\log_2 360 \approx 8.5$.
+
+### 4.5 Trial division for one large number
+
+**Theorem 2.1.5 (trial division).** Let $n \ge 2$. Run: for $d = 2, 3, 4, \dots$ while $d^2 \le n$: while $d$ divides $n$, record $d$ and replace $n$ by $n / d$. At the end, if $n > 1$, record $n$. The recorded numbers are the primes of the factorisation of the original $n$, in increasing order, and at most $\sqrt{n_0}$ values of $d$ are tried, where $n_0$ is the original $n$.
+
+*Proof.* Invariant: when the loop reaches $d$, the recorded numbers times the current $n$ equal $n_0$, and the current $n$ has no prime factor smaller than $d$ (each one was divided out completely when the loop passed it). So if $d$ divides the current $n$, then $d$ is prime: a prime factor of $d$ smaller than $d$ would divide $n$. When the loop stops, $d^2 > n$. If the remaining $n$ were composite, its smallest prime factor $p$ would satisfy $p \ge d$ (invariant) and $p^2 \le n < d^2$ (Theorem 2.1.1, part 2), a contradiction. So the remaining $n$ is 1 or a prime, and that prime is at least $d$, larger than every recorded one. The current $n$ never grows, so $d$ only runs while $d^2 \le n_0$. $\square$
+
+:::note[This proof needs]
+1. The leftover $n > 1$ after the loop is a prime factor too, possibly larger than $\sqrt{n_0}$. Forgetting it is the most common bug here.
+2. $\sqrt{n_0}$ trials fit the budget for one number up to about $10^{12}$ ($10^6$ trials). For many numbers up to $10^{12}$, try only the primes up to $10^6$ from a sieve: $78\,498$ trials each.
+3. `d * d <= n` must be computed in `long long` when $n$ can exceed about $2 \cdot 10^9$.
+:::
+
+Example: $n = 360$. $d = 2$ divides three times ($360 \to 45$), $d = 3$ twice ($45 \to 5$), and $d = 4$ stops the loop since $16 > 5$. The leftover 5 is recorded: $2, 2, 2, 3, 3, 5$. Listing all divisors of one number (Theorem 0.2.2) is the same loop without the dividing out.
+
+### 4.6 Work over all multiples
+
+**Theorem 2.1.6 (sums over multiples).** Let $a_1, \dots, a_n$ be integers with $1 \le a_i \le M$, and let $\operatorname{cnt}[v]$ be the number of $i$ with $a_i = v$.
+1. For every $d \le M$, the number of elements divisible by $d$ is $c[d] = \sum_{k \ge 1,\, kd \le M} \operatorname{cnt}[kd]$, and all of them together take $O(M \log M)$ steps.
+2. Let $E[d]$ be the number of pairs $i < j$ with $\gcd(a_i, a_j) = d$ exactly. Then
+   $E[d] = \frac{c[d] (c[d] - 1)}{2} - \sum_{k \ge 2,\, kd \le M} E[kd]$,
+   so computing $E[d]$ for $d = M, M - 1, \dots, 1$ takes $O(M \log M)$ steps.
+3. More generally, if $F(d) = \sum_{k \ge 1,\, kd \le M} G(kd)$ for every $d \le M$, then $G(d) = F(d) - \sum_{k \ge 2,\, kd \le M} G(kd)$, computed from $d = M$ down to 1.
+
+*Proof.* 1. An element is divisible by $d$ exactly when its value is one of $d, 2d, \dots$, so summing $\operatorname{cnt}$ over these values counts each such element once. The loop for $d$ makes $\lfloor M/d \rfloor$ steps, $O(M \log M)$ in total (Theorem 0.2.5).
+
+2. $d$ divides both $a_i$ and $a_j$ exactly when $d$ divides $\gcd(a_i, a_j)$, that is, when the GCD is $kd$ for some $k \ge 1$ (and $kd \le M$, since the GCD is at most $a_i$). So the $\frac{c[d](c[d]-1)}{2}$ pairs of elements divisible by $d$ split into the pairs with GCD exactly $d, 2d, 3d, \dots$: $\frac{c[d](c[d]-1)}{2} = \sum_{k \ge 1} E[kd]$. Move the terms with $k \ge 2$ to the other side. When $d$ is processed, every $kd > d$ already has its value. The step count is again the harmonic bound.
+
+3. The same rearrangement, with $F$ in place of the pair count and $G$ in place of $E$. $\square$
+
+:::note[This proof needs]
+1. The values are bounded by an array size $M$ (about $10^6$ to $10^7$); the arrays are indexed by value, not by position.
+2. "Divisible by $d$" is easy to count and "GCD exactly $d$" is not, but the second follows from the first by subtracting the multiples, from large $d$ to small.
+3. Pair counts reach $n^2/2$: `long long`.
+:::
+
+Example: $a = (2, 4, 6, 3)$, $M = 6$. Then $c[1] = 4$, $c[2] = 3$, $c[3] = 2$, $c[4] = 1$, $c[5] = 0$, $c[6] = 1$. From the top: $E[6] = E[5] = E[4] = 0$, $E[3] = 1 - E[6] = 1$ (the pair 6, 3), $E[2] = 3 - E[4] - E[6] = 3$ (2, 4; 2, 6; 4, 6), and $E[1] = 6 - E[2] - E[3] - E[4] - E[5] - E[6] = 2$ (2, 3 and 4, 3).
 
 ## 5. Recognition Cards
 

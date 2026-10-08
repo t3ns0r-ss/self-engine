@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
-- Topic: 2.4
+- Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
+- Topic: 3.1
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: Phase 2 intro page, exam page and 6 exam problems
-- Next action: ⏸ M4 gate (Phase 2 review)
+- Last completed step: 3.1 step 1 scope
+- Next action: 3.1 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -17,7 +17,8 @@
 | M1 exemplar review | approved ("for beginning this is good enough"; patterns and other changes to come later) | 2026-10-03 |
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
-| M4 Phase 2 review | waiting for review | — |
+| M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
+| M5 Phase 3 review | not reached | — |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)
@@ -45,6 +46,7 @@
 | 2.3 | done (on this session's branch) | — |
 | 2.4 | done (on this session's branch) | — |
 | Phase 2 intro and exam | done (on this session's branch) | — |
+| 3.1 | in progress (step 1 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -149,10 +151,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.3 (2.3's counting and binomial tables, 2.2's fractions modulo a prime, 1.2's prefix sums, 1.6's nearest-greater spans are reused).
-- New: finite probability (uniform outcomes, events, independence), random variables and expected value, linearity of expectation (also for dependent variables), indicator variables, the contribution technique for totals over all subarrays, subsets or pairs (total = Σ value × number of configurations), the expected number of trials until a success (1/p) and sums over stages (coupon collector), and the tail-sum formula E[X] = Σ P(X ≥ x) for maxima and minima. Expected values printed modulo a prime. Cards: decided at step 3 from the four bank patterns (indicator-linearity, contribution-total, geometric-wait, tail-sum).
-- Forbidden keywords: every keyword of topics 3.1–7.8 (backtracking, dynamic programming, memoisation, knapsack, segment tree, …). Expectations computed by a recurrence over states (Phase 3), Markov chains and variance are out of scope (named only under "does not cover").
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.3 (fraction modulo a prime 2.2; binomial coefficient, product rule 2.3).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4 (0.5's recursion over choices, bitmasks and exhaustive search are the starting point; 1.1's sorting and 1.4's binary search are reused for meet in the middle; 0.6's sets and maps for combining halves).
+- New: recursion trees and their size, backtracking (extend a partial solution, check, undo), generating combinations, permutations and partitions without repeats (duplicate skipping after sorting), placement with constraint checks (queens, grids), pruning by feasibility and by bound (branch and bound with an optimistic estimate), ordering choices to prune earlier, and meet in the middle for n ≈ 40. Cards: decided at step 3 from the four bank patterns (generate-all, constraint-placement, bound-pruning, meet-in-middle).
+- Forbidden keywords: every keyword of topics 3.2–7.8 (dynamic programming, memoisation, memoization, tabulation, knapsack, bitmask dp, breadth-first search, segment tree, …). Storing answers of repeated recursive calls (memoisation, topic 3.2) and search on graphs (Phase 4) are out of scope (named only under "does not cover").
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4 (recursion, base case, brute force 0.5; expected value 2.4).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

@@ -4,8 +4,8 @@
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
 - Topic: 2.4
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.4 step 9 self-test, checkpoint, reviews, decision map
-- Next action: 2.4 step 10 self-review (e2e)
+- Last completed step: 2.4 step 10 self-review (topic done)
+- Next action: Phase 2 intro page and exam
 
 ## Gates
 | Gate | Status | Date |
@@ -43,28 +43,28 @@
 | 2.1 | done (on this session's branch) | — |
 | 2.2 | done (on this session's branch) | — |
 | 2.3 | done (on this session's branch) | — |
-| 2.4 | in progress (step 9 done) | — |
+| 2.4 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |
 |---|---|---|---|
 | 0.1 | short | 28 | 27 |
-| 0.2 | short | 22 | 28 |
-| 0.3 | short | 40 | 30 |
+| 0.2 | short | 22 | 29 |
+| 0.3 | short | 40 | 31 |
 | 0.4 | short | 23 | 33 |
 | 0.5 | short | 30 | 28 |
-| 0.6 | short | 35 | 31 |
-| 1.1 | short | 23 | 27 |
-| 1.2 | short | 22 | 28 |
+| 0.6 | short | 35 | 32 |
+| 1.1 | short | 23 | 29 |
+| 1.2 | short | 22 | 32 |
 | 1.3 | short | 24 | 33 |
 | 1.4 | short | 20 | 32 |
 | 1.5 | short | 20 | 30 |
 | 1.6 | short | 16 | 20 |
 | 1.7 | short | 22 | 25 |
-| 2.1 | short | 24 | 24 |
+| 2.1 | short | 24 | 25 |
 | 2.2 | short | 14 | 17 |
-| 2.3 | short | 24 | 24 |
-| 2.4 | short | 17 | 3 |
+| 2.3 | short | 24 | 25 |
+| 2.4 | short | 15 | 17 |
 | 3.1 | short | 22 | 18 |
 | 3.2 | short | 33 | 26 |
 | 3.3 | short | 18 | 22 |

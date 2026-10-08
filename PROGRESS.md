@@ -4,8 +4,8 @@
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
 - Topic: 2.1
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.1 step 7 problem ladder
-- Next action: 2.1 step 8 drill and look-alike pairs
+- Last completed step: 2.1 step 8 drill and look-alike pairs
+- Next action: 2.1 step 9 self-test, checkpoint, reviews, decision map
 
 ## Gates
 | Gate | Status | Date |
@@ -40,7 +40,7 @@
 | 1.6 | done (on this session's branch) | — |
 | 1.7 | done (on this session's branch) | — |
 | Phase 1 intro and exam | done (on this session's branch) | — |
-| 2.1 | in progress (step 7 done) | — |
+| 2.1 | in progress (step 8 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

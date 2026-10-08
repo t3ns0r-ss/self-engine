@@ -216,6 +216,93 @@ Five programs: two for LIS (the tails array and the quadratic table with a gener
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds. Several of them appear only with equal values, which is why the generators make small value ranges common.
+
+### Bug: lower_bound and upper_bound swapped
+
+Template: LIS with the tails array.
+
+```cpp
+auto it = (t == 0) ? upper_bound(tails.begin(), tails.end(), x)
+                   : lower_bound(tails.begin(), tails.end(), x);
+```
+
+Input: `2 1`, then `0 0` (non-decreasing mode).
+
+Wrong output `1`, correct output `2`. In non-decreasing mode the second 0 may follow the first, but `lower_bound` finds the equal tail and replaces it instead of extending. In strict mode the swap does the opposite and lets equal values chain.
+
+**Fix:** strict increase needs the first tail `≥ x` (`lower_bound`); non-decreasing needs the first tail `> x` (`upper_bound`) (Theorem 3.4.2, note 1). Always test with repeated values.
+
+### Bug: reading the answer at the last position
+
+Template: a general rule between neighbours.
+
+```cpp
+cout << L[n - 1] << "\n";
+```
+
+Input: `3 1`, then `4 5 0`.
+
+Wrong output `1`, correct output `2` (the subsequence 4, 5). `L[i]` is the best subsequence *ending at* `i`; the best one overall can end anywhere, and here it ends before the last element.
+
+**Fix:** the answer is the maximum of `L[i]` over all `i` (Theorem 3.4.1). Whenever a state means "ending here", the answer is a maximum over the states.
+
+### Bug: equal widths sorted by increasing height
+
+Template: nested envelopes.
+
+```cpp
+return p.second < q.second;
+```
+
+Input: `2`, then the envelopes `2 2` and `2 4`.
+
+Wrong output `2`, correct output `1`. Envelopes of equal width cannot nest, but with heights 2 then 4 in sorted order, the strict LIS of heights takes both.
+
+**Fix:** for equal first keys, sort the second key decreasing, so that no two of them can form an increasing pair (Theorem 3.4.3, note 2).
+
+### Bug: a mismatch moving diagonally
+
+Template: LCS length.
+
+```cpp
+else cur[j] = prev[j - 1];
+```
+
+Input: `b` and `ba`.
+
+Wrong output `0`, correct output `1`. When the last characters differ, dropping *both* of them can lose a match that uses one of them: here the b of the first string matches the b of the second, which is not its last character.
+
+**Fix:** on a mismatch, drop one last character at a time and take the better result (Theorem 3.4.4); the diagonal move is only for a match.
+
+### Bug: free deletions in the first column
+
+Template: edit distance.
+
+```cpp
+cur[0] = 0;
+```
+
+Input: `bb` and `a`.
+
+Wrong output `1`, correct output `2`. Column 0 is "turn the first `i` characters of `a` into nothing", which takes `i` deletions; with 0 there, deleting a prefix costs nothing.
+
+**Fix:** set both base edges, $E[i][0] = i$ and $E[0][j] = j$ (Theorem 3.4.5, note 2). Test with one string much shorter than the other.
+
+### Bug: replacements for free
+
+Template: edit distance.
+
+```cpp
+int replace = prev[j - 1];
+```
+
+Input: `b` and `a`.
+
+Wrong output `0`, correct output `1`. The diagonal move lines up two characters; it is free only when they are equal.
+
+**Fix:** add `(a[i − 1] != b[j − 1])` to the diagonal move. A good first test for any edit-distance program is two different one-letter strings.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

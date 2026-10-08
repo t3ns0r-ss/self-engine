@@ -238,6 +238,117 @@ Five short programs, one for each card. The brute forces list the objects one by
 
 ## 7. Bug catalogue
 
+Counting bugs give numbers that look plausible, and small samples often hide them. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: the inverse factorial step multiplies by $i - 1$
+
+Template: binomial coefficients from factorial tables.
+
+```cpp
+for (int i = N; i >= 1; i--) inv[i - 1] = inv[i] * (i - 1) % MOD;
+```
+
+Input: `1`, then `3 0`.
+
+Wrong output `0`, correct output `1`. The step from $(i!)^{-1}$ to $((i-1)!)^{-1}$ multiplies by $i$, not $i - 1$; with $i - 1$ the last step writes $\operatorname{inv}[0] = \operatorname{inv}[1] \cdot 0 = 0$, and every $\binom{n}{0}$ and $\binom{n}{n}$ becomes 0.
+
+**Fix:** $(i - 1)! = i! / i$, so its inverse is $(i!)^{-1} \cdot i$ (Theorem 2.3.3). Test $\binom{n}{0}$ and $\binom{n}{n}$ explicitly.
+
+### Bug: filling the positions in input order
+
+Template: distinct values under upper limits. The `sort` is removed.
+
+Input: `2`, then `7 3`.
+
+Wrong output `14`, correct output `18`. Taking the limit 7 first gives 7 options, but the number of options for the second position (limit 3) now depends on whether the first value was at most 3: it is 2 or 3. The program assumes 2 every time, $7 \cdot 2 = 14$. Sorted, the counts are $3 \cdot 6 = 18$.
+
+**Fix:** sort so that every used value lies below the current limit; then the number of options is the same for every earlier choice (Theorem 2.3.1, note 1).
+
+### Bug: counting the current position as used
+
+Template: distinct values under upper limits.
+
+```cpp
+long long options = c[i] - (i + 1);
+```
+
+Input: `1`, then `4`.
+
+Wrong output `3`, correct output `4`. Before position $i$ (0-based) is filled, only $i$ values are taken.
+
+**Fix:** with 0-based indices, $c_i - i$ options. Check the formula on a single position.
+
+### Bug: choosing $k$ bars instead of $k - 1$
+
+Template: stars and bars with lower bounds.
+
+```cpp
+long long ans = top < k ? 0 : fact[top] * power(fact[k], MOD - 2) % MOD * power(fact[top - k], MOD - 2) % MOD;
+```
+
+Input: `8 1`, then `2`.
+
+Wrong output `6`, correct output `1`. With one group there is one solution ($x_1 = 8$). $k$ groups need $k - 1$ bars, and the program chose $\binom{6}{1} = 6$ positions for one bar that should not exist.
+
+**Fix:** $\binom{n + k - 1}{k - 1}$ (Theorem 2.3.5). Check $k = 1$ (answer 1) and $n = 0$ (answer 1).
+
+### Bug: forgetting to shift the lower bounds
+
+Template: stars and bars with lower bounds.
+
+```cpp
+long long top = n + k - 1;
+```
+
+Input: `5 2`, then `1 0`.
+
+Wrong output `6`, correct output `5`. The program counts all $x_1 + x_2 = 5$ with $x_i \ge 0$ (6 solutions), including $x_1 = 0$, which the bound $x_1 \ge 1$ forbids.
+
+**Fix:** substitute $y_i = x_i - l_i$ and count solutions with total $n - L$ (Theorem 2.3.5, part 3).
+
+### Bug: the product instead of the LCM
+
+Template: numbers divisible by none of a list.
+
+```cpp
+if ((__int128)l * a[i] > N) l = N + 1;
+else l = l * a[i];
+```
+
+Input: `84 2`, then `7 21`.
+
+Wrong output `68`, correct output `72`. A number divisible by 7 and by 21 is a multiple of $\operatorname{lcm}(7, 21) = 21$, not of $7 \cdot 21 = 147$. The program finds no multiple of 147 up to 84, so it adds back 0 instead of 4.
+
+**Fix:** multiples of all numbers in $S$ are the multiples of their LCM (Theorem 0.4.6). The product works only for pairwise coprime numbers.
+
+### Bug: the signs reversed
+
+Template: numbers divisible by none of a list.
+
+```cpp
+count += (__builtin_popcount(S) % 2 == 1) ? term : -term;
+```
+
+Input: `47 1`, then `2`.
+
+Wrong output `-24`, correct output `24`. The empty set must be added ($+47$, all numbers) and single properties subtracted ($-23$, the even ones). Reversed, the answer is $23 - 47$.
+
+**Fix:** the sign is $(-1)^{|S|}$: plus for even sizes, starting with $+N$ for the empty set (Theorem 2.3.6). A negative count is a sure sign of this bug.
+
+### Bug: adding the two halves of a path
+
+Template: lattice paths through a point.
+
+```cpp
+cout << (paths(x, y) + paths(a - x, b - y)) % MOD << "\n";
+```
+
+Input: `5 3 1`, then `3 3`.
+
+Wrong output `56` and `21`, correct output `56` and `20`. A path through $(3, 3)$ is a choice of first half ($\binom{6}{3} = 20$) *and* a second half ($\binom{2}{2} = 1$): $20 \cdot 1 = 20$. Adding gives 21.
+
+**Fix:** "and" multiplies (product rule), "or" adds (sum rule, for disjoint cases).
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

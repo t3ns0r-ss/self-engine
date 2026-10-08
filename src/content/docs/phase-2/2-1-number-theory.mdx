@@ -18,6 +18,8 @@ import linearEquation from '../../../../code/2.1/linear-equation/solution.cpp?ra
 import factorise from '../../../../code/2.1/factorise/solution.cpp?raw';
 import spfDivisors from '../../../../code/2.1/spf-divisors/solution.cpp?raw';
 import gcdPairs from '../../../../code/2.1/gcd-pairs/solution.cpp?raw';
+import example1 from '../../../../code/2.1/example-1/solution.cpp?raw';
+import example2 from '../../../../code/2.1/example-2/solution.cpp?raw';
 
 <TopicHeader topic="2.1" />
 
@@ -379,6 +381,66 @@ Wrong output `1 3`, correct output `0 3`. The pair $(9, 6)$ has GCD 3. Processin
 **Fix:** go from large $d$ to small, so that every $E[kd]$ with $k \ge 2$ is final before $E[d]$ uses it (Theorem 2.1.6, part 2).
 
 ## 8. Worked examples
+
+### Example 1: Coprime
+
+[AtCoder Beginner Contest (ABC) 177, problem E: Coprime](https://atcoder.jp/contests/abc177/tasks/abc177_e). In short: given $N \le 10^6$ integers up to $10^6$, decide whether every pair of them is coprime ("pairwise coprime"), or else whether the GCD of all of them is 1 ("setwise coprime"), or neither.
+
+#### Step 1: Constraints → budget
+
+$N = 10^6$ numbers: $O(N \log N)$ at most, and the input itself is large, so read it quickly. All values are at most $10^6$, small enough for an array indexed by value. `int` everywhere.
+
+#### Step 2: Question form → candidate tools
+
+Brute force (topic 0.5) checks every pair: $5 \cdot 10^{11}$ GCDs, far too slow. The setwise part is just the GCD of the whole array (topic 0.4). For the pairwise part, two numbers fail to be coprime exactly when some prime divides both. So the question becomes: does any prime divide two of the numbers? That needs the primes of each number, for a million numbers up to $10^6$: the spf-factorise card (Theorem 2.1.4).
+
+#### Step 3: Property check → decision
+
+The card's property holds: every number to factorise is at most $10^6$, so a table of smallest prime factors fits ($4 \cdot 10^6$ bytes), and each number then splits in at most 20 divisions. Decision: build the table up to $10^6$, factorise every $A_i$, count for each prime how many elements it divides, and report "pairwise" when no count reaches 2; otherwise compare the overall GCD with 1.
+
+#### Step 4: Proof for this problem
+
+$\gcd(A_i, A_j) > 1$ exactly when some prime $p$ divides both: a GCD $g > 1$ has a prime divisor (Theorem 2.1.1, part 1), which divides both numbers, and conversely a common prime is a common divisor. The program factorises each $A_i$ correctly (Theorem 2.1.4) and adds 1 to `used[p]` once for each distinct prime $p$ of $A_i$, so after all elements `used[p]` is the number of elements divisible by $p$. Some pair shares a prime exactly when some `used[p]` reaches 2. If no pair shares a prime, the answer is "pairwise coprime" (when $N \ge 2$, this also forces the overall GCD to be 1). Otherwise the overall GCD decides between "setwise" and "not". Time: $O(M \log \log M)$ for the table with $M = 10^6$, plus at most 20 divisions per element.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `++used[p] == 2` increments first and then compares, so the test fires exactly when the second element divisible by $p$ appears. The inner `while (v % p == 0) v /= p;` removes every copy of $p$, so $12 = 2^2 \cdot 3$ counts the prime 2 once. `gcd(g, v)` with `g` starting at 0 works because $\gcd(0, v) = v$ (topic 0.4). Tested on the three samples from the problem page, on $10^6$ ones, on all 78 498 primes below $10^6$ padded with ones (pairwise), on the same list with the prime $999\,983$ twice (setwise), on $10^6$ even numbers (not coprime), and on 5000 random inputs ($N \le 6$) against a brute force that computes the GCD of every pair.
+
+#### Step 6: Alternative approach
+
+Use the multiples-sieve card instead (Theorem 2.1.6, part 1): count how many elements each $d \ge 2$ divides by summing `cnt` over the multiples of $d$; the set is pairwise coprime exactly when every count is at most 1. It is $O(M \log M)$ and needs no factorisation, but more steps than the table.
+
+### Example 2: 9 Divisors
+
+[AtCoder Beginner Contest (ABC) 383, problem D: 9 Divisors](https://atcoder.jp/contests/abc383/tasks/abc383_d). In short: count the integers from 1 to $N$ that have exactly 9 positive divisors, for $N \le 4 \cdot 10^{12}$.
+
+#### Step 1: Constraints → budget
+
+$N = 4 \cdot 10^{12}$: no loop over all numbers. $\sqrt N = 2 \cdot 10^6$, so anything up to about $10^7$ steps per prime-sized object is fine. `long long` for $N$ and the counts.
+
+#### Step 2: Question form → candidate tools
+
+Testing each number up to $N$ (topic 0.5) with trial division is hopeless. The divisor count depends only on the exponents of the prime factorisation (Theorem 2.1.3, part 2): $d(n) = (e_1 + 1) \cdots (e_k + 1)$. So "exactly 9 divisors" is a statement about exponents, and the numbers to count are built from primes. Which primes? Those that can appear, at most $\sqrt N$: the sieve card (Theorem 2.1.1).
+
+#### Step 3: Property check → decision
+
+Write $9$ as a product of factors $e_i + 1 \ge 2$: either $9$ (one prime, $n = p^8$) or $3 \cdot 3$ (two primes, $n = p^2 q^2$ with $p < q$). In both cases every prime involved is at most $\sqrt N \le 2 \cdot 10^6$, which a sieve covers. And $p^2 q^2 \le N$ exactly when $pq \le s$, where $s = \lfloor \sqrt N \rfloor$. Decision: sieve up to $s$ with a prefix count of primes (topic 1.2); count the primes with $p^8 \le N$, and for each prime $p$ the primes $q$ with $p < q \le \lfloor s/p \rfloor$.
+
+#### Step 4: Proof for this problem
+
+By Theorem 2.1.3, $d(n) = 9$ exactly when the exponents of $n$ satisfy $\prod (e_i + 1) = 9$. Each factor is at least 2 and divides 9, so the factors are $(9)$ or $(3, 3)$: $n = p^8$, or $n = p^2 q^2$ with primes $p < q$. Different such choices give different $n$ by uniqueness, so counting choices counts numbers. For $n = p^2 q^2$: $(pq)^2 \le N$ exactly when $pq \le s$, because $s$ is the largest integer with $s^2 \le N$. For a fixed $p$ the valid $q$ are the primes in $(p, \lfloor s/p \rfloor]$, numbering $\operatorname{cnt}[\lfloor s/p \rfloor] - \operatorname{cnt}[p]$ when $\lfloor s/p \rfloor > p$. Every prime in either form is at most $s$, so the sieve up to $s$ sees all of them. Time: $O(s \log \log s)$ for the sieve and $O(s)$ for the loop.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** The two `while` loops after `sqrtl` correct the floating-point guess to the exact integer square root (topic 0.1). The loop for `p8` multiplies only while the power is still at most $N$, so each product is at most $N \cdot p \le 4 \cdot 10^{12} \cdot 2 \cdot 10^6 = 8 \cdot 10^{18}$, which fits in `long long`. `max(2LL, s)` keeps the arrays valid for $N < 4$. Tested on the two samples from the problem page, on $N = 1$, on $N = 256 = 2^8$, on $N = 10^{12}$, and on 5000 random inputs ($N \le 3000$, often just around a number with 9 divisors) against a brute force that counts the divisors of every number up to $N$.
+
+#### Step 6: Alternative approach
+
+Collect the primes up to $s$ in a list and count the pairs with $pq \le s$ by two pointers (topic 1.3): as $p$ increases, the largest allowed $q$ only decreases. It replaces the prefix count array by a list and is the same $O(s)$ after the sieve.
 
 ## 9. Problem ladder
 

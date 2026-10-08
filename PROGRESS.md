@@ -4,8 +4,8 @@
 - Milestone: M4 (Phase 2: 2.1–2.4, Phase 2 exam)
 - Topic: 2.1
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 2.1 step 5 bug catalogue
-- Next action: 2.1 step 6 worked examples (bank additions for drill, look-alikes and reviews done)
+- Last completed step: 2.1 step 6 worked examples
+- Next action: 2.1 step 7 problem ladder
 
 ## Gates
 | Gate | Status | Date |
@@ -40,7 +40,7 @@
 | 1.6 | done (on this session's branch) | — |
 | 1.7 | done (on this session's branch) | — |
 | Phase 1 intro and exam | done (on this session's branch) | — |
-| 2.1 | in progress (step 5 done) | — |
+| 2.1 | in progress (step 6 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

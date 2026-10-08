@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import binomTable from '../../../../code/2.3/binom-table/solution.cpp?raw';
+import distinctLimits from '../../../../code/2.3/distinct-limits/solution.cpp?raw';
+import starsBars from '../../../../code/2.3/stars-bars/solution.cpp?raw';
+import noneDivisible from '../../../../code/2.3/none-divisible/solution.cpp?raw';
+import pathsThrough from '../../../../code/2.3/paths-through/solution.cpp?raw';
 
 <TopicHeader topic="2.3" />
 
@@ -163,6 +168,73 @@ Example: from $(0, 0)$ to $(2, 2)$: $\binom{4}{2} = 6$ paths (RRUU, RURU, RUUR, 
 <Cards topic="2.3" />
 
 ## 6. Templates
+
+Five short programs, one for each card. The brute forces list the objects one by one (by recursion, topic 0.5) or use Pascal's rule on small values.
+
+### Binomial coefficients from factorial tables (Theorem 2.3.3)
+
+<Code code={binomTable} lang="cpp" title="binom-table/solution.cpp" />
+
+**How it works.** `fact[i]` is $i! \bmod p$ and `inv[i]` its inverse. Only `inv[N]` needs Fermat's formula; the others follow from $((i-1)!)^{-1} = (i!)^{-1} \cdot i$, walking down. Each query is then three table reads and two multiplications.
+
+**C++ details explained.**
+- `fact[n] * inv[r] % MOD * inv[n - r] % MOD` reduces after each product: both factors are always below $2^{30}$, so every product fits in `long long`.
+- The tables go up to the largest $n$ the problem allows ($10^6$ here); building them costs about $2 \cdot 10^6$ multiplications, once.
+
+**Tested.** Stress-tested against a brute force that builds Pascal's triangle up to $n = 200$ (Theorem 2.3.2, part 3), on 5000 random inputs including $r > n$. There are also 2 fixed tests: small values, $\binom{2000}{1000}$, $n = 10^6$ with $r = 0$, $10^6$ and $5 \cdot 10^5$; and $2 \cdot 10^5$ random queries up to $10^6$, checked against Python.
+
+**Alternative formulation.** For a single coefficient, multiply $n (n-1) \cdots (n-r+1)$ and divide by $r!$ with one inverse: $O(r)$ and no tables, which also works when $n$ is huge but $r$ is small.
+
+### Distinct values under upper limits (Theorem 2.3.1)
+
+<Code code={distinctLimits} lang="cpp" title="distinct-limits/solution.cpp" />
+
+**How it works.** Sort the limits and fill the positions from the smallest limit up. When position $i$ (0-based) is filled, the $i$ values already used are all at most $c_i$ (their limits were smaller), so exactly $c_i - i$ values remain: the number of options does not depend on *which* values were used, and the product rule applies.
+
+**C++ details explained.** `options % MOD` reduces a value up to $10^9$ before the product. If some position has no option left, the answer is 0 and the loop stops.
+
+**Tested.** Stress-tested against a brute force that tries every assignment recursively, on 5000 random inputs ($n \le 6$, limits up to 7). There are also 6 fixed tests: one position, the limits $(1, 3)$, two limits of 1 (answer 0), five limits of $10^9$, $2 \cdot 10^5$ random limits, and the limits $1, 2, \dots, 2 \cdot 10^5$ (answer 1).
+
+**Alternative formulation.** Without sorting, the number of options at a position would depend on which earlier values fall below its limit, and the product rule would not apply. Sorting is what makes the count of options fixed.
+
+### Stars and bars with lower bounds (Theorem 2.3.5)
+
+<Code code={starsBars} lang="cpp" title="stars-bars/solution.cpp" />
+
+**How it works.** Subtracting the lower bounds leaves $n - L$ identical items for $k$ groups without bounds, so the answer is $\binom{n - L + k - 1}{k - 1}$, or 0 when $L > n$.
+
+**C++ details explained.** The factorial table is built only up to the top of the one coefficient needed. Two Fermat inverses are enough for a single coefficient.
+
+**Tested.** Stress-tested against a brute force that tries every value of each $x_i$ recursively, on 5000 random inputs ($n \le 12$, $k \le 5$, some lower bounds). There are also 5 fixed tests: the 36 and 15 of the example in Section 4.5, $n = 0$ with one group, lower bounds above $n$, and $n = k = 10^6$ with random lower bounds.
+
+**Alternative formulation.** Count the groups one at a time with a table indexed by the number of items used so far; that also handles upper bounds, but it is the Phase 3 method and costs $O(nk)$.
+
+### Numbers divisible by none of a list (Theorem 2.3.6)
+
+<Code code={noneDivisible} lang="cpp" title="none-divisible/solution.cpp" />
+
+**How it works.** For every set $S$ of the given numbers (a bitmask), the numbers in $[1, N]$ divisible by all of them are the multiples of their LCM, $\lfloor N / \operatorname{lcm}(S) \rfloor$ (Theorem 0.4.2). Adding these with the sign $(-1)^{|S|}$ counts the numbers divisible by none.
+
+**C++ details explained.**
+- The LCM can overflow long before the loop ends. Once it exceeds $N$ the term is 0, so the program caps it at $N + 1$. The check multiplies in `__int128` because $\frac{l}{g} \cdot a_i$ can exceed $10^{18}$.
+- `__builtin_popcount(S)` counts the bits of `S` (topic 1.7), the size of the set.
+- The answer is exact (not modulo anything): the alternating sum stays between 0 and $N$.
+
+**Tested.** Stress-tested against a brute force that checks every number up to $N$, on 5000 random inputs ($N \le 2000$, up to 6 numbers, some large). There are also 6 fixed tests: the example of Section 4.6 (answer 26), $a = (1)$, the first 15 primes with $N = 10^{18}$, fifteen copies of $10^9$, 15 random values, and a mix with large primes, checked against Python's exact integers.
+
+**Alternative formulation.** Recurse over the numbers, carrying the current LCM and sign, and stop a branch as soon as the LCM exceeds $N$; it does the same sum but skips the sets whose terms are 0.
+
+### Lattice paths through a point (Theorem 2.3.7)
+
+<Code code={pathsThrough} lang="cpp" title="paths-through/solution.cpp" />
+
+**How it works.** A path through $(x, y)$ is a path from $(0, 0)$ to $(x, y)$ followed by a path from $(x, y)$ to $(a, b)$, and every pair of halves gives one such path: by the product rule the count is $\binom{x + y}{x} \cdot \binom{(a - x) + (b - y)}{a - x}$. `paths` returns 0 when a difference is negative.
+
+**C++ details explained.** `fact.assign(N + 1, 1)` resizes the vector and fills it with 1s. The table goes up to $a + b$, the longest path.
+
+**Tested.** Stress-tested against a brute force that walks every path recursively, on 5000 random inputs ($a, b \le 7$, points inside and outside the rectangle). There are also 3 fixed tests: the $2 \times 2$ example of Section 4.7 with a point outside, $a = b = 1000$, and $a = b = 10^6$ with $2 \cdot 10^5$ random points.
+
+**Alternative formulation.** The paths that *avoid* $(x, y)$ are the total minus the paths through it; with several points to avoid, inclusion–exclusion over the points sorted by position gives the count.
 
 ## 7. Bug catalogue
 

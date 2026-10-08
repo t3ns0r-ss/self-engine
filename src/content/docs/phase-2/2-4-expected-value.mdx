@@ -18,15 +18,109 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A random permutation of $n = 10^5$ people is chosen, all $n!$ equally likely. On average, how many people stay in their own place?
+
+The direct method lists all $n!$ permutations: impossible beyond $n = 12$ or so. Even a clever count of "permutations with exactly $k$ fixed points" needs inclusion–exclusion for every $k$ (topic 2.3). But the question has a one-line answer. For each person $i$, the chance of staying in place is $\frac1n$. An average of a sum is the sum of the averages, *even though the events depend on each other*, so the expected number of fixed points is $n \cdot \frac1n = 1$.
+
+This topic is about that rule, linearity of expectation, and its consequences. An expected count is a sum of probabilities, one per event. A total over all subarrays, subsets or pairs is a sum over elements of value times the number of configurations in which the element counts (the contribution technique, the same idea without the averaging). And waiting times and maxima have formulas of their own: $\frac1p$ trials until a success, and $E[X] = \sum_x P(X \ge x)$.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 2.3](../2-3-combinatorics/), combinatorics: counting outcomes, binomial coefficients and factorial tables.
+- [Topic 2.2](../2-2-modular-arithmetic/), modular arithmetic: fractions modulo a prime (Theorem 2.2.4), for answers printed as $P \cdot Q^{-1} \bmod p$.
+- [Topic 1.2](../../phase-1/1-2-prefix-sums/), prefix sums, and [topic 1.6](../../phase-1/1-6-monotonic-stack/), monotonic stack: counting the subarrays in which an element is the minimum or the maximum.
+- [Topic 1.1](../../phase-1/1-1-sorting/), sorting: contributions of the $i$-th smallest element.
+
 ### What this topic does not cover
+
+- Expected values found by a recurrence over states ("from state $s$, the expected remaining time is …"), which needs a table of answers. Covered in Phase 3 (dynamic programming).
+- Variance, conditional expectation as a topic of its own, Markov chains and continuous distributions. They are not part of this course.
 
 ## 3. Definitions
 
+- A **(finite) probability space** is a finite set $\Omega$ of outcomes, each with a probability $P(\omega) \ge 0$, adding up to 1. Often all outcomes are equally likely: $P(\omega) = \frac{1}{|\Omega|}$. An **event** is a set of outcomes, and $P(A) = \sum_{\omega \in A} P(\omega)$. Example: for a fair die, $P(\text{even}) = \frac36$.
+- A **random variable** $X$ gives a number $X(\omega)$ to each outcome. Its **expected value** is $E[X] = \sum_{\omega} X(\omega) P(\omega)$, the average value weighted by probability. Example: for a die, $E[X] = \frac{1 + \dots + 6}{6} = 3.5$.
+- The **indicator** $\mathbb{1}_A$ of an event $A$ is 1 on the outcomes of $A$ and 0 elsewhere.
+- Two events are **independent** if $P(A \cap B) = P(A) P(B)$; repeated dice rolls and coin flips are independent.
+- The **contribution technique** computes a total over many configurations element by element: each element's value times the number of configurations in which it counts (Theorem 2.4.3).
+
 ## 4. Theory and proofs
+
+### 4.1 Linearity of expectation
+
+**Theorem 2.4.1 (linearity of expectation).** For random variables $X, Y$ on the same space and a constant $c$: $E[X + Y] = E[X] + E[Y]$ and $E[cX] = c E[X]$. Hence $E[X_1 + \dots + X_n] = E[X_1] + \dots + E[X_n]$. No independence is needed.
+
+*Proof.* $E[X + Y] = \sum_\omega (X(\omega) + Y(\omega)) P(\omega) = \sum_\omega X(\omega) P(\omega) + \sum_\omega Y(\omega) P(\omega) = E[X] + E[Y]$, by splitting one sum into two. The constant factor comes out of the sum the same way. Induction gives $n$ terms. $\square$
+
+:::note[This proof needs]
+1. All variables are defined on the same outcomes (the same random experiment).
+2. Nothing about independence: the variables may depend on each other in any way. Products are different: $E[XY] = E[X] E[Y]$ needs independence.
+3. For a finite space the sums are finite. (Infinite cases such as waiting times use Theorem 2.4.4.)
+:::
+
+Example: two dice. $E[\text{sum}] = 3.5 + 3.5 = 7$, without listing the 36 outcomes.
+
+### 4.2 Indicator variables
+
+**Theorem 2.4.2 (expected counts).** $E[\mathbb{1}_A] = P(A)$. So if $X$ counts how many of the events $A_1, \dots, A_n$ happen, $E[X] = P(A_1) + \dots + P(A_n)$.
+
+*Proof.* $E[\mathbb{1}_A] = \sum_{\omega \in A} 1 \cdot P(\omega) + \sum_{\omega \notin A} 0 = P(A)$. A count is a sum of indicators, $X = \mathbb{1}_{A_1} + \dots + \mathbb{1}_{A_n}$; apply linearity. $\square$
+
+:::note[This proof needs]
+1. The quantity is a count (or a weighted count $\sum w_i \mathbb{1}_{A_i}$, which gives $\sum w_i P(A_i)$).
+2. Each single probability $P(A_i)$ can be computed, often by symmetry.
+:::
+
+Examples. Fixed points of a random permutation: $P(i \text{ stays}) = \frac1n$, so $E = n \cdot \frac1n = 1$. Inversions: each pair $i < j$ is inverted with probability $\frac12$ (by symmetry, swapping the two values), so $E = \binom{n}{2} \cdot \frac12$; for $n = 3$ that is $1.5$, and indeed the six permutations have $0 + 1 + 1 + 2 + 2 + 3 = 9$ inversions in total.
+
+### 4.3 Contributions
+
+**Theorem 2.4.3 (contribution technique).** Let $\mathcal C$ be a finite set of configurations and $f(c) = \sum_i v_i \cdot [\text{element } i \text{ counts in } c]$. Then
+$\sum_{c \in \mathcal C} f(c) = \sum_i v_i \cdot N_i$,
+where $N_i$ is the number of configurations in which element $i$ counts. With all configurations equally likely, the expected value is this total divided by $|\mathcal C|$.
+
+*Proof.* Exchange the order of the two sums: $\sum_c \sum_i v_i [i \text{ counts in } c] = \sum_i v_i \sum_c [i \text{ counts in } c] = \sum_i v_i N_i$. Dividing by $|\mathcal C|$ is linearity with $P(c) = \frac{1}{|\mathcal C|}$. $\square$
+
+:::note[This proof needs]
+1. The quantity per configuration is a sum over elements of a value times a condition on that element (a minimum, a maximum, "this pair is in the subarray").
+2. $N_i$ can be counted for each element: by positions (subarrays containing index $i$: $(i + 1)(n - i)$ with 0-based $i$), by sorting (subsets where $a_i$ is the maximum: $2^i$ after sorting), or by nearest greater elements (topic 1.6).
+3. Totals grow fast: use `long long` or a modulus.
+:::
+
+Examples. The sum of the sums of all subarrays of $(1, 2, 3)$ is $1 \cdot 1 \cdot 3 + 2 \cdot 2 \cdot 2 + 3 \cdot 3 \cdot 1 = 20$ (element $i$ lies in $(i + 1)(n - i)$ subarrays); listing them, $1 + 2 + 3 + 3 + 5 + 6 = 20$. The sum of the maxima of all non-empty subsets of a sorted array $a_0 \le \dots \le a_{n-1}$ (distinct) is $\sum_i a_i 2^i$: $a_i$ is the maximum of exactly the subsets that contain it and only smaller elements.
+
+### 4.4 Tail sums
+
+**Theorem 2.4.4 (tail sum).** If $X$ takes values in $\{0, 1, 2, \dots\}$, then $E[X] = \sum_{x \ge 1} P(X \ge x)$. In particular, for independent $X_1, \dots, X_k$ with values in $\{1, \dots, m\}$, $P(\max X_i \le x) = \prod_i P(X_i \le x)$, so $E[\max] = \sum_{x=1}^{m} \left(1 - \prod_i P(X_i \le x - 1)\right)$.
+
+*Proof.* Write $X = \sum_{x \ge 1} [X \ge x]$: a value $v$ is counted once for each $x = 1, \dots, v$. Take expectations; for a finite range this is linearity. (For values without an upper bound, the same exchange of sums holds because all terms are non-negative.) For the maximum: $\max \le x$ exactly when every $X_i \le x$, and independence turns the probability of all of them into the product. $\square$
+
+:::note[This proof needs]
+1. Non-negative integer values. For other values, sum $P(X \ge x)$ over the distinct values with the gaps as weights.
+2. For a maximum or minimum, independence of the $X_i$ (dice, separate draws). With dependent values, $P(\max \le x)$ needs a count of its own.
+:::
+
+Example: the larger of two dice. $P(\max \le x) = \left(\frac x6\right)^2$, so $E[\max] = \sum_{x=1}^{6} \left(1 - \left(\frac{x - 1}{6}\right)^2\right) = 6 - \frac{0 + 1 + 4 + 9 + 16 + 25}{36} = \frac{161}{36} \approx 4.47$.
+
+### 4.5 Waiting times
+
+**Theorem 2.4.5 (waiting times).**
+1. If independent trials each succeed with probability $p > 0$, the expected number of trials up to and including the first success is $\frac1p$.
+2. If a process passes through stages $1, \dots, k$ in order, and in stage $j$ each independent trial ends the stage with probability $p_j > 0$, the expected total number of trials is $\frac{1}{p_1} + \dots + \frac{1}{p_k}$.
+3. (Coupon collector.) Drawing uniformly from $n$ kinds until every kind has appeared takes $n \left(1 + \frac12 + \dots + \frac1n\right)$ draws on average.
+
+*Proof.* 1. The first success comes after trial $t - 1$ exactly when the first $t - 1$ trials fail: $P(T \ge t) = (1 - p)^{t - 1}$. By Theorem 2.4.4, $E[T] = \sum_{t \ge 1} (1 - p)^{t-1} = \frac{1}{1 - (1 - p)} = \frac1p$ (geometric series). 2. The total is the sum of the stage lengths; apply part 1 to each and add (linearity). 3. After $j$ kinds have been seen, a draw shows a new kind with probability $\frac{n - j}{n}$, so stage $j$ takes $\frac{n}{n - j}$ draws on average; add over $j = 0, \dots, n - 1$. $\square$
+
+:::note[This proof needs]
+1. Independent trials with a fixed success probability within each stage.
+2. The stages come one after another; if the probability changes with more than the stage number (for example with the history), a recurrence over states is needed (Phase 3).
+:::
+
+Examples: rolling a die until a 6 takes 6 rolls on average. Seeing all six faces takes $6 \left(1 + \frac12 + \dots + \frac16\right) = 14.7$ rolls on average.
+
+**Printing an expected value modulo a prime.** When the answer is a fraction $\frac PQ$, compute every probability as a residue modulo the prime (Theorem 2.2.4); the sums and products above stay valid, so the residue of the exact expected value comes out.
 
 ## 5. Recognition Cards
 

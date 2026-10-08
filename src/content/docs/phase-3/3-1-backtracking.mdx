@@ -18,6 +18,8 @@ import distinctPermutations from '../../../../code/3.1/distinct-permutations/sol
 import queens from '../../../../code/3.1/queens/solution.cpp?raw';
 import minMaxLoad from '../../../../code/3.1/min-max-load/solution.cpp?raw';
 import mitmCount from '../../../../code/3.1/mitm-count/solution.cpp?raw';
+import example1 from '../../../../code/3.1/example-1/solution.cpp?raw';
+import example2 from '../../../../code/3.1/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.1" />
 
@@ -323,6 +325,69 @@ Wrong output `0`, correct output `1` (the empty subset has sum $0 \le 0$). `lowe
 **Fix:** "at most $v$" is the prefix before the first element *greater* than $v$: `upper_bound` (topic 1.4). Test with a $T$ that some subset sum hits exactly.
 
 ## 8. Worked examples
+
+### Example 1: Count Simple Paths
+
+[AtCoder Beginner Contest (ABC) 378, problem D: Count Simple Paths](https://atcoder.jp/contests/abc378/tasks/abc378_d). In short: on an $H \times W$ grid with blocked cells ($H, W \le 10$), count the walks of exactly $K \le 11$ moves between side-adjacent empty cells that never visit a cell twice.
+
+#### Step 1: Constraints → budget
+
+At most 100 starting cells and 11 moves. A walk is a sequence of 12 cells; listing all sequences of cells is $100^{12}$, far out of budget. But each move has at most 4 directions, and after the first move at most 3 (going straight back is never allowed), so there are at most $100 \cdot 4 \cdot 3^{10} \approx 2.4 \cdot 10^7$ walks without revisits. That fits in a second if each step costs $O(1)$.
+
+#### Step 2: Question form → candidate tools
+
+Recursion over choices (Theorem 0.5.4) with "4 directions per move" lists $100 \cdot 4^{11} \approx 4 \cdot 10^8$ sequences and then checks each one for repeated cells: too slow, and most of the work goes into walks that died on their second move. Backtracking with a check after every move (Theorem 3.1.1) cuts those walks at the first revisit: the constraint-placement card. A formula from topic 2.3 does not apply: the blocked cells and the no-revisit rule destroy any simple count.
+
+#### Step 3: Property check → decision
+
+The card needs every constraint to be checkable as soon as its items are placed. Both rules are: "the new cell is empty and inside the grid" involves only the new cell, and "not visited before" involves the new cell and the cells already on the walk. A partial walk that breaks a rule can never be repaired by later moves, and a partial walk that keeps all rules may still be extended. Decision: a recursion from each empty start with a `visited` grid, set before each call and cleared after.
+
+#### Step 4: Proof for this problem
+
+A valid walk is a sequence $(p_0, \dots, p_K)$ of empty cells, each adjacent to the previous one, all different. Each prefix of a valid walk satisfies the same three rules, so the test (inside, empty, not visited) never rejects a prefix of a valid walk; and at length $K + 1$ the test has checked every rule for every cell, so it is the full validity check. By Theorem 3.1.1, the recursion counts every valid walk exactly once. The `visited` marks are exactly the cells of the current prefix, because each mark is set right before its call and cleared right after (condition 2). Time: at most $2.4 \cdot 10^7$ walks of length 12, each step $O(1)$; the fully empty $10 \times 10$ grid with $K = 11$ has 3 882 208 walks and runs in under 0.1 seconds.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** `dr` and `dc` list the four moves as row and column changes, so one loop over `d` replaces four copies of the same code. `visited.assign(H, vector<bool>(W, false))` makes an $H \times W$ grid of false values. The start cell is marked before the first call, so the walk cannot come back to it. Tested on the three samples from the problem page, on a $1 \times 1$ grid, a $1 \times 10$ line with $K = 5$ (10 walks: 5 starts in each direction), and the empty $10 \times 10$ grid with $K = 11$, checked against a separate program that grows all walks one level at a time; and on 5000 random grids ($H, W \le 3$) against a brute force that tries every sequence of $K + 1$ cells.
+
+#### Step 6: Alternative approach
+
+Grow the walks level by level instead of depth first: keep the list of all valid walks of length $j$ and extend each by one move. It visits the same walks, but stores all of them at once (millions of walks at the last level), where backtracking keeps only the current one.
+
+### Example 2: Programming Contest
+
+[AtCoder Beginner Contest (ABC) 184, problem F: Programming Contest](https://atcoder.jp/contests/abc184/tasks/abc184_f). In short: given $N \le 40$ times $A_i \le 10^9$ and a limit $T \le 10^9$, find the largest total of a subset of the times that is at most $T$.
+
+#### Step 1: Constraints → budget
+
+$N = 40$: all subsets are $2^{40} \approx 1.1 \cdot 10^{12}$, out of budget by a factor of $10^4$. $2^{20} \approx 10^6$ is comfortable, even with a sort and a binary search per element: about $2^{20} \cdot 20 \cdot 2 \approx 4 \cdot 10^7$ steps.
+
+#### Step 2: Question form → candidate tools
+
+A subset whose sum is "as large as possible but at most $T$". Candidates:
+- Branch and bound (Theorem 3.1.3) with "sum so far + all remaining times" as the estimate. It has no worst-case guarantee: with 40 times of nearly equal size, very many subsets have sums just below $T$, and the estimate cuts little.
+- A table indexed by the sum would need $T = 10^9$ entries (a topic 3.3 method), far too large.
+- Meet in the middle (Theorem 3.1.4): the objective is a sum, which splits into a left part and a right part.
+
+#### Step 3: Property check → decision
+
+The meet-in-the-middle card needs the objective to split into a part from each half and the question to be a lookup in a sorted list. The total of a subset is (sum of its left elements) + (sum of its right elements); for a fixed left sum $x \le T$, the best partner is the largest right sum $y \le T - x$, which is the element just before `upper_bound(T - x)` in the sorted right list. Each half has 20 elements, so each list has $2^{20}$ sums. Decision: meet in the middle; it beats branch and bound because it has a guaranteed running time.
+
+#### Step 4: Proof for this problem
+
+Every subset $S$ splits uniquely into $S_L$ (its elements among the first $\lfloor N/2 \rfloor$) and $S_R$ (the rest), with $\operatorname{sum}(S) = \operatorname{sum}(S_L) + \operatorname{sum}(S_R)$ (Theorem 3.1.4). So the answer is the largest $x + y \le T$ with $x$ in the left list and $y$ in the right list. For each $x \le T$, the largest valid $y$ is the largest element $\le T - x$ of the sorted right list; it exists because the empty sum 0 is in the list. Left sums $x > T$ have no valid partner, since all times are positive. Taking the maximum over $x$ covers every pair. Time: $O(2^{N/2} \cdot N)$.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** `upper_bound` returns an iterator to the first sum greater than $T - x$; `prev(it)` moves one step back to the largest sum that is at most $T - x$, and `*` reads the value there. It never steps before the beginning, because 0 is the smallest right sum and $0 \le T - x$. Tested on the four samples from the problem page, on forty times of $10^9$ with $T = 10^9$ (answer $10^9$), on the times $1, \dots, 40$ with a large $T$ (answer 820, everything), and on 5000 random inputs ($N \le 12$) against a brute force over all bitmasks.
+
+#### Step 6: Alternative approach
+
+Sort both lists and move two pointers (topic 1.3): as $x$ increases through the sorted left list, the best partner $y$ can only move down the right list, so one pass replaces the binary searches.
 
 ## 9. Problem ladder
 

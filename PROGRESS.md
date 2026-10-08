@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.1
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.1 step 5 bug catalogue
-- Next action: 3.1 step 6 problems
+- Last completed step: 3.1 step 6 worked examples
+- Next action: 3.1 step 7 problem ladder
 
 ## Gates
 | Gate | Status | Date |
@@ -46,7 +46,7 @@
 | 2.3 | done (on this session's branch) | — |
 | 2.4 | done (on this session's branch) | — |
 | Phase 2 intro and exam | done (on this session's branch) | — |
-| 3.1 | in progress (step 5 done) | — |
+| 3.1 | in progress (step 6 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

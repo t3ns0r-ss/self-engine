@@ -5,7 +5,7 @@
 - Topic: 2.1
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: 2.1 step 5 bug catalogue
-- Next action: 2.1 step 6 problems (needs 2 look-alike pairs and about 8 more review problems added to the bank)
+- Next action: 2.1 step 6 worked examples (bank additions for drill, look-alikes and reviews done)
 
 ## Gates
 | Gate | Status | Date |

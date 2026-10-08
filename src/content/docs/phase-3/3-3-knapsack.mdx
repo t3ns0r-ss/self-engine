@@ -13,6 +13,11 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import zeroOne from '../../../../code/3.3/zero-one/solution.cpp?raw';
+import valueIndexed from '../../../../code/3.3/value-indexed/solution.cpp?raw';
+import coinChange from '../../../../code/3.3/coin-change/solution.cpp?raw';
+import balancedSplit from '../../../../code/3.3/balanced-split/solution.cpp?raw';
+import boundedCopies from '../../../../code/3.3/bounded-copies/solution.cpp?raw';
 
 <TopicHeader topic="3.3" />
 
@@ -141,6 +146,68 @@ Example: $c = 10$: bundles $1, 2, 4$ and $r = 3$. Then $6 = 2 + 4$, $8 = 1 + 4 +
 <Cards topic="3.3" />
 
 ## 6. Templates
+
+Five programs, one per theorem. Each brute force tries every subset as a bitmask (topic 0.5) or every number of copies by recursion, without a table.
+
+### 0/1 knapsack (Theorem 3.3.1)
+
+<Code code={zeroOne} lang="cpp" title="zero-one/solution.cpp" />
+
+**How it works.** `best[c]` holds the best value with weight at most `c` using the items read so far. For each new item the row is updated from the largest capacity down: `best[c − w]` then still belongs to the row before this item, so the item is added at most once. Starting with all zeros means "weight at most `c`" (an empty knapsack is allowed for every capacity); the answer is `best[W]`. Time $O(nW) = 10^7$ for the largest input.
+
+**C++ details explained.** `for (int c = W; c >= w; c--)` counts down and stops at `w`, so `c − w` never becomes negative. Values are `long long` because 100 values of $10^9$ add up to $10^{11}$.
+
+**Tested.** Stress-tested against a brute force over all bitmasks, on 5000 random inputs ($n \le 10$, $W \le 30$, values up to 5 or up to $10^9$). There are also 5 fixed tests: the trace of Section 4.1 (answer 90), the greedy counterexample of Section 1 (90), one item exactly filling the capacity, and 100 random items with $W = 10^5$, once heavy and once light; their answers come from a separate program.
+
+**Alternative formulation.** Keep the full table `best[i][c]` with two rows or $n + 1$ rows. Then the capacity loop may run in any direction, because the previous row is stored separately; the full table is also what Theorem 3.2.6 needs to print the chosen items.
+
+### Small values, huge weights (Theorem 3.3.2)
+
+<Code code={valueIndexed} lang="cpp" title="value-indexed/solution.cpp" />
+
+**How it works.** With weights up to $10^9$ a row over capacities is impossible, but the values add up to at most $V = 10^5$. `minw[t]` is the least weight of a subset with total value exactly `t`, updated downwards like the 0/1 row. At the end, every value `t` whose lightest subset fits is achievable, and the largest such `t` is the answer.
+
+**C++ details explained.** `INF = LLONG_MAX / 2` marks impossible values; `INF + w` is still far below `LLONG_MAX`, so it cannot overflow, and `min` keeps the real weight whenever one exists.
+
+**Tested.** Stress-tested against the same bitmask brute force, on 5000 random inputs ($n \le 10$, $W$ up to $10^9$, values up to 3 or up to 1000). There are also 4 fixed tests: the Section 4.1 items (90), a single item that exactly fits, and 100 random items with $W = 10^9$, checked against a separate program that keeps a dictionary from value to least weight.
+
+**Alternative formulation.** Keep `maxv[c]` only for the capacities that actually occur, in a `map` from total weight to best value, removing dominated entries (a heavier entry with no more value). It is the same idea indexed by the reachable weights, and it is fast when few distinct totals appear.
+
+### Coins: fewest and number of ways (Theorem 3.3.3)
+
+<Code code={coinChange} lang="cpp" title="coin-change/solution.cpp" />
+
+**How it works.** Both rows are updated upwards, so `fewest[s − c]` and `ways[s − c]` already include the current coin: any number of copies is allowed. The coin loop is outside, so a multiset of coins is built in the order of the coin list, once (Theorem 3.3.3); swapping the loops would count sequences instead (Section 4.3).
+
+**C++ details explained.** `INT_MAX / 2` marks "cannot be paid"; adding 1 to it cannot overflow. `fewest[x] >= INF ? -1 : fewest[x]` prints $-1$ for an unpayable amount (topic 0.1).
+
+**Tested.** Stress-tested against a brute force that chooses the number of copies of each coin by recursion, on 5000 random inputs (up to 4 coin values up to 5 or up to 45, $x \le 40$). There are also 5 fixed tests: coins $\{1, 2\}$ and $x = 3$ (2 coins, 2 ways), coin $\{2\}$ and $x = 3$ (impossible), coins $\{1, 5, 10, 25\}$ and $x = 10^6$, ten random coins with $x = 10^6$, and a single coin equal to $x$.
+
+**Alternative formulation.** A recursion with a cache over the amount, $\text{fewest}(s) = 1 + \min_{c \le s} \text{fewest}(s - c)$ with $\text{fewest}(0) = 0$ (Theorem 3.2.4), computes the same values from the same states. Here the recursion can be $10^6$ calls deep, which may overflow the call stack, so the table is safer.
+
+### Balanced split with a bitset (Theorem 3.3.4)
+
+<Code code={balancedSplit} lang="cpp" title="balanced-split/solution.cpp" />
+
+**How it works.** `reach` holds one bit per sum up to $10^6$. For each number `x`, `reach << x` moves every reachable sum `s` to `s + x`, and or-ing it in adds those sums while keeping the old ones: the number is used at most once because the shift is computed from the old bitset. A split into groups with sums `s` and `total − s` has difference `|total − 2s|`, which is smallest for the reachable `s ≤ total / 2` closest to `total / 2`. Time: $1000 \cdot 10^6 / 64 \approx 1.6 \cdot 10^7$ word operations.
+
+**C++ details explained.** `bitset<MAXS + 1>` has a size fixed when compiling, so `MAXS` is a `const int`. `reach[s]` reads one bit; `reach |= reach << x` shifts and ors whole machine words.
+
+**Tested.** Stress-tested against a brute force over all bitmasks, on 5000 random inputs ($n \le 14$, values up to 3 or up to 1000). There are also 5 fixed tests: $(2, 3, 7)$ (difference 2), a single number, 1000 equal values (difference 0), 1000 random values, and $(1, 1, 1, 1000)$ (difference 997), checked with a separate program that uses a big integer as the bitset.
+
+**Alternative formulation.** A boolean array updated downwards, `for s from S down to x: reach[s] = reach[s] or reach[s − x]`, is the same computation without the factor 64 (Theorem 3.3.4); it is enough when $n \cdot S$ is around $10^8$.
+
+### Limited copies by bundles (Theorem 3.3.5)
+
+<Code code={boundedCopies} lang="cpp" title="bounded-copies/solution.cpp" />
+
+**How it works.** The `size` loop cuts the `c` copies into bundles of 1, 2, 4, … and finally whatever is left (`take = min(size, c)`); each bundle is a 0/1 item of weight `w · take` and value `v · take`, added with the downward loop. By Theorem 3.3.5 the bundles can make every count from 0 to $c_i$ and no more. With $c_i \le 1000$ there are at most 10 bundles per kind, so the time is about $100 \cdot 10 \cdot 10^5 = 10^8$ simple steps.
+
+**C++ details explained.** `for (int size = 1; c > 0; size *= 2)` doubles the bundle size until all copies are used; the last bundle is the remainder, as in the theorem. `bw` and `bv` are `long long`, so `w · take` and `v · take` cannot overflow.
+
+**Tested.** Stress-tested against a brute force that tries every number of copies of every kind, on 5000 random inputs (up to 5 kinds, $W \le 40$, up to 12 copies each). There are also 4 fixed tests: one kind with 10 copies (the example of Section 4.5), three kinds with small counts, 1000 copies of a weight-1 item with $W = 500$, and 10 random kinds with up to 300 copies, checked against a separate program that tries each number of copies for each capacity.
+
+**Alternative formulation.** Loop over the number of copies directly: for each kind and each capacity, try $k = 0..c_i$ copies. It is correct and simpler but costs $O(W \sum c_i)$, a factor $c_i / \log c_i$ more.
 
 ## 7. Bug catalogue
 

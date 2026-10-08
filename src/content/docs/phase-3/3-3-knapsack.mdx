@@ -211,6 +211,90 @@ Five programs, one per theorem. Each brute force tries every subset as a bitmask
 
 ## 7. Bug catalogue
 
+Knapsack bugs live in loop directions, loop orders and the meaning of "impossible". Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: the 0/1 loop running upwards
+
+Template: 0/1 knapsack.
+
+```cpp
+for (int c = w; c <= W; c++)
+```
+
+Input: `1 8`, then the item `4 3`.
+
+Wrong output `6`, correct output `3`. When `best[8]` is updated, `best[4]` has already been updated in this round to include the item, so the item is taken twice.
+
+**Fix:** with one row, each item at most once needs the capacity loop to run downwards (Theorem 3.3.1, note 3). Test with one item that fits twice.
+
+### Bug: impossible values treated as weight 0
+
+Template: small values, huge weights. The row starts with 0 everywhere instead of `INF`.
+
+Input: `2 20884830`, then the items `13571480 2` and `15075993 3`.
+
+Wrong output `5`, correct output `3`. With 0 meaning "value `t` costs nothing", every value looks reachable for free, and the answer becomes the sum of all values, although the two items together weigh 28 647 473, more than the capacity.
+
+**Fix:** "exactly `t`" tables start with only `minw[0] = 0` and every other entry impossible (Theorem 3.3.2, note 3). A table of "at most" values may start with 0; a table of "exactly" values may not.
+
+### Bug: the capacity loop outside when counting multisets
+
+Template: coins.
+
+```cpp
+for (int s = 1; s <= x; s++)
+    for (int c : coin) { … }
+```
+
+Input: `2 6`, then the coins `1 3`.
+
+Wrong number of ways `6`, correct `3`. With the amount loop outside, each amount is split by its *last* coin, so $3 + 1 + 1 + 1$ and $1 + 3 + 1 + 1$ count as different: the program counts sequences (6 of them) instead of multisets ($\{1 \times 6\}$, $\{3, 1, 1, 1\}$, $\{3, 3\}$). The fewest-coins answer, 2, is unaffected, which is why this bug hides.
+
+**Fix:** decide whether order matters. For multisets, coins outside and amounts inside (Theorem 3.3.3, note 2); for sequences, the other way round (Theorem 3.2.2).
+
+### Bug: the unbounded loop running downwards
+
+Template: coins.
+
+```cpp
+for (int s = x; s >= c; s--) {
+```
+
+Input: `1 7`, then the coin `1`.
+
+Wrong output `-1` and `0`, correct output `7` and `1`. A downward loop uses each coin value at most once, so 7 cannot be paid with a single coin 1.
+
+**Fix:** unlimited copies need the upward loop, which reads the current row (Theorem 3.3.3, note 1). The direction of the capacity loop is the whole difference between 0/1 and unbounded.
+
+### Bug: searching for the split from the wrong end
+
+Template: balanced split.
+
+```cpp
+for (int s = 0; s <= total / 2; s++)
+```
+
+Input: `2`, then `2 1`.
+
+Wrong output `3`, correct output `1`. Sum 0 (the empty group) is always reachable, so the search stops at once and reports the worst split. The best split needs the reachable sum *closest* to half the total.
+
+**Fix:** search from `total / 2` downwards and stop at the first reachable sum. Check the answer on a two-number input by hand.
+
+### Bug: dropping the remainder bundle
+
+Template: limited copies by bundles.
+
+```cpp
+int take = size;
+if (take > c) break;
+```
+
+Input: `1 8`, then the kind `1 5 2` (weight 1, value 5, 2 copies).
+
+Wrong output `5`, correct output `10`. With 2 copies the bundles should be 1 and the remainder 1; the program makes the bundle 1, then refuses the bundle 2 and stops, so only 1 copy can ever be taken.
+
+**Fix:** the last bundle is whatever is left, $r = c - (2^k - 1)$ (Theorem 3.3.5); `take = min(size, c)` creates it. Test counts that are not of the form $2^k - 1$.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

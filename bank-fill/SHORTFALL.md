@@ -27,8 +27,8 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 3.4 | 17 → 20 | 24 → 26 | 2 → 1 | 7 → 5 | 5 | short |
 | 3.5 | 22 → 23 | 32 → 34 | 1 → 1 | 2 → 0 | 3 | short |
 | 3.6 | 21 → 22 | 23 → 24 | 2 → 1 | 8 → 7 | 2 | short |
-| 3.7 | 20 → 20 | 22 → 22 | 2 → 2 | 10 → 10 | 0 | short |
-| 3.8 | 14 → 14 | 19 → 19 | 3 → 3 | 12 → 12 | 0 | short |
+| 3.7 | 20 → 22 | 22 → 24 | 2 → 2 | 10 → 8 | 4 | short |
+| 3.8 | 14 → 19 | 19 → 22 | 3 → 1 | 12 → 9 | 8 | short |
 
 ## Codeforces rating ceiling check (FILL plan Section 6, item 1)
 No Codeforces problem in the bank is above its phase ceiling; the validator now enforces it for every bank file.
@@ -476,32 +476,40 @@ Added: `lc-longest-palindromic-subsequence-after-at-most-k-operations` (p, T4, p
 ## 3.7 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 20 | 20 | 20 | 30 |
-| Reserved total | 22 | 22 | 24 | 30 |
+| Practice total | 20 | 22 | 20 | 30 |
+| Reserved total | 22 | 24 | 24 | 30 |
 
-Practice by tier (after): T1 0, T2 0, T3 8, T4 7, T5 5
+Practice by tier (after): T1 0, T2 0, T3 8, T4 9, T5 5
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): assignment-mask 9/3, path-mask 5/3, group-mask 2/1, submask-mask 4/2
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): assignment-mask 10/3, path-mask 6/3, group-mask 2/1, submask-mask 4/2
 
-Platforms (practice, after): atcoder 9, leetcode 6, codeforces 4, cses 1
+Platforms (practice, after): atcoder 9, leetcode 8, codeforces 4, cses 1
 
-Reserved by purpose (before → after): drill 3→3/8, later_drill 0→0/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 3→3/2
+Reserved by purpose (before → after): drill 3→4/8, later_drill 0→0/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→10/10, exam 3→3/2
 
 Patterns below the rule: before group-mask, submask-mask; after group-mask, submask-mask. Patterns in no checkpoint/review problem: before group-mask; after group-mask.
+
+Added: `lc-select-cells-in-grid-with-maximum-score` (p, T4, assignment-mask), `lc-number-of-squareful-arrays` (p, T4, path-mask), `lc-minimum-increments-for-target-multiples-in-an-array` (r/drill, T4, submask-mask), `lc-concatenated-divisibility` (r/review, T4, path-mask).
+
+**Exhaustion record.** Still short: reserved 24 of 24 but drill 4 of 8, later_drill 0 of 4, review 10 of 10 (rule met), `group-mask` has 2 practice problems in tier 3 and is in no review problem, and `submask-mask` spans tiers 4–5 only. Searched: the 11 unused free LeetCode problems tagged bitmask (all read by title, 4 by statement), the unused dynamic-programming problems that mention subsets, assignments, masks or small sets, the CSES dynamic-programming section and the cached AtCoder statements with N ≤ 20. Bitmask DP below rating 1700 is rare: the remaining free problems are grid-profile or game problems (not allowed here) or Hard problems above the tier table.
 
 ## 3.8 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 14 | 14 | 20 | 30 |
-| Reserved total | 19 | 19 | 24 | 30 |
+| Practice total | 14 | 19 | 20 | 30 |
+| Reserved total | 19 | 22 | 24 | 30 |
 
-Practice by tier (after): T1 1, T2 1, T3 4, T4 2, T5 6
+Practice by tier (after): T1 1, T2 1, T3 5, T4 4, T5 8
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): count-up-to-n 3/3, digit-sum-state 4/3, neighbour-digits 3/2, digit-aggregate 4/2
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): count-up-to-n 4/4, digit-sum-state 6/3, neighbour-digits 5/3, digit-aggregate 4/2
 
-Platforms (practice, after): atcoder 6, cses 1, leetcode 5, codeforces 2
+Platforms (practice, after): atcoder 6, cses 1, leetcode 10, codeforces 2
 
-Reserved by purpose (before → after): drill 2→2/8, later_drill 0→0/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
+Reserved by purpose (before → after): drill 2→3/8, later_drill 0→2/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
 
-Patterns below the rule: before count-up-to-n, neighbour-digits, digit-aggregate; after count-up-to-n, neighbour-digits, digit-aggregate. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before count-up-to-n, neighbour-digits, digit-aggregate; after digit-aggregate. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-count-good-integers-in-a-range` (p, T3, neighbour-digits), `lc-total-waviness-of-numbers-in-range-ii` (p, T5, neighbour-digits), `lc-count-binary-palindromic-numbers` (p, T4, count-up-to-n), `lc-number-of-balanced-integers-in-a-range` (p, T4, digit-sum-state), `lc-count-fancy-numbers-in-a-range` (p, T5, digit-sum-state), `lc-total-waviness-of-numbers-in-range-i` (r/later_drill, T2, neighbour-digits), `lc-count-digit-appearances` (r/later_drill, T2, count-up-to-n), `lc-sum-of-digit-differences-of-all-pairs` (r/drill, T3, digit-aggregate).
+
+**Exhaustion record.** Practice 19 of 20 and reserved 22 of 24 (drill 3 of 8, later_drill 2 of 4, review 9 of 10, exam 1 of 2); `digit-aggregate` still spans only tiers 3 and 5 (a tier 4 problem is missing). Searched: all free LeetCode problems whose slugs mention digits, integers in a range, stepping, fancy, balanced or palindromic numbers (about 90 slugs, 12 statements read), the Codeforces dp problems rated 1500–2300 with number-like titles (40 titles read; most are bitmask, greedy or string problems), and the cached AtCoder statements that count integers up to a huge bound (no further unused task). Digit DP is rare below rating 1700: the AtCoder and LeetCode ones are already in the bank, and the Codeforces ones start at 2000 (the ceiling for Phase 3 is 2300).
 

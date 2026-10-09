@@ -24,7 +24,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 3.1 | 22 → 24 | 29 → 32 | 1 → 0 | 3 → 0 | 5 | complete |
 | 3.2 | 33 → 35 | 31 → 32 | 2 → 1 | 1 → 0 | 3 | short |
 | 3.3 | 19 → 21 | 27 → 30 | 4 → 3 | 5 → 2 | 5 | short |
-| 3.4 | 17 → 17 | 24 → 24 | 2 → 2 | 7 → 7 | 0 | short |
+| 3.4 | 17 → 20 | 24 → 26 | 2 → 1 | 7 → 5 | 5 | short |
 | 3.5 | 22 → 22 | 32 → 32 | 1 → 1 | 2 → 2 | 0 | short |
 | 3.6 | 21 → 21 | 23 → 23 | 2 → 2 | 8 → 8 | 0 | short |
 | 3.7 | 20 → 20 | 22 → 22 | 2 → 2 | 10 → 10 | 0 | short |
@@ -416,18 +416,22 @@ Added: `lc-count-of-sub-multisets-with-bounded-sum` (p, T4, bounded), `lc-number
 ## 3.4 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 17 | 17 | 20 | 30 |
-| Reserved total | 24 | 24 | 24 | 30 |
+| Practice total | 17 | 20 | 20 | 30 |
+| Reserved total | 24 | 26 | 24 | 30 |
 
-Practice by tier (after): T1 1, T2 7, T3 4, T4 2, T5 3
+Practice by tier (after): T1 1, T2 7, T3 6, T4 2, T5 4
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): lis 6/4, lis-reduction 3/2, lcs 4/2, edit-distance 4/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): lis 7/4, lis-reduction 4/3, lcs 5/2, edit-distance 4/3
 
-Platforms (practice, after): leetcode 9, cses 2, atcoder 5, codeforces 1
+Platforms (practice, after): leetcode 11, cses 2, atcoder 6, codeforces 1
 
-Reserved by purpose (before → after): drill 4→4/8, later_drill 2→2/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 2→2/2
+Reserved by purpose (before → after): drill 4→6/8, later_drill 2→2/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 2→2/2
 
-Patterns below the rule: before lis-reduction, lcs; after lis-reduction, lcs. Patterns in no checkpoint/review problem: before edit-distance; after edit-distance.
+Patterns below the rule: before lis-reduction, lcs; after lcs. Patterns in no checkpoint/review problem: before edit-distance; after edit-distance.
+
+Added: `ac-abc369_f` (p, T5, lis-reduction), `lc-find-maximum-removals-from-source-string` (p, T3, lcs), `lc-longest-unequal-adjacent-groups-subsequence-ii` (p, T3, lis), `lc-longest-subsequence-with-decreasing-adjacent-difference` (r/drill, T4, lis), `lc-find-the-maximum-length-of-valid-subsequence-ii` (r/drill, T3, lis).
+
+**Exhaustion record.** Practice now meets its minimum (20). Still short: `lcs` has 5 practice problems over tiers 2–3 only, `edit-distance` is in no checkpoint or review problem, and reserved has drill 6 of 8, later_drill 2 of 4, review 9 of 10 (reserved total 29, above its minimum). Searched: the 130 unused free LeetCode dynamic-programming problems whose names mention subsequences, strings, arrays, increasing or distinct (read by title, 12 by statement), the unused AtCoder tasks with two strings or sequences and N ≤ 5000 (1 candidate in the cached statements), and the unused CSES dynamic-programming section. Edit-distance and LCS problems beyond the textbook ones are rare below rating 1900; the harder variants add an automaton (6.2) or a segment tree (Phase 5). ABC 369 F was added as the tier 5 chain problem.
 
 ## 3.5 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

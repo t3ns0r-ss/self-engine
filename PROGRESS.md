@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.8
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.8 step 1 scope
-- Next action: 3.8 step 2 theory
+- Last completed step: 3.8 step 2 theory
+- Next action: 3.8 step 3 recognition cards
 
 ## Gates
 | Gate | Status | Date |
@@ -53,7 +53,7 @@
 | 3.5 | done (on this session's branch) | — |
 | 3.6 | done (on this session's branch) | — |
 | 3.7 | done (on this session's branch) | — |
-| 3.8 | in progress (step 1 done) | — |
+| 3.8 | in progress (step 2 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |

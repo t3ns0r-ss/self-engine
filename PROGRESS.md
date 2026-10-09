@@ -2,7 +2,7 @@
 
 ## Now
 - Milestone: R1 (quality retrofit, PLAN.md Revision 2) and the bank fill (FILL_SHORT_TOPICS_PLAN.md) for the completed topics 0.1–3.8
-- Topic: R1 reference topic 1.6 done; bank fill in progress (see ## Bank fill)
+- Topic: R1 reference topic 1.6 done; bank fill for 0.1–3.8 done (see ## Bank fill)
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: R1 infrastructure and the 1.6 reference retrofit
 - Next action: ⏸ R1 reference review by Saurabh (topic 1.6); the other 24 topics are retrofitted only after approval. Pending lessons (4.1 onward) are written in the Revision 2 format.
@@ -20,7 +20,7 @@
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
 | M5 Phase 3 review | waiting for review | — |
 | R1 reference review (topic 1.6 retrofitted) | waiting for review | 2026-10-09 |
-| Bank fill review | not yet (bank fill in progress) | — |
+| Bank fill review | waiting for review (10 complete, 15 short with exhaustion records) | 2026-10-09 |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)
@@ -61,31 +61,31 @@
 ## Bank
 | topic | status | practice | reserved |
 |---|---|---|---|
-| 0.1 | short | 28 | 27 |
-| 0.2 | short | 22 | 29 |
-| 0.3 | short | 40 | 31 |
-| 0.4 | short | 23 | 33 |
-| 0.5 | short | 29 | 37 |
-| 0.6 | short | 35 | 34 |
-| 1.1 | short | 23 | 29 |
-| 1.2 | short | 22 | 34 |
-| 1.3 | short | 24 | 35 |
-| 1.4 | short | 20 | 35 |
-| 1.5 | short | 20 | 33 |
-| 1.6 | short | 16 | 20 |
-| 1.7 | short | 22 | 25 |
-| 2.1 | short | 24 | 27 |
-| 2.2 | short | 14 | 18 |
-| 2.3 | short | 24 | 26 |
-| 2.4 | short | 15 | 18 |
-| 3.1 | short | 22 | 29 |
-| 3.2 | short | 33 | 31 |
-| 3.3 | short | 19 | 27 |
-| 3.4 | short | 16 | 25 |
-| 3.5 | short | 22 | 32 |
-| 3.6 | short | 21 | 23 |
-| 3.7 | short | 20 | 22 |
-| 3.8 | short | 14 | 19 |
+| 0.1 | short | 32 | 31 |
+| 0.2 | complete | 25 | 31 |
+| 0.3 | complete | 40 | 33 |
+| 0.4 | complete | 23 | 35 |
+| 0.5 | complete | 32 | 42 |
+| 0.6 | complete | 35 | 35 |
+| 1.1 | short | 25 | 32 |
+| 1.2 | complete | 30 | 35 |
+| 1.3 | complete | 26 | 36 |
+| 1.4 | short | 23 | 37 |
+| 1.5 | complete | 24 | 35 |
+| 1.6 | short | 20 | 23 |
+| 1.7 | complete | 24 | 31 |
+| 2.1 | short | 25 | 30 |
+| 2.2 | short | 16 | 18 |
+| 2.3 | short | 26 | 30 |
+| 2.4 | short | 18 | 18 |
+| 3.1 | complete | 24 | 32 |
+| 3.2 | short | 35 | 32 |
+| 3.3 | short | 21 | 30 |
+| 3.4 | short | 20 | 26 |
+| 3.5 | short | 23 | 34 |
+| 3.6 | short | 22 | 24 |
+| 3.7 | short | 22 | 24 |
+| 3.8 | short | 19 | 22 |
 | 4.1 | complete | 64 | 34 |
 | 4.2 | complete | 24 | 34 |
 | 4.3 | short | 42 | 32 |
@@ -111,18 +111,8 @@
 | 7.8 | complete | 0 | 40 |
 
 ### Bank gaps (status: short)
-- 0.1: practice is 85% tier 1 (29 of 34; few 0.1-only problems exist above ABC B / rating 800). Reserved has 13 of 24: no look-alike pair, no review or exam problems, only 1 later_drill. Pattern `fast-io` has no problems: no pure problem was found where only I/O speed matters. Suggestion: fold `fast-io` into the lesson as a rule (always use the fast-I/O lines) rather than a pattern, and drop it from the pattern file.
-- 0.2: reserved has 20 of 24: no look-alike pair (no near-identical earlier-topic partner exists; the natural partners need later topics), 2 of 4 later_drill, review 7 of 10, no exam problems. Practice platform mix is 59% AtCoder.
-- 0.3: reserved has 24 (the minimum) but no look-alike pair and no exam problems; review has 9 of 10 (no tier-4 problem besides one LeetCode Hard).
-- 0.4: reserved has 28: two look-alike pairs, 3 of 4 later_drill, review 9 of 10, exam 1 (after topic step 1).
-- 0.5: reserved has 26: two look-alike pairs, review 9 of 10, exam 1 of 2 (after topic step 1). Pattern `permutations` spans only tiers 2–3 in practice.
-- 0.6: two look-alike pairs added at topic step 1; review 9 of 10 after that.
-- 1.1: reserved 27: at lesson step 1, two look-alike pairs were made (LeetCode Minimum Absolute Difference, moved from practice, with its index-distance version; Merge Intervals, moved from drill, with Insert Interval) and 4 LeetCode reviews added (review 10 of 10). Still short: drill 7 of 8, later_drill 3 of 4, no exam problems. Pattern `sort-with-index` has 3 practice problems over 2 tiers.
-- 1.2: reserved 28: at lesson step 1, a second look-alike pair (LeetCode Shifting Letters / Shifting Letters II) and 4 LeetCode reviews were added (review 10 of 10). Still short: later_drill 3 of 4, no exam problems. Practice is LeetCode-heavy (13 of 22) because most AtCoder prefix-sum problems went to the reserved set.
-- 1.3: reserved 32 (was 24): at lesson step 6, 7 LeetCode review problems were added (review 12 of 10) and lc-contiguous-array moved in from 1.2 as the look-alike of lc-max-consecutive-ones-iii (look-alikes 4 of 4). Still short on drill (7 of 8). ac-abc172_c changed pattern from opposite-ends to merge-walk.
-- 1.4: reserved 28: at lesson step 1, two look-alike pairs (LeetCode Search a 2D Matrix I / II; Find K Pairs with Smallest Sums / Kth Smallest Number in Multiplication Table, the latter moved from practice) and 6 LeetCode reviews were added (review 10 of 10). Still short: no exam problems. Pattern `real-search` has 1 practice problem and `first-reaching-index` 2: pure real-valued binary searches in this phase's range are rare.
-- 1.5: reserved 26: at lesson step 1, two look-alike pairs (LeetCode Non-overlapping Intervals, moved from practice, / Divide Intervals Into Minimum Number of Groups; Best Time to Buy and Sell Stock II / Maximum Difference Between Increasing Elements) and 3 LeetCode reviews (Reduce Array Size to The Half, Hand of Straights, Task Scheduler) were added (review 10 of 10; CF 1526C1 is not used, since its solution is regret greedy, topic 7.4). Still short: no exam problems.
-- 1.6: the thinnest Phase 1 topic. At lesson step 1, two look-alike pairs (LeetCode Beautiful Towers I / II; Sliding Window Maximum, moved from practice, / Sliding Window Median) and 7 LeetCode reviews were added (review 9 of 10). Practice is 15 after the move; patterns `min-max-span`, `histogram-rectangle` and `deque-window-condition` have 1–2 practice problems each, so the lesson merges them into three cards. Still short: drill 5 of 8 (the lesson adds 3 earlier-topic items), no later_drill or exam problems. At step 7, LeetCode Continuous Subarrays moved from drill to practice so that the deque card has three ladder rungs; the drill takes one more earlier-topic item instead.
+- Topics 0.1–3.8: see `bank-fill/SHORTFALL.md` (measured shortfall and exhaustion record per topic). The older per-topic notes for these topics were replaced by that file.
+- Later topics (4.1 onward): not yet filled; their lessons are pending.
 - 1.7: reserved 25: two look-alike pairs (complete), drill 8, checkpoint 3; at lesson step 1, 10 LeetCode Medium reviews were added (review 10 of 10). Still short: no later_drill or exam problems. Practice is LeetCode-heavy (12 of 22, 55%).
 - 2.1: reserved 14 of 24: drill 8, checkpoint 3, review 3; no look-alike, later_drill or exam problems.
 - 2.2: very thin. Practice 14 of 20, reserved 3 (checkpoint only). Most modular-arithmetic problems also need nCr (2.3), expectation (2.4) or DP, so they belong later. `inverse-general` has no problems (the fitting ones use extended Euclid and are in 2.1). Suggest merging 2.2's bank with 2.3's for practice purposes, or accepting the gap.
@@ -170,7 +160,49 @@
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 
+## Bank fill
+FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank-fill/SHORTFALL.md`. 10 topics reached `complete`; 15 stay `short`, each with an exhaustion record. All entries marked † are Codeforces problems checked through the API only.
+
+| topic | status before | status now | practice | reserved | open question |
+|---|---|---|---|---|---|
+| 0.1 | short | short | 28 → 32 | 27 → 31 | yes |
+| 0.2 | short | complete | 22 → 25 | 29 → 31 | no |
+| 0.3 | short | complete | 40 → 40 | 31 → 33 | no |
+| 0.4 | short | complete | 23 → 23 | 33 → 35 | no |
+| 0.5 | short | complete | 29 → 32 | 37 → 42 | no |
+| 0.6 | short | complete | 35 → 35 | 34 → 35 | no |
+| 1.1 | short | short | 23 → 25 | 29 → 32 | yes |
+| 1.2 | short | complete | 22 → 30 | 34 → 35 | no |
+| 1.3 | short | complete | 24 → 26 | 35 → 36 | no |
+| 1.4 | short | short | 20 → 23 | 35 → 37 | yes |
+| 1.5 | short | complete | 20 → 24 | 33 → 35 | no |
+| 1.6 | short | short | 16 → 20 | 21 → 23 | yes |
+| 1.7 | short | complete | 22 → 24 | 27 → 31 | no |
+| 2.1 | short | short | 24 → 25 | 27 → 30 | yes |
+| 2.2 | short | short | 14 → 16 | 18 → 18 | yes |
+| 2.3 | short | short | 24 → 26 | 26 → 30 | yes |
+| 2.4 | short | short | 15 → 18 | 18 → 18 | yes |
+| 3.1 | short | complete | 22 → 24 | 29 → 32 | no |
+| 3.2 | short | short | 33 → 35 | 31 → 32 | yes |
+| 3.3 | short | short | 19 → 21 | 27 → 30 | yes |
+| 3.4 | short | short | 17 → 20 | 24 → 26 | yes |
+| 3.5 | short | short | 22 → 23 | 32 → 34 | yes |
+| 3.6 | short | short | 21 → 22 | 23 → 24 | yes |
+| 3.7 | short | short | 20 → 22 | 22 → 24 | yes |
+| 3.8 | short | short | 14 → 19 | 19 → 22 | yes |
+
 ## Questions for Saurabh
+- **Bank fill (15 short topics).** For each, pick: (1) accept `short`; (2) lower the minimum; (3) merge a narrow pattern into a neighbour; (4) allow another source. My proposals:
+  - 0.1: fold `fast-io` into the lesson as a rule and drop the pattern (exam has 1 of 2).
+  - 1.4: merge `real-search` into `answer-search` (kth-by-counting also short).
+  - 1.6: merge `min-max-span` with `histogram-rectangle`, and `window-extreme-deque` with `deque-window-condition`.
+  - 2.2: merge `inverse-general` into `inverse-prime`; 2.2 and 2.4: lower the minimums (few problems at these ratings exist for the topic).
+  - 1.1: `coordinate-compression` has no review problem; moving a practice problem to review needs your yes (practice would drop under the target).
+  - 3.2: `reconstruct` has no review problem (same question).
+  - Others (2.1, 2.3, 3.3–3.8): see their exhaustion records in `bank-fill/SHORTFALL.md`.
+- **Spot-check the new † problems** (recalled notes): cf-1692A, 1921C, 1560A, 1543A, 143A, 6A, 886A, 363B, 1807D, 474B, 1676E, 919E, 359C, 312B, 621C, 204C. Three LeetCode Hard problems in 3.5 and 3.6 moved to tier 3.
+- **R1 reference review.** Topic 1.6 is retrofitted to Revision 2 (`uses`, theorem blocks with demos, card examples with runnable units). The other 24 completed topics wait for your approval of it.
+- No `bank-filled` git tag was created (pushing partial refs was denied).
 - Keyword scan and ordered sets (0.6): `lower_bound` and `upper_bound` are keywords of 1.4 (binary search), but topic 0.6 needs the `set`/`map` member functions of the same name. The scan now ignores a keyword written as a member call (preceded by a dot, as in `s.lower_bound(x)`); the free functions on arrays stay reserved for 1.4. Say if you would rather keep the scan strict and have 0.6 describe these calls without naming them.
 - Changes made while building 1.3 (change any you disagree with):
   - Topic data files may carry `draft: true` while a lesson is being written: count rules are skipped and the lesson shows a draft notice, so every step's commit keeps CI green. 1.3 no longer has it.

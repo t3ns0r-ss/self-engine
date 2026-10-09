@@ -23,7 +23,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 2.4 | 15 → 18 | 18 → 18 | 3 → 2 | 13 → 13 | 3 | short |
 | 3.1 | 22 → 24 | 29 → 32 | 1 → 0 | 3 → 0 | 5 | complete |
 | 3.2 | 33 → 35 | 31 → 32 | 2 → 1 | 1 → 0 | 3 | short |
-| 3.3 | 19 → 19 | 27 → 27 | 4 → 4 | 5 → 5 | 0 | short |
+| 3.3 | 19 → 21 | 27 → 30 | 4 → 3 | 5 → 2 | 5 | short |
 | 3.4 | 17 → 17 | 24 → 24 | 2 → 2 | 7 → 7 | 0 | short |
 | 3.5 | 22 → 22 | 32 → 32 | 1 → 1 | 2 → 2 | 0 | short |
 | 3.6 | 21 → 21 | 23 → 23 | 2 → 2 | 8 → 8 | 0 | short |
@@ -396,18 +396,22 @@ Added: `lc-champagne-tower` (p, T2, two-index), `lc-minimum-difficulty-of-a-job-
 ## 3.3 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 19 | 19 | 20 | 30 |
-| Reserved total | 27 | 27 | 24 | 30 |
+| Practice total | 19 | 21 | 20 | 30 |
+| Reserved total | 27 | 30 | 24 | 30 |
 
-Practice by tier (after): T1 0, T2 7, T3 8, T4 2, T5 2
+Practice by tier (after): T1 0, T2 7, T3 8, T4 4, T5 2
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): zero-one 6/4, value-indexed 1/1, unbounded 4/1, subset-sums 5/2, bounded 3/1
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): zero-one 6/4, value-indexed 1/1, unbounded 4/1, subset-sums 6/3, bounded 4/2
 
-Platforms (practice, after): cses 3, leetcode 6, atcoder 8, codeforces 2
+Platforms (practice, after): cses 3, leetcode 8, atcoder 8, codeforces 2
 
-Reserved by purpose (before → after): drill 6→6/8, later_drill 2→2/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 3→3/2
+Reserved by purpose (before → after): drill 6→8/8, later_drill 2→2/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→10/10, exam 3→3/2
 
-Patterns below the rule: before value-indexed, unbounded, subset-sums, bounded; after value-indexed, unbounded, subset-sums, bounded. Patterns in no checkpoint/review problem: before value-indexed; after value-indexed.
+Patterns below the rule: before value-indexed, unbounded, subset-sums, bounded; after value-indexed, unbounded, bounded. Patterns in no checkpoint/review problem: before value-indexed; after value-indexed.
+
+Added: `lc-count-of-sub-multisets-with-bounded-sum` (p, T4, bounded), `lc-number-of-great-partitions` (p, T4, subset-sums), `lc-minimum-time-to-make-array-sum-at-most-x` (r/review, T4, zero-one), `lc-maximum-value-of-k-coins-from-piles` (r/drill, T4, zero-one), `lc-minimum-operations-to-form-subset-sum-i` (r/drill, T3, subset-sums).
+
+**Exhaustion record.** Practice now meets its minimum (21). Still short on composition: `value-indexed` has 1 practice problem (AtCoder ABC 364 E) and is in no review problem; `unbounded` has 4 problems all in tier 2; `bounded` has 4 over tiers 3–4; later_drill is 2 of 4. Searched: the 57 unused free LeetCode dynamic-programming problems with coin, sum, subset, partition, profit or capacity in the name (read by title, 9 by statement; two Premium problems were skipped), the unused AtCoder tasks whose statements mention unlimited use of items or weights up to 10^9 with N ≤ 1000 (8 candidates: all greedy, graph or counting problems), and the unused CSES dynamic-programming section. Weights up to 10^9 with small total value occur in AtCoder's educational contest (already used as the look-alike pair) and in Codeforces problems rated above 2000; unbounded problems at tier 3–4 are mostly counting variants that belong to 3.5.
 
 ## 3.4 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

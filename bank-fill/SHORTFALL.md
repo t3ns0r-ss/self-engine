@@ -15,7 +15,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 1.3 | 24 → 26 | 35 → 36 | 2 → 0 | 1 → 0 | 3 | complete |
 | 1.4 | 20 → 23 | 35 → 37 | 3 → 2 | 2 → 0 | 5 | short |
 | 1.5 | 20 → 24 | 33 → 35 | 3 → 0 | 2 → 0 | 6 | complete |
-| 1.6 | 16 → 16 | 21 → 21 | 4 → 4 | 10 → 10 | 0 | short |
+| 1.6 | 16 → 20 | 21 → 23 | 4 → 4 | 10 → 8 | 6 | short |
 | 1.7 | 22 → 24 | 27 → 31 | 2 → 0 | 4 → 0 | 6 | complete |
 | 2.1 | 24 → 24 | 27 → 27 | 2 → 2 | 4 → 4 | 0 | short |
 | 2.2 | 14 → 14 | 18 → 18 | 4 → 4 | 13 → 13 | 0 | short |
@@ -240,18 +240,22 @@ Added: `lc-earliest-possible-day-of-full-bloom` (p, T4, exchange-order), `lc-min
 ## 1.6 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 16 | 16 | 20 | 30 |
-| Reserved total | 21 | 21 | 24 | 30 |
+| Practice total | 16 | 20 | 20 | 30 |
+| Reserved total | 21 | 23 | 24 | 30 |
 
-Practice by tier (after): T1 2, T2 0, T3 9, T4 3, T5 2
+Practice by tier (after): T1 2, T2 0, T3 10, T4 5, T5 3
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): nearest-greater 9/3, min-max-span 1/1, histogram-rectangle 2/2, window-extreme-deque 2/2, deque-window-condition 2/2
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): nearest-greater 9/3, min-max-span 3/3, histogram-rectangle 3/2, window-extreme-deque 2/2, deque-window-condition 3/2
 
-Platforms (practice, after): leetcode 9, cses 4, atcoder 2, codeforces 1
+Platforms (practice, after): leetcode 12, cses 4, atcoder 3, codeforces 1
 
-Reserved by purpose (before → after): drill 4→4/8, later_drill 0→0/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
+Reserved by purpose (before → after): drill 4→6/8, later_drill 0→0/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
 
 Patterns below the rule: before min-max-span, histogram-rectangle, window-extreme-deque, deque-window-condition; after min-max-span, histogram-rectangle, window-extreme-deque, deque-window-condition. Patterns in no checkpoint/review problem: before deque-window-condition; after deque-window-condition.
+
+Added: `lc-subarray-with-elements-greater-than-varying-threshold` (p, T4, histogram-rectangle), `lc-find-the-number-of-subarrays-where-boundary-elements-are-maximum` (p, T4, min-max-span), `ac-abc407_f` (p, T5, min-max-span), `lc-count-subarrays-with-cost-less-than-or-equal-to-k` (p, T3, deque-window-condition), `lc-minimum-operations-to-convert-all-elements-to-zero` (r/drill, T3, nearest-greater), `lc-next-greater-element-iv` (r/drill, T4, nearest-greater).
+
+**Exhaustion record.** Practice now meets its minimum (20). Still short: reserved 23 of 24 (drill 6 of 8, later_drill 0 of 4, review 9 of 10, exam 1 of 2) and all four span/deque patterns are below the rule (min-max-span 3 problems, histogram-rectangle 3 over tiers 3–4, window-extreme-deque 2, deque-window-condition 3 over tiers 3–4; deque-window-condition is also in no review problem). Searched: all 43 unused free LeetCode problems tagged monotonic-stack or monotonic-queue (read by title, tags and, for 20 of them, the full statement), the 36 unused Codeforces data-structures problems rated 1300–1800, the unused CSES sliding-window and range-query sections, and AtCoder ABC/ARC tasks whose titles or statements mention buildings, windows, rectangles, nearest or visible elements (about 22 statements read). Main drop reasons: n small enough for a double loop, solved by a running maximum, needs binary search (1.4), a segment tree (5.3) or dynamic programming (Phase 3), or the problem is already used in another topic's bank. Proposal for Saurabh (FILL plan Section 4, option 3): merge min-max-span and histogram-rectangle (both are the lesson card 'span of an element'), and merge window-extreme-deque and deque-window-condition (card 'sliding window extremes').
 
 ## 1.7 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |

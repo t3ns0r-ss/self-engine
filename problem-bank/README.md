@@ -23,7 +23,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 2 | 2 | 3 | 5 | 4 | 16 | short |
 | 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 1 | 6 | 7 | 5 | 7 | 26 | short |
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 8 | 18 | short |
-| 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 2 | 10 | 4 | 2 | 4 | 22 | short |
+| 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 2 | 10 | 5 | 3 | 4 | 24 | complete |
 | 3 | [3.2 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.2-dp-foundations.md) | 4 | 13 | 11 | 4 | 1 | 33 | short |
 | 3 | [3.3 Knapsack family: 0/1, unbounded, bounded](phase-3/3.3-knapsack.md) | 0 | 7 | 8 | 2 | 2 | 19 | short |
 | 3 | [3.4 LIS in O(n log n), LCS, edit distance](phase-3/3.4-sequence-dp.md) | 1 | 7 | 4 | 2 | 3 | 17 | short |

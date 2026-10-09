@@ -21,7 +21,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 2.2 | 14 → 16 | 18 → 18 | 4 → 4 | 13 → 13 | 2 | short |
 | 2.3 | 24 → 26 | 26 → 30 | 1 → 0 | 5 → 1 | 6 | short |
 | 2.4 | 15 → 18 | 18 → 18 | 3 → 2 | 13 → 13 | 3 | short |
-| 3.1 | 22 → 22 | 29 → 29 | 1 → 1 | 3 → 3 | 0 | short |
+| 3.1 | 22 → 24 | 29 → 32 | 1 → 0 | 3 → 0 | 5 | complete |
 | 3.2 | 33 → 33 | 31 → 31 | 2 → 2 | 1 → 1 | 0 | short |
 | 3.3 | 19 → 19 | 27 → 27 | 4 → 4 | 5 → 5 | 0 | short |
 | 3.4 | 17 → 17 | 24 → 24 | 2 → 2 | 7 → 7 | 0 | short |
@@ -355,21 +355,23 @@ Added: `cf-312B` (p, T2, geometric-wait), `cf-621C` (p, T4, indicator-linearity)
 
 **Exhaustion record.** Still short: practice 18 of 20 and reserved 18 of 24 (drill 3 of 8, later_drill 0 of 4, look-alike 2 of 4, review 9 of 10, exam 1 of 2); `geometric-wait` and `tail-sum` each have 3–4 problems over 2–3 tiers and `geometric-wait` is in no review problem. Searched: the 18 unused AtCoder tasks that mention an expected value (ABC 189–417 and ARC; read by title and statement head), the Codeforces probability problems rated 1300–2100 without dp, graph or data-structure tags (10 candidates), the free LeetCode probability and math lists, and the unused CSES Mathematics section. Almost every in-band expected-value problem needs a DP over states (Phase 3), a Fenwick tree, or inclusion–exclusion with binomials (2.3 is allowed but those problems are already used). Options for Saurabh: accept 2.4 as short; lower its minimums (for example practice 18, reserved 18); or allow dynamic-programming-based expectation problems here, as later look-alike or review items only.
 
-## 3.1 (status before: short, now: short)
+## 3.1 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 22 | 22 | 20 | 30 |
-| Reserved total | 29 | 29 | 24 | 30 |
+| Practice total | 22 | 24 | 20 | 30 |
+| Reserved total | 29 | 32 | 24 | 30 |
 
-Practice by tier (after): T1 2, T2 10, T3 4, T4 2, T5 4
+Practice by tier (after): T1 2, T2 10, T3 5, T4 3, T5 4
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): generate-all 7/3, constraint-placement 5/2, bound-pruning 4/3, meet-in-middle 6/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): generate-all 7/3, constraint-placement 7/3, bound-pruning 4/3, meet-in-middle 6/3
 
-Platforms (practice, after): leetcode 13, atcoder 7, codeforces 1, cses 1
+Platforms (practice, after): leetcode 14, atcoder 8, codeforces 1, cses 1
 
-Reserved by purpose (before → after): drill 6→6/8, later_drill 4→4/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 3→3/2
+Reserved by purpose (before → after): drill 6→8/8, later_drill 4→4/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→10/10, exam 3→3/2
 
-Patterns below the rule: before constraint-placement; after constraint-placement. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before constraint-placement; after none. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-tiling-a-rectangle-with-the-fewest-squares` (p, T4, constraint-placement), `lc-construct-the-lexicographically-largest-valid-sequence` (r/review, T3, constraint-placement), `lc-find-the-punishment-number-of-an-integer` (r/drill, T2, generate-all), `lc-maximum-points-in-an-archery-competition` (r/drill, T3, generate-all), `ac-abc196_d` (p, T3, constraint-placement).
 
 ## 3.2 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

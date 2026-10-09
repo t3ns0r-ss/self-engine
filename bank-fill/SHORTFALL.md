@@ -26,7 +26,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 3.3 | 19 → 21 | 27 → 30 | 4 → 3 | 5 → 2 | 5 | short |
 | 3.4 | 17 → 20 | 24 → 26 | 2 → 1 | 7 → 5 | 5 | short |
 | 3.5 | 22 → 23 | 32 → 34 | 1 → 1 | 2 → 0 | 3 | short |
-| 3.6 | 21 → 21 | 23 → 23 | 2 → 2 | 8 → 8 | 0 | short |
+| 3.6 | 21 → 22 | 23 → 24 | 2 → 1 | 8 → 7 | 2 | short |
 | 3.7 | 20 → 20 | 22 → 22 | 2 → 2 | 10 → 10 | 0 | short |
 | 3.8 | 14 → 14 | 19 → 19 | 3 → 3 | 12 → 12 | 0 | short |
 
@@ -456,18 +456,22 @@ Added: `lc-count-number-of-ways-to-place-houses` (r/later_drill, T2, sequence-co
 ## 3.6 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 21 | 21 | 20 | 30 |
-| Reserved total | 23 | 23 | 24 | 30 |
+| Practice total | 21 | 22 | 20 | 30 |
+| Reserved total | 23 | 24 | 24 | 30 |
 
-Practice by tier (after): T1 0, T2 3, T3 10, T4 3, T5 5
+Practice by tier (after): T1 0, T2 3, T3 10, T4 4, T5 5
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): merge-split 7/4, take-from-ends 5/3, palindrome-segment 5/2, first-element-match 4/2
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): merge-split 7/4, take-from-ends 5/3, palindrome-segment 6/3, first-element-match 4/2
 
-Platforms (practice, after): atcoder 3, leetcode 12, cses 1, codeforces 5
+Platforms (practice, after): atcoder 3, leetcode 13, cses 1, codeforces 5
 
-Reserved by purpose (before → after): drill 4→4/8, later_drill 1→1/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 2→2/2
+Reserved by purpose (before → after): drill 4→5/8, later_drill 1→1/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 2→2/2
 
-Patterns below the rule: before palindrome-segment, first-element-match; after palindrome-segment, first-element-match. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before palindrome-segment, first-element-match; after first-element-match. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-longest-palindromic-subsequence-after-at-most-k-operations` (p, T4, palindrome-segment), `lc-allocate-mailboxes` (r/drill, T4, merge-split).
+
+**Exhaustion record.** Still short: reserved 24 of 24 but drill 5 of 8, later_drill 1 of 4, review 9 of 10; `palindrome-segment` has 6 practice problems over tiers 2–4 (rule met), `first-element-match` has 4 over tiers 4–5 (no tier 2–3 problem). Searched: the unused free LeetCode dynamic-programming problems that mention palindromes, merging, splitting, cutting, removing, scoring, stones or parentheses (about 110 names read, 8 statements), the unused AtCoder tasks (the cached statements contain no further interval-DP task below ABC F), and the CSES dynamic-programming section. Interval DP below rating 1800 is rare outside textbook problems already used; the remaining free candidates are Hard with heavy case analysis.
 
 ## 3.7 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

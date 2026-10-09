@@ -11,7 +11,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 0.5 | 29 → 32 | 37 → 42 | 1 → 0 | 5 → 0 | 8 | complete |
 | 0.6 | 35 → 35 | 34 → 35 | 0 → 0 | 1 → 0 | 1 | complete |
 | 1.1 | 23 → 25 | 29 → 32 | 2 → 0 | 3 → 0 | 5 | short |
-| 1.2 | 22 → 26 | 34 → 35 | 4 → 0 | 1 → 0 | 5 | short |
+| 1.2 | 22 → 30 | 34 → 35 | 4 → 0 | 1 → 0 | 9 | complete |
 | 1.3 | 24 → 24 | 35 → 35 | 2 → 2 | 1 → 1 | 0 | short |
 | 1.4 | 20 → 20 | 35 → 35 | 3 → 3 | 2 → 2 | 0 | short |
 | 1.5 | 20 → 20 | 33 → 33 | 3 → 3 | 2 → 2 | 0 | short |
@@ -163,23 +163,23 @@ Added: `lc-minimum-swaps-to-sort-by-digit-sum` (p, T3, sort-with-index), `lc-sor
 
 **Exhaustion record.** Still short on one rule: pattern `coordinate-compression` appears in no checkpoint or review problem (its practice set now has 5 problems over tiers 1–3). A second tier 3–4 compression problem for a review set was not found. Searched: the 52 unused AtCoder ABC/ARC tasks with coordinates up to 10^9 and 2·10^5 items (by statement), the 15 Codeforces problems whose titles mention compression or rank, and the 214 unused free LeetCode problems tagged sorting (by name and tags). Main drop reasons: the task reduces to sorting or a set without ranks, or needs binary search (1.4) or a Fenwick tree (5.2). Moving a practice problem into a review set needs Saurabh's answer (Step 4); one of ABC 213 C, ABC 273 C or ABC 304 D could be moved.
 
-## 1.2 (status before: short, now: short)
+## 1.2 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 22 | 26 | 20 | 30 |
+| Practice total | 22 | 30 | 20 | 30 |
 | Reserved total | 34 | 35 | 24 | 30 |
 
-Practice by tier (after): T1 7, T2 3, T3 8, T4 4, T5 4
+Practice by tier (after): T1 7, T2 5, T3 10, T4 4, T5 4
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): range-sum 7/3, prefix-count-lookup 5/3, difference-array 5/3, prefix-2d 4/3, prefix-extremes 5/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): range-sum 11/3, prefix-count-lookup 5/3, difference-array 5/3, prefix-2d 4/3, prefix-extremes 5/3
 
-Platforms (practice, after): leetcode 17, cses 2, atcoder 3, codeforces 4
+Platforms (practice, after): leetcode 17, cses 3, atcoder 4, codeforces 6
 
 Reserved by purpose (before → after): drill 8→8/8, later_drill 8→8/4, lookalike 4→4/4, checkpoint 3→3/3, review 10→10/10, exam 1→2/2
 
 Patterns below the rule: before range-sum, prefix-count-lookup, difference-array, prefix-2d; after none. Patterns in no checkpoint/review problem: before none; after none.
 
-Added: `lc-ways-to-make-a-fair-array` (p, T3, range-sum), `lc-count-submatrices-with-equal-frequency-of-x-and-y` (p, T3, prefix-2d), `lc-count-subarrays-with-median-k` (p, T4, prefix-count-lookup), `lc-stamping-the-grid` (p, T5, difference-array), `lc-continuous-subarray-sum` (r/exam, T3, prefix-count-lookup).
+Added: `lc-ways-to-make-a-fair-array` (p, T3, range-sum), `lc-count-submatrices-with-equal-frequency-of-x-and-y` (p, T3, prefix-2d), `lc-count-subarrays-with-median-k` (p, T4, prefix-count-lookup), `lc-stamping-the-grid` (p, T5, difference-array), `lc-continuous-subarray-sum` (r/exam, T3, prefix-count-lookup), `ac-abc182_d` (p, T3, range-sum), `cses-3220` (p, T2, range-sum), `cf-363B` (p, T3, range-sum), `cf-1807D` (p, T2, range-sum).
 
 ## 1.3 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

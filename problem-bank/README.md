@@ -13,7 +13,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 0 | [0.5 Brute force: loops, bitmask subsets, permutations, simple recursion](phase-0/0.5-brute-force.md) | 3 | 14 | 11 | 4 | 0 | 32 | complete |
 | 0 | [0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs](phase-0/0.6-stl-toolbox.md) | 3 | 16 | 11 | 4 | 1 | 35 | complete |
 | 1 | [1.1 Sorting, comparators, coordinate compression](phase-1/1.1-sorting.md) | 6 | 11 | 7 | 0 | 1 | 25 | short |
-| 1 | [1.2 Prefix sums and difference arrays (1D, 2D)](phase-1/1.2-prefix-sums.md) | 7 | 3 | 8 | 4 | 4 | 26 | short |
+| 1 | [1.2 Prefix sums and difference arrays (1D, 2D)](phase-1/1.2-prefix-sums.md) | 7 | 5 | 10 | 4 | 4 | 30 | complete |
 | 1 | [1.3 Two pointers and sliding window](phase-1/1.3-two-pointers.md) | 3 | 5 | 11 | 2 | 3 | 24 | short |
 | 1 | [1.4 Binary search: invariant template, search on the answer](phase-1/1.4-binary-search.md) | 4 | 3 | 9 | 1 | 3 | 20 | short |
 | 1 | [1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)](phase-1/1.5-greedy-1.md) | 3 | 7 | 8 | 0 | 2 | 20 | short |

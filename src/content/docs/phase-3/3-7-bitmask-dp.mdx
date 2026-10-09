@@ -13,6 +13,10 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import assignment from '../../../../code/3.7/assignment/solution.cpp?raw';
+import tsp from '../../../../code/3.7/tsp/solution.cpp?raw';
+import fewestGroups from '../../../../code/3.7/fewest-groups/solution.cpp?raw';
+import bestPartition from '../../../../code/3.7/best-partition/solution.cpp?raw';
 
 <TopicHeader topic="3.7" />
 
@@ -117,6 +121,56 @@ Example: the non-empty submasks of $1011_2 = 11$, in the order the loop visits t
 <Cards topic="3.7" />
 
 ## 6. Templates
+
+Four programs, one per card: assignment of jobs to workers, the shortest tour through all cities, the fewest groups under a capacity, and the best split of a set into groups by submasks. The brute forces try every permutation, or every partition into groups by recursion.
+
+### Assignment over masks (Theorem 3.7.1)
+
+<Code code={assignment} lang="cpp" title="assignment/solution.cpp" />
+
+**How it works.** `dp[mask]` is the least cost for the first `popcount(mask)` workers to take exactly the jobs in `mask`. The loop runs over the masks in increasing order and pushes each finished value forward: the next worker, number `popcount(mask)`, takes any free job $j$. Every mask is final before it is read, because adding a bit makes the integer larger. Time $2^{20} \cdot 20 \approx 2 \cdot 10^7$.
+
+**C++ details explained.** `mask >> j & 1` tests bit $j$ (shift binds tighter than `&`); `mask | 1 << j` adds job $j$ (`<<` binds tighter than `|`). `LLONG_MAX` marks masks that are not reachable yet; with "push" updates every mask is reachable, but the check also skips work in variants where some jobs are forbidden. `__builtin_popcount` counts the 1 bits (topic 1.7).
+
+**Tested.** Stress-tested against a brute force that tries every permutation of the jobs, on 5000 random inputs ($n \le 8$, costs up to 9 or $10^9$). There are also 5 fixed tests: the example of Section 4.1 (5), one worker, 16 workers with random costs (from a separate program), 20 workers with all costs $10^9$ ($2 \cdot 10^{10}$), and 20 workers each with one free job (0).
+
+**Alternative formulation.** "Pull" instead of "push": $\text{dp}[m] = \min_{j \in m} \text{dp}[m \setminus \{j\}] + c[|m| - 1][j]$, exactly the formula of Theorem 3.7.1. Both visit every (mask, job) pair once.
+
+### Shortest tour (Theorem 3.7.2)
+
+<Code code={tsp} lang="cpp" title="tsp/solution.cpp" />
+
+**How it works.** `dp[mask][v]` is the shortest path from city 0 that visits exactly the cities of `mask` and stands at $v$. Only masks containing city 0 matter, so the loop steps by 2 (odd numbers have bit 0 set). From each reachable state, the path is extended to any unvisited city $u$. At the end, every full path is closed with the edge back to 0. Time $2^{16} \cdot 16^2 \approx 1.7 \cdot 10^7$.
+
+**C++ details explained.** `INF = LLONG_MAX / 4` leaves room for adding an edge without overflow before the comparison. The table has $2^{16} \cdot 16$ `long long` values, 8 MB. For $n = 1$ there is no edge to close the tour, so the answer is set to 0 directly.
+
+**Tested.** Stress-tested against a brute force that tries every order of the cities $1..n-1$, on 5000 random inputs ($n \le 8$, asymmetric times up to 9 or $10^9$). There are also 5 fixed tests: the four cities of Section 4.2 (21), one city (0), two cities ($5 + 7 = 12$), 13 cities with random times (from a separate program), and 16 cities with all times 1 (16).
+
+**Alternative formulation.** Memoised recursion `go(mask, v)` = the shortest way to finish from $v$ when `mask` is visited: try every next city, end with the edge back to 0. It computes the same states backwards and is often shorter to write.
+
+### Fewest groups (Theorem 3.7.3)
+
+<Code code={fewestGroups} lang="cpp" title="fewest-groups/solution.cpp" />
+
+**How it works.** `best[mask]` is the smallest pair (groups, weight of the last group) over all ways to pack the items of `mask`, filling groups one after another. The last item packed is some $j$: it either fits into the last group of the best packing of the other items, or opens a new group. `std::pair` compares by the first value, then the second, which is exactly the order of Theorem 3.7.3. The answer is the group count for all items.
+
+**C++ details explained.** `auto [groups, fill] = best[mask ^ 1 << j];` unpacks the pair (topic 0.6). `make_pair(groups, fill + w[j])` builds the option; the conditional expression needs both branches of the same type. The empty set starts as one open, empty group, $(1, 0)$, so the first item never opens a second group.
+
+**Tested.** Stress-tested against a brute force that puts each item into an existing group or a new one (all set partitions), on 5000 random inputs ($n \le 9$, small capacities or $10^9$). There are also 5 fixed tests: the example of Section 4.3 (2), one item filling a group (1), 20 items that each fill a group (20), 20 tiny items (1), and 15 random items (from a separate program).
+
+**Alternative formulation.** The submask method of the next template also works: $\text{groups}[m] = 1 + \min \text{groups}[m \setminus s]$ over submasks $s$ that fit in one group. It costs $3^n$ instead of $2^n n$, so the pair method is the one to use for $n = 20$.
+
+### Best split into groups (Theorem 3.7.4)
+
+<Code code={bestPartition} lang="cpp" title="best-partition/solution.cpp" />
+
+**How it works.** `sum[mask]` is precomputed for all masks from the mask without its lowest bit. Then `dp[mask]` is the best score for splitting `mask` into groups: the group containing the lowest item of `mask` is some submask $s$, allowed if it fits the capacity, and the rest is split independently. Requiring the lowest item in $s$ makes each split counted once. All masks with all submasks take $3^{16} \approx 4.3 \cdot 10^7$ steps.
+
+**C++ details explained.** `mask & -mask` keeps only the lowest 1 bit (two's complement, topic 1.7), and `__builtin_ctz` gives its index. `s = (s - 1) & mask` jumps to the next smaller submask (Theorem 3.7.4); the loop stops at 0, the empty set, which is not a group. `dp` starts at $-1$ for "not computed"; every mask can at least be split into single items, so the final values are never $-1$.
+
+**Tested.** Stress-tested against a brute force over all set partitions, on 5000 random inputs ($n \le 9$, small capacities or $10^4$). There are also 5 fixed tests: weights $2, 2, 3$ with capacity 5 (29: $\{2, 3\}, \{2\}$), one item (49), the weights of Section 4.3 with capacity 10 (181: $\{4, 6\}, \{8, 1\}$), 12 random items (from a separate program), and 16 items that all fit in one group ($10^8$).
+
+**Alternative formulation.** Without the lowest-item rule, also try every $s$; the result is the same (each split is just found several times), at a cost of roughly twice the work. The rule matters when counting splits instead of optimising.
 
 ## 7. Bug catalogue
 

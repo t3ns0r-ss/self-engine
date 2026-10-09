@@ -5,6 +5,14 @@
 
 Read this entire file before doing anything, and follow it exactly. Problems are collected up front by a separate plan, `PROBLEM_BANK_PLAN.md`; read it too, and apply its Section 12 changes to this plan once its milestone B1 is merged. If you believe something here is wrong, write the concern in `PROGRESS.md` under "Questions for Saurabh" and continue with work that doesn't depend on it.
 
+**Revision 2 (quality upgrade).** This file was revised after a review of the live site (topics 1.6 and 2.1). The review found five weaknesses, and the revision fixes each one in place:
+1. Recognition Cards were abstract and thin → every card now has constraint shapes, a worked "Recognition in action" block, and positive and negative examples (Sections 5, 6.5).
+2. Look-alike pairs cited later topics and showed raw slugs → references are structured, may point only to the same or earlier topics, and render as card names (Sections 5, 6.11, 12).
+3. Some proofs were too dense for a beginner → a fixed proof layout with size limits (Section 6.4).
+4. Theorems had no code to look at → every theorem gets a small tested demo whose output is shown under it (Sections 6.4, 8.6).
+5. The page header and the "What you need" list disagreed → both render from one `uses` list in the topic data file (Sections 5, 6.2, 12).
+Topics merged before this revision are brought up to the new standard in the retrofit milestone R1 (Section 15).
+
 ---
 
 ## Table of contents
@@ -107,11 +115,13 @@ Keep dependencies minimal. No database, no server, no login.
 │   └── deploy.sh               # Section 14.2
 ├── code/                       # lesson code units, by topic
 │   └── 1.3/
-│       └── window-sum/
-│           ├── solution.cpp
-│           ├── brute.cpp
-│           ├── gen.cpp
-│           └── tests/1.in, 1.out, ...
+│       ├── window-sum/         # template unit
+│       │   ├── solution.cpp
+│       │   ├── brute.cpp
+│       │   ├── gen.cpp
+│       │   └── tests/1.in, 1.out, ...
+│       ├── thm-1/              # theorem demo unit (Section 8.6): solution.cpp + tests/1.in, 1.out
+│       └── card-shrinkable-window/   # card example unit (Section 8.6): produces the inline example numbers
 ├── notes/                      # private solution notes (Section 9.4); NOT rendered on the site
 │   └── 1.3.md
 └── src/
@@ -234,7 +244,7 @@ Each Phase 7 lesson opens with "This topic combines X and Y." linking both.
 | 48 | 7.8 | recognition | Technique recognition: mixed sets, topic not given | all | (none) |
 
 Notes:
-- "requires" lists the topics a lesson leans on most; any earlier topic may be used.
+- "requires" lists the topics a lesson leans on most; any earlier topic may be used. In `curriculum.yaml`, write `requires` as explicit topic ids only. Expand the shorthands in the tables above (`0.x`, `Phases 0–2`, `all`) into the actual list when you do Step 1 of the pipeline for that topic, and keep the table in this file unchanged. The lesson's `uses` list (Section 5) must contain every id in `requires`.
 - Dijkstra and MST are taught as graph topics with graph proofs (relaxation invariant, cut property), not as "greedy on graphs". Greedy lessons never use graph problems.
 - Topic 7.8 has no new technique: its lesson is a guide to the recognition procedure, a recap of the Recognition Handbook, and mixed sets. It keeps the lesson template, with Sections 4, 6, and 7 replaced by that recap.
 
@@ -247,21 +257,56 @@ Each topic has `src/data/topics/{id-with-dash}.yaml`. The lesson MDX holds prose
 ```yaml
 id: "1.3"
 
+uses:                             # every earlier topic this lesson relies on; rendered by BOTH the page header ("Builds on") and "What you need"
+  - {topic: "1.1", what: "Sorting, only to explain why order matters in the stretch problems"}
+  - {topic: "1.2", what: "Prefix sums, used as the brute-force baseline and as a look-alike"}
+  # must include every id in this topic's `requires` (curriculum.yaml) and every earlier topic cited anywhere in the lesson or this file
+
+theorems:                         # one entry per numbered theorem in Section 4 of the lesson
+  - id: "1.3.1"
+    title: "Shrinking a valid window keeps it valid"
+    plain_words: "If a segment is allowed, every smaller piece cut from its ends is allowed too."
+    demo: "1.3/thm-1"             # code unit folder under code/ (Section 8.6)
+
 cards:
   - id: shrinkable-window
     name: "Shrinkable window"
     decisive_property: "If a window [l, r] is valid, every window inside it is valid (validity is closed under shrinking)."
-    from_theorem: "Theorem 1.3.1"
+    from_theorem: "1.3.1"
     how_to_test: "Take any valid window, remove its first element, and argue it stays valid for every possible input."
-    weak_signals:
-      - "Longest or shortest contiguous subarray/substring satisfying a condition"
-      - "n up to 2·10^5, so O(n) or O(n log n) is needed"
+    constraint_shapes:            # 1–3; each pairs a concrete bound with what it forces
+      - "n up to 2·10^5 with one array: O(n²) is about 2·10^10 pair checks, so the answer must come from one or two passes"
+    weak_signals:                 # 2–4; each is a question form AND a typical constraint/statement shape, never just "there is an array"
+      - form: "Asks for the longest or shortest contiguous segment satisfying a condition"
+        shape: "One array or string, n ≥ 10^5, condition mentions only the segment's own contents (sum, count of distinct values, max − min)"
+      - form: "Asks to count segments satisfying a condition"
+        shape: "Same shape as above; the count is usually up to n(n+1)/2, so it needs a 64-bit integer"
     kill_signals:
-      - "Sum condition with possibly negative values (removing an element can increase the sum)"
+      - "Sum condition with possibly negative values: for [5, -4, 1] and sum ≤ 2, the segment [5] is invalid but extending it to [5, -4, 1] (sum 2) is valid, so an invalid window can become valid by growing"
       - "Asks about subsequences, not contiguous segments"
-    lookalikes:
+    in_action:                    # one complete recognition, using the three layers; invented problem, numbers must be real
+      statement: "Given n positive integers and K, find the length of the longest contiguous segment whose sum is at most K."
+      constraints: "n ≤ 2·10^5, 1 ≤ a_i ≤ 10^9, K ≤ 10^14"
+      budget: "All segments: n(n+1)/2 ≈ 2·10^10 sums even with prefix sums. At about 10^8 simple operations per second that is over 200 seconds. Need about O(n)."
+      candidates:                 # at least two, all from allowed (earlier) topics
+        - {tool: "Check every segment using prefix sums (1.2)", verdict: rejected, because: "About 2·10^10 checks: too slow."}
+        - {tool: "Shrinkable window (this topic)", verdict: chosen, because: "Property holds, see below."}
+      property_check: "Take a valid window and delete its first element. All values are positive, so the sum drops. It is still at most K. Closed under shrinking: yes."
+      decision: "Shrinkable window, O(n)."
+    examples:                     # at least 2 positive and 2 negative; at least one of each kind is inline with real numbers
+      positive:
+        - inline: {input: "a = [2, 1, 3, 1, 1], K = 4", answer: "2", why: "All values positive, so deleting an end element only lowers the sum. The window method gives 2, matching brute force."}
+        - worked_example: cf-1234A      # a worked-example problem of THIS topic only (never ladder, drill, checkpoint, review or exam problems)
+          why: "At most k distinct values: removing an element never adds a distinct value."
+      negative:
+        - inline: {input: "a = [5, -4, 1], K = 2", answer: "3 (the whole array sums to 2)", method_gives: "2", why: "Trace: at r = 0 the window [5] has sum 5 > 2, so the method discards 5 for good. It ends with best length 2 (the window [-4, 1]). But the whole array [5, -4, 1] has sum 2, so the true answer is 3. The method assumes a window that is invalid now can never become valid by growing; negative values break that."}
+          correct_tool: {topic: "1.2", card: prefix-sum-lookup}
+        - problem: cf-7777D                # a problem from THIS or an EARLIER topic (a problem the learner has solved or will see in an earlier ladder); not this topic's ladder/drill
+          why: "Asks for subsequences, not segments; the window idea does not apply."
+          correct_tool: {topic: "0.5", card: subset-enumeration}
+    lookalikes:                   # structured references only; topics must be this topic or earlier (Section 12)
       - description: "Longest subarray with sum at most K when values can be negative"
-        needs: "1.2 prefix sums with sorted prefix values"
+        tool: {topic: "1.2", card: prefix-sum-lookup}
         flipping_difference: "Negative values break closure under shrinking."
     complexity: "O(n): each pointer moves right at most n times in total."
 
@@ -287,17 +332,18 @@ problems:
 
 drill:                            # 8–12 items; each references a problem with role drill
   - problem: cf-2222B
-    answer_card: prefix-sum-lookup      # may be a card from an earlier topic
-    answer_topic: "1.2"
+    answer: {topic: "1.2", card: prefix-sum-lookup}   # this topic or an earlier one
     property: "Exact-sum condition: count pairs of equal prefix values (mod / difference)."
     why_others_fail: "Two pointers: values can be negative, so validity is not closed under shrinking."
 
-lookalike_pairs:                  # 2–4
+lookalike_pairs:                  # 2–4; both tools must belong to this topic or earlier ones
   - a: cf-3333C
     b: cf-4444D
-    a_tool: "shrinkable-window (1.3)"
-    b_tool: "prefix-sum-lookup (1.2)"
-    flipping_difference: "B allows negative values."
+    a_tool: {topic: "1.3", card: shrinkable-window}
+    b_tool: {topic: "1.2", card: prefix-sum-lookup}
+    shared_surface: "Both ask for a subarray with a sum condition on one array of about 2·10^5 numbers."
+    flipping_difference: "B allows negative values, so removing an end element can raise the sum."
+    flipping_input: "a = [5, -4, 1], K = 2: the window method answers 2, the true answer is 3."
 
 self_test:                        # 5–8
   - q: "Give a length-3 array with a negative value where the shrinking-window method returns the wrong answer for 'longest subarray with sum ≤ 2'."
@@ -348,6 +394,8 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.tsx';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import TheoremDemo from '../../../components/TheoremDemo.astro';
 import windowSum from '../../../../code/1.3/window-sum/solution.cpp?raw';
 
 <TopicHeader topic="1.3" />
@@ -355,9 +403,11 @@ import windowSum from '../../../../code/1.3/window-sum/solution.cpp?raw';
 ## 1. Why this topic exists
 ## 2. Prerequisites and scope
 ### What you need
+<WhatYouNeed topic="1.3" />
 ### What this topic does not cover
 ## 3. Definitions
 ## 4. Theory and proofs
+<TheoremDemo unit="1.3/thm-1" />
 ## 5. Recognition Cards
 <Cards topic="1.3" />
 ## 6. Templates
@@ -385,26 +435,55 @@ import windowSum from '../../../../code/1.3/window-sum/solution.cpp?raw';
 - One paragraph with the key idea in plain words. No code yet.
 
 ### 6.2 Section 2: Prerequisites and scope
-- `### What you need`: links to earlier lessons with one line each on what is used.
+- `### What you need`: rendered by `<WhatYouNeed topic="…" />` from the `uses` list in the topic data file (Section 5). Do not hand-write this list. `<TopicHeader>` shows the same `uses` list under "Builds on", so the two can never disagree. Each entry is a link to the earlier lesson plus its one-line `what`.
 - `### What this topic does not cover`: nearby ideas from later topics, each with "covered in topic X.Y". The only place later-topic keywords may appear.
 
 ### 6.3 Section 3: Definitions
 Each new term in bold at its definition, a precise definition, and a tiny example. Add it to `glossary.yaml` and `glossary_added`.
 
 ### 6.4 Section 4: Theory and proofs
-- Theorems numbered `Theorem {topic}.{n}`. Complete, short proofs, with LaTeX math (`$…$`, `$$…$$`).
-- After every proof, a preconditions box:
-  ```mdx
-  :::note[This proof needs]
-  1. …
-  2. …
-  :::
-  ```
-- Complexity for every algorithm, with the reason.
+Every theorem is numbered `Theorem {topic}.{n}`, has an entry in the data file's `theorems` list (Section 5), and uses exactly this layout, in this order:
+
+1. **Statement** in precise mathematical words, with LaTeX math (`$…$`, `$$…$$`).
+2. **In plain words:** one or two sentences with no symbols a beginner has not met, rendered as `:::tip[In plain words]`. Copy of `plain_words` from the data file.
+3. **A tiny instance with real numbers** (an array or graph of 3–6 elements) showing the statement true on one case, before any proof. Use a table or a one-line trace.
+4. **Proof,** as numbered steps. Each step is one claim plus its reason, at most two lines. At most 8 steps; a longer argument is split into named lemmas, each laid out the same way. No step may use a fact that is not (a) a definition on this page, (b) an earlier numbered step, or (c) a cited earlier theorem with its number. The proof's last line says which statement of the theorem has now been shown.
+5. **Preconditions box,** exactly:
+   ```mdx
+   :::note[This proof needs]
+   1. …
+   2. …
+   :::
+   ```
+6. **Demo:** `<TheoremDemo unit="{topic}/thm-{n}" />` shows a small tested program and its real output (Section 8.6). The demo runs the theorem's claim on the tiny instance from item 3 or a close variant, so the reader sees the numbers the proof talks about.
+7. **Complexity** (for algorithm theorems) with the reason, in one or two lines.
+
+Rules for proofs a beginner must be able to follow:
+- Every symbol is defined in Section 3 or in the statement. A proof about "windows $[l, r]$" says what $l$ and $r$ index.
+- Prefer a concrete argument on the tiny instance followed by "the same argument works for any input because…" over a purely abstract chain. Never leave "similarly" or "by induction" without writing the base case and the step.
+- If a proof has a case split, list the cases first ("Case A: …; Case B: …"), then argue each under its own sub-heading.
+- Reading test (part of Section 17.1): read each proof imagining only Phase 0 knowledge plus this page. Any step that needs a pause gets split into two steps.
 - Prefer a concrete trace (a table of pointer positions or DP values on a small input) alongside abstract arguments.
 
 ### 6.5 Section 5: Recognition Cards
-3–6 cards, rendered by `<Cards>` from the data file. Each card's `decisive_property` must restate the preconditions box of the theorem named in `from_theorem`.
+3–6 cards, rendered by `<Cards>` from the data file. Each card is shown in this order, with these labels:
+
+1. **Name** and **Decisive property**, which restates the preconditions box of the theorem in `from_theorem`, in problem language.
+2. **How to test it:** the one check to run on a problem (`how_to_test`).
+3. **Constraint shapes:** what the input sizes force (`constraint_shapes`), always with the actual arithmetic (e.g., "2·10^5 elements, so n² ≈ 4·10^10").
+4. **Weak signals:** each is a pair of *question form* and *statement/constraint shape* (`weak_signals`). "There is an array" or "the problem mentions a sum" alone is never a weak signal. These only raise the card as a candidate; they never decide.
+5. **Kill signals:** facts that rule the card out immediately, each with a concrete instance whenever the kill depends on numbers (`kill_signals`).
+6. **Recognition in action:** the card's `in_action` block, rendered as the three-layer procedure on one problem: statement → constraints → budget → candidates (≥ 2, each accepted or rejected with a reason) → property check → decision. Same shape as worked-example Steps 1–3 (Section 6.8) but short, about 10 lines. It is a different problem from the worked examples, so the reader sees a fresh recognition.
+7. **Examples:** `examples.positive` (the property holds) and `examples.negative` (it looks like this card but the property fails, with the correct tool named).
+8. **Look-alikes:** the card's `lookalikes`, each showing the other card's *name*, never a slug, and the flipping difference.
+9. **Complexity.**
+
+Rules for examples:
+- At least 2 positive and 2 negative per card. At least one positive and one negative must be `inline`: a tiny invented instance with concrete numbers, the answer, and (for negatives) what the wrong method outputs. These numbers must be produced by a code unit (Section 8.6), not by hand.
+- Positive examples may reference only (a) inline instances, (b) this topic's `worked_example` problems, or (c) problems from earlier topics. They never reference this topic's ladder, drill, checkpoint, review or exam problems, so no later exercise is spoiled.
+- Every negative example names a `correct_tool`: a `{topic, card}` of this or an earlier topic. If the right tool is only taught later, the negative is instead written as "a problem where no tool from this course applies yet" and is not used.
+- Each example's `why` is one to three sentences that point to the decisive property (holds / fails because …), never just "it works".
+- Every negative example that depends on numbers (like the `[5, -4, 1]` case) must also appear in the topic's bug catalogue or self-test, so the failing input is exercised in code.
 
 ### 6.6 Section 6: Templates
 For each template:
@@ -439,7 +518,7 @@ Difficulty must not decrease within a card group for problems from the same plat
 8–12 items, at least 3 answered by an earlier topic's card. The summary must include the constraints that matter for recognition.
 
 ### 6.11 Section 11: Look-alike pairs
-2–4 pairs; at least one side of each uses this topic's tool.
+2–4 pairs; at least one side of each uses this topic's tool. Both tools in a pair, and anything in `needs` or `flipping_difference`, must belong to this topic or an earlier one: a look-alike whose other side is taught later is written in the later topic's lesson, where it is allowed. Tools are `{topic, card}` references and render as card names with a link (e.g., "Prefix-sum lookup (topic 1.2)"), never as the internal card id. Each pair shows both problem summaries, the `shared_surface` (what makes them look alike), the `flipping_difference`, and, when the difference depends on numbers, the `flipping_input` with each method's output.
 
 ### 6.12 Section 12: Self-test questions
 5–8 conceptual questions answerable without code, with concrete counterexamples where relevant.
@@ -459,7 +538,9 @@ Rendered from `decision_map`. Add entries to every weak-signal group this topic 
 - Expand every abbreviation at its first occurrence on each page, as "breadth-first search (BFS)" or "BFS (breadth-first search)". Avoid unexpanded abbreviations in headings.
 - Never write "obviously", "clearly", "trivially", "it's easy to see", or "simply" in place of an argument.
 - Every correctness claim is proved here or cited to a numbered theorem in an earlier lesson. Every complexity claim includes its reason. Counterexamples use actual numbers.
-- Every mechanism described in prose also appears in code in the same lesson.
+- Every mechanism described in prose also appears in code in the same lesson. Every theorem has a demo (Section 6.4, 8.6) and every card has examples (Section 6.5).
+- Introduce a symbol, a technical word, or a C++ construct before using it. If a sentence needs a term from a later part of the page, move the definition up or rewrite the sentence.
+- Cross-references to other topics appear only as links to **earlier** lessons (or inside "What this topic does not cover"). Never show an internal id such as a card slug or a file name to the reader; show the card's or lesson's title.
 - Copyright: no copied statements or editorials; summaries are one line in your own words; never quote more than a few words from any source.
 
 ---
@@ -484,7 +565,7 @@ Rendered from `decision_map`. Add entries to every weak-signal group this topic 
 ### 8.2 Code units
 A code unit is a folder in `code/{topic}/` containing:
 - `solution.cpp`: complete program, standard input to standard output.
-- `tests/k.in` and `tests/k.out`: at least 3 pairs, including edge cases (smallest n, all equal values, maximum values for overflow). Expected outputs come from `brute.cpp` or careful hand calculation, never from `solution.cpp` alone.
+- `tests/k.in` and `tests/k.out`: at least 3 pairs for template and worked-example units, including edge cases (smallest n, all equal values, maximum values for overflow). Theorem demo units and card example units (Section 8.6) need at least 1 pair. Expected outputs come from `brute.cpp` or careful hand calculation, never from `solution.cpp` alone.
 - For templates, also `brute.cpp` (slow, obviously correct) and `gen.cpp` (random small inputs, seed from `argv[1]`).
 
 Generator skeleton (the `argc` check is required, or `-Werror` rejects the unused parameter):
@@ -564,6 +645,25 @@ Add `**/.build/` to `.gitignore`. If a problem allows several correct outputs, w
 - Templates must pass 5000 iterations. Never lower the count to make a test pass.
 - Inputs small enough for brute force (typically n ≤ 8–10, values ≤ 10–20), with forced edge cases (n = 1, all equal values, values at the condition's boundary).
 - **If a deliberately introduced bug passes the stress test, investigate before discarding it.** Either the generator is too weak (strengthen it and rerun) or the variant is actually correct, in which case it becomes an "Alternative formulation" with a proof. (Real example found while testing this plan: in the longest-window-with-sum-at-most-K template, replacing the inner `while` with `if` still returns the correct maximum length, because the window then never shrinks below the best length found so far. That is the known "non-shrinking window" variant.)
+
+### 8.6 Theorem demos and card example units
+
+Both kinds are ordinary code units (a folder with `solution.cpp` and `tests/`), so `test_units.sh` already compiles and checks them. They differ only in what they are for.
+
+**Theorem demo** (`code/{topic}/thm-{n}/`), one per numbered theorem:
+- `solution.cpp` is **5–30 lines** in total and written for reading, not speed. It runs the theorem's claim on a fixed tiny input, and prints the quantities the theorem is about, one labelled line per step (for example, for window validity: the window, its sum, and "valid" or "invalid" after each removal).
+- Where the theorem says "for every", the program checks the claim over all small inputs it can enumerate (e.g., every window of the tiny array) and prints one summary line ("all 6 windows: closed under shrinking: yes").
+- `tests/1.in` is the tiny input (may be empty) and `tests/1.out` the expected output, **calculated by hand from the proof first** and then compared with the program's output. If they disagree, one of them is wrong: investigate, never copy the program's output into the test.
+- It uses only constructs explained in earlier lessons; any new construct is explained under the demo.
+- Shown in the lesson by `<TheoremDemo unit="{topic}/thm-{n}" />`: the component loads `solution.cpp` and `tests/1.out` with `import.meta.glob('/code/**/{solution.cpp,tests/1.out}', { query: '?raw', eager: true })` and displays the code, then a block titled "Output". The output shown is therefore always the tested expected output.
+- After the output, 1–3 sentences connect the printed lines to the proof's steps ("line 3 is step 2 of the proof").
+
+**Card example unit** (`code/{topic}/card-{card-id}/`), one per card that has `inline` examples:
+- `solution.cpp` computes, for every inline example of that card, the correct answer by brute force and the answer of the card's method (and, for negatives, shows that they differ), and prints them in the order the examples appear in the data file, e.g. `N1 brute=3 method=2`.
+- `tests/1.out` contains those lines. The numbers in the card's `inline.answer` and `method_gives` fields must equal them; build-time validation (Section 12, item 12) parses the `tests/1.out` lines and compares.
+- It is allowed to be longer than a theorem demo (no display limit) because it is not shown, only run.
+
+**Which program a learner sees:** the Theorem demo only. Card example units are checks behind the scenes. In the lesson, an inline example shows the input, the answers, and the `why` text.
 
 ---
 
@@ -666,6 +766,15 @@ Starlight sidebar: Home, Method, then Phase 0–7 (each phase: intro, lessons in
 ### 10.8 Look and feel
 Starlight defaults with small changes: readable prose width, KaTeX styled for both themes, clear platform badges (Codeforces, AtCoder, CSES, LeetCode), mobile-friendly tables (horizontal scroll inside their container). Light and dark themes both checked.
 
+### 10.9 Lesson content components
+
+- `TopicHeader`: title, phase, estimated hours, and "Builds on" from the topic's `uses` list (links with their one-line `what`).
+- `WhatYouNeed`: the same `uses` list, rendered as a list for Section 2 of the lesson. Both components import one helper, `getUses(topicId)`, so they cannot diverge.
+- `Cards`: renders each card in the order given in Section 6.5, with the labels given there. Examples are shown as small "Works" (positive) and "Does not work" (negative) panels, each with the input, answers, and `why`. The `in_action` block is shown as a short numbered procedure. Card references from `correct_tool` and `lookalikes` are rendered through `cardLabel({topic, card})`, which returns the card's name and a link to its lesson. If the reference cannot be resolved, the build fails (Section 12).
+- `TheoremDemo`: Section 8.6.
+- `LookalikePairs`: Section 6.11, using `cardLabel` for both tools.
+- Add a "Copy" button to every `<Code>` block (HTTPS makes the Clipboard API available, Section 14.2; use the same selectable-text fallback).
+
 ---
 
 ## 11. Other pages and documents
@@ -704,14 +813,19 @@ Implement in `src/content.config.ts` (Zod schemas) and `src/lib/data.ts` (cross-
 
 1. Every topic YAML matches the schema; required fields present per role.
 2. Problem ids are unique across all topics; every id matches its platform format and its URL matches the format in Section 9.1.
-3. Counts: cards 3–6; ladder 12–20 with ≥ 3 per card; drill 8–12 with ≥ 3 earlier-topic answers; look-alike pairs 2–4; self-test 5–8; checkpoint exactly 3; each review set 3–4.
+3. Counts: cards 3–6; per card: weak signals 2–4 (each with `form` and `shape`), constraint shapes 1–3, kill signals ≥ 1, positive examples ≥ 2, negative examples ≥ 2, at least one `inline` positive and one `inline` negative, `in_action` present with ≥ 2 candidates and exactly one `chosen`; ladder 12–20 with ≥ 3 per card; drill 8–12 with ≥ 3 earlier-topic answers; look-alike pairs 2–4; self-test 5–8; checkpoint exactly 3; each review set 3–4.
 4. Every `techniques` entry has `order` ≤ the problem's topic order. For Phase 7 topics, `techniques` includes the combined topics.
-5. Every ladder problem's `card` is a card of the same topic; drill `answer_card` exists in the same or an earlier topic.
+5. Every ladder problem's `card` is a card of the same topic; drill `answer` (a `{topic, card}` reference) resolves to a card in the same or an earlier topic.
 6. Ladder rungs are 1..k with no gaps per card; difficulty is non-decreasing within each card for problems on the same platform.
 7. Every glossary term in `glossary_added` exists in `glossary.yaml` with the same topic.
 8. Every lesson MDX has the required headings in order (parse headings from the raw file).
+9. **References resolve and respect order.** Every `{topic, card}` reference (in `answer`, `a_tool`, `b_tool`, `correct_tool`, `lookalikes[].tool`, `decision_map`) points to an existing card whose topic has `order` ≤ the current topic's `order`. Free-text fields `needs` and `flipping_difference` may not contain a topic id of a later topic or any later topic's keyword (Section 4). Rendered pages must not contain any card id (search built HTML for the ids of cards in the same file).
+10. **`uses` is complete.** `uses` contains every id in this topic's `requires`; every topic id that appears in a link to another lesson, in a "Theorem x.y.z" citation, in `techniques` of this topic's problems, or in a card reference is in `uses` or is the current topic; every id in `uses` has `order` less than the current topic's. `WhatYouNeed` and `TopicHeader` both render from `uses` only; no other hand-written prerequisite list is allowed (fail if the lesson's Section 2 contains a bullet list under "What you need").
+11. **Theorems have demos and plain words.** Every `Theorem {topic}.{n}` heading in the lesson has a `theorems` entry, a `:::tip[In plain words]` block, a `:::note[This proof needs]` block, and a `<TheoremDemo>` whose `unit` is the entry's `demo`; that code unit exists, its `solution.cpp` has at most 30 lines, and it has `tests/1.out`. Each proof has at most 8 numbered steps (count the numbered list items between the plain-words block and the preconditions box).
+12. **Inline example numbers match their code unit.** For each card with `inline` examples, the unit `code/{topic}/card-{card-id}/tests/1.out` has lines `P1 …`, `P2 …`, `N1 …`, `N2 …` (P = positive in data-file order, N = negative); the `answer` field of each example contains the `brute` value, and each negative's `method_gives` equals the printed `method` value and differs from `brute`.
+13. **Examples do not spoil.** Positive examples that name a problem use a problem whose role is `worked_example` in the same topic or any role in an earlier topic; negative examples that name a problem use any problem from this or an earlier topic with role other than `drill`, `checkpoint`, `review`, `exam`, or `ladder` (of this topic).
 
-The agent also runs, by hand before each merge, the keyword search from Section 4 and the self-review in Section 17.
+The agent also runs, by hand before each merge, the keyword search from Section 4 and the self-review in Section 17. Items 9–13 are the guards against the five weaknesses listed in Revision 2; if one is hard to implement exactly, implement a stricter check, never a looser one.
 
 ---
 
@@ -720,14 +834,14 @@ The agent also runs, by hand before each merge, the keyword search from Section 
 Run these steps in order. After each: update `PROGRESS.md` and commit.
 
 1. **Scope.** Create the branch, empty lesson from the template, empty data file, `notes/{topic}.md`, code folder. Record in `PROGRESS.md`: allowed topics, new tools, forbidden keywords, glossary terms already defined.
-2. **Theory.** Lesson Sections 1–4; glossary entries; preconditions box after every proof.
-3. **Recognition Cards.** Cards in the data file; decisive property = preconditions in problem language. Weak signals are provisional until Step 6.
+2. **Theory.** Lesson Sections 1–4; glossary entries. Write each theorem in the Section 6.4 layout: plain words, tiny instance, numbered proof steps, preconditions box. Fill `uses` and `theorems` in the data file. Then write each theorem demo unit (Section 8.6): compute the expected output by hand from the proof first, then run it.
+3. **Recognition Cards.** Cards in the data file; decisive property = preconditions in problem language. Write constraint shapes with arithmetic. Write each `in_action` on an invented problem and check the numbers. Write the inline positive and negative examples, then the card example unit (Section 8.6) that computes their numbers; copy the numbers into the data file from that output. Weak signals, kill signals, and non-inline examples are provisional until Step 6.
 4. **Templates.** Code units with brute and generator; `stress.sh` passes 5000; lesson Section 6.
 5. **Bug catalogue.** Break copies of templates, find failing inputs with `stress.sh`, write Section 7. Delete scratch copies.
-6. **Problems.** Gather candidates (Section 9.2), check links (9.3), write solution notes (9.4), then choose: worked examples, ladder, drill, look-alike pairs, checkpoint, three review sets. Revise card weak and kill signals from what real statements looked like.
+6. **Problems.** Gather candidates (Section 9.2), check links (9.3), write solution notes (9.4), then choose: worked examples, ladder, drill, look-alike pairs, checkpoint, three review sets. Revise card weak and kill signals from what real statements looked like, and add the problem-based examples (worked examples of this topic; problems of earlier topics) in line with Section 6.5.
 7. **Worked examples.** Section 8 in the six-step format; code units tested.
 8. **Drill, look-alikes, self-test, checkpoint, reviews.** Fill the data file; review set pages render from it.
-9. **Decision map.** Add entries; check the Handbook page renders them in the right groups.
+9. **Decision map.** Add entries; check the Handbook page renders them in the right groups. Resolve every look-alike and negative-example reference against the card list; replace any that would need a later topic (Section 6.11).
 10. **Self-review and merge.** `npm run build` and `bash scripts/test_units.sh code` pass; keyword search clean; read the whole lesson in the browser as a beginner would against Section 17.1; fix anything unclear; merge.
 
 ---
@@ -777,6 +891,7 @@ If Saurabh wants deploy-on-merge: a separate GitHub Actions job on push to `main
 |---|---|---|
 | **M0** | Astro + Starlight project, KaTeX, React, schemas and validation, storage module, all components (Section 10) working on a small placeholder topic, all custom pages, method page, curriculum data, `stress.sh` and `test_units.sh`, CI, self-hosted deployment files (Section 14.2) with one successful test deploy to Saurabh's server once he fills in `.env.deploy`, `PROGRESS.md`, `FEEDBACK.md`, `README.md`. Delete the placeholder topic at the end. | None |
 | **B0–B7** | Problem bank, per `PROBLEM_BANK_PLAN.md` Section 8 (B0–B1 before M1; B2–B7 before M2 unless Saurabh chooses otherwise at the B1 gate) | See that file |
+| **R1** | **Quality retrofit** of every topic merged before Revision 2 (this runs first if topics are already live; otherwise skip). Order: 1.6 as the reference topic, then the rest in curriculum order. For each topic, on a `retrofit/{id}` branch: (a) add `uses` and `theorems`, switch to `WhatYouNeed`, fix header/list mismatches; (b) rewrite proofs into the Section 6.4 layout and add theorem demo units; (c) rewrite every card to the Section 5 and 6.5 schema with `in_action` and examples, with card example units; (d) fix look-alike pairs and drill references to structured, order-respecting references and card names. No problem is added, removed, or moved in this milestone (the bank is out of scope). `npm run build` and `test_units.sh` must pass. | ⏸ After 1.6 is retrofitted: set "R1 reference review" to `waiting`; continue with the remaining topics only when Saurabh sets it to `approved`. |
 | **M1** | **Topic 1.3 as the exemplar**, all 10 steps, plus its review sets. Missing 1.1 and 1.2 lessons appear as "coming soon" links. | ⏸ Stop. Set "M1 exemplar review" to `waiting` in `PROGRESS.md`; continue only when Saurabh sets it to `approved` (apply any requested changes from `FEEDBACK.md` first). |
 | **M2** | Phase 0 (0.1–0.6), phase intro, Phase 0 exam | ⏸ |
 | **M3** | 1.1, 1.2; then revise 1.3 to match what 1.1/1.2 taught (links, terms, theorem citations); then 1.4–1.7; Phase 1 exam | ⏸ |
@@ -848,6 +963,10 @@ Handle every `open` item before new topic work, on a `feedback/…` branch; set 
 - [ ] `npm run build` and `bash scripts/test_units.sh code` pass.
 - [ ] All 14 lesson sections complete and rendering; review sets render.
 - [ ] Every proof has a preconditions box; every card's decisive property restates it.
+- [ ] Every theorem follows the Section 6.4 layout: plain-words block, tiny instance, ≤ 8 numbered steps, preconditions box, `<TheoremDemo>` with hand-computed expected output.
+- [ ] Every card has constraint shapes with arithmetic, weak signals as form + shape, an `in_action` block, ≥ 2 positive and ≥ 2 negative examples (inline ones backed by a card example unit), and look-alikes shown by card name.
+- [ ] No look-alike, drill answer, example, or decision-map reference points to a later topic; no internal id (card slug, file name) is visible in the rendered page.
+- [ ] The page header "Builds on" and the "What you need" list are identical (both from `uses`) and cover every earlier topic the lesson links or cites.
 - [ ] Every problem has a solution note with techniques; every link opened and title confirmed with `checked_on`.
 - [ ] Keyword search shows no later-topic terms outside "What this topic does not cover".
 - [ ] Every abbreviation expanded on first use on the page; every term defined before use; every C++ construct explained.
@@ -855,7 +974,7 @@ Handle every `open` item before new topic work, on a `feedback/…` branch; set 
 - [ ] Drill has ≥ 3 earlier-topic answers; each look-alike pair names its flipping difference.
 - [ ] Decision map entries render in the Handbook; glossary entries render.
 - [ ] Hints, logging, drill reveal, checkpoint timer, and review due dates work on this topic in the browser (desktop and a narrow mobile width).
-- [ ] Beginner read-through done; `PROGRESS.md` updated; merged and tagged.
+- [ ] Beginner read-through done, including the proof reading test in Section 6.4 (every proof step followable with Phase 0 knowledge plus this page); `PROGRESS.md` updated; merged and tagged.
 
 ### 17.2 Phase
 - [ ] All topics done; phase intro and exam complete with remediation map.
@@ -873,5 +992,9 @@ Handle every `open` item before new topic work, on a `feedback/…` branch; set 
 | Not enough pure problems for a card | Search more sources from Section 9.2; if still short, merge the card with a related one or reduce to minimum counts. Never relax purity. |
 | Page title differs from your expectation | Use the page's title, and re-read the statement to make sure it's the problem you meant. |
 | Page cannot be opened | Drop the problem; note it under "Blocked". |
+| A card has no honest negative example from this or earlier topics | Use an inline counterexample with real numbers and name an earlier-topic tool; if the only correct tool is taught later, write the negative as an inline instance whose `correct_tool` is `brute force (topic 0.5)`, or drop the card from the topic and note it under "Blocked". Never name a later topic. |
+| A look-alike's other side is taught later | Remove it from this lesson. The later topic's lesson adds the pair (it may reference this card). Add a note in `PROGRESS.md` under the later topic's scope notes. |
+| Theorem demo output disagrees with the hand-computed expected output | Treat it as a possible error in the theorem, the proof, or the program. Resolve it before anything else; never overwrite `tests/1.out` with the program's output. |
+| A proof cannot fit in 8 steps | Split it into lemmas, each with its own plain words and preconditions box, and give each lemma a demo or a shared demo covering them. |
 | Unsure a proof is right | Write a small exhaustive check of the theorem's claim on small inputs; if still unsure, note it in the merge message and "Questions for Saurabh". |
 | A teaching decision not covered here | Choose what best serves Section 1.2's priorities, note it in the merge message, continue. |

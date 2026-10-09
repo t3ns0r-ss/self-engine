@@ -7,7 +7,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | phase | topic | T1 | T2 | T3 | T4 | T5 | practice | status |
 |---|---|---|---|---|---|---|---|---|
 | 0 | [0.1 C++ for CP: I/O, types, overflow, compiling, online judges](phase-0/0.1-cpp-for-cp.md) | 26 | 3 | 3 | 0 | 0 | 32 | short |
-| 0 | [0.2 Complexity analysis and reading constraints](phase-0/0.2-complexity.md) | 3 | 13 | 4 | 1 | 1 | 22 | short |
+| 0 | [0.2 Complexity analysis and reading constraints](phase-0/0.2-complexity.md) | 4 | 13 | 6 | 1 | 1 | 25 | complete |
 | 0 | [0.3 Implementation and simulation](phase-0/0.3-implementation.md) | 14 | 14 | 11 | 0 | 1 | 40 | short |
 | 0 | [0.4 Parity, divisibility, GCD via Euclid, basic modular arithmetic](phase-0/0.4-elementary-math.md) | 7 | 12 | 3 | 0 | 1 | 23 | short |
 | 0 | [0.5 Brute force: loops, bitmask subsets, permutations, simple recursion](phase-0/0.5-brute-force.md) | 3 | 14 | 9 | 3 | 0 | 29 | short |

@@ -5,7 +5,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | Topic | Practice before → after | Reserved before → after | Patterns below rule before → after | Purpose gaps before → after | Added | Status now |
 |---|---|---|---|---|---|---|
 | 0.1 | 28 → 32 | 27 → 31 | 4 → 1 | 5 → 1 | 8 | short |
-| 0.2 | 22 → 22 | 29 → 29 | 2 → 2 | 2 → 2 | 0 | short |
+| 0.2 | 22 → 25 | 29 → 31 | 2 → 0 | 2 → 0 | 5 | complete |
 | 0.3 | 40 → 40 | 31 → 31 | 0 → 0 | 2 → 2 | 0 | short |
 | 0.4 | 23 → 23 | 33 → 33 | 0 → 0 | 2 → 2 | 0 | short |
 | 0.5 | 29 → 29 | 37 → 37 | 1 → 1 | 5 → 5 | 0 | short |
@@ -53,21 +53,23 @@ Added: `lc-account-balance-after-rounded-purchase` (p, T2, integer-rounding), `l
 
 **Exhaustion record.** Still short on two counts. (1) Pattern `fast-io` has no practice problem: no problem judges input speed alone at these ratings, and the pattern is better folded into the lesson as a rule (question for Saurabh, option 3 of FILL plan Section 4). (2) Exam has 1 of 2: a second tier 3–4 problem that uses nothing beyond 0.1 was not found. Searched: the 79 unused AtCoder ABC A–C tasks whose statements mention bounds of 10^9 or more, the free LeetCode Math tag (Easy and Medium, unused), and the 40 most-solved unused Codeforces implementation/math problems rated 800–1000. Main drop reasons: the solution needs parity or divisibility (0.4), sorting (1.1) or a set (0.6), or the task is solved without overflow or rounding care (so it does not need 0.1).
 
-## 0.2 (status before: short, now: short)
+## 0.2 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 22 | 22 | 20 | 30 |
-| Reserved total | 29 | 29 | 24 | 30 |
+| Practice total | 22 | 25 | 20 | 30 |
+| Reserved total | 29 | 31 | 24 | 30 |
 
-Practice by tier (after): T1 3, T2 13, T3 4, T4 1, T5 1
+Practice by tier (after): T1 4, T2 13, T3 6, T4 1, T5 1
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): budget-from-constraints 3/1, closed-form 10/4, amortised-total 6/3, harmonic-loops 3/2
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): budget-from-constraints 5/3, closed-form 10/4, amortised-total 6/3, harmonic-loops 4/3
 
-Platforms (practice, after): atcoder 13, cses 3, codeforces 3, leetcode 3
+Platforms (practice, after): atcoder 15, cses 3, codeforces 3, leetcode 4
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 4→4/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 4→4/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→10/10, exam 1→2/2
 
-Patterns below the rule: before budget-from-constraints, harmonic-loops; after budget-from-constraints, harmonic-loops. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before budget-from-constraints, harmonic-loops; after none. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `ac-abc152_d` (p, T3, budget-from-constraints), `lc-count-square-sum-triples` (p, T1, budget-from-constraints), `ac-abc134_d` (p, T3, harmonic-loops), `ac-abc180_d` (r/review, T3, closed-form), `ac-abc133_d` (r/exam, T3, closed-form).
 
 ## 0.3 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

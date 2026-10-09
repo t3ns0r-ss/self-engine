@@ -17,6 +17,8 @@ import assignment from '../../../../code/3.7/assignment/solution.cpp?raw';
 import tsp from '../../../../code/3.7/tsp/solution.cpp?raw';
 import fewestGroups from '../../../../code/3.7/fewest-groups/solution.cpp?raw';
 import bestPartition from '../../../../code/3.7/best-partition/solution.cpp?raw';
+import example1 from '../../../../code/3.7/example-1/solution.cpp?raw';
+import example2 from '../../../../code/3.7/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.7" />
 
@@ -247,6 +249,70 @@ Wrong output `69`, correct output `53` ($\{2, 5\}$ and $\{2\}$: $49 + 4$). Witho
 **Fix:** `s = (s - 1) & mask` (Theorem 3.7.4). Whenever a loop is meant to visit subsets of a mask, check that every visited `s` satisfies `(s & mask) == s`.
 
 ## 8. Worked examples
+
+### Example 1: Matching
+
+[AtCoder Educational DP Contest (EDPC), problem O: Matching](https://atcoder.jp/contests/dp/tasks/dp_o). In short: $N \le 21$ men and $N$ women, with a 0/1 table of compatible pairs; count the ways to pair everyone with a compatible partner, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$N = 21$: $2^{21} \approx 2 \cdot 10^6$ masks, times 21 choices, is $4.4 \cdot 10^7$ steps. $21! \approx 5 \cdot 10^{19}$ permutations are far too many.
+
+#### Step 2: Question form → candidate tools
+
+- Trying every permutation of the women (topic 0.5): $21!$.
+- A formula (topic 2.3): the compatibility table is arbitrary, so no product or binomial rule applies.
+- Counting over masks of used women (Theorem 3.7.1, with sums): the assignment-mask card.
+
+#### Step 3: Property check → decision
+
+The card needs that only the set of used items matters. Pair the men in order $0, 1, \dots$: when the first $k$ men are paired, which of them got which woman does not affect who can pair the rest; only the set of taken women does, and $k$ is its size. Decision: $\text{ways}[m] = $ the number of ways for the first $|m|$ men to take exactly the women in $m$, pushed forward over the free compatible women.
+
+#### Step 4: Proof for this problem
+
+A pairing of the first $|m|$ men with the women $m$ has a unique woman $j$ for the last man $|m| - 1$; removing that pair leaves a pairing of the first $|m| - 1$ men with $m \setminus \{j\}$, and different pairings stay different. So the pairings for $m$ split into disjoint groups by $j$, each of size $\text{ways}[m \setminus \{j\}]$ when the pair is compatible (Theorem 3.5.1 on the states of Theorem 3.7.1). Increasing mask order computes every state before it is read.
+
+#### Step 5: Code
+
+<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
+
+**C++ details explained.** The counts are pushed forward: a finished `ways[mask]` is added to every mask with one more compatible woman. `ways[mask] == 0` skips unreachable sets, which saves time when the table is sparse. The loop stops before the full mask, which has no next man. Tested on the four samples from the problem page and on a 21 × 21 table of 1s ($21!$ modulo $10^9 + 7$); and on 5000 random tables ($N \le 8$) against a brute force over all permutations.
+
+#### Step 6: Alternative approach
+
+Pull instead of push: $\text{ways}[m] = \sum_{j \in m,\ a[|m|-1][j] = 1} \text{ways}[m \setminus \{j\}]$. Another method that works here is inclusion–exclusion over the women left out (topic 2.3), also $O(2^N N)$; the mask DP is easier to get right.
+
+### Example 2: Special Permutations
+
+[LeetCode 2741: Special Permutations](https://leetcode.com/problems/special-permutations/). In short: given $n \le 14$ distinct positive integers, count the orders in which every two neighbours divide one another, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$n = 14$: $2^{14} \cdot 14^2 \approx 3.2 \cdot 10^6$ steps for a table over (set, last). $14! \approx 8.7 \cdot 10^{10}$ orders cannot be listed.
+
+#### Step 2: Question form → candidate tools
+
+- Trying every order (topic 0.5): $14!$.
+- A table over the position and the last number only (topic 3.2): it cannot tell which numbers are still unused.
+- Counting paths through every vertex (Theorem 3.7.2): the path-mask card.
+
+#### Step 3: Property check → decision
+
+Think of the numbers as vertices, with an edge between two numbers when one divides the other. A special permutation is a path that visits every vertex exactly once. Whether it can continue depends only on the set already used and the last number. Decision: $\text{ways}[m][v]$ = orders of exactly the numbers of $m$ that end with $v$, summed over the full set.
+
+#### Step 4: Proof for this problem
+
+An order of the set $m$ ending with $v$ has a unique number $u$ just before $v$ (if $|m| \ge 2$), and $u, v$ must divide one another; removing $v$ gives an order of $m \setminus \{v\}$ ending with $u$. So the orders split into disjoint groups by $u$, and the sum rule of Theorem 3.7.2 counts them. The base states are the single numbers, one order each. Each state is read only after all smaller masks are done.
+
+#### Step 5: Code
+
+<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
+
+**C++ details explained.** The lambda `fits` tests divisibility in both directions with `long long` values up to $10^9$. Every number may start, so all masks with one bit are base states. The table has $2^{14} \cdot 14$ entries, about 1.8 MB. Tested on the two examples from the problem page, on the 14 powers of two ($14!$ modulo $10^9 + 7$, every order works), on 14 primes (0), and on 14 divisors of 144 (from a separate program); and on 5000 random inputs ($n \le 8$) against a brute force over all permutations.
+
+#### Step 6: Alternative approach
+
+Memoised recursion `go(mask, last)` returning the number of ways to finish: the same $2^n n$ states, explored only as far as they are reachable from the starts, which can be much faster when few pairs divide each other.
 
 ## 9. Problem ladder
 

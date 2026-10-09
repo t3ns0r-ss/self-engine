@@ -16,7 +16,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 1.4 | 20 → 23 | 35 → 37 | 3 → 2 | 2 → 0 | 5 | short |
 | 1.5 | 20 → 24 | 33 → 35 | 3 → 0 | 2 → 0 | 6 | complete |
 | 1.6 | 16 → 16 | 21 → 21 | 4 → 4 | 10 → 10 | 0 | short |
-| 1.7 | 22 → 22 | 27 → 27 | 2 → 2 | 4 → 4 | 0 | short |
+| 1.7 | 22 → 24 | 27 → 31 | 2 → 0 | 4 → 0 | 6 | complete |
 | 2.1 | 24 → 24 | 27 → 27 | 2 → 2 | 4 → 4 | 0 | short |
 | 2.2 | 14 → 14 | 18 → 18 | 4 → 4 | 13 → 13 | 0 | short |
 | 2.3 | 24 → 24 | 26 → 26 | 1 → 1 | 5 → 5 | 0 | short |
@@ -253,21 +253,23 @@ Reserved by purpose (before → after): drill 4→4/8, later_drill 0→0/4, look
 
 Patterns below the rule: before min-max-span, histogram-rectangle, window-extreme-deque, deque-window-condition; after min-max-span, histogram-rectangle, window-extreme-deque, deque-window-condition. Patterns in no checkpoint/review problem: before deque-window-condition; after deque-window-condition.
 
-## 1.7 (status before: short, now: short)
+## 1.7 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 22 | 22 | 20 | 30 |
-| Reserved total | 27 | 27 | 24 | 30 |
+| Practice total | 22 | 24 | 20 | 30 |
+| Reserved total | 27 | 31 | 24 | 30 |
 
-Practice by tier (after): T1 5, T2 3, T3 11, T4 2, T5 1
+Practice by tier (after): T1 5, T2 3, T3 11, T4 3, T5 2
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): xor-identities 5/3, prefix-xor 4/2, per-bit-contribution 4/3, high-bit-first 3/2, bit-identities 6/4
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): xor-identities 5/3, prefix-xor 5/3, per-bit-contribution 4/3, high-bit-first 4/3, bit-identities 6/4
 
-Platforms (practice, after): leetcode 12, codeforces 5, atcoder 4, cses 1
+Platforms (practice, after): leetcode 14, codeforces 5, atcoder 4, cses 1
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 0→0/4, lookalike 4→4/4, checkpoint 3→3/3, review 10→10/10, exam 2→2/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 0→4/4, lookalike 4→4/4, checkpoint 3→3/3, review 10→10/10, exam 2→2/2
 
-Patterns below the rule: before prefix-xor, high-bit-first; after prefix-xor, high-bit-first. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before prefix-xor, high-bit-first; after none. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-find-longest-awesome-substring` (p, T4, prefix-xor), `lc-minimize-or-of-remaining-elements-using-operations` (p, T5, high-bit-first), `lc-score-after-flipping-matrix` (r/later_drill, T3, high-bit-first), `lc-minimum-numbers-of-function-calls-to-make-target-array` (r/later_drill, T3, per-bit-contribution), `lc-longest-nice-subarray` (r/later_drill, T3, per-bit-contribution), `lc-minimum-impossible-or` (r/later_drill, T3, bit-identities).
 
 ## 2.1 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

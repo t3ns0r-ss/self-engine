@@ -25,7 +25,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 3.2 | 33 → 35 | 31 → 32 | 2 → 1 | 1 → 0 | 3 | short |
 | 3.3 | 19 → 21 | 27 → 30 | 4 → 3 | 5 → 2 | 5 | short |
 | 3.4 | 17 → 20 | 24 → 26 | 2 → 1 | 7 → 5 | 5 | short |
-| 3.5 | 22 → 22 | 32 → 32 | 1 → 1 | 2 → 2 | 0 | short |
+| 3.5 | 22 → 23 | 32 → 34 | 1 → 1 | 2 → 0 | 3 | short |
 | 3.6 | 21 → 21 | 23 → 23 | 2 → 2 | 8 → 8 | 0 | short |
 | 3.7 | 20 → 20 | 22 → 22 | 2 → 2 | 10 → 10 | 0 | short |
 | 3.8 | 14 → 14 | 19 → 19 | 3 → 3 | 12 → 12 | 0 | short |
@@ -436,18 +436,22 @@ Added: `ac-abc369_f` (p, T5, lis-reduction), `lc-find-maximum-removals-from-sour
 ## 3.5 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 22 | 22 | 20 | 30 |
-| Reserved total | 32 | 32 | 24 | 30 |
+| Practice total | 22 | 23 | 20 | 30 |
+| Reserved total | 32 | 34 | 24 | 30 |
 
-Practice by tier (after): T1 0, T2 8, T3 9, T4 4, T5 1
+Practice by tier (after): T1 0, T2 8, T3 9, T4 5, T5 1
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): grid-paths 7/3, sequence-counting 8/3, partition-counting 3/2, range-sum-transition 4/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): grid-paths 7/3, sequence-counting 8/3, partition-counting 3/2, range-sum-transition 5/3
 
-Platforms (practice, after): cses 2, leetcode 10, atcoder 7, codeforces 3
+Platforms (practice, after): cses 2, leetcode 11, atcoder 7, codeforces 3
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 2→2/4, lookalike 4→4/4, checkpoint 4→4/3, review 10→10/10, exam 4→4/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 2→4/4, lookalike 4→4/4, checkpoint 4→4/3, review 10→10/10, exam 4→4/2
 
 Patterns below the rule: before partition-counting; after partition-counting. Patterns in no checkpoint/review problem: before partition-counting; after partition-counting.
+
+Added: `lc-count-number-of-ways-to-place-houses` (r/later_drill, T2, sequence-counting), `lc-count-paths-with-the-given-xor-value` (r/later_drill, T3, grid-paths), `lc-find-the-count-of-monotonic-pairs-ii` (p, T4, range-sum-transition).
+
+**Exhaustion record.** One gap remains: pattern `partition-counting` has 3 practice problems over tiers 2–3 and is in no checkpoint or review problem. Searched: the unused free LeetCode dynamic-programming problems whose names mention ways, count, number-of, paths, sequences or dice (about 90 names read, 3 statements), the unused AtCoder tasks that ask for a number of ways with a sum constraint and a modulus (0 matches in the cached statements), and the unused CSES counting sections (already used up in 3.3 and 3.5). Most partition-counting tasks are coin-change variants placed in 3.3, or digit and composition counts that need binomials.
 
 ## 3.6 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

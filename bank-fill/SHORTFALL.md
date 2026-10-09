@@ -17,7 +17,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 1.5 | 20 → 24 | 33 → 35 | 3 → 0 | 2 → 0 | 6 | complete |
 | 1.6 | 16 → 20 | 21 → 23 | 4 → 4 | 10 → 8 | 6 | short |
 | 1.7 | 22 → 24 | 27 → 31 | 2 → 0 | 4 → 0 | 6 | complete |
-| 2.1 | 24 → 24 | 27 → 27 | 2 → 2 | 4 → 4 | 0 | short |
+| 2.1 | 24 → 25 | 27 → 30 | 2 → 1 | 4 → 1 | 4 | short |
 | 2.2 | 14 → 14 | 18 → 18 | 4 → 4 | 13 → 13 | 0 | short |
 | 2.3 | 24 → 24 | 26 → 26 | 1 → 1 | 5 → 5 | 0 | short |
 | 2.4 | 15 → 15 | 18 → 18 | 3 → 3 | 13 → 13 | 0 | short |
@@ -278,18 +278,22 @@ Added: `lc-find-longest-awesome-substring` (p, T4, prefix-xor), `lc-minimize-or-
 ## 2.1 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 24 | 24 | 20 | 30 |
-| Reserved total | 27 | 27 | 24 | 30 |
+| Practice total | 24 | 25 | 20 | 30 |
+| Reserved total | 27 | 30 | 24 | 30 |
 
-Practice by tier (after): T1 2, T2 5, T3 11, T4 3, T5 3
+Practice by tier (after): T1 2, T2 5, T3 11, T4 4, T5 3
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): sieve 8/3, spf-factorise 6/4, trial-division 3/2, multiples-sieve 3/3, bezout 4/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): sieve 8/3, spf-factorise 6/4, trial-division 4/3, multiples-sieve 3/3, bezout 4/3
 
-Platforms (practice, after): codeforces 7, leetcode 5, atcoder 9, cses 3
+Platforms (practice, after): codeforces 7, leetcode 6, atcoder 9, cses 3
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 2→2/4, lookalike 3→3/4, checkpoint 3→3/3, review 9→9/10, exam 2→2/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 2→4/4, lookalike 3→3/4, checkpoint 3→3/3, review 9→10/10, exam 2→2/2
 
-Patterns below the rule: before trial-division, multiples-sieve; after trial-division, multiples-sieve. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before trial-division, multiples-sieve; after multiples-sieve. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-maximum-element-sum-of-a-complete-subset-of-indices` (p, T4, trial-division), `lc-prime-palindrome` (r/review, T3, trial-division), `lc-three-divisors` (r/later_drill, T2, trial-division), `lc-number-of-common-factors` (r/later_drill, T2, trial-division).
+
+**Exhaustion record.** Two gaps remain. (1) `multiples-sieve` has 3 practice problems over tiers 3–5; a fourth was not found. Searched: the 42 unused free LeetCode problems tagged number-theory, the 32 unused AtCoder tasks whose statements mention multiples, divisors or primes with bounds near 10^6 (listed by title), and the unused CSES Mathematics section. Drop reasons: the task needs inclusion–exclusion (2.3), binary search (1.4), a graph or DP, or has bounds small enough for a double loop. (2) Look-alike has 3 of 4: the only completed pair is LeetCode Four Divisors / Count of Numbers Which Are Not Special; the second pair's partner lives in 0.4 (Number of Subarrays With GCD Equal to K / Number of Different Subsequences GCDs). A fourth look-alike needs a free, nearly identical partner that needs a different tool; none was found among the 42 LeetCode candidates.
 
 ## 2.2 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

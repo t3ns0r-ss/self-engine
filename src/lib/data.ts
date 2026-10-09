@@ -16,11 +16,33 @@ export type BankProblem = {
   lookalike_of: string | null; techniques: string[]; checked_on: string; source_check: 'page' | 'api';
 };
 export type BankFile = { topic: string; status: 'in_progress' | 'complete' | 'short'; problems: BankProblem[] };
-export type Card = {
+export type Ref = { topic: string; card: string };
+export type LegacyCard = {
   id: string; name: string; decisive_property: string; from_theorem: string; how_to_test: string;
   weak_signals: string[]; kill_signals: string[];
   lookalikes: { description: string; needs: string; flipping_difference: string }[]; complexity: string;
 };
+export type PositiveExample = { inline: { input: string; answer: string; why: string } } | { worked_example: string; why: string };
+export type NegativeExample =
+  | { inline: { input: string; answer: string; method_gives: string; why: string }; correct_tool: Ref }
+  | { problem: string; why: string; correct_tool: Ref };
+export type CardR2 = {
+  id: string; name: string; decisive_property: string; from_theorem: string; how_to_test: string;
+  constraint_shapes: string[]; weak_signals: { form: string; shape: string }[]; kill_signals: string[];
+  in_action: {
+    statement: string; constraints: string; budget: string;
+    candidates: { tool: string; verdict: 'chosen' | 'rejected'; because: string }[];
+    property_check: string; decision: string;
+  };
+  examples: { positive: PositiveExample[]; negative: NegativeExample[] };
+  lookalikes: { description: string; tool: Ref; flipping_difference: string }[]; complexity: string;
+};
+export type Card = LegacyCard | CardR2;
+export const isCardR2 = (c: Card): c is CardR2 => 'in_action' in c;
+/** "Theorem 1.3.1" for either card shape. */
+export const theoremLabel = (c: Card) => (c.from_theorem.startsWith('Theorem') ? c.from_theorem : `Theorem ${c.from_theorem}`);
+/** One line per weak signal, for the handbook and flashcards. */
+export const weakText = (c: Card): string[] => c.weak_signals.map((w) => (typeof w === 'string' ? w : w.form));
 export type Role = 'ladder' | 'worked_example' | 'drill' | 'lookalike' | 'checkpoint' | 'review' | 'exam';
 export type TopicProblem = {
   id: string; role: Role; card: string | null; rung: number | null; twist: string | null; summary: string;
@@ -28,11 +50,13 @@ export type TopicProblem = {
 };
 export type TopicFile = {
   id: string; draft: boolean; cards: Card[]; problems: TopicProblem[];
-  drill: { problem: string; answer_card: string; answer_topic: string; property: string; why_others_fail: string }[];
-  lookalike_pairs: { a: string; b: string; a_tool: string; b_tool: string; flipping_difference: string }[];
+  uses?: { topic: string; what: string }[];
+  theorems?: { id: string; title: string; plain_words: string; demo: string }[];
+  drill: { problem: string; answer?: Ref; answer_card: string; answer_topic: string; property: string; why_others_fail: string }[];
+  lookalike_pairs: { a: string; b: string; a_tool: string | Ref; b_tool: string | Ref; shared_surface?: string; flipping_difference: string; flipping_input?: string }[];
   self_test: { q: string; a: string }[];
   checkpoint: { time_limit_minutes: number; problems: string[] };
-  decision_map: { weak_signal: string; choose: string; when: string; over: { card: string; because: string }[] }[];
+  decision_map: { weak_signal: string; choose: string; when: string; over: { topic?: string; card: string; because: string }[] }[];
   glossary_added: string[];
 };
 export type GlossaryEntry = { term: string; expansion?: string; definition: string; topic: string };
@@ -125,4 +149,12 @@ export function problemIndex(data: SiteData): IndexedProblem[] {
     }
   }
   return [...out.values()];
+}
+
+/** The one list behind both the page header ("Builds on") and "What you need" (PLAN.md Section 6.2). */
+export function getUses(data: SiteData, topic: string) {
+  return (data.topics[topic]?.uses ?? []).map((u) => {
+    const t = data.curriculum.find((x) => x.id === u.topic)!;
+    return { topic: u.topic, title: t.title, what: u.what, href: data.lessons[u.topic] ? lessonHref(t) : null };
+  });
 }

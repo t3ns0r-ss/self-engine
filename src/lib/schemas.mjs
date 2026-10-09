@@ -76,7 +76,12 @@ export const bankFile = z.strictObject({
 // the bank only).
 export const ROLES = ['ladder', 'worked_example', 'drill', 'lookalike', 'checkpoint', 'review', 'exam'];
 
-export const card = z.strictObject({
+// A reference to a card of this or an earlier topic (PLAN.md Section 5, Revision 2).
+export const cardRef = z.strictObject({ topic: topicId, card: slug });
+
+// Pre-Revision-2 card shape. Topics that have no `uses` list still use it until the retrofit
+// milestone R1 reaches them (PLAN.md Section 15); it is removed when R1 is finished.
+export const legacyCard = z.strictObject({
   id: slug,
   name: z.string().min(1),
   decisive_property: z.string().min(1),
@@ -86,6 +91,40 @@ export const card = z.strictObject({
   kill_signals: z.array(z.string().min(1)).min(1),
   lookalikes: z.array(z.strictObject({ description: z.string().min(1), needs: z.string().min(1), flipping_difference: z.string().min(1) })),
   complexity: z.string().min(1),
+});
+
+const nonEmpty = z.string().min(1);
+const inlinePositive = z.strictObject({ inline: z.strictObject({ input: nonEmpty, answer: nonEmpty, why: nonEmpty }) });
+const workedPositive = z.strictObject({ worked_example: nonEmpty, why: nonEmpty });
+const inlineNegative = z.strictObject({
+  inline: z.strictObject({ input: nonEmpty, answer: nonEmpty, method_gives: nonEmpty, why: nonEmpty }),
+  correct_tool: cardRef,
+});
+const problemNegative = z.strictObject({ problem: nonEmpty, why: nonEmpty, correct_tool: cardRef });
+
+export const card = z.strictObject({
+  id: slug,
+  name: nonEmpty,
+  decisive_property: nonEmpty,
+  from_theorem: z.string().regex(/^[0-7]\.[1-8]\.\d+$/, 'like "1.3.1"'),
+  how_to_test: nonEmpty,
+  constraint_shapes: z.array(nonEmpty).min(1).max(3),
+  weak_signals: z.array(z.strictObject({ form: nonEmpty, shape: nonEmpty })).min(2).max(4),
+  kill_signals: z.array(nonEmpty).min(1),
+  in_action: z.strictObject({
+    statement: nonEmpty,
+    constraints: nonEmpty,
+    budget: nonEmpty,
+    candidates: z.array(z.strictObject({ tool: nonEmpty, verdict: z.enum(['chosen', 'rejected']), because: nonEmpty })).min(2),
+    property_check: nonEmpty,
+    decision: nonEmpty,
+  }),
+  examples: z.strictObject({
+    positive: z.array(z.union([inlinePositive, workedPositive])).min(2),
+    negative: z.array(z.union([inlineNegative, problemNegative])).min(2),
+  }),
+  lookalikes: z.array(z.strictObject({ description: nonEmpty, tool: cardRef, flipping_difference: nonEmpty })),
+  complexity: nonEmpty,
 });
 
 export const topicProblem = z
@@ -119,17 +158,34 @@ export const topicFile = z.strictObject({
   // true while the per-topic pipeline (PLAN.md Section 13) is under way: count rules are skipped
   // and the lesson shows a draft notice. Removed at step 10.
   draft: z.boolean().default(false),
-  cards: z.array(card),
+  // Revision 2: every earlier topic this lesson relies on; rendered by TopicHeader and WhatYouNeed.
+  uses: z.array(z.strictObject({ topic: topicId, what: z.string().min(1) })).optional(),
+  theorems: z.array(z.strictObject({ id: z.string().regex(/^[0-7]\.[1-8]\.\d+$/), title: z.string().min(1), plain_words: z.string().min(1), demo: z.string().min(1) })).optional(),
+  cards: z.array(z.union([card, legacyCard])),
   problems: z.array(topicProblem),
-  drill: z.array(z.strictObject({
-    problem: z.string().min(1),
-    answer_card: slug,
-    answer_topic: topicId,
-    property: z.string().min(1),
-    why_others_fail: z.string().min(1),
-  })),
+  drill: z.array(
+    z
+      .strictObject({
+        problem: z.string().min(1),
+        // Revision 2 writes `answer`; the old pair is kept until R1 reaches the topic. Both forms
+        // end up with answer_card and answer_topic filled in, which is what the code reads.
+        answer: cardRef.optional(),
+        answer_card: slug.optional(),
+        answer_topic: topicId.optional(),
+        property: z.string().min(1),
+        why_others_fail: z.string().min(1),
+      })
+      .superRefine((d, ctx) => {
+        if (!d.answer && !(d.answer_card && d.answer_topic)) ctx.addIssue({ code: 'custom', message: `${d.problem}: needs answer {topic, card}` });
+      })
+      .transform((d) => ({ ...d, answer_card: d.answer?.card ?? d.answer_card, answer_topic: d.answer?.topic ?? d.answer_topic })),
+  ),
   lookalike_pairs: z.array(z.strictObject({
-    a: z.string().min(1), b: z.string().min(1), a_tool: z.string().min(1), b_tool: z.string().min(1), flipping_difference: z.string().min(1),
+    a: z.string().min(1), b: z.string().min(1),
+    a_tool: z.union([cardRef, z.string().min(1)]), b_tool: z.union([cardRef, z.string().min(1)]),
+    shared_surface: z.string().min(1).optional(),
+    flipping_difference: z.string().min(1),
+    flipping_input: z.string().min(1).optional(),
   })),
   self_test: z.array(z.strictObject({ q: z.string().min(1), a: z.string().min(1) })),
   checkpoint: z.strictObject({ time_limit_minutes: z.number().int(), problems: z.array(z.string().min(1)) }),
@@ -137,7 +193,7 @@ export const topicFile = z.strictObject({
     weak_signal: z.string().min(1),
     choose: slug,
     when: z.string().min(1),
-    over: z.array(z.strictObject({ card: slug, because: z.string().min(1) })),
+    over: z.array(z.strictObject({ topic: topicId.optional(), card: slug, because: z.string().min(1) })),
   })),
   glossary_added: z.array(z.string().min(1)),
 });

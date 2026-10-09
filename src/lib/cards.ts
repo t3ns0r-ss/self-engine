@@ -1,6 +1,6 @@
 // Card lookup across topics. A topic without a written lesson (or a draft that has no cards
 // yet) has no cards; its bank patterns stand in for them (same ids, same preconditions).
-import type { SiteData } from './data';
+import { lessonHref, type SiteData } from './data';
 
 export type CardRef = { topic: string; id: string; name: string; property: string };
 
@@ -34,4 +34,12 @@ export function cardName(data: SiteData, id: string, preferTopic?: string): stri
     if (c) return `${c.name} (${t.id})`;
   }
   return id;
+}
+
+/** Name and link of a card referenced as {topic, card} (PLAN.md Section 10.9). */
+export function cardLabel(data: SiteData, ref: { topic: string; card: string }): { name: string; topic: string; href: string | null } {
+  const c = findCard(data, ref.topic, ref.card);
+  const t = data.curriculum.find((x) => x.id === ref.topic)!;
+  if (!c) throw new Error(`unresolved card reference ${ref.topic}:${ref.card}`);
+  return { name: c.name, topic: ref.topic, href: data.lessons[ref.topic] ? `${lessonHref(t)}#card-${ref.card}` : null };
 }

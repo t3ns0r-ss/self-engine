@@ -46,6 +46,9 @@ export function cfTierRange(tier, [L, H], phase) {
   return [H + 200, H + 400];
 }
 
+// Highest Codeforces rating allowed per phase: the band's top plus 400 (FILL_SHORT_TOPICS_PLAN.md Section 1.2).
+export const CF_CEILING = { 0: 1400, 1: 1800, 2: 2100, 3: 2300, 4: 2400, 5: 2500, 6: 2600, 7: 2800 };
+
 // Allowed tiers for each reserved purpose (bank plan Section 6.3).
 export const RESERVED_TIERS = {
   drill: [2, 4],
@@ -187,6 +190,13 @@ export function validateAll({ curriculum, patterns, banks, notes }) {
       if (p.source_check === 'api' && p.source !== 'codeforces')
         err(F, `${P}: source_check api is only for Codeforces; open the ${p.source} page instead`);
       if (!plat.bases.includes(p.tier_basis)) err(F, `${P}: tier_basis ${p.tier_basis} not allowed for ${p.source} (use ${plat.bases.join(' or ')})`);
+      // Newer sources (FILL_SHORT_TOPICS_PLAN.md Sections 1.2, 1.3 and 6).
+      if (p.source === 'codeforces' && /^\d+$/.test(p.difficulty) && Number(p.difficulty) > CF_CEILING[t.phase])
+        err(F, `${P}: rating ${p.difficulty} is above the phase ${t.phase} ceiling ${CF_CEILING[t.phase]}`);
+      if (p.source === 'atcoder' && /^ac-a[rg]c/.test(p.id) && p.tier_basis !== 'judgement')
+        err(F, `${P}: ARC and AGC problems need tier_basis: judgement`);
+      if (p.source === 'atcoder' && /^ac-abc\d+_[fg]$/.test(p.id) && p.tier < 4) err(F, `${P}: ABC F and G problems are tier 4 or 5`);
+      if (p.source === 'leetcode' && p.difficulty === 'Hard' && p.tier < 3) err(F, `${P}: LeetCode Hard problems are tier 3 or higher`);
 
       // 6. Techniques never later than this topic; contain the topic itself unless the problem
       // is an intentional earlier-topic partner (later_drill, lookalike).

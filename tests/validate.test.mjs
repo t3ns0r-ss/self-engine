@@ -121,3 +121,24 @@ test('practiceByTier orders by pattern, then difficulty, then id', () => {
   assert.deepEqual(tiers.map((t) => t.problems.length), [5, 5, 5, 5, 5]);
   assert.deepEqual(tiers[2].problems.map((p) => p.pattern), real.patterns['1.3'].patterns.map((p) => p.id));
 });
+
+// Sources added by FILL_SHORT_TOPICS_PLAN.md: rating ceiling, ARC/AGC, ABC F/G, LeetCode Hard.
+const asAtcoder = (b, id, tier, basis, extra = {}) => {
+  const [, contest] = /^ac-([a-z]+\d+)_/.exec(id);
+  Object.assign(b.problems[0], { id, source: 'atcoder', url: `https://atcoder.jp/contests/${contest}/tasks/${id.slice(3)}`, difficulty: '1500', tier, tier_basis: basis, ...extra });
+};
+test('Codeforces rating above the phase ceiling is rejected', () =>
+  expectError(run((d, b) => { b.problems.find((p) => p.source === 'codeforces').difficulty = '1900'; }), /rating 1900 is above the phase 1 ceiling 1800/));
+test('ARC and AGC problems need a judged tier', () => {
+  expectError(run((d, b) => { asAtcoder(b, 'ac-arc999_a', 3, 'contest_letter'); d.notes['1.3'] = notesFor(b); }), /ARC and AGC problems need tier_basis: judgement/);
+  assert.deepEqual(run((d, b) => { asAtcoder(b, 'ac-arc999_a', 3, 'judgement'); d.notes['1.3'] = notesFor(b); }), []);
+});
+test('ABC F and G are tier 4 or 5', () => {
+  expectError(run((d, b) => { asAtcoder(b, 'ac-abc999_f', 3, 'judgement'); d.notes['1.3'] = notesFor(b); }), /ABC F and G problems are tier 4 or 5/);
+  assert.deepEqual(run((d, b) => { asAtcoder(b, 'ac-abc999_f', 4, 'judgement'); d.notes['1.3'] = notesFor(b); }), []);
+});
+test('LeetCode Hard is tier 3 or higher', () => {
+  const hard = (tier) => (d, b) => { Object.assign(b.problems[0], { id: 'lc-fixture-hard', source: 'leetcode', url: 'https://leetcode.com/problems/fixture-hard/', difficulty: 'Hard', tier }); d.notes['1.3'] = notesFor(b); };
+  expectError(run(hard(2)), /LeetCode Hard problems are tier 3 or higher/);
+  assert.deepEqual(run(hard(3)), []);
+});

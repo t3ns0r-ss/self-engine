@@ -64,7 +64,8 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((
     for (let i = 0; i < tf.drill.length; i++) {
       const d = tf.drill[i];
       const it = items.nth(i);
-      await it.locator('select').selectOption(`${d.answer_topic}:${d.answer_card}`);
+      const ans = d.answer ?? { topic: d.answer_topic, card: d.answer_card };
+      await it.locator('select').selectOption(`${ans.topic}:${ans.card}`);
       await it.locator('input').fill('property');
       await it.locator('button:has-text("Reveal")').click();
     }

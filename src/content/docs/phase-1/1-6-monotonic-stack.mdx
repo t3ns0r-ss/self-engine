@@ -6,6 +6,8 @@ topic: "1.6"
 ---
 import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import TheoremDemo from '../../../components/TheoremDemo.astro';
 import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
 import Drill from '../../../components/Drill.astro';
@@ -35,11 +37,7 @@ That pile is a monotonic stack. This topic covers it and its uses: the nearest g
 
 ### What you need
 
-- [Topic 0.2](../../phase-0/0-2-complexity/), complexity analysis: amortised analysis (Theorem 0.2.4), which bounds the total number of pops.
-- [Topic 0.6](../../phase-0/0-6-stl-toolbox/), STL (Standard Template Library) toolbox: `stack`, `vector` used as a stack, and `deque`.
-- [Topic 1.2](../1-2-prefix-sums/), prefix sums: sums over the stretch where an element is the minimum.
-- [Topic 1.3](../1-3-two-pointers/), two pointers: fixed and shrinkable windows, which the deque equips with their maximum and minimum.
-- [Topic 1.5](../1-5-greedy-1/), greedy: a few stack problems are greedy rules whose proof is a dominance argument.
+<WhatYouNeed topic="1.6" />
 
 ### What this topic does not cover
 
@@ -54,6 +52,8 @@ That pile is a monotonic stack. This topic covers it and its uses: the nearest g
 - The **span** of position $i$ (for minima) is the longest subarray containing $i$ in which $a_i$ is a minimum: it stretches from just after the previous smaller element to just before the next smaller element.
 - A **monotonic deque** is a deque (topic 0.6) whose values from front to back only decrease (or only increase); elements are added at the back and removed from both ends.
 - In a window that moves right, an element is **dominated** if a later element of the window is at least as large; a dominated element can never again be the maximum of a window.
+- The **rightmost minimum** of a subarray is the last position that holds its smallest value. Example: in $(2, 1, 3, 1)$ it is position 3.
+- A **histogram** is a row of bars of width 1 with heights $h_0, \dots, h_{n-1}$. A **rectangle under the bars** covers the bars $l..r$ and has a height of at most the lowest of them, so its largest area is $\min(h_l, \dots, h_r) \cdot (r - l + 1)$. Example: for heights $(3, 1, 2)$, the rectangle over all three bars has area $1 \cdot 3 = 3$.
 
 ## 4. Theory and proofs
 
@@ -65,7 +65,31 @@ That pile is a monotonic stack. This topic covers it and its uses: the nearest g
 3. Just after the pops at step $i$, the top of the stack (if any) is the previous greater-or-equal element of $i$: the nearest $j < i$ with $a_j \ge a_i$.
 4. The whole scan takes $O(n)$ time.
 
-*Proof.* 1. Before $i$ is pushed, every remaining top has $a_j \ge a_i$, so pushing $i$ keeps the order. 2. A position $j$ is still on the stack at step $i$ only if no $k$ with $j < k < i$ had $a_k > a_j$: such a $k$ would have popped $j$ (every position above $j$ has a value at most $a_j < a_k$, so the pops at step $k$ reach $j$). So when $a_i > a_j$ pops $j$, $i$ is the first position after $j$ that is greater. A position never popped has no greater position after it. 3. Let $t$ be the top after the pops at step $i$; then $a_t \ge a_i$, since popping stopped there. Take any position $k$ with $t < k < i$. It is not on the stack, so some step $m \le i$ popped it, with $a_k < a_m$. If $m = i$, then $a_k < a_i$. Otherwise $k < m < i$, and $m$ is not on the stack either (nothing lies above $t$), so the same holds for $m$: a chain $k < m < m' < \dots$ of positions with increasing values, which ends at a position popped at step $i$, whose value is less than $a_i$. So every position strictly between $t$ and $i$ has a value less than $a_i$, and $t$ is the nearest earlier position with a value at least $a_i$. 4. Each position is pushed once and popped at most once, so the pops total at most $n$ over the whole scan (Theorem 0.2.4). $\square$
+:::tip[In plain words]
+Keep a pile of positions whose values never go up from bottom to top. A new value removes everything smaller from the top of the pile, and each removed position has just found its next greater element.
+:::
+
+**A tiny instance.** $a = (2, 1, 4, 3, 5)$, positions $0..4$:
+
+| step $i$ | $a_i$ | popped (next = $i$) | stack after (values) |
+|---|---|---|---|
+| 0 | 2 | none | 2 |
+| 1 | 1 | none | 2, 1 |
+| 2 | 4 | 1, then 0 | 4 |
+| 3 | 3 | none | 4, 3 |
+| 4 | 5 | 3, then 2 | 5 |
+
+So $\text{next} = (2, 2, 4, 4, \text{none})$. For part 3: at step 1 (value 1) the top is position 0 (value 2), and at step 3 (value 3) the top is position 2 (value 4); each is the nearest earlier value at least as large.
+
+**Proof.** The proof uses positions $0..n-1$, and "step $i$" is the loop iteration that reads $a_i$.
+1. Part 1. An empty stack has no pair of neighbours to break the rule. At step $i$ the pops stop at a top $t$ with $a_t \ge a_i$ (or at an empty stack), and then $i$ is pushed on top of $t$, so every push keeps the values from rising.
+2. Part 2, a popped position. Let $j$ be popped at step $i$, so $a_j < a_i$. No position $k$ with $j < k < i$ has $a_k > a_j$. If one had, then at step $k$ every position above $j$ on the stack has a value at most $a_j$ (step 1), hence less than $a_k$; so all of them are popped, and then $j$ is popped at step $k$, not at step $i$.
+3. By step 2, $i$ is the first position after $j$ with a larger value. This proves part 2 for every popped position.
+4. Part 2, a position never popped. If some later position were larger than $a_j$, the first such position would pop $j$, by the argument of step 2. So $j$ has no next greater element, and it stays on the stack.
+5. Part 3. Let $t$ be the top after the pops at step $i$, or $t = -1$ if the stack is empty. Popping stopped at $t$, so $a_t \ge a_i$.
+6. Suppose some position lies strictly between $t$ and $i$, and let $k$ be one with the largest value (the leftmost if tied). Nothing lies above $t$, so $k$ is not on the stack; some step $m$ with $k < m \le i$ popped it, and $a_m > a_k$.
+7. If $m < i$, then $m$ lies between $t$ and $i$ with a value larger than $a_k$, which contradicts the choice of $k$. So $m = i$ and $a_k < a_i$. Every position strictly between $t$ and $i$ has a value at most $a_k$, so less than $a_i$; with step 5, $t$ is the nearest earlier position with a value at least $a_i$.
+8. Part 4. Each position is pushed once and popped at most once, so all pops together are at most $n$ (Theorem 0.2.4), and everything else takes constant time per step. This shows parts 1 to 4. $\square$
 
 :::note[This proof needs]
 1. The question is about the *nearest* greater (or smaller) element in one direction, not about a range given in advance.
@@ -73,17 +97,11 @@ That pile is a monotonic stack. This topic covers it and its uses: the nearest g
 3. Scanning from the right gives the same answers in the other direction.
 :::
 
-Trace on $a = (2, 1, 4, 3, 5)$, positions $0..4$:
+<TheoremDemo unit="1.6/thm-1" />
 
-| step $i$ | $a_i$ | popped (next = $i$) | stack after (values) |
-|---|---|---|---|
-| 0 | 2 | — | 2 |
-| 1 | 1 | — | 2, 1 |
-| 2 | 4 | 1, then 0 | 4 |
-| 3 | 3 | — | 4, 3 |
-| 4 | 5 | 3, then 2 | 5 |
+Line 3 of the output (`popped: 1 0`) is steps 2 and 3 of the proof: the value 4 removes positions 1 and 0, so their next greater position is 2. The two lines after the trace are parts 2 and 3. The last line checks both parts on all 243 arrays of length 5 over $\{1, 2, 3\}$, repeated values included.
 
-So next $= (2, 2, 4, 4, \text{none})$.
+**Complexity.** $O(n)$ time and $O(n)$ memory: each position is pushed once and popped at most once.
 
 ### 4.2 The span of a minimum
 
@@ -92,7 +110,29 @@ So next $= (2, 2, 4, 4, \text{none})$.
 2. Hence the sum of the minima of all subarrays is $\sum_i a_i (i - L_i)(R_i - i)$, computed in $O(n)$ with two monotonic stacks.
 3. For bars of heights $h_i$, the largest rectangle under the bars has area $\max_i h_i (R'_i - L_i - 1)$, where $R'_i$ is the next position with $h < h_i$.
 
-*Proof.* 1. In $[l, r]$, position $i$ is the rightmost minimum exactly when every element left of $i$ in the subarray is at least $a_i$ and every element right of it is greater than $a_i$. The first condition says that the subarray starts after the previous strictly smaller element ($l > L_i$), the second that it ends before the next smaller-or-equal element ($r < R_i$). There are $i - L_i$ choices of $l$ and $R_i - i$ of $r$. Every subarray has exactly one rightmost minimum, so it is counted once. 2. Sum part 1's count times $a_i$; both $L$ and $R$ come from Theorem 1.6.1 with the comparisons reversed (smaller instead of greater). 3. The best rectangle has some lowest bar $i$ inside it, and its height is at most $h_i$; with height $h_i$ it can be widened to every bar of height at least $h_i$ around $i$, that is, to $(L_i, R'_i)$. So the best area is the largest of these candidates, each of which is a valid rectangle. $\square$
+:::tip[In plain words]
+Every subarray has one rightmost smallest element. The subarrays that a given element decides are those that start after the nearest smaller element on its left and end before the nearest smaller-or-equal element on its right, so their number is a product of two distances.
+:::
+
+**A tiny instance.** $a = (3, 1, 2)$, $n = 3$:
+
+| $i$ | $a_i$ | $L_i$ | $R_i$ | $(i - L_i)(R_i - i)$ | $a_i$ times that |
+|---|---|---|---|---|---|
+| 0 | 3 | −1 | 1 | 1 | 3 |
+| 1 | 1 | −1 | 3 | 4 | 4 |
+| 2 | 2 | 1 | 3 | 1 | 2 |
+
+The counts add up to 6, the number of subarrays, and the contributions to 9. Directly, the subarrays $(3), (1), (2), (3, 1), (1, 2), (3, 1, 2)$ have minima $3 + 1 + 2 + 1 + 1 + 1 = 9$. For part 3 with bars $(3, 1, 2)$, the best rectangle has area 3.
+
+**Proof.**
+1. Fix $i$ and a subarray $[l, r]$ that contains $i$. Position $i$ is the rightmost minimum of $[l, r]$ exactly when every element of $[l, i-1]$ is at least $a_i$ and every element of $[i+1, r]$ is greater than $a_i$.
+2. The first condition says that no position of $[l, i-1]$ has a value below $a_i$. By the definition of $L_i$ (the nearest such position to the left) this is the same as $l > L_i$. Likewise the second condition is the same as $r < R_i$.
+3. So the subarrays decided by $i$ are exactly those with $L_i < l \le i \le r < R_i$. There are $i - L_i$ choices of $l$ and $R_i - i$ choices of $r$, independent of each other, which gives the product.
+4. Every subarray has exactly one rightmost minimum, so it is counted for exactly one $i$. Part 1 is shown.
+5. Part 2. A subarray decided by $i$ has minimum $a_i$, so the sum of all minima is $\sum_i a_i (i - L_i)(R_i - i)$. Both $L$ and $R$ are nearest-element questions, so Theorem 1.6.1 (with the comparisons reversed to "smaller") gives them in $O(n)$.
+6. Part 3. Take a best rectangle, covering bars $l..r$, and let $i$ be a lowest bar in it. Its height is at most $h_i$, and every bar in $l..r$ has height at least $h_i$, so $L_i < l$ and $r < R'_i$, where $L_i$ is the previous bar strictly lower than $h_i$.
+7. So the rectangle's width is at most $R'_i - L_i - 1$, and its area is at most $h_i (R'_i - L_i - 1)$. That candidate is itself a valid rectangle, since every bar strictly between $L_i$ and $R'_i$ has height at least $h_i$.
+8. Hence the best area equals the largest candidate over all $i$. This shows part 3. $\square$
 
 :::note[This proof needs]
 1. The quantity summed over subarrays is the minimum (or maximum); its value is decided by one element, and the subarrays where that element decides form a rectangle of choices $l \times r$.
@@ -100,19 +140,49 @@ So next $= (2, 2, 4, 4, \text{none})$.
 3. Counts reach $n^2/4$ and sums $10^9 \cdot n^2 / 4$: `long long`, and often a modulus.
 :::
 
-Example: $a = (3, 1, 2)$. For position 1 (value 1): $L = -1$, $R = 3$, count $2 \cdot 2 = 4$. Position 0: $L = -1$, $R = 1$, count 1. Position 2: $L = 1$, $R = 3$, count 1. The sum of minima is $3 \cdot 1 + 1 \cdot 4 + 2 \cdot 1 = 9$; directly, the subarrays $(3), (1), (2), (3, 1), (1, 2), (3, 1, 2)$ have minima $3 + 1 + 2 + 1 + 1 + 1 = 9$.
+<TheoremDemo unit="1.6/thm-2" />
+
+The first three lines are the table above, row by row (steps 1 to 3 of the proof for each $i$). The next two lines are parts 2 and 3: the formula gives the same 9 and 3 as the brute force. The last line repeats the comparison for all 243 arrays of length 5 over $\{1, 2, 3\}$, where equal values make the tie rule matter.
+
+**Complexity.** $O(n)$ with two stack scans, one for $L$ and one for $R$ (Theorem 1.6.1).
 
 ### 4.3 The maximum of a sliding window
 
 **Theorem 1.6.3 (monotonic deque).** For the windows $[i - k + 1, i]$ of a fixed length $k$, keep a deque of positions. At step $i$: pop from the back every position $j$ with $a_j \le a_i$, push $i$ at the back, and pop the front if it is $\le i - k$ (outside the window). Then the front is a position of the window's maximum. Each step is $O(1)$ amortised, $O(n)$ in total.
 
-*Proof.* *Invariant:* after step $i$, the deque holds, in increasing order of position, exactly the positions of the window that are not dominated (no later position in the window has a value at least as large), and their values strictly decrease from front to back. A position popped from the back at step $i$ is dominated by $i$, and it stays dominated in every later window that contains it, since such a window also contains $i$. The front is removed only when it leaves the window. New positions are never dominated when they arrive. So the deque holds exactly the non-dominated positions, and the first of them, the front, has the largest value: every other position of the window is dominated by some position whose value is at least as large, ending at a non-dominated one. Each position enters and leaves the deque at most once (Theorem 0.2.4). $\square$
+:::tip[In plain words]
+In a window that moves right, an element followed by a larger or equal one can never be the maximum again. A deque that keeps only the elements not dominated this way has the window maximum at its front.
+:::
+
+**A tiny instance.** $a = (1, 3, -1, -3, 5)$, $k = 3$. Windows: $(1, 3, -1)$ has maximum 3, $(3, -1, -3)$ has 3, and $(-1, -3, 5)$ has 5. The deque holds positions, shown here with their values:
+
+| step $i$ | action | deque after (values) | window maximum |
+|---|---|---|---|
+| 0 | push 0 | 1 | none yet |
+| 1 | pop 0 (1 ≤ 3), push 1 | 3 | none yet |
+| 2 | push 2 | 3, −1 | 3 |
+| 3 | push 3; front 1 is still inside $[1, 3]$ | 3, −1, −3 | 3 |
+| 4 | pop 3, 2, 1, push 4 | 5 | 5 |
+
+**Proof.** Call position $j$ *dominated* in a window if a later position of the window has a value at least $a_j$. Let $W_i$ be the window after step $i$ (the positions $\max(0, i - k + 1)..i$). *Claim:* after step $i$, the deque holds exactly the non-dominated positions of $W_i$ in increasing order of position, and their values strictly decrease from front to back.
+1. Before step 0 the window is empty and so is the deque: the claim holds.
+2. Assume the claim after step $i - 1$. Because the values strictly decrease from front to back, the positions with $a_j \le a_i$ form a suffix of the deque, and the loop pops exactly that suffix. These are the positions that $i$ dominates; they stay dominated in every later window that contains them, since such a window also contains $i$.
+3. A position dominated in $W_{i-1}$ is still dominated in $W_i$, because its dominator lies to its right and leaves the window later than it does. Position $i$ is not dominated, since nothing follows it. After pushing $i$, the deque holds exactly the non-dominated positions of $W_{i-1} \cup \{i\}$, and the values still strictly decrease: the position below $i$ has a value greater than $a_i$.
+4. The window then loses at most one position, $i - k$, and only if it was in the window. It is the leftmost position, so it can only be the front. Removing the leftmost position changes nobody else's status, since dominators lie to the right. This proves the claim after step $i$.
+5. The front is the maximum. Take any position of $W_i$ not in the deque. It is dominated by a later position of the window with a value at least as large; if that one is dominated too, follow its dominator, and so on. The chain moves right, so it ends at a non-dominated position in the deque, and the values never decrease along it. The front has the largest value in the deque, so it is at least the value of every position of $W_i$.
+6. Each position enters the deque once and leaves at most once, so all pops together are at most $n$ (Theorem 0.2.4). This shows the front is a window maximum, with $O(n)$ total time. $\square$
 
 :::note[This proof needs]
 1. The window moves only to the right, so a dominated element never becomes useful again.
 2. Only the maximum (or minimum) is needed; other order statistics, such as the median, need a `multiset` (topic 0.6).
 3. Before reading the front, the deque must not be empty and its front must be inside the window.
 :::
+
+<TheoremDemo unit="1.6/thm-3" />
+
+Each line of the trace is a row of the table above. Step 3 of the proof is the pop at $i = 4$, where the value 5 removes all of 3, −1, −3. The last line runs the deque against a brute force on all 729 arrays of length 6 over $\{1, 2, 3\}$ and every window length $k$ from 1 to 6, and also checks that the deque's values strictly decrease at every step.
+
+**Complexity.** $O(n)$ in total: each position enters and leaves the deque once.
 
 The same deque works for windows whose left end moves irregularly, as in the shrinkable windows of topic 1.3: when the left end passes the front's position, pop the front. Two deques, one for the maximum and one for the minimum, give a window's spread $\max - \min$ in $O(1)$, which decides conditions like "max − min ≤ k" while both ends move.
 

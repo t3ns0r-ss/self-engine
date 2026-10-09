@@ -1,11 +1,81 @@
 ---
-// Recognition Cards (PLAN.md Section 6.5), rendered from the topic data file.
-import { loadData } from '../lib/data';
+// Recognition Cards (PLAN.md Sections 6.5 and 10.9), rendered from the topic data file. Cards in the
+// Revision 2 shape show constraint shapes, a worked recognition and examples; older cards keep the
+// short layout until the retrofit milestone R1 reaches their topic.
+import { loadData, isCardR2, theoremLabel, type Card } from '../lib/data';
+import { cardLabel } from '../lib/cards';
 const { topic } = Astro.props as { topic: string };
 const data = await loadData();
-const cards = data.topics[topic]?.cards ?? [];
+const cards: Card[] = data.topics[topic]?.cards ?? [];
+const problemOf = (id: string) => data.bankById.get(id)!;
+const tool = (r: { topic: string; card: string }) => cardLabel(data, r);
 ---
-{cards.map((c) => (
+{cards.map((c) => isCardR2(c) ? (
+  <section class="recognition-card" id={`card-${c.id}`}>
+    <h3>{c.name}</h3>
+    <p><strong>Decisive property</strong> ({theoremLabel(c)}): {c.decisive_property}</p>
+    <p><strong>How to test it:</strong> {c.how_to_test}</p>
+    <p><strong>Constraint shapes</strong> (what the input sizes force):</p>
+    <ul>{c.constraint_shapes.map((s) => <li>{s}</li>)}</ul>
+    <p><strong>Weak signals</strong> (they suggest the card and prove nothing):</p>
+    <ul>{c.weak_signals.map((w) => <li><strong>{w.form}.</strong> Typical shape: {w.shape}</li>)}</ul>
+    <p><strong>Kill signals</strong> (rule the card out):</p>
+    <ul>{c.kill_signals.map((s) => <li>{s}</li>)}</ul>
+    <details class="in-action" open>
+      <summary><strong>Recognition in action</strong></summary>
+      <ol>
+        <li><strong>Statement.</strong> {c.in_action.statement}</li>
+        <li><strong>Constraints.</strong> {c.in_action.constraints}</li>
+        <li><strong>Budget.</strong> {c.in_action.budget}</li>
+        <li><strong>Candidates.</strong>
+          <ul>{c.in_action.candidates.map((k) => <li>{k.tool}: <em>{k.verdict}</em>. {k.because}</li>)}</ul>
+        </li>
+        <li><strong>Property check.</strong> {c.in_action.property_check}</li>
+        <li><strong>Decision.</strong> {c.in_action.decision}</li>
+      </ol>
+    </details>
+    <div class="examples">
+      <div class="example works">
+        <p><strong>Works</strong></p>
+        <ul>
+          {c.examples.positive.map((e) => 'inline' in e ? (
+            <li><code>{e.inline.input}</code> gives <strong>{e.inline.answer}</strong>. {e.inline.why}</li>
+          ) : (
+            <li><a href={problemOf(e.worked_example).url} target="_blank" rel="noopener noreferrer">{problemOf(e.worked_example).title}</a>. {e.why}</li>
+          ))}
+        </ul>
+      </div>
+      <div class="example not-works">
+        <p><strong>Does not work</strong></p>
+        <ul>
+          {c.examples.negative.map((e) => {
+            const t = tool(e.correct_tool);
+            return (
+              <li>
+                {'inline' in e ? (
+                  <><code>{e.inline.input}</code>: the true answer is <strong>{e.inline.answer}</strong>, but this card's method gives <strong>{e.inline.method_gives}</strong>. {e.inline.why}</>
+                ) : (
+                  <><a href={problemOf(e.problem).url} target="_blank" rel="noopener noreferrer">{problemOf(e.problem).title}</a>. {e.why}</>
+                )}{' '}
+                Use instead: {t.href ? <a href={t.href}>{t.name}</a> : t.name} (topic {t.topic}).
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+    {c.lookalikes.length > 0 && (
+      <>
+        <p><strong>Look-alikes:</strong></p>
+        <ul>{c.lookalikes.map((l) => {
+          const t = tool(l.tool);
+          return <li>{l.description}. Needs {t.href ? <a href={t.href}>{t.name}</a> : t.name} (topic {t.topic}). Difference: {l.flipping_difference}</li>;
+        })}</ul>
+      </>
+    )}
+    <p><strong>Complexity:</strong> {c.complexity}</p>
+  </section>
+) : (
   <section class="recognition-card" id={`card-${c.id}`}>
     <h3>{c.name}</h3>
     <p><strong>Decisive property</strong> ({c.from_theorem}): {c.decisive_property}</p>

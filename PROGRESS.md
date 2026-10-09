@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
-- Topic: — (M5 gate)
+- Milestone: R1 (quality retrofit, PLAN.md Revision 2) and the bank fill (FILL_SHORT_TOPICS_PLAN.md) for the completed topics 0.1–3.8
+- Topic: R1 reference topic 1.6 done; bank fill in progress (see ## Bank fill)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: Phase 3 intro page and exam
-- Next action: ⏸ M5 gate: Phase 3 review by Saurabh
+- Last completed step: R1 infrastructure and the 1.6 reference retrofit
+- Next action: ⏸ R1 reference review by Saurabh (topic 1.6); the other 24 topics are retrofitted only after approval. Pending lessons (4.1 onward) are written in the Revision 2 format.
 
 ## Gates
 | Gate | Status | Date |
@@ -19,6 +19,8 @@
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
 | M5 Phase 3 review | waiting for review | — |
+| R1 reference review (topic 1.6 retrofitted) | waiting for review | 2026-10-09 |
+| Bank fill review | not yet (bank fill in progress) | — |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)

@@ -1,6 +1,7 @@
 // Cross-file validation for topic data files, the glossary, and lesson MDX files (PLAN.md Section 12,
 // with PROBLEM_BANK_PLAN.md Section 12 applied). Pure functions over parsed data.
 import { fileId, laterKeywordHits } from './validate.mjs';
+import { isR2, validateR2 } from './validate-r2.mjs';
 
 export const LESSON_HEADINGS = [
   '## 1. Why this topic exists',
@@ -71,7 +72,7 @@ const num = (d) => (/^-?\d+$/.test(d) ? Number(d) : { Easy: 1, Medium: 2, Hard: 
  * @param {Object<string, {path: string, text: string}>} d.lessons topic -> lesson file
  * @returns {string[]}
  */
-export function validateTopics({ curriculum, patterns, banks, topics, glossary, lessons }) {
+export function validateTopics({ curriculum, patterns, banks, topics, glossary, lessons }, fsx) {
   const errors = [];
   const err = (file, msg) => errors.push(`${file}: ${msg}`);
   const byId = new Map(curriculum.map((t) => [t.id, t]));
@@ -208,6 +209,8 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
         if (!ok) err(F, `decision map compares with unknown card ${o.card}`);
       }
     }
+
+    if (isR2(tf)) validateR2({ tid, t, tf, lesson: lessons[tid], curriculum, byId, topics, patterns, bankById, F, err, fsx });
 
     // Glossary terms.
     for (const term of tf.glossary_added) {

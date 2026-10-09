@@ -1,60 +1,321 @@
-# Topic 1.6 data file (PLAN.md Section 5). Problems reference the bank by id.
-id: "1.6"
+# Topic 1.6 data file (PLAN.md Section 5, Revision 2). Problems reference the bank by id.
+id: '1.6'
+uses:
+  - topic: '0.1'
+    what: '64-bit integers: window sums reach 10^14 and the sum of all minima exceeds 10^18'
+  - topic: '0.2'
+    what: Amortised analysis (Theorem 0.2.4), which bounds the total number of pops
+  - topic: '0.4'
+    what: Modular arithmetic, for answers printed modulo a prime
+  - topic: '0.5'
+    what: Brute force, the baseline every demo and test compares against
+  - topic: '0.6'
+    what: The STL stack, deque and multiset; the multiset is the slower alternative to the deque
+  - topic: '1.1'
+    what: Sorting, the right tool when a problem asks about subsequences or ranks instead of subarrays
+  - topic: '1.2'
+    what: 'Prefix sums: sums over a span, and the difference array in Example 1'
+  - topic: '1.3'
+    what: 'Two pointers: fixed and shrinkable windows, which the deque equips with their maximum and minimum'
+  - topic: '1.4'
+    what: Binary search, the alternative to a stack in two of the stretch problems
+  - topic: '1.5'
+    what: 'Greedy: a few stack problems are greedy rules proved by a dominance argument'
+theorems:
+  - id: 1.6.1
+    title: A monotonic stack finds every nearest greater element in O(n)
+    plain_words: Keep a pile of positions whose values never go up from bottom to top. A new value removes
+      everything smaller from the top of the pile, and each removed position has just found its next greater
+      element.
+    demo: 1.6/thm-1
+  - id: 1.6.2
+    title: Each element decides the subarrays inside its span
+    plain_words: Every subarray has one rightmost smallest element. The subarrays that a given element
+      decides are those that start after the nearest smaller element on its left and end before the nearest
+      smaller-or-equal element on its right, so their number is a product of two distances.
+    demo: 1.6/thm-2
+  - id: 1.6.3
+    title: A monotonic deque keeps the maximum of a sliding window at its front
+    plain_words: In a window that moves right, an element followed by a larger or equal one can never
+      be the maximum again. A deque that keeps only the elements not dominated this way has the window
+      maximum at its front.
+    demo: 1.6/thm-3
 cards:
   - id: nearest-greater
     name: Nearest greater or smaller element
-    decisive_property: "Each position needs the nearest element to one side that is greater (or smaller), and an element beaten by a later, larger one can never be that answer for anything further right; so a monotonic stack finds all answers in O(n), each element pushed and popped once."
-    from_theorem: Theorem 1.6.1
-    how_to_test: Ask, for an element that has just been passed by a larger one, whether it can still matter for any later position. If not, it can be popped.
+    decisive_property: Each position needs the nearest element to one side that is greater (or smaller)
+      by a plain comparison, and an element answered by a later, larger one is never needed again; so
+      a monotonic stack gives every answer in O(n), each element pushed and popped once.
+    from_theorem: 1.6.1
+    how_to_test: Ask, for an element that has just been answered by a larger one, whether it can still
+      matter for any later position. If not, it can be popped.
+    constraint_shapes:
+      - 'One array of n up to 2·10^5 and one answer per element: scanning right from every position until
+        a larger value appears costs about n²/2 = 2·10^10 steps on a falling array, so the answers must
+        come from one pass.'
     weak_signals:
-      - '"The next warmer day", "the next greater element", "how far can it see"'
-      - Each element needs the first element on one side that beats it
-      - Removing elements so that what is left is as small as possible in dictionary order
+      - form: Asks, for every element, for the next warmer day, the next greater element, or how far it
+          can see
+        shape: One array with n ≥ 10^5; the output is one position or one distance per element; the relation
+          is a plain comparison of values
+      - form: Asks to delete at most k elements so that what is left is the smallest or largest possible
+          in dictionary order
+        shape: A digit string or array with n ≥ 10^5; the kept elements keep their order; a deleted element
+          is always followed by a smaller one
+      - form: Asks for the first position on one side that beats the current element
+        shape: Several answers of the form "nearest position to the left (or right) whose value is larger",
+          sizes of 10^5 or more
     kill_signals:
-      - The question is about a range given as a query, not the nearest element (later topics)
-      - The array changes between questions
+      - The relation is not a comparison of values. For "the nearest element to the right that is a multiple
+        of a_i" on (2, 3, 4), the element 3 is larger than 2 but is not the answer, and the element 4
+        after it is.
+      - The array changes between questions. After a_3 is changed in (3, 1, 2), an answer stored earlier
+        for position 2 may no longer be true.
+    in_action:
+      statement: Given the temperatures of n days, print for every day how many days pass until a warmer
+        day (0 if there is none).
+      constraints: n ≤ 2·10^5, 1 ≤ t_i ≤ 10^9.
+      budget: 'Scanning forward from every day: up to n²/2 = 2·10^10 comparisons on a falling sequence.
+        At about 10^8 simple steps per second that is over 200 seconds, so about O(n) is needed.'
+      candidates:
+        - tool: Scan forward from every day (nested loops, topic 0.5)
+          verdict: rejected
+          because: About 2·10^10 steps in the worst case.
+        - tool: Sort the days by temperature (topic 1.1)
+          verdict: rejected
+          because: Sorted order forgets positions, and the answer is the first warmer day by position.
+        - tool: Monotonic stack (this topic)
+          verdict: chosen
+          because: O(n), if the property below holds.
+      property_check: Day j is waiting for a warmer day. Any day between j and today that is also waiting
+        is at most as warm as j (otherwise it would have answered j). So the waiting days form a pile
+        whose temperatures never rise from bottom to top, and a new day answers a run from the top. An
+        answered day is never needed again. The relation is a plain comparison, so the property holds.
+      decision: Monotonic stack, O(n).
+    examples:
+      positive:
+        - inline:
+            input: t = [5, 3, 8, 4, 2, 9]
+            answer: 2,1,3,2,1,0
+            why: Each day waits for the first strictly warmer day and is never needed again once answered;
+              the stack and a double loop both give 2,1,3,2,1,0.
+        - worked_example: ac-abc372_d
+          why: The counted buildings are the new records seen from position i + 1, which is the nearest-taller
+            structure of this card.
+      negative:
+        - inline:
+            input: a = [3, 1, 2]; ask for the next greater element of position 1, change a[2] to 0, then
+              ask again
+            answer: -1 (none)
+            method_gives: '2'
+            why: The stack answers were computed before the change, so position 2 is still reported although
+              its value dropped to 0. The property needs one fixed array.
+          correct_tool:
+            topic: '0.5'
+            card: nested-loops
+        - inline:
+            input: a = [2, 3, 4]; nearest later position whose value is a multiple of a[0]
+            answer: '2'
+            method_gives: '1'
+            why: Popping on the comparison 'greater' removes the element 2 as soon as 3 arrives, but 3
+              is not a multiple of 2 and 4 is. An answered element must stay answered; here the relation
+              is not a comparison.
+          correct_tool:
+            topic: '0.5'
+            card: nested-loops
     lookalikes:
-      - description: For each element, the number of greater elements to its right (not only the nearest)
-        needs: a later topic (5.2)
-        flipping_difference: Counting all greater elements needs every one of them, including those a monotonic stack has popped.
+      - description: For each element, the smallest later value that is larger than it (the next larger
+          value in value order, not the nearest one by position)
+        tool:
+          topic: '0.6'
+          card: ordered-set-lookup
+        flipping_difference: 'The stack answers by position: the nearest larger element. Here the answer
+          is the closest value above a_i among later elements, which may lie farther away than the nearest
+          larger one, so a set ordered by value is needed.'
     complexity: O(n) amortised.
   - id: element-span
     name: Span of an element
-    decisive_property: "The quantity is a sum or maximum over all subarrays of their minimum (or maximum), or a rectangle limited by its lowest bar; each element decides exactly the subarrays inside its span between the previous smaller and the next smaller element (ties broken on one side), so its contribution is computed from two stack scans."
-    from_theorem: Theorem 1.6.2
-    how_to_test: Fix the element that decides the subarray (its minimum or lowest bar) and check that the subarrays it decides are all l in one range and r in another.
+    decisive_property: The quantity is a sum or maximum over all subarrays of their minimum (or maximum),
+      or a rectangle limited by its lowest bar. Each element decides exactly the subarrays inside its
+      span between the previous smaller and the next smaller element, with ties broken on one side, so
+      its contribution comes from two stack scans.
+    from_theorem: 1.6.2
+    how_to_test: Fix the element that decides the subarray (its minimum or lowest bar) and check that
+      the subarrays it decides are all those with l in one range and r in another range.
+    constraint_shapes:
+      - 'One array with n up to 2·10^5 and a sum over all subarrays: there are n(n+1)/2 ≈ 2·10^10 subarrays,
+        so each must not be visited, and the total can reach 10^9 · n²/2 ≈ 2·10^19, which needs a modulus
+        or a wide type.'
     weak_signals:
-      - '"Sum of the minimum (or maximum) over all subarrays"'
-      - Largest rectangle under bars, or of ones in a grid row by row
-      - An answer of the form "minimum times length" or "minimum times sum"
+      - form: Asks for the sum (or maximum) of the minimum over all subarrays
+        shape: One array with n ≥ 10^5; the answer is usually printed modulo a prime; the value of a subarray
+          is one of its own elements
+      - form: Asks for the largest rectangle under bars, or the largest all-ones rectangle in a grid
+        shape: Bar heights up to 10^9 and n ≥ 10^5 (or a grid whose rows are turned into bar heights)
+      - form: Asks for the best value of the form "minimum times length" or "minimum times sum" over subarrays
+        shape: One array with n ≥ 10^5, non-negative values, a product of a minimum with a size
     kill_signals:
-      - The quantity is a sum of all elements of each subarray (that is prefix sums, topic 1.2)
+      - The quantity is the sum of all elements of each subarray; that is a difference of prefix sums,
+        not a question about one deciding element (topic 1.2). On (3, 1, 2) the answer is 19, but the
+        span formula gives 9.
+      - The quantity is taken over subsequences instead of subarrays. On (2, 1, 4) the minima of all subsequences
+        add up to 12, but the span formula gives 10.
+    in_action:
+      statement: Given n integers, print the sum of the minimum of every subarray modulo 10^9 + 7.
+      constraints: n ≤ 2·10^5, 1 ≤ a_i ≤ 10^9.
+      budget: 'All subarrays: n(n+1)/2 ≈ 2·10^10 minima even with a running minimum. At about 10^8 simple
+        steps per second that is over 200 seconds, so about O(n) is needed.'
+      candidates:
+        - tool: Running minimum for every left end (nested loops, topic 0.5)
+          verdict: rejected
+          because: About 2·10^10 steps.
+        - tool: Prefix sums (topic 1.2)
+          verdict: rejected
+          because: A minimum is not a difference of prefix values.
+        - tool: Span of each element from two monotonic stacks (this topic)
+          verdict: chosen
+          because: O(n), if each subarray has one deciding element.
+      property_check: Every subarray has a rightmost minimum, so each subarray is counted by exactly one
+        element. For the element at position i, the subarrays it decides start after the previous smaller
+        element and end before the next smaller-or-equal element, so they form a rectangle of (i − L)(R
+        − i) choices. Both nearest elements come from Theorem 1.6.1. Holds.
+      decision: Sum of a_i · (i − L_i) · (R_i − i), with L from the previous strictly smaller element
+        and R from the next smaller-or-equal element. O(n).
+    examples:
+      positive:
+        - inline:
+            input: a = [2, 4, 1, 3], the sum of the minima of all subarrays
+            answer: '17'
+            why: Every subarray has one rightmost minimum, so the spans count each subarray once; the
+              formula and the ten subarrays added directly both give 17.
+        - inline:
+            input: bars h = [1, 3, 5, 6, 2, 2, 4], the largest rectangle under the bars
+            answer: '12'
+            why: The best rectangle has some lowest bar. The bars 2 at positions 4 and 5 stretch over
+              positions 1 to 6, so the area is 2 · 6 = 12, found as the largest span times height.
+      negative:
+        - inline:
+            input: a = [3, 1, 2], the sum of all elements of every subarray
+            answer: '19'
+            method_gives: '9'
+            why: A subarray's sum is not decided by one element, so the span formula answers a different
+              question (the sum of minima, 9). The sums are differences of prefix values.
+          correct_tool:
+            topic: '1.2'
+            card: range-sum
+        - inline:
+            input: a = [2, 1, 4], the sum of the minimum over all non-empty subsequences
+            answer: '12'
+            method_gives: '10'
+            why: A span counts only contiguous pieces, so it misses subsequences such as (2, 4), whose
+              minimum is 2. Sorting the values and counting by rank handles subsequences.
+          correct_tool:
+            topic: '1.1'
+            card: sort-then-scan
     lookalikes:
-      - description: The best mountain arrangement when n ≤ 1000
-        needs: "nested-loops (0.5): try every peak"
-        flipping_difference: Small n allows an O(n) scan per peak, so the stack is not needed.
+      - description: The best "mountain" arrangement of tower heights when n ≤ 1000
+        tool:
+          topic: '0.5'
+          card: nested-loops
+        flipping_difference: With n ≤ 10^3 an O(n) walk for each possible peak is only 10^6 steps, so
+          no span is needed; at n = 10^5 those walks would cost 10^10.
+      - description: The sum of all elements of every subarray
+        tool:
+          topic: '1.2'
+          card: range-sum
+        flipping_difference: No single element decides a subarray here; element i lies in (i + 1)(n −
+          i) subarrays, so its total contribution is a_i · (i + 1)(n − i) with no stack at all.
     complexity: O(n) for all spans.
   - id: window-deque
     name: Sliding window extremes
-    decisive_property: "A window moves only to the right and its maximum (or minimum) is needed at every step; an element dominated by a later, larger element in the window is never needed again, so a monotonic deque keeps the maximum at its front in O(1) amortised per step, also inside shrinkable windows."
-    from_theorem: Theorem 1.6.3
-    how_to_test: Check that both window ends only move right and that only the window's maximum or minimum is needed (not a median or a count).
+    decisive_property: A window moves only to the right and only its maximum (or minimum) is needed at
+      every step. An element dominated by a later, larger element in the window is never needed again,
+      so a monotonic deque keeps the maximum at its front in O(1) amortised per step, also inside shrinkable
+      windows.
+    from_theorem: 1.6.3
+    how_to_test: Check that both window ends only move right and that only the window's maximum or minimum
+      is needed (not a median or a count).
+    constraint_shapes:
+      - 'n up to 10^6 and a window of length k: recomputing each window''s maximum costs (n − k + 1) ·
+        k steps, which is n²/4 = 2.5·10^11 when k = n/2, so each step must be O(1) amortised.'
     weak_signals:
-      - '"The maximum of every window of length k"'
-      - '"The longest subarray with max − min ≤ limit"'
-      - The best previous prefix sum within the last k positions
+      - form: Asks for the maximum (or minimum) of every window of k consecutive elements
+        shape: One array with n ≥ 10^5 and one window length k that may be large; one output per window
+      - form: Asks for the longest subarray in which the maximum minus the minimum is at most a limit
+        shape: One array with n ≥ 10^5 and a bound on max − min; both ends of the subarray only move right
+      - form: Asks for the best earlier prefix sum within the last k or within a range of allowed lengths
+        shape: Subarray length between a and b, n ≥ 10^5, sums up to 10^14, so the best start is the smallest
+          prefix sum in a moving range
     kill_signals:
-      - The window needs its median or another middle element (a multiset, topic 0.6)
-      - The left end can move back
+      - The window needs its median or another middle element. For (1, 5, 2, 4) and k = 3 the maxima are
+        5, 5 but the medians are 2, 4, so dominated elements still matter.
+      - The left end can move back, or queries arrive as arbitrary ranges. For (1, 7, 2, 3, 4), a deque
+        kept for the window [2, 4] has already lost position 1, so a query on [0, 4] would be answered
+        with 4 instead of 7.
+    in_action:
+      statement: Given n numbers and k, print the maximum of every window of k consecutive numbers.
+      constraints: n ≤ 10^6, 1 ≤ k ≤ n, |a_i| ≤ 10^9.
+      budget: 'Scanning each window: (n − k + 1) · k steps, which is n²/4 = 2.5·10^11 at k = n/2. At about
+        10^8 simple steps per second that is about 40 minutes, so about O(n) is needed.'
+      candidates:
+        - tool: Recompute the maximum of each window (nested loops, topic 0.5)
+          verdict: rejected
+          because: (n − k + 1) · k steps, up to 2.5·10^11.
+        - tool: Fixed window with a running sum (topic 1.3)
+          verdict: rejected
+          because: A sum can be undone when an element leaves; a maximum cannot.
+        - tool: A multiset of the window (topic 0.6)
+          verdict: rejected
+          because: O(n log n) works, but n = 10^6 with a heavy constant is tight; the deque is O(n).
+        - tool: Monotonic deque (this topic)
+          verdict: chosen
+          because: O(n), if the property below holds.
+      property_check: Both ends of the window only move right, and only the maximum is asked. A position
+        j is dominated once a later position in the window has a value at least as large; every later
+        window containing j also contains that position, so j never becomes the maximum. Holds.
+      decision: Monotonic deque, O(n).
+    examples:
+      positive:
+        - inline:
+            input: a = [5, 1, 3, 2, 6, 4], k = 3
+            answer: 5,3,6,6
+            why: Both window ends move right and only the maximum is asked, so dominated elements can
+              be dropped for good; the deque and the direct scan give 5,3,6,6.
+        - worked_example: cses-1644
+          why: The best start for a right end is the smallest prefix sum in a range whose two ends only
+            move right.
+      negative:
+        - inline:
+            input: a = [1, 5, 2, 4], k = 3, the median of every window
+            answer: 2,4
+            method_gives: 5,5
+            why: A median is not an extreme. The deque discards 1 and 2 as dominated, yet the median of
+              the first window is 2.
+          correct_tool:
+            topic: '0.6'
+            card: ordered-set-lookup
+        - inline:
+            input: a = [1, 7, 2, 3, 4]; the maximum of a[2..4], then of a[0..4]
+            answer: 4,7
+            method_gives: 4,4
+            why: The window's left end moved back for the second query, but the deque dropped position
+              1 when it left the first window.
+          correct_tool:
+            topic: '0.5'
+            card: nested-loops
     lookalikes:
       - description: The median of every window of length k
-        needs: "ordered-set-lookup (0.6): two multisets"
-        flipping_difference: A median is not an extreme, so dominated elements can still become the answer.
+        tool:
+          topic: '0.6'
+          card: ordered-set-lookup
+        flipping_difference: A median is not an extreme, so dominated elements can still become the answer;
+          two multisets balanced around the middle keep it.
     complexity: O(n) amortised.
 problems:
   - id: ac-abc372_d
     role: worked_example
-    summary: For each of N ≤ 2·10^5 buildings with distinct heights, count the later buildings taller than everything between.
+    summary: For each of N ≤ 2·10^5 buildings with distinct heights, count the later buildings taller
+      than everything between.
   - id: cses-1644
     role: worked_example
     summary: The largest sum of a subarray of n ≤ 2·10^5 integers whose length is between a and b.
@@ -63,21 +324,26 @@ problems:
     card: nearest-greater
     rung: 1
     twist: Base case of the card
-    summary: nums1 is a subset of nums2 (distinct values, lengths ≤ 1000); for each value of nums1, the next greater value after it in nums2, or −1.
+    summary: nums1 is a subset of nums2 (distinct values, lengths ≤ 1000); for each value of nums1, the
+      next greater value after it in nums2, or −1.
     hints:
       - Answer the question for every value of nums2 first; nums1 only selects some of the answers.
-      - "One scan of nums2 with a stack of values whose next greater is not found yet (Theorem 1.6.1). Store each answer in a map from value to next greater."
-      - "Pop while top < x and set next[top] = x; push x. Values left on the stack get −1. Then look up every value of nums1."
+      - One scan of nums2 with a stack of values whose next greater is not found yet (Theorem 1.6.1).
+        Store each answer in a map from value to next greater.
+      - Pop while top < x and set next[top] = x; push x. Values left on the stack get −1. Then look up
+        every value of nums1.
   - id: lc-final-prices-with-a-special-discount-in-a-shop
     role: ladder
     card: nearest-greater
     rung: 2
     twist: The next smaller-or-equal element instead of the next greater one.
-    summary: Prices of n ≤ 500 items; item i is discounted by the first later price that is ≤ its own; print the final prices.
+    summary: Prices of n ≤ 500 items; item i is discounted by the first later price that is ≤ its own;
+      print the final prices.
     hints:
       - Which later item gives the discount, in the words of this topic?
-      - "The next smaller-or-equal element. Reverse the comparison of Theorem 1.6.1 and include equality in the pop condition."
-      - "Pop while prices[top] ≥ prices[i] and subtract prices[i] from the popped item's price; push i."
+      - The next smaller-or-equal element. Reverse the comparison of Theorem 1.6.1 and include equality
+        in the pop condition.
+      - Pop while prices[top] ≥ prices[i] and subtract prices[i] from the popped item's price; push i.
   - id: lc-daily-temperatures
     role: ladder
     card: nearest-greater
@@ -87,67 +353,87 @@ problems:
     hints:
       - What does the stack need to store to compute a distance?
       - Positions. The value is read as temperatures[position].
-      - "Pop while temperatures[top] < temperatures[i] and set answer[top] = i − top; push i. The rest stay 0."
+      - Pop while temperatures[top] < temperatures[i] and set answer[top] = i − top; push i. The rest
+        stay 0.
   - id: cses-1645
     role: ladder
     card: nearest-greater
     rung: 4
-    twist: The previous smaller element, read from the top when an element is pushed instead of when it is popped.
-    summary: For each position of an array (n ≤ 2·10^5), the nearest position to its left with a smaller value, or 0.
+    twist: The previous smaller element, read from the top when an element is pushed instead of when it
+      is popped.
+    summary: For each position of an array (n ≤ 2·10^5), the nearest position to its left with a smaller
+      value, or 0.
     hints:
       - Which earlier positions can never be the answer for anything further right?
-      - Any earlier position whose value is ≥ the current one is hidden behind it. Pop them; the top that remains is the answer (Theorem 1.6.1, part 3, with the comparison reversed).
-      - "Pop while x[top] ≥ x[i]; print top + 1 (1-based) or 0 if empty; push i. Use fast input and output."
+      - Any earlier position whose value is ≥ the current one is hidden behind it. Pop them; the top that
+        remains is the answer (Theorem 1.6.1, part 3, with the comparison reversed).
+      - Pop while x[top] ≥ x[i]; print top + 1 (1-based) or 0 if empty; push i. Use fast input and output.
   - id: lc-online-stock-span
     role: ladder
     card: nearest-greater
     rung: 5
     twist: The values arrive one at a time, and each must be answered before the next arrives.
-    summary: A stream of ≤ 10^4 daily prices; for each, the number of consecutive days up to today with a price ≤ today's.
+    summary: A stream of ≤ 10^4 daily prices; for each, the number of consecutive days up to today with
+      a price ≤ today's.
     hints:
-      - The span ends at the previous day with a strictly greater price. Does the left-to-right stack need to see the future?
-      - "No: the previous greater element is the top after popping, so each price is answered as it arrives. Store (price, day index) or (price, span) on the stack."
-      - "Pop while the top's price ≤ price; the span is today − top's day (or today + 1 if the stack is empty); push today."
+      - The span ends at the previous day with a strictly greater price. Does the left-to-right stack
+        need to see the future?
+      - 'No: the previous greater element is the top after popping, so each price is answered as it arrives.
+        Store (price, day index) or (price, span) on the stack.'
+      - Pop while the top's price ≤ price; the span is today − top's day (or today + 1 if the stack is
+        empty); push today.
   - id: lc-next-greater-element-ii
     role: ladder
     card: nearest-greater
     rung: 6
     twist: The array is circular; the next greater element may come after wrapping around.
-    summary: A circular array of n ≤ 10^4 integers; for each element, the next greater value going around, or −1.
+    summary: A circular array of n ≤ 10^4 integers; for each element, the next greater value going around,
+      or −1.
     hints:
-      - How long a straight array contains, after each position, every element that comes next around the circle?
-      - "Two copies of the array: run the usual scan over i = 0 .. 2n − 1 with index i mod n."
-      - "Pop while nums[top] < nums[i mod n] and set answer[top] = nums[i mod n]; push i mod n only during the first n steps."
+      - How long a straight array contains, after each position, every element that comes next around
+        the circle?
+      - 'Two copies of the array: run the usual scan over i = 0 .. 2n − 1 with index i mod n.'
+      - Pop while nums[top] < nums[i mod n] and set answer[top] = nums[i mod n]; push i mod n only during
+        the first n steps.
   - id: ac-abc379_f
     role: ladder
     card: nearest-greater
     rung: 7
     twist: Queries about a stack of an earlier step; answer them offline and binary search the stack.
-    summary: N ≤ 2·10^5 buildings with distinct heights and Q ≤ 2·10^5 queries (l, r); count the buildings east of r visible from both l and r.
+    summary: N ≤ 2·10^5 buildings with distinct heights and Q ≤ 2·10^5 queries (l, r); count the buildings
+      east of r visible from both l and r.
     hints:
       - A building j > r visible from l, is it always visible from r?
-      - "Yes: nothing between l and j is taller than j, so nothing between r and j is either. So the answer counts the buildings visible from l with position > r."
-      - "Sort the queries by l and scan l from right to left, keeping the stack of buildings visible from l (as in Section 8, Example 1). Positions on the stack increase from top to bottom: binary search for the first one > r (topic 1.4)."
+      - 'Yes: nothing between l and j is taller than j, so nothing between r and j is either. So the answer
+        counts the buildings visible from l with position > r.'
+      - 'Sort the queries by l and scan l from right to left, keeping the stack of buildings visible from
+        l (as in Section 8, Example 1). Positions on the stack increase from top to bottom: binary search
+        for the first one > r (topic 1.4).'
   - id: cses-1142
     role: ladder
     card: element-span
     rung: 1
     twist: Base case of the card
-    summary: n ≤ 2·10^5 boards of width 1 and heights ≤ 10^9; the largest area of a rectangle that fits on the fence.
+    summary: n ≤ 2·10^5 boards of width 1 and heights ≤ 10^9; the largest area of a rectangle that fits
+      on the fence.
     hints:
       - The best rectangle has a lowest board. How far can a rectangle of that height extend?
       - To the nearest strictly lower board on each side (Theorem 1.6.2, part 3).
-      - "Two stack scans for the nearest lower board on the left and on the right; the area is h[i]·(R − L − 1) in long long."
+      - Two stack scans for the nearest lower board on the left and on the right; the area is h[i]·(R
+        − L − 1) in long long.
   - id: lc-sum-of-subarray-minimums
     role: ladder
     card: element-span
     rung: 2
     twist: Count every subarray once, which needs the tie rule, and answer modulo 10^9 + 7.
-    summary: The sum of min(b) over every subarray b of an array (n ≤ 3·10^4, values ≤ 3·10^4), modulo 10^9 + 7.
+    summary: The sum of min(b) over every subarray b of an array (n ≤ 3·10^4, values ≤ 3·10^4), modulo
+      10^9 + 7.
     hints:
       - In how many subarrays is arr[i] the minimum? What goes wrong when two minima are equal?
-      - "(i − L)(R − i) with L the previous strictly smaller and R the next smaller-or-equal element: strict on one side only (Theorem 1.6.2)."
-      - "Two stack scans for L and R; add arr[i]·(i − L)·(R − i) in long long and reduce modulo 10^9 + 7 (topic 0.4)."
+      - '(i − L)(R − i) with L the previous strictly smaller and R the next smaller-or-equal element:
+        strict on one side only (Theorem 1.6.2).'
+      - Two stack scans for L and R; add arr[i]·(i − L)·(R − i) in long long and reduce modulo 10^9 +
+        7 (topic 0.4).
   - id: lc-largest-rectangle-in-histogram
     role: ladder
     card: element-span
@@ -156,18 +442,23 @@ problems:
     summary: Bars of width 1 and heights h_i (n ≤ 10^5, h_i ≤ 10^4); the largest rectangle under them.
     hints:
       - When bar j is popped by bar i, which two bars bound its rectangle?
-      - "On the right, i (the first lower bar); on the left, the new top after the pop."
-      - "Append a bar of height 0 so that every bar is popped; when j is popped, the area is h[j]·(i − top − 1), with top = −1 for an empty stack."
+      - On the right, i (the first lower bar); on the left, the new top after the pop.
+      - Append a bar of height 0 so that every bar is popped; when j is popped, the area is h[j]·(i −
+        top − 1), with top = −1 for an empty stack.
   - id: cses-3221
     role: ladder
     card: window-deque
     rung: 1
     twist: Base case of the card
-    summary: An array of n ≤ 10^7 values made by a given generator; print the XOR of the minima of all windows of k elements.
+    summary: An array of n ≤ 10^7 values made by a given generator; print the XOR of the minima of all
+      windows of k elements.
     hints:
-      - n = 10^7 rules out O(n log n) with a large constant. Which structure gives each window's minimum in O(1) amortised?
-      - "A monotonic deque with values increasing from front to back (Theorem 1.6.3 with the comparison reversed)."
-      - "Generate the values into an array; pop the back while ≥ x_i, push i, pop the front if ≤ i − k, and XOR the front's value into the answer from i = k − 1 on."
+      - n = 10^7 rules out O(n log n) with a large constant. Which structure gives each window's minimum
+        in O(1) amortised?
+      - A monotonic deque with values increasing from front to back (Theorem 1.6.3 with the comparison
+        reversed).
+      - Generate the values into an array; pop the back while ≥ x_i, push i, pop the front if ≤ i − k,
+        and XOR the front's value into the answer from i = k − 1 on.
   - id: lc-longest-continuous-subarray-with-absolute-diff-less-than-or-equal-to-limit
     role: ladder
     card: window-deque
@@ -175,46 +466,58 @@ problems:
     twist: The left end moves irregularly, and the window needs both its maximum and its minimum.
     summary: The longest subarray of n ≤ 10^5 values in which every two elements differ by at most limit.
     hints:
-      - Every two elements differ by at most limit exactly when max − min ≤ limit. Is that condition kept when the window shrinks?
-      - "Yes, so the shrinkable window of topic 1.3 applies; two deques give the maximum and the minimum."
-      - "For each right end, push it to both deques; while max − min > limit, move l and pop any front < l. Answer the longest window."
+      - Every two elements differ by at most limit exactly when max − min ≤ limit. Is that condition kept
+        when the window shrinks?
+      - Yes, so the shrinkable window of topic 1.3 applies; two deques give the maximum and the minimum.
+      - For each right end, push it to both deques; while max − min > limit, move l and pop any front
+        < l. Answer the longest window.
   - id: lc-continuous-subarrays
     role: ladder
     card: window-deque
     rung: 3
     twist: Count all valid windows instead of finding the longest one.
-    summary: The number of subarrays of n ≤ 10^5 values in which every two elements differ by at most 2.
+    summary: The number of subarrays of n ≤ 10^5 values in which every two elements differ by at most
+      2.
     hints:
       - For a fixed right end r, which left ends give a valid window?
-      - "All l from the smallest valid left end up to r, because a valid window stays valid when it shrinks. That is r − l + 1 windows."
-      - "The same two-deque window as the previous rung; add r − l + 1 for each right end, in long long (the count reaches 5·10^9)."
+      - All l from the smallest valid left end up to r, because a valid window stays valid when it shrinks.
+        That is r − l + 1 windows.
+      - The same two-deque window as the previous rung; add r − l + 1 for each right end, in long long
+        (the count reaches 5·10^9).
   - id: lc-remove-k-digits
     role: drill
-    summary: Remove k digits from a number given as a string of n ≤ 10^5 digits to make it as small as possible.
+    summary: Remove k digits from a number given as a string of n ≤ 10^5 digits to make it as small as
+      possible.
   - id: lc-maximum-width-ramp
     role: drill
     summary: The largest j − i with i < j and nums[i] ≤ nums[j] (n ≤ 5·10^4).
   - id: lc-car-fleet
     role: drill
-    summary: n ≤ 10^5 cars drive to a target on one lane and cannot pass, so a faster car joins the slower one ahead; the number of groups that arrive.
+    summary: n ≤ 10^5 cars drive to a target on one lane and cannot pass, so a faster car joins the slower
+      one ahead; the number of groups that arrive.
   - id: lc-sum-of-subarray-ranges
     role: drill
     summary: The sum of (largest − smallest) over all subarrays of n ≤ 1000 integers.
   - id: lc-longest-repeating-character-replacement
     role: drill
-    summary: Change at most k letters of an uppercase string (length ≤ 10^5); the longest substring of one repeated letter.
+    summary: Change at most k letters of an uppercase string (length ≤ 10^5); the longest substring of
+      one repeated letter.
   - id: lc-find-peak-element
     role: drill
-    summary: Find any index whose value is larger than both neighbours (neighbours differ; outside the array is −∞) in O(log n) time.
+    summary: Find any index whose value is larger than both neighbours (neighbours differ; outside the
+      array is −∞) in O(log n) time.
   - id: lc-gas-station
     role: drill
-    summary: n ≤ 10^5 stations on a circle with gas[i] and the cost to the next one; the starting station from which the full circle can be driven, or −1.
+    summary: n ≤ 10^5 stations on a circle with gas[i] and the cost to the next one; the starting station
+      from which the full circle can be driven, or −1.
   - id: cses-1073
     role: drill
-    summary: n ≤ 2·10^5 cubes arrive in order; each goes on a tower whose top cube is larger, or starts a new tower; the fewest towers.
+    summary: n ≤ 2·10^5 cubes arrive in order; each goes on a tower whose top cube is larger, or starts
+      a new tower; the fewest towers.
   - id: lc-beautiful-towers-i
     role: lookalike
-    summary: Choose heights ≤ maxHeights[i] (n ≤ 10^3) that rise to one peak and then fall; the largest total height.
+    summary: Choose heights ≤ maxHeights[i] (n ≤ 10^3) that rise to one peak and then fall; the largest
+      total height.
   - id: lc-beautiful-towers-ii
     role: lookalike
     summary: The same mountain of heights ≤ maxHeights[i] with the largest total, for n ≤ 10^5.
@@ -227,11 +530,13 @@ problems:
   - id: cses-1147
     role: checkpoint
     card: element-span
-    summary: An n × m forest map (n, m ≤ 1000) of empty squares and trees; the largest area of a rectangle of empty squares.
+    summary: An n × m forest map (n, m ≤ 1000) of empty squares and trees; the largest area of a rectangle
+      of empty squares.
   - id: lc-shortest-subarray-with-sum-at-least-k
     role: checkpoint
     card: window-deque
-    summary: The length of the shortest subarray with sum at least k (n ≤ 10^5, values may be negative), or −1.
+    summary: The length of the shortest subarray with sum at least k (n ≤ 10^5, values may be negative),
+      or −1.
   - id: lc-132-pattern
     role: checkpoint
     card: nearest-greater
@@ -240,12 +545,14 @@ problems:
     role: review
     card: nearest-greater
     review_set: 1
-    summary: n ≤ 10^5 people of distinct heights in a row; person i sees j > i when everyone between is shorter than both; how many each person sees.
+    summary: n ≤ 10^5 people of distinct heights in a row; person i sees j > i when everyone between is
+      shorter than both; how many each person sees.
   - id: lc-maximum-subarray-min-product
     role: review
     card: element-span
     review_set: 1
-    summary: The largest (minimum × sum) over all subarrays of n ≤ 10^5 positive integers, modulo 10^9 + 7 after maximising.
+    summary: The largest (minimum × sum) over all subarrays of n ≤ 10^5 positive integers, modulo 10^9
+      + 7 after maximising.
   - id: lc-find-the-most-competitive-subsequence
     role: review
     card: nearest-greater
@@ -255,7 +562,8 @@ problems:
     role: review
     card: nearest-greater
     review_set: 2
-    summary: Water is poured into the left end of a tank divided by N ≤ 2·10^5 boards of heights H_i; when does water first enter each section?
+    summary: Water is poured into the left end of a tank divided by N ≤ 2·10^5 boards of heights H_i;
+      when does water first enter each section?
   - id: lc-maximal-rectangle
     role: review
     card: element-span
@@ -265,125 +573,213 @@ problems:
     role: review
     card: nearest-greater
     review_set: 2
-    summary: Keep exactly one copy of each letter of a string (length ≤ 10^4) so that the result is lexicographically smallest.
+    summary: Keep exactly one copy of each letter of a string (length ≤ 10^4) so that the result is lexicographically
+      smallest.
   - id: lc-max-chunks-to-make-sorted-ii
     role: review
     card: nearest-greater
     review_set: 3
-    summary: Split an array (n ≤ 2000) into as many chunks as possible so that sorting each chunk sorts the whole array.
+    summary: Split an array (n ≤ 2000) into as many chunks as possible so that sorting each chunk sorts
+      the whole array.
   - id: lc-steps-to-make-array-non-decreasing
     role: review
     card: nearest-greater
     review_set: 3
-    summary: Each step removes every element smaller than its left neighbour, all at once; how many steps until the array (n ≤ 10^5) is non-decreasing?
+    summary: Each step removes every element smaller than its left neighbour, all at once; how many steps
+      until the array (n ≤ 10^5) is non-decreasing?
   - id: lc-count-bowl-subarrays
     role: review
     card: nearest-greater
     review_set: 3
-    summary: Count subarrays of length ≥ 3 of distinct values whose two ends are both larger than everything between them (n ≤ 10^5).
+    summary: Count subarrays of length ≥ 3 of distinct values whose two ends are both larger than everything
+      between them (n ≤ 10^5).
 drill:
   - problem: lc-remove-k-digits
-    answer_card: nearest-greater
-    answer_topic: "1.6"
-    property: "A digit followed by a smaller digit should go first. Keep the kept digits on a stack that increases from bottom to top, and pop a larger top while removals remain; remove the rest from the end."
-    why_others_fail: Trying every set of k removals is exponential, and sorting the digits destroys their order.
+    answer:
+      topic: '1.6'
+      card: nearest-greater
+    property: A digit followed by a smaller digit should go first. Keep the kept digits on a stack that
+      increases from bottom to top, and pop a larger top while removals remain; remove the rest from the
+      end.
+    why_others_fail: Trying every set of k removals is exponential, and sorting the digits destroys their
+      order.
   - problem: lc-maximum-width-ramp
-    answer_card: nearest-greater
-    answer_topic: "1.6"
-    property: "Only positions smaller than everything before them can be the best left end; they form a decreasing stack. Scan j from the right and pop every candidate i with nums[i] ≤ nums[j]: no j further left gives it a wider ramp."
-    why_others_fail: "All pairs are O(n²); a two-pointer walk needs a monotone condition on both ends. Sorting positions by value with a running minimum of positions (topic 1.1) also works."
+    answer:
+      topic: '1.6'
+      card: nearest-greater
+    property: 'Only positions smaller than everything before them can be the best left end; they form
+      a decreasing stack. Scan j from the right and pop every candidate i with nums[i] ≤ nums[j]: no j
+      further left gives it a wider ramp.'
+    why_others_fail: All pairs are O(n²); a two-pointer walk needs a monotone condition on both ends.
+      Sorting positions by value with a running minimum of positions (topic 1.1) also works.
   - problem: lc-car-fleet
-    answer_card: nearest-greater
-    answer_topic: "1.6"
-    property: "Sorted from the car closest to the target backwards, each car's arrival time alone is (target − position) / speed. A car joins the fleet ahead unless it would arrive strictly later; the fleet times kept form a monotonic stack."
-    why_others_fail: Simulating the cars over time is slow and needs exact meeting times; only the order of arrival times matters.
+    answer:
+      topic: '1.6'
+      card: nearest-greater
+    property: Sorted from the car closest to the target backwards, each car's arrival time alone is (target
+      − position) / speed. A car joins the fleet ahead unless it would arrive strictly later; the fleet
+      times kept form a monotonic stack.
+    why_others_fail: Simulating the cars over time is slow and needs exact meeting times; only the order
+      of arrival times matters.
   - problem: lc-sum-of-subarray-ranges
-    answer_card: element-span
-    answer_topic: "1.6"
-    property: "The sum of (max − min) is the sum of maxima minus the sum of minima, each computed from the span of every element with one-sided ties (Theorem 1.6.2)."
-    why_others_fail: "With n ≤ 1000, O(n²) over all subarrays with running max and min also passes; the span method is the O(n) answer."
+    answer:
+      topic: '1.6'
+      card: element-span
+    property: The sum of (max − min) is the sum of maxima minus the sum of minima, each computed from
+      the span of every element with one-sided ties (Theorem 1.6.2).
+    why_others_fail: With n ≤ 1000, O(n²) over all subarrays with running max and min also passes; the
+      span method is the O(n) answer.
   - problem: lc-longest-repeating-character-replacement
-    answer_card: shrinkable-window
-    answer_topic: "1.3"
-    property: "A window is valid when its length minus the count of its most frequent letter is at most k; that survives shrinking, so the left end only moves right."
-    why_others_fail: The window needs counts of 26 letters, not the maximum value of its elements, so no deque is needed.
+    answer:
+      topic: '1.3'
+      card: shrinkable-window
+    property: A window is valid when its length minus the count of its most frequent letter is at most
+      k; that survives shrinking, so the left end only moves right.
+    why_others_fail: The window needs counts of 26 letters, not the maximum value of its elements, so
+      no deque is needed.
   - problem: lc-find-peak-element
-    answer_card: sorted-search
-    answer_topic: "1.4"
-    property: "If nums[mid] < nums[mid + 1], some peak lies to the right of mid; otherwise one lies at mid or to its left. Keep the half that rises: O(log n)."
-    why_others_fail: The nearest greater element finds a peak too, but in O(n); the problem asks for O(log n).
+    answer:
+      topic: '1.4'
+      card: sorted-search
+    property: 'If nums[mid] < nums[mid + 1], some peak lies to the right of mid; otherwise one lies at
+      mid or to its left. Keep the half that rises: O(log n).'
+    why_others_fail: The nearest greater element finds a peak too, but in O(n); the problem asks for O(log
+      n).
   - problem: lc-gas-station
-    answer_card: left-to-right-forced
-    answer_topic: "1.5"
-    property: "If the tank goes negative at station i, no start from the current start up to i works, so restart after i. A start exists exactly when the total gas is at least the total cost."
+    answer:
+      topic: '1.5'
+      card: left-to-right-forced
+    property: If the tank goes negative at station i, no start from the current start up to i works, so
+      restart after i. A start exists exactly when the total gas is at least the total cost.
     why_others_fail: No nearest element is asked; one running sum with a restart rule is enough.
   - problem: cses-1073
-    answer_card: extreme-first
-    answer_topic: "1.5"
-    property: "Put each cube on the tower whose top is the smallest value larger than the cube, or start a new tower; a smaller top that still fits wastes the least."
-    why_others_fail: "A stack keeps one sequence, but many towers are open at once and a cube may go on any of them: keep the tops in a multiset (topic 0.6) and use upper_bound."
+    answer:
+      topic: '1.5'
+      card: extreme-first
+    property: Put each cube on the tower whose top is the smallest value larger than the cube, or start
+      a new tower; a smaller top that still fits wastes the least.
+    why_others_fail: 'A stack keeps one sequence, but many towers are open at once and a cube may go on
+      any of them: keep the tops in a multiset (topic 0.6) and use upper_bound.'
 lookalike_pairs:
   - a: lc-beautiful-towers-i
     b: lc-beautiful-towers-ii
-    a_tool: "brute force (0.5): try every peak and walk outwards"
-    b_tool: "element-span (1.6): best left and right sums from a monotonic stack"
-    flipping_difference: "A has n ≤ 10^3, so trying every peak with an O(n) walk is fast enough; B has n ≤ 10^5, so the best non-decreasing prefix ending at each i must come from the previous smaller position in O(1) amortised."
+    a_tool:
+      topic: '0.5'
+      card: nested-loops
+    b_tool:
+      topic: '1.6'
+      card: element-span
+    shared_surface: Both ask for the largest total height of a mountain-shaped arrangement of towers,
+      each capped by its own maximum height.
+    flipping_difference: A has n ≤ 10^3, so trying every peak with an O(n) walk is fast enough; B has
+      n ≤ 10^5, so the best non-decreasing prefix ending at each position must come from the previous
+      smaller position in O(1) amortised.
   - a: lc-sliding-window-maximum
     b: lc-sliding-window-median
-    a_tool: window-deque (1.6)
-    b_tool: "two multisets (0.6) balanced around the middle"
-    flipping_difference: "A needs only the maximum, so an element with a larger one after it can be dropped for good; B needs the middle value, which can be any element of the window, so nothing can be dropped."
+    a_tool:
+      topic: '1.6'
+      card: window-deque
+    b_tool:
+      topic: '0.6'
+      card: ordered-set-lookup
+    shared_surface: Both print one value for each window of k consecutive numbers of an array with n up
+      to 10^5.
+    flipping_difference: A needs only the maximum, so an element with a larger one after it can be dropped
+      for good; B needs the middle value, which can be any element of the window, so nothing can be dropped.
+    flipping_input: 'a = [1, 5, 2, 4], k = 3: the deque method prints 5, 5, but the medians are 2, 4.'
 self_test:
-  - q: "Why is the next greater element found in O(n) total, although one step can pop many elements?"
-    a: "Each position is pushed once and popped at most once, so all pops together are at most n (Theorem 0.2.4). A step that pops many elements is paid for by the steps that pushed them."
-  - q: "In the left-to-right scan for the next greater element, why are the values on the stack non-increasing from bottom to top?"
-    a: "A position is pushed only after every smaller value above it has been popped, so it is at most the value below it. Hence a new value pops a run from the top, and the first value that stays is the nearest one at least as large."
-  - q: "For a = (2, 2), what does the sum of subarray minima give if L and R are both the nearest strictly smaller elements, and why?"
-    a: "8 instead of 6: the subarray (2, 2) has two equal minima, and each of them counts it. Breaking ties on one side (strict on the left, smaller-or-equal on the right) makes each subarray count only for its rightmost minimum."
-  - q: "Why does the histogram rectangle need no tie rule, although the sum of minima does?"
-    a: "The histogram takes a maximum over candidates; counting a rectangle twice changes nothing. The sum of minima adds the candidates, so each subarray must be counted exactly once."
-  - q: "In the sliding-window maximum, why may a position j be removed for good when a later position i in the window has a[i] ≥ a[j]?"
-    a: "Every later window that contains j also contains i, because windows move only right and i is after j. So i's value is at least j's in all of them, and j is never needed as the maximum."
-  - q: "Why does the monotonic deque not give the median of a sliding window?"
-    a: "It drops dominated elements, which can never be the maximum but can be the median. A median needs the order of all elements in the window: two multisets (topic 0.6)."
-  - q: "Which nearest element do you need for 'the number of days until a warmer day', and which for 'the number of days since the last day at least as warm'?"
-    a: "The next strictly greater element, by position, for the first; the previous greater-or-equal element for the second. They come from the same scan: one is recorded when an element is popped, the other when it is pushed (Theorem 1.6.1)."
+  - q: Why is the next greater element found in O(n) total, although one step can pop many elements?
+    a: Each position is pushed once and popped at most once, so all pops together are at most n (Theorem
+      0.2.4). A step that pops many elements is paid for by the steps that pushed them.
+  - q: For a = (2, 2), what does the sum of subarray minima give if L and R are both the nearest strictly
+      smaller elements, and why?
+    a: '8 instead of 6: the subarray (2, 2) has two equal minima, and each of them counts it. Breaking
+      ties on one side (strict on the left, smaller-or-equal on the right) makes each subarray count only
+      for its rightmost minimum.'
+  - q: Why does the histogram rectangle need no tie rule, although the sum of minima does?
+    a: The histogram takes a maximum over candidates; counting a rectangle twice changes nothing. The
+      sum of minima adds the candidates, so each subarray must be counted exactly once.
+  - q: In the sliding-window maximum, why may a position j be removed for good when a later position i
+      in the window has a[i] ≥ a[j]?
+    a: Every later window that contains j also contains i, because windows move only right and i is after
+      j. So i's value is at least j's in all of them, and j is never needed as the maximum.
+  - q: Which nearest element do you need for 'the number of days until a warmer day', and which for 'the
+      number of days since the last day at least as warm'?
+    a: 'The next strictly greater element, by position, for the first; the previous greater-or-equal element
+      for the second. They come from the same scan: one is recorded when an element is popped, the other
+      when it is pushed (Theorem 1.6.1).'
+  - q: The stack reported the next greater element of position 1 in (3, 1, 2) as position 2. Then a[2]
+      became 0. Is that still right? And what does the popping stack answer for "the nearest later position
+      whose value is a multiple of a[0]" in (2, 3, 4)?
+    a: 'No: after the change there is none (−1). Stored answers are true only for the array they were
+      computed on, so an array that changes between questions rules the card out; for small n, rescan.
+      For the multiples, the stack pops 2 as soon as 3 arrives and reports position 1, but 3 is not a
+      multiple of 2; the answer is position 2 (value 4). Popping is safe only when the relation is a comparison
+      of values.'
+  - q: For (3, 1, 2) the span formula gives 9. What is the sum of all elements of every subarray? And
+      for (2, 1, 4), where the formula gives 10, what is the sum of the minimum over all non-empty subsequences?
+    a: '19 (3 + 1 + 2 + 4 + 3 + 6): no single element decides a subarray''s sum, so use prefix sums (topic
+      1.2). 12: the formula counts only contiguous pieces, but (2, 4) has minimum 2 and is a subsequence,
+      not a subarray; sorting the values (topic 1.1) and counting by rank handles subsequences.'
+  - q: For (1, 5, 2, 4) and k = 3, what are the window maxima and the window medians? And for (1, 7, 2,
+      3, 4), why can the deque built for the window [2, 4] not answer the maximum of a[0..4]?
+    a: 'The maxima are 5, 5 and the medians are 2, 4: a median is not an extreme, so dominated elements
+      can still be the answer (two multisets, topic 0.6). The deque dropped position 1 (value 7) when
+      it left the window, so it would answer 4 instead of 7; the left end may only move right.'
 checkpoint:
   time_limit_minutes: 90
-  problems: [cses-1147, lc-shortest-subarray-with-sum-at-least-k, lc-132-pattern]
+  problems:
+    - cses-1147
+    - lc-shortest-subarray-with-sum-at-least-k
+    - lc-132-pattern
 decision_map:
-  - weak_signal: '"The next greater / warmer / taller", "the first day after", "how many can be seen", a span back to a larger value'
+  - weak_signal: '"The next greater / warmer / taller", "the first day after", "how many can be seen",
+      a span back to a larger value'
     choose: nearest-greater
-    when: Each position needs the nearest element on one side that beats it, and a beaten element never matters again (Theorem 1.6.1).
+    when: Each position needs the nearest element on one side that beats it, and a beaten element never
+      matters again (Theorem 1.6.1).
     over:
-      - card: nested-loops
+      - topic: '0.5'
+        card: nested-loops
         because: Scanning outwards from each position is O(n²) on a monotone array.
-      - card: ordered-set-lookup
+      - topic: '0.6'
+        card: ordered-set-lookup
         because: A set orders values, not positions; the nearest larger value by position needs the stack.
-      - card: stack-queue
+      - topic: '0.6'
+        card: stack-queue
         because: A plain stack stores everything; the monotonic invariant is what makes each pop final.
-  - weak_signal: 'Sum or maximum over all subarrays of their minimum or maximum; the largest rectangle under bars or in a grid'
+  - weak_signal: Sum or maximum over all subarrays of their minimum or maximum; the largest rectangle
+      under bars or in a grid
     choose: element-span
-    when: The subarray's value is decided by one element, and the subarrays it decides are all l in one range and r in another (Theorem 1.6.2).
+    when: The subarray's value is decided by one element, and the subarrays it decides are all l in one
+      range and r in another (Theorem 1.6.2).
     over:
-      - card: nested-loops
+      - topic: '0.5'
+        card: nested-loops
         because: All subarrays with a running minimum are O(n²), fine only for n up to about 10^4.
-      - card: range-sum
+      - topic: '1.2'
+        card: range-sum
         because: Prefix sums give each subarray's sum, but the minimum is not a difference of prefixes.
-  - weak_signal: 'The maximum or minimum of every window of k elements; the longest or shortest window with max − min within a bound'
+  - weak_signal: The maximum or minimum of every window of k elements; the longest or shortest window
+      with max − min within a bound
     choose: window-deque
-    when: The window's ends move only to the right and only its maximum or minimum is needed (Theorem 1.6.3).
+    when: The window's ends move only to the right and only its maximum or minimum is needed (Theorem
+      1.6.3).
     over:
-      - card: fixed-window
-        because: A fixed window updates a sum or count in O(1); a maximum cannot be undone when an element leaves.
-      - card: ordered-set-lookup
+      - topic: '1.3'
+        card: fixed-window
+        because: A fixed window updates a sum or count in O(1); a maximum cannot be undone when an element
+          leaves.
+      - topic: '0.6'
+        card: ordered-set-lookup
         because: A multiset also works in O(n log n); the deque is O(n) and needed for n near 10^7.
-      - card: shrinkable-window
-        because: The window logic is the same; the deque is the part that keeps max − min while the left end moves.
+      - topic: '1.3'
+        card: shrinkable-window
+        because: The window logic is the same; the deque is the part that keeps max − min while the left
+          end moves.
 glossary_added:
   - next greater element
   - monotonic stack
   - span
   - monotonic deque
   - dominated
-

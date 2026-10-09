@@ -11,7 +11,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 0.5 | 29 → 32 | 37 → 42 | 1 → 0 | 5 → 0 | 8 | complete |
 | 0.6 | 35 → 35 | 34 → 35 | 0 → 0 | 1 → 0 | 1 | complete |
 | 1.1 | 23 → 25 | 29 → 32 | 2 → 0 | 3 → 0 | 5 | short |
-| 1.2 | 22 → 22 | 34 → 34 | 4 → 4 | 1 → 1 | 0 | short |
+| 1.2 | 22 → 26 | 34 → 35 | 4 → 0 | 1 → 0 | 5 | short |
 | 1.3 | 24 → 24 | 35 → 35 | 2 → 2 | 1 → 1 | 0 | short |
 | 1.4 | 20 → 20 | 35 → 35 | 3 → 3 | 2 → 2 | 0 | short |
 | 1.5 | 20 → 20 | 33 → 33 | 3 → 3 | 2 → 2 | 0 | short |
@@ -166,18 +166,20 @@ Added: `lc-minimum-swaps-to-sort-by-digit-sum` (p, T3, sort-with-index), `lc-sor
 ## 1.2 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 22 | 22 | 20 | 30 |
-| Reserved total | 34 | 34 | 24 | 30 |
+| Practice total | 22 | 26 | 20 | 30 |
+| Reserved total | 34 | 35 | 24 | 30 |
 
-Practice by tier (after): T1 7, T2 3, T3 6, T4 3, T5 3
+Practice by tier (after): T1 7, T2 3, T3 8, T4 4, T5 4
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): range-sum 6/2, prefix-count-lookup 4/2, difference-array 4/2, prefix-2d 3/3, prefix-extremes 5/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): range-sum 7/3, prefix-count-lookup 5/3, difference-array 5/3, prefix-2d 4/3, prefix-extremes 5/3
 
-Platforms (practice, after): leetcode 13, cses 2, atcoder 3, codeforces 4
+Platforms (practice, after): leetcode 17, cses 2, atcoder 3, codeforces 4
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 8→8/4, lookalike 4→4/4, checkpoint 3→3/3, review 10→10/10, exam 1→1/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 8→8/4, lookalike 4→4/4, checkpoint 3→3/3, review 10→10/10, exam 1→2/2
 
-Patterns below the rule: before range-sum, prefix-count-lookup, difference-array, prefix-2d; after range-sum, prefix-count-lookup, difference-array, prefix-2d. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before range-sum, prefix-count-lookup, difference-array, prefix-2d; after none. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-ways-to-make-a-fair-array` (p, T3, range-sum), `lc-count-submatrices-with-equal-frequency-of-x-and-y` (p, T3, prefix-2d), `lc-count-subarrays-with-median-k` (p, T4, prefix-count-lookup), `lc-stamping-the-grid` (p, T5, difference-array), `lc-continuous-subarray-sum` (r/exam, T3, prefix-count-lookup).
 
 ## 1.3 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

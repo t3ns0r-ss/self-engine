@@ -13,6 +13,10 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+import fewDistinct from '../../../../code/3.8/few-distinct/solution.cpp?raw';
+import twoRemainders from '../../../../code/3.8/two-remainders/solution.cpp?raw';
+import windyNumbers from '../../../../code/3.8/windy-numbers/solution.cpp?raw';
+import digitSumTotal from '../../../../code/3.8/digit-sum-total/solution.cpp?raw';
 
 <TopicHeader topic="3.8" />
 
@@ -117,6 +121,56 @@ Example: the digit sums of $0..25$ add up to 127. By first digit: 0 gives $(10, 
 <Cards topic="3.8" />
 
 ## 6. Templates
+
+Four programs, one per card, all with the same shape: a recursive `go(pos, state, tight, …)` that walks the digits of the bound, a memo used only for states that are no longer tight, and `countUpTo(N)` applied to $B$ and $A - 1$. The brute forces check every number of the range; the generators keep the ranges short (at most 1500 numbers) but place them anywhere up to $10^{18}$, so long bounds are tested too.
+
+### Numbers with few different digits (Theorem 3.8.1)
+
+<Code code={fewDistinct} lang="cpp" title="few-distinct/solution.cpp" />
+
+**How it works.** The state is the set of digits used so far, a 10-bit mask (topic 3.7), plus the started flag: leading zeros are padding and do not add the digit 0 to the set (Theorem 3.8.3). The tight flag limits the next digit to $N$'s digit, and stays on only while the digits copy $N$. A completed string counts if its set has at most $K$ digits; the number 0 is the all-zero string and uses the digit 0. The answer for $[A, B]$ is $F(B) - F(A - 1)$ (Theorem 3.8.2).
+
+**C++ details explained.** The memo arrays are global, so they start as zeros; `memset(seen, 0, sizeof seen)` resets them for each new bound, because the meaning of "position `pos`" depends on the length of $N$. `tight && c == hi` keeps the flag only when the digit equals $N$'s. `to_string(n)` gives the digits of a `long long`.
+
+**Tested.** Stress-tested against a brute force that checks every number in the range, on 5000 random ranges (length up to 1500, placed up to $10^{18}$, $K \le 4$). There are also 5 fixed tests: $[0, 100]$ with $K = 1$ (19: the one-digit numbers and 11, 22, …, 99), $[1, 10^{18}]$ with $K = 10$ (all $10^{18}$), $[0, 0]$, and two large ranges whose answers come from a separate program.
+
+**Alternative formulation.** Count each length separately with a free walk and handle only the numbers with exactly as many digits as $N$ with the tight walk; then no started flag is needed. It is longer to write and easier to get wrong at the boundaries.
+
+### Two remainders (Theorem 3.8.1 with a pair as the state)
+
+<Code code={twoRemainders} lang="cpp" title="two-remainders/solution.cpp" />
+
+**How it works.** Reading a digit $c$ changes the value's remainder from $r$ to $(10r + c) \bmod M$ (topic 2.2) and the digit sum's remainder from $s$ to $(s + c) \bmod D$. Both are small, so the state is the pair. Leading zeros change neither remainder, so they need no special care.
+
+**C++ details explained.** The memo has $20 \cdot 30 \cdot 30$ entries per array. `go` returns `long long`, since counts reach $10^{18}$. The test `rv == 0 && rs == 0` converts to 1 or 0 when returned as a number.
+
+**Tested.** Stress-tested against a brute force over the range, on 5000 random inputs ($M, D \le 30$). There are also 5 fixed tests: the example of Section 4.1 ($[0, 25]$, $M = 1$, $D = 4$: 6) and of Section 4.2 ($[10, 25]$: 3), $[0, 10^{18}]$ with $M = D = 1$ ($10^{18} + 1$), and two large inputs from a separate program.
+
+**Alternative formulation.** Tabulate instead of recursing: for each position, a table over (remainder pair) for the free part, and walk the tight path once, adding at each position the free counts for the digits below $N$'s digit. It is the same sum as Theorem 3.8.1, written as loops.
+
+### Neighbouring digits (Theorem 3.8.3)
+
+<Code code={windyNumbers} lang="cpp" title="windy-numbers/solution.cpp" />
+
+**How it works.** The state is the previous digit of the number, with 10 meaning "none yet". While only zeros have been read, a zero is padding: the previous digit stays "none" and nothing is checked. From the first non-zero digit on, every digit must differ from the previous one by at least 2. Strings that break the rule are never built, so every completed string counts.
+
+**C++ details explained.** `abs(c - prev) < 2` is the forbidden case. The first branch handles padding zeros with `continue`, so the rule below it only sees real digits. `prev` takes 11 values, so the memo has $20 \cdot 11 \cdot 2$ entries.
+
+**Tested.** Stress-tested against a brute force over the range, on 5000 random inputs. There are also 5 fixed tests: $[1, 100]$ (73), $[0, 0]$ (1), $[25, 25]$ (1), and $[0, 10^{18}]$ and $[10^{17}, 10^{18}]$ (from a separate program).
+
+**Alternative formulation.** Instead of the started flag, count the numbers of each length shorter than $N$ separately (first digit 1–9, then free digits) and run the tight walk only for $N$'s own length, with a first digit from 1. Leading zeros then never appear.
+
+### Sum of digit sums (Theorem 3.8.4)
+
+<Code code={digitSumTotal} lang="cpp" title="digit-sum-total/solution.cpp" />
+
+**How it works.** `go` returns a pair: how many completions there are, and the total of their digit sums. Putting digit $c$ in front of $n$ completions with total $t$ adds $c$ to each of them: total $t + c \cdot n$. Summing over the allowed digits gives the pair for the state. The answer is the total for $B$ minus the total for $A - 1$, modulo $10^9 + 7$, with `+ MOD` before the remainder (Theorem 3.5.3).
+
+**C++ details explained.** `auto [n, t] = go(...)` unpacks the pair. The memo has one entry per position, because the free part does not depend on anything else here. Counts are reduced modulo $10^9 + 7$ too, since $n$ reaches $10^{18}$ and $c \cdot n$ must not overflow.
+
+**Tested.** Stress-tested against a brute force that adds the digit sums of the range, on 5000 random inputs. There are also 5 fixed tests: $[0, 25]$ (127, the example of Section 4.4), $[10, 25]$ (82), $[0, 10^{18}]$ and $[1, 10^{18}]$ (both $81 \cdot 10^{18} + 1$ modulo $10^9 + 7$), and a random large range (from a separate program).
+
+**Alternative formulation.** Count, for each position and digit $c$, how many numbers up to $N$ have $c$ there (a formula with the digits of $N$ to the left and right), and add $c$ times that count. It is the classic "count the 1s" trick, faster to run and harder to get right.
 
 ## 7. Bug catalogue
 

@@ -12,7 +12,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 0.6 | 35 → 35 | 34 → 35 | 0 → 0 | 1 → 0 | 1 | complete |
 | 1.1 | 23 → 25 | 29 → 32 | 2 → 0 | 3 → 0 | 5 | short |
 | 1.2 | 22 → 30 | 34 → 35 | 4 → 0 | 1 → 0 | 9 | complete |
-| 1.3 | 24 → 24 | 35 → 35 | 2 → 2 | 1 → 1 | 0 | short |
+| 1.3 | 24 → 26 | 35 → 36 | 2 → 0 | 1 → 0 | 3 | complete |
 | 1.4 | 20 → 20 | 35 → 35 | 3 → 3 | 2 → 2 | 0 | short |
 | 1.5 | 20 → 20 | 33 → 33 | 3 → 3 | 2 → 2 | 0 | short |
 | 1.6 | 16 → 16 | 21 → 21 | 4 → 4 | 10 → 10 | 0 | short |
@@ -181,21 +181,23 @@ Patterns below the rule: before range-sum, prefix-count-lookup, difference-array
 
 Added: `lc-ways-to-make-a-fair-array` (p, T3, range-sum), `lc-count-submatrices-with-equal-frequency-of-x-and-y` (p, T3, prefix-2d), `lc-count-subarrays-with-median-k` (p, T4, prefix-count-lookup), `lc-stamping-the-grid` (p, T5, difference-array), `lc-continuous-subarray-sum` (r/exam, T3, prefix-count-lookup), `ac-abc182_d` (p, T3, range-sum), `cses-3220` (p, T2, range-sum), `cf-363B` (p, T3, range-sum), `cf-1807D` (p, T2, range-sum).
 
-## 1.3 (status before: short, now: short)
+## 1.3 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 24 | 24 | 20 | 30 |
-| Reserved total | 35 | 35 | 24 | 30 |
+| Practice total | 24 | 26 | 20 | 30 |
+| Reserved total | 35 | 36 | 24 | 30 |
 
-Practice by tier (after): T1 3, T2 5, T3 11, T4 2, T5 3
+Practice by tier (after): T1 4, T2 5, T3 11, T4 3, T5 3
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): shrinkable-window 6/4, fixed-window 5/4, count-windows 5/2, opposite-ends 4/2, merge-walk 4/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): shrinkable-window 6/4, fixed-window 5/4, count-windows 6/3, opposite-ends 5/3, merge-walk 4/3
 
-Platforms (practice, after): atcoder 10, leetcode 8, cses 5, codeforces 1
+Platforms (practice, after): atcoder 10, leetcode 10, cses 5, codeforces 1
 
-Reserved by purpose (before → after): drill 7→7/8, later_drill 7→7/4, lookalike 4→4/4, checkpoint 3→3/3, review 12→12/10, exam 2→2/2
+Reserved by purpose (before → after): drill 7→8/8, later_drill 7→7/4, lookalike 4→4/4, checkpoint 3→3/3, review 12→12/10, exam 2→2/2
 
-Patterns below the rule: before count-windows, opposite-ends; after count-windows, opposite-ends. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before count-windows, opposite-ends; after none. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-count-the-number-of-good-subarrays` (p, T4, count-windows), `lc-squares-of-a-sorted-array` (p, T1, opposite-ends), `lc-minimum-swaps-to-group-all-1s-together-ii` (r/drill, T3, fixed-window).
 
 ## 1.4 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

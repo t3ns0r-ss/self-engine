@@ -174,6 +174,96 @@ Four programs, one per card, all with the same shape: a recursive `go(pos, state
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, found among the random seeds or by hand and checked against the brute force.
+
+### Bug: memoising tight states
+
+Template: numbers with few different digits.
+
+```cpp
+if (seen[pos][used][started]) return memo[pos][used][started];
+...
+seen[pos][used][started] = true, memo[pos][used][started] = total;
+```
+
+Input: `0 110 1` (numbers up to 110 with one distinct digit).
+
+Wrong output `20`, correct output `19`. The memo key leaves out the tight flag, so the tight state "prefix 1, digits {1}" (where the next digits are limited by 110) and the free state with the same key share one value. Here the tight state receives the free count, which includes 111 > 110.
+
+**Fix:** store and read only states that are not tight (Theorem 3.8.1); the tight states form a single path and are cheap anyway. Or put the flag into the key.
+
+### Bug: the memo is not reset for the second bound
+
+Template: two remainders.
+
+```cpp
+digits = to_string(n);
+return go(0, 0, 0, true);   // memset removed
+```
+
+Input: `55 100 8 3`.
+
+Wrong output `-2`, correct output `2` (72 and 96). The memo stores counts by position, but "position 1" means a different number of remaining digits for $N = 100$ (three digits) and for $A - 1 = 54$ (two digits). The second call reads counts computed for the first bound.
+
+**Fix:** reset the memo for every bound, or index the states by the number of digits **remaining** (then the memo can be shared, since a free state's count depends only on that).
+
+### Bug: the tight flag never turns off
+
+Template: two remainders.
+
+```cpp
+total += go(pos + 1, (rv * 10 + c) % M, (rs + c) % D, tight);
+```
+
+Input: `0 25 1 4` (the example of Section 4.1).
+
+Wrong output `4`, correct output `6`. Once a digit is smaller than $N$'s, the rest is free; keeping the flag limits every later digit to $N$'s digit, so 13 and 17 are never built (their second digit is above 5).
+
+**Fix:** `tight && c == hi`: the prefix stays tight only while it copies $N$.
+
+### Bug: leading zeros treated as digits
+
+Template: neighbouring digits.
+
+```cpp
+for (int c = 0; c <= hi; c++) {
+    if (prev != 10 && abs(c - prev) < 2) continue;   // the padding branch removed
+```
+
+Input: `0 12`.
+
+Wrong output `8`, correct output `10` (0, 1, …, 9). The one-digit numbers are walked as "00", "01", …; then 0 followed by 0 or 1 breaks the rule, and the numbers 0 and 1 are lost.
+
+**Fix:** a started flag (Theorem 3.8.3): before the first non-zero digit, a zero is padding and the rule is not checked.
+
+### Bug: the digit counted once instead of once per completion
+
+Template: sum of digit sums.
+
+```cpp
+total = (total + t + c) % MOD;
+```
+
+Input: `0 25`.
+
+Wrong output `108`, correct output `127`. The digit $c$ is part of every one of the $n$ numbers that continue from it, so it adds $c \cdot n$, not $c$.
+
+**Fix:** total $+ \ c \cdot n$ (Theorem 3.8.4). Check a pair by hand: for the prefix 2 of $N = 25$ the pair is $(6, 2 \cdot 6 + 15) = (6, 27)$.
+
+### Bug: subtracting F(A) instead of F(A − 1)
+
+Template: neighbouring digits.
+
+```cpp
+cout << countUpTo(b) - countUpTo(a) << "\n";
+```
+
+Input: `5 5`.
+
+Wrong output `0`, correct output `1`. $F(B) - F(A)$ counts $(A, B]$ and loses $A$ itself.
+
+**Fix:** $F(B) - F(A - 1)$ (Theorem 3.8.2); test with a one-number range $A = B$.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
-- Topic: Phase 3 intro and exam
+- Topic: — (M5 gate)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.8 step 10 self-review
-- Next action: Phase 3 intro page and exam
+- Last completed step: Phase 3 intro page and exam
+- Next action: ⏸ M5 gate: Phase 3 review by Saurabh
 
 ## Gates
 | Gate | Status | Date |
@@ -18,7 +18,7 @@
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
-| M5 Phase 3 review | not reached | — |
+| M5 Phase 3 review | waiting for review | — |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)
@@ -54,6 +54,7 @@
 | 3.6 | done (on this session's branch) | — |
 | 3.7 | done (on this session's branch) | — |
 | 3.8 | done (on this session's branch) | — |
+| Phase 3 intro and exam | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

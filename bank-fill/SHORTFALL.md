@@ -20,7 +20,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 2.1 | 24 → 25 | 27 → 30 | 2 → 1 | 4 → 1 | 4 | short |
 | 2.2 | 14 → 16 | 18 → 18 | 4 → 4 | 13 → 13 | 2 | short |
 | 2.3 | 24 → 26 | 26 → 30 | 1 → 0 | 5 → 1 | 6 | short |
-| 2.4 | 15 → 15 | 18 → 18 | 3 → 3 | 13 → 13 | 0 | short |
+| 2.4 | 15 → 18 | 18 → 18 | 3 → 2 | 13 → 13 | 3 | short |
 | 3.1 | 22 → 22 | 29 → 29 | 1 → 1 | 3 → 3 | 0 | short |
 | 3.2 | 33 → 33 | 31 → 31 | 2 → 2 | 1 → 1 | 0 | short |
 | 3.3 | 19 → 19 | 27 → 27 | 4 → 4 | 5 → 5 | 0 | short |
@@ -338,18 +338,22 @@ Added: `lc-kth-smallest-amount-with-single-denomination-combination` (p, T4, inc
 ## 2.4 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 15 | 15 | 20 | 30 |
+| Practice total | 15 | 18 | 20 | 30 |
 | Reserved total | 18 | 18 | 24 | 30 |
 
-Practice by tier (after): T1 1, T2 0, T3 5, T4 2, T5 7
+Practice by tier (after): T1 1, T2 1, T3 5, T4 3, T5 8
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): indicator-linearity 4/3, contribution-total 5/2, geometric-wait 3/2, tail-sum 3/2
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): indicator-linearity 5/3, contribution-total 6/2, geometric-wait 4/3, tail-sum 3/2
 
-Platforms (practice, after): leetcode 1, atcoder 8, codeforces 4, cses 2
+Platforms (practice, after): leetcode 1, atcoder 8, codeforces 7, cses 2
 
 Reserved by purpose (before → after): drill 3→3/8, later_drill 0→0/4, lookalike 2→2/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
 
-Patterns below the rule: before contribution-total, geometric-wait, tail-sum; after contribution-total, geometric-wait, tail-sum. Patterns in no checkpoint/review problem: before geometric-wait; after geometric-wait.
+Patterns below the rule: before contribution-total, geometric-wait, tail-sum; after contribution-total, tail-sum. Patterns in no checkpoint/review problem: before geometric-wait; after geometric-wait.
+
+Added: `cf-312B` (p, T2, geometric-wait), `cf-621C` (p, T4, indicator-linearity), `cf-204C` (p, T5, contribution-total).
+
+**Exhaustion record.** Still short: practice 18 of 20 and reserved 18 of 24 (drill 3 of 8, later_drill 0 of 4, look-alike 2 of 4, review 9 of 10, exam 1 of 2); `geometric-wait` and `tail-sum` each have 3–4 problems over 2–3 tiers and `geometric-wait` is in no review problem. Searched: the 18 unused AtCoder tasks that mention an expected value (ABC 189–417 and ARC; read by title and statement head), the Codeforces probability problems rated 1300–2100 without dp, graph or data-structure tags (10 candidates), the free LeetCode probability and math lists, and the unused CSES Mathematics section. Almost every in-band expected-value problem needs a DP over states (Phase 3), a Fenwick tree, or inclusion–exclusion with binomials (2.3 is allowed but those problems are already used). Options for Saurabh: accept 2.4 as short; lower its minimums (for example practice 18, reserved 18); or allow dynamic-programming-based expectation problems here, as later look-alike or review items only.
 
 ## 3.1 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

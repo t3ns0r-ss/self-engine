@@ -22,7 +22,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 2.3 | 24 → 26 | 26 → 30 | 1 → 0 | 5 → 1 | 6 | short |
 | 2.4 | 15 → 18 | 18 → 18 | 3 → 2 | 13 → 13 | 3 | short |
 | 3.1 | 22 → 24 | 29 → 32 | 1 → 0 | 3 → 0 | 5 | complete |
-| 3.2 | 33 → 33 | 31 → 31 | 2 → 2 | 1 → 1 | 0 | short |
+| 3.2 | 33 → 35 | 31 → 32 | 2 → 1 | 1 → 0 | 3 | short |
 | 3.3 | 19 → 19 | 27 → 27 | 4 → 4 | 5 → 5 | 0 | short |
 | 3.4 | 17 → 17 | 24 → 24 | 2 → 2 | 7 → 7 | 0 | short |
 | 3.5 | 22 → 22 | 32 → 32 | 1 → 1 | 2 → 2 | 0 | short |
@@ -376,18 +376,22 @@ Added: `lc-tiling-a-rectangle-with-the-fewest-squares` (p, T4, constraint-placem
 ## 3.2 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 33 | 33 | 20 | 30 |
-| Reserved total | 31 | 31 | 24 | 30 |
+| Practice total | 33 | 35 | 20 | 30 |
+| Reserved total | 31 | 32 | 24 | 30 |
 
-Practice by tier (after): T1 4, T2 13, T3 11, T4 4, T5 1
+Practice by tier (after): T1 4, T2 14, T3 11, T4 5, T5 1
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): linear-state 12/3, extra-small-state 10/4, two-index 4/2, memo-recursion 4/3, reconstruct 3/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): linear-state 12/3, extra-small-state 10/4, two-index 6/3, memo-recursion 4/3, reconstruct 3/3
 
-Platforms (practice, after): atcoder 13, leetcode 14, codeforces 5, cses 1
+Platforms (practice, after): atcoder 13, leetcode 16, codeforces 5, cses 1
 
-Reserved by purpose (before → after): drill 7→7/8, later_drill 4→4/4, lookalike 4→4/4, checkpoint 3→3/3, review 10→10/10, exam 3→3/2
+Reserved by purpose (before → after): drill 7→8/8, later_drill 4→4/4, lookalike 4→4/4, checkpoint 3→3/3, review 10→10/10, exam 3→3/2
 
-Patterns below the rule: before two-index, reconstruct; after two-index, reconstruct. Patterns in no checkpoint/review problem: before reconstruct; after reconstruct.
+Patterns below the rule: before two-index, reconstruct; after reconstruct. Patterns in no checkpoint/review problem: before reconstruct; after reconstruct.
+
+Added: `lc-champagne-tower` (p, T2, two-index), `lc-minimum-difficulty-of-a-job-schedule` (p, T4, two-index), `lc-minimum-swaps-to-make-sequences-increasing` (r/drill, T3, extra-small-state).
+
+**Exhaustion record.** Still short on composition: pattern `reconstruct` has 3 practice problems over tiers 2–4 and is in no checkpoint or review problem. Searched: the 56 unused free LeetCode dynamic-programming problems that avoid string, tree, graph, bitmask and combinatorics tags, the 13 unused AtCoder tasks that ask to print one optimal choice with small bounds (listed by title and checked against their statements), and the unused CSES dynamic-programming section. Almost every task that prints the chosen items is a knapsack, LIS/LCS or interval problem and belongs to 3.3–3.6 (ABC 369 F is kept for 3.4). Moving a practice problem to a review set needs Saurabh's answer (Step 4).
 
 ## 3.3 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

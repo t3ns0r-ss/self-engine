@@ -8,8 +8,8 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 0.2 | 22 → 25 | 29 → 31 | 2 → 0 | 2 → 0 | 5 | complete |
 | 0.3 | 40 → 40 | 31 → 33 | 0 → 0 | 2 → 0 | 2 | complete |
 | 0.4 | 23 → 23 | 33 → 35 | 0 → 0 | 2 → 0 | 2 | complete |
-| 0.5 | 29 → 29 | 37 → 37 | 1 → 1 | 5 → 5 | 0 | short |
-| 0.6 | 35 → 35 | 34 → 34 | 0 → 0 | 1 → 1 | 0 | short |
+| 0.5 | 29 → 32 | 37 → 42 | 1 → 0 | 5 → 0 | 8 | complete |
+| 0.6 | 35 → 35 | 34 → 35 | 0 → 0 | 1 → 0 | 1 | complete |
 | 1.1 | 23 → 23 | 29 → 29 | 2 → 2 | 3 → 3 | 0 | short |
 | 1.2 | 22 → 22 | 34 → 34 | 4 → 4 | 1 → 1 | 0 | short |
 | 1.3 | 24 → 24 | 35 → 35 | 2 → 2 | 1 → 1 | 0 | short |
@@ -107,27 +107,29 @@ Patterns below the rule: before none; after none. Patterns in no checkpoint/revi
 
 Added: `ac-abc276_d` (r/exam, T3, gcd-lcm), `cf-1543A` (r/review, T3, gcd-lcm).
 
-## 0.5 (status before: short, now: short)
+## 0.5 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 29 | 29 | 20 | 30 |
-| Reserved total | 37 | 37 | 24 | 30 |
+| Practice total | 29 | 32 | 20 | 30 |
+| Reserved total | 37 | 42 | 24 | 30 |
 
-Practice by tier (after): T1 3, T2 14, T3 9, T4 3, T5 0
+Practice by tier (after): T1 3, T2 14, T3 11, T4 4, T5 0
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): nested-loops 6/3, subset-bitmask 7/3, permutations 4/2, recursive-choices 7/3, enumerate-answer 5/4
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): nested-loops 6/3, subset-bitmask 8/3, permutations 5/3, recursive-choices 7/3, enumerate-answer 6/4
 
-Platforms (practice, after): atcoder 18, cses 3, leetcode 6, codeforces 2
+Platforms (practice, after): atcoder 18, cses 3, leetcode 7, codeforces 4
 
-Reserved by purpose (before → after): drill 5→5/8, later_drill 14→14/4, lookalike 5→5/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
+Reserved by purpose (before → after): drill 5→8/8, later_drill 14→14/4, lookalike 5→5/4, checkpoint 3→3/3, review 9→10/10, exam 1→2/2
 
-Patterns below the rule: before permutations; after permutations. Patterns in no checkpoint/review problem: before nested-loops; after nested-loops.
+Patterns below the rule: before permutations; after none. Patterns in no checkpoint/review problem: before nested-loops; after none.
 
-## 0.6 (status before: short, now: short)
+Added: `lc-permutation-sequence` (p, T4, permutations), `cf-143A` (p, T3, enumerate-answer), `cf-6A` (p, T3, subset-bitmask), `ac-abc173_c` (r/drill, T3, subset-bitmask), `ac-abc404_d` (r/drill, T3, recursive-choices), `ac-abc302_c` (r/drill, T2, permutations), `ac-abc197_c` (r/exam, T3, subset-bitmask), `cf-886A` (r/review, T3, nested-loops).
+
+## 0.6 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
 | Practice total | 35 | 35 | 20 | 30 |
-| Reserved total | 34 | 34 | 24 | 30 |
+| Reserved total | 34 | 35 | 24 | 30 |
 
 Practice by tier (after): T1 3, T2 16, T3 11, T4 4, T5 1
 
@@ -135,9 +137,11 @@ Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): s
 
 Platforms (practice, after): cses 2, atcoder 17, leetcode 13, codeforces 3
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 8→8/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→9/10, exam 2→2/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 8→8/4, lookalike 4→4/4, checkpoint 3→3/3, review 9→10/10, exam 2→2/2
 
-Patterns below the rule: before none; after none. Patterns in no checkpoint/review problem: before set-membership; after set-membership.
+Patterns below the rule: before none; after none. Patterns in no checkpoint/review problem: before set-membership; after none.
+
+Added: `lc-longest-square-streak-in-an-array` (r/review, T3, set-membership).
 
 ## 1.1 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

@@ -13,7 +13,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 1.1 | 23 → 25 | 29 → 32 | 2 → 0 | 3 → 0 | 5 | short |
 | 1.2 | 22 → 30 | 34 → 35 | 4 → 0 | 1 → 0 | 9 | complete |
 | 1.3 | 24 → 26 | 35 → 36 | 2 → 0 | 1 → 0 | 3 | complete |
-| 1.4 | 20 → 20 | 35 → 35 | 3 → 3 | 2 → 2 | 0 | short |
+| 1.4 | 20 → 23 | 35 → 37 | 3 → 2 | 2 → 0 | 5 | short |
 | 1.5 | 20 → 24 | 33 → 35 | 3 → 0 | 2 → 0 | 6 | complete |
 | 1.6 | 16 → 16 | 21 → 21 | 4 → 4 | 10 → 10 | 0 | short |
 | 1.7 | 22 → 22 | 27 → 27 | 2 → 2 | 4 → 4 | 0 | short |
@@ -202,18 +202,22 @@ Added: `lc-count-the-number-of-good-subarrays` (p, T4, count-windows), `lc-squar
 ## 1.4 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 20 | 20 | 20 | 30 |
-| Reserved total | 35 | 35 | 24 | 30 |
+| Practice total | 20 | 23 | 20 | 30 |
+| Reserved total | 35 | 37 | 24 | 30 |
 
-Practice by tier (after): T1 4, T2 3, T3 9, T4 1, T5 3
+Practice by tier (after): T1 4, T2 4, T3 11, T4 1, T5 3
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): sorted-search 7/3, answer-search 7/5, real-search 1/1, kth-by-counting 3/2, first-reaching-index 2/2
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): sorted-search 7/3, answer-search 7/5, real-search 1/1, kth-by-counting 3/2, first-reaching-index 5/3
 
-Platforms (practice, after): leetcode 7, atcoder 6, codeforces 4, cses 3
+Platforms (practice, after): leetcode 8, atcoder 6, codeforces 6, cses 3
 
-Reserved by purpose (before → after): drill 9→9/8, later_drill 8→8/4, lookalike 5→5/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
+Reserved by purpose (before → after): drill 9→9/8, later_drill 8→8/4, lookalike 5→5/4, checkpoint 3→3/3, review 9→10/10, exam 1→2/2
 
-Patterns below the rule: before real-search, kth-by-counting, first-reaching-index; after real-search, kth-by-counting, first-reaching-index. Patterns in no checkpoint/review problem: before real-search, first-reaching-index; after real-search, first-reaching-index.
+Patterns below the rule: before real-search, kth-by-counting, first-reaching-index; after real-search, kth-by-counting. Patterns in no checkpoint/review problem: before real-search, first-reaching-index; after real-search.
+
+Added: `cf-474B` (p, T3, first-reaching-index), `cf-1676E` (p, T3, first-reaching-index), `lc-h-index-ii` (p, T2, first-reaching-index), `lc-random-pick-with-weight` (r/review, T3, first-reaching-index), `lc-maximum-running-time-of-n-computers` (r/exam, T4, answer-search).
+
+**Exhaustion record.** Two patterns remain below the rule. `real-search` has 1 practice problem (Codeforces 780 B †) and is in no checkpoint or review problem: of the 218 unused Codeforces binary-search/ternary-search problems rated 1000–1800 (read by title and tags), the free LeetCode list and the AtCoder ABC/ARC titles with 'search', 'median' or 'k-th', almost all are integer answer-searches in disguise or have a closed formula; none is a clean real-valued halving problem in band. `kth-by-counting` has 3 practice problems over tiers 3 and 5; a tier 2 or 4 problem was not found (LeetCode's other k-th problems need a heap or a later technique, ABC 391 F and ARC 97 A are heap/string problems, Codeforces 448 D is tier 5 again). Proposal for Saurabh: merge `real-search` into `answer-search` (FILL plan Section 4, option 3).
 
 ## 1.5 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |

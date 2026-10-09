@@ -19,7 +19,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 1.7 | 22 → 24 | 27 → 31 | 2 → 0 | 4 → 0 | 6 | complete |
 | 2.1 | 24 → 25 | 27 → 30 | 2 → 1 | 4 → 1 | 4 | short |
 | 2.2 | 14 → 16 | 18 → 18 | 4 → 4 | 13 → 13 | 2 | short |
-| 2.3 | 24 → 24 | 26 → 26 | 1 → 1 | 5 → 5 | 0 | short |
+| 2.3 | 24 → 26 | 26 → 30 | 1 → 0 | 5 → 1 | 6 | short |
 | 2.4 | 15 → 15 | 18 → 18 | 3 → 3 | 13 → 13 | 0 | short |
 | 3.1 | 22 → 22 | 29 → 29 | 1 → 1 | 3 → 3 | 0 | short |
 | 3.2 | 33 → 33 | 31 → 31 | 2 → 2 | 1 → 1 | 0 | short |
@@ -318,18 +318,22 @@ Added: `cf-919E` (p, T5, exponent-reduction), `cf-359C` (p, T5, fast-power).
 ## 2.3 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 24 | 24 | 20 | 30 |
-| Reserved total | 26 | 26 | 24 | 30 |
+| Practice total | 24 | 26 | 20 | 30 |
+| Reserved total | 26 | 30 | 24 | 30 |
 
-Practice by tier (after): T1 1, T2 6, T3 6, T4 4, T5 7
+Practice by tier (after): T1 1, T2 6, T3 7, T4 5, T5 7
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): ncr-mod-p 8/5, product-sum-rules 5/4, stars-bars 4/3, include-exclude 3/2, bijection-paths 4/3
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): ncr-mod-p 8/5, product-sum-rules 5/4, stars-bars 4/3, include-exclude 5/3, bijection-paths 4/3
 
-Platforms (practice, after): leetcode 9, cses 5, codeforces 4, atcoder 6
+Platforms (practice, after): leetcode 10, cses 6, codeforces 4, atcoder 6
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 1→1/4, lookalike 3→3/4, checkpoint 3→3/3, review 9→9/10, exam 2→2/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 1→4/4, lookalike 3→3/4, checkpoint 3→3/3, review 9→10/10, exam 2→2/2
 
-Patterns below the rule: before include-exclude; after include-exclude. Patterns in no checkpoint/review problem: before none; after none.
+Patterns below the rule: before include-exclude; after none. Patterns in no checkpoint/review problem: before none; after none.
+
+Added: `lc-kth-smallest-amount-with-single-denomination-combination` (p, T4, include-exclude), `lc-find-nth-smallest-integer-with-k-one-bits` (r/review, T4, ncr-mod-p), `lc-direction-assignments-with-exactly-k-visible-people` (r/later_drill, T3, ncr-mod-p), `lc-find-the-n-th-value-after-k-seconds` (r/later_drill, T2, bijection-paths), `lc-count-the-number-of-computer-unlocking-permutations` (r/later_drill, T3, product-sum-rules), `cses-2185` (p, T3, include-exclude).
+
+**Exhaustion record.** One gap remains: look-alikes are 3 of 4. All three have their partner in another topic's bank (Ugly Number III with Minimize the Maximum of Two Arrays in 1.4, Distribute Candies Among Children II with its Easy version in 0.5, ABC 126 C with ABC 154 D in 2.4), so a fourth needs a new nearly identical pair whose two problems need different tools. Searched: the 14 unused free LeetCode combinatorics problems that avoid dp, graph and string tags (all read by title, 6 by statement), the unused CSES Mathematics section, and AtCoder tasks whose statements ask for counts of 'at least one', 'none of' or 'exactly k' (11 candidates, read by title). No such pair was found.
 
 ## 2.4 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

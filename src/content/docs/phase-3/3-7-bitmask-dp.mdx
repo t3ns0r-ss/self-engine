@@ -18,15 +18,99 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. There are $n = 20$ workers and 20 jobs, and $c[i][j]$ is the cost of giving job $j$ to worker $i$. Give every worker exactly one job, as cheaply as possible.
+
+Trying every assignment means trying every permutation of the jobs ([topic 0.5](../../phase-0/0-5-brute-force/)): $20! \approx 2.4 \cdot 10^{18}$ of them. Greedy "each worker takes the cheapest free job" fails, because a cheap choice early can take the only good job of a later worker.
+
+The key idea: assign the workers in order $0, 1, 2, \dots$. After the first $k$ workers have their jobs, the rest of the problem only depends on **which** jobs are taken, not on who took them. A set of jobs is a subset of 20 items, stored as the bits of an integer ([topic 1.7](../../phase-1/1-7-bits/)), so there are only $2^{20} \approx 10^6$ states. Each state tries at most 20 jobs for the next worker: $2 \cdot 10^7$ steps. This is **bitmask DP**: DP whose state is (or contains) a subset of a small set.
+
 ## 2. Prerequisites and scope
 
 ### What you need
 
+- [Topic 1.7](../../phase-1/1-7-bits/), bits: `1 << j`, `mask >> j & 1`, `mask | (1 << j)`, `mask ^ (1 << j)`, and `__builtin_popcount`.
+- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: enumerating all subsets as bitmasks, the method this topic improves on.
+- [Topic 3.2](../3-2-dp-foundations/), DP foundations: states, transitions, filling in an acyclic order (Theorem 3.2.3), memoisation.
+- [Topic 3.5](../3-5-counting-dp/), counting DP: counts modulo a prime.
+
 ### What this topic does not cover
+
+- Sums over all subsets of every mask in $O(2^n n)$ (the zeta transform, "sum over subsets"): not part of this course.
+- DP over a grid row by row where the state is the shape of the boundary (profile DP, "broken profile"), and searches over (vertex, mask) states with a queue: they need graph search (topic 4.1) and are not covered here.
+- Exact algorithms for much larger $n$: assignment with $n = 500$ is a matching problem, outside this course.
 
 ## 3. Definitions
 
+- A **mask** is an integer read as a subset of $\{0, 1, \dots, n-1\}$: element $j$ is in the subset when bit $j$ is 1 (topic 0.5). Example: with $n = 4$, the mask $1011_2 = 11$ is the set $\{0, 1, 3\}$.
+- The **size** of a mask is its number of 1 bits, `__builtin_popcount(mask)`.
+- A **submask** of a mask $m$ is a mask $s$ with $s \subseteq m$, that is `(s & m) == s`. The submasks of $1011_2$ are $1011, 1010, 1001, 1000, 0011, 0010, 0001, 0000$.
+- A **Hamiltonian path** visits every vertex of a graph exactly once. The **travelling salesman problem** (TSP) asks for the shortest closed route that visits every city exactly once and returns to the start.
+
 ## 4. Theory and proofs
+
+### 4.1 Assigning items one at a time
+
+**Theorem 3.7.1 (assignment over masks).** Let $\text{dp}[m]$ be the least cost of giving the first $|m|$ workers (workers $0..|m|-1$) the jobs in the set $m$, one job each. Then $\text{dp}[0] = 0$ and
+$$\text{dp}[m] = \min_{j \in m} \left(\text{dp}[m \setminus \{j\}] + c[|m| - 1][j]\right).$$
+The answer is $\text{dp}[2^n - 1]$. Filling the masks in increasing numeric order is an acyclic order. Time $O(2^n \cdot n)$, memory $O(2^n)$.
+
+*Proof.* In an assignment of the jobs $m$ to the first $|m|$ workers, the last of these workers, number $|m| - 1$, has some job $j \in m$, and the others have exactly the jobs $m \setminus \{j\}$. Their cost does not depend on which order they chose in, so the best for them is $\text{dp}[m \setminus \{j\}]$ (Theorem 3.2.1). Removing a bit makes the integer smaller, so every state is computed after the states it reads (Theorem 3.2.3). $\square$
+
+:::note[This proof needs]
+1. Only the **set** of used items matters for the future, not the order in which they were used or by whom. Which worker comes next follows from the size of the set.
+2. $n$ is small: $2^n \cdot n$ steps, so $n \le 20$ (or 23–25 with a light inner loop).
+:::
+
+Trace for $c = \begin{pmatrix} 4 & 1 & 3 \\ 2 & 0 & 5 \\ 3 & 2 & 2 \end{pmatrix}$ (rows are workers, columns jobs; masks written as job 2, job 1, job 0):
+
+| mask | 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111 |
+|---|---|---|---|---|---|---|---|---|
+| dp | 0 | 4 | 1 | 3 | 3 | 5 | 3 | 5 |
+
+For example $\text{dp}[011]$: worker 1 takes job 0 after worker 0 took job 1 ($1 + 2$), or job 1 after job 0 ($4 + 0$); the minimum is 3. The answer is 5: worker 0 takes job 1, worker 1 job 0, worker 2 job 2.
+
+### 4.2 Visiting every vertex
+
+**Theorem 3.7.2 (paths through every vertex).** In a graph with $n$ vertices and edge lengths $d(v, u)$, let $\text{dp}[m][v]$ be the length of the shortest path that starts at vertex $s$, visits exactly the vertices of $m$, each once, and ends at $v \in m$. Then $\text{dp}[\{s\}][s] = 0$ and
+$$\text{dp}[m][v] = \min_{u \in m \setminus \{v\}} \left(\text{dp}[m \setminus \{v\}][u] + d(u, v)\right).$$
+The shortest Hamiltonian path from $s$ is $\min_v \text{dp}[\text{all}][v]$, and the shortest TSP tour is $\min_v (\text{dp}[\text{all}][v] + d(v, s))$. Time $O(2^n n^2)$, memory $O(2^n n)$. With $+$ in place of $\min$, the table counts the Hamiltonian paths.
+
+*Proof.* A path that visits exactly $m$ and ends at $v$ has a vertex $u$ just before $v$ (if $m \ne \{s\}$); without its last edge it visits exactly $m \setminus \{v\}$ and ends at $u$. Whether it can continue depends only on which vertices are used and where it stands, so the best path for $(m \setminus \{v\}, u)$ can be extended (Theorem 3.2.1). For counting, the last vertex before $v$ splits the paths into disjoint groups (Theorem 3.5.1). $\square$
+
+:::note[This proof needs]
+1. The future depends only on the set of visited vertices and the current vertex, not on the order of the earlier visits.
+2. $2^n n^2$ fits: $n \le 16$–18 for a minimum (about $10^8$ steps at $n = 18$), $n \le 20$ when many transitions can be skipped.
+:::
+
+Example: four cities with distances $d$ (row = from, column = to) $\begin{pmatrix} 0 & 2 & 9 & 10 \\ 1 & 0 & 6 & 4 \\ 15 & 7 & 0 & 8 \\ 6 & 3 & 12 & 0 \end{pmatrix}$. Starting from city 0, the table gives the tour $0 \to 2 \to 3 \to 1 \to 0$ of length $9 + 8 + 3 + 1 = 21$; trying all $3! = 6$ orders confirms it.
+
+### 4.3 Packing into groups
+
+**Theorem 3.7.3 (fewest groups).** Items have weights $w_j \le C$. For a set $m$ of items, let $\text{best}[m]$ be the smallest pair (groups used, total weight in the last group), compared first by the number of groups, over all ways to pack $m$ into groups of total weight at most $C$, filled one after another. Then $\text{best}[0] = (1, 0)$ and
+$$\text{best}[m] = \min_{j \in m} \text{add}(\text{best}[m \setminus \{j\}], w_j), \quad \text{add}((g, f), w) = \begin{cases} (g, f + w) & \text{if } f + w \le C,\\ (g + 1, w) & \text{otherwise.} \end{cases}$$
+The fewest groups for all items is the first number of $\text{best}[\text{all}]$. Time $O(2^n n)$.
+
+*Proof.* Any packing can be built by adding the items one at a time, finishing one group before starting the next; the last item added belongs to the last group. So every packing of $m$ comes from a packing of $m \setminus \{j\}$ for some $j$ followed by adding $j$. It remains to show that keeping only the smallest pair loses nothing: if $(g, f) \le (g', f')$, then $\text{add}((g, f), w) \le \text{add}((g', f'), w)$. If $g = g'$ and $f \le f'$, the item fits in the first case whenever it fits in the second, and the results compare in the same order. If $g < g'$, the first result has at most $g + 1 \le g'$ groups, and when it has exactly $g'$ groups its last group holds only $w$, at most the last group of the second result. $\square$
+
+:::note[This proof needs]
+1. Groups are interchangeable and their order does not matter, so a packing can be built group by group.
+2. For a pair of states with the same set, the one with fewer groups, or the same number and a lighter last group, is never worse for the future (the monotonicity shown in the proof).
+:::
+
+Example: weights $(4, 8, 6, 1)$ and capacity 10. The table gives $\text{best}[\text{all}] = (2, 9)$: two groups, for example $\{4, 6\}$ and then $\{8, 1\}$ with last fill 9.
+
+### 4.4 All submasks
+
+**Theorem 3.7.4 (submask enumeration).** For a mask $m$, the loop `for (s = m; s > 0; s = (s - 1) & m)` visits every non-empty submask of $m$ exactly once, in decreasing order. Running it for every mask $m$ of $n$ bits takes $3^n$ steps in total.
+
+*Proof.* $(s - 1)$ turns the lowest 1 bit of $s$ into 0 and all bits below it into 1; `& m` keeps only the bits allowed by $m$. The result is the largest submask of $m$ that is smaller than $s$: it agrees with $s$ above the lowest 1 bit of $s$, has a 0 there, and has every allowed bit set below. So the loop steps through the submasks in decreasing order without skipping any, and stops after the smallest non-empty one. For the total, a pair (mask $m$, submask $s$) chooses for each of the $n$ elements one of three options: not in $m$, in $m$ but not in $s$, in $s$. That gives $3^n$ pairs. $\square$
+
+:::note[This proof needs]
+1. $3^n$ fits: $3^{15} \approx 1.4 \cdot 10^7$, $3^{18} \approx 3.9 \cdot 10^8$; so $n \le 16$–18.
+2. A typical use: $\text{dp}[m] = \max_{s \subseteq m,\ s \ne \emptyset} (\text{value}[s] + \text{dp}[m \setminus s])$, splitting the set into a first group and the rest. Requiring that $s$ contain the lowest element of $m$ counts each split into groups once.
+:::
+
+Example: the non-empty submasks of $1011_2 = 11$, in the order the loop visits them, are $11, 10, 9, 8, 3, 2, 1$.
 
 ## 5. Recognition Cards
 

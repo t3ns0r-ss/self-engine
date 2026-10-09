@@ -7,7 +7,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 0.1 | 28 → 32 | 27 → 31 | 4 → 1 | 5 → 1 | 8 | short |
 | 0.2 | 22 → 25 | 29 → 31 | 2 → 0 | 2 → 0 | 5 | complete |
 | 0.3 | 40 → 40 | 31 → 33 | 0 → 0 | 2 → 0 | 2 | complete |
-| 0.4 | 23 → 23 | 33 → 34 | 0 → 0 | 2 → 1 | 1 | short |
+| 0.4 | 23 → 23 | 33 → 35 | 0 → 0 | 2 → 0 | 2 | complete |
 | 0.5 | 29 → 29 | 37 → 37 | 1 → 1 | 5 → 5 | 0 | short |
 | 0.6 | 35 → 35 | 34 → 34 | 0 → 0 | 1 → 1 | 0 | short |
 | 1.1 | 23 → 23 | 29 → 29 | 2 → 2 | 3 → 3 | 0 | short |
@@ -89,11 +89,11 @@ Patterns below the rule: before none; after none. Patterns in no checkpoint/revi
 
 Added: `ac-abc241_c` (r/review, T3, grid-processing), `ac-abc218_c` (r/exam, T3, grid-processing).
 
-## 0.4 (status before: short, now: short)
+## 0.4 (status before: short, now: complete)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
 | Practice total | 23 | 23 | 20 | 30 |
-| Reserved total | 33 | 34 | 24 | 30 |
+| Reserved total | 33 | 35 | 24 | 30 |
 
 Practice by tier (after): T1 7, T2 12, T3 3, T4 0, T5 1
 
@@ -101,11 +101,11 @@ Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): p
 
 Platforms (practice, after): codeforces 3, cses 4, atcoder 13, leetcode 3
 
-Reserved by purpose (before → after): drill 8→8/8, later_drill 7→7/4, lookalike 5→5/4, checkpoint 3→3/3, review 9→9/10, exam 1→2/2
+Reserved by purpose (before → after): drill 8→8/8, later_drill 7→7/4, lookalike 5→5/4, checkpoint 3→3/3, review 9→10/10, exam 1→2/2
 
 Patterns below the rule: before none; after none. Patterns in no checkpoint/review problem: before none; after none.
 
-Added: `ac-abc276_d` (r/exam, T3, gcd-lcm).
+Added: `ac-abc276_d` (r/exam, T3, gcd-lcm), `cf-1543A` (r/review, T3, gcd-lcm).
 
 ## 0.5 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

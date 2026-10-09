@@ -18,7 +18,7 @@ Measured on the bank as it stood before any addition (commit bea6b38) and after 
 | 1.6 | 16 → 20 | 21 → 23 | 4 → 4 | 10 → 8 | 6 | short |
 | 1.7 | 22 → 24 | 27 → 31 | 2 → 0 | 4 → 0 | 6 | complete |
 | 2.1 | 24 → 25 | 27 → 30 | 2 → 1 | 4 → 1 | 4 | short |
-| 2.2 | 14 → 14 | 18 → 18 | 4 → 4 | 13 → 13 | 0 | short |
+| 2.2 | 14 → 16 | 18 → 18 | 4 → 4 | 13 → 13 | 2 | short |
 | 2.3 | 24 → 24 | 26 → 26 | 1 → 1 | 5 → 5 | 0 | short |
 | 2.4 | 15 → 15 | 18 → 18 | 3 → 3 | 13 → 13 | 0 | short |
 | 3.1 | 22 → 22 | 29 → 29 | 1 → 1 | 3 → 3 | 0 | short |
@@ -298,18 +298,22 @@ Added: `lc-maximum-element-sum-of-a-complete-subset-of-indices` (p, T4, trial-di
 ## 2.2 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |
 |---|---|---|---|---|
-| Practice total | 14 | 14 | 20 | 30 |
+| Practice total | 14 | 16 | 20 | 30 |
 | Reserved total | 18 | 18 | 24 | 30 |
 
-Practice by tier (after): T1 2, T2 2, T3 3, T4 5, T5 2
+Practice by tier (after): T1 2, T2 2, T3 3, T4 5, T5 4
 
-Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): fast-power 6/4, inverse-prime 4/2, fraction-output 1/1, exponent-reduction 3/2, inverse-general 0/0
+Practice by pattern (after, count / tiers; each needs ≥ 4 over ≥ 3 tiers): fast-power 7/4, inverse-prime 4/2, fraction-output 1/1, exponent-reduction 4/2, inverse-general 0/0
 
-Platforms (practice, after): cses 3, leetcode 4, atcoder 4, codeforces 3
+Platforms (practice, after): cses 3, leetcode 4, atcoder 4, codeforces 5
 
 Reserved by purpose (before → after): drill 2→2/8, later_drill 0→0/4, lookalike 3→3/4, checkpoint 3→3/3, review 9→9/10, exam 1→1/2
 
 Patterns below the rule: before inverse-prime, fraction-output, exponent-reduction, inverse-general; after inverse-prime, fraction-output, exponent-reduction, inverse-general. Patterns in no checkpoint/review problem: before fraction-output, inverse-general; after fraction-output, inverse-general.
+
+Added: `cf-919E` (p, T5, exponent-reduction), `cf-359C` (p, T5, fast-power).
+
+**Exhaustion record.** Still short: practice 16 of 20 and reserved 18 of 24 (drill 2 of 8, later_drill 0 of 4, look-alike 3 of 4, review 9 of 10, exam 1 of 2); `inverse-general` has no problem, `fraction-output` has 1 and `exponent-reduction` and `inverse-prime` lack a third tier. Searched: the Codeforces number-theory/math problems rated 1300–2100 without combinatorics, dp, graph or data-structure tags (103 candidates, read by title), the 32 unused AtCoder tasks that mention a modulus without binomials, probabilities, strings or graphs, and the unused free LeetCode math problems that avoid dp and combinatorics. Almost every modular-arithmetic problem in band also needs binomial coefficients (2.3), expected values (2.4), a DP (Phase 3) or a data structure; the rest are already in other banks. Options for Saurabh (FILL plan Section 4): accept 2.2 as short; lower its minimums (for example practice 16, reserved 18); merge `inverse-general` into `inverse-prime`; or allow Codeforces problems up to 2300 for this topic.
 
 ## 2.3 (status before: short, now: short)
 | Measure | Before | After | Minimum | Target |

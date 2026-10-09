@@ -4,8 +4,8 @@
 - Milestone: M5 (Phase 3: 3.1–3.8, Phase 3 exam)
 - Topic: 3.8
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: 3.7 step 10 self-review
-- Next action: 3.8 step 1 scope
+- Last completed step: 3.8 step 1 scope
+- Next action: 3.8 step 2 theory
 
 ## Gates
 | Gate | Status | Date |
@@ -53,6 +53,7 @@
 | 3.5 | done (on this session's branch) | — |
 | 3.6 | done (on this session's branch) | — |
 | 3.7 | done (on this session's branch) | — |
+| 3.8 | in progress (step 1 done) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -157,10 +158,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.6 (1.7's bit operations on masks; 0.5's subset enumeration as the contrast; 3.2's tables and memoisation; 3.3's knapsack over a mask index; 3.5's counting modulo a prime).
-- New: a set of up to about 20 items stored as the bits of an integer and used as a DP index; assigning items to positions one at a time with dp[mask] (only the set used so far matters); Hamiltonian paths and the travelling salesman problem with dp[mask][last]; packing items into the fewest groups with dp[mask] = (groups, fill of the last group); iterating over all submasks of every mask in O(3^n); masks of small primes as a state. Cards: decided at step 3 from the four bank patterns (assignment-mask, path-mask, group-mask, submask-mask).
-- Forbidden keywords: every keyword of topics 3.8–7.8 (digit dp, breadth-first search, depth-first search, topological sort, segment tree, fenwick tree, …). Sum over subsets (the zeta transform), profile DP over a broken line of a grid, and BFS over (vertex, mask) states are out of scope (named only under "does not cover").
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.6 (bitmask 0.5; DP state, transition, DP, tabulation 3.2; knapsack, subset sum 3.3; LIS, LCS, edit distance, common subsequence, alignment 3.4; monotone path, acyclic order, composition, integer partition, range transition 3.5; interval DP, split point, palindromic subsequence, score difference 3.6).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.7 (3.2's memoisation; 3.5's counting modulo a prime; 1.7's binary digits; 2.3's product rule as the contrast; 3.7's masks of used digits).
+- New: counting the numbers in [0, N] with a digit property by walking N's digits from the most significant, with a "tight" flag; ranges as f(R) − f(L − 1) (also for R and L given as strings); small states such as a digit sum or a remainder; a "started" flag for leading zeros and rules on neighbouring digits; DP values that carry (count, total) to add up a digit-based quantity over a range. Cards: decided at step 3 from the four bank patterns (count-up-to-n, digit-sum-state, neighbour-digits, digit-aggregate). After 3.8: the Phase 3 intro page and the 4-hour Phase 3 exam.
+- Forbidden keywords: every keyword of topics 4.1–7.8 (breadth-first search, depth-first search, topological sort, segment tree, fenwick tree, KMP, automaton, …). Digit DP over an automaton of a pattern (strings containing a word) is out of scope (named only under "does not cover").
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.7 (bitmask 0.5; DP state, transition, DP, tabulation 3.2; knapsack, subset sum 3.3; LIS, LCS, edit distance, common subsequence, alignment 3.4; monotone path, acyclic order, composition, integer partition, range transition 3.5; interval DP, split point, palindromic subsequence, score difference 3.6; bitmask DP, submask, Hamiltonian path, TSP 3.7).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

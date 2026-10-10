@@ -8,20 +8,27 @@ Output: the largest total value.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.5.3, part 2. The largest total value of at most W units, where good i has units[i] units worth value[i] each.
+long long bestUnits(vector<pair<long long, long long>> goods, long long W) {  // (value per unit, units)
+    sort(goods.rbegin(), goods.rend());  // most valuable units first
+    long long total = 0;  // at most (2*10^5 * 10^9 units) * 10^4 = 2*10^18
+    for (auto [v, a] : goods) {
+        long long take = min(a, W);  // as many units of this good as still fit
+        total += take * v;
+        W -= take;
+    }
+    return total;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
     int n;
     long long W;
     cin >> n >> W;
-    vector<pair<long long, long long>> good(n);  // (value per unit, units)
+    vector<pair<long long, long long>> good(n);
     for (auto& [v, a] : good) cin >> a >> v;
-    sort(good.rbegin(), good.rend());  // most valuable units first (Theorem 1.5.3, part 2)
-    long long total = 0;  // at most (2*10^5 * 10^9 units) * 10^4 = 2*10^18
-    for (auto [v, a] : good) {
-        long long take = min(a, W);  // as many units of this good as still fit
-        total += take * v;
-        W -= take;
-    }
-    cout << total << "\n";
+    cout << bestUnits(good, W) << "\n";
 }

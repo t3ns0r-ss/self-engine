@@ -6,6 +6,19 @@ Output: the fewest number of items, or -1.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.5.3, part 1. The fewest items whose sum reaches T: take the largest first (-1 if even all of them fall short).
+int fewestItems(vector<long long> v, long long T) {
+    sort(v.rbegin(), v.rend());
+    long long sum = 0;  // up to 2*10^14
+    for (int k = 0; k < (int)v.size(); k++) {
+        sum += v[k];
+        if (sum >= T) return k + 1;
+    }
+    return -1;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -14,14 +27,5 @@ int main() {
     cin >> n >> T;
     vector<long long> v(n);
     for (auto& x : v) cin >> x;
-    sort(v.rbegin(), v.rend());  // largest first (Theorem 1.5.3, part 1)
-    long long sum = 0;           // up to 2*10^14
-    for (int k = 0; k < n; k++) {
-        sum += v[k];
-        if (sum >= T) {
-            cout << k + 1 << "\n";
-            return 0;
-        }
-    }
-    cout << -1 << "\n";
+    cout << fewestItems(v, T) << "\n";
 }

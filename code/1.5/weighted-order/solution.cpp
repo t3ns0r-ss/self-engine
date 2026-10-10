@@ -7,22 +7,28 @@ Output: the minimum weighted sum.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.5.1. The smallest sum of w_i * (finishing time of job i) over all orders of jobs (t_i, w_i): sort by t / w.
+long long weightedOrder(vector<pair<long long, long long>> job) {
+    // x before y when t_x / w_x < t_y / w_y, compared exactly as t_x * w_y < t_y * w_x
+    sort(job.begin(), job.end(), [](const pair<long long, long long>& x, const pair<long long, long long>& y) {
+        return x.first * y.second < y.first * x.second;
+    });
+    long long time = 0, total = 0;  // total up to about 4*10^18
+    for (auto [t, w] : job) {
+        time += t;
+        total += w * time;
+    }
+    return total;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
     int n;
     cin >> n;
-    vector<pair<long long, long long>> job(n);  // (t, w)
+    vector<pair<long long, long long>> job(n);
     for (auto& [t, w] : job) cin >> t >> w;
-    // x before y when t_x / w_x < t_y / w_y, compared exactly as t_x * w_y < t_y * w_x
-    // (swapping adjacent x, y changes the sum by w_x * t_y - w_y * t_x, Theorem 1.5.1)
-    sort(job.begin(), job.end(), [](const pair<long long, long long>& x, const pair<long long, long long>& y) {
-        return x.first * y.second < y.first * x.second;
-    });
-    long long time = 0, total = 0;  // total up to 10^4 * (2*10^5 * 10^4) * 2*10^5, about 4*10^18
-    for (auto [t, w] : job) {
-        time += t;
-        total += w * time;
-    }
-    cout << total << "\n";
+    cout << weightedOrder(job) << "\n";
 }

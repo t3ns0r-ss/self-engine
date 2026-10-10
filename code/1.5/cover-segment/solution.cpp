@@ -7,6 +7,24 @@ Output: the fewest segments, or -1.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.5.5. The fewest segments that cover [0, L], or -1: among the segments starting inside the covered part,
+// take the one reaching farthest (a larger reach dominates a smaller one).
+int coverSegment(vector<pair<long long, long long>> seg, long long L) {
+    sort(seg.begin(), seg.end());  // by left end
+    long long reach = 0;           // [0, reach] is covered by the segments chosen so far
+    int used = 0, i = 0, n = seg.size();
+    while (reach < L) {
+        long long best = reach;
+        while (i < n && seg[i].first <= reach) best = max(best, seg[i++].second);
+        if (best == reach) break;  // nothing extends the cover: a gap
+        reach = best;
+        used++;
+    }
+    return reach >= L ? used : -1;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -15,17 +33,5 @@ int main() {
     cin >> n >> L;
     vector<pair<long long, long long>> seg(n);
     for (auto& [l, r] : seg) cin >> l >> r;
-    sort(seg.begin(), seg.end());  // by left end
-    long long reach = 0;           // [0, reach] is covered by the segments chosen so far
-    int used = 0, i = 0;
-    while (reach < L) {
-        long long best = reach;
-        // among the segments that start inside the covered part, the one reaching farthest
-        // (Theorem 1.5.5: a larger reach dominates a smaller one)
-        while (i < n && seg[i].first <= reach) best = max(best, seg[i++].second);
-        if (best == reach) break;  // nothing extends the cover: a gap
-        reach = best;
-        used++;
-    }
-    cout << (reach >= L ? used : -1) << "\n";
+    cout << coverSegment(seg, L) << "\n";
 }

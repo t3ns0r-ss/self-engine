@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.6 Lowest common ancestor (pipeline steps 1–7 done); 4.1–4.5 done except 4.5's browser-test confirmation
+- Topic: 4.6 Lowest common ancestor (pipeline steps 1–8 done); 4.1–4.5 done except 4.5's browser-test confirmation
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.6 step 7 (ladder: 17 rungs over the five cards)
-Next action: step 8 (drill 8–12 with at least 3 earlier-topic answers, 2–4 look-alike pairs; reserved cses-1687/1688, cf-1516D, lc-lowest-common-ancestor-of-deepest-leaves)
+Last completed step: topic 4.6 step 8 (drill 9 items, 2 look-alike pairs; bank got 3 new reserved problems: edge-weights I/II, ABC133 F)
+Next action: step 9 (self-test 5–8, checkpoint cf-1702G2 + cses-1136 + ac-abc133_f, 3 review sets, decision map, remove draft)
 
 ## Gates
 | Gate | Status | Date |

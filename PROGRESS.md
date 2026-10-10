@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.5 Trees (pipeline steps 1–5 done); 4.1–4.4 are done except 4.4's browser-test confirmation
+- Topic: 4.5 Trees (pipeline steps 1–6 done); 4.1–4.4 are done except 4.4's browser-test confirmation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.5 step 5 (seven templates, eight bugs)
-- Next action: step 6 (worked examples: ac-abc333_d, ac-abc361_e, ac-abc202_e with code units)
+- Last completed step: topic 4.5 step 6 (three worked examples with code units)
+- Next action: step 7 (problem ladder from the 4.5 bank)
 
 ## Gates
 | Gate | Status | Date |

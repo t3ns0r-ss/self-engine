@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M7 (Phase 5), started on Saurabh's "Continue" after the M6 report (M5, M6 and R1 gates still `waiting`; taken as go-ahead, as before)
-- Topic: 5.1 Sparse table and range minimum queries
+- Topic: none yet (5.1 done; next 5.2 Fenwick tree)
 - Branch: claude/problemset-implementation-yja039
-Last completed step: step 2 (sections 1-4, four theorems with code units, glossary). Bank extension for 5.1, 5.2, 5.4 delegated to research agents.
-Next action: step 3 recognition cards for 5.1
+Last completed step: topic 5.1 step 10 (validate, build and unit tests pass; e2e check pending). Banks of 5.1, 5.2 and 5.4 were extended by research agents (5.3 was complete).
+Next action: topic 5.2. The Phase 5 exam problems are stored in the 5.4 data file: reserved exam problems so far are cf-1904D2 (5.1) and those in the 5.2, 5.3 and 5.4 banks.
 
 ## Gates
 | Gate | Status | Date |
@@ -67,6 +67,7 @@ Next action: step 3 recognition cards for 5.1
 | 4.6 | done (on this session's branch; bank additions to review) | — |
 | 4.7 | done (on this session's branch; bank additions to review) | — |
 | Phase 4 intro and exam | done (on this session's branch) | — |
+| 5.1 | done (on this session's branch; bank additions to review) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -245,3 +246,4 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
   - Bank pages use `/bank/1-3/` (dash, not dot) so `.3` isn't read as a file extension by web servers.
 - Decisions received (2026-10-03): merge 4.2 `smallest-order` into `dependency-order` and 4.6 `path-updates` into `path-aggregate` (done); ARC tasks are allowed in all banks from B5 on (and in 4.7), tiered by judgement from the AtCoder Problems difficulty.
 - Decisions received (2026-10-03, second batch): keep 6.2 `prefix-counts` and 6.3 `xor-count` as separate patterns; accept 5.4 and 6.4 as short banks for now (to be extended later with higher-rated problems); keep 5.1 as a small bank of its own.
+- **Phase 5 bank additions (M7).** Research agents added reserved problems (notes in `notes/bank/5.x.md`; AtCoder statements fetched, LeetCode through its GraphQL endpoint, Codeforces recalled and marked †, titles and ratings checked through the API). 5.1: 22 problems (checkpoint cf-1706E, lc-minimum-stability-factor-of-array; review cf-675E, cf-1454F, lc-find-subarray-with-bitwise-or-closest-to-k, cf-6E, cf-1208E, cf-5C; look-alike pairs lc-maximum-total-subarray-value-ii/i and cf-1611F/cf-1486D; 8 drill problems of which 7 are solved by earlier tools; practice cf-1237D, lc-shortest-subarray-with-or-at-least-k-ii). 5.2: ac-abc402_d/ac-abc405_f (look-alike pair), review cf-1076E and cf-540E. 5.4: 25 problems (checkpoint cf-438D, cf-830C; exam cf-1654E; 8 review; 8 drill, only cf-425D solved by 5.4; look-alike pairs cf-522D/ac-abc242_g and cf-301D/ac-abc293_g; practice ac-abc384_g, ac-abc405_g). Weak points: 5.1 has only one sparse-table drill problem; cf-5C, cf-1208E, cf-6E and lc-shortest-subarray-with-or-at-least-k-ii have a natural earlier-tool solution; 5.4 supply of real sqrt/Mo problems in tiers 3–4 is thin (cf-463E and several others also fit a Fenwick or segment tree); the 5.4 review set has no Mo problem. Please spot-check the Codeforces notes. In 5.1 I moved cf-675E's technique from 3.1 to 3.2 (it is a DP).

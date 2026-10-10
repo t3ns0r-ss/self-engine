@@ -213,7 +213,197 @@ Five templates. Each shows only the function that matters; the program around it
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found.
+
+### Bug: the second block is one place too far left
+
+Template: cheapest day in a range.
+
+```cpp
+return min(st[k][l], st[k][r - (1 << k)]);              // instead of r - (1 << k) + 1
+```
+
+Input: `2 1`, then `1 5`, then the question `2 2`.
+
+Wrong output `1`, correct output `5`. The question asks for the single position 2 (value 5). With $k = 0$ the second block should start at $r - 2^0 + 1 = r$, but the line starts it at $r - 1$, which is position 1 (value 1). A block of length $2^k$ that *ends* at $r$ starts at $r - 2^k + 1$ (Theorem 5.1.2, step 1).
+
+**Fix:** add the $+ 1$.
+
+### Bug: the last block of a level is never built
+
+Template: cheapest day in a range.
+
+```cpp
+for (int i = 0; i + (1 << j) < n; i++)                  // instead of <= n
+```
+
+Input: `2 1`, then `1 5`, then the question `1 2`.
+
+Wrong output `0`, correct output `1`. Level 1 has $n - 2^1 + 1 = 1$ entry, the block $[0, 1]$. The condition `i + 2 < 2` is false for $i = 0$, so the entry stays at its starting value 0 and the query reads it (Theorem 5.1.1, step 5: level $j$ has $n - 2^j + 1$ entries).
+
+**Fix:** use `<=`: a block that ends at position $n - 1$ is allowed.
+
+### Bug: the bound itself is treated as too small
+
+Template: how far can the AND stay above $k$?
+
+```cpp
+if (t.query(l, mid) <= k) hi = mid;                     // instead of < k
+```
+
+Input: `1 1`, then `5`, then the question `1 5`.
+
+Wrong output `-1`, correct output `1`. The task allows an AND that is *at least* $k$, and here the AND of position 1 is exactly 5. The search looks for the first position where the AND is *below* $k$, so the test must be a strict `<`. With `<=` the position 1 is called bad, the step back falls left of $l$, and the answer becomes $-1$ (Theorem 5.1.3: the statement must be exactly the complement of the condition being kept).
+
+**Fix:** use `< k`.
+
+### Bug: the tie rule picks the later tower
+
+Template: the tallest tower in a range.
+
+```cpp
+return a[x] > a[y] || (a[x] == a[y] && x > y) ? x : y;  // instead of x < y
+```
+
+Input: `2 1`, then `1 1`, then the question `1 2`.
+
+Wrong output `2`, correct output `1`. Both towers have height 1 and the task asks for the leftmost. The wrong rule prefers the larger position on a tie. (The rule must also be a *total* order so that the overlap of the two blocks cannot change the winner; both `<` and `>` are, so this bug is only about which one the task wants.)
+
+**Fix:** on equal heights take the smaller position.
+
+### Bug: the search interval is one too short
+
+Template: ranges whose GCD is 1.
+
+```cpp
+int lo = l, hi = n - 1;                                 // instead of hi = n
+```
+
+Input: `1`, then `6`.
+
+Wrong output `1`, correct output `0`. The only range is `[6]` with gcd 6. The search must be able to answer "no position works", which is the value $n$; with `hi = n - 1` the loop does not run when $l = n - 1$, so `lo` stays at $l$ and `n - lo` counts a range that does not have gcd 1 (Theorem 5.1.3, step 5: $\text{hi} = n$ stands for "none").
+
+**Fix:** start with `hi = n`.
+
+### Bug: forgetting that the very first value may already be too small
+
+Template: how far can the AND stay above $k$?
+
+```cpp
+return lo - 1;                                          // instead of: lo - 1 < l ? -1 : lo - 1
+```
+
+Input: `2 1`, then `0 0`, then the question `2 2`.
+
+Wrong output `1`, correct output `-1`. At $l = 2$ (0-based 1) the value $0$ is already below $k = 2$, so the first bad position is $l$ itself and the answer is "none". Stepping back by one gives position 0 (printed as 1), which is *left* of $l$.
+
+**Fix:** if the step back leaves the range (`lo - 1 < l`), print $-1$.
+
+### Bug: the stretch is skipped after its end
+
+Template: the sum of the GCD over all ranges.
+
+```cpp
+r = lo + 1;                                             // instead of r = lo
+```
+
+Input: `2`, then `6 4`.
+
+Wrong output `10`, correct output `12`. From $l = 0$ the gcd is 6 on position 0 and 2 on position 1. The first stretch ends at `lo = 1`, which is the *first position of the next stretch*; jumping to `lo + 1` skips it, losing $\gcd(6, 4) = 2$ (Theorem 5.1.4, step 4).
+
+**Fix:** continue at `lo`.
+
 ## 8. Worked examples
+
+### Example 1: Static Range Minimum Queries
+
+[CSES 1647: Static Range Minimum Queries](https://cses.fi/problemset/task/1647). In short: an array of $n \le 2 \cdot 10^5$ numbers and $q \le 2 \cdot 10^5$ questions $(a, b)$; for each, print the smallest number in positions $a$ to $b$ (1-based, both included).
+
+#### Step 1: Constraints → budget
+
+$n = q = 2 \cdot 10^5$. Scanning each range is up to $4 \cdot 10^{10}$ steps, about 400 seconds. A table with 18 levels has at most $3.6 \cdot 10^6$ entries, built in about as many steps, and each question is two lookups.
+
+#### Step 2: Question form → candidate tools
+
+- Scan the range for every question ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(nq)$.
+- Prefix minimums ([topic 1.2](../../phase-1/1-2-prefix-sums/)): they give the minimum of positions $1$ to $b$ only.
+- A sparse table: the card "Range minimum, maximum, GCD, AND or OR on a fixed array (sparse table)".
+
+#### Step 3: Property check → decision
+
+The statement has no updates: the array is the same for all questions. The operation is the minimum, and $\min(x, x) = x$. Decision: build the table of minimums once and answer each question with two blocks.
+
+#### Step 4: Proof for this problem
+
+By Theorem 5.1.1 the table holds the minimum of every block of length $2^j$. By Theorem 5.1.2 the minimum of $[l, r]$ is the smaller of the two entries for the blocks of length $2^k$, $k = \lfloor \log_2 (r - l + 1) \rfloor$, starting at $l$ and ending at $r$, because the blocks cover the range and the minimum ignores the overlap. The 1-based input positions are shifted by one before the call.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.1/example-1" />
+
+#### Step 6: Alternative approach
+
+Answering the questions offline, sorted by right end, with a monotonic stack ([topic 1.6](../../phase-1/1-6-monotonic-stack/)) and a search on the stack also works in $O(n + q \log n)$ time but needs all questions first. For a problem that only asks about windows of one length, a deque is simpler and uses less memory.
+
+### Example 2: Iva & Pav
+
+[Codeforces 1878E: Iva & Pav](https://codeforces.com/problemset/problem/1878/E). In short: for each of several tests, an array of $n$ numbers (total $n$ up to $2 \cdot 10^5$) and $q$ questions $(l, k)$: find the largest $r \ge l$ such that the bitwise AND of $a_l, \dots, a_r$ is at least $k$, or print $-1$ if $a_l < k$.
+
+#### Step 1: Constraints → budget
+
+Total $n$ and $q$ up to $2 \cdot 10^5$. Computing the AND from $l$ to the right for every question is up to $4 \cdot 10^{10}$ steps. With a table the AND of any range costs $O(1)$, and a binary search over $r$ makes about 18 such queries per question: about $4 \cdot 10^6$ steps in all.
+
+#### Step 2: Question form → candidate tools
+
+- Scan to the right for every question ([topic 0.5](../../phase-0/0-5-brute-force/)): too slow.
+- Binary search on the answer ([topic 1.4](../../phase-1/1-4-binary-search/)) with an $O(n)$ check: still $O(n \log n)$ per question.
+- Binary search along the range with a table: the card "Searching along a growing range (first r where the aggregate passes a bound)".
+
+#### Step 3: Property check → decision
+
+For a fixed $l$ the AND of $a_l..a_r$ only loses bits as $r$ grows, so it never goes up. Then "AND $< k$" is false for small $r$ and true from some $r$ on, which is the shape of Theorem 5.1.3. Decision: build an AND table; for each question find the first $r$ where the AND is below $k$ and answer the position before it.
+
+#### Step 4: Proof for this problem
+
+The AND is associative, commutative and idempotent, so the table of Theorem 5.1.2 gives the AND of any range in $O(1)$. By Theorem 5.1.3 the first $r$ with AND $< k$ is found by binary search in $O(\log n)$ queries. Every $r'$ before it has AND $\ge k$, and every $r'$ from it on has AND $< k$, so the answer is the position just before it, unless that is left of $l$, in which case $a_l < k$ and the answer is $-1$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.1/example-2" />
+
+#### Step 6: Alternative approach
+
+For each bit, store the position of the next element that has that bit switched off. A question then asks, for the bits of $k$, the nearest such position to the right of $l$, and takes the smallest one, which is $O(30)$ per question. It needs no table, but only works for AND, while the table also works for OR, GCD and the minimum.
+
+### Example 3: Find a Value of a Mysterious Function Closest to Target
+
+[LeetCode 1521: Find a Value of a Mysterious Function Closest to Target](https://leetcode.com/problems/find-a-value-of-a-mysterious-function-closest-to-target/). In short: for an array `arr` of up to $10^5$ numbers up to $10^6$, the function of a range $[l, r]$ is the bitwise AND of its elements; find the smallest value of $|\text{AND} - \text{target}|$ over all ranges.
+
+#### Step 1: Constraints → budget
+
+$n = 10^5$ gives $n^2 / 2 = 5 \cdot 10^9$ ranges, too many even with a running AND. Values below $2^{20}$ mean that for a fixed $l$ the AND can lose at most 20 bits, so it has at most 21 different values. With a search of about 17 queries for each stretch, the work is at most $10^5 \cdot 21 \cdot 17 \approx 3.6 \cdot 10^7$.
+
+#### Step 2: Question form → candidate tools
+
+- All ranges with a running AND ([topic 0.5](../../phase-0/0-5-brute-force/)): $5 \cdot 10^9$ steps.
+- Per-bit counting ([topic 1.7](../../phase-1/1-7-bits/)): counts the number of ranges where a bit is set, but the question asks for the closest value, not for a count.
+- The stretches of an AND with a table: the card "Few different values over all starts (counting by GCD, AND or OR)".
+
+#### Step 3: Property check → decision
+
+For fixed $l$, every change of the AND removes at least one bit, so there are at most 21 stretches (Theorem 5.1.4). The question depends only on the *values* of the AND, not on which range gave them. Decision: for each $l$ list the stretches and take the closest value to the target.
+
+#### Step 4: Proof for this problem
+
+Let $V_l$ be the set of values taken by $\text{AND}(l..r)$ over $r \ge l$. The best answer is the minimum over all $l$ of the best value in $V_l$. By Theorem 5.1.4, $V_l$ has at most 21 elements, and the stretch of each value is found by one search, because the AND never goes up (Theorem 5.1.3). Each stretch is visited once, from its first position, so all of $V_l$ is found.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.1/example-3" />
+
+#### Step 6: Alternative approach
+
+Keep, for each right end $r$, the list of different values of $\text{AND}(l..r)$ over $l \le r$ (at most 21 numbers): to move to $r + 1$ AND every value with $a_{r+1}$, add $a_{r+1}$ itself, and remove duplicates. It needs no table and the same bound on the list length (Theorem 5.1.4) makes it $O(n \log A)$.
 
 ## 9. Problem ladder
 

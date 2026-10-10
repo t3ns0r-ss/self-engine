@@ -6,37 +6,38 @@ Output: the count.
 #include <bits/stdc++.h>
 using namespace std;
 
-string digits;              // the decimal digits of the current bound N
-int K;
-long long memo[20][1 << 10][2];
-bool seen[20][1 << 10][2];
-
-// completions of positions pos.. with `used` digits so far; only states with tight == false are stored
-long long go(int pos, int used, bool tight, bool started) {
-    if (pos == (int)digits.size()) return __builtin_popcount(started ? used : 1) <= K;  // 0 itself uses {0}
-    if (!tight && seen[pos][used][started]) return memo[pos][used][started];
-    int hi = tight ? digits[pos] - '0' : 9;
-    long long total = 0;
-    for (int c = 0; c <= hi; c++) {
-        bool nowStarted = started || c != 0;          // leading zeros are not digits (Theorem 3.8.3)
-        int nowUsed = nowStarted ? (used | 1 << c) : used;
-        if (__builtin_popcount(nowUsed) > K) continue;  // already too many: no completion works
-        total += go(pos + 1, nowUsed, tight && c == hi, nowStarted);
-    }
-    if (!tight) seen[pos][used][started] = true, memo[pos][used][started] = total;
-    return total;
+// snippet:begin
+// Theorems 3.8.1 and 3.8.3. The integers in [A, B] that use at most K different digits: the state is the mask of digits used, a
+// started flag stops leading zeros from counting as digits, and F(B) - F(A - 1) gives the range.
+long long fewDistinct(long long A, long long B, int K) {
+    auto countUpTo = [&](long long n) -> long long {
+        if (n < 0) return 0;
+        string digits = to_string(n);
+        int L = digits.size();
+        vector<vector<array<long long, 2>>> memo(L + 1, vector<array<long long, 2>>(1 << 10, {-1, -1}));
+        function<long long(int, int, bool, bool)> go = [&](int pos, int used, bool tight, bool started) -> long long {
+            if (pos == L) return __builtin_popcount(started ? used : 1) <= K;  // 0 itself uses {0}
+            if (!tight && memo[pos][used][started] != -1) return memo[pos][used][started];
+            int hi = tight ? digits[pos] - '0' : 9;
+            long long total = 0;
+            for (int c = 0; c <= hi; c++) {
+                bool nowStarted = started || c != 0;
+                int nowUsed = nowStarted ? (used | 1 << c) : used;
+                if (__builtin_popcount(nowUsed) > K) continue;
+                total += go(pos + 1, nowUsed, tight && c == hi, nowStarted);
+            }
+            if (!tight) memo[pos][used][started] = total;
+            return total;
+        };
+        return go(0, 0, true, false);
+    };
+    return countUpTo(B) - countUpTo(A - 1);
 }
-
-// F(N) = how many x in [0, N] qualify (Theorem 3.8.1)
-long long countUpTo(long long n) {
-    if (n < 0) return 0;
-    digits = to_string(n);
-    memset(seen, 0, sizeof seen);                    // the memo depends on the length of N
-    return go(0, 0, true, false);
-}
+// snippet:end
 
 int main() {
     long long a, b;
-    cin >> a >> b >> K;
-    cout << countUpTo(b) - countUpTo(a - 1) << "\n";  // Theorem 3.8.2
+    int k;
+    cin >> a >> b >> k;
+    cout << fewDistinct(a, b, k) << "\n";
 }

@@ -6,34 +6,37 @@ Output: the sum modulo 10^9 + 7.
 #include <bits/stdc++.h>
 using namespace std;
 
-const long long MOD = 1'000'000'007;
-string digits;
-pair<long long, long long> memo[20];   // (count, total of digit sums) of the completions; only for tight == false
-bool seen[20];
-
-pair<long long, long long> go(int pos, bool tight) {
-    if (pos == (int)digits.size()) return {1, 0};     // one completion (the empty one), digit sum 0
-    if (!tight && seen[pos]) return memo[pos];
-    int hi = tight ? digits[pos] - '0' : 9;
-    long long count = 0, total = 0;
-    for (int c = 0; c <= hi; c++) {
-        auto [n, t] = go(pos + 1, tight && c == hi);
-        count = (count + n) % MOD;
-        total = (total + t + c * n) % MOD;            // digit c adds c to each of the n completions (Theorem 3.8.4)
-    }
-    if (!tight) seen[pos] = true, memo[pos] = {count, total};
-    return {count, total};
+// snippet:begin
+// Theorems 3.8.4 and 3.8.2. Each state returns (count, total of digit sums) of the completions; digit c adds c to each of the n
+// completions. Only states with tight == false are stored.
+long long digitSumTotal(long long A, long long B) {
+    const long long MOD = 1'000'000'007;
+    auto sumUpTo = [&](long long n) -> long long {
+        if (n < 0) return 0;
+        string digits = to_string(n);
+        vector<pair<long long, long long>> memo(digits.size() + 1);
+        vector<bool> seen(digits.size() + 1, false);
+        function<pair<long long, long long>(int, bool)> go = [&](int pos, bool tight) -> pair<long long, long long> {
+            if (pos == (int)digits.size()) return {1, 0};
+            if (!tight && seen[pos]) return memo[pos];
+            int hi = tight ? digits[pos] - '0' : 9;
+            long long count = 0, total = 0;
+            for (int c = 0; c <= hi; c++) {
+                auto [n2, t] = go(pos + 1, tight && c == hi);
+                count = (count + n2) % MOD;
+                total = (total + t + c * n2) % MOD;
+            }
+            if (!tight) seen[pos] = true, memo[pos] = {count, total};
+            return {count, total};
+        };
+        return go(0, true).second;
+    };
+    return (sumUpTo(B) - sumUpTo(A - 1) + MOD) % MOD;
 }
-
-long long sumUpTo(long long n) {
-    if (n < 0) return 0;
-    digits = to_string(n);
-    memset(seen, 0, sizeof seen);
-    return go(0, true).second;
-}
+// snippet:end
 
 int main() {
     long long a, b;
     cin >> a >> b;
-    cout << (sumUpTo(b) - sumUpTo(a - 1) + MOD) % MOD << "\n";  // Theorem 3.8.2 modulo a prime
+    cout << digitSumTotal(a, b) << "\n";
 }

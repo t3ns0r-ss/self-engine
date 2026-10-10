@@ -1,526 +1,818 @@
-# Topic 3.8 data file (PLAN.md Section 5). Problems reference the bank by id.
-id: "3.8"
+# Topic 3.8 data file (PLAN.md Section 5, Revision 2). Problems reference the bank by id.
+id: '3.8'
+uses:
+- topic: '0.3'
+  what: Case analysis and string processing
+- topic: '0.4'
+  what: 'Divisibility and remainders: counting multiples by division'
+- topic: '0.5'
+  what: 'Brute force: checking every number, the reference solutions in the tests'
+- topic: '0.6'
+  what: Maps and sets
+- topic: '1.1'
+  what: Sorting
+- topic: '1.2'
+  what: Prefix sums
+- topic: '1.4'
+  what: Binary search
+- topic: '1.5'
+  what: Greedy choices
+- topic: '1.7'
+  what: 'Bits: the same walk works on binary digits'
+- topic: '2.3'
+  what: 'Combinatorics: counting numbers with free digits by a product, the contrast for this topic'
+- topic: '3.1'
+  what: 'Backtracking: listing numbers digit by digit'
+- topic: '3.2'
+  what: 'DP foundations: states, memoisation (Theorem 3.2.4), small facts added to the state (Theorem
+    3.2.5)'
+- topic: '3.3'
+  what: Knapsack and subset sums
+- topic: '3.4'
+  what: Sequence DP
+- topic: '3.5'
+  what: 'Counting DP: counting by a small state (Theorem 3.5.2) and differences modulo a prime (Theorem
+    3.5.3)'
+- topic: '3.6'
+  what: Interval DP
+- topic: '3.7'
+  what: 'Bitmask DP: the mask of digits used'
+theorems:
+- id: 3.8.1
+  title: Counting numbers up to N
+  plain_words: Write every number with as many digits as N and compare it with N from the left. Up to
+    the first digit where the number is smaller, it copies N, and after that every digit is free. So a
+    walk along N's digits that remembers a tight flag and a small summary counts them all.
+  code: 3.8/thm-1
+- id: 3.8.2
+  title: Ranges
+  plain_words: The count in a range [A, B] is the count up to B minus the count up to A − 1. If A is too
+    long to subtract one from, subtract the count up to A and add back one when A itself has the property.
+  code: 3.8/thm-2
+- id: 3.8.3
+  title: The started flag
+  plain_words: Leading zeros are not digits of the number. Keep a flag that is false while only zeros
+    have been read, and leave the rest of the state untouched until the first non-zero digit. Then rules
+    about neighbouring digits see the number without padding.
+  code: 3.8/thm-3
+- id: 3.8.4
+  title: Count and total together
+  plain_words: To add up a digit-based quantity over a range, let each state return a pair, the number
+    of completions and their total. Putting a digit in front adds its contribution once for every completion.
+  code: 3.8/thm-4
 cards:
-  - id: count-up-to-n
-    name: Counting numbers up to N
-    decisive_property: Count the integers in [0, N] or [L, R] (N up to 10^18, or a string of thousands
-      of digits) with a property of their digits that can be checked left to right with a small state;
-      the digits of N limit only the prefix that still equals N's prefix, so a tight flag plus the state
-      is enough.
-    from_theorem: Theorem 3.8.1
-    how_to_test: Write the property as a left-to-right check and list what it must remember; check that
-      this state is small; turn [L, R] into F(R) − F(L − 1).
-    weak_signals:
-      - Count numbers in [L, R] up to 10^18 whose digits satisfy a rule
-      - N is given as a string with up to 10^4 digits
-      - '"At most K non-zero digits", "digits from a given set", "all digits different"'
-    kill_signals:
-      - 'No upper bound N, only "numbers with exactly n digits": every digit is free, so a product or
-        a 3.5 table counts them'
-      - 'The range is small (up to about 10^7): check every number'
-    lookalikes:
-      - description: Count the numbers with all digits different among 0 ≤ x < 10^n (n ≤ 8)
-        needs: product-sum-rules (2.3)
-        flipping_difference: With the bound 10^n, every length is complete and every digit free, so the
-          count per length is 9 · 9 · 8 · …, a product; with an arbitrary bound N the prefix of N limits
-          the digits and the tight walk is needed.
-    complexity: O(L · 2 · states · 10) for L digits.
-  - id: digit-sum-state
-    name: Digit sums and remainders
-    decisive_property: The property is about the digit sum or a remainder of the number (or of its digit
-      sum) modulo a small k, so the state is (position, tight, sum or remainder) with few values; when
-      the modulus depends on the target digit sum, run the walk once for each possible digit sum.
-    from_theorem: Theorem 3.8.1
-    how_to_test: 'Check that the sum or remainder after each digit follows from the old one and the digit
-      (remainder r becomes (10·r + c) mod k); count the states: L · sums · remainders.'
-    weak_signals:
-      - Numbers up to N whose digit sum is divisible by D, or equals S
-      - Numbers divisible by their own digit sum
-      - Digit sums within a range [a, b]
-    kill_signals:
-      - 'Only "x divisible by k" with no digit condition: count the multiples, ⌊R/k⌋ − ⌊(L − 1)/k⌋'
-      - The digit sum of one given number, not a count over a range
-    lookalikes:
-      - description: Count the multiples of k in [L, R] with L, R up to 10^18
-        needs: divisibility (0.4)
-        flipping_difference: Divisibility of the value alone is counted by division, ⌊R/k⌋ − ⌊(L − 1)/k⌋;
-          the digit walk is needed when the condition looks at the digits (their sum, or the number divided
-          by its digit sum).
-    complexity: O(L · 2 · S · K · 10) for S sums and K remainders.
-  - id: neighbour-digits
-    name: Rules on neighbouring digits
-    decisive_property: A rule links each digit to the previous one (adjacent digits differ, differ by
-      exactly 1, never two 1s in a row, non-decreasing), so the state holds the previous digit and a started
-      flag, because leading zeros are not digits of the number.
-    from_theorem: Theorem 3.8.3
-    how_to_test: Check that the rule only compares consecutive digits; decide what happens before the
-      first non-zero digit (the started flag); test with numbers of fewer digits than N.
-    weak_signals:
-      - Count numbers in a range with no two equal adjacent digits
-      - Stepping numbers (neighbours differ by 1); binary numbers without two consecutive 1s
-      - Digits that never decrease, or never repeat in a row
-    kill_signals:
-      - 'All numbers with the rule are to be listed and there are few (n ≤ 9 digits, tight rules): generate
-        them (3.1)'
-      - 'The rule concerns non-adjacent digits or the whole multiset: a mask or counts, not the previous
-        digit'
-    lookalikes:
-      - description: List all n-digit numbers (n ≤ 9) in which every two neighbouring digits differ by
-          exactly k
-        needs: generate-all (3.1)
-        flipping_difference: The answer is the list itself, and each digit has at most two choices, so
-          building the numbers digit by digit is fast; the digit DP counts them up to an arbitrary N without
-          listing.
-    complexity: O(L · 2 · 2 · 10 · 10).
-  - id: digit-aggregate
-    name: Totals over a range
-    decisive_property: The question adds up a digit-based quantity over all numbers in a range (the digit
-      sums, how often a digit appears, the values with a property), which splits as "this digit" plus
-      "the rest", so each state returns a pair (count, total).
-    from_theorem: Theorem 3.8.4
-    how_to_test: Check that the quantity of a number is a sum over its digit positions, or a value built
-      digit by digit; then the total of a state is the totals of its continuations plus (contribution
-      of the digit) · (their count).
-    weak_signals:
-      - The total number of 1s written from 1 to N
-      - The sum of the digit sums of all numbers in [L, R]
-      - The sum of all numbers up to N with a digit property
-    kill_signals:
-      - 'The quantity depends only on the number of digits of x: add it up per digit length with arithmetic
-        series'
-      - 'A count is asked, not a sum: a single number per state is enough'
-    lookalikes:
-      - description: Sum over x ≤ N (N < 10^18) of f(x), where f(x) counts the numbers up to x with as
-          many digits as x
-        needs: mod-arithmetic-basic (0.4)
-        flipping_difference: f depends only on the length of x and its position in that length's block,
-          so each block is an arithmetic series computed modulo p; a digit DP is needed when the quantity
-          depends on the individual digits.
-    complexity: Same states as counting, each returning two numbers.
+- id: count-up-to-n
+  name: Counting numbers up to N
+  decisive_property: Count the integers in [0, N] or [L, R] (N up to 10^18, or a string of thousands of
+    digits) with a property of their digits that can be checked left to right with a small state; the
+    digits of N limit only the prefix that still equals N's prefix, so a tight flag plus the state is
+    enough.
+  from_theorem: 3.8.1
+  how_to_test: Write the property as a left-to-right check and list what it must remember; check that
+    this state is small; turn [L, R] into F(R) − F(L − 1).
+  constraint_shapes:
+  - 'N up to 10^18: checking every number is 10^18, while 19 positions × 2 flags × a small state × 10
+    digits is a few thousand steps.'
+  weak_signals:
+  - form: Count numbers in [L, R] whose digits satisfy a rule
+    shape: Up to 10^18
+  - form: N is given as a string
+    shape: Up to 10^4 digits
+  - form: '"At most K non-zero digits", "digits from a given set", "all digits different"'
+    shape: A mask or counter of at most 2^10 values
+  kill_signals:
+  - 'Strings of digits with leading zeros allowed and no bound: the 4-digit PINs with all digits different
+    number 5040 (10 · 9 · 8 · 7), while the numbers up to 9999 with all digits different number 5275.'
+  - 'A sum or total over the range is asked, not a count: use pairs of (count, total) per state.'
+  in_action:
+    statement: Count the integers between 1 and K whose decimal digit sum is a multiple of D, modulo 10^9
+      + 7.
+    constraints: K < 10^10000 given as a string, D ≤ 100.
+    budget: Checking every number is impossible. The walk has 10^4 positions × 2 flags × 100 remainders
+      × 10 digits = 2·10^9, or 10^4 · 100 · 10 = 10^7 with the free and tight parts kept separately.
+    candidates:
+    - tool: Check every number up to K
+      verdict: rejected
+      because: K has 10000 digits.
+    - tool: Walk along K's digits with a tight flag and the digit sum mod D
+      verdict: chosen
+      because: Before the first smaller digit the number copies K, and after it every digit is free, so
+        only the flag and the remainder matter.
+    property_check: The digit sum mod D is a left-to-right state, the tight flag covers the bound (Theorem
+      3.8.1).
+    decision: free[r] counts the prefixes below K with digit sum r mod D; at each digit, extend free prefixes
+      by any digit and turn the tight prefix free by a smaller digit; subtract 1 for the number 0.
+  examples:
+    positive:
+    - inline:
+        input: The numbers in [0, 25] whose digit sum is a multiple of 4
+        answer: '6'
+        why: The numbers 0, 4, 8, 13, 17, 22; by first digit the counts are 3, 2, 1.
+    - worked_example: ac-dp_s
+      why: K has up to 10000 digits and the property is the digit sum modulo D, a state with D values.
+    negative:
+    - inline:
+        input: The 4-digit PINs 0000 to 9999 with all digits different (leading zeros are digits), computed
+          as the numbers up to 9999 with all digits different
+        answer: '5040'
+        method_gives: '5275'
+        why: The walk drops leading zeros, so it counts numbers of fewer than 4 digits as well; PINs have
+          a fixed length and every digit is free, so the count is the product 10 · 9 · 8 · 7.
+      correct_tool:
+        topic: '2.3'
+        card: product-sum-rules
+    - problem: lc-number-of-digit-one
+      why: The question adds up how many times the digit 1 is written, a total, not a count of numbers.
+      correct_tool:
+        topic: '3.8'
+        card: digit-aggregate
+  lookalikes:
+  - description: Count the numbers with all digits different among 0 ≤ x < 10^n (n ≤ 8)
+    tool:
+      topic: '2.3'
+      card: product-sum-rules
+    flipping_difference: With the bound 10^n, every length is complete and every digit free, so the count
+      per length is 9 · 9 · 8 · …, a product; with an arbitrary bound N the prefix of N limits the digits
+      and the tight walk is needed.
+  complexity: O(L · 2 · states · 10) for L digits.
+- id: digit-sum-state
+  name: Digit sums and remainders
+  decisive_property: The property is about the digit sum or a remainder of the number (or of its digit
+    sum) modulo a small k, so the state is (position, tight, sum or remainder) with few values; when the
+    modulus depends on the target digit sum, run the walk once for each possible digit sum.
+  from_theorem: 3.8.1
+  how_to_test: Check that the sum or remainder after each digit follows from the old one and the digit
+    (remainder r becomes (10·r + c) mod k); count the states, L · sums · remainders.
+  constraint_shapes:
+  - 'N up to 10^18 with digit sums up to 162: for each target sum s, 19 positions × 163 sums × s remainders
+    × 10 digits, a few million steps for all s.'
+  weak_signals:
+  - form: Numbers up to N whose digit sum is divisible by D, or equals S
+    shape: N up to 10^18 or a string
+  - form: Numbers divisible by their own digit sum
+    shape: N up to 10^12 or more
+  - form: Digit sums within a range [a, b]
+    shape: Sums up to 162
+  kill_signals:
+  - 'Only "x divisible by k" with no digit condition: the multiples of 4 in [0, 100] number 26 by division,
+    while the walk on the digit sum modulo 4 counts 25.'
+  - 'The question adds up a quantity over the range: the sum of digit sums needs a pair (count, total)
+    per state.'
+  in_action:
+    statement: Count the integers in [1, N] that are divisible by their own digit sum.
+    constraints: N ≤ 10^18.
+    budget: Checking every number is 10^18. For each target digit sum s ≤ 162 the walk has 19 · 163 ·
+      s states with 10 digits, a few million steps in all.
+    candidates:
+    - tool: Check every number
+      verdict: rejected
+      because: 10^18 numbers.
+    - tool: A walk for each target sum s, with the state (digit sum so far, value mod s)
+      verdict: chosen
+      because: The modulus is the digit sum itself, which is unknown until the end; fixing the target
+        sum makes it a constant.
+    property_check: The sum after each digit follows from the old one, and the remainder becomes (10 ·
+      r + c) mod s (Theorem 3.8.1).
+    decision: 'For s = 1..162: count the numbers ≤ N with digit sum exactly s and value ≡ 0 mod s; add
+      the counts.'
+  examples:
+    positive:
+    - inline:
+        input: The numbers in [1, 100] divisible by their own digit sum
+        answer: '33'
+        why: For each target sum s from 1 to 27 the walk counts the numbers with digit sum s and value
+          divisible by s; the counts add up to 33.
+    - worked_example: ac-dp_s
+      why: The digit sum modulo D is the state of the walk along K's digits.
+    negative:
+    - inline:
+        input: The multiples of 4 in [0, 100], counted as the numbers whose digit sum is divisible by
+          4
+        answer: '26'
+        method_gives: '25'
+        why: Divisibility of the value alone is counted by division, ⌊100/4⌋ + 1 = 26; the digit sum of
+          x is not its remainder modulo 4.
+      correct_tool:
+        topic: '0.4'
+        card: divisibility
+    - problem: lc-number-of-digit-one
+      why: A total (how many digits 1 are written) is asked, not a count of numbers with a digit-sum property.
+      correct_tool:
+        topic: '3.8'
+        card: digit-aggregate
+  lookalikes:
+  - description: Count the multiples of k in [L, R] with L, R up to 10^18
+    tool:
+      topic: '0.4'
+      card: divisibility
+    flipping_difference: Divisibility of the value alone is counted by division, ⌊R/k⌋ − ⌊(L − 1)/k⌋;
+      the digit walk is needed when the condition looks at the digits (their sum, or the number divided
+      by its digit sum).
+  complexity: O(L · 2 · S · K · 10) for S sums and K remainders.
+- id: neighbour-digits
+  name: Rules on neighbouring digits
+  decisive_property: A rule links each digit to the previous one (adjacent digits differ, differ by exactly
+    1, never two 1s in a row, non-decreasing), so the state holds the previous digit and a started flag,
+    because leading zeros are not digits of the number.
+  from_theorem: 3.8.3
+  how_to_test: Check that the rule only compares consecutive digits; decide what happens before the first
+    non-zero digit (the started flag); test with numbers of fewer digits than N.
+  constraint_shapes:
+  - 'N up to 10^18: the state is 11 previous digits × 2 flags, 19 positions × 22 states × 10 digits, a
+    few thousand steps.'
+  weak_signals:
+  - form: Count numbers in a range with no two equal adjacent digits
+    shape: Up to 10^18
+  - form: Stepping numbers (neighbours differ by 1); binary numbers without two consecutive 1s
+    shape: Up to 10^18
+  - form: Digits that never decrease, or never repeat in a row
+    shape: Up to 10^18
+  kill_signals:
+  - 'The padded string is used without a started flag: the numbers in 1..100 with all neighbouring digits
+    different are 90, but the padded strings 001..009 are rejected because of "00" and the count drops
+    to 81.'
+  - 'The rule concerns non-adjacent digits or the whole multiset: a mask or counts, not the previous digit.'
+  in_action:
+    statement: Count the integers x in [A, B] in which every two neighbouring digits differ by at least
+      2.
+    constraints: A, B ≤ 10^18.
+    budget: 'Checking every number is 10^18. The walk has 19 · 11 · 2 states with 10 digits each: about
+      4000 steps.'
+    candidates:
+    - tool: Check every number
+      verdict: rejected
+      because: 10^18 numbers.
+    - tool: Walk with the previous digit and a started flag
+      verdict: chosen
+      because: The rule compares each digit only with the previous one, and leading zeros must not count
+        as digits.
+    property_check: The rule only compares consecutive digits, and the started flag keeps padding out
+      of the rule (Theorem 3.8.3).
+    decision: 'go(pos, prev, tight, started): a zero before the first non-zero digit keeps started false;
+      otherwise require |c − prev| ≥ 2 when prev exists; answer F(B) − F(A − 1).'
+  examples:
+    positive:
+    - inline:
+        input: The numbers in [1, 100] with all neighbouring digits different
+        answer: '90'
+        why: 9 one-digit numbers and 81 two-digit numbers; 100 fails because of 00.
+    - inline:
+        input: The numbers in [1, 100] with neighbouring digits differing by at least 2
+        answer: '73'
+        why: The walk with the previous digit and the started flag counts them; 9 one-digit numbers and
+          64 two-digit numbers.
+    negative:
+    - inline:
+        input: The numbers in [1, 100] with all neighbouring digits different, without a started flag
+        answer: '90'
+        method_gives: '81'
+        why: The padded strings 001 to 009 contain 00 and are rejected, although 1 to 9 have no neighbours.
+      correct_tool:
+        topic: '3.8'
+        card: neighbour-digits
+    - problem: lc-combination-sum-ii
+      why: The answer is the list itself and there are few outputs, so building them one by one is enough.
+      correct_tool:
+        topic: '3.1'
+        card: generate-all
+  lookalikes:
+  - description: List all n-digit numbers (n ≤ 9) in which every two neighbouring digits differ by exactly
+      k
+    tool:
+      topic: '3.1'
+      card: generate-all
+    flipping_difference: The answer is the list itself, and each digit has at most two choices, so building
+      the numbers digit by digit is fast; the digit DP counts them up to an arbitrary N without listing.
+  complexity: O(L · 2 · 2 · 10 · 10).
+- id: digit-aggregate
+  name: Totals over a range
+  decisive_property: The question adds up a digit-based quantity over all numbers in a range (the digit
+    sums, how often a digit appears, the values with a property), which splits as "this digit" plus "the
+    rest", so each state returns a pair (count, total).
+  from_theorem: 3.8.4
+  how_to_test: Check that the quantity of a number is a sum over its digit positions, or a value built
+    digit by digit; then the total of a state is the totals of its continuations plus (contribution of
+    the digit) · (their count).
+  constraint_shapes:
+  - 'N up to 10^18: listing the numbers is impossible; the states are 19 positions × 2 flags, each returning
+    two numbers.'
+  weak_signals:
+  - form: The total number of 1s written from 1 to N
+    shape: N up to 10^9 or 10^18
+  - form: The sum of the digit sums of all numbers in [L, R]
+    shape: Up to 10^18
+  - form: The sum of all numbers up to N with a digit property
+    shape: Up to 10^18, modulo a prime
+  kill_signals:
+  - 'The contribution of a digit is forgotten to be weighted: the sum of the numbers 0..25 is 325, but
+    adding c in place of c · 10^k per completion gives 127.'
+  - 'A count is asked, not a sum: a single number per state is enough.'
+  in_action:
+    statement: Count all the digits 1 written in the integers 0..n.
+    constraints: n ≤ 10^9.
+    budget: Writing every number is 10^9 numbers of 10 digits. The walk has 10 positions × 2 flags, each
+      state returning (count, ones).
+    candidates:
+    - tool: Count the 1s in every number
+      verdict: rejected
+      because: 10^10 digit operations for n = 10^9.
+    - tool: Walk returning (completions, ones in them)
+      verdict: chosen
+      because: A 1 at this position appears once in each of the n completions, and the rest is already
+        in the total.
+    property_check: The quantity is additive over digit positions (Theorem 3.8.4).
+    decision: 'go(pos, tight) returns (n, T); for each digit c add n to the count and T + (c = 1 ? n :
+      0) to the total.'
+  examples:
+    positive:
+    - inline:
+        input: The sum of the digit sums of the numbers 0..25
+        answer: '127'
+        why: 'By first digit: 0 gives (10, 45), 1 gives (10, 55), 2 with a second digit 0 to 5 gives (6,
+          27); 45 + 55 + 27 = 127.'
+    - worked_example: lc-number-of-digit-one
+      why: Each 1 written at a position adds to the total once for every completion of the digits after
+        it.
+    negative:
+    - inline:
+        input: The sum of the numbers 0..25, adding the digit c (not c · 10^k) to each completion
+        answer: '325'
+        method_gives: '127'
+        why: A digit at a position of weight 10^k contributes c · 10^k to each completion, not c; the
+          version with c computes the sum of the digit sums.
+      correct_tool:
+        topic: '3.8'
+        card: digit-aggregate
+    - problem: ac-dp_s
+      why: Only the count of numbers with a digit-sum property is asked, so a single number per state
+        is enough.
+      correct_tool:
+        topic: '3.8'
+        card: count-up-to-n
+  lookalikes:
+  - description: Sum over x ≤ N (N < 10^18) of f(x), where f(x) counts the numbers up to x with as many
+      digits as x
+    tool:
+      topic: '0.4'
+      card: mod-arithmetic-basic
+    flipping_difference: f depends only on the length of x and its position in that length's block, so
+      each block is an arithmetic series computed modulo p; a digit DP is needed when the quantity depends
+      on the individual digits.
+  complexity: Same states as counting, each returning two numbers.
 problems:
-  - id: ac-dp_s
-    role: worked_example
-    summary: Count the integers from 1 to K (K up to 10^10000) whose digit sum is a multiple of D ≤ 100,
-      modulo 10^9 + 7.
-  - id: lc-number-of-digit-one
-    role: worked_example
-    summary: Count all the digits 1 written in the integers 0..n, n ≤ 10^9.
-  - id: lc-count-integers-with-even-digit-sum
-    role: ladder
-    card: count-up-to-n
-    rung: 1
-    twist: Base case of the card
-    summary: Count the positive integers up to num ≤ 1000 whose digit sum is even.
-    hints:
-      - A loop over 1..num works here. Which state would a digit walk need for a bound of 10^18?
-      - The parity of the digit sum so far, plus the tight flag (Theorem 3.8.1).
-      - Write go(pos, parity, tight); accept parity 0; subtract 1 for the number 0. Check it against the
-        loop.
-  - id: ac-abc387_c
-    role: ladder
-    card: count-up-to-n
-    rung: 2
-    twist: The rule depends on the first digit, which becomes part of the state.
-    summary: Count the integers in [L, R] (10 ≤ L ≤ R ≤ 10^18) whose first digit is strictly larger than
-      every other digit.
-    hints:
-      - After the first digit t is chosen, how many choices does each later digit have?
-      - t choices (0..t − 1) when free; so the state is the first digit, plus the tight flag and whether
-        the number has started.
-      - 'F(x) by the walk with state (top digit, started); answer F(R) − F(L − 1). Numbers shorter than
-        x: Σ over t of t^(length − 1).'
-  - id: ac-abc208_e
-    role: ladder
-    card: count-up-to-n
-    rung: 3
-    twist: The state (the product of the digits) looks huge but takes few values, stored in a map.
-    summary: Count the integers from 1 to N ≤ 10^18 whose digit product is at most K ≤ 10^9.
-    hints:
-      - Which products of digits 1–9 can occur after 18 digits?
-      - 'Only numbers 2^a 3^b 5^c 7^d with small exponents: a few thousand values. A 0 digit (after the
-        start) makes the product 0.'
-      - go(pos, product, tight, started) with a map per (pos, started) for the free states; cap nothing,
-        accept product ≤ K; a zero after the start always qualifies.
-  - id: lc-count-of-integers
-    role: ladder
-    card: digit-sum-state
-    rung: 1
-    twist: Base case of the card
-    summary: Count the integers between two decimal strings (up to 22 digits) whose digit sum lies in
-      [min_sum, max_sum ≤ 400], modulo 10^9 + 7.
-    hints:
-      - The digit sum is at most 9 · 22. What is the state?
-      - (position, digit sum so far, tight); accept sums in the range.
-      - F(num2) − F(num1) + [num1 qualifies], so the string num1 never needs decrementing (Theorem 3.8.2).
-  - id: cf-628D
-    role: ladder
-    card: digit-sum-state
-    rung: 2
-    twist: The position decides which digits are allowed, and the remainder of the value is the state.
-    summary: Count the multiples of m ≤ 2000 in [a, b] (equal lengths, up to 2000 digits) that have the
-      digit d exactly at the even positions, modulo 10^9 + 7.
-    hints:
-      - Since a and b have the same length, what does the position tell you about the next digit?
-      - At an even position the digit must be d; at an odd position it must not be d. The value modulo
-        m is the only other state.
-      - go(pos, value mod m, tight) with these digit rules; answer F(b) − F(a) + [a qualifies].
-  - id: ac-abc317_f
-    role: ladder
-    card: digit-sum-state
-    rung: 3
-    twist: Three numbers walked at once in binary, each with its own remainder and tight flag.
-    summary: Count the triples 1 ≤ X1, X2, X3 ≤ N (N ≤ 10^18) with Xi a multiple of A_i (A_i ≤ 10) and
-      X1 XOR X2 XOR X3 = 0, modulo 998244353.
-    hints:
-      - Write the three numbers in binary, one bit of each at a time. What must hold for the three bits
-        at a position?
-      - 'Their XOR is 0: the choices are 000, 011, 101, 110. Each number keeps its own remainder mod A_i
-        and its own tight flag.'
-      - State (r1, r2, r3, t1, t2, t3), 10³ · 8 values, over 60 bits; subtract the triples where some
-        X_i = 0 (the walk includes 0).
-  - id: cses-2220
-    role: ladder
-    card: neighbour-digits
-    rung: 1
-    twist: Base case of the card
-    summary: Count the integers in [a, b] (b ≤ 10^18) with no two equal neighbouring digits.
-    hints:
-      - What must the walk remember to check the next digit, and what about leading zeros?
-      - The previous digit, and a started flag so that padding zeros do not count as equal neighbours
-        (Theorem 3.8.3).
-      - F(b) − F(a − 1) with state (previous digit, started, tight); handle a = 0.
-  - id: lc-non-negative-integers-without-consecutive-ones
-    role: ladder
-    card: neighbour-digits
-    rung: 2
-    twist: Binary digits.
-    summary: Count the integers in [0, n] (n ≤ 10^9) whose binary form has no two consecutive 1s.
-    hints:
-      - Walk the bits of n. When n has a 1 and you put a 0 there, how many ways are there to finish?
-      - 'The free strings of the remaining length without "11": a Fibonacci number.'
-      - At each 1 bit of n add fib[remaining]; stop if n itself has two adjacent 1s; add 1 for n if it
-        is valid.
-  - id: lc-count-stepping-numbers-in-range
-    role: ladder
-    card: neighbour-digits
-    rung: 3
-    twist: Bounds given as 100-digit strings, and a stricter neighbour rule.
-    summary: Count the integers in [low, high] (up to 100 digits) whose neighbouring digits differ by
-      exactly 1, modulo 10^9 + 7.
-    hints:
-      - Which state and which trick for low as a string?
-      - (previous digit, started, tight); and F(high) − F(low) + [low qualifies] avoids decrementing low.
-      - After the start, the next digit is previous ± 1 within 0..9; before it, zeros are padding.
-  - id: cf-1073E
-    role: ladder
-    card: digit-aggregate
-    rung: 1
-    twist: Base case of the card
-    summary: The sum of all integers in [l, r] (r ≤ 10^18) that use at most k ≤ 10 different digits, modulo
-      998244353.
-    hints:
-      - What must a state return so that the sum of the values can be built?
-      - '(count, sum): putting digit d at weight w adds d · w · count to the sum (Theorem 3.8.4).'
-      - State (mask of digits, started, tight); accept masks with at most k bits; answer F(r) − F(l −
-        1) modulo p.
-  - id: ac-abc235_f
-    role: ladder
-    card: digit-aggregate
-    rung: 2
-    twist: Bound with 10^4 digits; the value is built by sum · 10 + d · count from the left.
-    summary: The sum of all integers from 1 to N (N up to 10^4 digits) that contain every digit of a given
-      set, modulo 998244353.
-    hints:
-      - With the digits read from the left, how does appending d change the value of a prefix?
-      - 'It becomes 10 · value + d, so for a group of prefixes: new sum = 10 · sum + d · count.'
-      - Tabulate over positions with state (mask of digits seen, started) for the free part and the single
-        tight prefix; accept masks containing the required set.
-  - id: ac-abc295_f
-    role: ladder
-    card: digit-aggregate
-    rung: 3
-    twist: Count occurrences of a digit string, placed at each possible position.
-    summary: For up to 1000 queries (S of ≤ 16 digits, L ≤ R < 10^16), add up over k in [L, R] the number
-      of times S occurs in the decimal form of k.
-    hints:
-      - Instead of walking each number, fix where S occurs. What remains free?
-      - The digits to the left and right of the fixed block; for each position, count the numbers ≤ N
-        with that block equal to S (a prefix that must not start with 0 if S does).
-      - g(N) = Σ over positions of the count with the block fixed, comparing with N's digits; answer g(R)
-        − g(L − 1).
-  - id: lc-rotated-digits
-    role: drill
-    summary: Count the integers in [1, n] (n ≤ 10^4) that become a different valid number when every digit
-      is rotated by 180° (0, 1, 8 stay; 2↔5, 6↔9; 3, 4, 7 are invalid).
-  - id: lc-numbers-at-most-n-given-digit-set
-    role: drill
-    summary: Count the positive integers up to n ≤ 10^9 that can be written using only digits from a given
-      set (digits may repeat).
-  - id: lc-super-palindromes
-    role: drill
-    summary: Count the integers in [L, R] (R < 10^18) that are palindromes and squares of palindromes.
-  - id: lc-sequential-digits
-    role: drill
-    summary: List the integers in [low, high] (≤ 10^9) whose digits each exceed the previous one by exactly
-      1.
-  - id: lc-numbers-with-same-consecutive-differences
-    role: drill
-    summary: List all n-digit numbers (n ≤ 9, no leading zero) in which neighbouring digits differ by
-      exactly k.
-  - id: lc-monotone-increasing-digits
-    role: drill
-    summary: The largest integer ≤ n (n ≤ 10^9) whose digits never decrease from left to right.
-  - id: cses-2431
-    role: drill
-    summary: 'Answer up to 1000 queries: the k-th digit (k ≤ 10^18) of the string 123456789101112….'
-  - id: lc-reordered-power-of-2
-    role: drill
-    summary: Can the digits of n ≤ 10^9 be reordered (no leading zero) to form a power of two?
-  - id: lc-count-special-integers
-    role: lookalike
-    summary: Count the positive integers up to n ≤ 2·10^9 whose digits are all different.
-  - id: lc-count-numbers-with-unique-digits
-    role: lookalike
-    summary: Count the integers 0 ≤ x < 10^n (n ≤ 8) whose digits are all different.
-  - id: ac-abc336_e
-    role: lookalike
-    summary: Count the integers up to N ≤ 10^14 that are divisible by their own digit sum.
-  - id: cf-597A
-    role: lookalike
-    summary: Count the multiples of k in [a, b], where −10^18 ≤ a ≤ b ≤ 10^18.
-  - id: ac-abc129_e
-    role: checkpoint
-    card: count-up-to-n
-    summary: Given L in binary (up to 10^5 bits), count the pairs (a, b) of non-negative integers with
-      a + b ≤ L and a + b = a XOR b, modulo 10^9 + 7.
-  - id: cf-914C
-    role: checkpoint
-    card: count-up-to-n
-    summary: Replacing x by its number of 1 bits repeatedly reaches 1; count the numbers up to n (given
-      in binary, up to 1000 bits) that need exactly k steps, modulo 10^9 + 7.
-  - id: ac-abc154_e
-    role: checkpoint
-    card: count-up-to-n
-    summary: Count the integers from 1 to N (N < 10^100) with exactly K ≤ 3 non-zero digits.
-  - id: lc-numbers-with-repeated-digits
-    role: review
-    card: count-up-to-n
-    review_set: 1
-    summary: Count the integers in [1, n] (n ≤ 10^9) with at least one repeated digit.
-  - id: lc-number-of-beautiful-integers-in-the-range
-    role: review
-    card: digit-sum-state
-    review_set: 1
-    summary: Count the integers in [low, high] (≤ 10^9) with as many even digits as odd digits that are
-      divisible by k ≤ 20.
-  - id: lc-maximum-number-that-sum-of-the-prices-is-less-than-or-equal-to-k
-    role: review
-    card: digit-aggregate
-    review_set: 1
-    summary: The price of a number counts its set bits at positions x, 2x, 3x, …; find the largest num
-      whose total price over 1..num is at most k ≤ 10^15.
-  - id: lc-count-numbers-with-non-decreasing-digits
-    role: review
-    card: neighbour-digits
-    review_set: 2
-    summary: Count the integers in [l, r] (decimal strings up to 100 digits) whose digits in base b ≤
-      10 never decrease, modulo 10^9 + 7.
-  - id: lc-count-k-reducible-numbers-less-than-n
-    role: review
-    card: count-up-to-n
-    review_set: 2
-    summary: Count the positive integers below n (n in binary, up to 800 bits) that reach 1 within k ≤
-      5 steps of "replace x by its number of 1 bits", modulo 10^9 + 7.
-  - id: cses-1146
-    role: review
-    card: digit-aggregate
-    review_set: 2
-    summary: Count the 1 bits in the binary forms of all integers from 1 to n ≤ 10^15.
-  - id: lc-find-the-largest-palindrome-divisible-by-k
-    role: review
-    card: digit-sum-state
-    review_set: 3
-    summary: The largest n-digit palindrome (n ≤ 10^5) divisible by k ≤ 9.
-  - id: ac-abc406_e
-    role: review
-    card: digit-aggregate
-    review_set: 3
-    summary: For up to 100 queries, the sum of all x ≤ N (N < 2^60) with exactly K one bits, modulo 998244353.
-  - id: lc-count-the-number-of-powerful-integers
-    role: review
-    card: count-up-to-n
-    review_set: 3
-    summary: Count the integers in [start, finish] (≤ 10^15) that end with a given string s and have every
-      digit at most limit.
-  - id: ac-abc322_d
-    role: exam
-    card: constraint-placement
-    summary: Can three polyominoes, each rotatable but not flippable, be placed to cover a 4 × 4 grid
-      exactly without overlapping?
-  - id: ac-abc285_e
-    role: exam
-    card: linear-state
-    summary: Choose the holidays of an N-day cyclic week (N ≤ 5000, at least one holiday); a weekday k
-      days from the nearest holiday produces A_k. Maximise the total production.
-  - id: ac-abc145_e
-    role: exam
-    card: zero-one
-    summary: N ≤ 3000 dishes, each taking A_i minutes to eat and worth B_i; dishes can be ordered only
-      during the first T − 0.5 minutes, one at a time. The largest total value.
-  - id: lc-shortest-common-supersequence
-    role: exam
-    card: lcs
-    summary: The shortest string that has both of two given strings (lengths ≤ 1000) as subsequences.
-  - id: lc-k-inverse-pairs-array
-    role: exam
-    card: range-sum-transition
-    summary: Count the permutations of 1..n (n ≤ 1000) with exactly k ≤ 1000 inversions, modulo 10^9 +
-      7.
-  - id: lc-minimum-cost-to-merge-stones
-    role: exam
-    card: merge-split
-    summary: Merge n ≤ 30 piles in a row into one by repeatedly merging exactly k consecutive piles, each
-      merge costing their total; the least cost, or −1.
-  - id: lc-number-of-ways-to-wear-different-hats-to-each-other
-    role: exam
-    card: assignment-mask
-    summary: n ≤ 10 people each like some of 40 hats; count the ways for everyone to wear a different
-      hat they like, modulo 10^9 + 7.
-  - id: lc-count-beautiful-numbers
-    role: exam
-    card: digit-sum-state
-    summary: Count the integers in [l, r] (r < 10^9) whose digit product is divisible by their digit sum.
+- id: ac-dp_s
+  role: worked_example
+  summary: Count the integers from 1 to K (K up to 10^10000) whose digit sum is a multiple of D ≤ 100,
+    modulo 10^9 + 7.
+- id: lc-number-of-digit-one
+  role: worked_example
+  summary: Count all the digits 1 written in the integers 0..n, n ≤ 10^9.
+- id: lc-count-integers-with-even-digit-sum
+  role: ladder
+  card: count-up-to-n
+  rung: 1
+  twist: Base case of the card
+  summary: Count the positive integers up to num ≤ 1000 whose digit sum is even.
+  hints:
+  - A loop over 1..num works here. Which state would a digit walk need for a bound of 10^18?
+  - The parity of the digit sum so far, plus the tight flag (Theorem 3.8.1).
+  - Write go(pos, parity, tight); accept parity 0; subtract 1 for the number 0. Check it against the loop.
+- id: ac-abc387_c
+  role: ladder
+  card: count-up-to-n
+  rung: 2
+  twist: The rule depends on the first digit, which becomes part of the state.
+  summary: Count the integers in [L, R] (10 ≤ L ≤ R ≤ 10^18) whose first digit is strictly larger than
+    every other digit.
+  hints:
+  - After the first digit t is chosen, how many choices does each later digit have?
+  - t choices (0..t − 1) when free; so the state is the first digit, plus the tight flag and whether the
+    number has started.
+  - 'F(x) by the walk with state (top digit, started); answer F(R) − F(L − 1). Numbers shorter than x:
+    Σ over t of t^(length − 1).'
+- id: ac-abc208_e
+  role: ladder
+  card: count-up-to-n
+  rung: 3
+  twist: The state (the product of the digits) looks huge but takes few values, stored in a map.
+  summary: Count the integers from 1 to N ≤ 10^18 whose digit product is at most K ≤ 10^9.
+  hints:
+  - Which products of digits 1–9 can occur after 18 digits?
+  - 'Only numbers 2^a 3^b 5^c 7^d with small exponents: a few thousand values. A 0 digit (after the start)
+    makes the product 0.'
+  - go(pos, product, tight, started) with a map per (pos, started) for the free states; cap nothing, accept
+    product ≤ K; a zero after the start always qualifies.
+- id: lc-count-of-integers
+  role: ladder
+  card: digit-sum-state
+  rung: 1
+  twist: Base case of the card
+  summary: Count the integers between two decimal strings (up to 22 digits) whose digit sum lies in [min_sum,
+    max_sum ≤ 400], modulo 10^9 + 7.
+  hints:
+  - The digit sum is at most 9 · 22. What is the state?
+  - (position, digit sum so far, tight); accept sums in the range.
+  - F(num2) − F(num1) + [num1 qualifies], so the string num1 never needs decrementing (Theorem 3.8.2).
+- id: cf-628D
+  role: ladder
+  card: digit-sum-state
+  rung: 2
+  twist: The position decides which digits are allowed, and the remainder of the value is the state.
+  summary: Count the multiples of m ≤ 2000 in [a, b] (equal lengths, up to 2000 digits) that have the
+    digit d exactly at the even positions, modulo 10^9 + 7.
+  hints:
+  - Since a and b have the same length, what does the position tell you about the next digit?
+  - At an even position the digit must be d; at an odd position it must not be d. The value modulo m is
+    the only other state.
+  - go(pos, value mod m, tight) with these digit rules; answer F(b) − F(a) + [a qualifies].
+- id: ac-abc317_f
+  role: ladder
+  card: digit-sum-state
+  rung: 3
+  twist: Three numbers walked at once in binary, each with its own remainder and tight flag.
+  summary: Count the triples 1 ≤ X1, X2, X3 ≤ N (N ≤ 10^18) with Xi a multiple of A_i (A_i ≤ 10) and X1
+    XOR X2 XOR X3 = 0, modulo 998244353.
+  hints:
+  - Write the three numbers in binary, one bit of each at a time. What must hold for the three bits at
+    a position?
+  - 'Their XOR is 0: the choices are 000, 011, 101, 110. Each number keeps its own remainder mod A_i and
+    its own tight flag.'
+  - State (r1, r2, r3, t1, t2, t3), 10³ · 8 values, over 60 bits; subtract the triples where some X_i
+    = 0 (the walk includes 0).
+- id: cses-2220
+  role: ladder
+  card: neighbour-digits
+  rung: 1
+  twist: Base case of the card
+  summary: Count the integers in [a, b] (b ≤ 10^18) with no two equal neighbouring digits.
+  hints:
+  - What must the walk remember to check the next digit, and what about leading zeros?
+  - The previous digit, and a started flag so that padding zeros do not count as equal neighbours (Theorem
+    3.8.3).
+  - F(b) − F(a − 1) with state (previous digit, started, tight); handle a = 0.
+- id: lc-non-negative-integers-without-consecutive-ones
+  role: ladder
+  card: neighbour-digits
+  rung: 2
+  twist: Binary digits.
+  summary: Count the integers in [0, n] (n ≤ 10^9) whose binary form has no two consecutive 1s.
+  hints:
+  - Walk the bits of n. When n has a 1 and you put a 0 there, how many ways are there to finish?
+  - 'The free strings of the remaining length without "11": a Fibonacci number.'
+  - At each 1 bit of n add fib[remaining]; stop if n itself has two adjacent 1s; add 1 for n if it is
+    valid.
+- id: lc-count-stepping-numbers-in-range
+  role: ladder
+  card: neighbour-digits
+  rung: 3
+  twist: Bounds given as 100-digit strings, and a stricter neighbour rule.
+  summary: Count the integers in [low, high] (up to 100 digits) whose neighbouring digits differ by exactly
+    1, modulo 10^9 + 7.
+  hints:
+  - Which state and which trick for low as a string?
+  - (previous digit, started, tight); and F(high) − F(low) + [low qualifies] avoids decrementing low.
+  - After the start, the next digit is previous ± 1 within 0..9; before it, zeros are padding.
+- id: cf-1073E
+  role: ladder
+  card: digit-aggregate
+  rung: 1
+  twist: Base case of the card
+  summary: The sum of all integers in [l, r] (r ≤ 10^18) that use at most k ≤ 10 different digits, modulo
+    998244353.
+  hints:
+  - What must a state return so that the sum of the values can be built?
+  - '(count, sum): putting digit d at weight w adds d · w · count to the sum (Theorem 3.8.4).'
+  - State (mask of digits, started, tight); accept masks with at most k bits; answer F(r) − F(l − 1) modulo
+    p.
+- id: ac-abc235_f
+  role: ladder
+  card: digit-aggregate
+  rung: 2
+  twist: Bound with 10^4 digits; the value is built by sum · 10 + d · count from the left.
+  summary: The sum of all integers from 1 to N (N up to 10^4 digits) that contain every digit of a given
+    set, modulo 998244353.
+  hints:
+  - With the digits read from the left, how does appending d change the value of a prefix?
+  - 'It becomes 10 · value + d, so for a group of prefixes: new sum = 10 · sum + d · count.'
+  - Tabulate over positions with state (mask of digits seen, started) for the free part and the single
+    tight prefix; accept masks containing the required set.
+- id: ac-abc295_f
+  role: ladder
+  card: digit-aggregate
+  rung: 3
+  twist: Count occurrences of a digit string, placed at each possible position.
+  summary: For up to 1000 queries (S of ≤ 16 digits, L ≤ R < 10^16), add up over k in [L, R] the number
+    of times S occurs in the decimal form of k.
+  hints:
+  - Instead of walking each number, fix where S occurs. What remains free?
+  - The digits to the left and right of the fixed block; for each position, count the numbers ≤ N with
+    that block equal to S (a prefix that must not start with 0 if S does).
+  - g(N) = Σ over positions of the count with the block fixed, comparing with N's digits; answer g(R)
+    − g(L − 1).
+- id: lc-rotated-digits
+  role: drill
+  summary: Count the integers in [1, n] (n ≤ 10^4) that become a different valid number when every digit
+    is rotated by 180° (0, 1, 8 stay; 2↔5, 6↔9; 3, 4, 7 are invalid).
+- id: lc-numbers-at-most-n-given-digit-set
+  role: drill
+  summary: Count the positive integers up to n ≤ 10^9 that can be written using only digits from a given
+    set (digits may repeat).
+- id: lc-super-palindromes
+  role: drill
+  summary: Count the integers in [L, R] (R < 10^18) that are palindromes and squares of palindromes.
+- id: lc-sequential-digits
+  role: drill
+  summary: List the integers in [low, high] (≤ 10^9) whose digits each exceed the previous one by exactly
+    1.
+- id: lc-numbers-with-same-consecutive-differences
+  role: drill
+  summary: List all n-digit numbers (n ≤ 9, no leading zero) in which neighbouring digits differ by exactly
+    k.
+- id: lc-monotone-increasing-digits
+  role: drill
+  summary: The largest integer ≤ n (n ≤ 10^9) whose digits never decrease from left to right.
+- id: cses-2431
+  role: drill
+  summary: 'Answer up to 1000 queries: the k-th digit (k ≤ 10^18) of the string 123456789101112….'
+- id: lc-reordered-power-of-2
+  role: drill
+  summary: Can the digits of n ≤ 10^9 be reordered (no leading zero) to form a power of two?
+- id: lc-count-special-integers
+  role: lookalike
+  summary: Count the positive integers up to n ≤ 2·10^9 whose digits are all different.
+- id: lc-count-numbers-with-unique-digits
+  role: lookalike
+  summary: Count the integers 0 ≤ x < 10^n (n ≤ 8) whose digits are all different.
+- id: ac-abc336_e
+  role: lookalike
+  summary: Count the integers up to N ≤ 10^14 that are divisible by their own digit sum.
+- id: cf-597A
+  role: lookalike
+  summary: Count the multiples of k in [a, b], where −10^18 ≤ a ≤ b ≤ 10^18.
+- id: ac-abc129_e
+  role: checkpoint
+  card: count-up-to-n
+  summary: Given L in binary (up to 10^5 bits), count the pairs (a, b) of non-negative integers with a
+    + b ≤ L and a + b = a XOR b, modulo 10^9 + 7.
+- id: cf-914C
+  role: checkpoint
+  card: count-up-to-n
+  summary: Replacing x by its number of 1 bits repeatedly reaches 1; count the numbers up to n (given
+    in binary, up to 1000 bits) that need exactly k steps, modulo 10^9 + 7.
+- id: ac-abc154_e
+  role: checkpoint
+  card: count-up-to-n
+  summary: Count the integers from 1 to N (N < 10^100) with exactly K ≤ 3 non-zero digits.
+- id: lc-numbers-with-repeated-digits
+  role: review
+  card: count-up-to-n
+  review_set: 1
+  summary: Count the integers in [1, n] (n ≤ 10^9) with at least one repeated digit.
+- id: lc-number-of-beautiful-integers-in-the-range
+  role: review
+  card: digit-sum-state
+  review_set: 1
+  summary: Count the integers in [low, high] (≤ 10^9) with as many even digits as odd digits that are
+    divisible by k ≤ 20.
+- id: lc-maximum-number-that-sum-of-the-prices-is-less-than-or-equal-to-k
+  role: review
+  card: digit-aggregate
+  review_set: 1
+  summary: The price of a number counts its set bits at positions x, 2x, 3x, …; find the largest num whose
+    total price over 1..num is at most k ≤ 10^15.
+- id: lc-count-numbers-with-non-decreasing-digits
+  role: review
+  card: neighbour-digits
+  review_set: 2
+  summary: Count the integers in [l, r] (decimal strings up to 100 digits) whose digits in base b ≤ 10
+    never decrease, modulo 10^9 + 7.
+- id: lc-count-k-reducible-numbers-less-than-n
+  role: review
+  card: count-up-to-n
+  review_set: 2
+  summary: Count the positive integers below n (n in binary, up to 800 bits) that reach 1 within k ≤ 5
+    steps of "replace x by its number of 1 bits", modulo 10^9 + 7.
+- id: cses-1146
+  role: review
+  card: digit-aggregate
+  review_set: 2
+  summary: Count the 1 bits in the binary forms of all integers from 1 to n ≤ 10^15.
+- id: lc-find-the-largest-palindrome-divisible-by-k
+  role: review
+  card: digit-sum-state
+  review_set: 3
+  summary: The largest n-digit palindrome (n ≤ 10^5) divisible by k ≤ 9.
+- id: ac-abc406_e
+  role: review
+  card: digit-aggregate
+  review_set: 3
+  summary: For up to 100 queries, the sum of all x ≤ N (N < 2^60) with exactly K one bits, modulo 998244353.
+- id: lc-count-the-number-of-powerful-integers
+  role: review
+  card: count-up-to-n
+  review_set: 3
+  summary: Count the integers in [start, finish] (≤ 10^15) that end with a given string s and have every
+    digit at most limit.
+- id: ac-abc322_d
+  role: exam
+  card: constraint-placement
+  summary: Can three polyominoes, each rotatable but not flippable, be placed to cover a 4 × 4 grid exactly
+    without overlapping?
+- id: ac-abc285_e
+  role: exam
+  card: linear-state
+  summary: Choose the holidays of an N-day cyclic week (N ≤ 5000, at least one holiday); a weekday k days
+    from the nearest holiday produces A_k. Maximise the total production.
+- id: ac-abc145_e
+  role: exam
+  card: zero-one
+  summary: N ≤ 3000 dishes, each taking A_i minutes to eat and worth B_i; dishes can be ordered only during
+    the first T − 0.5 minutes, one at a time. The largest total value.
+- id: lc-shortest-common-supersequence
+  role: exam
+  card: lcs
+  summary: The shortest string that has both of two given strings (lengths ≤ 1000) as subsequences.
+- id: lc-k-inverse-pairs-array
+  role: exam
+  card: range-sum-transition
+  summary: Count the permutations of 1..n (n ≤ 1000) with exactly k ≤ 1000 inversions, modulo 10^9 + 7.
+- id: lc-minimum-cost-to-merge-stones
+  role: exam
+  card: merge-split
+  summary: Merge n ≤ 30 piles in a row into one by repeatedly merging exactly k consecutive piles, each
+    merge costing their total; the least cost, or −1.
+- id: lc-number-of-ways-to-wear-different-hats-to-each-other
+  role: exam
+  card: assignment-mask
+  summary: n ≤ 10 people each like some of 40 hats; count the ways for everyone to wear a different hat
+    they like, modulo 10^9 + 7.
+- id: lc-count-beautiful-numbers
+  role: exam
+  card: digit-sum-state
+  summary: Count the integers in [l, r] (r < 10^9) whose digit product is divisible by their digit sum.
 drill:
-  - problem: lc-rotated-digits
-    answer_card: count-up-to-n
-    answer_topic: '3.8'
-    property: 'The property is checked digit by digit with a tiny state: "no invalid digit so far" and
-      "some digit changes"; the tight walk counts up to any n.'
-    why_others_fail: At n ≤ 10^4 a loop over all numbers also works; the walk is what scales to n = 10^18.
-  - problem: lc-numbers-at-most-n-given-digit-set
-    answer_card: count-up-to-n
-    answer_topic: '3.8'
-    property: 'Shorter numbers are |D|^length each; for n''s own length, walk n''s digits: add (allowed
-      digits below n''s digit) · |D|^(remaining), and continue only while n''s digit is allowed.'
-    why_others_fail: Listing the numbers is up to 9^9 ≈ 3.9 · 10^8; a single power counts only full lengths
-      and ignores the bound n.
-  - problem: lc-super-palindromes
-    answer_card: enumerate-answer
-    answer_topic: '0.5'
-    property: 'Such a number is r² with r < 10^9 a palindrome, and r is fixed by its first half (< 10^5):
-      build all r from their halves, square, and test.'
-    why_others_fail: A digit walk over x cannot check "x is the square of a palindrome"; the candidates
-      are few enough to list.
-  - problem: lc-sequential-digits
-    answer_card: enumerate-answer
-    answer_topic: '0.5'
-    property: There are only 36 such numbers (12, 123, …, 89, …), so list them all and keep those in the
-      range.
-    why_others_fail: A digit DP counts, but the answer here is a list, and the whole list has 36 entries.
-  - problem: lc-numbers-with-same-consecutive-differences
-    answer_card: generate-all
-    answer_topic: '3.1'
-    property: Each next digit has at most two choices (d + k, d − k), so building the numbers digit by
-      digit lists them all in at most 9 · 2^8 steps.
-    why_others_fail: There is no upper bound N and the numbers themselves are wanted, so counting with
-      a tight walk does not answer it.
-  - problem: lc-monotone-increasing-digits
-    answer_card: left-to-right-forced
-    answer_topic: '1.5'
-    property: 'Find the first place where a digit is larger than the next; lower it by one (moving left
-      while that breaks the order) and set the rest to 9: the best number is forced.'
-    why_others_fail: Only one number is wanted, not a count, so no digit DP is needed; trying numbers
-      downward from n can take up to 10^8 steps.
-  - problem: cses-2431
-    answer_card: answer-search
-    answer_topic: '1.4'
-    property: The number of digits written by 1..x grows with x and is a sum over digit lengths; binary
-      search for the number containing position k, then pick the digit.
-    why_others_fail: Only the lengths of the numbers matter, not their digits, so a digit DP is not needed.
-  - problem: lc-reordered-power-of-2
-    answer_card: map-counting
-    answer_topic: '0.6'
-    property: Reordering keeps the multiset of digits; compare the digit counts of n with those of the
-      31 powers of two below 2^31.
-    why_others_fail: Trying all 10! orders is unnecessary; no counting over a range is asked.
+- problem: lc-rotated-digits
+  answer:
+    topic: '3.8'
+    card: count-up-to-n
+  property: 'The property is checked digit by digit with a tiny state: "no invalid digit so far" and "some
+    digit changes"; the tight walk counts up to any n.'
+  why_others_fail: At n ≤ 10^4 a loop over all numbers also works; the walk is what scales to n = 10^18.
+- problem: lc-numbers-at-most-n-given-digit-set
+  answer:
+    topic: '3.8'
+    card: count-up-to-n
+  property: 'Shorter numbers are |D|^length each; for n''s own length, walk n''s digits: add (allowed
+    digits below n''s digit) · |D|^(remaining), and continue only while n''s digit is allowed.'
+  why_others_fail: Listing the numbers is up to 9^9 ≈ 3.9 · 10^8; a single power counts only full lengths
+    and ignores the bound n.
+- problem: lc-super-palindromes
+  answer:
+    topic: '0.5'
+    card: enumerate-answer
+  property: 'Such a number is r² with r < 10^9 a palindrome, and r is fixed by its first half (< 10^5):
+    build all r from their halves, square, and test.'
+  why_others_fail: A digit walk over x cannot check "x is the square of a palindrome"; the candidates
+    are few enough to list.
+- problem: lc-sequential-digits
+  answer:
+    topic: '0.5'
+    card: enumerate-answer
+  property: There are only 36 such numbers (12, 123, …, 89, …), so list them all and keep those in the
+    range.
+  why_others_fail: A digit DP counts, but the answer here is a list, and the whole list has 36 entries.
+- problem: lc-numbers-with-same-consecutive-differences
+  answer:
+    topic: '3.1'
+    card: generate-all
+  property: Each next digit has at most two choices (d + k, d − k), so building the numbers digit by digit
+    lists them all in at most 9 · 2^8 steps.
+  why_others_fail: There is no upper bound N and the numbers themselves are wanted, so counting with a
+    tight walk does not answer it.
+- problem: lc-monotone-increasing-digits
+  answer:
+    topic: '1.5'
+    card: left-to-right-forced
+  property: 'Find the first place where a digit is larger than the next; lower it by one (moving left
+    while that breaks the order) and set the rest to 9: the best number is forced.'
+  why_others_fail: Only one number is wanted, not a count, so no digit DP is needed; trying numbers downward
+    from n can take up to 10^8 steps.
+- problem: cses-2431
+  answer:
+    topic: '1.4'
+    card: answer-search
+  property: The number of digits written by 1..x grows with x and is a sum over digit lengths; binary
+    search for the number containing position k, then pick the digit.
+  why_others_fail: Only the lengths of the numbers matter, not their digits, so a digit DP is not needed.
+- problem: lc-reordered-power-of-2
+  answer:
+    topic: '0.6'
+    card: map-counting
+  property: Reordering keeps the multiset of digits; compare the digit counts of n with those of the 31
+    powers of two below 2^31.
+  why_others_fail: Trying all 10! orders is unnecessary; no counting over a range is asked.
 lookalike_pairs:
-  - a: lc-count-special-integers
-    b: lc-count-numbers-with-unique-digits
-    a_tool: 'count-up-to-n (3.8): the tight walk with a mask of used digits'
-    b_tool: 'product-sum-rules (2.3): 9 · 9 · 8 · … per length'
-    flipping_difference: 'Both count numbers with distinct digits. In B the bound is 10^n, so every length
-      is complete and each digit has a fixed number of choices: a product. In A the bound n is arbitrary,
-      so the digits of n limit the prefix and the tight walk is needed.'
-  - a: ac-abc336_e
-    b: cf-597A
-    a_tool: 'digit-sum-state (3.8): for each target digit sum s, a walk with (sum so far, value mod s)'
-    b_tool: 'divisibility (0.4): ⌊b/k⌋ − ⌊(a − 1)/k⌋'
-    flipping_difference: Both count divisible numbers in a range. In B the divisor is fixed and the value
-      alone matters, so division counts the multiples. In A the divisor is the number's own digit sum,
-      which depends on its digits, so the walk must track the digit sum and the remainder together.
+- a: lc-count-special-integers
+  b: lc-count-numbers-with-unique-digits
+  a_tool:
+    topic: '3.8'
+    card: count-up-to-n
+  b_tool:
+    topic: '2.3'
+    card: product-sum-rules
+  flipping_difference: 'Both count numbers with distinct digits. In B the bound is 10^n, so every length
+    is complete and each digit has a fixed number of choices: a product. In A the bound n is arbitrary,
+    so the digits of n limit the prefix and the tight walk is needed.'
+  shared_surface: Both count numbers with distinct digits.
+  flipping_input: 'A: the numbers up to an arbitrary n with all digits different, where the digits of
+    n limit the prefix and the tight walk is needed. B: the numbers below 10^n with all digits different,
+    where every length is complete and the count per length is 9 · 9 · 8 · …, a product.'
+- a: ac-abc336_e
+  b: cf-597A
+  a_tool:
+    topic: '3.8'
+    card: digit-sum-state
+  b_tool:
+    topic: '0.4'
+    card: divisibility
+  flipping_difference: Both count divisible numbers in a range. In B the divisor is fixed and the value
+    alone matters, so division counts the multiples. In A the divisor is the number's own digit sum, which
+    depends on its digits, so the walk must track the digit sum and the remainder together.
+  shared_surface: Both count divisible numbers in a range.
+  flipping_input: 'A: the numbers in [1, 100] divisible by their own digit sum, 33, where the divisor
+    depends on the digits and the walk must track the digit sum and the remainder together. B: the multiples
+    of 4 in [0, 100], 26, counted by division with no walk.'
 self_test:
-  - q: For N = 25, which numbers in [0, 25] have a digit sum divisible by 4, and how does the tight walk
-      split them by the first digit?
-    a: '0, 4, 8, 13, 17, 22: six. First digit 0 (free): 3; first digit 1 (free): 2; first digit 2 (tight,
-      second digit at most 5): 1.'
-  - q: How many numbers in [10, 25] have a digit sum divisible by 4, using F?
-    a: F(25) − F(9) = 6 − 3 = 3 (13, 17, 22).
-  - q: Why does the memo store only states that are no longer tight?
-    a: 'A tight state''s count depends on the remaining digits of N, a free state''s does not. Sharing
-      one memo entry mixes them: for numbers up to 110 with one distinct digit, the tight prefix 1 would
-      get the free count, which includes 111.'
-  - q: Among 1..100, how many numbers have no two equal neighbouring digits? What does a walk without
-      the started flag count?
-    a: 90 (9 one-digit and 81 two-digit numbers). Without the flag, "001" … "009" contain "00" and are
-      rejected, giving 81.
-  - q: For N = 25, what pair (count, total of digit sums) does the prefix 2 return, and why?
-    a: '(6, 27): six completions 20..25; their second digits add up to 15, and the digit 2 appears in
-      each of the 6, adding 12.'
-  - q: When is a product formula enough instead of a digit DP, for "numbers with all digits different"?
-    a: 'When the bound is 10^n: every length is complete and each digit has a fixed number of choices
-      (9 · 9 · 8 · …). An arbitrary bound N needs the tight walk.'
-  - q: A and B are decimal strings with 10^4 digits. How do you count [A, B] without computing A − 1?
-    a: F(B) − F(A) + [A has the property], modulo the prime if needed (Theorem 3.8.2).
+- q: For N = 25, which numbers in [0, 25] have a digit sum divisible by 4, and how does the tight walk
+    split them by the first digit?
+  a: '0, 4, 8, 13, 17, 22: six. First digit 0 (free): 3; first digit 1 (free): 2; first digit 2 (tight,
+    second digit at most 5): 1.'
+- q: How many numbers in [10, 25] have a digit sum divisible by 4, using F?
+  a: F(25) − F(9) = 6 − 3 = 3 (13, 17, 22).
+- q: Why does the memo store only states that are no longer tight?
+  a: 'A tight state''s count depends on the remaining digits of N, a free state''s does not. Sharing one
+    memo entry mixes them: for numbers up to 110 with one distinct digit, the tight prefix 1 would get
+    the free count, which includes 111.'
+- q: Among 1..100, how many numbers have no two equal neighbouring digits? What does a walk without the
+    started flag count?
+  a: 90 (9 one-digit and 81 two-digit numbers). Without the flag, "001" … "009" contain "00" and are rejected,
+    giving 81.
+- q: For N = 25, what pair (count, total of digit sums) does the prefix 2 return, and why?
+  a: '(6, 27): six completions 20..25; their second digits add up to 15, and the digit 2 appears in each
+    of the 6, adding 12.'
+- q: When is a product formula enough instead of a digit DP, for "numbers with all digits different"?
+  a: 'When the bound is 10^n: every length is complete and each digit has a fixed number of choices (9
+    · 9 · 8 · …). An arbitrary bound N needs the tight walk.'
+- q: A and B are decimal strings with 10^4 digits. How do you count [A, B] without computing A − 1?
+  a: F(B) − F(A) + [A has the property], modulo the prime if needed (Theorem 3.8.2).
 checkpoint:
   time_limit_minutes: 120
   problems:
-    - ac-abc129_e
-    - cf-914C
-    - ac-abc154_e
+  - ac-abc129_e
+  - cf-914C
+  - ac-abc154_e
 decision_map:
-  - weak_signal: Count numbers in [L, R] up to 10^18 (or given as long strings) with a digit property
-    choose: count-up-to-n
-    when: The property is checked left to right with a small state; walk the digits of the bound with
-      a tight flag, and use F(R) − F(L − 1) (Theorems 3.8.1, 3.8.2).
-    over:
-      - card: product-sum-rules
-        because: If the bound is a power of 10, every digit is free and a product counts the numbers.
-      - card: enumerate-answer
-        because: If the qualifying numbers are few (palindromic squares, sequential digits), list them
-          instead.
-  - weak_signal: Digit sums, remainders, "divisible by its digit sum"
-    choose: digit-sum-state
-    when: The sum or remainder after each digit follows from the old one and the digit; for a modulus
-      that depends on the digits, fix it outside the walk.
-    over:
-      - card: divisibility
-        because: Divisibility of the value alone by a fixed k is counted by division, without digits.
-  - weak_signal: Neighbouring digits must differ, step by one, never decrease; binary without "11"
-    choose: neighbour-digits
-    when: The state is the previous digit plus a started flag for leading zeros (Theorem 3.8.3).
-    over:
-      - card: generate-all
-        because: If the numbers themselves are wanted and they are few (n ≤ 9 digits with two choices
-          per step), build them.
-      - card: left-to-right-forced
-        because: If only the largest number ≤ n with the rule is wanted, a greedy fix of the first violation
-          gives it.
-  - weak_signal: 'Totals over a range: number of 1s written, sum of digit sums, sum of qualifying values'
-    choose: digit-aggregate
-    when: The quantity splits as this digit plus the rest, so each state returns (count, total) (Theorem
-      3.8.4).
-    over:
-      - card: answer-search
-        because: If only the lengths of the numbers matter (the k-th digit of 123456…), count by lengths
-          and binary search.
-glossary_added: ["digit DP", "tight flag", "leading zero"]
+- weak_signal: Count numbers in [L, R] up to 10^18 (or given as long strings) with a digit property
+  choose: count-up-to-n
+  when: The property is checked left to right with a small state; walk the digits of the bound with a
+    tight flag, and use F(R) − F(L − 1) (Theorems 3.8.1, 3.8.2).
+  over:
+  - card: product-sum-rules
+    because: If the bound is a power of 10, every digit is free and a product counts the numbers.
+    topic: '2.3'
+  - card: enumerate-answer
+    because: If the qualifying numbers are few (palindromic squares, sequential digits), list them instead.
+    topic: '0.5'
+- weak_signal: Digit sums, remainders, "divisible by its digit sum"
+  choose: digit-sum-state
+  when: The sum or remainder after each digit follows from the old one and the digit; for a modulus that
+    depends on the digits, fix it outside the walk.
+  over:
+  - card: divisibility
+    because: Divisibility of the value alone by a fixed k is counted by division, without digits.
+    topic: '0.4'
+- weak_signal: Neighbouring digits must differ, step by one, never decrease; binary without "11"
+  choose: neighbour-digits
+  when: The state is the previous digit plus a started flag for leading zeros (Theorem 3.8.3).
+  over:
+  - card: generate-all
+    because: If the numbers themselves are wanted and they are few (n ≤ 9 digits with two choices per
+      step), build them.
+    topic: '3.1'
+  - card: left-to-right-forced
+    because: If only the largest number ≤ n with the rule is wanted, a greedy fix of the first violation
+      gives it.
+    topic: '1.5'
+- weak_signal: 'Totals over a range: number of 1s written, sum of digit sums, sum of qualifying values'
+  choose: digit-aggregate
+  when: The quantity splits as this digit plus the rest, so each state returns (count, total) (Theorem
+    3.8.4).
+  over:
+  - card: answer-search
+    because: If only the lengths of the numbers matter (the k-th digit of 123456…), count by lengths and
+      binary search.
+    topic: '1.4'
+glossary_added:
+- digit DP
+- tight flag
+- leading zero

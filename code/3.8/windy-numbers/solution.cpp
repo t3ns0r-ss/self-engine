@@ -7,37 +7,36 @@ Output: the count.
 #include <bits/stdc++.h>
 using namespace std;
 
-string digits;
-long long memo[20][11][2];
-bool seen[20][11][2];
-
-// prev = previous digit of the number (10 before the first one); started = a non-zero digit has appeared
-long long go(int pos, int prev, bool tight, bool started) {
-    if (pos == (int)digits.size()) return 1;          // every completed string is valid by construction
-    if (!tight && seen[pos][prev][started]) return memo[pos][prev][started];
-    int hi = tight ? digits[pos] - '0' : 9;
-    long long total = 0;
-    for (int c = 0; c <= hi; c++) {
-        if (!started && c == 0) {                     // still a leading zero: not a digit (Theorem 3.8.3)
-            total += go(pos + 1, 10, tight && c == hi, false);
-            continue;
-        }
-        if (prev != 10 && abs(c - prev) < 2) continue;  // the neighbour rule
-        total += go(pos + 1, c, tight && c == hi, true);
-    }
-    if (!tight) seen[pos][prev][started] = true, memo[pos][prev][started] = total;
-    return total;
+// snippet:begin
+// Theorem 3.8.3. The integers in [A, B] in which every two neighbouring digits differ by at least 2: the state is the previous digit
+// (10 before the first one) and the started flag.
+long long windy(long long A, long long B) {
+    auto countUpTo = [&](long long n) -> long long {
+        if (n < 0) return 0;
+        string digits = to_string(n);
+        int L = digits.size();
+        vector<vector<array<long long, 2>>> memo(L + 1, vector<array<long long, 2>>(11, {-1, -1}));
+        function<long long(int, int, bool, bool)> go = [&](int pos, int prev, bool tight, bool started) -> long long {
+            if (pos == L) return 1;
+            if (!tight && memo[pos][prev][started] != -1) return memo[pos][prev][started];
+            int hi = tight ? digits[pos] - '0' : 9;
+            long long total = 0;
+            for (int c = 0; c <= hi; c++) {
+                if (!started && c == 0) { total += go(pos + 1, 10, tight && c == hi, false); continue; }  // a leading zero
+                if (prev != 10 && abs(c - prev) < 2) continue;  // the neighbour rule
+                total += go(pos + 1, c, tight && c == hi, true);
+            }
+            if (!tight) memo[pos][prev][started] = total;
+            return total;
+        };
+        return go(0, 10, true, false);
+    };
+    return countUpTo(B) - countUpTo(A - 1);
 }
-
-long long countUpTo(long long n) {
-    if (n < 0) return 0;
-    digits = to_string(n);
-    memset(seen, 0, sizeof seen);
-    return go(0, 10, true, false);                    // the all-zero string is the number 0
-}
+// snippet:end
 
 int main() {
     long long a, b;
     cin >> a >> b;
-    cout << countUpTo(b) - countUpTo(a - 1) << "\n";
+    cout << windy(a, b) << "\n";
 }

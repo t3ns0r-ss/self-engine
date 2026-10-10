@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.5 Trees (pipeline steps 1–3 done); 4.1–4.4 are done except 4.4's browser-test confirmation
+- Topic: 4.5 Trees (pipeline steps 1–4 done); 4.1–4.4 are done except 4.4's browser-test confirmation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.5 step 3 (five recognition cards with card example units; worked-example problems ac-abc333_d, ac-abc361_e, ac-abc202_e)
-- Next action: step 4 (templates; stress 5000)
+- Last completed step: topic 4.5 step 4 (seven templates with tests)
+- Next action: step 5 bug catalogue (mutation search), then steps 6–10
 
 ## Gates
 | Gate | Status | Date |

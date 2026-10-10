@@ -6,7 +6,7 @@
 Read this entire file before doing anything, and follow it exactly. Problems are collected up front by a separate plan, `PROBLEM_BANK_PLAN.md`; read it too, and apply its Section 12 changes to this plan once its milestone B1 is merged. If you believe something here is wrong, write the concern in `PROGRESS.md` under "Questions for Saurabh" and continue with work that doesn't depend on it.
 
 **Revision 2 (quality upgrade).** This file was revised after a review of the live site (topics 1.6 and 2.1). The review found five weaknesses, and the revision fixes each one in place:
-1. Recognition Cards were abstract and thin → every card now has constraint shapes, a worked "Recognition in action" block, and positive and negative examples (Sections 5, 6.5).
+1. Recognition Cards were abstract and thin → every card now has constraint shapes, a worked "Recognition in action" block, and positive and negative examples (Sections 5, 6.5; the in-action block is collapsed by default).
 2. Look-alike pairs cited later topics and showed raw slugs → references are structured, may point only to the same or earlier topics, and render as card names (Sections 5, 6.11, 12).
 3. Some proofs were too dense for a beginner → a fixed proof layout with size limits (Section 6.4).
 4. Theorems had no code to look at → every theorem gets a short, self-explanatory implementation (the gist function only, like a 5-line `gcd`) with a few worked examples under it (Sections 6.4, 8.6).
@@ -475,7 +475,7 @@ Rules for proofs a beginner must be able to follow:
 3. **Constraint shapes:** what the input sizes force (`constraint_shapes`), always with the actual arithmetic (e.g., "2·10^5 elements, so n² ≈ 4·10^10").
 4. **Weak signals:** each is a pair of *question form* and *statement/constraint shape* (`weak_signals`). "There is an array" or "the problem mentions a sum" alone is never a weak signal. These only raise the card as a candidate; they never decide.
 5. **Kill signals:** facts that rule the card out immediately, each with a concrete instance whenever the kill depends on numbers (`kill_signals`).
-6. **Recognition in action:** the card's `in_action` block, rendered as the three-layer procedure on one problem: statement → constraints → budget → candidates (≥ 2, each accepted or rejected with a reason) → property check → decision. Same shape as worked-example Steps 1–3 (Section 6.8) but short, about 10 lines. It is a different problem from the worked examples, so the reader sees a fresh recognition.
+6. **Recognition in action:** the card's `in_action` block, shown in a `<details>` element that is **collapsed by default** (the reader opens it when wanted), rendered as the three-layer procedure on one problem: statement → constraints → budget → candidates (≥ 2, each accepted or rejected with a reason) → property check → decision. Same shape as worked-example Steps 1–3 (Section 6.8) but short, about 10 lines. It is a different problem from the worked examples, so the reader sees a fresh recognition.
 7. **Examples:** `examples.positive` (the property holds) and `examples.negative` (it looks like this card but the property fails, with the correct tool named).
 8. **Look-alikes:** the card's `lookalikes`, each showing the other card's *name*, never a slug, and the flipping difference.
 9. **Complexity.**

@@ -5,7 +5,7 @@
 - Topic: R1 reference topic 1.6 done; bank fill for 0.1–3.8 done (see ## Bank fill)
 - Branch: claude/problemset-implementation-yja039
 - Last completed step: R1 infrastructure and the 1.6 reference retrofit; Revision 2.1 applied to 1.6 (theorem implementation snippets with examples, function-only code, no C++ details or Tested paragraphs, no Builds on)
-- Next action: ⏸ R1 reference review by Saurabh (topic 1.6); the other 24 topics are retrofitted only after approval. Pending lessons (4.1 onward) are written in the Revision 2 format.
+- Next action: R1 retrofit of the remaining 24 topics in curriculum order (0.1 first), one commit per topic; reference review of 1.6 approved 2026-10-10
 
 ## Gates
 | Gate | Status | Date |
@@ -19,7 +19,7 @@
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
 | M5 Phase 3 review | waiting for review | — |
-| R1 reference review (topic 1.6 retrofitted) | waiting for review | 2026-10-09 |
+| R1 reference review (topic 1.6 retrofitted) | approved ("Rest seems okay" after the Revision 2.1 changes and the collapsed in-action block) | 2026-10-10 |
 | Bank fill review | waiting for review (10 complete, 15 short with exhaustion records) | 2026-10-09 |
 
 ## Saurabh is studying

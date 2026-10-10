@@ -8,6 +8,10 @@ uses:
   what: 'Graph traversal: reachability and the depth-first walk'
 - topic: '4.2'
   what: 'Graph structure: directed cycles, topological order, the condensation as a DAG'
+- topic: '4.3'
+  what: 'Shortest paths: the contrast when distances are asked'
+- topic: '4.4'
+  what: 'Union structure and reversed time: the contrast when roads disappear over time'
 - topic: '4.5'
   what: 'Trees: entry times and subtree blocks of a walk'
 theorems:
@@ -53,8 +57,485 @@ theorems:
     dot to everything exactly when it is the only starting dot, since every other dot is reached from
     some starting dot.'
   code: 4.7/thm-6
-cards: []
-problems: []
+cards:
+- id: mutual-reach
+  name: Groups that can all reach each other (strongly connected components)
+  from_theorem: 4.7.5
+  decisive_property: 'The roads or arrows are one-way, and the question is about which vertices can reach
+    each other in both directions: a group, a kingdom, or whether the whole graph is one group.'
+  how_to_test: 'Check that the edges are directed and that the answer depends only on who reaches whom
+    in both directions. Then label the groups with two walks (Kosaraju): the first lists the vertices
+    in finishing order, the second walks the reversed graph from the last finished vertex.'
+  constraint_shapes:
+  - 'n = 2·10^5 vertices and m = 2·10^5 arrows: a search from every vertex is about n·(n + m) = 8·10^10
+    steps, while two walks are about 8·10^5'
+  - n = 10^5 and the question asks for the group of every vertex, or the size of every group
+  weak_signals:
+  - form: Asks to split the vertices into groups so that inside a group every vertex can reach every other,
+      or to print the group of each vertex
+    shape: n, m up to 2·10^5, one-way edges
+  - form: Asks whether one can travel from any place to any other place along one-way streets, and if
+      not, which places are cut off
+    shape: n up to 10^5
+  - form: Rules of the form "if a is taken then b must be taken too", and the question is which items
+      must always be taken together
+    shape: n items and m rules, up to 2·10^5
+  kill_signals:
+  - 'The edges are two-way: the groups are the connected components of topic 4.1, and one search per piece
+    is enough'
+  - 'Only what one given vertex can reach is asked: one traversal from it answers that (the first negative
+    example below)'
+  in_action:
+    statement: A city has n one-way streets joining m intersections. The mayor wants the number of groups
+      of intersections such that inside a group one can drive from any intersection to any other, and
+      the group of every intersection.
+    constraints: n, m ≤ 2·10^5.
+    budget: Searching from every intersection is n·(n + m) = 8·10^10. Need about O(n + m).
+    candidates:
+    - tool: A search from every intersection (topic 4.1)
+      verdict: rejected
+      because: n·(n + m) steps.
+    - tool: Disjoint set union (topic 4.4)
+      verdict: rejected
+      because: It merges in both directions and ignores the direction of the streets.
+    - tool: Two walks, with the reversed graph in the second (this topic)
+      verdict: chosen
+      because: Each group is found by one reversed walk from the vertex that finished last (Theorem 4.7.5),
+        in O(n + m).
+    property_check: The streets are one-way and the question is about mutual reachability. The property
+      holds.
+    decision: Walk the graph and list the vertices in finishing order; walk the reversed graph from the
+      last one; each walk is one group.
+  examples:
+    positive:
+    - inline:
+        input: One-way roads 1→2, 2→3, 3→1, 3→4, 4→5, 5→4 and 6→1. How many groups of towns that can all
+          reach each other?
+        answer: '3'
+        why: 'The groups are {1, 2, 3}, {4, 5} and {6}: 1, 2 and 3 form a cycle, 4 and 5 go to each other,
+          and 6 has no road entering it.'
+    - inline:
+        input: One-way roads 1→2, 2→3 and 3→4. How many groups of towns that can all reach each other?
+        answer: '4'
+        why: With no road back, every town is a group of its own.
+    - worked_example: cses-1683
+      why: 'One-way teleporters, and the kingdoms are the groups of planets that reach each other: the
+        labels of the walks are the answer.'
+    negative:
+    - inline:
+        input: One-way roads 1→2, 2→3, 3→1, 3→4 and 4→5. How many towns can be reached from town 1?
+        answer: '5'
+        method_gives: '3'
+        why: 'Town 1 reaches all five towns, but its group {1, 2, 3} has only three. Reaching from one
+          vertex is not mutual reaching: a single traversal answers it.'
+      correct_tool:
+        topic: '4.1'
+        card: components
+    - problem: cses-1678
+      why: A round trip needs one directed cycle printed, not the groups of all vertices; the walk with
+        vertex states finds and prints it directly.
+      correct_tool:
+        topic: '4.2'
+        card: directed-cycle
+  lookalikes:
+  - description: Connected components of an undirected graph
+    tool:
+      topic: '4.1'
+      card: components
+    flipping_difference: With two-way roads the groups are plain pieces, found by one search each. One-way
+      roads need the two walks.
+  - description: Reasoning about which groups are sources
+    tool:
+      topic: '4.7'
+      card: condensed-dag
+    flipping_difference: The groups are the first step; this card labels them, the other one asks which
+      of them have no road entering.
+  complexity: O(n + m).
+- id: condensed-dag
+  name: Reasoning on the graph of groups (sources and sinks)
+  from_theorem: 4.7.6
+  decisive_property: 'The roads are one-way and the question is about reaching everything, about places
+    to start from, or about two places where one cannot reach the other: the answer depends only on which
+    groups have no road entering them.'
+  how_to_test: Label the groups (Theorem 4.7.5), mark every group that has a road entering it from another
+    group, and look at the unmarked ones, the sources. A vertex reaches everything exactly when its group
+    is the only source (Theorem 4.7.6).
+  constraint_shapes:
+  - 'n = 10^5 stops and m = 2·10^5 one-way lines: trying every set of start stops is exponential, a search
+    from each stop is 10^5·3·10^5 = 3·10^10, the labels are 3·10^5 steps'
+  - A graph with up to 2·10^5 vertices where the answer is a count of groups with a property, not a list
+    of routes
+  weak_signals:
+  - form: Asks for the fewest places to start from (or fewest things to start) so that everything is reached
+    shape: n, m up to 2·10^5, one-way edges
+  - form: Asks whether a given vertex reaches all others, or how many roads to add so that it does
+    shape: n up to 2·10^5
+  - form: Asks whether one can go from anywhere to anywhere, and if not, to print two places such that
+      one cannot reach the other
+    shape: n, m up to 2·10^5
+  kill_signals:
+  - 'The question asks for a number of steps, a cost or a number of routes, not only whether something
+    is reachable: the condensation forgets distances (the first negative example below)'
+  - 'The roads are two-way: the sources are then just the connected pieces'
+  in_action:
+    statement: A bus network has n stops and m one-way lines. A guide stands at some stops; from a guide's
+      stop passengers can reach every stop that can be reached by the lines. What is the fewest number
+      of guides so that every stop is reachable from some guide?
+    constraints: n ≤ 10^5, m ≤ 2·10^5.
+    budget: Trying all sets of stops is exponential; a search from each stop is 3·10^10. Need about O(n
+      + m).
+    candidates:
+    - tool: All sets of stops (topic 0.5)
+      verdict: rejected
+      because: 2^n sets.
+    - tool: A search from every stop and a greedy choice (topic 4.1)
+      verdict: rejected
+      because: n·(n + m) steps, and a greedy choice has no proof.
+    - tool: Count the sources among the groups (this topic)
+      verdict: chosen
+      because: Every source must contain a guide, because nothing reaches it from outside, and one guide
+        in each source reaches everything (Theorem 4.7.6).
+    property_check: One-way lines, and the question is about reaching everything from the fewest starts.
+      The property holds.
+    decision: Label the groups, mark the groups with an entering line, and print the number of unmarked
+      groups.
+  examples:
+    positive:
+    - inline:
+        input: One-way roads 1→2, 2→1, 3→2, 4→5, 5→6 and 6→4. What is the fewest number of towns to start
+          couriers from so that every town is reached?
+        answer: '2'
+        why: The groups are {1, 2}, {3} and {4, 5, 6}. The group {3} has no road entering it, nor has
+          {4, 5, 6}; {1, 2} is entered by the road from 3. Two sources, so two starts.
+    - inline:
+        input: One-way roads 1→2, 2→3, 3→1 and 3→4. What is the fewest number of towns to start couriers
+          from so that every town is reached?
+        answer: '1'
+        why: The groups are {1, 2, 3} and {4}; the first is the only source, so one start (any of 1, 2,
+          3) reaches every town.
+    - worked_example: cses-1682
+      why: The whole graph is one group exactly when there is no pair where one cannot reach the other;
+        the numbering of the groups gives such a pair directly.
+    negative:
+    - inline:
+        input: One-way roads 1→2, 2→3, 3→4 and 1→4. How many towns can be reached from town 1 using at
+          most one road?
+        answer: '2'
+        method_gives: '3'
+        why: The condensation says that town 1 reaches all three others, but only towns 2 and 4 are at
+          one road. Distances need a breadth-first search.
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+    - problem: ac-abc137_e
+      why: The question is the best score along routes with gains and cycles that can be repeated; the
+        groups only say which towns lie on cycles, not the score.
+      correct_tool:
+        topic: '4.3'
+        card: negative-weights
+  lookalikes:
+  - description: Groups of vertices that reach each other
+    tool:
+      topic: '4.7'
+      card: mutual-reach
+    flipping_difference: This card starts after the groups are known and asks about the roads between
+      groups.
+  - description: A topological order of a graph without cycles
+    tool:
+      topic: '4.2'
+      card: dependency-order
+    flipping_difference: If the graph is known to have no cycle, every vertex is its own group and the
+      order is the whole answer.
+  complexity: O(n + m).
+- id: bridges
+  name: Roads whose loss splits the network (bridges)
+  from_theorem: 4.7.2
+  decisive_property: 'The roads are two-way, and the question is about what the loss of one road does
+    to the connectivity: which roads are critical, how many, or whether the network survives any single
+    loss.'
+  how_to_test: Check that the graph is undirected and that the question is about connectivity after removing
+    one edge (not about distances). Compute the entry times and the low-link values; the tree edge from
+    p to v is a bridge when low[v] > tin[p].
+  constraint_shapes:
+  - 'n = 2·10^5 and m = 2·10^5: closing each road and searching again is m·(n + m) = 8·10^10 steps, while
+    one walk is 8·10^5'
+  - Up to 2·10^5 roads and the answer is a list or a count of critical roads, or the sizes of the two
+    parts a critical road leaves
+  weak_signals:
+  - form: Asks which connections are critical, or how many roads whose failure disconnects the network
+    shape: n, m up to 2·10^5, two-way edges
+  - form: Asks for roads that lie on every route between two given towns
+    shape: n up to 2·10^5
+  - form: Asks whether the network stays connected after the loss of any single road
+    shape: n up to 10^5
+  - form: After closing a road the network falls into two parts, and the sizes of the parts matter
+    shape: n up to 2·10^5
+  kill_signals:
+  - 'The roads are removed one after another over time and the pieces are counted after each: reverse
+    the time and use the union structure of topic 4.4'
+  - 'The question asks for how distances change: a bridge is only the roads that disconnect, not the ones
+    that lengthen routes (the first negative example below)'
+  in_action:
+    statement: A country has n towns and m two-way roads, and the towns are connected. A convoy drives
+      from town 1 to town n. How many roads lie on every route from town 1 to town n?
+    constraints: n, m ≤ 2·10^5.
+    budget: Closing each road and searching again costs m·(n + m) = 8·10^10. Need about O(n + m).
+    candidates:
+    - tool: Close each road and search (topic 4.1)
+      verdict: rejected
+      because: m searches of n + m steps each.
+    - tool: Shortest paths (topic 4.3)
+      verdict: rejected
+      because: Many routes may exist; the question is about roads on all of them.
+    - tool: Bridges by entry times and low-link values (this topic)
+      verdict: chosen
+      because: A road lies on every route from 1 to n exactly when it is a bridge that separates 1 from
+        n; the bridges come from one walk (Theorem 4.7.2).
+    property_check: Two-way roads, and the question is about the loss of one road. The property holds.
+    decision: Walk from town 1, find the bridges, and count those whose lower part contains town n (the
+      entry-time range of the lower part tells this).
+  examples:
+    positive:
+    - inline:
+        input: Roads 1–2, 2–3, 3–1, 3–4 and 4–5. How many roads disconnect the network when closed alone?
+        answer: '2'
+        why: 'The roads 3–4 and 4–5 are bridges. The triangle roads are not: the other two roads still
+          join their towns.'
+    - inline:
+        input: A ring of five towns 1–2–3–4–5–1 with the extra road 1–3. How many roads disconnect the
+          network when closed alone?
+        answer: '0'
+        why: Every road lies on a cycle, so there is no bridge.
+    - worked_example: lc-critical-connections-in-a-network
+      why: The critical connections are exactly the bridges; one walk with entry times and low-link values
+        lists them.
+    negative:
+    - inline:
+        input: Roads 1–2, 2–3, 3–1 and 3–4. How many roads make some two towns farther apart (or disconnected)
+          when closed alone?
+        answer: '4'
+        method_gives: '1'
+        why: Closing any triangle road stretches the route between its ends from 1 road to 2, and closing
+          3–4 cuts town 4 off. Only 3–4 is a bridge. A change of distances needs a search after each removal
+          or shortest paths.
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+    - problem: ac-abc120_d
+      why: The bridges collapse one after another and the number of pairs is asked after each; it is not
+        about the single critical roads but about the time order, which the reversed union of topic 4.4
+        handles.
+      correct_tool:
+        topic: '4.4'
+        card: reverse-time
+  lookalikes:
+  - description: Towns whose failure splits the network
+    tool:
+      topic: '4.7'
+      card: cut-vertices
+    flipping_difference: The same walk and numbers, but the test is low[child] ≥ tin[v] for a vertex,
+      and the root has its own rule.
+  - description: Bridgeless groups and one-way streets
+    tool:
+      topic: '4.7'
+      card: bridge-tree
+    flipping_difference: Instead of listing the bridges, the pieces between them are labelled, or the
+      roads are oriented.
+  complexity: O(n + m).
+- id: cut-vertices
+  name: Towns whose failure splits the network (articulation points)
+  from_theorem: 4.7.3
+  decisive_property: 'The roads are two-way, and the question is about what the loss of one town (with
+    all its roads) does to the connectivity: which towns are critical, how many, or whether one town can
+    disconnect two given places.'
+  how_to_test: Check that the graph is undirected and the question removes a vertex. Compute the entry
+    times and the low-link values; a vertex that is not a root is an articulation point when some child
+    has low[c] ≥ tin[v], and a root when it has two or more children.
+  constraint_shapes:
+  - 'n = 10^5 and m = 2·10^5: removing each vertex and searching again is n·(n + m) = 3·10^10, while one
+    walk is 3·10^5'
+  - A grid of up to 10^6 cells where one cell may be removed and the answer is whether the region falls
+    apart
+  weak_signals:
+  - form: 'Asks which towns, cities or servers are critical: their failure splits the rest into parts'
+    shape: n, m up to 2·10^5, two-way edges
+  - form: Asks for the towns that lie on every route between two given towns
+    shape: n up to 2·10^5
+  - form: Asks whether removing one cell or one vertex can disconnect a region, often with an answer of
+      0, 1 or 2
+    shape: A grid with up to 10^6 cells or a small graph
+  kill_signals:
+  - 'Roads (edges), not towns (vertices), are removed: the card for bridges is the right one (the first
+    negative example below)'
+  - 'The graph is directed, and the question is whether one vertex can reach another after a removal:
+    the walk of this topic does not apply'
+  in_action:
+    statement: A computer network has n machines and m two-way cables, and is connected. A machine is
+      critical if its failure leaves the remaining machines disconnected from each other. Count the critical
+      machines.
+    constraints: n ≤ 10^5, m ≤ 2·10^5.
+    budget: Removing each machine and searching again costs n·(n + m) = 3·10^10. Need about O(n + m).
+    candidates:
+    - tool: Remove each machine and search (topic 4.1)
+      verdict: rejected
+      because: n searches of n + m steps each.
+    - tool: Bridges (this topic)
+      verdict: rejected
+      because: Bridges are about the loss of cables, not of machines.
+    - tool: Articulation points by entry times and low-link values (this topic)
+      verdict: chosen
+      because: One walk finds every vertex with a child that has no edge going above it (Theorem 4.7.3).
+    property_check: Two-way cables, and the question removes a vertex. The property holds.
+    decision: Walk from machine 1, test every vertex with the rule for roots or for other vertices, and
+      count them.
+  examples:
+    positive:
+    - inline:
+        input: A triangle 1–2–3 with the roads 3–4, 4–5 and 4–6. How many towns split the rest of the
+          network when they fail?
+        answer: '2'
+        why: Town 3 cuts off {4, 5, 6} from {1, 2}, and town 4 cuts off 5 and 6 from the rest. The other
+          towns are on cycles or are leaves.
+    - inline:
+        input: The path 1–2–3–4. How many towns split the rest of the network when they fail?
+        answer: '2'
+        why: 'Towns 2 and 3: removing either leaves two parts. The end towns do not split anything.'
+    negative:
+    - inline:
+        input: The path 1–2–3–4. How many roads split the network into two parts when closed?
+        answer: '3'
+        method_gives: '2'
+        why: Every road of a path is a bridge, so there are 3. Counting towns whose failure splits the
+          network gives only the 2 middle towns. Roads are asked, not towns.
+      correct_tool:
+        topic: '4.7'
+        card: bridges
+    - problem: cses-1666
+      why: The question is the fewest roads to add to connect all cities; this needs the pieces of the
+        graph, not the weak points inside a piece.
+      correct_tool:
+        topic: '4.1'
+        card: components
+  lookalikes:
+  - description: Roads whose loss splits the network
+    tool:
+      topic: '4.7'
+      card: bridges
+    flipping_difference: A road is cut instead of a town; the test is low[v] > tin[p] with no special
+      root.
+  - description: Pieces of a graph
+    tool:
+      topic: '4.1'
+      card: components
+    flipping_difference: Components ask about the graph as it is; articulation points ask what happens
+      when a vertex is removed.
+  complexity: O(n + m).
+- id: bridge-tree
+  name: Bridgeless groups and one-way streets (2-edge-connected pieces)
+  from_theorem: 4.7.4
+  decisive_property: 'The roads are two-way and the bridges are special: the question needs the groups
+    that survive any single road loss, an orientation of all roads that keeps everything reachable, or
+    a tree of groups joined by bridges.'
+  how_to_test: Check that the graph is undirected. Find the bridges and label the pieces between them
+    (walking in entry order, a vertex copies the label of its parent unless the edge above is a bridge).
+    For orientation, orient tree edges downwards and the other edges upwards; this works exactly when
+    there is no bridge (Theorem 4.7.4).
+  constraint_shapes:
+  - 'n = 2·10^5 and m = 2·10^5: orienting by trying 2^m ways is impossible, one walk is 8·10^5 steps'
+  - The answer is computed on the tree of pieces (for example, the sizes of the two sides of each bridge),
+    with up to 2·10^5 pieces
+  weak_signals:
+  - form: Asks to make all streets one-way so that one can still drive from anywhere to anywhere, or to
+      say that it is impossible
+    shape: n, m up to 2·10^5, two-way edges
+  - form: Asks about the groups of places that stay together after the loss of any one road, or how many
+      such groups there are
+    shape: n up to 2·10^5
+  - form: Asks to choose where to cut a road or what to add so that a quantity (the number of pairs still
+      connected, the size of a part) is best, where the cut must be a bridge
+    shape: n, m up to 2·10^5
+  kill_signals:
+  - 'The graph is already directed: the groups are the strongly connected ones (the first negative example
+    below)'
+  - 'Only the count of roads to remove to get a forest is asked: that is m − n + the number of pieces,
+    with no bridges needed'
+  in_action:
+    statement: A city has n intersections and m two-way streets, connected. The council wants to make
+      every street one-way so that one can still drive from any intersection to any other. Say whether
+      it can be done and, if so, print the direction of every street.
+    constraints: n, m ≤ 2·10^5.
+    budget: Trying all 2^m directions is impossible. Need about O(n + m).
+    candidates:
+    - tool: All directions of the streets (topic 0.5)
+      verdict: rejected
+      because: 2^m choices.
+    - tool: Strongly connected components (this topic)
+      verdict: rejected
+      because: They apply once the directions are given, not to choosing them.
+    - tool: Bridges, then the orientation from the walk (this topic)
+      verdict: chosen
+      because: It is possible exactly when there is no bridge; then streets are directed down along the
+        tree and up along the others (Theorem 4.7.4).
+    property_check: Two-way streets and the question is about orienting them. The property holds.
+    decision: Find the bridges; if there is one, print that it is impossible; otherwise print the directions
+      from the walk.
+  examples:
+    positive:
+    - inline:
+        input: Two triangles 1–2–3 and 4–5–6 joined by the road 3–4. How many groups of towns stay together
+          after the loss of any one road?
+        answer: '2'
+        why: The only bridge is 3–4. Cutting it leaves the groups {1, 2, 3} and {4, 5, 6}, each with no
+          bridge inside.
+    - inline:
+        input: A square 1–2–3–4 with the diagonal 1–3. Can all roads be made one-way so that one can drive
+          from any town to any other? Answer 1 for yes and 0 for no.
+        answer: '1'
+        why: 'There is no bridge, so the walk''s orientation works: the tree edges go down and the other
+          edges go up.'
+    negative:
+    - inline:
+        input: One-way roads 1→2, 2→3 and 1→3. How many groups of towns that can all reach each other?
+        answer: '3'
+        method_gives: '1'
+        why: If the directions are ignored, the three roads form a triangle without a bridge, one piece.
+          But with the directions no town can return, so every town is a group of its own.
+      correct_tool:
+        topic: '4.7'
+        card: mutual-reach
+    - problem: ac-abc288_c
+      why: The question is how many roads to remove so that no cycle is left; this is the number of roads
+        minus the number of towns plus the number of pieces, found by the union structure, not by bridges.
+      correct_tool:
+        topic: '4.2'
+        card: undirected-cycle
+  lookalikes:
+  - description: Listing the bridges
+    tool:
+      topic: '4.7'
+      card: bridges
+    flipping_difference: Only the roads are asked for; here the pieces between them are labelled or the
+      streets are oriented.
+  - description: Groups of a directed graph
+    tool:
+      topic: '4.7'
+      card: mutual-reach
+    flipping_difference: The directions are given; the groups need two walks and the reversed graph.
+  complexity: O(n + m).
+problems:
+- id: cses-1683
+  role: worked_example
+  summary: n ≤ 10^5 planets and m ≤ 2·10^5 one-way teleporters; two planets are in the same kingdom if
+    one can travel from either to the other and back; print the number of kingdoms and the kingdom of
+    each planet.
+- id: cses-1682
+  role: worked_example
+  summary: n ≤ 10^5 cities and m ≤ 2·10^5 one-way flights; can one travel from every city to every other
+    city? If not, print a pair (a, b) such that there is no route from a to b.
+- id: lc-critical-connections-in-a-network
+  role: worked_example
+  summary: n ≤ 10^5 servers connected by two-way connections so that every server can reach every other;
+    list all critical connections, those whose removal makes some servers unable to reach others.
 drill: []
 lookalike_pairs: []
 self_test: []

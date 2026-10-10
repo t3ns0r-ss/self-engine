@@ -2,11 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.2 Graph structure (done; steps 1–10, theorem 4.2.6 added at step 8); next topic 4.3
+- Topic: 4.3 Shortest paths (pipeline step 1 done); 4.1 and 4.2 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.2 step 10 (self-review: validate, build, `npm test` 71/71, all 4.2 units pass (stress 5000), browser tests of all 27 lessons pass: 567 checks, no failures)
-- Note: CF problems 862B, 687A, 1144F, 1020B, 1027D, 510C, 103B, 977E, 131D in the ladder are † (statements not opened)
-- Next action: topic 4.3 (Dijkstra, 0-1 BFS, Bellman–Ford, Floyd–Warshall), step 1
+- Last completed step: topic 4.3 step 1 (scope, lesson skeleton, draft data file)
+- Next action: step 2 (theory: definitions, theorems with code units)
 
 ## Gates
 | Gate | Status | Date |
@@ -155,10 +154,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8, 4.1 (the traversals and distances of 4.1; 0.6's priority queue for the smallest order; 3.1's recursion only as a contrast; 1.5's exchange argument for the smallest order).
-- New: two-colouring a graph and odd cycles (bipartite is the keyword), cycles in undirected graphs (tree edges and non-tree edges, m versus n − components), directed cycles with three vertex states (unvisited, on the stack, finished), in-degree and removing vertices of in-degree 0 to get a topological order (topological sort is the keyword), the lexicographically smallest order with a min-heap, functional graphs (every vertex has one out-edge) as a special case of directed cycles. Cards: decided at step 3 from the four bank patterns (two-colouring, directed-cycle, dependency-order, undirected-cycle).
-- Forbidden keywords: every keyword of topics 4.3–7.8 (dijkstra, bellman-ford, floyd-warshall, 0-1 bfs, disjoint set union, union-find, kruskal, prim's algorithm, minimum spanning tree, tree diameter, euler tour, subtree size, lowest common ancestor, binary lifting, strongly connected component, articulation point, tarjan, kosaraju, dp on dag, …). Shortest paths with lengths, spanning trees, tree topics, strongly connected components, bridges and dynamic programming along an order are named only under "does not cover".
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8, 4.1 (graph, vertex, edge, neighbour, path in a graph, reachable, distance in a graph, connected component, adjacency list, adjacency matrix, graph traversal, BFS, DFS, grid graph, state graph, source).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8, 4.1, 4.2 (0.6's priority queue and deque; 4.1's distances by counting edges and its multi-source walk; 4.2's acyclic orders only as a contrast; 3.2's states as the contrast for Floyd's table).
+- New: edge weights (lengths, costs, times), the length of a path, shortest distance; the relaxation step; Dijkstra's algorithm with a heap and why a vertex is final when it is taken (non-negative weights); 0-1 BFS with a deque; Bellman–Ford rounds, negative edges and negative cycles, detection; Floyd–Warshall's table for all pairs with small n; Dijkstra over (vertex, extra state) pairs; 64-bit distances and an INF value that cannot overflow; path reconstruction by parents. Cards: decided at step 3 from the five bank patterns (dijkstra, zero-one, negative-edges, all-pairs, state-dijkstra).
+- Forbidden keywords: every keyword of topics 4.4–7.8 (disjoint set union, union-find, kruskal, prim's algorithm, minimum spanning tree, tree diameter, euler tour, subtree size, lowest common ancestor, binary lifting, strongly connected component, articulation point, tarjan, kosaraju, sparse table, fenwick tree, segment tree, dp on dag, …). Spanning trees, trees as a topic, strongly connected components and bridges are named only under "does not cover".
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8, 4.1 (graph, vertex, edge, neighbour, path in a graph, reachable, distance in a graph, connected component, adjacency list, adjacency matrix, graph traversal, BFS, DFS, grid graph, state graph, source), 4.2 (simple graph, cycle, forest, two-colouring, bipartite graph, parent and tree edge, in-degree, topological order, DAG, vertex state).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

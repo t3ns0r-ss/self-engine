@@ -1,556 +1,1052 @@
-# Topic 1.3 data file (PLAN.md Section 5). Problems reference the bank by id.
-id: "1.3"
+# Topic 1.3 data file (PLAN.md Section 5, Revision 2). Problems reference the bank by id.
+id: '1.3'
+uses:
+- topic: '0.1'
+  what: Reading input and long long for sums that pass about 2·10^9
+- topic: '0.2'
+  what: Turning n ≤ 2·10^5 into "about 10^6 to 10^7 operations are fine, n² is not"
+- topic: '0.3'
+  what: One-pass scans, which several negative examples contrast with a moving window
+- topic: '0.4'
+  what: Remainders, used by one ladder problem on subarray sums modulo m
+- topic: '0.5'
+  what: 'Brute force: the reference solutions in the tests, and the plain loops several negative examples
+    fall back to'
+- topic: '0.6'
+  what: map and multiset to keep the values inside a window
+- topic: '1.1'
+  what: 'Sorting: two of the forms here work on sorted arrays'
+- topic: '1.2'
+  what: 'Prefix sums: the standard alternative when a condition is an exact sum or values can be negative'
+theorems:
+- id: 1.3.1
+  title: A window that only ever shrinks from the left finds the longest valid window
+  plain_words: If every part of a valid window is valid too, then for each right end the best left end
+    never moves left as the right end grows. One pass that moves both ends only forward finds the longest
+    valid window.
+  code: 1.3/thm-1
+- id: 1.3.2
+  title: For each right end the valid left ends form one block
+  plain_words: When every part of a valid window is valid, the valid left ends for a fixed right end are
+    all positions from the best one up to the right end itself, so each right end contributes one count
+    to the number of valid windows.
+  code: 1.3/thm-2
+- id: 1.3.3
+  title: A window of fixed length is updated by one add and one remove
+  plain_words: To look at every window of exactly k elements, add the element that enters and remove the
+    one that leaves. This works whenever the summary of the window can undo an add, such as a sum, a table
+    of counts or a multiset.
+  code: 1.3/thm-3
+- id: 1.3.4
+  title: From both ends of a sorted array, one end can always be discarded
+  plain_words: In a sorted array, if the smallest and largest of the remaining elements add to too little,
+    the smallest can never be part of a solution; if they add to too much, the largest cannot. So the
+    two ends can be moved inwards.
+  code: 1.3/thm-4
+- id: 1.3.5
+  title: Two sorted lists can be walked with pointers that only move forward
+  plain_words: When both lists are sorted, what each element of the first list needs from the second begins
+    where the previous one stopped, so one pointer into the second list only moves forward. A subsequence
+    check is the same walk.
+  code: 1.3/thm-5
+- id: 1.3.6
+  title: A subsequence is found by matching each character as early as possible
+  plain_words: A string t is a subsequence of s exactly when scanning s once and matching the next character
+    of t whenever it appears matches all of t. Matching early never hurts the later characters.
+  code: 1.3/thm-6
 cards:
-  - id: shrinkable-window
-    name: Shrinkable window
-    decisive_property: Validity is closed under shrinking (every sub-window of a valid window is valid), the empty window is valid, and validity can be rechecked after adding or removing one element. For 'shortest window with property P', the same holds for the opposite of P.
-    from_theorem: Theorem 1.3.1
-    how_to_test: Take any valid window, delete its first or last element, and argue it stays valid for every possible input. Then try a small counterexample with the problem's extreme values (zeros, negatives, repeated values).
-    weak_signals:
-      - Longest or shortest contiguous subarray or substring satisfying a condition
-      - Condition of the form 'at most k of something', 'sum at most K' with non-negative values, or 'all distinct'
-      - n up to 2·10^5, so O(n²) is too slow
-      - Fewest items removed from the two ends of a row (what remains is one middle window, so find the longest valid middle window)
-    kill_signals:
-      - Values can be negative and the condition is about a sum (removing an element can raise the sum)
-      - "The condition is 'exactly k' (not closed under shrinking: rewrite as at-most-k minus at-most-(k−1), or use prefix sums)"
-      - The question is about subsequences, not contiguous segments
-    lookalikes:
-      - description: Longest subarray with sum at most K when values may be negative
-        needs: 1.2 prefix sums with sorted prefix values (and 1.4)
-        flipping_difference: A negative value means a sub-window can have a larger sum, so validity is not closed under shrinking.
-    complexity: "O(n) window updates: each pointer moves right at most n times. O(n log n) when the window keeps a map of counts."
-  - id: count-windows
-    name: Count valid windows
-    decisive_property: Validity (or its opposite, for 'at least' counts) is closed under shrinking and the empty window is valid, so for each right end r the valid left ends form one range L(r)..r and contribute r − L(r) + 1.
-    from_theorem: Theorem 1.3.2
-    how_to_test: "Fix a right end r and check that the valid left ends have no gap: if [l, r] is valid, so is [l + 1, r]. If the question asks for 'at least', test the opposite condition and subtract from n(n+1)/2."
-    weak_signals:
-      - Count the subarrays or substrings satisfying a condition
-      - Answer can be about n²/2, so it needs long long
-      - Conditions like 'product less than k', 'at most k distinct', 'contains every letter at least once'
-    kill_signals:
-      - Condition is an exact sum or exact count with possibly negative values (use prefix sums with a hash map, 1.2)
-      - Validity is not monotone in the left end for a fixed right end (valid left ends have gaps)
-    lookalikes:
-      - description: Count subarrays with sum exactly K when values can be negative
-        needs: 1.2 prefix sums with a map of prefix counts
-        flipping_difference: Exact sums with negative values make the valid left ends for one r scattered, not one range.
-    complexity: O(n) window updates plus O(1) per r to add r − l + 1; the count needs long long.
-  - id: fixed-window
-    name: Fixed-size window
-    decisive_property: Every window considered has the same length k, and the window's summary supports removing one element exactly (undoing an add), so each slide costs one add and one remove.
-    from_theorem: Theorem 1.3.3
-    how_to_test: Check that the length is fixed by the statement, then name the summary (sum, count array, map, multiset) and how to remove the leaving element from it.
-    weak_signals:
-      - Every subarray or substring of length exactly k
-      - Best window of a given size, or 'some window of length k satisfies …'
-      - "Also: windows of k consecutive values, after turning values into positions"
-      - Take exactly k items from the two ends of a row (the items left form one window of length n − k)
-    kill_signals:
-      - Window length is not fixed (use a shrinkable window instead)
-      - The summary cannot be undone (a single running maximum); a multiset or a later tool is needed
-    lookalikes:
-      - description: Maximum of every window of length k in O(n) for n up to 10^7
-        needs: 1.6 (a later topic)
-        flipping_difference: The summary is a maximum and the log factor of a multiset is too slow.
-    complexity: "n adds and at most n removes: O(n) for sums and count arrays, O(n log n) for maps and multisets."
-  - id: opposite-ends
-    name: Opposite ends of a sorted array
-    decisive_property: The array is (or may be) sorted, so with one pointer fixed the pair's value is monotone in the other, and at each step one end can be shown to belong to no remaining solution and discarded.
-    from_theorem: Theorem 1.3.4
-    how_to_test: Sort, look at the pair (smallest, largest), and say which of the two can be ruled out when the pair's value is too small and when it is too large.
-    weak_signals:
-      - Pairs (or triples) with a given sum, at most a given sum, or the best pair score
-      - The order of the input does not matter, or the array is already sorted
-      - O(1) extra memory requested
-    kill_signals:
-      - The original indices or order matter and sorting would destroy them (use a hash map, 0.6)
-      - The pair must be adjacent or contiguous (a window card instead)
-    lookalikes:
-      - description: Two Sum on an unsorted array where original indices must be returned
-        needs: 0.6 map from value to index
-        flipping_difference: Sorting loses the indices, so a value-to-index map is the natural tool.
-    complexity: "O(n log n) to sort, then O(n): each step moves one pointer inward."
-  - id: merge-walk
-    name: Walk two sorted sequences
-    decisive_property: Both sequences are sorted in the same direction (or the matching is in order, as for subsequences), so what each element of the first needs from the second starts at a prefix boundary that only moves forward; a passed element is never needed again.
-    from_theorem: Theorem 1.3.5
-    how_to_test: Sort both lists and check that if element a[i] needs b[j], then a[i + 1] never needs anything before b[j].
-    weak_signals:
-      - "Two lists: merge them, match elements, count pairs across them, closest element of one to each element of the other"
-      - Check whether one string is a subsequence of another
-    kill_signals:
-      - Matching depends on the original order of both lists in a way sorting breaks
-      - Each query needs an element far back in the other list (pointer would move backwards)
-    lookalikes:
-      - description: For each element of a, the closest element of b, when a arrives online one query at a time
-        needs: 0.6 set with ordered lookups
-        flipping_difference: Queries are not sorted, so the pointer in b cannot only move forward.
-    complexity: O(n + m) after sorting both sequences.
+- id: shrinkable-window
+  name: Shrinkable window
+  decisive_property: Validity is closed under shrinking (every sub-window of a valid window is valid),
+    the empty window is valid, and validity can be rechecked after adding or removing one element. For
+    'shortest window with property P', the same holds for the opposite of P.
+  from_theorem: 1.3.1
+  how_to_test: Take any valid window, delete its first or last element, and argue it stays valid for every
+    possible input. Then try a small counterexample with the problem's extreme values (zeros, negatives,
+    repeated values).
+  constraint_shapes:
+  - 'n up to 2·10^5 and a condition on a contiguous window: checking every window is n²/2 = 2·10^10 steps,
+    but the two pointers each move at most n times, so at most 2n = 4·10^5 checks.'
+  weak_signals:
+  - form: Asks for the longest or shortest contiguous subarray or substring with a property
+    shape: n up to 2·10^5, with a sum at most K and non-negative values, or "all distinct", or "at most
+      k of something"
+  - form: Asks for the fewest items to remove from the two ends of a row
+    shape: What remains is one middle window, so the question is the longest valid middle window
+  kill_signals:
+  - 'Values can be negative and the condition is a sum: for 5, −3, 1 and "sum at most 3" the whole array
+    is valid (sum 3) although removing the 1 leaves a window with sum 2, and the shrinking window, which
+    discards the 5 and its prefixes, finds length 2 instead of 3.'
+  - 'The condition is "exactly K", not closed under shrinking: in 0 0 0 5 the longest window with sum
+    exactly 3 does not exist, but the longest window with sum at most 3 has length 3.'
+  in_action:
+    statement: Given n values and K, find the length of the longest subarray with sum at most K (all values
+      non-negative).
+    constraints: n ≤ 2·10^5, 0 ≤ a_i ≤ 10^9, K up to 2·10^14.
+    budget: Summing every subarray is n²/2 = 2·10^10 steps, 200 times the budget. Two pointers that move
+      forward only are at most 2n = 4·10^5 steps.
+    candidates:
+    - tool: Sum every subarray with two loops
+      verdict: rejected
+      because: About 2·10^10 steps.
+    - tool: A window whose left end moves right while the sum is too large (this topic)
+      verdict: chosen
+      because: Values are non-negative, so removing an element never raises the sum, and the best left
+        end never moves left.
+    property_check: Every sub-window of a window with sum at most K has sum at most K (non-negative values),
+      and the empty window has sum 0 ≤ K, so validity is closed under shrinking (Theorem 1.3.1). The sum
+      is updated in O(1) when an element enters or leaves.
+    decision: Add a[r]; while the sum exceeds K remove a[l] and advance l; record r − l + 1.
+  examples:
+    positive:
+    - inline:
+        input: The longest window with sum at most 5 in 3 1 2 1 4 1
+        answer: '3'
+        why: The window [1, 3] with values 1, 2, 1 has sum 4, and no window of length 4 has sum at most
+          5; the shrinking window finds it in one pass.
+    - worked_example: cses-1141
+      why: A window with all songs distinct stays valid when an element is removed, so a shrinking window
+        finds the longest one.
+    negative:
+    - inline:
+        input: The longest window with sum at most 3 in 5 −3 1, with a negative value
+        answer: '3'
+        method_gives: '2'
+        why: The whole array has sum 3, but the window must drop the 5 first, and a left end that has
+          moved right never moves back. A negative value means a larger window can be valid when a smaller
+          one is not.
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - inline:
+        input: The longest window with sum exactly 3 in 0 0 0 5, answered by the window with sum at most
+          3
+        answer: '0'
+        method_gives: '3'
+        why: 'Exactly 3 is not closed under shrinking: the window 0 0 0 has sum 0, not 3. No window has
+          sum 3, so the answer is 0, while the "at most 3" window has length 3.'
+      correct_tool:
+        topic: '1.2'
+        card: prefix-count-lookup
+  lookalikes:
+  - description: Longest subarray with sum at most K when values may be negative
+    tool:
+      topic: '1.2'
+      card: prefix-extremes
+    flipping_difference: A negative value means a sub-window can have a larger sum, so validity is not
+      closed under shrinking and a moving window loses candidates; prefix sums do not need that closure.
+  complexity: O(n) checks, each O(1) with a running sum.
+- id: count-windows
+  name: Count valid windows
+  decisive_property: Validity (or its opposite, for 'at least' counts) is closed under shrinking and the
+    empty window is valid, so for each right end r the valid left ends form one range L(r)..r and contribute
+    r − L(r) + 1.
+  from_theorem: 1.3.2
+  how_to_test: 'Fix a right end r and check that the valid left ends have no gap: if [l, r] is valid,
+    so is [l + 1, r]. If the question asks for ''at least'', test the opposite condition and subtract
+    from n(n+1)/2.'
+  constraint_shapes:
+  - 'n up to 2·10^5: the count can reach n(n + 1)/2 ≈ 2·10^10, which needs long long, while counting window
+    by window is 2·10^10 steps and the two-pointer count is 4·10^5.'
+  weak_signals:
+  - form: Asks to count the subarrays or substrings that satisfy a condition
+    shape: n up to 2·10^5 and an answer up to about n²/2
+  - form: Conditions such as "product less than k", "at most k distinct values" or "contains every letter"
+    shape: A condition on the window that stays true when an element is removed (or false when added)
+  kill_signals:
+  - 'The condition is "sum at most 1" with a negative value: for 2, −1, 1 there are 4 such windows, but
+    the shrinking count finds 3, because the window [2, −1] is lost when the 2 is removed.'
+  - '"At least" is counted with the "at most" loop: for 3 1 2 1 4 1 there are 11 windows with sum at least
+    5 and 12 with sum at most 5, and the loop answers 12.'
+  in_action:
+    statement: Count the subarrays of a (positive values) whose sum is at least K.
+    constraints: n ≤ 2·10^5, 1 ≤ a_i ≤ 10^9, K up to 10^14.
+    budget: 'Checking every subarray is n²/2 = 2·10^10 steps. Two pointers: 4·10^5.'
+    candidates:
+    - tool: Test every subarray
+      verdict: rejected
+      because: About 2·10^10 steps.
+    - tool: Count the subarrays with sum below K with a shrinking window and subtract from n(n + 1)/2
+        (this topic)
+      verdict: chosen
+      because: '"Sum at least K" is not closed under shrinking, but its opposite, "sum below K", is, and
+        the empty window qualifies.'
+    property_check: The opposite condition "sum < K" is closed under shrinking for positive values and
+      holds for the empty window. For each right end r the valid left ends are L(r)..r, contributing r
+      − L(r) + 1 (Theorem 1.3.2), so the windows with sum below K are counted in O(n).
+    decision: below = Σ (r − L(r) + 1) over the window with sum < K; answer n(n + 1)/2 − below, in long
+      long.
+  examples:
+    positive:
+    - inline:
+        input: The windows with sum at most 5 in 3 1 2 1 4 1
+        answer: '12'
+        why: The values of r − L(r) + 1 are 1, 2, 2, 3, 2, 2, which add up to 12 of the 21 windows.
+    - worked_example: ac-abc130_d
+      why: Counting the subarrays with sum at least K is done through the opposite condition, "sum below
+        K", which a shrinking window counts.
+    negative:
+    - inline:
+        input: The windows of 2 −1 1 with sum at most 1, counted by r − L(r) + 1 with a shrinking window
+        answer: '4'
+        method_gives: '3'
+        why: With the negative value, the sum can fall again after a shrink, so valid left ends for one
+          r are not one block. The window [2, −1] (sum 1) is lost when the 2 is removed; counting every
+          window directly finds all 4.
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - inline:
+        input: The windows of 3 1 2 1 4 1 with sum at least 5, counted with the "at most 5" loop
+        answer: '11'
+        method_gives: '12'
+        why: The loop counts the windows with sum at most 5, which is a different set. Windows with sum
+          at least 5 are the total 21 minus the windows with sum below 5.
+      correct_tool:
+        topic: '1.3'
+        card: count-windows
+  lookalikes:
+  - description: Count subarrays with sum exactly K when values can be negative
+    tool:
+      topic: '1.2'
+      card: prefix-count-lookup
+    flipping_difference: Exact sums with negative values make the valid left ends for one r scattered,
+      not one range; a map of earlier prefix sums finds them.
+  complexity: O(n) checks.
+- id: fixed-window
+  name: Fixed-size window
+  decisive_property: Every window considered has the same length k, and the window's summary supports
+    removing one element exactly (undoing an add), so each slide costs one add and one remove.
+  from_theorem: 1.3.3
+  how_to_test: Check that the length is fixed by the statement, then name the summary (sum, count array,
+    map, multiset) and how to remove the leaving element from it.
+  constraint_shapes:
+  - 'n = 2·10^5 and k = 10^5: recomputing each window costs k steps, (n − k + 1) · k ≈ 10^10 in all, while
+    one add and one remove per slide is 2·10^5.'
+  weak_signals:
+  - form: Asks about every subarray or substring of length exactly k
+    shape: n up to 2·10^5 and a fixed k
+  - form: Asks for the best window of a given size, or whether some window of length k satisfies a condition
+    shape: A sum, a count of distinct values or a maximum per window
+  - form: Asks to take exactly k items from the two ends of a row
+    shape: The items left form one window of length n − k
+  kill_signals:
+  - 'The window length is not fixed: the longest window of 3 1 2 1 4 1 with sum at most 5 has length 3,
+    but the best window of length 2 only shows 2; a shrinkable window is needed.'
+  - 'The summary cannot remove: a single variable holding the maximum so far gives 5, 5 for the window
+    maxima of 5 1 2 4 with k = 3, where the answer is 5, 4; a multiset can remove one copy.'
+  in_action:
+    statement: Given n values and k, print the sum of every window of k consecutive values.
+    constraints: n ≤ 2·10^5, k ≤ n, |a_i| ≤ 10^9.
+    budget: Adding up each window is up to (n − k + 1) · k ≈ 10^10 steps. One add and one remove per slide
+      is 2·10^5.
+    candidates:
+    - tool: Add up each window from scratch
+      verdict: rejected
+      because: Up to about 10^10 steps.
+    - tool: Slide the window, adding the entering value and subtracting the leaving one (this topic)
+      verdict: chosen
+      because: The window length is fixed, and a sum can undo an add exactly.
+    property_check: By induction on r, after iteration r the running sum holds exactly a_{max(0, r − k
+      + 1)}..a_r (Theorem 1.3.3). Subtracting a[r − k] removes exactly the element that left, so the sum
+      stays exact.
+    decision: For each r add a[r], subtract a[r − k] when r ≥ k, output the sum when r ≥ k − 1, in long
+      long.
+  examples:
+    positive:
+    - inline:
+        input: The sums of all windows of length 3 in 3 1 2 1 4 1
+        answer: 6,4,7,6
+        why: 'Sliding adds the entering value and removes the leaving one: 3 + 1 + 2 = 6, then − 3 + 1
+          = 4, then − 1 + 4 = 7, then − 2 + 1 = 6.'
+    - inline:
+        input: The maxima of all windows of length 3 in 5 1 2 4
+        answer: 5,4
+        why: 'A multiset of the window supports removing one copy, so its largest element is the window
+          maximum: 5 for [5, 1, 2] and 4 for [1, 2, 4].'
+    negative:
+    - inline:
+        input: The window maxima of 5 1 2 4 with k = 3, kept in one variable "maximum so far"
+        answer: 5,4
+        method_gives: 5,5
+        why: When the 5 leaves the window the variable still holds 5, and the second largest value was
+          never stored. The summary must be able to remove an element, as a multiset can.
+      correct_tool:
+        topic: '1.3'
+        card: fixed-window
+    - inline:
+        input: The longest window with sum at most 5 in 3 1 2 1 4 1, answered with windows of length exactly
+          2
+        answer: '3'
+        method_gives: '2'
+        why: The statement does not fix the length, so there is no fixed k to slide. The longest valid
+          window is found by a window that grows and shrinks.
+      correct_tool:
+        topic: '1.3'
+        card: shrinkable-window
+  lookalikes:
+  - description: Maximum of every window of length k in O(n) for n up to 10^7
+    tool:
+      topic: '0.6'
+      card: heap-extract
+    flipping_difference: The summary is a maximum, and the log factor of a multiset is too slow at n =
+      10^7; at n = 2·10^5 a multiset is fine.
+  complexity: O(n) for a sum or an array of counts, O(n log n) for a map or multiset.
+- id: opposite-ends
+  name: Opposite ends of a sorted array
+  decisive_property: The array is (or may be) sorted, so with one pointer fixed the pair's value is monotone
+    in the other, and at each step one end can be shown to belong to no remaining solution and discarded.
+  from_theorem: 1.3.4
+  how_to_test: Sort, look at the pair (smallest, largest), and say which of the two can be ruled out when
+    the pair's value is too small and when it is too large.
+  constraint_shapes:
+  - 'n up to 2·10^5: trying every pair is 2·10^10 steps, while sorting is 3.6·10^6 steps and the two pointers
+    meet after at most n − 1 = 2·10^5 moves.'
+  weak_signals:
+  - form: Asks for a pair or triple with a given sum, a sum at most T, or the best pair score
+    shape: n up to 2·10^5, values up to 10^9, and the order of the input irrelevant
+  - form: Asks for the widest container, or a score that depends on the two ends of a range
+    shape: A pair (i, j) scored by j − i and the smaller of two heights
+  kill_signals:
+  - 'The original indices must be reported: for 3 2 4 and target 6 the answer is positions 1 and 2, but
+    pointers on the sorted array 2 3 4 give the sorted positions 0 and 2.'
+  - 'The pair must use two different positions: with pointers allowed to meet (l ≤ r) the array 3 5 and
+    target 6 wrongly succeeds with 3 + 3 at l = r = 0.'
+  in_action:
+    statement: Is there a pair of different positions i < j with a_i + a_j = T?
+    constraints: n ≤ 2·10^5, |a_i| ≤ 10^9, |T| ≤ 2·10^9.
+    budget: Testing every pair is up to 2·10^10 steps. Sorting is 3.6·10^6 and the pointer walk 2·10^5.
+    candidates:
+    - tool: Test every pair of positions
+      verdict: rejected
+      because: About 2·10^10 pairs.
+    - tool: Sort, then move two pointers inwards from the ends (this topic)
+      verdict: chosen
+      because: The order of the input does not matter, and a sum that is too small rules out the left
+        end, while one that is too large rules out the right end.
+    property_check: In the sorted array with l < r, if a_l + a_r < T then a_l + a_j ≤ a_l + a_r < T for
+      every j in (l, r], so no solution uses l; if the sum exceeds T, none uses r (Theorem 1.3.4). Each
+      step discards one end, so at most n − 1 steps.
+    decision: Sort; l = 0, r = n − 1; while l < r compare a_l + a_r with T and move l right or r left.
+  examples:
+    positive:
+    - inline:
+        input: Is there a pair in 1 2 4 6 9 with sum 8?
+        answer: 'yes'
+        why: The pointers start at 1 + 9 = 10 > 8 (drop 9), then 1 + 6 = 7 < 8 (drop 1), then 2 + 6 =
+          8, found.
+    - worked_example: lc-container-with-most-water
+      why: For two lines, the area is limited by the shorter side, so moving the pointer at the shorter
+        side inwards discards it, and the pointers meet after at most n − 1 steps.
+    negative:
+    - inline:
+        input: Two Sum on the unsorted 3 2 4 with target 6; report the original indices of the pair
+        answer: 1-2
+        method_gives: 0-2
+        why: Sorting gives 2 3 4 and the pointers find the pair at sorted positions 0 and 2, which no
+          longer name the original positions 1 and 2. A map from value to index keeps them.
+      correct_tool:
+        topic: '0.6'
+        card: map-counting
+    - inline:
+        input: Is there a pair of different positions in 3 5 with sum 6, if the pointers are allowed to
+          meet (l ≤ r)?
+        answer: 'no'
+        method_gives: 'yes'
+        why: At l = r = 0 the sum is 3 + 3 = 6, which uses one position twice. The loop must stop when
+          l = r, since the pair needs two positions.
+      correct_tool:
+        topic: '1.3'
+        card: opposite-ends
+  lookalikes:
+  - description: Two Sum on an unsorted array where original indices must be returned
+    tool:
+      topic: '0.6'
+      card: map-counting
+    flipping_difference: Sorting loses the indices, so a map from value to index is the natural tool.
+  complexity: O(n) after an O(n log n) sort.
+- id: merge-walk
+  name: Walk two sorted sequences
+  decisive_property: Both sequences are sorted in the same direction (or the matching is in order, as
+    for subsequences), so what each element of the first needs from the second starts at a prefix boundary
+    that only moves forward; a passed element is never needed again.
+  from_theorem: 1.3.5
+  how_to_test: Sort both lists and check that if element a[i] needs b[j], then a[i + 1] never needs anything
+    before b[j].
+  constraint_shapes:
+  - 'n and m up to 2·10^5: for each a_i a scan of all of b is n · m = 4·10^10 steps, while one forward
+    pointer into b makes at most n + m = 4·10^5 moves in all.'
+  weak_signals:
+  - form: Asks to merge two lists, match elements, count pairs across them, or find the closest element
+      of one list to each element of the other
+    shape: Two lists with n and m up to 2·10^5, sorted or allowed to be sorted
+  - form: Asks whether one string is a subsequence of another
+    shape: Strings of length up to 2·10^5, and deleting characters keeps order
+  kill_signals:
+  - 'The queries are not sorted: for a = 9, 2 and b = 1 3 5 7 the counts of b below each a are 4, 1, but
+    a pointer that only moves forward answers 4, 4 for the second.'
+  - 'The comparison is wrong on equal values: for a = 5, 5 and b = 5 the counts of b strictly below each
+    a are 0, 0, but a walk that advances on b[j] ≤ a[i] gives 1, 1.'
+  in_action:
+    statement: For every element of a (sorted), count the elements of b (sorted) that are smaller.
+    constraints: n, m ≤ 2·10^5, values up to 10^9.
+    budget: Scanning all of b for each element of a is n · m = 4·10^10 steps. A forward pointer is at
+      most n + m = 4·10^5 moves.
+    candidates:
+    - tool: Scan all of b for each a_i
+      verdict: rejected
+      because: About 4·10^10 steps.
+    - tool: One pointer j into b that only moves forward (this topic)
+      verdict: chosen
+      because: Both lists are sorted, so the elements of b below a_i are a prefix, and for a larger a_{i+1}
+        that prefix only grows.
+    property_check: The elements of b below a_i are b_0..b_{p(i)−1}, a prefix, and p is non-decreasing
+      because a is sorted (Theorem 1.3.5). The pointer advances while b[j] < a[i], so it never moves back
+      and makes at most m moves overall.
+    decision: j = 0; for each i advance j while b[j] < a[i]; p[i] = j.
+  examples:
+    positive:
+    - inline:
+        input: For a = 2 5 5 9 and b = 1 3 5 7, the number of elements of b below each element of a
+        answer: 1,2,2,4
+        why: Below 2 is {1}; below 5 are {1, 3}, twice; below 9 are all four elements of b. The pointer
+          moves 1, 2, 2, 4 and never back.
+    - inline:
+        input: Is "ace" a subsequence of "abcde"?
+        answer: 'yes'
+        why: Scanning the second string and matching the next letter whenever it appears matches a, c
+          and e in order.
+    negative:
+    - inline:
+        input: For the unsorted a = 9 2 and b = 1 3 5 7, the counts of b below each element of a, with
+          one forward pointer
+        answer: 4,1
+        method_gives: 4,4
+        why: After the 9 the pointer is at 4. The 2 needs the count 1, which is behind the pointer, and
+          a pointer that only moves forward cannot return. The queries must be sorted, or an ordered lookup
+          used.
+      correct_tool:
+        topic: '0.6'
+        card: ordered-set-lookup
+    - inline:
+        input: For a = 5 5 and b = 5, the number of elements of b strictly below each element of a, with
+          the walk advancing on b[j] ≤ a[i]
+        answer: 0,0
+        method_gives: 1,1
+        why: The walk advances on equal values, which are not below. The advance condition must be the
+          strict b[j] < a[i].
+      correct_tool:
+        topic: '1.3'
+        card: merge-walk
+  lookalikes:
+  - description: For each element of a, the closest element of b, when a arrives online one query at a
+      time
+    tool:
+      topic: '0.6'
+      card: ordered-set-lookup
+    flipping_difference: Queries are not sorted, so the pointer in b cannot only move forward; a set with
+      ordered lookups answers each in O(log m).
+  complexity: O(n + m) after sorting.
 problems:
-  - id: lc-longest-substring-without-repeating-characters
-    role: ladder
-    card: shrinkable-window
-    rung: 1
-    twist: Base case of the card
-    summary: Longest substring of a string (length up to 5·10^4) with no repeated character.
-    hints:
-      - If a substring has no repeated character, does every shorter substring inside it also have none?
-      - 'Yes: "all distinct" is closed under shrinking, so Theorem 1.3.1 applies. Keep a count of each character in the window.'
-      - Extend r; while s[r] now occurs twice, remove s[l] and advance l; record r − l + 1.
-  - id: ac-abc326_c
-    role: ladder
-    card: shrinkable-window
-    rung: 2
-    twist: The window runs over sorted coordinates, and validity compares its two ends (A_r − A_l < M).
-    summary: N gifts on a number line (N ≤ 3·10^5); the most gifts inside one half-open interval of length M.
-    hints:
-      - Does the input order of the gifts matter? What changes after sorting the coordinates?
-      - After sorting, a run of gifts fits in one interval of length M exactly when the last minus the first is less than M, and that is closed under shrinking.
-      - Sort; for each r advance l while A[r] − A[l] ≥ M; the answer is the largest r − l + 1.
-  - id: ac-abc229_d
-    role: ladder
-    card: shrinkable-window
-    rung: 3
-    twist: "Validity is a budget: at most K dots inside the window."
-    summary: A string of X and . (length ≤ 2·10^5); change at most K dots into X to make the longest run of X.
-    hints:
-      - The final run of X is some window of S. Which windows can be turned completely into X?
-      - A window works when it contains at most K dots, and removing characters never adds dots.
-      - Slide the window counting dots; while the count exceeds K, advance l; maximise r − l + 1.
-  - id: ac-abc124_d
-    role: ladder
-    card: shrinkable-window
-    rung: 4
-    twist: The budget counts maximal blocks of 0s inside the window, not single characters.
-    summary: A 0/1 string (N ≤ 10^5); with at most K flips of whole segments, the longest run of 1s.
-    hints:
-      - One flip can turn one maximal block of 0s into 1s. How many flips does a given window need?
-      - 'A window can be made all 1s with as many flips as it has blocks of 0s, and a shorter window never has more blocks: the condition "at most K blocks" is closed under shrinking.'
-      - Compress S into runs (value, length). Slide a window over the runs that holds at most K runs of 0s, and add up the run lengths inside it.
-  - id: cses-3420
-    role: ladder
-    card: count-windows
-    rung: 1
-    twist: Base case of the card
-    summary: Count the subarrays (n ≤ 2·10^5) whose elements are all different.
-    hints:
-      - If a subarray has all elements different, do all its sub-subarrays too?
-      - Yes, so for each right end the valid left ends form one range L(r)..r (Theorem 1.3.2).
-      - Keep a map of counts; for each r shrink until a[r] occurs once; add r − l + 1 to a long long total.
-  - id: lc-subarray-product-less-than-k
-    role: ladder
-    card: count-windows
-    rung: 2
-    twist: Product instead of sum, and k ≤ 1 makes every non-empty window invalid.
-    summary: Count contiguous subarrays (n ≤ 3·10^4, values 1–1000) whose product is strictly less than k (0 ≤ k ≤ 10^6).
-    hints:
-      - All values are at least 1. What happens to the product when an element leaves the window?
-      - '"Product < k" is closed under shrinking. The empty window has product 1, so when k ≤ 1 no non-empty window is valid: handle it first.'
-      - Multiply in nums[r]; while the product is at least k, divide out nums[l] and advance l; add r − l + 1.
-  - id: ac-abc260_e
-    role: ladder
-    card: count-windows
-    rung: 3
-    twist: "Answers are needed for every length: each left end adds 1 to a range of lengths, done with a difference array (1.2)."
-    summary: N pairs of numbers in 1..M (N, M ≤ 2·10^5); for every k, count the intervals of length k of 1..M that contain at least one number of every pair.
-    hints:
-      - Is "contains one number of every pair" closed under shrinking or under extension?
-      - Under extension. For each left end l, the smallest good right end R(l) never moves left as l grows, and every right end from R(l) to M is good.
-      - "Keep, per pair, how many of its two numbers are inside, and the number of satisfied pairs. For each l, lengths R(l) − l + 1 to M − l + 1 are good: add 1 to that range with a difference array."
-  - id: ac-abc146_e
-    role: ladder
-    card: count-windows
-    rung: 4
-    twist: "The window is over candidate left ends: only the last K − 1 prefix positions can pair with r."
-    summary: Count subarrays (N ≤ 2·10^5) whose sum, taken modulo K, equals their length.
-    hints:
-      - Write the condition with prefix sums P. Since a remainder is less than K, what does it say about the length?
-      - The length r − l is less than K, and the condition becomes (P[r] − r) mod K = (P[l] − l) mod K.
-      - Scan r; keep a map counting the keys (P[l] − l) mod K for the last K − 1 positions l only, erasing the key of the position that falls out.
-  - id: lc-maximum-average-subarray-i
-    role: ladder
-    card: fixed-window
-    rung: 1
-    twist: Base case of the card
-    summary: Largest average of a block of exactly k consecutive numbers (n ≤ 10^5).
-    hints:
-      - Two neighbouring blocks of length k share k − 1 elements. What changes between them?
-      - A sum supports removing one element exactly, so Theorem 1.3.3 applies.
-      - Sum the first k; then add nums[r] and subtract nums[r − k]; keep the largest sum and divide by k once at the end.
-  - id: lc-maximum-number-of-vowels-in-a-substring-of-given-length
-    role: ladder
-    card: fixed-window
-    rung: 2
-    twist: The summary counts characters with a property instead of adding values.
-    summary: Most vowels in any substring of length exactly k (string length ≤ 10^5).
-    hints:
-      - What does the window need to remember about its characters?
-      - Only how many vowels it holds; one character enters and one leaves per slide.
-      - Count vowels in the first k; add 1 if s[r] is a vowel, subtract 1 if s[r − k] is; keep the maximum.
-  - id: ac-abc210_c
-    role: ladder
-    card: fixed-window
-    rung: 3
-    twist: The summary is the number of distinct values, kept with a map of counts.
-    summary: Most distinct colours among K consecutive candies (N ≤ 3·10^5, colours up to 10^9).
-    hints:
-      - Recounting the colours of every block costs O(NK). What is the smallest change per slide?
-      - One colour count goes up and one goes down; the distinct count changes only when a count moves between 0 and 1.
-      - "Map of counts: when a count becomes 1, distinct++; when it becomes 0, distinct−− (or erase the key and use the map size)."
-  - id: ac-abc352_d
-    role: ladder
-    card: fixed-window
-    rung: 4
-    twist: The window slides over values, not positions, and its summary is a multiset of positions.
-    summary: In a permutation (N ≤ 2·10^5), choose K consecutive values whose positions are as close together as possible; print the smallest last-minus-first position.
-    hints:
-      - Fix the values a, a + 1, …, a + K − 1. What does choosing exactly these cost?
-      - With pos[v] the index of value v, the cost is the largest minus the smallest pos over a window of K consecutive values.
-      - "Slide over v keeping a multiset of pos values: insert pos[v], erase one copy of pos[v − K]; minimise last element minus first element."
-  - id: ac-abc337_d
-    role: ladder
-    card: fixed-window
-    rung: 5
-    twist: "Many lines: run the fixed window along every row and every column."
-    summary: Grid of o, x and . (H·W ≤ 2·10^5); fewest . cells to turn into o so that K consecutive cells in a row or a column are all o, or −1.
-    hints:
-      - For one row and one block of K cells, when is the block possible and what does it cost?
-      - Possible when it holds no x; the cost is its number of dots. Both counts slide in O(1).
-      - For each row and each column, slide a window of length K counting x and dots; take the minimum dot count over windows with no x.
-  - id: lc-two-sum-ii-input-array-is-sorted
-    role: ladder
-    card: opposite-ends
-    rung: 1
-    twist: Base case of the card
-    summary: In a sorted array (n ≤ 3·10^4), the positions of the two numbers adding up to a target, using O(1) extra memory.
-    hints:
-      - Compare the smallest plus the largest with the target. Which one can be ruled out?
-      - If the sum is too small, the smallest cannot pair with anything left (Theorem 1.3.4); if too large, the largest cannot.
-      - l = 0, r = n − 1; move l up or r down until the sum matches; positions are 1-based in the answer.
-  - id: cses-1090
-    role: ladder
-    card: opposite-ends
-    rung: 2
-    twist: "Count groups instead of finding one pair: settle the heaviest remaining child at each step."
-    summary: Fewest gondolas for n children (n ≤ 2·10^5) when a gondola holds one or two children with total weight at most x.
-    hints:
-      - Sort the weights. Who should the heaviest child share with, if anyone?
-      - "If the heaviest cannot share with the lightest, they share with no one. If they can, sharing with the lightest is never worse: in any best plan, swap the lightest with the heaviest child's partner and every gondola stays within x."
-      - "Opposite ends: if p[l] + p[r] ≤ x, move both; otherwise move only r; count one gondola per step."
-  - id: cses-1641
-    role: ladder
-    card: opposite-ends
-    rung: 3
-    twist: "Three values: fix one, then solve a pair problem on the rest."
-    summary: Positions of three values (n ≤ 5000) at different positions with sum x, or IMPOSSIBLE.
-    hints:
-      - n ≤ 5000 allows about n² steps but not n³.
-      - Sort the values together with their original positions; after fixing the first value, the other two must add up to x minus it.
-      - For each i, run the opposite-ends search on the part after i; print the original positions.
-  - id: lc-merge-sorted-array
-    role: ladder
-    card: merge-walk
-    rung: 1
-    twist: Base case of the card
-    summary: Merge two sorted arrays (total length ≤ 200) into the first, which has free space at its end.
-    hints:
-      - Filling the first array from the front overwrites values not read yet. Where is the free space?
-      - "At the end: walk both arrays from their largest elements, placing the larger one in the last free cell."
-      - "Three indices: the end of the first array's data, the end of the second array, and the cell to fill; stop when the second array is used up."
-  - id: lc-is-subsequence
-    role: ladder
-    card: merge-walk
-    rung: 2
-    twist: The sequences are not sorted; the walk follows positions instead (Theorem 1.3.6).
-    summary: Is string s a subsequence of string t (|t| ≤ 10^4)?
-    hints:
-      - Where should the first character of s be matched in t?
-      - "At its earliest occurrence: matching early never hurts later characters (Theorem 1.3.6)."
-      - One index into s; scan t and advance the index on each match; answer whether the index reached |s|.
-  - id: ac-abc212_c
-    role: ladder
-    card: merge-walk
-    rung: 3
-    twist: "Closest pair across two lists: check the neighbours on both sides of the pointer."
-    summary: Smallest |A_i − B_j| over two lists of up to 2·10^5 numbers each.
-    hints:
-      - For one A_i, which B values can be closest to it?
-      - Only the largest B below A_i and the smallest B at least A_i. After sorting both lists, that boundary moves only forward as A_i grows.
-      - Sort both; for each A_i advance j while B[j] < A_i; check B[j] and B[j − 1].
-  - id: cses-1084
-    role: ladder
-    card: merge-walk
-    rung: 4
-    twist: "Matching with a tolerance: each step discards an element that can never be used."
-    summary: Most applicants (n, m ≤ 2·10^5) who get an apartment, when an applicant wanting size x accepts sizes x − k to x + k, one apartment each.
-    hints:
-      - Sort both lists. If the smallest apartment is too small for the smallest applicant, can anyone use it?
-      - "No. Likewise, if it is too big for the smallest applicant, no apartment fits that applicant. Otherwise match the two: in any best matching, swapping partners so that these two are matched never loses a match."
-      - "Two pointers over the sorted lists: discard the apartment if too small, the applicant if the apartment is too big, otherwise count a match and move both."
-  - id: cses-1141
-    role: worked_example
-    summary: Longest run of consecutive songs (n ≤ 2·10^5, ids up to 10^9) with no song repeated.
-  - id: ac-abc130_d
-    role: worked_example
-    summary: Count contiguous subarrays (N ≤ 10^5, positive values) whose sum is at least K (K ≤ 10^10).
-  - id: lc-container-with-most-water
-    role: worked_example
-    summary: "Two of n vertical lines (n ≤ 10^5) that hold the most water: maximise distance times the shorter height."
-  - id: lc-fruit-into-baskets
-    role: drill
-    summary: Longest contiguous stretch of an array (n ≤ 10^5) that uses at most two different values.
-  - id: cf-1354B
-    role: drill
-    summary: Shortest substring of a string of 1s, 2s and 3s (total length ≤ 2·10^5) that contains all three digits, or 0.
-  - id: lc-permutation-in-string
-    role: drill
-    summary: Does s2 (length ≤ 10^4) contain a substring that is a rearrangement of s1?
-  - id: lc-number-of-substrings-containing-all-three-characters
-    role: drill
-    summary: Count the substrings of a string of a, b and c (length ≤ 5·10^4) that contain all three letters.
-  - id: lc-boats-to-save-people
-    role: drill
-    summary: Fewest boats for n people (n ≤ 5·10^4) when a boat carries at most two people with total weight at most a limit.
-  - id: ac-abc172_c
-    role: drill
-    summary: Two stacks of books read only from the top (N, M ≤ 2·10^5, reading times up to 10^9); most books read within K minutes.
-  - id: ac-abc388_c
-    role: drill
-    summary: Sorted sizes (N ≤ 5·10^5); count the pairs where one size is at most half the other.
-  - id: ac-abc395_c
-    role: drill
-    summary: Shortest contiguous subarray (N ≤ 2·10^5) in which some value occurs twice, or −1.
-  - id: ac-abc366_c
-    role: drill
-    summary: "A bag of numbered balls with Q ≤ 2·10^5 queries: add a ball, remove a ball, or report how many different numbers are in the bag."
-  - id: ac-abc364_c
-    role: drill
-    summary: Choose the order of N dishes (N ≤ 2·10^5) so that the eater stops as early as possible, stopping once total sweetness exceeds X or total saltiness exceeds Y.
-  - id: cses-1660
-    role: lookalike
-    summary: Count subarrays with sum exactly x (n ≤ 2·10^5, all values positive).
-  - id: cses-1661
-    role: lookalike
-    summary: Count subarrays with sum exactly x (n ≤ 2·10^5, values may be negative).
-  - id: lc-max-consecutive-ones-iii
-    role: lookalike
-    summary: Longest run of 1s in a 0/1 array (n ≤ 10^5) after flipping at most k zeros.
-  - id: lc-contiguous-array
-    role: lookalike
-    summary: Longest contiguous part of a 0/1 array (n ≤ 10^5) with as many 0s as 1s.
-  - id: lc-minimum-size-subarray-sum
-    role: checkpoint
-    card: shrinkable-window
-    summary: Shortest subarray (n ≤ 10^5, positive values) with sum at least a target, or 0.
-  - id: lc-count-subarrays-with-score-less-than-k
-    role: checkpoint
-    card: count-windows
-    summary: Count subarrays (n ≤ 10^5, positive values) whose sum times length is less than k (k ≤ 10^15).
-  - id: cf-6C
-    role: checkpoint
-    card: opposite-ends
-    summary: Two players eat a row of chocolate bars from opposite ends, each bar taking a given time (n ≤ 10^5); how many bars each one eats.
-  - id: lc-find-all-anagrams-in-a-string
-    role: review
-    card: fixed-window
-    review_set: 1
-    summary: Every start position in s (length ≤ 3·10^4) of a substring that is a rearrangement of p.
-  - id: lc-maximize-the-confusion-of-an-exam
-    role: review
-    card: shrinkable-window
-    review_set: 1
-    summary: A string of T and F (length ≤ 5·10^4); change at most k answers to make the longest run of equal answers.
-  - id: lc-valid-triangle-number
-    role: review
-    card: opposite-ends
-    review_set: 1
-    summary: Count the triples from an array (n ≤ 1000) that can be the side lengths of a triangle.
-  - id: lc-append-characters-to-string-to-make-subsequence
-    role: review
-    card: merge-walk
-    review_set: 1
-    summary: Fewest characters to append to s so that t becomes a subsequence of s (lengths ≤ 10^5).
-  - id: lc-minimum-window-substring
-    role: review
-    card: shrinkable-window
-    review_set: 2
-    summary: Shortest substring of s (length ≤ 10^5) containing every character of t, with multiplicity.
-  - id: ac-abc247_e
-    role: review
-    card: count-windows
-    review_set: 2
-    summary: Count subarrays (N ≤ 2·10^5) whose maximum is exactly X and whose minimum is exactly Y.
-  - id: lc-maximum-points-you-can-obtain-from-cards
-    role: review
-    card: fixed-window
-    review_set: 2
-    summary: Take exactly k cards (n ≤ 10^5), each from the left or right end of a row, to maximise the total points.
-  - id: lc-interval-list-intersections
-    role: review
-    card: merge-walk
-    review_set: 2
-    summary: Intersections of two sorted lists of disjoint closed intervals (up to 1000 each).
-  - id: ac-abc381_d
-    role: review
-    card: shrinkable-window
-    review_set: 3
-    summary: Longest subarray (N ≤ 2·10^5) made of equal adjacent pairs in which no value appears in two pairs.
-  - id: ac-abc194_e
-    role: review
-    card: fixed-window
-    review_set: 3
-    summary: The smallest mex (least missing non-negative integer) over all blocks of M consecutive elements (N ≤ 1.5·10^6).
-  - id: lc-count-subarrays-where-max-element-appears-at-least-k-times
-    role: review
-    card: count-windows
-    review_set: 3
-    summary: Count subarrays (n ≤ 10^5) in which the array's maximum value occurs at least k times.
-  - id: lc-3sum-closest
-    role: review
-    card: opposite-ends
-    review_set: 3
-    summary: Sum of three elements at different positions (n ≤ 500) closest to a target.
+- id: lc-longest-substring-without-repeating-characters
+  role: ladder
+  card: shrinkable-window
+  rung: 1
+  twist: Base case of the card
+  summary: Longest substring of a string (length up to 5·10^4) with no repeated character.
+  hints:
+  - If a substring has no repeated character, does every shorter substring inside it also have none?
+  - 'Yes: "all distinct" is closed under shrinking, so Theorem 1.3.1 applies. Keep a count of each character
+    in the window.'
+  - Extend r; while s[r] now occurs twice, remove s[l] and advance l; record r − l + 1.
+- id: ac-abc326_c
+  role: ladder
+  card: shrinkable-window
+  rung: 2
+  twist: The window runs over sorted coordinates, and validity compares its two ends (A_r − A_l < M).
+  summary: N gifts on a number line (N ≤ 3·10^5); the most gifts inside one half-open interval of length
+    M.
+  hints:
+  - Does the input order of the gifts matter? What changes after sorting the coordinates?
+  - After sorting, a run of gifts fits in one interval of length M exactly when the last minus the first
+    is less than M, and that is closed under shrinking.
+  - Sort; for each r advance l while A[r] − A[l] ≥ M; the answer is the largest r − l + 1.
+- id: ac-abc229_d
+  role: ladder
+  card: shrinkable-window
+  rung: 3
+  twist: 'Validity is a budget: at most K dots inside the window.'
+  summary: A string of X and . (length ≤ 2·10^5); change at most K dots into X to make the longest run
+    of X.
+  hints:
+  - The final run of X is some window of S. Which windows can be turned completely into X?
+  - A window works when it contains at most K dots, and removing characters never adds dots.
+  - Slide the window counting dots; while the count exceeds K, advance l; maximise r − l + 1.
+- id: ac-abc124_d
+  role: ladder
+  card: shrinkable-window
+  rung: 4
+  twist: The budget counts maximal blocks of 0s inside the window, not single characters.
+  summary: A 0/1 string (N ≤ 10^5); with at most K flips of whole segments, the longest run of 1s.
+  hints:
+  - One flip can turn one maximal block of 0s into 1s. How many flips does a given window need?
+  - 'A window can be made all 1s with as many flips as it has blocks of 0s, and a shorter window never
+    has more blocks: the condition "at most K blocks" is closed under shrinking.'
+  - Compress S into runs (value, length). Slide a window over the runs that holds at most K runs of 0s,
+    and add up the run lengths inside it.
+- id: cses-3420
+  role: ladder
+  card: count-windows
+  rung: 1
+  twist: Base case of the card
+  summary: Count the subarrays (n ≤ 2·10^5) whose elements are all different.
+  hints:
+  - If a subarray has all elements different, do all its sub-subarrays too?
+  - Yes, so for each right end the valid left ends form one range L(r)..r (Theorem 1.3.2).
+  - Keep a map of counts; for each r shrink until a[r] occurs once; add r − l + 1 to a long long total.
+- id: lc-subarray-product-less-than-k
+  role: ladder
+  card: count-windows
+  rung: 2
+  twist: Product instead of sum, and k ≤ 1 makes every non-empty window invalid.
+  summary: Count contiguous subarrays (n ≤ 3·10^4, values 1–1000) whose product is strictly less than
+    k (0 ≤ k ≤ 10^6).
+  hints:
+  - All values are at least 1. What happens to the product when an element leaves the window?
+  - '"Product < k" is closed under shrinking. The empty window has product 1, so when k ≤ 1 no non-empty
+    window is valid: handle it first.'
+  - Multiply in nums[r]; while the product is at least k, divide out nums[l] and advance l; add r − l
+    + 1.
+- id: ac-abc260_e
+  role: ladder
+  card: count-windows
+  rung: 3
+  twist: 'Answers are needed for every length: each left end adds 1 to a range of lengths, done with a
+    difference array (1.2).'
+  summary: N pairs of numbers in 1..M (N, M ≤ 2·10^5); for every k, count the intervals of length k of
+    1..M that contain at least one number of every pair.
+  hints:
+  - Is "contains one number of every pair" closed under shrinking or under extension?
+  - Under extension. For each left end l, the smallest good right end R(l) never moves left as l grows,
+    and every right end from R(l) to M is good.
+  - 'Keep, per pair, how many of its two numbers are inside, and the number of satisfied pairs. For each
+    l, lengths R(l) − l + 1 to M − l + 1 are good: add 1 to that range with a difference array.'
+- id: ac-abc146_e
+  role: ladder
+  card: count-windows
+  rung: 4
+  twist: 'The window is over candidate left ends: only the last K − 1 prefix positions can pair with r.'
+  summary: Count subarrays (N ≤ 2·10^5) whose sum, taken modulo K, equals their length.
+  hints:
+  - Write the condition with prefix sums P. Since a remainder is less than K, what does it say about the
+    length?
+  - The length r − l is less than K, and the condition becomes (P[r] − r) mod K = (P[l] − l) mod K.
+  - Scan r; keep a map counting the keys (P[l] − l) mod K for the last K − 1 positions l only, erasing
+    the key of the position that falls out.
+- id: lc-maximum-average-subarray-i
+  role: ladder
+  card: fixed-window
+  rung: 1
+  twist: Base case of the card
+  summary: Largest average of a block of exactly k consecutive numbers (n ≤ 10^5).
+  hints:
+  - Two neighbouring blocks of length k share k − 1 elements. What changes between them?
+  - A sum supports removing one element exactly, so Theorem 1.3.3 applies.
+  - Sum the first k; then add nums[r] and subtract nums[r − k]; keep the largest sum and divide by k once
+    at the end.
+- id: lc-maximum-number-of-vowels-in-a-substring-of-given-length
+  role: ladder
+  card: fixed-window
+  rung: 2
+  twist: The summary counts characters with a property instead of adding values.
+  summary: Most vowels in any substring of length exactly k (string length ≤ 10^5).
+  hints:
+  - What does the window need to remember about its characters?
+  - Only how many vowels it holds; one character enters and one leaves per slide.
+  - Count vowels in the first k; add 1 if s[r] is a vowel, subtract 1 if s[r − k] is; keep the maximum.
+- id: ac-abc210_c
+  role: ladder
+  card: fixed-window
+  rung: 3
+  twist: The summary is the number of distinct values, kept with a map of counts.
+  summary: Most distinct colours among K consecutive candies (N ≤ 3·10^5, colours up to 10^9).
+  hints:
+  - Recounting the colours of every block costs O(NK). What is the smallest change per slide?
+  - One colour count goes up and one goes down; the distinct count changes only when a count moves between
+    0 and 1.
+  - 'Map of counts: when a count becomes 1, distinct++; when it becomes 0, distinct−− (or erase the key
+    and use the map size).'
+- id: ac-abc352_d
+  role: ladder
+  card: fixed-window
+  rung: 4
+  twist: The window slides over values, not positions, and its summary is a multiset of positions.
+  summary: In a permutation (N ≤ 2·10^5), choose K consecutive values whose positions are as close together
+    as possible; print the smallest last-minus-first position.
+  hints:
+  - Fix the values a, a + 1, …, a + K − 1. What does choosing exactly these cost?
+  - With pos[v] the index of value v, the cost is the largest minus the smallest pos over a window of
+    K consecutive values.
+  - 'Slide over v keeping a multiset of pos values: insert pos[v], erase one copy of pos[v − K]; minimise
+    last element minus first element.'
+- id: ac-abc337_d
+  role: ladder
+  card: fixed-window
+  rung: 5
+  twist: 'Many lines: run the fixed window along every row and every column.'
+  summary: Grid of o, x and . (H·W ≤ 2·10^5); fewest . cells to turn into o so that K consecutive cells
+    in a row or a column are all o, or −1.
+  hints:
+  - For one row and one block of K cells, when is the block possible and what does it cost?
+  - Possible when it holds no x; the cost is its number of dots. Both counts slide in O(1).
+  - For each row and each column, slide a window of length K counting x and dots; take the minimum dot
+    count over windows with no x.
+- id: lc-two-sum-ii-input-array-is-sorted
+  role: ladder
+  card: opposite-ends
+  rung: 1
+  twist: Base case of the card
+  summary: In a sorted array (n ≤ 3·10^4), the positions of the two numbers adding up to a target, using
+    O(1) extra memory.
+  hints:
+  - Compare the smallest plus the largest with the target. Which one can be ruled out?
+  - If the sum is too small, the smallest cannot pair with anything left (Theorem 1.3.4); if too large,
+    the largest cannot.
+  - l = 0, r = n − 1; move l up or r down until the sum matches; positions are 1-based in the answer.
+- id: cses-1090
+  role: ladder
+  card: opposite-ends
+  rung: 2
+  twist: 'Count groups instead of finding one pair: settle the heaviest remaining child at each step.'
+  summary: Fewest gondolas for n children (n ≤ 2·10^5) when a gondola holds one or two children with total
+    weight at most x.
+  hints:
+  - Sort the weights. Who should the heaviest child share with, if anyone?
+  - 'If the heaviest cannot share with the lightest, they share with no one. If they can, sharing with
+    the lightest is never worse: in any best plan, swap the lightest with the heaviest child''s partner
+    and every gondola stays within x.'
+  - 'Opposite ends: if p[l] + p[r] ≤ x, move both; otherwise move only r; count one gondola per step.'
+- id: cses-1641
+  role: ladder
+  card: opposite-ends
+  rung: 3
+  twist: 'Three values: fix one, then solve a pair problem on the rest.'
+  summary: Positions of three values (n ≤ 5000) at different positions with sum x, or IMPOSSIBLE.
+  hints:
+  - n ≤ 5000 allows about n² steps but not n³.
+  - Sort the values together with their original positions; after fixing the first value, the other two
+    must add up to x minus it.
+  - For each i, run the opposite-ends search on the part after i; print the original positions.
+- id: lc-merge-sorted-array
+  role: ladder
+  card: merge-walk
+  rung: 1
+  twist: Base case of the card
+  summary: Merge two sorted arrays (total length ≤ 200) into the first, which has free space at its end.
+  hints:
+  - Filling the first array from the front overwrites values not read yet. Where is the free space?
+  - 'At the end: walk both arrays from their largest elements, placing the larger one in the last free
+    cell.'
+  - 'Three indices: the end of the first array''s data, the end of the second array, and the cell to fill;
+    stop when the second array is used up.'
+- id: lc-is-subsequence
+  role: ladder
+  card: merge-walk
+  rung: 2
+  twist: The sequences are not sorted; the walk follows positions instead (Theorem 1.3.6).
+  summary: Is string s a subsequence of string t (|t| ≤ 10^4)?
+  hints:
+  - Where should the first character of s be matched in t?
+  - 'At its earliest occurrence: matching early never hurts later characters (Theorem 1.3.6).'
+  - One index into s; scan t and advance the index on each match; answer whether the index reached |s|.
+- id: ac-abc212_c
+  role: ladder
+  card: merge-walk
+  rung: 3
+  twist: 'Closest pair across two lists: check the neighbours on both sides of the pointer.'
+  summary: Smallest |A_i − B_j| over two lists of up to 2·10^5 numbers each.
+  hints:
+  - For one A_i, which B values can be closest to it?
+  - Only the largest B below A_i and the smallest B at least A_i. After sorting both lists, that boundary
+    moves only forward as A_i grows.
+  - Sort both; for each A_i advance j while B[j] < A_i; check B[j] and B[j − 1].
+- id: cses-1084
+  role: ladder
+  card: merge-walk
+  rung: 4
+  twist: 'Matching with a tolerance: each step discards an element that can never be used.'
+  summary: Most applicants (n, m ≤ 2·10^5) who get an apartment, when an applicant wanting size x accepts
+    sizes x − k to x + k, one apartment each.
+  hints:
+  - Sort both lists. If the smallest apartment is too small for the smallest applicant, can anyone use
+    it?
+  - 'No. Likewise, if it is too big for the smallest applicant, no apartment fits that applicant. Otherwise
+    match the two: in any best matching, swapping partners so that these two are matched never loses a
+    match.'
+  - 'Two pointers over the sorted lists: discard the apartment if too small, the applicant if the apartment
+    is too big, otherwise count a match and move both.'
+- id: cses-1141
+  role: worked_example
+  summary: Longest run of consecutive songs (n ≤ 2·10^5, ids up to 10^9) with no song repeated.
+- id: ac-abc130_d
+  role: worked_example
+  summary: Count contiguous subarrays (N ≤ 10^5, positive values) whose sum is at least K (K ≤ 10^10).
+- id: lc-container-with-most-water
+  role: worked_example
+  summary: 'Two of n vertical lines (n ≤ 10^5) that hold the most water: maximise distance times the shorter
+    height.'
+- id: lc-fruit-into-baskets
+  role: drill
+  summary: Longest contiguous stretch of an array (n ≤ 10^5) that uses at most two different values.
+- id: cf-1354B
+  role: drill
+  summary: Shortest substring of a string of 1s, 2s and 3s (total length ≤ 2·10^5) that contains all three
+    digits, or 0.
+- id: lc-permutation-in-string
+  role: drill
+  summary: Does s2 (length ≤ 10^4) contain a substring that is a rearrangement of s1?
+- id: lc-number-of-substrings-containing-all-three-characters
+  role: drill
+  summary: Count the substrings of a string of a, b and c (length ≤ 5·10^4) that contain all three letters.
+- id: lc-boats-to-save-people
+  role: drill
+  summary: Fewest boats for n people (n ≤ 5·10^4) when a boat carries at most two people with total weight
+    at most a limit.
+- id: ac-abc172_c
+  role: drill
+  summary: Two stacks of books read only from the top (N, M ≤ 2·10^5, reading times up to 10^9); most
+    books read within K minutes.
+- id: ac-abc388_c
+  role: drill
+  summary: Sorted sizes (N ≤ 5·10^5); count the pairs where one size is at most half the other.
+- id: ac-abc395_c
+  role: drill
+  summary: Shortest contiguous subarray (N ≤ 2·10^5) in which some value occurs twice, or −1.
+- id: ac-abc366_c
+  role: drill
+  summary: 'A bag of numbered balls with Q ≤ 2·10^5 queries: add a ball, remove a ball, or report how
+    many different numbers are in the bag.'
+- id: ac-abc364_c
+  role: drill
+  summary: Choose the order of N dishes (N ≤ 2·10^5) so that the eater stops as early as possible, stopping
+    once total sweetness exceeds X or total saltiness exceeds Y.
+- id: cses-1660
+  role: lookalike
+  summary: Count subarrays with sum exactly x (n ≤ 2·10^5, all values positive).
+- id: cses-1661
+  role: lookalike
+  summary: Count subarrays with sum exactly x (n ≤ 2·10^5, values may be negative).
+- id: lc-max-consecutive-ones-iii
+  role: lookalike
+  summary: Longest run of 1s in a 0/1 array (n ≤ 10^5) after flipping at most k zeros.
+- id: lc-contiguous-array
+  role: lookalike
+  summary: Longest contiguous part of a 0/1 array (n ≤ 10^5) with as many 0s as 1s.
+- id: lc-minimum-size-subarray-sum
+  role: checkpoint
+  card: shrinkable-window
+  summary: Shortest subarray (n ≤ 10^5, positive values) with sum at least a target, or 0.
+- id: lc-count-subarrays-with-score-less-than-k
+  role: checkpoint
+  card: count-windows
+  summary: Count subarrays (n ≤ 10^5, positive values) whose sum times length is less than k (k ≤ 10^15).
+- id: cf-6C
+  role: checkpoint
+  card: opposite-ends
+  summary: Two players eat a row of chocolate bars from opposite ends, each bar taking a given time (n
+    ≤ 10^5); how many bars each one eats.
+- id: lc-find-all-anagrams-in-a-string
+  role: review
+  card: fixed-window
+  review_set: 1
+  summary: Every start position in s (length ≤ 3·10^4) of a substring that is a rearrangement of p.
+- id: lc-maximize-the-confusion-of-an-exam
+  role: review
+  card: shrinkable-window
+  review_set: 1
+  summary: A string of T and F (length ≤ 5·10^4); change at most k answers to make the longest run of
+    equal answers.
+- id: lc-valid-triangle-number
+  role: review
+  card: opposite-ends
+  review_set: 1
+  summary: Count the triples from an array (n ≤ 1000) that can be the side lengths of a triangle.
+- id: lc-append-characters-to-string-to-make-subsequence
+  role: review
+  card: merge-walk
+  review_set: 1
+  summary: Fewest characters to append to s so that t becomes a subsequence of s (lengths ≤ 10^5).
+- id: lc-minimum-window-substring
+  role: review
+  card: shrinkable-window
+  review_set: 2
+  summary: Shortest substring of s (length ≤ 10^5) containing every character of t, with multiplicity.
+- id: ac-abc247_e
+  role: review
+  card: count-windows
+  review_set: 2
+  summary: Count subarrays (N ≤ 2·10^5) whose maximum is exactly X and whose minimum is exactly Y.
+- id: lc-maximum-points-you-can-obtain-from-cards
+  role: review
+  card: fixed-window
+  review_set: 2
+  summary: Take exactly k cards (n ≤ 10^5), each from the left or right end of a row, to maximise the
+    total points.
+- id: lc-interval-list-intersections
+  role: review
+  card: merge-walk
+  review_set: 2
+  summary: Intersections of two sorted lists of disjoint closed intervals (up to 1000 each).
+- id: ac-abc381_d
+  role: review
+  card: shrinkable-window
+  review_set: 3
+  summary: Longest subarray (N ≤ 2·10^5) made of equal adjacent pairs in which no value appears in two
+    pairs.
+- id: ac-abc194_e
+  role: review
+  card: fixed-window
+  review_set: 3
+  summary: The smallest mex (least missing non-negative integer) over all blocks of M consecutive elements
+    (N ≤ 1.5·10^6).
+- id: lc-count-subarrays-where-max-element-appears-at-least-k-times
+  role: review
+  card: count-windows
+  review_set: 3
+  summary: Count subarrays (n ≤ 10^5) in which the array's maximum value occurs at least k times.
+- id: lc-3sum-closest
+  role: review
+  card: opposite-ends
+  review_set: 3
+  summary: Sum of three elements at different positions (n ≤ 500) closest to a target.
 drill:
-  - problem: lc-fruit-into-baskets
-    answer_card: shrinkable-window
-    answer_topic: "1.3"
-    property: '"At most two different values" is closed under shrinking: removing elements cannot add values.'
-    why_others_fail: "Fixed-size window: the length is not given. Prefix sums: the condition is about distinct values, not a sum."
-  - problem: cf-1354B
-    answer_card: shrinkable-window
-    answer_topic: "1.3"
-    property: '"Contains all three digits" is closed under extension, so its opposite shrinks well: shortest window by Theorem 1.3.1.'
-    why_others_fail: Counting windows answers a different question. Trying all substrings is O(n²) for n = 2·10^5.
-  - problem: lc-permutation-in-string
-    answer_card: fixed-window
-    answer_topic: "1.3"
-    property: "A rearrangement of s1 has length exactly |s1|: compare letter counts of every window of that length, one add and one remove per slide."
-    why_others_fail: Sorting every substring costs O(n·m log m). A shrinkable window can be made to work but needs more care; the length is fixed by the question.
-  - problem: lc-number-of-substrings-containing-all-three-characters
-    answer_card: count-windows
-    answer_topic: "1.3"
-    property: '"Missing at least one letter" is closed under shrinking: count those windows by Theorem 1.3.2 and subtract from n(n+1)/2.'
-    why_others_fail: Longest or shortest window gives one window, not a count. Prefix sums of counts need a search per right end.
-  - problem: lc-boats-to-save-people
-    answer_card: opposite-ends
-    answer_topic: "1.3"
-    property: After sorting, the heaviest person either shares with the lightest or rides alone, so one end is settled at every step.
-    why_others_fail: "A window: boats group people by weight, not by position. A map: pairing is about sums, not equal values."
-  - problem: ac-abc172_c
-    answer_card: merge-walk
-    answer_topic: "1.3"
-    property: Read i books from A (prefix sums of a sorted, increasing sequence); the most books from B that still fit only decreases as i grows, so one pointer walks down B while i walks up A.
-    why_others_fail: "Opposite ends of one sorted array: here there are two separate lists of prefix sums. A window: the books taken from A must start at the top."
-  - problem: ac-abc388_c
-    answer_card: merge-walk
-    answer_topic: "1.3"
-    property: "In the sorted list, the number of sizes a with 2a ≤ b only grows as b grows: one pointer moves forward through the list."
-    why_others_fail: Opposite ends would count pairs by sum; this is a ratio between the two, and the forward walk over one sorted list fits directly.
-  - problem: ac-abc395_c
-    answer_card: map-counting
-    answer_topic: "0.6"
-    property: "Only the distance between two equal values matters: keep a map from value to its last position and take the smallest gap."
-    why_others_fail: A shortest window also works ("has a repeated value" is closed under extension), but the last-position map is shorter and has no window to maintain.
-  - problem: ac-abc366_c
-    answer_card: map-counting
-    answer_topic: "0.6"
-    property: A map of counts with erase at zero answers each query; the bag changes in arbitrary order.
-    why_others_fail: "Looks like a fixed-window summary, but nothing slides: balls are removed in any order, so there are no pointers, only the map."
-  - problem: ac-abc364_c
-    answer_card: sort-then-scan
-    answer_topic: "1.1"
-    property: "The order is ours to choose: sort sweetness in decreasing order and count how many dishes exceed X; do the same for saltiness and Y; the answer is the smaller count."
-    why_others_fail: "Looks like a shortest window, but there is no fixed array: the eater picks the order, so sorting decides it."
+- problem: lc-fruit-into-baskets
+  answer:
+    topic: '1.3'
+    card: shrinkable-window
+  property: '"At most two different values" is closed under shrinking: removing elements cannot add values.'
+  why_others_fail: 'Fixed-size window: the length is not given. Prefix sums: the condition is about distinct
+    values, not a sum.'
+- problem: cf-1354B
+  answer:
+    topic: '1.3'
+    card: shrinkable-window
+  property: '"Contains all three digits" is closed under extension, so its opposite shrinks well: shortest
+    window by Theorem 1.3.1.'
+  why_others_fail: Counting windows answers a different question. Trying all substrings is O(n²) for n
+    = 2·10^5.
+- problem: lc-permutation-in-string
+  answer:
+    topic: '1.3'
+    card: fixed-window
+  property: 'A rearrangement of s1 has length exactly |s1|: compare letter counts of every window of that
+    length, one add and one remove per slide.'
+  why_others_fail: Sorting every substring costs O(n·m log m). A shrinkable window can be made to work
+    but needs more care; the length is fixed by the question.
+- problem: lc-number-of-substrings-containing-all-three-characters
+  answer:
+    topic: '1.3'
+    card: count-windows
+  property: '"Missing at least one letter" is closed under shrinking: count those windows by Theorem 1.3.2
+    and subtract from n(n+1)/2.'
+  why_others_fail: Longest or shortest window gives one window, not a count. Prefix sums of counts need
+    a search per right end.
+- problem: lc-boats-to-save-people
+  answer:
+    topic: '1.3'
+    card: opposite-ends
+  property: After sorting, the heaviest person either shares with the lightest or rides alone, so one
+    end is settled at every step.
+  why_others_fail: 'A window: boats group people by weight, not by position. A map: pairing is about sums,
+    not equal values.'
+- problem: ac-abc172_c
+  answer:
+    topic: '1.3'
+    card: merge-walk
+  property: Read i books from A (prefix sums of a sorted, increasing sequence); the most books from B
+    that still fit only decreases as i grows, so one pointer walks down B while i walks up A.
+  why_others_fail: 'Opposite ends of one sorted array: here there are two separate lists of prefix sums.
+    A window: the books taken from A must start at the top.'
+- problem: ac-abc388_c
+  answer:
+    topic: '1.3'
+    card: merge-walk
+  property: 'In the sorted list, the number of sizes a with 2a ≤ b only grows as b grows: one pointer
+    moves forward through the list.'
+  why_others_fail: Opposite ends would count pairs by sum; this is a ratio between the two, and the forward
+    walk over one sorted list fits directly.
+- problem: ac-abc395_c
+  answer:
+    topic: '0.6'
+    card: map-counting
+  property: 'Only the distance between two equal values matters: keep a map from value to its last position
+    and take the smallest gap.'
+  why_others_fail: A shortest window also works ("has a repeated value" is closed under extension), but
+    the last-position map is shorter and has no window to maintain.
+- problem: ac-abc366_c
+  answer:
+    topic: '0.6'
+    card: map-counting
+  property: A map of counts with erase at zero answers each query; the bag changes in arbitrary order.
+  why_others_fail: 'Looks like a fixed-window summary, but nothing slides: balls are removed in any order,
+    so there are no pointers, only the map.'
+- problem: ac-abc364_c
+  answer:
+    topic: '1.1'
+    card: sort-then-scan
+  property: 'The order is ours to choose: sort sweetness in decreasing order and count how many dishes
+    exceed X; do the same for saltiness and Y; the answer is the smaller count.'
+  why_others_fail: 'Looks like a shortest window, but there is no fixed array: the eater picks the order,
+    so sorting decides it.'
 lookalike_pairs:
-  - a: cses-1660
-    b: cses-1661
-    a_tool: count-windows (1.3)
-    b_tool: prefix-count-lookup (1.2)
-    flipping_difference: B allows negative values, so "sum at most x" is no longer closed under shrinking and the windows with sum x cannot be found by moving pointers.
-  - a: lc-max-consecutive-ones-iii
-    b: lc-contiguous-array
-    a_tool: shrinkable-window (1.3)
-    b_tool: prefix-count-lookup (1.2)
-    flipping_difference: '"At most k zeros" is closed under shrinking; "as many 0s as 1s" is not: removing one element from a balanced window unbalances it, while a longer window can balance again.'
+- a: cses-1660
+  b: cses-1661
+  a_tool:
+    topic: '1.3'
+    card: count-windows
+  b_tool:
+    topic: '1.2'
+    card: prefix-count-lookup
+  flipping_difference: B allows negative values, so "sum at most x" is no longer closed under shrinking
+    and the windows with sum x cannot be found by moving pointers.
+  shared_surface: Both ask for the number of subarrays with sum exactly x.
+  flipping_input: a = [3, −3, 3] and x = 3 has 3 subarrays with sum 3 (the first element, the last, and
+    the whole array). With non-negative values (A) a shrinking window counts them; with negative values
+    (B) sums can return to x, so a window that shrinks when the sum exceeds x loses windows, and a map
+    of earlier prefix sums is needed.
+- a: lc-max-consecutive-ones-iii
+  b: lc-contiguous-array
+  a_tool:
+    topic: '1.3'
+    card: shrinkable-window
+  b_tool:
+    topic: '1.2'
+    card: prefix-count-lookup
+  flipping_difference: '"At most k zeros" is closed under shrinking; "as many 0s as 1s" is not: removing
+    one element from a balanced window unbalances it, while a longer window can balance again.'
+  shared_surface: Both ask for the longest subarray of a 0/1 array that satisfies a condition on its zeros
+    and ones.
+  flipping_input: 'a = [1, 0, 0, 1, 0]: with at most one zero (A) the longest window is 2 ([1, 0] or [0,
+    1]); with as many zeros as ones (B) it is 4 ([1, 0, 0, 1]).'
 self_test:
-  - q: Give a 3-element array with a negative value where the shrinking-window template returns the wrong answer for "longest subarray with sum at most 2".
-    a: "a = [5, −4, 1], K = 2. The whole array has sum 2, so the answer is 3. The template drops 5 at r = 0 (sum 5 > 2) and never brings it back, so it returns 2 (the window −4, 1). Validity is not closed under shrinking here: [5, −4, 1] is valid but its sub-window [5] is not."
-  - q: In Theorem 1.3.1 one value of r can make the inner while loop run many times. Why is the total over all r still at most n?
-    a: Every pass of the while loop increases l by 1, l never decreases, and l never exceeds n. So all passes together number at most n, however they are spread over the values of r (amortised analysis).
-  - q: Which of "at most k distinct values" and "exactly k distinct values" is closed under shrinking? Give a counterexample for the other, and say how to count windows with exactly k distinct values.
-    a: '"At most k" is closed under shrinking. "Exactly k" is not: with k = 2, the window [1, 2] is valid but its sub-window [1] has 1 distinct value. Count exactly-k windows as (windows with at most k) − (windows with at most k − 1), each by Theorem 1.3.2.'
-  - q: '"The window contains the letters a, b and c." Is this closed under shrinking or under extension? How would you find the shortest such window and count all such windows?'
-    a: 'Closed under extension: adding letters cannot remove a, b or c, while removing one can ([a, b, c] is valid, [b, c] is not). Its opposite, "misses at least one of the letters", is closed under shrinking, and the empty window satisfies it. Shortest: Theorem 1.3.1 on the opposite (Section 4.1). Count: count the windows of the opposite with Theorem 1.3.2 and subtract from n(n+1)/2.'
-  - q: Run the pair-sum loop without sorting on a = [1, 3, 2] with T = 4. What happens, and which precondition failed?
-    a: "(l, r) = (0, 2): 1 + 2 = 3 < 4, so l moves to 1. (1, 2): 3 + 2 = 5 > 4, so r moves to 1, and the loop stops with NO. But 1 + 3 = 4. Discarding index 0 assumed that a[2] was the largest partner left, which needs sorted order."
-  - q: A fixed window of length k keeps its minimum in one int variable, updated with min() whenever an element enters. Give an input where this fails, and a summary that works.
-    a: "a = [1, 5, 6], k = 2. The windows are [1, 5] with minimum 1 and [5, 6] with minimum 5, but the variable still holds 1 after the 1 leaves. A single minimum cannot undo an add. A multiset of the window values works: erase one copy of the leaving value and read the first element."
-  - q: In Container With Most Water, when h[l] = h[r], is it safe to move either pointer? Why?
-    a: Yes. With h[l] = h[r], any pair (l, j) with l < j < r has smaller width and height at most h[l], so it is no better than (l, r); the same holds for any pair (j, r). Either end can be discarded, so the discard argument of Theorem 1.3.4 allows both moves.
-  - q: Theorem 1.3.6 matches each character of t at its earliest possible position in s. Give s and t where matching the first character later loses a valid answer.
-    a: s = "aba", t = "ab". Matching the a of t at position 0 leaves the b at position 1, so the answer is yes. Matching it at position 2 leaves nothing after it, and the b cannot be matched.
+- q: Give a 3-element array with a negative value where the shrinking-window template returns the wrong
+    answer for "longest subarray with sum at most 2".
+  a: 'a = [5, −4, 1], K = 2. The whole array has sum 2, so the answer is 3. The template drops 5 at r
+    = 0 (sum 5 > 2) and never brings it back, so it returns 2 (the window −4, 1). Validity is not closed
+    under shrinking here: [5, −4, 1] is valid but its sub-window [5] is not.'
+- q: In Theorem 1.3.1 one value of r can make the inner while loop run many times. Why is the total over
+    all r still at most n?
+  a: Every pass of the while loop increases l by 1, l never decreases, and l never exceeds n. So all passes
+    together number at most n, however they are spread over the values of r (amortised analysis).
+- q: Which of "at most k distinct values" and "exactly k distinct values" is closed under shrinking? Give
+    a counterexample for the other, and say how to count windows with exactly k distinct values.
+  a: '"At most k" is closed under shrinking. "Exactly k" is not: with k = 2, the window [1, 2] is valid
+    but its sub-window [1] has 1 distinct value. Count exactly-k windows as (windows with at most k) −
+    (windows with at most k − 1), each by Theorem 1.3.2.'
+- q: '"The window contains the letters a, b and c." Is this closed under shrinking or under extension?
+    How would you find the shortest such window and count all such windows?'
+  a: 'Closed under extension: adding letters cannot remove a, b or c, while removing one can ([a, b, c]
+    is valid, [b, c] is not). Its opposite, "misses at least one of the letters", is closed under shrinking,
+    and the empty window satisfies it. Shortest: Theorem 1.3.1 on the opposite (Section 4.1). Count: count
+    the windows of the opposite with Theorem 1.3.2 and subtract from n(n+1)/2.'
+- q: Run the pair-sum loop without sorting on a = [1, 3, 2] with T = 4. What happens, and which precondition
+    failed?
+  a: '(l, r) = (0, 2): 1 + 2 = 3 < 4, so l moves to 1. (1, 2): 3 + 2 = 5 > 4, so r moves to 1, and the
+    loop stops with NO. But 1 + 3 = 4. Discarding index 0 assumed that a[2] was the largest partner left,
+    which needs sorted order.'
+- q: A fixed window of length k keeps its minimum in one int variable, updated with min() whenever an
+    element enters. Give an input where this fails, and a summary that works.
+  a: 'a = [1, 5, 6], k = 2. The windows are [1, 5] with minimum 1 and [5, 6] with minimum 5, but the variable
+    still holds 1 after the 1 leaves. A single minimum cannot undo an add. A multiset of the window values
+    works: erase one copy of the leaving value and read the first element.'
+- q: In Container With Most Water, when h[l] = h[r], is it safe to move either pointer? Why?
+  a: Yes. With h[l] = h[r], any pair (l, j) with l < j < r has smaller width and height at most h[l],
+    so it is no better than (l, r); the same holds for any pair (j, r). Either end can be discarded, so
+    the discard argument of Theorem 1.3.4 allows both moves.
+- q: Theorem 1.3.6 matches each character of t at its earliest possible position in s. Give s and t where
+    matching the first character later loses a valid answer.
+  a: s = "aba", t = "ab". Matching the a of t at position 0 leaves the b at position 1, so the answer
+    is yes. Matching it at position 2 leaves nothing after it, and the b cannot be matched.
 checkpoint:
   time_limit_minutes: 90
   problems:
-    - lc-minimum-size-subarray-sum
-    - lc-count-subarrays-with-score-less-than-k
-    - cf-6C
+  - lc-minimum-size-subarray-sum
+  - lc-count-subarrays-with-score-less-than-k
+  - cf-6C
 decision_map:
-  - weak_signal: Longest or shortest contiguous segment with a condition
-    choose: shrinkable-window
-    when: Validity is closed under shrinking (for "shortest", its opposite is), the empty window is valid, and validity can be rechecked after one element enters or leaves.
-    over:
-      - card: prefix-count-lookup
-        because: Needed when the condition is an exact sum or count, or values can be negative, so validity is not closed under shrinking.
-      - card: fixed-window
-        because: Only when the statement fixes the length.
-      - card: nested-loops
-        because: Trying every segment is O(n²); fine only for n up to a few thousand.
-  - weak_signal: Count the segments (subarrays, substrings) that satisfy a condition
-    choose: count-windows
-    when: For each right end the valid left ends form one range, because validity (or its opposite, then subtract from n(n+1)/2) is closed under shrinking.
-    over:
-      - card: prefix-count-lookup
-        because: "For an exact sum, or sums with negative values: count equal prefix values in a map instead."
-      - card: nested-loops
-        because: O(n²) segments; only for small n.
-  - weak_signal: Every segment of a given length k
-    choose: fixed-window
-    when: The window summary can undo an add (sum, counts, multiset), so each slide is one add and one remove.
-    over:
-      - card: range-sum
-        because: For a sum alone, prefix sums give every window in O(1) with no sliding; the sliding update is needed for counts, distinct values, or a multiset.
-  - weak_signal: Take items from the two ends of a row
-    choose: shrinkable-window
-    when: 'The items left form one middle window: turn "fewest taken" into "longest valid middle window" (or a fixed window of length n − k when exactly k are taken).'
-    over:
-      - card: nested-loops
-        because: Trying every split between left and right takes O(n²) unless the middle part is treated as a window.
-  - weak_signal: A pair (or triple) of elements with a target sum, at most a sum, or the best pair score
-    choose: opposite-ends
-    when: After sorting (or by the problem's own structure) one of the two ends can be ruled out at every step.
-    over:
-      - card: map-counting
-        because: A value-to-position map finds an exact sum in one pass and keeps original positions; prefer it when sorting would lose the positions the answer needs.
-      - card: nested-loops
-        because: All pairs is O(n²).
-  - weak_signal: "Two lists: merge them, match elements, closest element, or pairs across them"
-    choose: merge-walk
-    when: Both lists are sorted (or the matching is in order, as for subsequences), so what each element needs from the other list starts at a boundary that only moves forward.
-    over:
-      - card: sort-then-scan
-        because: Enough when only one sorted list matters and every relevant pair is adjacent in it.
-      - card: ordered-set-lookup
-        because: Needed when queries arrive in an order you cannot sort, so the pointer could not move forward only.
+- weak_signal: Longest or shortest contiguous segment with a condition
+  choose: shrinkable-window
+  when: Validity is closed under shrinking (for "shortest", its opposite is), the empty window is valid,
+    and validity can be rechecked after one element enters or leaves.
+  over:
+  - card: prefix-count-lookup
+    because: Needed when the condition is an exact sum or count, or values can be negative, so validity
+      is not closed under shrinking.
+    topic: '1.2'
+  - card: fixed-window
+    because: Only when the statement fixes the length.
+  - card: nested-loops
+    because: Trying every segment is O(n²); fine only for n up to a few thousand.
+    topic: '0.5'
+- weak_signal: Count the segments (subarrays, substrings) that satisfy a condition
+  choose: count-windows
+  when: For each right end the valid left ends form one range, because validity (or its opposite, then
+    subtract from n(n+1)/2) is closed under shrinking.
+  over:
+  - card: prefix-count-lookup
+    because: 'For an exact sum, or sums with negative values: count equal prefix values in a map instead.'
+    topic: '1.2'
+  - card: nested-loops
+    because: O(n²) segments; only for small n.
+    topic: '0.5'
+- weak_signal: Every segment of a given length k
+  choose: fixed-window
+  when: The window summary can undo an add (sum, counts, multiset), so each slide is one add and one remove.
+  over:
+  - card: range-sum
+    because: For a sum alone, prefix sums give every window in O(1) with no sliding; the sliding update
+      is needed for counts, distinct values, or a multiset.
+    topic: '1.2'
+- weak_signal: Take items from the two ends of a row
+  choose: shrinkable-window
+  when: 'The items left form one middle window: turn "fewest taken" into "longest valid middle window"
+    (or a fixed window of length n − k when exactly k are taken).'
+  over:
+  - card: nested-loops
+    because: Trying every split between left and right takes O(n²) unless the middle part is treated as
+      a window.
+    topic: '0.5'
+- weak_signal: A pair (or triple) of elements with a target sum, at most a sum, or the best pair score
+  choose: opposite-ends
+  when: After sorting (or by the problem's own structure) one of the two ends can be ruled out at every
+    step.
+  over:
+  - card: map-counting
+    because: A value-to-position map finds an exact sum in one pass and keeps original positions; prefer
+      it when sorting would lose the positions the answer needs.
+    topic: '0.6'
+  - card: nested-loops
+    because: All pairs is O(n²).
+    topic: '0.5'
+- weak_signal: 'Two lists: merge them, match elements, closest element, or pairs across them'
+  choose: merge-walk
+  when: Both lists are sorted (or the matching is in order, as for subsequences), so what each element
+    needs from the other list starts at a boundary that only moves forward.
+  over:
+  - card: sort-then-scan
+    because: Enough when only one sorted list matters and every relevant pair is adjacent in it.
+    topic: '1.1'
+  - card: ordered-set-lookup
+    because: Needed when queries arrive in an order you cannot sort, so the pointer could not move forward
+      only.
+    topic: '0.6'
 glossary_added:
-  - window
-  - pointer
-  - two pointers
-  - sliding window
-  - validity condition
-  - sub-window
-  - closed under shrinking
-  - closed under extension
-  - subsequence
+- window
+- pointer
+- two pointers
+- sliding window
+- validity condition
+- sub-window
+- closed under shrinking
+- closed under extension
+- subsequence

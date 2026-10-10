@@ -6,18 +6,24 @@ Output: the largest area.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n;
-    cin >> n;
-    vector<int> h(n);
-    for (auto& x : h) cin >> x;
-
-    int l = 0, r = n - 1;
-    long long best = 0;  // width 10^5 times height 10^4 = 10^9 fits int, but long long costs nothing
+// snippet:begin
+// The largest area of a container made of two lines: move the pointer at the shorter line inwards.
+long long mostWater(const vector<int>& h) {
+    int l = 0, r = h.size() - 1;
+    long long best = 0;
     while (l < r) {
         best = max(best, (long long)(r - l) * min(h[l], h[r]));
         if (h[l] <= h[r]) l++;  // h[l] is the shorter side: no container using l can do better
         else r--;               // h[r] is the shorter side
     }
-    cout << best << "\n";
+    return best;
+}
+// snippet:end
+
+int main() {
+    int n;
+    cin >> n;
+    vector<int> h(n);
+    for (auto& x : h) cin >> x;
+    cout << mostWater(h) << "\n";
 }

@@ -6,16 +6,12 @@ Output: the number of pairs.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n;
-    long long T;  // sums of two values reach 2*10^9, beyond int
-    cin >> n >> T;
-    vector<long long> a(n);
-    for (auto& x : a) cin >> x;
+// snippet:begin
+// Theorem 1.3.4, counting form. The number of pairs i < j with a_i + a_j <= T.
+long long pairsAtMost(vector<long long> a, long long T) {
     sort(a.begin(), a.end());
-
-    long long pairs = 0;  // up to n(n-1)/2, beyond int for large n
-    int l = 0, r = n - 1;
+    long long pairs = 0;
+    int l = 0, r = a.size() - 1;
     while (l < r) {
         if (a[l] + a[r] <= T) {
             pairs += r - l;  // a[l] pairs with every index in (l, r]
@@ -24,5 +20,15 @@ int main() {
             r--;  // a[r] pairs with no index left in [l, r)
         }
     }
-    cout << pairs << "\n";
+    return pairs;
+}
+// snippet:end
+
+int main() {
+    int n;
+    long long T;  // sums of two values reach 2*10^9, beyond int
+    cin >> n >> T;
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    cout << pairsAtMost(a, T) << "\n";
 }

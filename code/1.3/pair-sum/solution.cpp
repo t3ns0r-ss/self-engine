@@ -6,24 +6,26 @@ Output: YES or NO.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.3.4. Is there a pair i < j with a_i + a_j = T? Sort, then move the pointers inwards.
+bool pairWithSum(vector<long long> a, long long T) {
+    sort(a.begin(), a.end());
+    int l = 0, r = a.size() - 1;
+    while (l < r) {
+        long long s = a[l] + a[r];
+        if (s == T) return true;
+        if (s < T) l++;  // a[l] is too small even with the largest partner left
+        else r--;        // a[r] is too large even with the smallest partner left
+    }
+    return false;
+}
+// snippet:end
+
 int main() {
     int n;
     long long T;  // sums of two values up to 10^9 in size reach 2*10^9, beyond int
     cin >> n >> T;
     vector<long long> a(n);
     for (auto& x : a) cin >> x;
-    sort(a.begin(), a.end());
-
-    int l = 0, r = n - 1;
-    bool found = false;
-    while (l < r) {
-        long long s = a[l] + a[r];
-        if (s == T) {
-            found = true;
-            break;
-        }
-        if (s < T) l++;  // a[l] is too small even with the largest partner left
-        else r--;        // a[r] is too large even with the smallest partner left
-    }
-    cout << (found ? "YES" : "NO") << "\n";
+    cout << (pairWithSum(a, T) ? "YES" : "NO") << "\n";
 }

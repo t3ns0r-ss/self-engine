@@ -1,4 +1,3 @@
-# Topic 5.1 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
 id: '5.1'
 draft: true
 uses:
@@ -10,8 +9,12 @@ uses:
   what: 'Brute force: the reference solution of every check'
 - topic: '1.2'
   what: 'Prefix sums: the tool for sums, where a minimum cannot be undone by subtracting'
+- topic: '1.3'
+  what: 'Two pointers: the contrast for sums of positive values'
 - topic: '1.4'
   what: 'Binary search: the search along a growing range'
+- topic: '1.6'
+  what: 'Monotonic stack and deque: the tools for sliding windows and for sums of minimums'
 - topic: '1.7'
   what: 'Bit operations: AND and OR as operations of the table'
 theorems:
@@ -29,19 +32,303 @@ theorems:
   code: 5.1/thm-2
 - id: 5.1.3
   title: Growing a range moves the answer one way
-  plain_words: 'If you keep adding days to the right end of the range, the lowest temperature can only
+  plain_words: If you keep adding days to the right end of the range, the lowest temperature can only
     stay or go down; the GCD can only stay or shrink; the AND can only lose bits. So "has the minimum
     already dropped to $x$ or below?" starts as "no" and, once it turns "yes", stays "yes". That is exactly
-    what binary search needs.'
+    what binary search needs.
   code: 5.1/thm-3
 - id: 5.1.4
   title: Only a few changes
-  plain_words: 'Every time the GCD changes it becomes a proper divisor, which is at most half as big. Starting
-    at most $A \approx 10^9$, it can be halved at most about 30 times, so it has at most about 30 different
-    values along any row. The same count works for the bits of an AND or an OR: each change loses (or
-    gains) at least one bit.'
+  plain_words: 'Every time the GCD changes it becomes a proper divisor, which is at most half as big.
+    Starting at most $A \approx 10^9$, it can be halved at most about 30 times, so it has at most about
+    30 different values along any row. The same count works for the bits of an AND or an OR: each change
+    loses (or gains) at least one bit.'
   code: 5.1/thm-4
-cards: []
+cards:
+- id: idempotent-range-query
+  name: Range minimum, maximum, GCD, AND or OR on a fixed array (sparse table)
+  from_theorem: 5.1.2
+  decisive_property: 'The array does not change between the questions, and the answer for a range is a
+    minimum, a maximum, a GCD, an AND or an OR (or the position of a smallest or largest value): a combination
+    that stays the same when one value is counted twice.'
+  how_to_test: 'Check two things. (1) No question changes the array. (2) Test the combination on one value:
+    min(5, 5) = 5 and gcd(6, 6) = 6 give the value back, while 5 + 5 and 5 XOR 5 do not. If both hold,
+    build the table once and answer each range with two blocks.'
+  constraint_shapes:
+  - 'n = q = 2·10^5: scanning each range costs up to n·q = 4·10^10 steps (about 400 seconds at 10^8 per
+    second), while the table has 18 · 2·10^5 = 3.6·10^6 entries and a question costs 2 lookups'
+  - 'n = 10^6: the table has 20 · 10^6 ints, about 80 MB, so the memory limit must be checked; for n =
+    10^7 it would be 24 · 10^7 ints, about 1 GB, and the table does not fit'
+  weak_signals:
+  - form: Asks for the lowest or highest value, or its position, between two given positions, for many
+      pairs of positions
+    shape: n, q up to 2·10^5, and no operation in the statement changes the array
+  - form: Inside a loop over positions (or over a binary search), needs the minimum, maximum or GCD of
+      a range of the same array again and again
+    shape: n up to 2·10^5 and an outer loop of n or n log n steps, so each inner range query must cost
+      O(1)
+  - form: Asks whether a range is good, where good compares its maximum with its minimum, or compares
+      its GCD or AND with a number
+    shape: n up to 2·10^5 and ranges given in the input or tried by a search
+  kill_signals:
+  - 'A question changes a value before a later question: for a = [4, 2, 5] the table says the minimum
+    of [0, 2] is 2; after a[1] is set to 9 the true minimum is 4, but the table still says 2'
+  - 'The combination is a sum, a count, an XOR or a product: for a = [1, 2, 3] two blocks of length 2
+    give (1 + 2) + (2 + 3) = 8 instead of 6'
+  - 'The questions are all windows of one length k and n is about 10^7: the table would hold 24 · 10^7
+    numbers (about 1 GB), while the deque of topic 1.6 needs only O(n) memory'
+  in_action:
+    statement: 'A hiker wrote down the altitude at n checkpoints. There are q questions (l, r): what is
+      the lowest altitude between checkpoints l and r?'
+    constraints: n, q ≤ 2·10^5, altitudes up to 10^9, no altitude changes.
+    budget: 'Scanning every range: up to n · q = 4·10^10 steps, about 400 seconds. Need O(1) or O(log
+      n) per question.'
+    candidates:
+    - tool: Scan the range for every question (topic 0.5)
+      verdict: rejected
+      because: 4·10^10 steps in the worst case.
+    - tool: Prefix minimums (topic 1.2)
+      verdict: rejected
+      because: They answer only ranges that start at checkpoint 1; a minimum cannot be undone by subtracting.
+    - tool: Sparse table (this topic)
+      verdict: chosen
+      because: The array is fixed and the minimum gives the same value when counted twice (Theorem 5.1.2).
+    property_check: Nothing changes between questions. min(x, x) = x, so two overlapping blocks of length
+      2^k that cover the range give the right minimum. The property holds.
+    decision: Sparse table with 18 levels; each question is two lookups and one min.
+  examples:
+    positive:
+    - inline:
+        input: a = [5, 2, 4, 7, 1, 3, 6]. What is the smallest value in positions 1 to 5?
+        answer: '1'
+        why: 'Nothing changes and the minimum ignores repeats. The length is 5, so k = 2 and the blocks
+          are [1, 4] and [2, 5]: min(1, 1) = 1, matching a scan.'
+    - inline:
+        input: a = [12, 18, 8, 24, 6]. What is the GCD of positions 0 to 2?
+        answer: '2'
+        why: gcd(x, x) = x, so the blocks [0, 1] and [1, 2], which overlap at position 1, give gcd(6,
+          2) = 2, matching gcd(12, 18, 8).
+    - worked_example: cses-1647
+      why: 'A fixed array of up to 2·10^5 numbers and up to 2·10^5 range minimum questions: one table,
+        two lookups per question.'
+    negative:
+    - inline:
+        input: a = [1, 2, 3]. What is the sum of positions 0 to 2, if answered like the minimum with two
+          blocks of length 2?
+        answer: '6'
+        method_gives: '8'
+        why: 'The blocks [0, 1] and [1, 2] give 3 + 5 = 8: the middle element is added twice. A sum is
+          not idempotent, so overlapping blocks are not allowed.'
+      correct_tool:
+        topic: '1.2'
+        card: range-sum
+    - problem: cses-3221
+      why: All questions are windows of the same length k and n is up to 10^7; a table would need about
+        1 GB, while a deque keeps the minimum of the sliding window in O(n).
+      correct_tool:
+        topic: '1.6'
+        card: window-deque
+  lookalikes:
+  - description: Sums of ranges on a fixed array
+    tool:
+      topic: '1.2'
+      card: range-sum
+    flipping_difference: A sum is not idempotent but can be undone by subtracting, so two prefix sums
+      answer it with no table.
+  - description: The minimum of every window of one fixed length
+    tool:
+      topic: '1.6'
+      card: window-deque
+    flipping_difference: All ranges have the same length and move right one step at a time, so a deque
+      answers all of them in O(n) with no n log n table.
+  complexity: O(n log n) to build, O(1) per question.
+- id: monotone-range-search
+  name: Searching along a growing range (first r where the aggregate passes a bound)
+  from_theorem: 5.1.3
+  decisive_property: For a fixed left end l, the aggregate of a[l..r] (min, GCD or AND, which only go
+    down; max or OR, which only go up) moves in one direction as r grows, and the question asks for the
+    first or last r where it passes a bound.
+  how_to_test: Take one l and write the aggregate for r = l, l + 1, l + 2, ... If it can only go down
+    (or only go up), then "has it passed x yet?" changes from no to yes at most once, so binary search
+    on r is valid, with one table query per step.
+  constraint_shapes:
+  - 'n = 2·10^5 left ends with a scan to the right for each: n²/2 = 2·10^10 steps; one binary search per
+    left end is 2·10^5 · 18 = 3.6·10^6 table queries'
+  - 'q = 2·10^5 questions (l, x), each asking how far right the aggregate stays above x: scanning is up
+    to 4·10^10 steps, a search is about 18 queries per question'
+  weak_signals:
+  - form: Asks, for a start l and a number x, for the farthest or nearest position where the minimum,
+      AND, GCD, maximum or OR of the range passes x
+    shape: n, q up to 2·10^5, array fixed
+  - form: Asks for the first position to the right of p whose value is greater than something that depends
+      on the query (such as the height of another building)
+    shape: n, q up to 5·10^4 to 2·10^5, so each question needs about O(log n)
+  - form: Asks, for every position, for the shortest range starting there that reaches a goal (the largest
+      OR, an AND below a number)
+    shape: n up to 10^5 and a range length up to n
+  kill_signals:
+  - 'The aggregate is a sum with negative numbers or an XOR: for a = [5, −4, 1] the sums are 5, 1, 2,
+    so "sum ≤ 1" is false, true, false and binary search can miss the answer'
+  - 'The bound depends on both ends in a way that is not monotone in r (for example "the range is a palindrome"):
+    no search over r works'
+  in_action:
+    statement: n sensors stand in a row with strengths a_i. For each of q questions (l, x), find the first
+      sensor at position l or to the right whose strength is below x; if there is none, print −1.
+    constraints: n, q ≤ 2·10^5, strengths up to 10^9, the strengths do not change.
+    budget: 'Scanning from l: up to n · q = 4·10^10 steps. Need about O(log n) per question.'
+    candidates:
+    - tool: Scan to the right for every question (topic 0.5)
+      verdict: rejected
+      because: 4·10^10 steps in the worst case.
+    - tool: Binary search on the array itself (topic 1.4)
+      verdict: rejected
+      because: The array is not sorted, so single values do not have the "false then true" shape.
+    - tool: Binary search on r with range minimum queries (this topic)
+      verdict: chosen
+      because: The minimum of a[l..r] only goes down as r grows (Theorem 5.1.3), and each test is an O(1)
+        table query.
+    property_check: For fixed l, "min(a[l..r]) < x" is false and then true. The first position with a
+      value below x is the first r where it turns true. The property holds.
+    decision: Build the min table once; for each question binary search the first r with min(a[l..r])
+      < x, in about 18 queries.
+  examples:
+    positive:
+    - inline:
+        input: a = [6, 9, 4, 3, 8, 1], l = 0. What is the first r with min(a[0..r]) ≤ 3?
+        answer: '3'
+        why: The prefix minimums are 6, 6, 4, 3, 3, 1, which never go up, so "≤ 3" turns true once. The
+          search finds r = 3, matching a scan.
+    - inline:
+        input: a = [1, 2, 4, 8], l = 0. What is the first r with OR(a[0..r]) ≥ 7?
+        answer: '2'
+        why: 'OR only gains bits, so its value never goes down: 1, 3, 7, 15. "≥ 7" turns true once, at
+          r = 2.'
+    - worked_example: cf-1878E
+      why: 'For each question (l, k) the farthest r with AND ≥ k: the AND only loses bits as r grows,
+        so binary search on r works.'
+    negative:
+    - inline:
+        input: a = [3, 1, 2, 5], l = 0. What is the first r with XOR(a[0..r]) ≥ 3?
+        answer: '0'
+        method_gives: '3'
+        why: 'The XORs of the prefixes are 3, 2, 0, 5: true, false, false, true. Binary search tests r
+          = 2 (false) and goes right, so it returns 3, but r = 0 already works. XOR goes up and down.'
+      correct_tool:
+        topic: '1.7'
+        card: prefix-xor
+    - problem: lc-subarray-sum-equals-k
+      why: The values may be negative, so the running sum goes up and down and "sum equals k" is not monotone
+        in r; prefix sums with a lookup count the ranges.
+      correct_tool:
+        topic: '1.2'
+        card: prefix-count-lookup
+  lookalikes:
+  - description: The smallest value that makes a yes/no test true, where the test is a feasibility check
+    tool:
+      topic: '1.4'
+      card: answer-search
+    flipping_difference: There the search is over the answer value and each test runs a greedy check;
+      here the search is over the right end r and each test is a table query.
+  - description: The longest range ending at r (or starting at l) whose sum or count stays under a bound,
+      with all values positive
+    tool:
+      topic: '1.3'
+      card: shrinkable-window
+    flipping_difference: With positive values two pointers also move l and need no table; the search is
+      for an operation such as AND, GCD or min that two pointers cannot update when l moves.
+  complexity: O(log n) table queries per search, each O(1) after the O(n log n) build.
+- id: few-changes-count
+  name: Few different values over all starts (counting by GCD, AND or OR)
+  from_theorem: 5.1.4
+  decisive_property: The question is about all subarrays (or all left ends) and depends on the GCD, AND
+    or OR of each subarray; for a fixed left end that value changes only about log(max value) times as
+    the right end grows, so each left end has a few stretches of equal value.
+  how_to_test: Take one l and write the aggregate for growing r. For GCD each change at least halves the
+    value; for AND and OR each change loses or gains a bit. With values up to 10^9 that is at most 30
+    stretches per l. A minimum, maximum, sum or XOR has no such bound.
+  constraint_shapes:
+  - 'n = 2·10^5: all pairs (l, r) are n²/2 = 2·10^10; with at most 30 stretches per l and a search of
+    about 18 queries to find the end of each, the work is at most 2·10^5 · 30 · 18 ≈ 10^8, and usually
+    far less'
+  - Values up to 10^6 give at most 20 stretches for the GCD (2^20 > 10^6), so about 2·10^5 · 20 · 18 =
+    7·10^7 steps
+  weak_signals:
+  - form: Asks for the sum, the count or the maximum, over all subarrays, of the GCD, AND or OR of the
+      subarray
+    shape: n up to 2·10^5, so n² pairs are far too many
+  - form: Asks for the number of subarrays whose GCD, AND or OR equals (or is at least) a given number
+    shape: n up to 10^5 or 2·10^5, values up to 10^9
+  - form: Asks for the subarray whose AND or GCD is closest to a target
+    shape: n up to 10^5, values up to 10^6
+  kill_signals:
+  - 'The value of a subarray is its minimum or maximum: a decreasing array 5, 4, 3, 2, 1 has 5 different
+    minimums from l = 0, so there is no log n bound'
+  - 'The value is a sum or an XOR: for a = [1, 2, 1, 2, 1, 2, 1, 2] the XOR of a[0..r] changes at every
+    step (1, 3, 2, 0, 1, 3, 2, 0), giving 8 stretches although the values are below 4'
+  in_action:
+    statement: Given n numbers, find the sum of gcd(a[l..r]) over all ranges l ≤ r.
+    constraints: n ≤ 2·10^5, a_i ≤ 10^6.
+    budget: 'All ranges: n²/2 = 2·10^10 pairs. Need about O(n log A log n) = 2·10^5 · 20 · 18 ≈ 7·10^7.'
+    candidates:
+    - tool: Compute the gcd for every pair (l, r) (topic 0.5)
+      verdict: rejected
+      because: 2·10^10 pairs.
+    - tool: Per-bit contribution (topic 1.7)
+      verdict: rejected
+      because: The gcd is not a bitwise operation, so bits cannot be counted separately.
+    - tool: Stretches of equal gcd with a sparse table (this topic)
+      verdict: chosen
+      because: For each l the gcd takes at most 20 values (Theorem 5.1.4), each stretch is found by one
+        search.
+    property_check: For fixed l, the gcd of a[l..r] divides the one before, so it at least halves at each
+      change; with a_i ≤ 10^6 there are at most 20 stretches. The property holds.
+    decision: For each l list the stretches; add value × length of each; use 64-bit numbers.
+  examples:
+    positive:
+    - inline:
+        input: a = [12, 18, 8, 24, 6]. How many different values does gcd(a[0..r]) take as r grows?
+        answer: '3'
+        why: The values are 12, 6, 2, 2, 2, so three stretches. Each change at least halves the value
+          (12 → 6 → 2).
+    - inline:
+        input: a = [6, 4, 2, 8]. What is the sum of gcd(a[l..r]) over all 10 ranges?
+        answer: '32'
+        why: The singles give 6 + 4 + 2 + 8 = 20 and the six longer ranges all have gcd 2, giving 12.
+          Listing the stretches for every l and adding value × length gives the same 32.
+    - worked_example: lc-find-a-value-of-a-mysterious-function-closest-to-target
+      why: The AND of a[l..r] has at most 20 different values for each l, so the closest to the target
+        is found among the few stretches.
+    negative:
+    - inline:
+        input: a = [1, 2, 1, 2, 1, 2, 1, 2]. How many stretches does the XOR of a[0..r] have?
+        answer: '8'
+        method_gives: '2'
+        why: 'The log bound for values up to 2 promises at most 1 + log2 2 = 2 stretches. But the XORs
+          are 1, 3, 2, 0, 1, 3, 2, 0: all 8 are separate stretches. XOR does not move in one direction.'
+      correct_tool:
+        topic: '1.7'
+        card: prefix-xor
+    - problem: lc-sum-of-subarray-minimums
+      why: The minimum of a[l..r] can change up to n times for one l, so there is no log bound; each element
+        decides the ranges where it is the minimum, which a stack finds in O(n).
+      correct_tool:
+        topic: '1.6'
+        card: element-span
+  lookalikes:
+  - description: The sum of the minimums of all subarrays
+    tool:
+      topic: '1.6'
+      card: element-span
+    flipping_difference: The minimum has no log bound on its changes, so the stretches could be as many
+      as n; counting where each element is the minimum with a stack avoids stretches altogether.
+  - description: Counting subarrays whose sum, modulo a number, has a given value
+    tool:
+      topic: '1.2'
+      card: prefix-count-lookup
+    flipping_difference: A sum can be undone by subtracting, so a table of counts of prefix values answers
+      it; GCD, AND and OR cannot be undone, which is why the stretches are needed.
+  complexity: 'O(n log A log n): at most log A stretches per start, one search of O(log n) table queries
+    each.'
 problems: []
 drill: []
 lookalike_pairs: []

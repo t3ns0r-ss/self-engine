@@ -7,19 +7,20 @@ Output: g(n), where g(n) = max(n, g(n/2) + g(n/3) + g(n/4)) with integer divisio
 #include <bits/stdc++.h>
 using namespace std;
 
-map<long long, long long> cache;  // value of each argument already computed (Theorem 3.2.4)
-
-long long g(long long n) {
+// snippet:begin
+// Theorem 3.2.4. g(n) = max(n, g(n/2) + g(n/3) + g(n/4)) with a cache: each distinct argument is computed once.
+long long g(long long n, map<long long, long long>& cache) {
     if (n == 0) return 0;  // base case
     auto it = cache.find(n);
     if (it != cache.end()) return it->second;  // computed before: return at once
-    long long res = max(n, g(n / 2) + g(n / 3) + g(n / 4));
-    cache[n] = res;
-    return res;
+    long long res = max(n, g(n / 2, cache) + g(n / 3, cache) + g(n / 4, cache));
+    return cache[n] = res;
 }
+// snippet:end
 
 int main() {
     long long n;
     cin >> n;
-    cout << g(n) << "\n";
+    map<long long, long long> cache;
+    cout << g(n, cache) << "\n";
 }

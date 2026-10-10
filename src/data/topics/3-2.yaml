@@ -1,698 +1,1085 @@
-# Topic 3.2 data file (PLAN.md Section 5). Problems reference the bank by id.
-id: "3.2"
+# Topic 3.2 data file (PLAN.md Section 5, Revision 2). Problems reference the bank by id.
+id: '3.2'
+uses:
+- topic: '0.2'
+  what: 'Complexity: states times transitions against the budget'
+- topic: '0.4'
+  what: Remainders and divisibility
+- topic: '0.5'
+  what: Brute force and recursion over choices, which the table replaces
+- topic: '0.6'
+  what: Sets and maps, used for dictionary look-ups and caches
+- topic: '1.1'
+  what: Sorting, used by the interval problems
+- topic: '1.2'
+  what: Prefix sums and prefix extremes
+- topic: '1.3'
+  what: Two pointers over sequences
+- topic: '1.4'
+  what: Binary search, used to find the last compatible item
+- topic: '1.5'
+  what: Greedy choices and exchange arguments
+- topic: '1.7'
+  what: Bits of a number
+- topic: '2.2'
+  what: 'Modular arithmetic: counts printed modulo a prime'
+- topic: '2.3'
+  what: 'Combinatorics: the sum rule for counting, and counting by formulas'
+- topic: '2.4'
+  what: Expected values, which some problems turn into a table
+- topic: '3.1'
+  what: 'Backtracking: the recursion over choices that the table replaces (Theorem 3.1.2, canonical order)'
+theorems:
+- id: 3.2.1
+  title: Optimal substructure
+  plain_words: If what you may do next, and what it costs, depends only on the current state and not on
+    how you got there, then the best value at a state is the best over the last step of the best value
+    at the previous state plus the step's cost. So each state needs to be solved only once.
+  code: 3.2/thm-1
+- id: 3.2.2
+  title: Counting by the last choice
+  plain_words: If each object is built by exactly one sequence of choices, the number of objects at a
+    state is the sum, over the last choice, of the number at the state before it. Different last choices
+    give different objects, so nothing is counted twice.
+  code: 3.2/thm-2
+- id: 3.2.3
+  title: Tabulation
+  plain_words: If the states can be numbered so that every step goes from a smaller to a larger number,
+    fill the table in that order, and each state is computed from states that are already correct. The
+    time is the number of states and steps, not the number of solutions.
+  code: 3.2/thm-3
+- id: 3.2.4
+  title: Memoisation
+  plain_words: Keep the plain recursion but store each answer the first time it is computed. If no state
+    depends on itself, every state is then computed once, and only the states that are really reached
+    cost anything.
+  code: 3.2/thm-4
+- id: 3.2.5
+  title: Adding a small fact to the state
+  plain_words: When the future depends on the position and one more small fact, such as the last activity
+    or a parity, put that fact in the state. The table then has one row for each value of the fact, and
+    the same recurrence applies.
+  code: 3.2/thm-5
+- id: 3.2.6
+  title: Reconstruction
+  plain_words: While filling the table, remember for each state which step gave its best value. Starting
+    at the best final state and following those steps backwards lists an optimal solution, not only its
+    value.
+  code: 3.2/thm-6
 cards:
-  - id: linear-state
-    name: One index per state
-    decisive_property: "Solutions are built left to right, and the allowed next choices and their costs depend only on the current position, not on how it was reached; so the best value (or the number of ways) at position i is computed from a few earlier positions, each once."
-    from_theorem: Theorem 3.2.1
-    how_to_test: "Take two different ways of reaching position i and check that every continuation allowed after one is allowed after the other, with the same cost. For counts, also check that each object is built by exactly one sequence of choices (Theorem 3.2.2)."
-    weak_signals:
-      - "Minimum cost or number of ways to reach position n with steps or jumps of a few kinds"
-      - "Choose some elements of an array with a rule about neighbours (no two adjacent), maximise the total"
-      - "Split a string or array into pieces from a dictionary or with a cost per piece"
-      - "n up to 10^5 or 10^6, and backtracking would branch at every position"
-    kill_signals:
-      - "The next choice depends on more than the position (the last action, how many used so far): add that to the state"
-      - "A greedy choice is provably optimal (an exchange argument, 1.5): no table needed"
-    lookalikes:
-      - description: "The fewest jumps to reach the end when from position i you may jump anywhere up to a[i] ahead"
-        needs: "left-to-right-forced (1.5)"
-        flipping_difference: "Reachable positions form a prefix that only grows, so a greedy scan of the farthest reach answers it in O(n); the table works but is not needed."
-    complexity: "O(n × transitions per position)."
-  - id: extra-small-state
-    name: Index plus a small extra fact
-    decisive_property: "The allowed choices or their costs at position i depend on the past only through i and one more value from a small set (the last action, a parity, a count up to k, a flag); with that value added, two partial solutions with the same state have the same future."
-    from_theorem: Theorem 3.2.5
-    how_to_test: "Write down what the rule for the next choice reads about the past. If it is more than the position, find the smallest extra value that captures it and count the states n·|X|."
-    weak_signals:
-      - "Not the same action on two consecutive days; alternate between two kinds"
-      - "Buy and sell with a cooldown, a fee or at most k transactions"
-      - "A switch, a mode or a health state that changes the cost of the next step"
-      - "At most one deletion, one flip or one skip allowed"
-    kill_signals:
-      - "The extra fact is a whole set of past choices (2^n values): that is a subset state (topic 3.7)"
-      - "The extra fact is a capacity or a sum up to 10^5 or more: the item-and-capacity table of topic 3.3"
-    lookalikes:
-      - description: "The maximum sum of a contiguous subarray, with no extra rule"
-        needs: "prefix-extremes (1.2)"
-        flipping_difference: "Without a rule linking consecutive choices, the best subarray is a prefix difference; the extra state is needed only when a rule (one deletion, a sign flip) changes the future."
-    complexity: "O(n · |X| · transitions)."
-  - id: two-index
-    name: Two indices per state
-    decisive_property: "A partial solution is described by two numbers, such as positions in two strings or a position and a count, and every transition increases one of them or both; so the table dp[i][j] can be filled in increasing i and, within a row, increasing j."
-    from_theorem: Theorem 3.2.3
-    how_to_test: "Name the two numbers, list the transitions, and check that each one moves to a pair that is larger in the fill order; then count the pairs."
-    weak_signals:
-      - "Two strings: does one match a pattern, can a third be formed by interleaving them"
-      - "Choose exactly k of n items, or reach position n with a counter that stays within a range"
-      - "Sequences where each value must be close to the previous one, with some values fixed"
-    kill_signals:
-      - "Both indices range up to 10^5 or more (10^10 states): look for a single-index state or a greedy"
-      - "The two indices describe a contiguous interval [l, r] that grows from the inside (interval states, topic 3.6)"
-    lookalikes:
-      - description: "Whether a short string is a subsequence of a long one"
-        needs: "merge-walk (1.3)"
-        flipping_difference: "Matching each character at its first possible place is never worse, so two pointers decide it; a two-index table is needed when a character may match in several ways (wildcards, interleaving)."
-    complexity: "O(rows · columns · transitions)."
-  - id: memo-recursion
-    name: Recursion with a cache
-    decisive_property: "The natural recursion has few distinct arguments but calls them many times, and no argument depends on itself; storing each result the first time makes every state cost its transitions once, even when the reachable states are scattered or their order is awkward."
-    from_theorem: Theorem 3.2.4
-    how_to_test: "Write the recursion, count the distinct arguments it can reach (not the calls), and check that each call's arguments are smaller in some sense, so there is no cycle."
-    weak_signals:
-      - "A recursive formula f(n) = f(n/2) + f(n/3) for n up to 10^18"
-      - "Two players take stones or moves, and the winner is asked (win if some move leads to a losing state)"
-      - "A recursive structure (a burger of layers, a tree of votes) whose size explodes but whose levels are few"
-    kill_signals:
-      - "The distinct arguments are many (10^7 or more) and the order is simple: tabulation is faster and has no recursion depth"
-      - "A state can lead back to itself (moves that undo each other): the recursion never ends"
-    lookalikes:
-      - description: "f(n) = f(n − 1) + n with f(0) = 0, for n up to 10^18"
-        needs: "closed-form (0.2)"
-        flipping_difference: "Every value 0..n is reached, far too many to store; the recursion has a formula, n(n + 1)/2. A cache helps only when the reachable arguments are few."
-    complexity: "O(number of reachable states × transitions), plus a cache lookup per call."
-  - id: reconstruct
-    name: Recover the choices
-    decisive_property: "The output is an optimal solution itself, not only its value; recording for each state one transition that attains its optimum lets you walk back from the best final state and rebuild a solution of exactly that value."
-    from_theorem: Theorem 3.2.6
-    how_to_test: "Check that each state's optimum is attained by a recorded transition and that the walk back ends at a base case; for the lexicographically smallest solution, decide the tie-break before filling the table."
-    weak_signals:
-      - "Print the chosen items, the sequence of moves or the string, not just the best value"
-      - "Print any optimal solution, or the lexicographically smallest one"
-    kill_signals:
-      - "Only the value or the count is asked"
-    lookalikes:
-      - description: "Print the order of n tasks that minimises the total waiting time"
-        needs: "exchange-order (1.5)"
-        flipping_difference: "The output is a solution, but an exchange argument proves that sorting by duration is optimal, so no table and no walk back are needed."
-    complexity: "Same as the table, plus O(length of the solution) for the walk back."
+- id: linear-state
+  name: One index per state
+  decisive_property: Solutions are built left to right, and the allowed next choices and their costs depend
+    only on the current position, not on how it was reached; so the best value (or the number of ways)
+    at position i is computed from a few earlier positions, each once.
+  from_theorem: 3.2.1
+  how_to_test: Take two different ways of reaching position i and check that every continuation allowed
+    after one is allowed after the other, with the same cost. For counts, also check that each object
+    is built by exactly one sequence of choices (Theorem 3.2.2).
+  constraint_shapes:
+  - 'n up to 10^5 stones with jumps up to k = 100: trying every jump sequence is exponential, while one
+    value per stone is n · k = 10^7 steps.'
+  weak_signals:
+  - form: Minimum cost or number of ways to reach position n with steps or jumps of a few kinds
+    shape: n up to 10^5 or 10^6
+  - form: Choose some elements of an array with a rule about neighbours (no two adjacent), maximise the
+      total
+    shape: n up to 2·10^5
+  - form: Split a string or array into pieces from a dictionary or with a cost per piece
+    shape: Length up to 10^5
+  kill_signals:
+  - 'The next choice depends on more than the position: with points 10 1 1 on two days and no activity
+    twice in a row, the best is 11, but the day alone as the state gives 10 + 10 = 20.'
+  - 'A rule counts the choices: choosing exactly 2 non-adjacent elements of 5 5 -9 gives -4, but a position-only
+    table of any number of elements gives 5.'
+  in_action:
+    statement: A frog on stone 1 of n stones may jump to any of the next k stones, paying the height difference;
+      print the smallest total cost to reach stone n.
+    constraints: n ≤ 10^5, k ≤ 100.
+    budget: Trying every jump sequence is exponential. One value per stone with k transitions each is
+      10^7 steps.
+    candidates:
+    - tool: Recursion over every jump sequence
+      verdict: rejected
+      because: The number of sequences is exponential in n.
+    - tool: One table value per stone
+      verdict: chosen
+      because: The cost of a jump depends only on the two stones, so the best cost to reach a stone is
+        the best over the previous stone of its cost plus the jump.
+    property_check: Two ways of reaching stone i allow the same jumps with the same costs, so the stone
+      is a sufficient state (Theorem 3.2.1).
+    decision: best[0] = 0; best[i] = the minimum over j in [i − k, i − 1] of best[j] + |h_i − h_j|; print
+      best[n − 1].
+  examples:
+    positive:
+    - inline:
+        input: The frog on the heights 10 30 40 20 with jumps of 1 or 2 stones
+        answer: '30'
+        why: best = 0, 20, 30, 30; the path is stones 1, 2, 4 with cost 20 + 10.
+    - worked_example: cses-1140
+      why: After sorting by end day, the best pay using the first i projects is the larger of skipping
+        project i and taking it after the projects that end before it starts.
+    negative:
+    - inline:
+        input: Two days with points 10 1 1 on both days, never the same activity twice, with the day alone
+          as the state
+        answer: '11'
+        method_gives: '20'
+        why: The best of each day alone is the same activity twice; the future depends on the last activity
+          as well as the day.
+      correct_tool:
+        topic: '3.2'
+        card: extra-small-state
+    - inline:
+        input: Choose exactly 2 non-adjacent elements of 5 5 -9 with the best sum, with the position alone
+          as the state
+        answer: '-4'
+        method_gives: '5'
+        why: A table of the best sum over any number of elements misses that exactly two must be chosen;
+          the count of chosen elements is a second index.
+      correct_tool:
+        topic: '3.2'
+        card: two-index
+  lookalikes:
+  - description: The fewest jumps to reach the end when from position i you may jump anywhere up to a[i]
+      ahead
+    tool:
+      topic: '1.5'
+      card: left-to-right-forced
+    flipping_difference: Reachable positions form a prefix that only grows, so a greedy scan of the farthest
+      reach answers it in O(n); the table works but is not needed.
+  complexity: O(n × transitions per position).
+- id: extra-small-state
+  name: Index plus a small extra fact
+  decisive_property: The allowed choices or their costs at position i depend on the past only through
+    i and one more value from a small set (the last action, a parity, a count up to k, a flag); with that
+    value added, two partial solutions with the same state have the same future.
+  from_theorem: 3.2.5
+  how_to_test: Write down what the rule for the next choice reads about the past. If it is more than the
+    position, find the smallest extra value that captures it and count the states n·|X|.
+  constraint_shapes:
+  - 'n up to 10^5 days and m = 10 activities: the states are n · m = 10^6, each with m transitions, 10^7
+    steps.'
+  weak_signals:
+  - form: Not the same action on two consecutive days; alternate between two kinds
+    shape: n up to 10^5 and a few kinds
+  - form: Buy and sell with a cooldown, a fee or at most k transactions
+    shape: n up to 10^5 and k up to 100
+  - form: A switch, a mode or a health state that changes the cost of the next step
+    shape: A few modes
+  kill_signals:
+  - 'The extra fact is a capacity or a sum up to 10^9: with 3 items and capacity 10^9 the table has 4·10^9
+    states, while the 8 subsets give the best value 8 directly.'
+  - 'The extra fact is a whole set of past choices: its 2^n values are far too many for a table of this
+    kind.'
+  in_action:
+    statement: On each of n days choose one of m activities; activity j on day i earns p[i][j], and the
+      same activity may not be chosen on two consecutive days. Print the largest total.
+    constraints: n ≤ 10^5, m ≤ 10.
+    budget: Trying every sequence is m^n. With the state (day, last activity) there are n · m = 10^6 states
+      with m transitions each.
+    candidates:
+    - tool: Position alone as the state
+      verdict: rejected
+      because: The best of each day would repeat the same activity, which breaks the rule.
+    - tool: State (day, last activity)
+      verdict: chosen
+      because: The rule reads only the last activity, so the pair determines the future.
+    property_check: The next choice depends on the past only through the last activity, one of m values
+      (Theorem 3.2.5).
+    decision: dp[0][j] = p[0][j]; dp[i][j] = p[i][j] + the maximum of dp[i − 1][q] over q ≠ j; print the
+      maximum of dp[n − 1].
+  examples:
+    positive:
+    - inline:
+        input: Two days with points 10 1 1 on both days, never the same activity twice in a row
+        answer: '11'
+        why: dp[2][A] = 10 + max(dp[1][B], dp[1][C]) = 11 and dp[2][B] = 1 + 10 = 11.
+    - worked_example: ac-abc291_d
+      why: The number of valid choices for the first i cards depends on the side shown by card i, a state
+        of two values.
+    negative:
+    - inline:
+        input: The largest value with capacity 10^9 over 3 items, with the state (item, remaining capacity)
+        answer: '8'
+        method_gives: too-slow
+        why: The capacity is up to 10^9, so the table has 4·10^9 states; with 3 items, trying the 8 subsets
+          is exact.
+      correct_tool:
+        topic: '0.5'
+        card: subset-bitmask
+    - problem: ac-abc184_f
+      why: With 40 numbers and sums up to 10^9, the extra fact "sum so far" takes up to 10^9 values; the
+        halves are listed instead.
+      correct_tool:
+        topic: '3.1'
+        card: meet-in-middle
+  lookalikes:
+  - description: The maximum sum of a contiguous subarray, with no extra rule
+    tool:
+      topic: '1.2'
+      card: prefix-extremes
+    flipping_difference: Without a rule linking consecutive choices, the best subarray is a prefix difference;
+      the extra state is needed only when a rule (one deletion, a sign flip) changes the future.
+  complexity: O(n · |X| · transitions).
+- id: two-index
+  name: Two indices per state
+  decisive_property: A partial solution is described by two numbers, such as positions in two strings
+    or a position and a count, and every transition increases one of them or both; so the table dp[i][j]
+    can be filled in increasing i and, within a row, increasing j.
+  from_theorem: 3.2.3
+  how_to_test: Name the two numbers, list the transitions, and check that each one moves to a pair that
+    is larger in the fill order; then count the pairs.
+  constraint_shapes:
+  - 'Two strings of length 2000: 4·10^6 states, while a table for two indices of 10^5 each is 10^10.'
+  weak_signals:
+  - form: Two strings, such as whether one matches a pattern or a third can be formed by interleaving
+      them
+    shape: Lengths up to 2000
+  - form: Choose exactly k of n items, or reach position n with a counter that stays within a range
+    shape: n and k up to 2000
+  - form: Sequences where each value must be close to the previous one, with some values fixed
+    shape: n up to 2000
+  kill_signals:
+  - 'Both indices range up to 10^5 or more: the paths of a 100000 × 100000 grid number 879467333 modulo
+    10^9 + 7, from one binomial coefficient, while 10^10 table cells are too many.'
+  - 'The count is not part of the state in the data: the days up to 10^9 in the projects problem make
+    a table of days impossible; sort and use one index.'
+  in_action:
+    statement: Choose exactly k of n elements, no two adjacent, with the largest sum.
+    constraints: n ≤ 2000, k ≤ n.
+    budget: Trying every subset is 2^n. The table of (elements considered, elements chosen) has n · k
+      = 4·10^6 states.
+    candidates:
+    - tool: Try every subset of exactly k elements
+      verdict: rejected
+      because: C(n, k) subsets.
+    - tool: Table over (prefix length, count chosen)
+      verdict: chosen
+      because: Each state is reached from a smaller prefix with one fewer or equal count, so rows can
+        be filled in order.
+    property_check: Both indices only grow along the transitions, so the table is filled in increasing
+      order (Theorem 3.2.3).
+    decision: dp[0][0] = 0; dp[i][j] = the larger of dp[i − 1][j] and dp[i − 2][j − 1] + a_i; print dp[n][k]
+      or impossible.
+  examples:
+    positive:
+    - inline:
+        input: The lattice paths from (0, 0) to (2, 2)
+        answer: '6'
+        why: dp[i][j] = dp[i − 1][j] + dp[i][j − 1] gives 1, 2, 3 in the first rows and dp[2][2] = 6.
+    - inline:
+        input: Exactly 2 non-adjacent elements of 3 -1 4 1 with the largest sum
+        answer: '7'
+        why: The choices are (3, 4) = 7, (3, 1) = 4 and (-1, 1) = 0; the table over (prefix, count) finds
+          7.
+    negative:
+    - inline:
+        input: The lattice paths in a 100000 × 100000 grid, modulo 10^9 + 7
+        answer: '879467333'
+        method_gives: too-slow
+        why: The table has 10^10 cells; the paths are one binomial coefficient C(200000, 100000), a choice
+          of positions.
+      correct_tool:
+        topic: '2.3'
+        card: bijection-paths
+    - problem: cses-1140
+      why: The days go up to 10^9, so a table over (project, day) is impossible; sorting by end day gives
+        a single index.
+      correct_tool:
+        topic: '3.2'
+        card: linear-state
+  lookalikes:
+  - description: Whether a short string is a subsequence of a long one
+    tool:
+      topic: '1.3'
+      card: merge-walk
+    flipping_difference: Matching each character at its first possible place is never worse, so two pointers
+      decide it; a table over two indices is needed when a character may match in several ways (wildcards,
+      interleaving).
+  complexity: O(rows · columns · transitions).
+- id: memo-recursion
+  name: Recursion with a cache
+  decisive_property: The natural recursion has few distinct arguments but calls them many times, and no
+    argument depends on itself; storing each result the first time makes every state cost its transitions
+    once, even when the reachable states are scattered or their order is awkward.
+  from_theorem: 3.2.4
+  how_to_test: Write the recursion, count the distinct arguments it can reach (not the calls), and check
+    that each call's arguments are smaller in some sense, so there is no cycle.
+  constraint_shapes:
+  - 'n up to 10^12 with f(n) = f(n/2) + f(n/3) + f(n/4): the plain recursion has more calls than particles,
+    while the reachable arguments are about a thousand.'
+  weak_signals:
+  - form: A recursive formula such as f(n) = f(n/2) + f(n/3)
+    shape: n up to 10^12 or 10^18
+  - form: Two players take stones or moves, and the winner is asked
+    shape: A small number of states
+  - form: A recursive structure whose size explodes but whose levels are few
+    shape: A few levels
+  kill_signals:
+  - 'The recursion has a closed form and the reachable arguments are all the values below n: f(n) = f(n
+    − 1) + n for n = 10^9 would store 10^9 values, while n(n + 1)/2 = 500000000500000000.'
+  - 'The distinct arguments are many and the order is simple: tabulation is faster and has no recursion
+    depth.'
+  in_action:
+    statement: A coin worth n can be exchanged for coins worth ⌊n/2⌋, ⌊n/3⌋ and ⌊n/4⌋, or sold for n;
+      print the most money obtainable.
+    constraints: n ≤ 10^12.
+    budget: The plain recursion makes about 3^(log n) calls, far too many. The reachable arguments number
+      about a thousand.
+    candidates:
+    - tool: Plain recursion
+      verdict: rejected
+      because: The same arguments recur and the calls multiply.
+    - tool: Recursion with a map as the cache
+      verdict: chosen
+      because: Only the reachable arguments are computed, once each, and a table indexed up to 10^12 is
+        impossible.
+    property_check: Arguments only get smaller, so there is no cycle, and the value depends only on the
+      argument (Theorem 3.2.4).
+    decision: g(n) = max(n, g(n/2) + g(n/3) + g(n/4)) with g(0) = 0, storing every result in a map.
+  examples:
+    positive:
+    - inline:
+        input: The most money from a coin of value 12
+        answer: '13'
+        why: g(12) = max(12, g(6) + g(4) + g(3)) = max(12, 6 + 4 + 3) = 13.
+    - inline:
+        input: The ways to climb 20 stairs with steps of 1 or 2
+        answer: '10946'
+        why: The cache holds ways(2) .. ways(20), each computed once, instead of the 21891 calls of the
+          plain recursion.
+    negative:
+    - inline:
+        input: f(n) = f(n − 1) + n with f(0) = 0, for n = 10^9
+        answer: '500000000500000000'
+        method_gives: too-slow
+        why: Every value below n is reached, so the cache would hold 10^9 values; the recursion has the
+          closed form n(n + 1)/2.
+      correct_tool:
+        topic: '0.2'
+        card: closed-form
+    - problem: ac-abc291_d
+      why: The states are the n cards in order, 2·10^5 of them; a table filled in one pass has no recursion
+        depth, which could overflow the stack.
+      correct_tool:
+        topic: '3.2'
+        card: extra-small-state
+  lookalikes:
+  - description: f(n) = f(n − 1) + n with f(0) = 0, for n up to 10^18
+    tool:
+      topic: '0.2'
+      card: closed-form
+    flipping_difference: Every value 0..n is reached, far too many to store; the recursion has a formula,
+      n(n + 1)/2. A cache helps only when the reachable arguments are few.
+  complexity: O(number of reachable states × transitions), plus a cache lookup per call.
+- id: reconstruct
+  name: Recover the choices
+  decisive_property: The output is an optimal solution itself, not only its value; recording for each
+    state one transition that attains its optimum lets you walk back from the best final state and rebuild
+    a solution of exactly that value.
+  from_theorem: 3.2.6
+  how_to_test: Check that each state's optimum is attained by a recorded transition and that the walk
+    back ends at a base case; for the lexicographically smallest solution, decide the tie-break before
+    filling the table.
+  constraint_shapes:
+  - 'n up to 10^5: the table is n values, and the walk back adds n steps; listing the optimal solutions
+    to choose one would be exponential.'
+  weak_signals:
+  - form: Print the chosen items, the sequence of moves or the string, not just the best value
+    shape: n up to 10^5
+  - form: Print any optimal solution, or the lexicographically smallest one
+    shape: Ties in the table
+  kill_signals:
+  - 'Walking back from the end of a table filled forward gives the lexicographically largest choice: for
+    2 2 2 2 it takes positions 2 and 4, not 1 and 3; fill the suffix table and walk forward.'
+  - 'Only the value or the count is asked: the table alone is enough, as in the flipping cards problem.'
+  in_action:
+    statement: Choose elements of an array of positive integers, no two adjacent, with the largest sum;
+      print the lexicographically smallest list of positions among the optimal choices.
+    constraints: n ≤ 10^5.
+    budget: The table is n values; the walk is n steps.
+    candidates:
+    - tool: List all optimal choices and compare
+      verdict: rejected
+      because: There can be exponentially many optimal choices.
+    - tool: Suffix table and a forward walk
+      verdict: chosen
+      because: Taking a position whenever it still reaches the optimum makes the first position as small
+        as possible, then the second.
+    property_check: The best value from each suffix is known, so the choice at each step can be tested
+      against it (Theorem 3.2.6).
+    decision: best[i] = max(best[i + 1], a[i] + best[i + 2]); walk i from 0, taking i when a[i] + best[i
+      + 2] = best[i] and jumping by 2.
+  examples:
+    positive:
+    - inline:
+        input: The stones on the cheapest path for the heights 10 30 40 20 with jumps of 1 or 2
+        answer: 1-2-4
+        why: Following the recorded predecessors back from stone 4 gives 4, 2, 1; reversed, 1, 2, 4.
+    - inline:
+        input: The lexicographically smallest positions with the largest non-adjacent sum in 5 1 5
+        answer: 1-3
+        why: The best sum is 10 and only positions 1 and 3 reach it.
+    negative:
+    - inline:
+        input: The lexicographically smallest optimal positions in 2 2 2 2, walking back from the end
+          of a table filled forward
+        answer: 1-3
+        method_gives: 2-4
+        why: The walk back takes the last position whenever it attains the optimum, which gives positions
+          2 and 4; the forward walk over the suffix table gives 1 and 3.
+      correct_tool:
+        topic: '3.2'
+        card: reconstruct
+    - problem: ac-abc291_d
+      why: Only the number of valid choices is asked; the table of counts is the whole answer and no solution
+        is printed.
+      correct_tool:
+        topic: '3.2'
+        card: extra-small-state
+  lookalikes:
+  - description: Print the order of n tasks that minimises the total waiting time
+    tool:
+      topic: '1.5'
+      card: exchange-order
+    flipping_difference: The output is a solution, but an exchange argument proves that sorting by duration
+      is optimal, so no table and no walk back are needed.
+  complexity: Same as the table, plus O(length of the solution) for the walk back.
 problems:
-  - id: ac-abc291_d
-    role: worked_example
-    summary: Count the ways to choose a side for each of N ≤ 2·10^5 cards so that neighbouring cards show
-      different numbers, modulo 998244353.
-  - id: cses-1140
-    role: worked_example
-    summary: Attend some of n ≤ 2·10^5 projects (days up to 10^9) that share no day, maximising the total
-      pay.
-  - id: lc-climbing-stairs
-    role: ladder
-    card: linear-state
-    rung: 1
-    twist: Base case of the card
-    summary: Count the ways to climb n ≤ 45 stairs with steps of 1 or 2.
-    hints:
-      - Look at the last step of a climb. What can it be, and what is left before it?
-      - The last step is 1 or 2, so the climbs of n are the climbs of n − 1 and the climbs of n − 2, each
-        followed by one step; the classes do not overlap (Theorem 3.2.2).
-      - ways[0] = ways[1] = 1 and ways[i] = ways[i − 1] + ways[i − 2]; print ways[n].
-  - id: ac-dp_a
-    role: ladder
-    card: linear-state
-    rung: 2
-    twist: A minimum cost instead of a count.
-    summary: A frog on N ≤ 10^5 stones jumps 1 or 2 stones ahead, paying the height difference; the cheapest
-      way to the last stone.
-    hints:
-      - Does the cheapest way to finish from stone i depend on how the frog reached stone i?
-      - 'No: the stone alone is the state. best[i] = min(best[i − 1] + |h_i − h_{i−1}|, best[i − 2] +
-        |h_i − h_{i−2}|) (Theorem 3.2.1).'
-      - Fill best[0] = 0, then i = 1, 2, … in order; print best[N − 1].
-  - id: ac-dp_b
-    role: ladder
-    card: linear-state
-    rung: 3
-    twist: Up to K transitions into each state instead of two.
-    summary: The same frog may jump up to K ≤ 100 stones ahead (N ≤ 10^5); the cheapest way to the last
-      stone.
-    hints:
-      - How many stones can the last jump into stone i come from?
-      - Any of the K stones before it; take the minimum of best[i − j] + |h_i − h_{i−j}| over j = 1..K.
-      - 'The cheapest-jumps template of Section 6: O(NK) = 10^7 steps.'
-  - id: lc-word-break
-    role: ladder
-    card: linear-state
-    rung: 4
-    twist: The transitions are dictionary words ending at position i, checked with a set (topic 0.6).
-    summary: Can a string (length ≤ 300) be cut into words from a dictionary of words up to 20 letters
-      long?
-    hints:
-      - If the first i characters can be cut into words, what must be true about the last word?
-      - ok[i] is true when some word s[j..i) is in the dictionary and ok[j] is true; the last word ends
-        at i, and words are at most 20 letters, so only j ≥ i − 20 matter.
-      - ok[0] = true; for each i, try every j from max(0, i − 20) to i − 1 with a set lookup of s.substr(j,
-        i − j); print ok[n].
-  - id: cf-1741E
-    role: ladder
-    card: linear-state
-    rung: 5
-    twist: 'Transitions point both ways: a length marker can describe the segment before it or the segment
-      after it, so a state receives values from earlier and also sends them forward.'
-    summary: A sequence (n ≤ 2·10^5) was formed by splitting an array into segments and writing each segment's
-      length just before or just after it; can the given sequence have arisen this way?
-    hints:
-      - Let ok[i] mean that the first i elements can be fully explained. Which elements can be a length
-        marker, and for which segment?
-      - If b_i is the marker of the segment just before it, that segment is b_{i−b_i}..b_{i−1} and ok[i]
-        needs ok[i − b_i − 1]. If it is the marker of the segment just after it, it explains positions
-        up to i + b_i, which needs ok[i − 1].
-      - 'ok[0] = true; for i = 1..n: if i − b_i − 1 ≥ 0 and ok[i − b_i − 1], set ok[i]; if ok[i − 1] and
-        i + b_i ≤ n, set ok[i + b_i]. Print YES if ok[n].'
-  - id: ac-dp_c
-    role: ladder
-    card: extra-small-state
-    rung: 1
-    twist: Base case of the card
-    summary: On each of N ≤ 10^5 days choose one of three activities with given points, never the same
-      activity two days running; maximise the total.
-    hints:
-      - With "day i" alone as the state, what goes wrong? Try two days where the same activity is best
-        on both.
-      - 'The rule reads yesterday''s activity, so it must be in the state: dp[i][a] = points of a on day
-        i + max over b ≠ a of dp[i − 1][b] (Theorem 3.2.5).'
-      - The no-repeat template of Section 6 with m = 3.
-  - id: lc-best-time-to-buy-and-sell-stock-with-cooldown
-    role: ladder
-    card: extra-small-state
-    rung: 2
-    twist: 'The extra fact has three values that form a small machine: holding a share, just sold (must
-      rest tomorrow), or free.'
-    summary: Buy and sell one share at a time on n ≤ 5000 days of prices; after a sale you must wait a
-      day before buying again. Maximise the profit.
-    hints:
-      - What do you need to know about yesterday to decide what you may do today?
-      - Whether you hold a share, and if not, whether you sold yesterday. Keep the best profit for each
-        of the three situations at the end of each day.
-      - hold = max(hold, free − price), sold = hold_prev + price, free = max(free, sold_prev); update
-        all three from yesterday's values; answer max(free, sold).
-  - id: lc-maximum-subarray-sum-with-one-deletion
-    role: ladder
-    card: extra-small-state
-    rung: 3
-    twist: 'The extra fact is a flag: whether the one allowed deletion has been used.'
-    summary: The largest sum of a non-empty contiguous subarray (n ≤ 10^5) after deleting at most one
-      element from it (it must stay non-empty).
-    hints:
-      - For subarrays ending at position i, what two kinds should you keep apart?
-      - Those with no deletion yet (keep0) and those with the deletion already used (keep1). keep1 either
-        extends a keep1 subarray by a[i], or deletes a[i] from a keep0 subarray ending at i − 1.
-      - keep1 = max(keep1 + a[i], keep0_prev), keep0 = max(keep0 + a[i], a[i]); the answer is the largest
-        keep0 or keep1 seen (keep1 only from i ≥ 1).
-  - id: cf-698A
-    role: ladder
-    card: extra-small-state
-    rung: 4
-    twist: Some actions are forbidden on some days, and the goal is to minimise the rest days.
-    summary: For n ≤ 100 days you know whether the gym is open and whether a contest runs; never do the
-      same activity two days running. Minimise the days of rest.
-    hints:
-      - Which three values can "yesterday" take, and which of them limit today?
-      - Rest, contest or gym. Contest is allowed only on a contest day and not after a contest; gym only
-        when open and not after gym; rest is always allowed and adds 1.
-      - dp[i][x] = fewest rests up to day i ending with activity x (infinity if impossible); fill from
-        dp[i − 1] with the rules; print the minimum of the last row.
-  - id: ac-abc359_d
-    role: ladder
-    card: extra-small-state
-    rung: 5
-    twist: The extra fact is the last K − 1 characters, up to 2^9 = 512 values, stored as a bitmask (topic
-      1.7).
-    summary: Fill each ? of a string of A, B and ? (N ≤ 1000) with A or B so that no substring of length
-      K ≤ 10 is a palindrome; count the ways modulo 998244353.
-    hints:
-      - A palindrome of length K ending at position i depends on which characters?
-      - Only the last K characters. So the state is (position, last K − 1 characters); appending a character
-        is allowed when the K-window it completes is not a palindrome.
-      - 'dp over positions with 2^(K−1) masks: for each mask and each allowed letter, form the K-window,
-        check it, and add to the new mask (drop the oldest bit). Sum the last layer.'
-  - id: lc-interleaving-string
-    role: ladder
-    card: two-index
-    rung: 1
-    twist: Base case of the card
-    summary: Is s3 an interleaving of s1 and s2 (each ≤ 100 characters), keeping the order of each?
-    hints:
-      - After using the first i characters of s1 and the first j of s2, which character of s3 comes next?
-      - Character i + j of s3. It must equal s1[i] (then move to (i + 1, j)) or s2[j] (then (i, j + 1));
-        ok[i][j] needs only these two smaller states.
-      - ok[0][0] = true; fill i from 0 and j from 0 with ok[i][j] = (i > 0 and ok[i − 1][j] and s1[i −
-        1] = s3[i + j − 1]) or (j > 0 and ok[i][j − 1] and s2[j − 1] = s3[i + j − 1]).
-  - id: ac-abc267_d
-    role: ladder
-    card: two-index
-    rung: 2
-    twist: The second index is a count of items chosen, and an item's value depends on that count.
-    summary: Choose a subsequence of length M from N ≤ 2000 numbers to maximise Σ k·B_k, where B_k is
-      the k-th chosen number.
-    hints:
-      - When A_i becomes the k-th chosen number, what do you need to know about the earlier choices?
-      - 'Only how many were chosen before (k − 1) and the best sum for that: dp[i][j] = max(dp[i − 1][j],
-        dp[i − 1][j − 1] + j·A_i).'
-      - Fill an (N + 1) × (M + 1) table with −∞ for impossible states (values can be negative) and long
-        long; print dp[N][M].
-  - id: lc-regular-expression-matching
-    role: ladder
-    card: two-index
-    rung: 3
-    twist: A star lets one pattern position match zero or many characters, so a transition can stay on
-      the same pattern index.
-    summary: Does a pattern with . (any character) and x* (zero or more of x) match a whole string (both
-      ≤ 20 characters)?
-    hints:
-      - With the state (position in the string, position in the pattern), what are the choices when the
-        next pattern item is x*?
-      - Skip x* entirely (pattern index + 2), or, if the current character matches x, consume one character
-        and stay on x* (string index + 1). Every transition increases at least one index.
-      - m[i][j] = the suffixes s[i..] and p[j..] match; fill from the ends backwards with the star and
-        non-star cases; print m[0][0].
-  - id: cf-1077F1
-    role: ladder
-    card: two-index
-    rung: 4
-    twist: The count of chosen positions and the position of the last one are both needed, and the rule
-      "no gap of k unchosen pictures" limits where the previous choice can be.
-    summary: Repost exactly x of n ≤ 200 pictures so that every k consecutive pictures contain a repost;
-      maximise the total beauty of the reposted pictures (or report −1).
-    hints:
-      - If picture i is the j-th repost, where can the (j − 1)-th repost be?
-      - Among the k pictures just before i, otherwise a gap of k unreposted pictures appears. So dp[i][j]
-        = a_i + max over i − k ≤ p < i of dp[p][j − 1].
-      - dp[0][0] = 0 (a virtual start), −∞ elsewhere; fill in increasing i and j in O(n²k); the answer
-        is the best dp[i][x] with i ≥ n − k + 1, or −1.
-  - id: ac-abc275_d
-    role: ladder
-    card: memo-recursion
-    rung: 1
-    twist: Base case of the card
-    summary: Compute f(N) for N ≤ 10^18, where f(0) = 1 and f(k) = f(⌊k/2⌋) + f(⌊k/3⌋).
-    hints:
-      - How many different arguments can the recursion reach from N, and how many calls does it make without
-        storing anything?
-      - Only values ⌊N/(2^a 3^b)⌋, at most a few thousand; but without storing, the same values are recomputed
-        exponentially often. Store each result in a map (Theorem 3.2.4).
-      - 'f(k): if k == 0 return 1; if k is in the map return it; else compute f(k/2) + f(k/3), store and
-        return.'
-  - id: ac-abc115_d
-    role: ladder
-    card: memo-recursion
-    rung: 2
-    twist: The recursion follows a self-similar structure and needs stored sizes of the smaller levels;
-      only one branch is followed at each level.
-    summary: A level-L burger is bun, level-(L−1) burger, patty, level-(L−1) burger, bun (level 0 is a
-      patty); count the patties in the bottom X layers of a level-N burger (N ≤ 50).
-    hints:
-      - Store the total layers and patties of each level first. Where can layer X fall in a level-L burger?
-      - In the bottom bun, inside the lower level-(L−1) burger, at the middle patty, inside the upper
-        burger, or at the top bun; each case needs at most one recursive call.
-      - 'f(L, X): handle L = 0 and X at the ends; if X is within the lower half, return f(L − 1, X − 1);
-        at the middle, patties of level L − 1 plus 1; above it, add f(L − 1, X − layers[L − 1] − 2).'
-  - id: ac-abc391_e
-    role: ladder
-    card: memo-recursion
-    rung: 3
-    twist: 'Each call returns two values: the result of the group and the cheapest number of changes that
-      would flip it.'
-    summary: A string of 3^N bits (N ≤ 13) is reduced by repeatedly replacing each group of three by its
-      majority; find the fewest bit changes that flip the final bit.
-    hints:
-      - For one group of three children, how can you flip its majority, and how much does each option
-        cost?
-      - If all three children agree, flip the two cheapest; if two agree, flip the cheaper of those two.
-        So a call needs, from each child, its value and its cost to flip.
-      - rec(level, start) returns (value, cost) from the three children; at level 0 a bit costs 1 to flip;
-        print the cost at the top.
-  - id: lc-largest-divisible-subset
-    role: ladder
-    card: reconstruct
-    rung: 1
-    twist: Base case of the card
-    summary: Print a largest subset of n ≤ 1000 distinct positive integers in which every pair divides
-      one way or the other.
-    hints:
-      - After sorting, what does a valid subset look like, read from the smallest element up?
-      - A chain where each element divides the next. len[i] = 1 + max len[j] over j < i with nums[j] dividing
-        nums[i]; store the j that gave the maximum as parent[i] (Theorem 3.2.6).
-      - Sort, fill len and parent in O(n²), start at the index with the largest len and follow parent
-        back, printing the elements.
-  - id: ac-abc271_d
-    role: ladder
-    card: reconstruct
-    rung: 2
-    twist: The table is a yes/no table over (cards used, sum), and the choices are rebuilt by walking
-      back through it.
-    summary: Each of N ≤ 100 cards shows a_i or b_i; choose sides so the total is exactly S ≤ 10^4, and
-      print the choice as a string of H and T (or No).
-    hints:
-      - Which table tells you, after the fact, which side card i must have shown?
-      - 'ok[i][s] = the first i cards can total s. If ok[N][S], walk back: card i shows a_i if ok[i −
-        1][s − a_i], otherwise b_i (and then ok[i − 1][s − b_i] holds).'
-      - Fill ok in O(N·S), walk back from (N, S) building the string in reverse, then reverse it.
-  - id: lc-form-largest-integer-with-digits-that-add-up-to-target
-    role: ladder
-    card: reconstruct
-    rung: 3
-    twist: The output must be the largest number, so the walk is greedy from the front and needs a table
-      that tells how many digits are still possible.
-    summary: Digits 1..9 have given paint costs; paint the largest integer whose total cost is exactly
-      target ≤ 5000 (or report 0).
-    hints:
-      - 'Which matters more for the size of a number: its length or its first digit?'
-      - 'The length. len[t] = the most digits with total cost exactly t (−∞ if impossible). Then choose
-        digits from the front: the largest digit d with len[t − cost(d)] = len[t] − 1 keeps the maximum
-        length.'
-      - Fill len over 0..target; if len[target] < 0 print 0; otherwise build the string digit by digit
-        with the greedy rule, from t = target down to 0.
-  - id: lc-decode-ways
-    role: drill
-    summary: Count the ways to split a digit string (length ≤ 100) into codes 1..26 (no leading zeros)
-      that decode to letters.
-  - id: lc-minimum-cost-for-tickets
-    role: drill
-    summary: Travel days are given (up to 365 days in a year); passes for 1, 7 or 30 consecutive days
-      have given prices. Cover all travel days as cheaply as possible.
-  - id: cses-1633
-    role: drill
-    summary: Count the ways to get a sum n ≤ 10^6 by throwing a die one or more times (order matters),
-      modulo 10^9 + 7.
-  - id: cses-1637
-    role: drill
-    summary: Starting from n ≤ 10^6, repeatedly subtract one of the digits of the current number; the
-      fewest steps to reach 0.
-  - id: lc-best-time-to-buy-and-sell-stock-with-transaction-fee
-    role: drill
-    summary: Buy and sell one share at a time on up to 5·10^4 days; each sale costs a fee. Maximise the
-      profit.
-  - id: ac-abc306_d
-    role: drill
-    summary: N ≤ 3·10^5 courses come in order, each antidotal or poisonous with a tastiness (possibly
-      negative); eating a poisonous course while upset kills you. Maximise the total tastiness eaten while
-      surviving.
-  - id: ac-abc270_d
-    role: drill
-    summary: A pile of N ≤ 10^4 stones; players alternately take A_i stones (from K ≤ 100 given amounts,
-      the largest that fits is not forced); both maximise their own total. How many stones does the first
-      player get?
-  - id: lc-beautiful-arrangement
-    role: drill
-    summary: Count the permutations of 1..n (n ≤ 15) in which, at every position i, the number there divides
-      i or is divisible by i.
-  - id: lc-find-minimum-time-to-finish-all-jobs
-    role: drill
-    summary: Assign n ≤ 12 jobs (lengths ≤ 10^7) to k workers to minimise the largest working time.
-  - id: lc-best-sightseeing-pair
-    role: drill
-    summary: Choose positions i < j in an array (n ≤ 5·10^4) to maximise values[i] + values[j] + i − j.
-  - id: lc-arithmetic-slices
-    role: drill
-    summary: Count the contiguous subarrays of length ≥ 3 with all consecutive differences equal (n ≤
-      5000).
-  - id: lc-house-robber-ii
-    role: lookalike
-    summary: Rob houses on a circle of up to 100 houses, never two neighbours (the first and last are
-      neighbours); maximise the total.
-  - id: lc-house-robber-iv
-    role: lookalike
-    summary: Rob at least k of up to 10^5 houses in a row, never two neighbours; minimise the largest
-      amount taken from one house.
-  - id: lc-maximum-product-subarray
-    role: lookalike
-    summary: The largest product of a contiguous non-empty subarray of up to 2·10^4 integers between −10
-      and 10.
-  - id: lc-maximum-product-of-three-numbers
-    role: lookalike
-    summary: The largest product of any three numbers of an array (n ≤ 10^4, values between −1000 and
-      1000).
-  - id: cf-1513C
-    role: checkpoint
-    card: linear-state
-    summary: Each operation replaces every digit d of a number by the decimal digits of d + 1; for up
-      to 2·10^5 queries (n, m), the length of n after m ≤ 2·10^5 operations, modulo 10^9 + 7.
-  - id: lc-wildcard-matching
-    role: checkpoint
-    card: two-index
-    summary: Does a pattern with ? (any one character) and * (any string, possibly empty) match a whole
-      string (both up to 2000 characters)?
-  - id: cf-1625C
-    role: checkpoint
-    card: two-index
-    summary: A road has n ≤ 500 speed-limit signs at given positions; remove at most k of them (not the
-      first) to minimise the time to drive to the end.
-  - id: ac-abc369_d
-    role: review
-    card: extra-small-state
-    review_set: 1
-    summary: Defeat or let go each of N ≤ 2·10^5 monsters in order; defeating one gives its strength in
-      points, doubled for every second monster defeated. Maximise the points.
-  - id: ac-abc365_d
-    role: review
-    card: extra-small-state
-    review_set: 1
-    summary: Aoki's N ≤ 2·10^5 rock-paper-scissors moves are known; Takahashi never loses and never repeats
-      his previous move. Maximise his wins.
-  - id: ac-abc189_d
-    role: review
-    card: extra-small-state
-    review_set: 1
-    summary: Count the assignments of true/false to x_0..x_N (N ≤ 60) for which the chain y_i = y_{i−1}
-      AND/OR x_i, with the given operators, ends true.
-  - id: ac-abc303_d
-    role: review
-    card: extra-small-state
-    review_set: 2
-    summary: Type a string of a and A (length ≤ 3·10^5) with keys costing X (a key), Y (Shift + a key)
-      and Z (Caps Lock); the minimum time.
-  - id: ac-abc261_d
-    role: review
-    card: two-index
-    review_set: 2
-    summary: Toss a coin N ≤ 5000 times; heads increases a counter and earns X_i, tails resets it; some
-      counter values give bonuses. Maximise the money.
-  - id: cses-1746
-    role: review
-    card: two-index
-    review_set: 2
-    summary: Count the arrays of length n ≤ 10^5 with values in 1..m (m ≤ 100), some values given, where
-      neighbours differ by at most 1, modulo 10^9 + 7.
-  - id: ac-abc184_d
-    role: review
-    card: memo-recursion
-    review_set: 2
-    summary: A bag has A, B, C ≤ 99 coins of three kinds; draw one at random and put back two of that
-      kind, until some kind reaches 100. The expected number of draws.
-  - id: lc-filling-bookcase-shelves
-    role: review
-    card: linear-state
-    review_set: 3
-    summary: Place n ≤ 1000 books in order on shelves of a given width; each shelf is as tall as its tallest
-      book. Minimise the total height.
-  - id: lc-best-time-to-buy-and-sell-stock-iv
-    role: review
-    card: two-index
-    review_set: 3
-    summary: Buy and sell one share at a time on n ≤ 1000 days with at most k ≤ 100 transactions; maximise
-      the profit.
-  - id: cf-1324E
-    role: review
-    card: two-index
-    review_set: 3
-    summary: A day has h ≤ 2000 hours; before each of n ≤ 2000 sleeps you wait a_i or a_i − 1 hours, then
-      sleep exactly h hours; maximise the sleeps that start in a given good range of hours.
+- id: ac-abc291_d
+  role: worked_example
+  summary: Count the ways to choose a side for each of N ≤ 2·10^5 cards so that neighbouring cards show
+    different numbers, modulo 998244353.
+- id: cses-1140
+  role: worked_example
+  summary: Attend some of n ≤ 2·10^5 projects (days up to 10^9) that share no day, maximising the total
+    pay.
+- id: lc-climbing-stairs
+  role: ladder
+  card: linear-state
+  rung: 1
+  twist: Base case of the card
+  summary: Count the ways to climb n ≤ 45 stairs with steps of 1 or 2.
+  hints:
+  - Look at the last step of a climb. What can it be, and what is left before it?
+  - The last step is 1 or 2, so the climbs of n are the climbs of n − 1 and the climbs of n − 2, each
+    followed by one step; the classes do not overlap (Theorem 3.2.2).
+  - ways[0] = ways[1] = 1 and ways[i] = ways[i − 1] + ways[i − 2]; print ways[n].
+- id: ac-dp_a
+  role: ladder
+  card: linear-state
+  rung: 2
+  twist: A minimum cost instead of a count.
+  summary: A frog on N ≤ 10^5 stones jumps 1 or 2 stones ahead, paying the height difference; the cheapest
+    way to the last stone.
+  hints:
+  - Does the cheapest way to finish from stone i depend on how the frog reached stone i?
+  - 'No: the stone alone is the state. best[i] = min(best[i − 1] + |h_i − h_{i−1}|, best[i − 2] + |h_i
+    − h_{i−2}|) (Theorem 3.2.1).'
+  - Fill best[0] = 0, then i = 1, 2, … in order; print best[N − 1].
+- id: ac-dp_b
+  role: ladder
+  card: linear-state
+  rung: 3
+  twist: Up to K transitions into each state instead of two.
+  summary: The same frog may jump up to K ≤ 100 stones ahead (N ≤ 10^5); the cheapest way to the last
+    stone.
+  hints:
+  - How many stones can the last jump into stone i come from?
+  - Any of the K stones before it; take the minimum of best[i − j] + |h_i − h_{i−j}| over j = 1..K.
+  - 'The cheapest-jumps template of Section 6: O(NK) = 10^7 steps.'
+- id: lc-word-break
+  role: ladder
+  card: linear-state
+  rung: 4
+  twist: The transitions are dictionary words ending at position i, checked with a set (topic 0.6).
+  summary: Can a string (length ≤ 300) be cut into words from a dictionary of words up to 20 letters long?
+  hints:
+  - If the first i characters can be cut into words, what must be true about the last word?
+  - ok[i] is true when some word s[j..i) is in the dictionary and ok[j] is true; the last word ends at
+    i, and words are at most 20 letters, so only j ≥ i − 20 matter.
+  - ok[0] = true; for each i, try every j from max(0, i − 20) to i − 1 with a set lookup of s.substr(j,
+    i − j); print ok[n].
+- id: cf-1741E
+  role: ladder
+  card: linear-state
+  rung: 5
+  twist: 'Transitions point both ways: a length marker can describe the segment before it or the segment
+    after it, so a state receives values from earlier and also sends them forward.'
+  summary: A sequence (n ≤ 2·10^5) was formed by splitting an array into segments and writing each segment's
+    length just before or just after it; can the given sequence have arisen this way?
+  hints:
+  - Let ok[i] mean that the first i elements can be fully explained. Which elements can be a length marker,
+    and for which segment?
+  - If b_i is the marker of the segment just before it, that segment is b_{i−b_i}..b_{i−1} and ok[i] needs
+    ok[i − b_i − 1]. If it is the marker of the segment just after it, it explains positions up to i +
+    b_i, which needs ok[i − 1].
+  - 'ok[0] = true; for i = 1..n: if i − b_i − 1 ≥ 0 and ok[i − b_i − 1], set ok[i]; if ok[i − 1] and i
+    + b_i ≤ n, set ok[i + b_i]. Print YES if ok[n].'
+- id: ac-dp_c
+  role: ladder
+  card: extra-small-state
+  rung: 1
+  twist: Base case of the card
+  summary: On each of N ≤ 10^5 days choose one of three activities with given points, never the same activity
+    two days running; maximise the total.
+  hints:
+  - With "day i" alone as the state, what goes wrong? Try two days where the same activity is best on
+    both.
+  - 'The rule reads yesterday''s activity, so it must be in the state: dp[i][a] = points of a on day i
+    + max over b ≠ a of dp[i − 1][b] (Theorem 3.2.5).'
+  - The no-repeat template of Section 6 with m = 3.
+- id: lc-best-time-to-buy-and-sell-stock-with-cooldown
+  role: ladder
+  card: extra-small-state
+  rung: 2
+  twist: 'The extra fact has three values that form a small machine: holding a share, just sold (must
+    rest tomorrow), or free.'
+  summary: Buy and sell one share at a time on n ≤ 5000 days of prices; after a sale you must wait a day
+    before buying again. Maximise the profit.
+  hints:
+  - What do you need to know about yesterday to decide what you may do today?
+  - Whether you hold a share, and if not, whether you sold yesterday. Keep the best profit for each of
+    the three situations at the end of each day.
+  - hold = max(hold, free − price), sold = hold_prev + price, free = max(free, sold_prev); update all
+    three from yesterday's values; answer max(free, sold).
+- id: lc-maximum-subarray-sum-with-one-deletion
+  role: ladder
+  card: extra-small-state
+  rung: 3
+  twist: 'The extra fact is a flag: whether the one allowed deletion has been used.'
+  summary: The largest sum of a non-empty contiguous subarray (n ≤ 10^5) after deleting at most one element
+    from it (it must stay non-empty).
+  hints:
+  - For subarrays ending at position i, what two kinds should you keep apart?
+  - Those with no deletion yet (keep0) and those with the deletion already used (keep1). keep1 either
+    extends a keep1 subarray by a[i], or deletes a[i] from a keep0 subarray ending at i − 1.
+  - keep1 = max(keep1 + a[i], keep0_prev), keep0 = max(keep0 + a[i], a[i]); the answer is the largest
+    keep0 or keep1 seen (keep1 only from i ≥ 1).
+- id: cf-698A
+  role: ladder
+  card: extra-small-state
+  rung: 4
+  twist: Some actions are forbidden on some days, and the goal is to minimise the rest days.
+  summary: For n ≤ 100 days you know whether the gym is open and whether a contest runs; never do the
+    same activity two days running. Minimise the days of rest.
+  hints:
+  - Which three values can "yesterday" take, and which of them limit today?
+  - Rest, contest or gym. Contest is allowed only on a contest day and not after a contest; gym only when
+    open and not after gym; rest is always allowed and adds 1.
+  - dp[i][x] = fewest rests up to day i ending with activity x (infinity if impossible); fill from dp[i
+    − 1] with the rules; print the minimum of the last row.
+- id: ac-abc359_d
+  role: ladder
+  card: extra-small-state
+  rung: 5
+  twist: The extra fact is the last K − 1 characters, up to 2^9 = 512 values, stored as a bitmask (topic
+    1.7).
+  summary: Fill each ? of a string of A, B and ? (N ≤ 1000) with A or B so that no substring of length
+    K ≤ 10 is a palindrome; count the ways modulo 998244353.
+  hints:
+  - A palindrome of length K ending at position i depends on which characters?
+  - Only the last K characters. So the state is (position, last K − 1 characters); appending a character
+    is allowed when the K-window it completes is not a palindrome.
+  - 'dp over positions with 2^(K−1) masks: for each mask and each allowed letter, form the K-window, check
+    it, and add to the new mask (drop the oldest bit). Sum the last layer.'
+- id: lc-interleaving-string
+  role: ladder
+  card: two-index
+  rung: 1
+  twist: Base case of the card
+  summary: Is s3 an interleaving of s1 and s2 (each ≤ 100 characters), keeping the order of each?
+  hints:
+  - After using the first i characters of s1 and the first j of s2, which character of s3 comes next?
+  - Character i + j of s3. It must equal s1[i] (then move to (i + 1, j)) or s2[j] (then (i, j + 1)); ok[i][j]
+    needs only these two smaller states.
+  - ok[0][0] = true; fill i from 0 and j from 0 with ok[i][j] = (i > 0 and ok[i − 1][j] and s1[i − 1]
+    = s3[i + j − 1]) or (j > 0 and ok[i][j − 1] and s2[j − 1] = s3[i + j − 1]).
+- id: ac-abc267_d
+  role: ladder
+  card: two-index
+  rung: 2
+  twist: The second index is a count of items chosen, and an item's value depends on that count.
+  summary: Choose a subsequence of length M from N ≤ 2000 numbers to maximise Σ k·B_k, where B_k is the
+    k-th chosen number.
+  hints:
+  - When A_i becomes the k-th chosen number, what do you need to know about the earlier choices?
+  - 'Only how many were chosen before (k − 1) and the best sum for that: dp[i][j] = max(dp[i − 1][j],
+    dp[i − 1][j − 1] + j·A_i).'
+  - Fill an (N + 1) × (M + 1) table with −∞ for impossible states (values can be negative) and long long;
+    print dp[N][M].
+- id: lc-regular-expression-matching
+  role: ladder
+  card: two-index
+  rung: 3
+  twist: A star lets one pattern position match zero or many characters, so a transition can stay on the
+    same pattern index.
+  summary: Does a pattern with . (any character) and x* (zero or more of x) match a whole string (both
+    ≤ 20 characters)?
+  hints:
+  - With the state (position in the string, position in the pattern), what are the choices when the next
+    pattern item is x*?
+  - Skip x* entirely (pattern index + 2), or, if the current character matches x, consume one character
+    and stay on x* (string index + 1). Every transition increases at least one index.
+  - m[i][j] = the suffixes s[i..] and p[j..] match; fill from the ends backwards with the star and non-star
+    cases; print m[0][0].
+- id: cf-1077F1
+  role: ladder
+  card: two-index
+  rung: 4
+  twist: The count of chosen positions and the position of the last one are both needed, and the rule
+    "no gap of k unchosen pictures" limits where the previous choice can be.
+  summary: Repost exactly x of n ≤ 200 pictures so that every k consecutive pictures contain a repost;
+    maximise the total beauty of the reposted pictures (or report −1).
+  hints:
+  - If picture i is the j-th repost, where can the (j − 1)-th repost be?
+  - Among the k pictures just before i, otherwise a gap of k unreposted pictures appears. So dp[i][j]
+    = a_i + max over i − k ≤ p < i of dp[p][j − 1].
+  - dp[0][0] = 0 (a virtual start), −∞ elsewhere; fill in increasing i and j in O(n²k); the answer is
+    the best dp[i][x] with i ≥ n − k + 1, or −1.
+- id: ac-abc275_d
+  role: ladder
+  card: memo-recursion
+  rung: 1
+  twist: Base case of the card
+  summary: Compute f(N) for N ≤ 10^18, where f(0) = 1 and f(k) = f(⌊k/2⌋) + f(⌊k/3⌋).
+  hints:
+  - How many different arguments can the recursion reach from N, and how many calls does it make without
+    storing anything?
+  - Only values ⌊N/(2^a 3^b)⌋, at most a few thousand; but without storing, the same values are recomputed
+    exponentially often. Store each result in a map (Theorem 3.2.4).
+  - 'f(k): if k == 0 return 1; if k is in the map return it; else compute f(k/2) + f(k/3), store and return.'
+- id: ac-abc115_d
+  role: ladder
+  card: memo-recursion
+  rung: 2
+  twist: The recursion follows a self-similar structure and needs stored sizes of the smaller levels;
+    only one branch is followed at each level.
+  summary: A level-L burger is bun, level-(L−1) burger, patty, level-(L−1) burger, bun (level 0 is a patty);
+    count the patties in the bottom X layers of a level-N burger (N ≤ 50).
+  hints:
+  - Store the total layers and patties of each level first. Where can layer X fall in a level-L burger?
+  - In the bottom bun, inside the lower level-(L−1) burger, at the middle patty, inside the upper burger,
+    or at the top bun; each case needs at most one recursive call.
+  - 'f(L, X): handle L = 0 and X at the ends; if X is within the lower half, return f(L − 1, X − 1); at
+    the middle, patties of level L − 1 plus 1; above it, add f(L − 1, X − layers[L − 1] − 2).'
+- id: ac-abc391_e
+  role: ladder
+  card: memo-recursion
+  rung: 3
+  twist: 'Each call returns two values: the result of the group and the cheapest number of changes that
+    would flip it.'
+  summary: A string of 3^N bits (N ≤ 13) is reduced by repeatedly replacing each group of three by its
+    majority; find the fewest bit changes that flip the final bit.
+  hints:
+  - For one group of three children, how can you flip its majority, and how much does each option cost?
+  - If all three children agree, flip the two cheapest; if two agree, flip the cheaper of those two. So
+    a call needs, from each child, its value and its cost to flip.
+  - rec(level, start) returns (value, cost) from the three children; at level 0 a bit costs 1 to flip;
+    print the cost at the top.
+- id: lc-largest-divisible-subset
+  role: ladder
+  card: reconstruct
+  rung: 1
+  twist: Base case of the card
+  summary: Print a largest subset of n ≤ 1000 distinct positive integers in which every pair divides one
+    way or the other.
+  hints:
+  - After sorting, what does a valid subset look like, read from the smallest element up?
+  - A chain where each element divides the next. len[i] = 1 + max len[j] over j < i with nums[j] dividing
+    nums[i]; store the j that gave the maximum as parent[i] (Theorem 3.2.6).
+  - Sort, fill len and parent in O(n²), start at the index with the largest len and follow parent back,
+    printing the elements.
+- id: ac-abc271_d
+  role: ladder
+  card: reconstruct
+  rung: 2
+  twist: The table is a yes/no table over (cards used, sum), and the choices are rebuilt by walking back
+    through it.
+  summary: Each of N ≤ 100 cards shows a_i or b_i; choose sides so the total is exactly S ≤ 10^4, and
+    print the choice as a string of H and T (or No).
+  hints:
+  - Which table tells you, after the fact, which side card i must have shown?
+  - 'ok[i][s] = the first i cards can total s. If ok[N][S], walk back: card i shows a_i if ok[i − 1][s
+    − a_i], otherwise b_i (and then ok[i − 1][s − b_i] holds).'
+  - Fill ok in O(N·S), walk back from (N, S) building the string in reverse, then reverse it.
+- id: lc-form-largest-integer-with-digits-that-add-up-to-target
+  role: ladder
+  card: reconstruct
+  rung: 3
+  twist: The output must be the largest number, so the walk is greedy from the front and needs a table
+    that tells how many digits are still possible.
+  summary: Digits 1..9 have given paint costs; paint the largest integer whose total cost is exactly target
+    ≤ 5000 (or report 0).
+  hints:
+  - 'Which matters more for the size of a number: its length or its first digit?'
+  - 'The length. len[t] = the most digits with total cost exactly t (−∞ if impossible). Then choose digits
+    from the front: the largest digit d with len[t − cost(d)] = len[t] − 1 keeps the maximum length.'
+  - Fill len over 0..target; if len[target] < 0 print 0; otherwise build the string digit by digit with
+    the greedy rule, from t = target down to 0.
+- id: lc-decode-ways
+  role: drill
+  summary: Count the ways to split a digit string (length ≤ 100) into codes 1..26 (no leading zeros) that
+    decode to letters.
+- id: lc-minimum-cost-for-tickets
+  role: drill
+  summary: Travel days are given (up to 365 days in a year); passes for 1, 7 or 30 consecutive days have
+    given prices. Cover all travel days as cheaply as possible.
+- id: cses-1633
+  role: drill
+  summary: Count the ways to get a sum n ≤ 10^6 by throwing a die one or more times (order matters), modulo
+    10^9 + 7.
+- id: cses-1637
+  role: drill
+  summary: Starting from n ≤ 10^6, repeatedly subtract one of the digits of the current number; the fewest
+    steps to reach 0.
+- id: lc-best-time-to-buy-and-sell-stock-with-transaction-fee
+  role: drill
+  summary: Buy and sell one share at a time on up to 5·10^4 days; each sale costs a fee. Maximise the
+    profit.
+- id: ac-abc306_d
+  role: drill
+  summary: N ≤ 3·10^5 courses come in order, each antidotal or poisonous with a tastiness (possibly negative);
+    eating a poisonous course while upset kills you. Maximise the total tastiness eaten while surviving.
+- id: ac-abc270_d
+  role: drill
+  summary: A pile of N ≤ 10^4 stones; players alternately take A_i stones (from K ≤ 100 given amounts,
+    the largest that fits is not forced); both maximise their own total. How many stones does the first
+    player get?
+- id: lc-beautiful-arrangement
+  role: drill
+  summary: Count the permutations of 1..n (n ≤ 15) in which, at every position i, the number there divides
+    i or is divisible by i.
+- id: lc-find-minimum-time-to-finish-all-jobs
+  role: drill
+  summary: Assign n ≤ 12 jobs (lengths ≤ 10^7) to k workers to minimise the largest working time.
+- id: lc-best-sightseeing-pair
+  role: drill
+  summary: Choose positions i < j in an array (n ≤ 5·10^4) to maximise values[i] + values[j] + i − j.
+- id: lc-arithmetic-slices
+  role: drill
+  summary: Count the contiguous subarrays of length ≥ 3 with all consecutive differences equal (n ≤ 5000).
+- id: lc-house-robber-ii
+  role: lookalike
+  summary: Rob houses on a circle of up to 100 houses, never two neighbours (the first and last are neighbours);
+    maximise the total.
+- id: lc-house-robber-iv
+  role: lookalike
+  summary: Rob at least k of up to 10^5 houses in a row, never two neighbours; minimise the largest amount
+    taken from one house.
+- id: lc-maximum-product-subarray
+  role: lookalike
+  summary: The largest product of a contiguous non-empty subarray of up to 2·10^4 integers between −10
+    and 10.
+- id: lc-maximum-product-of-three-numbers
+  role: lookalike
+  summary: The largest product of any three numbers of an array (n ≤ 10^4, values between −1000 and 1000).
+- id: cf-1513C
+  role: checkpoint
+  card: linear-state
+  summary: Each operation replaces every digit d of a number by the decimal digits of d + 1; for up to
+    2·10^5 queries (n, m), the length of n after m ≤ 2·10^5 operations, modulo 10^9 + 7.
+- id: lc-wildcard-matching
+  role: checkpoint
+  card: two-index
+  summary: Does a pattern with ? (any one character) and * (any string, possibly empty) match a whole
+    string (both up to 2000 characters)?
+- id: cf-1625C
+  role: checkpoint
+  card: two-index
+  summary: A road has n ≤ 500 speed-limit signs at given positions; remove at most k of them (not the
+    first) to minimise the time to drive to the end.
+- id: ac-abc369_d
+  role: review
+  card: extra-small-state
+  review_set: 1
+  summary: Defeat or let go each of N ≤ 2·10^5 monsters in order; defeating one gives its strength in
+    points, doubled for every second monster defeated. Maximise the points.
+- id: ac-abc365_d
+  role: review
+  card: extra-small-state
+  review_set: 1
+  summary: Aoki's N ≤ 2·10^5 rock-paper-scissors moves are known; Takahashi never loses and never repeats
+    his previous move. Maximise his wins.
+- id: ac-abc189_d
+  role: review
+  card: extra-small-state
+  review_set: 1
+  summary: Count the assignments of true/false to x_0..x_N (N ≤ 60) for which the chain y_i = y_{i−1}
+    AND/OR x_i, with the given operators, ends true.
+- id: ac-abc303_d
+  role: review
+  card: extra-small-state
+  review_set: 2
+  summary: Type a string of a and A (length ≤ 3·10^5) with keys costing X (a key), Y (Shift + a key) and
+    Z (Caps Lock); the minimum time.
+- id: ac-abc261_d
+  role: review
+  card: two-index
+  review_set: 2
+  summary: Toss a coin N ≤ 5000 times; heads increases a counter and earns X_i, tails resets it; some
+    counter values give bonuses. Maximise the money.
+- id: cses-1746
+  role: review
+  card: two-index
+  review_set: 2
+  summary: Count the arrays of length n ≤ 10^5 with values in 1..m (m ≤ 100), some values given, where
+    neighbours differ by at most 1, modulo 10^9 + 7.
+- id: ac-abc184_d
+  role: review
+  card: memo-recursion
+  review_set: 2
+  summary: A bag has A, B, C ≤ 99 coins of three kinds; draw one at random and put back two of that kind,
+    until some kind reaches 100. The expected number of draws.
+- id: lc-filling-bookcase-shelves
+  role: review
+  card: linear-state
+  review_set: 3
+  summary: Place n ≤ 1000 books in order on shelves of a given width; each shelf is as tall as its tallest
+    book. Minimise the total height.
+- id: lc-best-time-to-buy-and-sell-stock-iv
+  role: review
+  card: two-index
+  review_set: 3
+  summary: Buy and sell one share at a time on n ≤ 1000 days with at most k ≤ 100 transactions; maximise
+    the profit.
+- id: cf-1324E
+  role: review
+  card: two-index
+  review_set: 3
+  summary: A day has h ≤ 2000 hours; before each of n ≤ 2000 sleeps you wait a_i or a_i − 1 hours, then
+    sleep exactly h hours; maximise the sleeps that start in a given good range of hours.
 drill:
-  - problem: lc-decode-ways
-    answer_card: linear-state
-    answer_topic: '3.2'
-    property: Decoding the first i digits ends with a one-digit or a two-digit code, and which codes are
-      valid depends only on those last digits; ways[i] = ways[i − 1] (if digit i is not 0) + ways[i −
-      2] (if the last two digits form 10..26).
-    why_others_fail: Backtracking lists every decoding, exponentially many; no formula handles the zeros
-      and the 26 limit.
-  - problem: lc-minimum-cost-for-tickets
-    answer_card: linear-state
-    answer_topic: '3.2'
-    property: 'The cheapest cover of the travel days up to day d depends only on d: the last pass bought
-      covers d and started 1, 7 or 30 days earlier, so best[d] = min over the three passes of best[d −
-      length] + price (best[d] = best[d − 1] on non-travel days).'
-    why_others_fail: 'Greedy "buy the pass with the best price per day" fails: a 7-day pass is wasted
-      if only 2 travel days fall in it.'
-  - problem: cses-1633
-    answer_card: linear-state
-    answer_topic: '3.2'
-    property: 'Split the sequences by the last throw (1..6): ways[n] = ways[n − 1] + … + ways[n − 6],
-      with ways[0] = 1; each sequence has one last throw (Theorem 3.2.2).'
-    why_others_fail: Listing the sequences is exponential, and a stars-and-bars formula (2.3) counts sums
-      with a fixed number of throws and no upper limit per throw.
-  - problem: cses-1637
-    answer_card: linear-state
-    answer_topic: '3.2'
-    property: 'The fewest steps from a number depend only on the number: steps[x] = 1 + min over the non-zero
-      digits d of x of steps[x − d], filled for x = 1..n.'
-    why_others_fail: Search over all subtraction sequences (3.1) is exponential; the table has n states
-      with at most 9 transitions each.
-  - problem: lc-best-time-to-buy-and-sell-stock-with-transaction-fee
-    answer_card: extra-small-state
-    answer_topic: '3.2'
-    property: What you may do tomorrow depends on whether you hold a share now; with that one extra fact,
-      hold = max(hold, free − price) and free = max(free, hold + price − fee).
-    why_others_fail: Summing every price increase (the greedy of the fee-free version) pays the fee too
-      often; the day alone is not a state.
-  - problem: ac-abc306_d
-    answer_card: extra-small-state
-    answer_topic: '3.2'
-    property: 'Whether a course may be eaten, and what state follows, depends only on the stomach state
-      (healthy or upset): dp[i][healthy] and dp[i][upset], with skip, eat antidotal (always healthy) and
-      eat poisonous (healthy → upset only).'
-    why_others_fail: Greedy "eat every positive course" can make you upset and lose a big later course;
-      backtracking has 2^N choices.
-  - problem: ac-abc270_d
-    answer_card: linear-state
-    answer_topic: '3.2'
-    property: 'With n stones left, the best total for the player to move depends only on n: best[n] =
-      max over A_i ≤ n of A_i + (n − A_i − best[n − A_i]), since the opponent then gets best[n − A_i]
-      of what remains.'
-    why_others_fail: 'Greedy "take the most stones possible" fails: taking fewer can leave the opponent
-      a worse position.'
-  - problem: lc-beautiful-arrangement
-    answer_card: constraint-placement
-    answer_topic: '3.1'
-    property: Place numbers position by position, checking the divisibility rule at once; the rule involves
-      only the position and the number placed, so dead prefixes are cut early, and the search is fast
-      for n ≤ 15.
-    why_others_fail: 'A one-index table fails: which numbers are still free is part of the future, and
-      storing that set needs subset states (topic 3.7). Backtracking is enough here.'
-  - problem: lc-find-minimum-time-to-finish-all-jobs
-    answer_card: bound-pruning
-    answer_topic: '3.1'
-    property: An assignment search with the bound "current largest load ≥ best" and a symmetry cut (one
-      empty worker) is the smallest-largest-load template (Theorem 3.1.3).
-    why_others_fail: The future depends on every worker's load, not on a small summary of the past, so
-      a table with one index (or one extra fact) does not exist.
-  - problem: lc-best-sightseeing-pair
-    answer_card: prefix-extremes
-    answer_topic: '1.2'
-    property: The score splits into (values[i] + i) + (values[j] − j); for each j the best partner is
-      the largest values[i] + i over i < j, a running maximum of a prefix.
-    why_others_fail: A table over positions works but is just the running maximum in disguise; no state
-      beyond "best value so far" is needed.
-  - problem: lc-arithmetic-slices
-    answer_card: count-windows
-    answer_topic: '1.3'
-    property: A piece of an arithmetic subarray is arithmetic (validity is closed under shrinking), so
-      for each right end the valid left ends form a range, counted with two pointers.
-    why_others_fail: A counting table "number of slices ending at i" works too, but it is the same window
-      count; the closure property is the decisive one.
+- problem: lc-decode-ways
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: Decoding the first i digits ends with a one-digit or a two-digit code, and which codes are
+    valid depends only on those last digits; ways[i] = ways[i − 1] (if digit i is not 0) + ways[i − 2]
+    (if the last two digits form 10..26).
+  why_others_fail: Backtracking lists every decoding, exponentially many; no formula handles the zeros
+    and the 26 limit.
+- problem: lc-minimum-cost-for-tickets
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: 'The cheapest cover of the travel days up to day d depends only on d: the last pass bought
+    covers d and started 1, 7 or 30 days earlier, so best[d] = min over the three passes of best[d − length]
+    + price (best[d] = best[d − 1] on non-travel days).'
+  why_others_fail: 'Greedy "buy the pass with the best price per day" fails: a 7-day pass is wasted if
+    only 2 travel days fall in it.'
+- problem: cses-1633
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: 'Split the sequences by the last throw (1..6): ways[n] = ways[n − 1] + … + ways[n − 6], with
+    ways[0] = 1; each sequence has one last throw (Theorem 3.2.2).'
+  why_others_fail: Listing the sequences is exponential, and a stars-and-bars formula (2.3) counts sums
+    with a fixed number of throws and no upper limit per throw.
+- problem: cses-1637
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: 'The fewest steps from a number depend only on the number: steps[x] = 1 + min over the non-zero
+    digits d of x of steps[x − d], filled for x = 1..n.'
+  why_others_fail: Search over all subtraction sequences (3.1) is exponential; the table has n states
+    with at most 9 transitions each.
+- problem: lc-best-time-to-buy-and-sell-stock-with-transaction-fee
+  answer:
+    topic: '3.2'
+    card: extra-small-state
+  property: What you may do tomorrow depends on whether you hold a share now; with that one extra fact,
+    hold = max(hold, free − price) and free = max(free, hold + price − fee).
+  why_others_fail: Summing every price increase (the greedy of the fee-free version) pays the fee too
+    often; the day alone is not a state.
+- problem: ac-abc306_d
+  answer:
+    topic: '3.2'
+    card: extra-small-state
+  property: 'Whether a course may be eaten, and what state follows, depends only on the stomach state
+    (healthy or upset): dp[i][healthy] and dp[i][upset], with skip, eat antidotal (always healthy) and
+    eat poisonous (healthy → upset only).'
+  why_others_fail: Greedy "eat every positive course" can make you upset and lose a big later course;
+    backtracking has 2^N choices.
+- problem: ac-abc270_d
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: 'With n stones left, the best total for the player to move depends only on n: best[n] = max
+    over A_i ≤ n of A_i + (n − A_i − best[n − A_i]), since the opponent then gets best[n − A_i] of what
+    remains.'
+  why_others_fail: 'Greedy "take the most stones possible" fails: taking fewer can leave the opponent
+    a worse position.'
+- problem: lc-beautiful-arrangement
+  answer:
+    topic: '3.1'
+    card: constraint-placement
+  property: Place numbers position by position, checking the divisibility rule at once; the rule involves
+    only the position and the number placed, so dead prefixes are cut early, and the search is fast for
+    n ≤ 15.
+  why_others_fail: 'A one-index table fails: which numbers are still free is part of the future, and storing
+    that set needs subset states (topic 3.7). Backtracking is enough here.'
+- problem: lc-find-minimum-time-to-finish-all-jobs
+  answer:
+    topic: '3.1'
+    card: bound-pruning
+  property: An assignment search with the bound "current largest load ≥ best" and a symmetry cut (one
+    empty worker) is the smallest-largest-load template (Theorem 3.1.3).
+  why_others_fail: The future depends on every worker's load, not on a small summary of the past, so a
+    table with one index (or one extra fact) does not exist.
+- problem: lc-best-sightseeing-pair
+  answer:
+    topic: '1.2'
+    card: prefix-extremes
+  property: The score splits into (values[i] + i) + (values[j] − j); for each j the best partner is the
+    largest values[i] + i over i < j, a running maximum of a prefix.
+  why_others_fail: A table over positions works but is just the running maximum in disguise; no state
+    beyond "best value so far" is needed.
+- problem: lc-arithmetic-slices
+  answer:
+    topic: '1.3'
+    card: count-windows
+  property: A piece of an arithmetic subarray is arithmetic (validity is closed under shrinking), so for
+    each right end the valid left ends form a range, counted with two pointers.
+  why_others_fail: A counting table "number of slices ending at i" works too, but it is the same window
+    count; the closure property is the decisive one.
 lookalike_pairs:
-  - a: lc-house-robber-ii
-    b: lc-house-robber-iv
-    a_tool: 'linear-state (3.2): best[i] = max(best[i − 1], best[i − 2] + a_i), once without the first
-      house and once without the last'
-    b_tool: 'answer-search (1.4): binary search on the largest amount, with a greedy left-to-right check
-      of how many houses fit'
-    flipping_difference: 'Both forbid robbing neighbours. A maximises a total, which depends on all earlier
-      choices through the position only: a table. B minimises the largest single amount subject to a count,
-      and "can we take k houses using only amounts ≤ c" is monotone in c with a greedy check, so no table
-      is needed.'
-  - a: lc-maximum-product-subarray
-    b: lc-maximum-product-of-three-numbers
-    a_tool: 'extra-small-state (3.2): keep the largest and the smallest product of a subarray ending at
-      i, since a negative value swaps them'
-    b_tool: 'sort-then-scan (1.1): the three largest, or the two smallest times the largest'
-    flipping_difference: 'Both maximise a product with negative values. A requires a contiguous subarray,
-      so the best product ending at i depends on the best and the worst ending at i − 1: two values of
-      state. B allows any three numbers, so order does not matter and sorting gives the two candidates
-      directly.'
+- a: lc-house-robber-ii
+  b: lc-house-robber-iv
+  a_tool:
+    topic: '3.2'
+    card: linear-state
+  b_tool:
+    topic: '1.4'
+    card: answer-search
+  flipping_difference: 'Both forbid robbing neighbours. A maximises a total, which depends on all earlier
+    choices through the position only: a table. B minimises the largest single amount subject to a count,
+    and "can we take k houses using only amounts ≤ c" is monotone in c with a greedy check, so no table
+    is needed.'
+  shared_surface: Both forbid taking two neighbouring houses.
+  flipping_input: 'A: maximise the total of 1 2 3 1 with no two adjacent houses, 4 (1 and 3), by a table
+    over the positions. B: minimise the largest amount among 2 chosen houses of 2 3 5 9, 5 (houses 2 and
+    5), by binary search on the amount with a greedy check.'
+- a: lc-maximum-product-subarray
+  b: lc-maximum-product-of-three-numbers
+  a_tool:
+    topic: '3.2'
+    card: extra-small-state
+  b_tool:
+    topic: '1.1'
+    card: sort-then-scan
+  flipping_difference: 'Both maximise a product with negative values. A requires a contiguous subarray,
+    so the best product ending at i depends on the best and the worst ending at i − 1: two values of state.
+    B allows any three numbers, so order does not matter and sorting gives the two candidates directly.'
+  shared_surface: Both maximise a product with negative values.
+  flipping_input: 'A: the best product of a contiguous subarray of 2 -3 4 is 4, keeping the largest and
+    the smallest product ending at each position. B: the best product of three numbers of -4 -3 1 2 is
+    24, the two smallest times the largest after sorting.'
 self_test:
-  - q: With steps 1 and 2, how many ways climb 4 stairs if order matters, and how many if only the collection
-      of steps matters? Which loop order of Section 7 gives which?
-    a: 'Ordered: 5 (1111, 112, 121, 211, 22), from ways[i] = ways[i − 1] + ways[i − 2] with the stair
-      loop outside. As collections: 3 ({1, 1, 1, 1}, {1, 1, 2}, {2, 2}), which is what the step loop outside
-      counts.'
-  - q: How many calls does the plain recursion for the stairs count make for n = 5, and how many with
-      memoisation?
-    a: 'Plain: C(5) = 15 (C(0) = C(1) = 1, C(i) = 1 + C(i − 1) + C(i − 2): 1, 1, 3, 5, 9, 15). With a
-      cache, ways(2)..ways(5) are each computed once and make 2 calls, so 1 + 2·4 = 9 calls in all.'
-  - q: Count the fillings of the ? in a string of A, B and ? so that no two neighbours are equal. Is the
-      position a state? Give the answer for "A?A" and "??".
-    a: 'No: whether the next letter is allowed depends on the previous letter, so the state is (position,
-      last letter) (Theorem 3.2.5). "A?A" has 1 filling (ABA); "??" has 2 (AB, BA).'
-  - q: Someone memoises f(n) = max(f(n − 1), f(n + 1)) − 1 with f(0) = 0 and f(10) = 0. What happens,
-      and which condition of Theorem 3.2.4 fails?
-    a: 'f(1) calls f(2), which calls f(1) again before any value is stored: the recursion never ends.
-      The condition "no state depends on itself" fails; the states have no order in which each comes after
-      the states it uses.'
-  - q: A table dp[i][j] has i ≤ 10^5 and j ≤ 10^5 with two transitions per state. Does it fit? What if
-      j ≤ 100?
-    a: 10^10 states do not fit in time or memory. With j ≤ 100 it is 10^7 states and 2·10^7 transitions,
-      which fits easily (Theorem 3.2.3, note 3).
-  - q: For the values (1, 3, 1), what are the best sum of non-adjacent elements and the chosen positions?
-      For (2, 2, 2, 2), why can walking back from the end print positions 2 and 4?
-    a: '(1, 3, 1): sum 3 with position 2 (taking 1 and 3 gives only 2). For (2, 2, 2, 2), walking back
-      from the last position takes position 4 first whenever that is still optimal; the result 2, 4 is
-      optimal but not the lexicographically smallest 1, 3, which needs a table filled from the end and
-      a forward walk.'
+- q: With steps 1 and 2, how many ways climb 4 stairs if order matters, and how many if only the collection
+    of steps matters? Which loop order of Section 7 gives which?
+  a: 'Ordered: 5 (1111, 112, 121, 211, 22), from ways[i] = ways[i − 1] + ways[i − 2] with the stair loop
+    outside. As collections: 3 ({1, 1, 1, 1}, {1, 1, 2}, {2, 2}), which is what the step loop outside
+    counts.'
+- q: How many calls does the plain recursion for the stairs count make for n = 5, and how many with memoisation?
+  a: 'Plain: C(5) = 15 (C(0) = C(1) = 1, C(i) = 1 + C(i − 1) + C(i − 2): 1, 1, 3, 5, 9, 15). With a cache,
+    ways(2)..ways(5) are each computed once and make 2 calls, so 1 + 2·4 = 9 calls in all.'
+- q: Count the fillings of the ? in a string of A, B and ? so that no two neighbours are equal. Is the
+    position a state? Give the answer for "A?A" and "??".
+  a: 'No: whether the next letter is allowed depends on the previous letter, so the state is (position,
+    last letter) (Theorem 3.2.5). "A?A" has 1 filling (ABA); "??" has 2 (AB, BA).'
+- q: Someone memoises f(n) = max(f(n − 1), f(n + 1)) − 1 with f(0) = 0 and f(10) = 0. What happens, and
+    which condition of Theorem 3.2.4 fails?
+  a: 'f(1) calls f(2), which calls f(1) again before any value is stored: the recursion never ends. The
+    condition "no state depends on itself" fails; the states have no order in which each comes after the
+    states it uses.'
+- q: A table dp[i][j] has i ≤ 10^5 and j ≤ 10^5 with two transitions per state. Does it fit? What if j
+    ≤ 100?
+  a: 10^10 states do not fit in time or memory. With j ≤ 100 it is 10^7 states and 2·10^7 transitions,
+    which fits easily (Theorem 3.2.3, note 3).
+- q: For the values (1, 3, 1), what are the best sum of non-adjacent elements and the chosen positions?
+    For (2, 2, 2, 2), why can walking back from the end print positions 2 and 4?
+  a: '(1, 3, 1): sum 3 with position 2 (taking 1 and 3 gives only 2). For (2, 2, 2, 2), walking back from
+    the last position takes position 4 first whenever that is still optimal; the result 2, 4 is optimal
+    but not the lexicographically smallest 1, 3, which needs a table filled from the end and a forward
+    walk.'
 checkpoint:
   time_limit_minutes: 120
   problems:
-    - cf-1513C
-    - lc-wildcard-matching
-    - cf-1625C
+  - cf-1513C
+  - lc-wildcard-matching
+  - cf-1625C
 decision_map:
-  - weak_signal: '"Can you reach the end", the fewest jumps or segments to cover, fix the first violation
-      from the left'
-    choose: linear-state
-    when: Steps have different costs or values, so the best way to reach position i matters, not only
-      whether it is reachable; the position alone is the state (Theorem 3.2.1).
-    over:
-      - card: left-to-right-forced
-        because: The greedy is right when every reachable position is equally good (only reachability
-          or the number of jumps); with costs, a farther jump is not always better.
-  - weak_signal: The most non-overlapping intervals, or the fewest points that hit every interval
-    choose: linear-state
-    when: 'Intervals carry different weights (pay, profit): sort by end, and the best total of a prefix
-      comes from the prefix that ends before the current start (Theorem 3.2.1).'
-    over:
-      - card: interval-selection
-        because: Earliest end first maximises the number of intervals, not a weighted total; one long,
-          valuable interval can beat many short ones.
-  - weak_signal: Fill positions one by one, each with a restriction against earlier ones; count by cases
-    choose: extra-small-state
-    when: The restriction reads only the last few positions, but the number of allowed choices depends
-      on what they hold, so the product rule does not apply; put the last value in the state (Theorem
-      3.2.5).
-    over:
-      - card: product-sum-rules
-        because: The product rule needs the number of choices at each position to be the same whatever
-          came before.
-  - weak_signal: Sequences of a length given in the input; three or more options per position
-    choose: extra-small-state
-    when: The rule for the next option reads only a small fact about the past (the previous option, a
-      parity, a flag), so a table over (position, fact) replaces listing k^n sequences.
-    over:
-      - card: recursive-choices
-        because: Listing all sequences is exponential; it is the tool only when the length is small and
-          the check needs the whole sequence.
-  - weak_signal: 'Two strings: match with wildcards, interleave one with another, or transform one into
-      another'
-    choose: two-index
-    when: A partial match is described by how much of each string has been used, and every step consumes
-      a character of one string or both (Theorem 3.2.3).
-    over:
-      - card: merge-walk
-        because: Two pointers decide subsequence questions where matching each character at its first
-          chance is never worse; wildcards and choices of which string to take from break that.
-  - weak_signal: A recursive formula or a game on a number, with huge arguments but few reachable values
-    choose: memo-recursion
-    when: The recursion reaches few distinct arguments but repeats them, and arguments always shrink (Theorem
-      3.2.4).
-    over:
-      - card: closed-form
-        because: A formula is best when one exists; a cache is for recursions without one.
-  - weak_signal: '"Print the choices", "print any optimal …", or the lexicographically smallest optimal
-      answer'
-    choose: reconstruct
-    when: A table gives the optimal value, and each state records which transition attained it (or the
-      table is filled from the end, so the first choice can be made greedily) (Theorem 3.2.6).
-    over:
-      - card: exchange-order
-        because: When an exchange argument proves a fixed order optimal, sorting prints the answer without
-          a table.
-glossary_added: ["DP state", "transition", "DP", "tabulation", "memoisation", "optimal substructure"]
+- weak_signal: '"Can you reach the end", the fewest jumps or segments to cover, fix the first violation
+    from the left'
+  choose: linear-state
+  when: Steps have different costs or values, so the best way to reach position i matters, not only whether
+    it is reachable; the position alone is the state (Theorem 3.2.1).
+  over:
+  - card: left-to-right-forced
+    because: The greedy is right when every reachable position is equally good (only reachability or the
+      number of jumps); with costs, a farther jump is not always better.
+    topic: '1.5'
+- weak_signal: The most non-overlapping intervals, or the fewest points that hit every interval
+  choose: linear-state
+  when: 'Intervals carry different weights (pay, profit): sort by end, and the best total of a prefix
+    comes from the prefix that ends before the current start (Theorem 3.2.1).'
+  over:
+  - card: interval-selection
+    because: Earliest end first maximises the number of intervals, not a weighted total; one long, valuable
+      interval can beat many short ones.
+    topic: '1.5'
+- weak_signal: Fill positions one by one, each with a restriction against earlier ones; count by cases
+  choose: extra-small-state
+  when: The restriction reads only the last few positions, but the number of allowed choices depends on
+    what they hold, so the product rule does not apply; put the last value in the state (Theorem 3.2.5).
+  over:
+  - card: product-sum-rules
+    because: The product rule needs the number of choices at each position to be the same whatever came
+      before.
+    topic: '2.3'
+- weak_signal: Sequences of a length given in the input; three or more options per position
+  choose: extra-small-state
+  when: The rule for the next option reads only a small fact about the past (the previous option, a parity,
+    a flag), so a table over (position, fact) replaces listing k^n sequences.
+  over:
+  - card: recursive-choices
+    because: Listing all sequences is exponential; it is the tool only when the length is small and the
+      check needs the whole sequence.
+    topic: '0.5'
+- weak_signal: 'Two strings: match with wildcards, interleave one with another, or transform one into
+    another'
+  choose: two-index
+  when: A partial match is described by how much of each string has been used, and every step consumes
+    a character of one string or both (Theorem 3.2.3).
+  over:
+  - card: merge-walk
+    because: Two pointers decide subsequence questions where matching each character at its first chance
+      is never worse; wildcards and choices of which string to take from break that.
+    topic: '1.3'
+- weak_signal: A recursive formula or a game on a number, with huge arguments but few reachable values
+  choose: memo-recursion
+  when: The recursion reaches few distinct arguments but repeats them, and arguments always shrink (Theorem
+    3.2.4).
+  over:
+  - card: closed-form
+    because: A formula is best when one exists; a cache is for recursions without one.
+    topic: '0.2'
+- weak_signal: '"Print the choices", "print any optimal …", or the lexicographically smallest optimal
+    answer'
+  choose: reconstruct
+  when: A table gives the optimal value, and each state records which transition attained it (or the table
+    is filled from the end, so the first choice can be made greedily) (Theorem 3.2.6).
+  over:
+  - card: exchange-order
+    because: When an exchange argument proves a fixed order optimal, sorting prints the answer without
+      a table.
+    topic: '1.5'
+glossary_added:
+- DP state
+- transition
+- DP
+- tabulation
+- memoisation
+- optimal substructure

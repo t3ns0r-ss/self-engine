@@ -7,13 +7,10 @@ Output: the largest total.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n, m;
-    cin >> n >> m;
-    vector<vector<long long>> p(n, vector<long long>(m));
-    for (auto& row : p)
-        for (auto& x : row) cin >> x;
-    // dp[i][j] = best total of days 0..i with activity j on day i: the state is (day, last activity) (Theorem 3.2.5)
+// snippet:begin
+// Theorem 3.2.5. dp[i][j] = the best total of days 0..i with activity j on day i: the state is (day, last activity).
+long long noRepeat(const vector<vector<long long>>& p) {
+    int n = p.size(), m = p[0].size();
     vector<vector<long long>> dp(n, vector<long long>(m, 0));
     for (int j = 0; j < m; j++) dp[0][j] = p[0][j];  // base cases
     for (int i = 1; i < n; i++)
@@ -23,5 +20,15 @@ int main() {
                 if (q != j) bestPrev = max(bestPrev, dp[i - 1][q]);  // any different activity yesterday
             dp[i][j] = bestPrev + p[i][j];
         }
-    cout << *max_element(dp[n - 1].begin(), dp[n - 1].end()) << "\n";
+    return *max_element(dp[n - 1].begin(), dp[n - 1].end());
+}
+// snippet:end
+
+int main() {
+    int n, m;
+    cin >> n >> m;
+    vector<vector<long long>> p(n, vector<long long>(m));
+    for (auto& row : p)
+        for (auto& x : row) cin >> x;
+    cout << noRepeat(p) << "\n";
 }

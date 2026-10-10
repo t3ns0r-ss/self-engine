@@ -7,21 +7,27 @@ Output: the largest total pay.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// CSES 1140. Sort the projects by end day; best[i] = the largest pay using only the first i projects: skip project i, or
+// take it after the first j projects, which end before it starts (found by binary search).
+long long projects(vector<array<long long, 3>> pr) {  // each {end, start, pay}
+    sort(pr.begin(), pr.end());
+    int n = pr.size();
+    vector<long long> ends(n);
+    for (int i = 0; i < n; i++) ends[i] = pr[i][0];
+    vector<long long> best(n + 1, 0);
+    for (int i = 1; i <= n; i++) {
+        int j = lower_bound(ends.begin(), ends.end(), pr[i - 1][1]) - ends.begin();
+        best[i] = max(best[i - 1], best[j] + pr[i - 1][2]);
+    }
+    return best[n];
+}
+// snippet:end
+
 int main() {
     int n;
     cin >> n;
-    vector<array<long long, 3>> pr(n);  // {end, start, pay}, so sorting orders by end day
+    vector<array<long long, 3>> pr(n);
     for (auto& p : pr) cin >> p[1] >> p[0] >> p[2];
-    sort(pr.begin(), pr.end());
-    vector<long long> ends(n);
-    for (int i = 0; i < n; i++) ends[i] = pr[i][0];
-    // best[i] = largest pay using only the first i projects in order of end day (Theorem 3.2.1)
-    vector<long long> best(n + 1, 0);  // totals up to 2 * 10^14: long long
-    for (int i = 1; i <= n; i++) {
-        long long start = pr[i - 1][1], pay = pr[i - 1][2];
-        // projects that end before 'start' are a prefix of the sorted list: count them by binary search
-        int j = lower_bound(ends.begin(), ends.end(), start) - ends.begin();
-        best[i] = max(best[i - 1], best[j] + pay);  // skip project i, or take it after the first j
-    }
-    cout << best[n] << "\n";
+    cout << projects(pr) << "\n";
 }

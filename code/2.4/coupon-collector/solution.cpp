@@ -7,8 +7,8 @@ Output: the expected value as P * Q^(-1) mod 998244353.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
 const long long MOD = 998244353;
-
 long long power(long long a, long long b) {
     long long r = 1;
     a %= MOD;
@@ -19,14 +19,16 @@ long long power(long long a, long long b) {
     }
     return r;
 }
+// Theorem 2.4.5. With j kinds owned, a draw is new with probability (n - j)/n, so the stage takes n/(n - j) draws.
+long long couponCollector(long long n, long long c) {
+    long long e = 0;
+    for (long long j = c; j < n; j++) e = (e + n % MOD * power(n - j, MOD - 2)) % MOD;  // stages add
+    return e;
+}
+// snippet:end
 
 int main() {
     long long n, c;
     cin >> n >> c;
-    long long e = 0;
-    for (long long j = c; j < n; j++) {
-        // with j kinds owned, a draw is new with probability (n - j)/n: n/(n - j) draws on average
-        e = (e + n % MOD * power(n - j, MOD - 2)) % MOD;  // stages add (Theorem 2.4.5)
-    }
-    cout << e << "\n";
+    cout << couponCollector(n, c) << "\n";
 }

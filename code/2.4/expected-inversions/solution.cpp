@@ -7,20 +7,24 @@ Output: the expected value as P * Q^(-1) mod 998244353.
 #include <bits/stdc++.h>
 using namespace std;
 
-const long long MOD = 998244353;
+// snippet:begin
+// Theorem 2.4.2. The expected inversions of a random order: each pair of different values is inverted with probability
+// 1/2, a pair of equal values never. Printed modulo 998244353.
+long long expectedInversions(const vector<long long>& a) {
+    const long long MOD = 998244353;
+    long long n = a.size();
+    map<long long, long long> cnt;
+    for (long long x : a) cnt[x]++;
+    long long pairs = n * (n - 1) / 2;
+    for (auto [v, c] : cnt) pairs -= c * (c - 1) / 2;  // pairs of equal values
+    return pairs % MOD * ((MOD + 1) / 2) % MOD;        // times the inverse of 2
+}
+// snippet:end
 
 int main() {
     int n;
     cin >> n;
-    map<long long, long long> cnt;
-    for (int i = 0; i < n; i++) {
-        long long a;
-        cin >> a;
-        cnt[a]++;
-    }
-    long long pairs = (long long)n * (n - 1) / 2;  // all pairs of positions
-    for (auto [v, c] : cnt) pairs -= c * (c - 1) / 2;  // pairs of equal values are never inverted
-    // each pair of different values is inverted with probability 1/2 (Theorem 2.4.2)
-    long long inv2 = (MOD + 1) / 2;
-    cout << pairs % MOD * inv2 % MOD << "\n";
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    cout << expectedInversions(a) << "\n";
 }

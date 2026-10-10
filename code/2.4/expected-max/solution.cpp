@@ -6,8 +6,8 @@ Output: E[max] as P * Q^(-1) mod 998244353.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
 const long long MOD = 998244353;
-
 long long power(long long a, long long b) {
     long long r = 1;
     a %= MOD;
@@ -18,16 +18,19 @@ long long power(long long a, long long b) {
     }
     return r;
 }
+// Theorem 2.4.4. E[max of k draws from 1..m] = sum over x of P(max >= x) = 1 - ((x - 1)/m)^k, modulo 998244353.
+long long expectedMax(long long m, long long k) {
+    long long invMk = power(power(m, k), MOD - 2), e = 0;
+    for (long long x = 1; x <= m; x++) {
+        long long allBelow = power(x - 1, k) * invMk % MOD;
+        e = (e + 1 - allBelow + MOD) % MOD;
+    }
+    return e;
+}
+// snippet:end
 
 int main() {
     long long m, k;
     cin >> m >> k;
-    long long invMk = power(power(m, k), MOD - 2);  // 1 / m^k
-    long long e = 0;
-    for (long long x = 1; x <= m; x++) {
-        // P(max >= x) = 1 - P(all < x) = 1 - ((x - 1)/m)^k  (Theorem 2.4.4)
-        long long allBelow = power(x - 1, k) * invMk % MOD;
-        e = (e + 1 - allBelow + MOD) % MOD;
-    }
-    cout << e << "\n";
+    cout << expectedMax(m, k) << "\n";
 }

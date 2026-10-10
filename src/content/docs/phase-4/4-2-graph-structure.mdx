@@ -258,6 +258,123 @@ Four templates, one for each card. Each shows only the function that matters; th
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, checked against the brute force. (For the first two, the program's own check of the colouring also stops the run; the output shown is what the function alone would give.)
+
+### Bug: colouring only the component of vertex 1
+
+Template: two sides.
+
+```cpp
+for (int s = 1; s <= 1; s++) {            // instead of s <= n
+```
+
+Input: `4 3`, then the edges `2 3`, `3 4`, `4 2`.
+
+Wrong output `YES`, correct output `NO`. Vertex 1 has no edges, so the walk from 1 colours nothing else, and the odd cycle among 2, 3, 4 is never looked at. Theorem 4.2.1 is about every component.
+
+**Fix:** start a walk from every vertex that is still uncoloured.
+
+### Bug: never checking for an edge inside a colour
+
+Template: two sides.
+
+```cpp
+for (int w : adj[u]) {
+    if (colour[w] == -1) { colour[w] = 1 - colour[u]; q.push(w); }
+    // the "else if (colour[w] == colour[u]) return {};" branch removed
+}
+```
+
+Input: a triangle, `3 3`, then `1 2`, `2 3`, `1 3`.
+
+Wrong output `YES`, correct output `NO`. The walk gives vertex 2 and vertex 3 the same colour (both are one step from 1) and never compares them. The conflict edge is the whole test (step 2 of the proof).
+
+**Fix:** when the neighbour already has a colour, compare it with `colour[u]`.
+
+### Bug: counting every edge twice
+
+Template: edges that close cycles.
+
+```cpp
+int m = entries;                          // instead of entries / 2
+```
+
+Input: `3 1`, then the edge `1 2`.
+
+Wrong output `1`, correct output `0`. The lists hold each edge in both directions, so their sizes add up to $2m$ (here 2), and one edge on three vertices with two components is no surplus: $1 - (3 - 2) = 0$.
+
+**Fix:** divide the sum of the list sizes by 2, or use the $m$ that was read.
+
+### Bug: assuming the graph is connected
+
+Template: edges that close cycles.
+
+```cpp
+return m - (n - 1);                       // instead of m - (n - components)
+```
+
+Input: `4 2`, then `1 2`, `3 4`.
+
+Wrong output `-1`, correct output `0`. Two components need $n - c = 2$ tree edges, not $n - 1 = 3$ (Theorem 4.2.2(a)), and a negative answer is a sign that something is wrong.
+
+**Fix:** use the number of components of the walk.
+
+### Bug: the default priority queue
+
+Template: the smallest order.
+
+```cpp
+priority_queue<int> ready;                // instead of priority_queue<int, vector<int>, greater<int>>
+```
+
+Input: `3 0` (three tasks, no rules).
+
+Wrong output `3 2 1`, correct output `1 2 3`. The default `priority_queue` returns its largest element, so the free vertices come out largest first; the order is valid but not the smallest (Theorem 4.2.5, step 4).
+
+**Fix:** `priority_queue<int, vector<int>, greater<int>>`.
+
+### Bug: arrows stored backwards
+
+Template: the smallest order.
+
+```cpp
+adj[b].push_back(a);                      // instead of adj[a].push_back(b)
+```
+
+Input: `2 1`, then the rule `1 2` (task 1 before task 2).
+
+Wrong output `2 1`, correct output `1 2`. The rule "a before b" is the arrow $a \to b$; storing the arrow the other way asks for the opposite order.
+
+**Fix:** `adj[a].push_back(b)` for "a before b". Test the sample by hand against the direction of the arrow.
+
+### Bug: counting the whole route as a cycle
+
+Template: vertices on cycles with one arrow each.
+
+```cpp
+onCycle += route.size();                  // instead of the part of the route from v on
+```
+
+Input: `3`, then `2 3 2` (town 1 leads to 2, town 2 to 3, town 3 back to 2).
+
+Wrong output `3`, correct output `2`. Town 1 is only on the way into the cycle $2 \to 3 \to 2$; the route is $1, 2, 3$ and the cycle starts at town 2.
+
+**Fix:** count only the vertices of the route from the repeated vertex on.
+
+### Bug: any known vertex taken as a cycle
+
+Template: vertices on cycles with one arrow each.
+
+```cpp
+if (v != 0) onCycle += route.size();      // instead of checking state[v] == 1
+```
+
+Input: `3`, then `3 3 0` (towns 1 and 2 both lead to 3, which has no road).
+
+Wrong output `1`, correct output `0`. The walk from town 2 stops at town 3, which is known (finished) from the walk of town 1, and it is mistaken for a cycle. Only a vertex that is on the *current* route (state 1) closes a cycle; a finished vertex does not (Theorem 4.2.4, precondition 2).
+
+**Fix:** test `state[v] == 1`, and keep the states 1 and 2 apart.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

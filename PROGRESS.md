@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.2 Graph structure (pipeline steps 1–4 done); 4.1 is done
+- Topic: 4.2 Graph structure (pipeline steps 1–5 done); 4.1 is done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.2 step 4 (four template units: two-sides, forest-surplus, smallest-order, cycle-vertices; stress 5000 each)
-- Next action: step 5 (bug catalogue)
+- Last completed step: topic 4.2 step 5 (bug catalogue: 8 bugs, all caught by stress.sh)
+- Next action: step 6 (problems: worked-example units for CSES 1668, ABC 288 C, LeetCode Find Eventual Safe States; ladder candidates from the bank)
 
 ## Gates
 | Gate | Status | Date |

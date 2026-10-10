@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.1 Graph traversal (pipeline steps 1–5 done)
+- Topic: 4.1 Graph traversal (pipeline steps 1–6 done)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.1 step 5 (bug catalogue: 7 bugs, six caught by stress.sh and one by a maximum-size test)
-- Next action: step 6 (problems: worked-example units for CSES 1666, 1193, 1194; ladder candidates from the bank)
+- Last completed step: topic 4.1 step 6 (worked examples: CSES 1666, 1193, 1194 with code units example-1..3, stress 5000 each)
+- Next action: step 7 (problem ladder: 12–20 problems from the 4.1 bank, 3+ per card, three hints each)
 
 ## Gates
 | Gate | Status | Date |

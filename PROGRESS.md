@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.1 Graph traversal (pipeline steps 1–9 done)
+- Topic: 4.1 Graph traversal done (steps 1–10); next topic 4.2
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.1 step 9 (8 self-test questions, checkpoint CSES-style: LC complete components, ABC 339 D, LC safest path; three review sets 3/3/4; five decision-map groups; draft flag removed)
-- Next action: step 10 (self-review: read the whole lesson as a beginner, e2e, tag; then Phase 4 continues with 4.2)
+- Last completed step: topic 4.1 step 10 (self-review: validate, build, `npm test` 71/71, all 4.1 units pass (stress 5000), browser tests of all 26 lessons pass: 546 checks, no failures)
+- Next action: topic 4.2 (Bipartiteness, cycle detection, topological sort), step 1
 
 ## Gates
 | Gate | Status | Date |
@@ -58,6 +58,7 @@
 | 3.7 | done (on this session's branch) | — |
 | 3.8 | done (on this session's branch) | — |
 | Phase 3 intro and exam | done (on this session's branch) | — |
+| 4.1 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -202,7 +203,7 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
   - 3.2: `reconstruct` has no review problem (same question).
   - Others (2.1, 2.3, 3.3–3.8): see their exhaustion records in `bank-fill/SHORTFALL.md`.
 - **Spot-check the new † problems** (recalled notes): cf-1692A, 1921C, 1560A, 1543A, 143A, 6A, 886A, 363B, 1807D, 474B, 1676E, 919E, 359C, 312B, 621C, 204C. Three LeetCode Hard problems in 3.5 and 3.6 moved to tier 3.
-- **R1 retrofit review.** All 25 completed topics (0.1–3.8) are now on Revision 2.1: `uses`, theorem blocks with a plain-words box, a tiny instance, a numbered proof, a preconditions box and a tested implementation with its examples, recognition cards with runnable example units, and templates and worked examples that show only the gist function. Not rewritten: the old worked-example step texts and bug catalogues (only the "C++ details explained" and "Tested" paragraphs were removed and the code swapped for the gist function). The Playwright end-to-end tests (`tests/e2e.sh`) were not re-run after the Revision 2.1 changes. The old Phase 0 and Phase 1 intro and exam pages are untouched.
+- **R1 retrofit review.** All 25 completed topics (0.1–3.8) are now on Revision 2.1: `uses`, theorem blocks with a plain-words box, a tiny instance, a numbered proof, a preconditions box and a tested implementation with its examples, recognition cards with runnable example units, and templates and worked examples that show only the gist function. Not rewritten: the old worked-example step texts and bug catalogues (only the "C++ details explained" and "Tested" paragraphs were removed and the code swapped for the gist function). The Playwright browser tests of the real lessons (`tests/e2e/lessons.cjs`) were re-run after the Revision 2.1 changes and pass for all 26 lessons. The old Phase 0 and Phase 1 intro and exam pages are untouched.
 - No `bank-filled` git tag was created (pushing partial refs was denied).
 - Keyword scan and ordered sets (0.6): `lower_bound` and `upper_bound` are keywords of 1.4 (binary search), but topic 0.6 needs the `set`/`map` member functions of the same name. The scan now ignores a keyword written as a member call (preceded by a dot, as in `s.lower_bound(x)`); the free functions on arrays stay reserved for 1.4. Say if you would rather keep the scan strict and have 0.6 describe these calls without naming them.
 - Changes made while building 1.3 (change any you disagree with):

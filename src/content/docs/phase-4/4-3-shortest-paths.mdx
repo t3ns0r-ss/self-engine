@@ -21,6 +21,14 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A delivery company has $n = 10^5$ depots and $m = 3 \cdot 10^5$ roads, and every road has a travel time in minutes (between 1 and $10^9$). For every depot, what is the fewest number of minutes to get there from depot 1?
+
+The walk of [topic 4.1](../4-1-graph-traversal/) counts roads, not minutes, and the two disagree. With the roads $1\!-\!2$ (10 minutes), $1\!-\!3$ (1 minute) and $3\!-\!2$ (1 minute), the fewest roads to depot 2 is one road and takes 10 minutes, while the two-road route through depot 3 takes 2 minutes. Trying every route ([topic 0.5](../../phase-0/0-5-brute-force/)) is exponential in the number of depots.
+
+The key idea: when no road takes negative time, the depot that is currently closest to the start cannot get closer. Any other way to reach it goes through a depot that is not closer, and then adds more time. So finish that depot for good, offer all its roads to its neighbours (a neighbour may now be reachable faster than before), and repeat with the closest depot that is not finished. Keeping the candidates in a heap ([topic 0.6](../../phase-0/0-6-stl-toolbox/)) costs a logarithm per step: about $(n + m) \log m \approx 4 \cdot 10^5 \cdot 19 \approx 7.6 \cdot 10^6$ steps. This is **Dijkstra's algorithm**.
+
+Three other situations need other tools, and the lesson tells them apart by one property each: when every time is 0 or 1, a deque does the heap's job (**0-1 BFS**); when some roads have negative times, repeated improvement rounds work (**Bellman–Ford**); and when the distances between all pairs of at most a few hundred depots are needed, a table filled stop-over by stop-over does it (**Floyd–Warshall**).
+
 ## 2. Prerequisites and scope
 
 ### What you need
@@ -29,9 +37,175 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ### What this topic does not cover
 
+- Spanning trees and merging groups of vertices (the minimum spanning tree, union–find): topic 4.4. Trees as a topic: topic 4.5.
+- Strongly connected components and bridges: topic 4.7.
+- Shortest paths along the order of an acyclic graph with a table (dynamic programming over a topological order): a Phase 7 topic. Here the tools work on any graph.
+- The $k$-th shortest path, shortest paths with a limit on the number of edges beyond what Bellman–Ford rounds show, and heuristics such as A*: not part of this course.
+- Printing a negative cycle itself: here a negative cycle is only detected.
+
 ## 3. Definitions
 
+- A **weighted graph** gives every edge a number, its **weight** (a length, a time, a price). The **length** of a path is the sum of the weights of its edges. In [topic 4.1](../4-1-graph-traversal/) every weight was 1, and the length was the number of edges.
+- The **shortest distance** $d(s, v)$ is the smallest length of a path from $s$ to $v$; it is $\infty$ (the code stores a large number `INF`) if $v$ is not reachable from $s$. A shortest path is a path of length $d(s, v)$.
+- A **relaxation** of an edge $u \to v$ of weight $w$ with the current estimates $\text{dist}$ is the step "if $\text{dist}[u] + w < \text{dist}[v]$, set $\text{dist}[v] = \text{dist}[u] + w$". An estimate $\text{dist}[v]$ is always the length of some path from $s$ to $v$ found so far, so it is never smaller than $d(s, v)$.
+- A **negative cycle** is a cycle whose weights add up to less than 0. Going around it again and again makes the length smaller without end, so no shortest path exists to the vertices that can be reached from it.
+- **Dijkstra's algorithm** finishes vertices in the order of their distance from the start, using a heap. **0-1 BFS** is Dijkstra's algorithm for weights 0 and 1 with a deque. The **Bellman–Ford algorithm** relaxes all edges in rounds. The **Floyd–Warshall algorithm** fills a table of all distances.
+- Distances can be large: $10^5$ edges of weight $10^9$ add up to $10^{14}$. Use `long long`. `INF` must be larger than any real distance, yet adding a weight to it must not overflow; $\text{LLONG\_MAX} / 4$ does both.
+
 ## 4. Theory and proofs
+
+### 4.1 Dijkstra's algorithm
+
+**Theorem 4.3.1 (Dijkstra's algorithm).** Let $G$ be a graph (directed or undirected) in which every weight is at least 0, and let $s$ be a vertex. Set $\text{dist}[s] = 0$ and all other estimates to $\infty$, and put the pair $(0, s)$ into a heap that gives the smallest pair first. Repeat: take the smallest pair $(d, u)$ out of the heap; if $u$ is already **done**, skip it; otherwise mark $u$ done, and for every edge $u \to v$ of weight $w$ with $d + w < \text{dist}[v]$ set $\text{dist}[v] = d + w$, remember $\text{parent}[v] = u$, and push $(\text{dist}[v], v)$. Then:
+
+(a) when a vertex $u$ is marked done, $\text{dist}[u] = d(s, u)$;
+
+(b) at the end $\text{dist}[v] = d(s, v)$ for every $v$ ($\infty$ if $v$ cannot be reached);
+
+(c) following $\text{parent}$ from $v$ back to $s$ gives a shortest path;
+
+(d) the time is $O((n + m) \log m)$.
+
+:::tip[In plain words]
+Always finish the vertex that is closest to the start among those not finished. Since no road takes negative time, any other way to it goes through something at least as far away, so its distance can never improve again.
+:::
+
+**A tiny instance.** Arrows $1 \to 2$ (4), $1 \to 3$ (1), $3 \to 2$ (2), $2 \to 4$ (1), $3 \to 4$ (5), start 1. Vertex 1 is done first and offers 4 to vertex 2 and 1 to vertex 3. The closest not finished vertex is 3 (distance 1): it offers 3 to vertex 2 (better than 4) and 6 to vertex 4. Now vertex 2 (distance 3) is closest: it offers 4 to vertex 4 (better than 6). Vertex 4 is done with distance 4. The path is $1, 3, 2, 4$.
+
+**Proof.**
+1. *Estimates are never too small.* Every finite $\text{dist}[v]$ is the length of a real path from $s$ to $v$: it is $\text{dist}[u] + w$ for a path to $u$ plus the edge $u \to v$. So $\text{dist}[v] \ge d(s, v)$ always, and the parent chain of $v$ is a path of length $\text{dist}[v]$ once the parents are final (this will give (c)).
+2. *Claim (a).* Suppose some vertex is marked done with a wrong value, and let $u$ be the first such vertex. Every improvement of an estimate pushes a new pair, so the pair of $u$ that comes out has key $\text{dist}[u] > d(s, u)$ and $u \ne s$. Take a shortest path $s = x_0, x_1, \dots, x_k = u$ and let $x_j$ be the first vertex on it that is not done yet. Then $j \ge 1$ since $s$ is done first, and $x_{j-1}$ is done.
+3. By the choice of $u$, $\text{dist}[x_{j-1}] = d(s, x_{j-1})$ when it was marked done, and it then tried the edge $x_{j-1} \to x_j$. So $\text{dist}[x_j] \le d(s, x_{j-1}) + w(x_{j-1}, x_j) = d(s, x_j)$, since the first part of a shortest path is a shortest path. With step 1, $\text{dist}[x_j] = d(s, x_j)$. If $x_j = u$, this contradicts $\text{dist}[u] > d(s, u)$. Otherwise a pair with key $d(s, x_j)$ is still in the heap, because $x_j$ is not done.
+4. Weights are not negative, so the part of the path after $x_j$ adds nothing negative: $d(s, x_j) \le d(s, u)$. The heap therefore holds a pair with key at most $d(s, u)$, which is smaller than the key $\text{dist}[u]$ of the pair that was taken.
+5. But the heap gives the smallest key first: contradiction. So (a) holds.
+6. *Claims (b) and (c).* Every reachable vertex is pushed (the vertices of a shortest path become done one after another, and each offers the next one) and then marked done, so its final estimate is $d(s, v)$ by (a). Unreachable vertices are never pushed. The parent of $v$ was set together with its last improvement, when $\text{dist}[v] = \text{dist}[\text{parent}[v]] + w$ and the parent was already final, which gives (c) by induction in the order of finishing.
+7. *Claim (d).* Each vertex is marked done once and its edges are tried once. A pair is pushed only at an improvement, at most once per edge plus the first one, so at most $m + 1$ pairs; each push or removal costs $O(\log m)$. $\square$
+
+:::note[This proof needs]
+1. No weight is negative (step 4). With the arrows $1 \to 2$ (2), $1 \to 3$ (3), $3 \to 2$ ($-2$), $2 \to 4$ (1), vertex 2 is finished with 2 before vertex 3 offers it $3 - 2 = 1$, and vertex 4 keeps the estimate 3 although $d(1, 4) = 2$.
+2. A vertex is finished the first time its smallest pair comes out, and older, larger pairs are skipped.
+3. Distances are stored in 64 bits, with `INF` far from the overflow limit.
+:::
+
+<TheoremCode unit="4.3/thm-1" />
+
+The first example is the tiny instance: vertex 3 is finished before vertex 2 although the road $1 \to 2$ is shorter in edges (steps 3 and 4), and the parent chain is the path $1, 3, 2, 4$ (step 6). The second example has weights 0, which are allowed (no weight is negative). The third is an undirected graph, where each road is two arrows.
+
+### 4.2 Weights 0 and 1
+
+**Theorem 4.3.2 (0-1 BFS).** If every weight is 0 or 1, replace the heap of Theorem 4.3.1 by a deque of vertices: take vertices from the front; when an edge $u \to v$ of weight $w$ improves $\text{dist}[v]$, put $v$ at the front if $w = 0$ and at the back if $w = 1$. Then $\text{dist}[v] = d(s, v)$ for every $v$ at the end, every vertex is put into the deque at most twice, and the time is $O(n + m)$.
+
+:::tip[In plain words]
+With weights 0 and 1, the vertices waiting are always at one distance or at the next one. A deque keeps them in order without a heap: free roads put the vertex at the front, costly roads at the back.
+:::
+
+**A tiny instance.** Arrows $1 \to 2$ (1), $1 \to 3$ (0), $3 \to 2$ (0), $3 \to 4$ (1), $2 \to 4$ (1). The deque starts as $[1]$. Vertex 1 gives vertex 2 the distance 1 (back) and vertex 3 the distance 0 (front): $[3, 2]$. Vertex 3 improves vertex 2 to 0 (front) and gives vertex 4 the distance 1 (back): $[2, 2, 4]$. Vertex 2 (distance 0) offers 1 to vertex 4, which is not better. The distances are $0, 0, 0, 1$.
+
+**Proof.**
+1. Give each entry of the deque the key $\text{dist}[v]$ at the moment it was pushed. We show that from front to back the keys never decrease and the last key is at most the first key plus 1. At the start there is one entry.
+2. Let the front entry have key $d$, the smallest. An edge of weight 0 pushes the key $d$ to the front, which is at most every other key and at least the last key minus 1 (since the last is at most $d + 1$). An edge of weight 1 pushes the key $d + 1$ to the back, which is at least every key and at most the new front key plus 1 (the new front key is at least $d$). So the claim stays true.
+3. Hence the front entry always has the smallest key, exactly as the heap of Theorem 4.3.1 gives the smallest key first. That proof used only this fact (and that older, larger entries do no harm: here such an entry makes a vertex try its edges again with its final estimate, which improves nothing). So the distances are correct.
+4. While the front key is $d$, every value assigned is $d$ or $d + 1$, and the front key never decreases. So a vertex first gets some value, and can be improved only from $d + 1$ to $d$ in the same stage: at most two pushes per vertex. With the edges of each popped entry, the time is $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. Every weight is exactly 0 or 1 (a weight of 2 breaks the claim in step 2: the keys would differ by more than 1).
+2. The deque takes vertices from the front only, and zero-weight edges push to the front.
+3. The distances are only needed as numbers; the path can be rebuilt from parents as in Theorem 4.3.1.
+:::
+
+<TheoremCode unit="4.3/thm-2" />
+
+The first example is the tiny instance: vertex 2 is first pushed at the back with 1 and then improved to 0 and pushed at the front (steps 2 to 4). In the second, the edge $3\!-\!4$ of weight 0 makes vertex 4 as close as vertex 3. The third has an unreachable vertex.
+
+### 4.3 Negative weights
+
+**Theorem 4.3.3 (Bellman–Ford).** Let $G$ be a directed graph with any weights and $s$ a vertex. Set $\text{dist}[s] = 0$ and all others $\infty$, and repeat rounds: in each round relax every edge $u \to v$ (if $\text{dist}[u]$ is finite and $\text{dist}[u] + w < \text{dist}[v]$, update). Then:
+
+(a) after $k$ rounds, $\text{dist}[v]$ is at most the length of any path from $s$ to $v$ with at most $k$ edges;
+
+(b) if no negative cycle can be reached from $s$, then after $n - 1$ rounds $\text{dist}[v] = d(s, v)$ for all $v$, and a further round changes nothing;
+
+(c) if a negative cycle can be reached from $s$, then round $n$ still changes some estimate;
+
+(d) the time is $O(n m)$.
+
+:::tip[In plain words]
+Improve all distances using every edge, again and again. After $k$ rounds every best route that uses at most $k$ roads has been found. A best route never needs more than $n - 1$ roads, so if round $n$ still improves something, a route must be going around a cycle that gets cheaper each time.
+:::
+
+**A tiny instance.** Arrows $1 \to 2$ (4), $1 \to 3$ (5), $3 \to 2$ (−3), start 1, edges tried in this order. Round 1: vertex 2 gets 4, vertex 3 gets 5, then the edge $3 \to 2$ improves vertex 2 to 2. Round 2: nothing changes, so the distances are $0, 2, 5$. With the arrows $1 \to 2$ (1), $2 \to 3$ (−2), $3 \to 2$ (1), the cycle $2 \to 3 \to 2$ has total weight −1, and every round makes vertices 2 and 3 smaller: round 3 (= $n$) still changes something.
+
+**Proof.**
+1. *Claim (a), by induction on $k$.* For $k = 0$ only $s$ is reached, with $\text{dist}[s] = 0$. A path with at most $k$ edges to $v$ has a last edge $u \to v$; its first part has at most $k - 1$ edges, so after $k - 1$ rounds $\text{dist}[u]$ is at most its length, and round $k$ relaxes $u \to v$: $\text{dist}[v]$ becomes at most the length of the whole path.
+2. Every finite estimate is the length of a real walk from $s$, so it is never below the length of a shortest walk.
+3. *Claim (b).* If no negative cycle is reachable, a cycle on a walk can be cut out without making it longer, so a shortest walk to $v$ is a path with at most $n - 1$ edges. By (a), after $n - 1$ rounds $\text{dist}[v] \le d(s, v)$, and by step 2 $\text{dist}[v] \ge d(s, v)$. Since $d(s, v) \le d(s, u) + w$ for every edge, no further round changes anything.
+4. *Claim (c).* Suppose a negative cycle $v_0 \to v_1 \to \dots \to v_{k} = v_0$ is reachable and round $n$ changes nothing. Then the estimates of its vertices are finite (reachable vertices are reached by at most $n - 1$ edges) and satisfy $\text{dist}[v_i] \le \text{dist}[v_{i-1}] + w_i$ for every edge of the cycle. Adding these $k$ inequalities, the estimates cancel and we get $0 \le w_1 + \dots + w_k < 0$: a contradiction.
+5. Each round looks at $m$ edges and there are at most $n$ rounds: $O(nm)$. $\square$
+
+:::note[This proof needs]
+1. The edges are arrows. An undirected edge with a negative weight is two arrows that form a negative cycle, so a graph with such an edge always has one.
+2. Estimates that are still $\infty$ are never used to relax (`INF + w` must not be compared as if it were a real distance).
+3. For "is there a negative cycle anywhere", start from a vertex that reaches everything, or give every vertex the estimate 0 at the start.
+:::
+
+<TheoremCode unit="4.3/thm-3" />
+
+The first example is the tiny instance: round 1 already contains the improvement through vertex 3 and round 2 is quiet (steps 1 to 3). The second has a negative cycle that is reachable, so round $n$ changes something (step 4). In the third, the same cycle exists but cannot be reached from vertex 1, so it does not matter: the estimates of vertices 2 and 3 stay $\infty$.
+
+### 4.4 All pairs
+
+**Theorem 4.3.4 (Floyd–Warshall).** Let $G$ have no negative cycle and $n$ vertices numbered $1..n$. Let $D_k[i][j]$ be the length of the shortest path from $i$ to $j$ whose stop-over vertices (all vertices except the first and last) lie in $\{1, \dots, k\}$, and $\infty$ if there is none. Then $D_0[i][j]$ is the weight of the edge $i \to j$ ($0$ if $i = j$) and
+$$D_k[i][j] = \min\bigl(D_{k-1}[i][j],\ D_{k-1}[i][k] + D_{k-1}[k][j]\bigr).$$
+The three nested loops (the outer one over $k$) compute $D_n[i][j] = d(i, j)$ for all pairs in $O(n^3)$ time, updating a single table in place.
+
+:::tip[In plain words]
+Allow the vertices as stop-overs one at a time. A route that may stop over at vertex $k$ either does not use it, or goes to $k$ and then on from $k$, and both parts only used earlier stop-overs.
+:::
+
+**A tiny instance.** Arrows $1 \to 2$ (3), $2 \to 3$ (1), $1 \to 3$ (7), $3 \to 1$ (2). Before any stop-over, $d(1,3) = 7$ and $d(3,2) = \infty$. Allowing vertex 1 as a stop-over, $3 \to 1 \to 2$ costs $2 + 3 = 5$. Allowing vertex 2, $1 \to 2 \to 3$ costs $3 + 1 = 4$, better than 7. The final table has $d(1,3) = 4$, $d(3,2) = 5$.
+
+**Proof.**
+1. $D_0$ holds exactly the paths without stop-overs: single edges, and the empty path from a vertex to itself.
+2. For $k \ge 1$, take a shortest path from $i$ to $j$ with stop-overs in $\{1, \dots, k\}$. If it does not pass through $k$, its length is $D_{k-1}[i][j]$.
+3. If it passes through $k$, it passes only once (a second visit would close a cycle, which is not negative and can be cut out). It splits into a path from $i$ to $k$ and a path from $k$ to $j$, both with stop-overs in $\{1, \dots, k-1\}$, and each is a shortest such path (otherwise replacing it would shorten the whole path). So its length is $D_{k-1}[i][k] + D_{k-1}[k][j]$.
+4. The shortest path takes the better of the two cases, which is the recurrence.
+5. *In place.* In round $k$ the row $k$ and the column $k$ do not change: $D_k[k][j] = \min(D_{k-1}[k][j], D_{k-1}[k][k] + D_{k-1}[k][j])$, and $D_{k-1}[k][k] = 0$ without negative cycles. So the values read in round $k$ are those of $D_{k-1}$, and one table is enough.
+6. After $k = n$ every vertex may be a stop-over, so $D_n = d$. There are three nested loops of $n$ steps: $O(n^3)$. $\square$
+
+:::note[This proof needs]
+1. No negative cycle (steps 3 and 5). With one, $D[k][k]$ becomes negative and the values mean nothing.
+2. $n$ is small enough for $n^3$: about $1.25 \cdot 10^8$ for $n = 500$.
+3. Pairs with no path keep `INF`, and `INF + INF` must not be computed (the code tests both terms first).
+:::
+
+<TheoremCode unit="4.3/thm-4" />
+
+The first example is the tiny instance: after allowing stop-over 1, the entry from 3 to 2 is 5 (step 3); after stop-over 2, the entry from 1 to 3 improves from 7 to 4. The second has a negative weight and no negative cycle, and unreachable pairs stay "−".
+
+### 4.5 Extra states
+
+**Theorem 4.3.5 (Dijkstra over pairs).** Suppose a trip is described by the vertex and a small extra fact $f$ from a set $F$ (a coupon used or not, the parity of the number of steps, a fuel level), and each step goes from $(u, f)$ to $(v, f')$ and costs $c \ge 0$. Then the cheapest trip to a goal pair equals the shortest path in the graph whose vertices are the pairs $(v, f)$, and Dijkstra's algorithm on that graph finds it in $O(|F| (n + m) \log (|F| m))$ time.
+
+:::tip[In plain words]
+If what you may do next depends on a small extra fact, make a separate vertex for every pair (place, fact) and run Dijkstra on those pairs.
+:::
+
+**A tiny instance.** The roads $1\!-\!2$ (4) and $2\!-\!3$ (6), and one road of your choice may be used for free. The pairs are (vertex, free road already used?). From $(1, \text{no})$ at cost 0: crossing $1\!-\!2$ costs 4 to $(2, \text{no})$ or 0 to $(2, \text{yes})$. From $(2, \text{yes})$, crossing $2\!-\!3$ costs 6 to $(3, \text{yes})$; from $(2, \text{no})$ it costs 0 to $(3, \text{yes})$, for a total of 4. The cheapest is 4.
+
+**Proof.**
+1. A trip, with its choices of when to use the free road, is exactly a path in the graph of pairs, and its cost is the sum of the costs of the steps. So the cheapest trip is a shortest path there.
+2. Every cost is at least 0, so Theorem 4.3.1 applies to the graph of pairs.
+3. That graph has $|F| n$ vertices and at most $|F| \cdot 4m$ edges (each road can be used from each fact, in both directions, paid or free), which gives the time bound. $\square$
+
+:::note[This proof needs]
+1. The extra fact together with the vertex is the whole state: the possible next steps and their costs depend on nothing else (Theorem 4.1.6).
+2. All step costs are non-negative, including the free ones.
+3. $|F|$ is small, because the graph grows by that factor.
+:::
+
+<TheoremCode unit="4.3/thm-5" />
+
+The first example is the path of two roads: the free road is the 6-minute road (step 1), and the cost is 4. In the second example, the cheapest trip frees the expensive road $3\!-\!4$ after the 2-minute road $1\!-\!3$, for a total of 2. With one vertex, the trip is empty and costs 0.
 
 ## 5. Recognition Cards
 

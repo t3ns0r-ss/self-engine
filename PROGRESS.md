@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.6 Lowest common ancestor (pipeline steps 1–8 done); 4.1–4.5 done except 4.5's browser-test confirmation
+- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline not started); 4.1–4.6 done
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.6 step 8 (drill 9 items, 2 look-alike pairs; bank got 3 new reserved problems: edge-weights I/II, ABC133 F)
-Next action: step 9 (self-test 5–8, checkpoint cf-1702G2 + cses-1136 + ac-abc133_f, 3 review sets, decision map, remove draft)
+Last completed step: topic 4.6 step 10 (e2e: 21 [4.6] checks pass; only the known 3-7 placeholder failure). Bank 4.6 additions (look-alike pair edge-weights I/II, checkpoint ABC133 F, review: cf-739B, ac-abc321_e, cf-1296F, ac-abc201_e, lc-path-existence-ii, lc-min-weighted-subgraph-ii, cf-702E) were added by me because the 4.6 bank was short; please review.
+Next action: topic 4.7 step 1 (scope)
 
 ## Gates
 | Gate | Status | Date |

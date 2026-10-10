@@ -7,11 +7,10 @@ Output: the edit distance.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    string a, b;
-    cin >> a >> b;
+// snippet:begin
+// Theorem 3.4.5. E[i][j] over prefix pairs, stored as two rows.
+int editDistance(const string& a, const string& b) {
     int n = a.size(), m = b.size();
-    // E[i][j] over prefix pairs (Theorem 3.4.5), stored as two rows
     vector<int> prev(m + 1), cur(m + 1);
     for (int j = 0; j <= m; j++) prev[j] = j;  // empty prefix of a: j insertions
     for (int i = 1; i <= n; i++) {
@@ -22,5 +21,12 @@ int main() {
         }
         swap(prev, cur);
     }
-    cout << prev[m] << "\n";
+    return prev[m];
+}
+// snippet:end
+
+int main() {
+    string a, b;
+    cin >> a >> b;
+    cout << editDistance(a, b) << "\n";
 }

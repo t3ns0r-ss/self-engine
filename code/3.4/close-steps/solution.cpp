@@ -6,19 +6,25 @@ Output: the length.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 3.4.1 with the rule |a_j - a_i| <= k. L[i] = the longest valid subsequence ending at position i.
+int closeSteps(const vector<long long>& a, long long k) {
+    int n = a.size(), best = 0;
+    vector<int> L(n, 1);
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++)
+            if (llabs(a[i] - a[j]) <= k) L[i] = max(L[i], L[j] + 1);  // a_i may follow a_j
+        best = max(best, L[i]);
+    }
+    return best;
+}
+// snippet:end
+
 int main() {
     int n;
     long long k;
     cin >> n >> k;
     vector<long long> a(n);
     for (auto& x : a) cin >> x;
-    // L[i] = longest valid subsequence ending at position i (Theorem 3.4.1 with the rule |a_j - a_i| <= k)
-    vector<int> L(n, 1);
-    int best = 0;
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < i; j++)
-            if (llabs(a[i] - a[j]) <= k) L[i] = max(L[i], L[j] + 1);  // a_i may follow a_j
-        best = max(best, L[i]);
-    }
-    cout << best << "\n";
+    cout << closeSteps(a, k) << "\n";
 }

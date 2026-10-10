@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline step 1 done); 4.1–4.6 done
+- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline steps 1–2 done); 4.1–4.6 done
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.7 step 1 (scope, sections 1–3, skeleton)
-Next action: step 2 (theory: Theorems 4.7.1–4.7.6 with proofs, code units thm-1..6)
+Last completed step: topic 4.7 step 2 (Theorems 4.7.1–4.7.6 with proofs and thm-1..6 units)
+Next action: step 3 (five cards: mutual-reach, condensed-dag, bridges, cut-vertices, bridge-tree; card units)
 
 ## Gates
 | Gate | Status | Date |

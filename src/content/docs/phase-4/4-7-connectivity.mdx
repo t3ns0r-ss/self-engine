@@ -52,6 +52,181 @@ The key idea is one depth-first walk with two numbers per vertex. The **entry ti
 
 ## 4. Theory and proofs
 
+### 4.1 The depth-first walk with entry times and low-link values
+
+**Theorem 4.7.1 (entry times and low-link values).** Let $G$ be an undirected graph; parallel edges are allowed and every edge has its own number. Walk it depth first: start at an unvisited vertex, and at a vertex $v$ look at the edges of $v$ one by one except the edge by which $v$ was reached. An edge to an unvisited vertex $u$ is a *tree edge*: the walk moves to $u$. An edge to an already visited vertex is a *back edge*. Let $\text{tin}[v]$ be the number of $v$ in the order of first visits ($0, 1, 2, \dots$ over all walks). Then:
+
+(a) every back edge joins a vertex with one of its ancestors in the walk forest, never a vertex with a vertex in a different branch;
+
+(b) for every $v$ let $\text{low}[v]$ be the smallest of $\text{tin}[v]$ and of the numbers $\text{tin}[w]$ over all back edges $\{x, w\}$ with $x$ in the subtree of $v$. Then $\text{low}[v]$ is the smallest of $\text{tin}[v]$, of $\text{tin}[w]$ for the back edges $\{v, w\}$ at $v$, and of $\text{low}[c]$ for the children $c$ of $v$;
+
+(c) the walk computes all $\text{tin}$ and $\text{low}$ in $O(n + m)$ time.
+
+:::tip[In plain words]
+Walk the graph depth first and number the vertices in the order you meet them. Every edge you do not walk along leads from a vertex up to one of its ancestors, never sideways. For each vertex, $\text{low}$ is the earliest-numbered place that the part of the walk below the vertex can reach by one such upward edge.
+:::
+
+**A tiny instance.** The triangle $1\!-\!2\!-\!3\!-\!1$, the edge $3\!-\!4$ and two edges between 4 and 5. The walk from 1 meets $1, 2, 3, 4, 5$ with $\text{tin} = 0, 1, 2, 3, 4$. The back edges are $3\!-\!1$ (from 3 up to 1) and the second edge between 5 and 4. So $\text{low} = 0, 0, 0, 3, 3$: the part below vertex 4 reaches only the places numbered 3 and 4, while the part below vertex 2 reaches vertex 1 (number 0).
+
+**Proof.**
+1. *Claim (a).* Let $\{a, b\}$ be a back edge with $\text{tin}[a] < \text{tin}[b]$. When the walk enters $a$, vertex $b$ has not been visited.
+2. The walk leaves $a$ only after it has looked at all edges of $a$, among them this one. At that moment $b$ must be visited, since an edge to an unvisited vertex becomes a tree edge and this one is not.
+3. So $b$ was entered after $a$ was entered and before $a$ was left. The vertices entered in that time are exactly the descendants of $a$, so $a$ is an ancestor of $b$.
+4. *Claim (b).* The back edges that start in the subtree of $v$ either start at $v$ itself or in the subtree of one child $c$; taking the smallest of the three kinds of numbers is the same as taking the smallest over all of them.
+5. *Claim (c).* The walk sets $\text{low}[v] = \text{tin}[v]$ when it enters $v$, lowers it to $\text{tin}[w]$ at each back edge to $w$, and lowers it to $\text{low}[c]$ when it leaves a child $c$. By (b) this gives $\text{low}[v]$. Every edge is looked at twice and every vertex is left once, so the time is $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. The edge by which the walk came is skipped by its **number**, not by the vertex at its other end. A second edge to the parent is a back edge, and it makes $\text{low}$ smaller (it is the reason the double edge $4\!-\!5$ above does not count as a bridge in Theorem 4.7.2).
+2. An explicit stack, as in [topic 4.5](../4-5-trees/): a chain of $2 \cdot 10^5$ vertices would overflow a recursive walk on some judges.
+3. A graph with several pieces needs one walk per piece, so the loop over the start vertices is part of the algorithm.
+:::
+
+<TheoremCode unit="4.7/thm-1" />
+
+The first example is the tiny instance (numbers $\text{tin}$ and $\text{low}$ as above), the second is a graph of two pieces, where the second walk continues the numbering at 3. The check compares every vertex of twenty thousand random graphs, with double edges, with the definition of $\text{low}$ and tests statement (a) on every back edge.
+
+### 4.2 Bridges
+
+**Theorem 4.7.2 (bridges).** With the numbers of Theorem 4.7.1, a back edge is never a bridge, and the tree edge from a vertex $v$ to its parent $p$ is a bridge exactly when $\text{low}[v] > \text{tin}[p]$. All bridges are found in $O(n + m)$ time.
+
+:::tip[In plain words]
+Look at the part of the walk below $v$. If something in it has an edge going up past $v$'s parent (or to the parent itself, through another edge), cutting the edge to the parent does not separate it. If the part below can reach only itself, then the edge to the parent is the only link, and cutting it cuts the part off.
+:::
+
+**A tiny instance.** In the instance of Theorem 4.7.1, the tree edge $3\!-\!4$ has $\text{low}[4] = 3 > \text{tin}[3] = 2$: a bridge. The edge $2\!-\!3$ has $\text{low}[3] = 0 \le \text{tin}[2] = 1$ (the back edge $3\!-\!1$ goes over it): not a bridge. The tree edge $4\!-\!5$ has $\text{low}[5] = 3 \le \text{tin}[4] = 3$ (the second edge to 4): not a bridge.
+
+**Proof.**
+1. *A back edge.* A back edge $\{a, b\}$ with $b$ below $a$ closes a cycle with the tree path from $a$ to $b$ (Theorem 4.7.1 (a)). Its removal leaves $a$ and $b$ joined by the tree path, so it is not a bridge.
+2. *A tree edge.* Let $p$ be the parent of $v$ and $S$ the subtree of $v$. Without the edge $p\!-\!v$, the vertices of $S$ are still joined by tree edges, and the rest of the piece of the graph is still joined by tree edges, too. So the piece falls apart exactly when no other edge joins $S$ to the outside of $S$.
+3. Another edge leaving $S$ is a back edge $\{x, w\}$ with $x$ in $S$ and $w$ outside. By Theorem 4.7.1 (a), $w$ is an ancestor of $x$ (a descendant of $x$ would be in $S$), so $w$ is a proper ancestor of $v$: $\text{tin}[w] \le \text{tin}[p]$.
+4. If such an edge exists, $\text{low}[v] \le \text{tin}[w] \le \text{tin}[p]$. Conversely, if $\text{low}[v] \le \text{tin}[p]$, then $\text{low}[v] < \text{tin}[v]$ is the number $\text{tin}[w]$ of a back edge $\{x, w\}$ with $x$ in $S$; every vertex of $S$ has a number of at least $\text{tin}[v]$, so $w$ is outside $S$ and the edge leaves $S$.
+5. So the tree edge is a bridge exactly when $\text{low}[v] > \text{tin}[p]$. The numbers come from one walk. $\square$
+
+:::note[This proof needs]
+1. Step 3 uses Theorem 4.7.1 (a): an edge from the subtree of $v$ to a vertex that is not an ancestor does not exist.
+2. A second edge between $v$ and its parent has another number, so it is a back edge with $\text{tin}[w] = \text{tin}[p]$ and makes $\text{low}[v] \le \text{tin}[p]$: the pair of edges is not a bridge.
+:::
+
+<TheoremCode unit="4.7/thm-2" />
+
+The examples are the tiny instance (only edge 3, the edge $3\!-\!4$, is a bridge), a square with a diagonal (none) and a tree (all four edges are bridges). The check removes each edge of twenty thousand random graphs and counts the pieces.
+
+### 4.3 Articulation points
+
+**Theorem 4.7.3 (articulation points).** With the numbers of Theorem 4.7.1, a vertex $v$ that is not the first vertex of its walk is an articulation point exactly when some child $c$ of $v$ has $\text{low}[c] \ge \text{tin}[v]$. The first vertex of a walk (the root) is an articulation point exactly when it has at least two children. All are found in $O(n + m)$ time.
+
+:::tip[In plain words]
+Take away $v$ and see what happens to each branch hanging below it. A branch survives only if it has an edge that jumps over $v$ to somewhere above. If one branch has no such edge, it is cut off. The root has nothing above it, so there it is different: it is a cut vertex only when the walk has to start two or more separate branches from it.
+:::
+
+**A tiny instance.** In the instance of Theorem 4.7.1: vertex 3 has the child 4 with $\text{low}[4] = 3 \ge \text{tin}[3] = 2$, so vertex 3 is an articulation point. Vertex 4 has the child 5 with $\text{low}[5] = 3 \ge \text{tin}[4] = 3$: also one (the double edge does not help, since it goes to 4 itself). Vertex 2 has the child 3 with $\text{low}[3] = 0 < 1$: not one. Vertex 1 is the root with one child: not one.
+
+**Proof.**
+1. *A vertex $v$ that is not a root.* Remove $v$. The vertices outside the subtree of $v$ stay joined by tree edges (and the parent of $v$ is among them). Each subtree $S_c$ of a child $c$ is joined inside by tree edges.
+2. By Theorem 4.7.1 (a), the only edges leaving $S_c$ are the tree edge $v\!-\!c$ and back edges to proper ancestors of $c$, that is, to $v$ or to proper ancestors of $v$. There are no edges between two different child subtrees.
+3. After the removal of $v$, the subtree $S_c$ is still tied to the rest exactly when it has a back edge to a proper ancestor of $v$. As in the proof of Theorem 4.7.2, this means $\text{low}[c] < \text{tin}[v]$.
+4. If every child satisfies this, everything stays together. If some child has $\text{low}[c] \ge \text{tin}[v]$, then $S_c$ is cut off from the rest, and the rest is not empty (it contains the parent of $v$): one more piece.
+5. *A root $r$.* Removing $r$ leaves its child subtrees, which are joined inside, and no edge goes between two of them (step 2). So the number of pieces equals the number of children. It is larger than before exactly when there are at least two children (with one child the piece stays one piece, and with none the vertex was alone). $\square$
+
+:::note[This proof needs]
+1. The root is treated separately. For the root, $\text{low}[c] \ge \text{tin}[r] = 0$ is always true, so the rule for other vertices would mark every root with a child.
+2. The test is "$\ge$" here and "$>$" for bridges: the back edge to $v$ itself does not save a branch when $v$ is removed, but it does save it when only the edge above is removed.
+:::
+
+<TheoremCode unit="4.7/thm-3" />
+
+The examples are the tiny instance (3 and 4), a star walked from its centre (only the centre) and a square (none). The check removes each vertex of twenty thousand random graphs and counts the pieces.
+
+### 4.4 Two-edge-connected pieces and one-way streets
+
+**Theorem 4.7.4 (pieces without bridges).** Let $G$ be an undirected graph and cut the walk forest of Theorem 4.7.1 at the bridges.
+
+(a) The pieces of the walk forest are exactly the connected pieces of $G$ without its bridges, that is, the 2-edge-connected components. Walking through the vertices in the order of entry, a vertex gets the label of its parent if the edge to the parent is not a bridge, and a new label otherwise.
+
+(b) Contract every piece to one vertex. The edges that remain are the bridges, and they form a forest (a tree if $G$ is connected).
+
+(c) If $G$ is connected and has no bridge, orient every tree edge from the parent to the child and every back edge from the lower vertex to its ancestor. The result is strongly connected: from every vertex one can reach every other vertex.
+
+:::tip[In plain words]
+The bridges are the only roads whose loss splits the network, so cutting them leaves pieces that hold together strongly, and the pieces hang together as a tree. If there is no bridge at all, you can make every street one-way and still drive from anywhere to anywhere: drive down along the tree and back up along the extra edges.
+:::
+
+**A tiny instance.** Two triangles $1\!-\!2\!-\!3$ and $4\!-\!5\!-\!6$ joined by the edge $3\!-\!4$. The only bridge is $3\!-\!4$, so there are two pieces, $\{1, 2, 3\}$ and $\{4, 5, 6\}$, and the contracted graph is one edge between two vertices. A lone triangle oriented by (c): the tree edges $1\!\to\!2$ and $2\!\to\!3$ and the back edge $3\!\to\!1$ give the cycle.
+
+**Proof.**
+1. *Claim (a).* Both ends of a back edge lie in the same piece. Indeed, the edge closes a cycle with the tree path between its ends, so all the tree edges on that path lie on a cycle and none is a bridge (Theorem 4.7.2). Hence after the bridges are cut, connections between pieces cannot go along a back edge, so the connected pieces of $G$ without its bridges are the pieces of the tree.
+2. Two vertices in one piece stay joined when one edge is removed: they are joined by a path without bridges, and removing a single non-bridge edge does not change the pieces of the graph. Two vertices in different pieces are separated by a bridge on their tree path.
+3. *Claim (b).* A cycle in the contracted graph would give a cycle of $G$ through bridges, and an edge on a cycle is not a bridge. So the contracted graph has no cycle; it has one tree per connected piece of $G$.
+4. *Claim (c).* The root reaches every vertex along the tree edges downwards.
+5. Let $v$ be a vertex other than the root and $p$ its parent. As there is no bridge, $\text{low}[v] \le \text{tin}[p] < \text{tin}[v]$, so there is a back edge $\{x, w\}$ with $x$ in the subtree of $v$ and $w$ a proper ancestor of $v$ (Theorem 4.7.2, step 4). From $v$ go down the tree edges to $x$ and then up along the back edge to $w$.
+6. Repeating step 5 climbs to the root in finitely many rounds, since each round reaches a vertex with a smaller number. So every vertex reaches the root, and the root reaches every vertex. $\square$
+
+:::note[This proof needs]
+1. The vertices must be taken in the order of entry, so that the label of the parent is known before the child.
+2. Part (c) needs a connected graph without bridges: with a bridge, one direction of that edge would cut off one side.
+:::
+
+<TheoremCode unit="4.7/thm-4" />
+
+The first example is the tiny instance with two triangles, the second the lone triangle, the third a square with a diagonal and a double edge, whose orientation is still a cycle through all four vertices. The check compares the pieces with the pieces found by removing every edge of thirty thousand random graphs, and tests strong connectivity of the orientation on every random graph that is connected and has no bridge.
+
+### 4.5 Strongly connected components
+
+**Theorem 4.7.5 (Kosaraju's method).** Let $G$ be a directed graph. "$u$ and $v$ reach each other" is an equivalence relation; its classes are the strongly connected components, and each vertex lies in exactly one. Do a depth-first walk of $G$ (as often as needed to cover all vertices) and list the vertices in the order they are *left*. Then go through this list from the last to the first and, for each vertex not yet seen, walk the **reversed** graph from it (never entering seen vertices). The vertices of each such walk form one strongly connected component, and the components are found in an order in which every edge between two components goes from a component found earlier to one found later. The time is $O(n + m)$.
+
+:::tip[In plain words]
+The first pass puts the vertices in a list so that the vertex left last sits in a group nobody else points into. Take the groups from there: from that vertex, walk the arrows **backwards**. You can only reach the vertices that can reach it, and the only unseen ones among them are in its own group. Take that group away and continue with the next vertex of the list.
+:::
+
+**A tiny instance.** The edges $1\!\to\!2$, $2\!\to\!3$, $3\!\to\!1$, $3\!\to\!4$, $4\!\leftrightarrow\!5$ and $6\!\to\!1$. Pass 1 from 1 leaves the vertices in the order $5, 4, 3, 2, 1$ and then, from 6, leaves 6. The list from the last: 6 first. On the reversed graph nothing enters 6, so $\{6\}$ is the first component. Next, 1: the reversed walk finds 3 and 2 ($\{1, 2, 3\}$). Next, 4: finds 5 ($\{4, 5\}$). The components $\{6\}, \{1, 2, 3\}, \{4, 5\}$ are found in the order of the edges $6\!\to\!1$ and $3\!\to\!4$.
+
+**Proof.**
+1. *The relation.* It is reflexive (the path of length zero), symmetric by definition, and transitive: join the path from $u$ to $v$ with the path from $v$ to $w$, and the same backwards. So the vertices split into classes.
+2. *A lemma.* Let $A \ne B$ be components with an edge from $A$ to $B$. Then the vertex of $A$ that is left last is left after every vertex of $B$.
+3. Look at the first vertex $x$ of $A \cup B$ that pass 1 enters. If $x \in A$: every vertex of $A \cup B$ is reachable from $x$ and not yet visited, so all of them are entered while $x$ is active and are left before $x$. If $x \in B$: no vertex of $A$ is reachable from $x$ (otherwise $A$ and $B$ would be one component), so all of $B$ is left before the first vertex of $A$ is even entered.
+4. *Pass 2.* Let $s$ be the unseen vertex that was left last and $C$ its component. No unseen component has an edge into $C$: such a component would contain a vertex that was left after $s$ by the lemma, and it is unseen, contradicting the choice of $s$.
+5. The reversed walk from $s$ finds the unseen vertices from which $s$ can be reached through unseen vertices. If it found a vertex outside $C$, the path from it to $s$ would have a last edge entering $C$ from an unseen vertex of another component, which step 4 forbids. All of $C$ is found, since the vertices of $C$ reach $s$ inside $C$. So the walk collects exactly $C$.
+6. A component found now has no edge entering it from an unseen component, so every edge between two components goes from an earlier one to a later one. The time is two walks. $\square$
+
+:::note[This proof needs]
+1. The reversed graph is built once, in $O(n + m)$, and the second pass never enters a vertex that is already in a component.
+2. Both passes use an explicit stack with a counter of the edges looked at for each vertex, as for the walk of Theorem 4.7.1, so a chain of $2 \cdot 10^5$ vertices is safe.
+3. Components get the numbers $1, 2, \dots$ in the order they are found. This order is a topological order of the condensation, which Theorem 4.7.6 uses.
+:::
+
+<TheoremCode unit="4.7/thm-5" />
+
+The first example is the tiny instance (the labels are 2, 2, 2, 3, 3, 1 for the vertices 1 to 6: the vertex 6 is found first, then $\{1, 2, 3\}$, then $\{4, 5\}$). The second is a path, where each vertex is its own component. The check compares the groups of thirty thousand random graphs with the reachability table, and tests that every edge goes from a smaller to a larger or equal label.
+
+### 4.6 The graph of components
+
+**Theorem 4.7.6 (the condensation).** Let the components of a directed graph be numbered as in Theorem 4.7.5.
+
+(a) Every edge of $G$ goes from a vertex of a smaller or the same component number to a vertex of a larger or the same number. So the condensation has no directed cycle; it is a DAG as in [topic 4.2](../4-2-graph-structure/), and the numbers are a topological order.
+
+(b) A vertex $s$ reaches every vertex of $G$ exactly when its component is the **only** source of the condensation (the only component that no edge enters). This is checked in $O(n + m)$ time.
+
+:::tip[In plain words]
+Squeeze every group into one dot: what is left is a map of one-way roads without a cycle. In such a map, a dot that nothing points into is a starting dot, and you can drive from a starting dot to everything exactly when it is the only starting dot, since every other dot is reached from some starting dot.
+:::
+
+**A tiny instance.** In the instance of Theorem 4.7.5 the condensation has the edges $\{6\} \to \{1,2,3\} \to \{4,5\}$; the only source is $\{6\}$. So vertex 6 reaches every vertex, while vertex 1 does not (it cannot reach 6).
+
+**Proof.**
+1. *Claim (a).* By step 6 of the proof of Theorem 4.7.5, every edge between two different components goes from an earlier-found component to a later-found one, that is, from a smaller to a larger number. A directed cycle of components would need a step back to a smaller number somewhere.
+2. *Claim (b), "only if".* Suppose $s$ reaches everything. A source $D$ other than the component of $s$ cannot be reached from $s$: a path into $D$ would use an edge entering $D$, and there is none. So the component of $s$ is the only source or no source exists, and a DAG has at least one source (the component with the smallest number).
+3. Suppose the component of $s$ is not a source: some edge enters it. Go backwards along entering edges; the numbers decrease, so this ends at a source $D$, and $D$ differs from the component of $s$. By the previous step $s$ cannot reach $D$.
+4. *"If".* Suppose the component of $s$ is the only source. For any component $C$ go backwards along entering edges until a source is reached; this is the component of $s$. Following the edges forwards, together with the paths inside the components, gives a path from $s$ to every vertex of $C$. $\square$
+
+:::note[This proof needs]
+1. A graph with no edge between components has every component as a source; then the only-source test fails unless there is a single component.
+2. The test looks at edges between different components only; edges inside a component do not make it a non-source.
+:::
+
+<TheoremCode unit="4.7/thm-6" />
+
+The examples are a diamond ($1\!\to\!2$, $1\!\to\!3$, $2\!\to\!4$, $3\!\to\!4$, where vertex 1 reaches everything and vertex 2 does not) and a pair $1 \leftrightarrow 2$ with an edge $3\!\to\!1$ (vertex 3 reaches everything, vertex 1 does not). The check compares the answer for every start vertex of thirty thousand random graphs with the reachability table.
+
 ## 5. Recognition Cards
 
 <Cards topic="4.7" />

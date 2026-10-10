@@ -7,6 +7,17 @@ Output: one value per line.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.4.2. For each query the value of a closest to x (the smaller one on a tie).
+long long nearestValue(const vector<long long>& a, long long x) {  // a is sorted
+    int n = a.size();
+    int i = lower_bound(a.begin(), a.end(), x) - a.begin();  // first index with a[i] >= x
+    if (i == n) return a[n - 1];  // every value is below x
+    if (i == 0) return a[0];      // every value is at least x
+    return (x - a[i - 1] <= a[i] - x) ? a[i - 1] : a[i];
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -18,12 +29,6 @@ int main() {
     while (q--) {
         long long x;
         cin >> x;
-        // first index with a[i] >= x (Theorem 1.4.2): the closest value is there or just before
-        int i = lower_bound(a.begin(), a.end(), x) - a.begin();
-        long long best;
-        if (i == n) best = a[n - 1];        // every value is below x
-        else if (i == 0) best = a[0];       // every value is at least x
-        else best = (x - a[i - 1] <= a[i] - x) ? a[i - 1] : a[i];  // ties go to the smaller
-        cout << best << "\n";
+        cout << nearestValue(a, x) << "\n";
     }
 }

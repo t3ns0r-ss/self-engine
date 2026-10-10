@@ -6,12 +6,10 @@ Output: one count per line.
 #include <bits/stdc++.h>
 using namespace std;
 
-int n;
-vector<long long> a;
-
-// First index i with a[i] >= x, or n if there is none (Theorem 1.4.1 with p(i) = a[i] >= x).
-int firstAtLeast(long long x) {
-    int lo = -1, hi = n;  // invariant: lo is -1 or a[lo] < x; hi is n or a[hi] >= x
+// snippet:begin
+// Theorem 1.4.2. In a sorted array: the first index with a[i] >= x (the lower bound), and the number of elements in [L, R].
+int firstAtLeast(const vector<long long>& a, long long x) {
+    int lo = -1, hi = a.size();  // invariant: lo is -1 or a[lo] < x; hi is n or a[hi] >= x
     while (hi - lo > 1) {
         int mid = lo + (hi - lo) / 2;  // strictly between lo and hi
         if (a[mid] >= x) hi = mid;
@@ -20,18 +18,22 @@ int firstAtLeast(long long x) {
     return hi;
 }
 
+int countInRange(const vector<long long>& a, long long L, long long R) {
+    return firstAtLeast(a, R + 1) - firstAtLeast(a, L);  // elements <= R minus elements < L
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
-    int q;
+    int n, q;
     cin >> n >> q;
-    a.resize(n);
+    vector<long long> a(n);
     for (auto& x : a) cin >> x;
     sort(a.begin(), a.end());  // the predicate a[i] >= x is monotone only on a sorted array
     while (q--) {
         long long L, R;
         cin >> L >> R;
-        // elements <= R minus elements < L (Theorem 1.4.2, part 2); "<= R" is "< R + 1"
-        cout << firstAtLeast(R + 1) - firstAtLeast(L) << "\n";
+        cout << countInRange(a, L, R) << "\n";
     }
 }

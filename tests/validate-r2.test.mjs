@@ -24,17 +24,20 @@ test('uses must be earlier topics', () => expectError(run((d, t) => { t.uses.pus
 test('uses must cover lesson links and theorem citations', () => expectError(run((d) => lesson(d, (s) => s.replace('(Theorem 0.2.4)', '(Theorem 2.1.1)'))), /uses is missing 2.1/));
 test('"What you need" cannot be a hand-written list', () => expectError(run((d) => lesson(d, (s) => s.replace('<WhatYouNeed topic="1.6" />', '- [Topic 0.2](../../phase-0/0-2-complexity/): x'))), /must be rendered by <WhatYouNeed/));
 
-test('every theorem needs plain words, a preconditions box and a demo', () => {
+test('every theorem needs plain words, a preconditions box and code', () => {
   expectError(run((d) => lesson(d, (s) => s.replace(':::tip[In plain words]', ':::tip[Plain]'))), /missing ":::tip\[In plain words\]"/);
-  expectError(run((d) => lesson(d, (s) => s.replace('<TheoremDemo unit="1.6/thm-2" />', ''))), /Theorem 1.6.2: missing <TheoremDemo/);
+  expectError(run((d) => lesson(d, (s) => s.replace('<TheoremCode unit="1.6/thm-2" />', ''))), /Theorem 1.6.2: missing <TheoremCode/);
   expectError(run((d, t) => { t.theorems = t.theorems.filter((e) => e.id !== '1.6.3'); }), /Theorem 1.6.3 has no entry under theorems/);
 });
 test('a proof has at most 8 numbered steps', () => expectError(run((d) => lesson(d, (s) => s.replace('**Proof.** The proof uses positions', '**Proof.** 9. extra\n1. a\n2. b\nThe proof uses positions'))), /proof has \d+ numbered steps; at most 8/));
-test('the demo program is at most 30 lines and has an expected output', () => {
-  const fsx = { exists: () => true, read: (p) => (p.endsWith('solution.cpp') ? 'x\n'.repeat(31) : '') };
-  expectError(run(null, fsx), /demo solution.cpp has 31 lines; at most 30/);
-  expectError(run(null, { exists: (p) => !p.includes('thm-1/tests'), read: (p) => (p.endsWith('solution.cpp') ? 'x\n' : '') }), /demo unit 1.6\/thm-1 has no tests\/1.out/);
+test('a theorem code unit needs snippet markers, examples, and a short implementation', () => {
+  const body = (n) => ['// snippet:begin', ...Array(n).fill('x;'), '// snippet:end'].join('\n');
+  expectError(run(null, { exists: () => true, read: (p) => (p.endsWith('solution.cpp') ? body(31) : 'out\n') }), /the shown implementation has 31 lines; at most 30/);
+  expectError(run(null, { exists: () => true, read: (p) => (p.endsWith('solution.cpp') ? 'int x;\n' : 'out\n') }), /needs \/\/ snippet:begin and \/\/ snippet:end/);
+  expectError(run(null, { exists: (p) => !p.includes('thm-1/tests'), read: (p) => (p.endsWith('solution.cpp') ? body(3) : '') }), /code unit 1.6\/thm-1 has no tests\/1.out/);
+  expectError(run(null, { exists: () => true, read: (p) => (p.endsWith('solution.cpp') ? body(3) : '') }), /empty tests\/1.out/);
 });
+test('lessons carry no "C++ details explained" or "Tested" paragraphs', () => expectError(run((d) => lesson(d, (s) => s + '\n\n**Tested.** x\n')), /remove the "C\+\+ details explained" and "Tested" paragraphs/));
 
 test('inline example numbers must match the card example unit', () => {
   expectError(run((d, t) => { t.cards[1].examples.negative[0].inline.method_gives = '19'; }), /N1 method_gives "19" differs from printed method=9/);

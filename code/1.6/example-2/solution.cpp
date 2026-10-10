@@ -7,17 +7,10 @@ Output: the largest sum.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int n, a, b;
-    cin >> n >> a >> b;
-    vector<long long> p(n + 1, 0);  // prefix sums (topic 1.2): the sum of (l, r] is p[r] - p[l]
-    for (int i = 1; i <= n; i++) {
-        long long x;
-        cin >> x;
-        p[i] = p[i - 1] + x;
-    }
+// snippet:begin
+// CSES 1644. p: prefix sums (p[0] = 0). Largest p[r] - p[l] with a <= r - l <= b.
+long long bestLengthRange(const vector<long long>& p, int a, int b) {
+    int n = p.size() - 1;
     deque<int> dq;  // candidate starts l in [r - b, r - a]; p values increase front to back
     long long best = LLONG_MIN;
     for (int r = a; r <= n; r++) {
@@ -25,7 +18,22 @@ int main() {
         while (!dq.empty() && p[dq.back()] >= p[l]) dq.pop_back();
         dq.push_back(l);
         if (dq.front() < r - b) dq.pop_front();  // too long
-        best = max(best, p[r] - p[dq.front()]);  // Theorem 1.6.3, minimum version
+        best = max(best, p[r] - p[dq.front()]);
     }
-    cout << best << "\n";
+    return best;
+}
+// snippet:end
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int n, a, b;
+    cin >> n >> a >> b;
+    vector<long long> p(n + 1, 0);
+    for (int i = 1; i <= n; i++) {
+        long long x;
+        cin >> x;
+        p[i] = p[i - 1] + x;
+    }
+    cout << bestLengthRange(p, a, b) << "\n";
 }

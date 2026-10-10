@@ -160,7 +160,7 @@ export const topicFile = z.strictObject({
   draft: z.boolean().default(false),
   // Revision 2: every earlier topic this lesson relies on; rendered by TopicHeader and WhatYouNeed.
   uses: z.array(z.strictObject({ topic: topicId, what: z.string().min(1) })).optional(),
-  theorems: z.array(z.strictObject({ id: z.string().regex(/^[0-7]\.[1-8]\.\d+$/), title: z.string().min(1), plain_words: z.string().min(1), demo: z.string().min(1) })).optional(),
+  theorems: z.array(z.strictObject({ id: z.string().regex(/^[0-7]\.[1-8]\.\d+$/), title: z.string().min(1), plain_words: z.string().min(1), code: z.string().min(1) })).optional(),
   cards: z.array(z.union([card, legacyCard])),
   problems: z.array(topicProblem),
   drill: z.array(

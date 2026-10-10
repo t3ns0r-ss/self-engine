@@ -6,6 +6,27 @@ Output: the largest length.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.6.3 with topic 1.3. Length of the longest subarray with max - min <= K.
+int longestSpreadWindow(const vector<long long>& a, long long K) {
+    deque<int> mx, mn;  // candidates for the window's maximum and minimum
+    int l = 0, best = 0;
+    for (int r = 0; r < (int)a.size(); r++) {
+        while (!mx.empty() && a[mx.back()] <= a[r]) mx.pop_back();
+        mx.push_back(r);
+        while (!mn.empty() && a[mn.back()] >= a[r]) mn.pop_back();
+        mn.push_back(r);
+        while (a[mx.front()] - a[mn.front()] > K) {  // shrink from the left until the window is valid
+            l++;
+            if (mx.front() < l) mx.pop_front();
+            if (mn.front() < l) mn.pop_front();
+        }
+        best = max(best, r - l + 1);
+    }
+    return best;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -14,20 +35,5 @@ int main() {
     cin >> n >> K;
     vector<long long> a(n);
     for (auto& x : a) cin >> x;
-    deque<int> mx, mn;  // window maximum and minimum candidates (Theorem 1.6.3)
-    int l = 0, best = 0;
-    for (int r = 0; r < n; r++) {
-        while (!mx.empty() && a[mx.back()] <= a[r]) mx.pop_back();
-        mx.push_back(r);
-        while (!mn.empty() && a[mn.back()] >= a[r]) mn.pop_back();
-        mn.push_back(r);
-        // "max - min <= K" is closed under shrinking: shrink from the left until it holds (topic 1.3)
-        while (a[mx.front()] - a[mn.front()] > K) {
-            l++;
-            if (mx.front() < l) mx.pop_front();  // the left end passed it
-            if (mn.front() < l) mn.pop_front();
-        }
-        best = max(best, r - l + 1);
-    }
-    cout << best << "\n";
+    cout << longestSpreadWindow(a, K) << "\n";
 }

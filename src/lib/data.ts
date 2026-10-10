@@ -51,7 +51,7 @@ export type TopicProblem = {
 export type TopicFile = {
   id: string; draft: boolean; cards: Card[]; problems: TopicProblem[];
   uses?: { topic: string; what: string }[];
-  theorems?: { id: string; title: string; plain_words: string; demo: string }[];
+  theorems?: { id: string; title: string; plain_words: string; code: string }[];
   drill: { problem: string; answer?: Ref; answer_card: string; answer_topic: string; property: string; why_others_fail: string }[];
   lookalike_pairs: { a: string; b: string; a_tool: string | Ref; b_tool: string | Ref; shared_surface?: string; flipping_difference: string; flipping_input?: string }[];
   self_test: { q: string; a: string }[];
@@ -151,7 +151,7 @@ export function problemIndex(data: SiteData): IndexedProblem[] {
   return [...out.values()];
 }
 
-/** The one list behind both the page header ("Builds on") and "What you need" (PLAN.md Section 6.2). */
+/** The one list behind "What you need" (PLAN.md Section 6.2). */
 export function getUses(data: SiteData, topic: string) {
   return (data.topics[topic]?.uses ?? []).map((u) => {
     const t = data.curriculum.find((x) => x.id === u.topic)!;

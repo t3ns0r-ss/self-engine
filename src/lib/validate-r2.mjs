@@ -175,6 +175,9 @@ export function validateR2({ tid, t, tf, lesson, curriculum, byId, topics, patte
       if (/^\s*[-*] /m.test(need[1]) || /^\s*\d+\. /m.test(need[1])) err(lesson.path, '"What you need" must not contain a hand-written list (use the uses list in the data file)');
     }
 
+    // Lessons no longer carry "C++ details explained" or "Tested" paragraphs (Section 6.6).
+    if (/^\*\*C\+\+ details explained|^\*\*Tested\./m.test(text)) err(lesson.path, 'remove the "C++ details explained" and "Tested" paragraphs (PLAN.md Section 6.6)');
+
     // Theorems (item 11).
     const blocks = theoremBlocks(text);
     const entries = new Map((tf.theorems ?? []).map((e) => [e.id, e]));
@@ -196,15 +199,18 @@ export function validateR2({ tid, t, tf, lesson, curriculum, byId, topics, patte
         if (tip > note) err(lesson.path, `${W}: the preconditions box must come after the plain-words block`);
       }
       if (tip >= 0 && !b.text.includes(e.plain_words)) err(lesson.path, `${W}: the plain-words block must repeat plain_words from the data file`);
-      const demo = new RegExp(`<TheoremDemo unit="${e.demo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\s*/>`);
-      if (!demo.test(b.text)) err(lesson.path, `${W}: missing <TheoremDemo unit="${e.demo}" />`);
-      const sol = `code/${e.demo}/solution.cpp`;
-      if (!fsx.exists(sol)) err(lesson.path, `${W}: demo unit ${e.demo} has no solution.cpp`);
+      const tag = new RegExp(`<TheoremCode unit="${e.code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"\\s*/>`);
+      if (!tag.test(b.text)) err(lesson.path, `${W}: missing <TheoremCode unit="${e.code}" />`);
+      const sol = `code/${e.code}/solution.cpp`;
+      if (!fsx.exists(sol)) err(lesson.path, `${W}: code unit ${e.code} has no solution.cpp`);
       else {
-        const n = fsx.read(sol).replace(/\n+$/, '').split('\n').length;
-        if (n > 30) err(lesson.path, `${W}: demo solution.cpp has ${n} lines; at most 30`);
+        const lines = fsx.read(sol).split('\n').map((l) => l.trim());
+        const from = lines.indexOf('// snippet:begin'), to = lines.indexOf('// snippet:end');
+        if (from < 0 || to < from) err(lesson.path, `${W}: ${sol} needs // snippet:begin and // snippet:end around the implementation`);
+        else if (to - from - 1 > 30) err(lesson.path, `${W}: the shown implementation has ${to - from - 1} lines; at most 30`);
       }
-      if (!fsx.exists(`code/${e.demo}/tests/1.out`)) err(lesson.path, `${W}: demo unit ${e.demo} has no tests/1.out`);
+      if (!fsx.exists(`code/${e.code}/tests/1.out`)) err(lesson.path, `${W}: code unit ${e.code} has no tests/1.out (the examples)`);
+      else if (fsx.read(`code/${e.code}/tests/1.out`).trim() === '') err(lesson.path, `${W}: code unit ${e.code} has an empty tests/1.out; it holds the examples shown`);
     }
     for (const id of entries.keys()) if (!blocks.some((b) => b.id === id)) err(F, `theorems lists ${id}, which is not a "**Theorem ${id}" heading in the lesson`);
   }

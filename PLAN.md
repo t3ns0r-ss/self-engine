@@ -9,8 +9,10 @@ Read this entire file before doing anything, and follow it exactly. Problems are
 1. Recognition Cards were abstract and thin → every card now has constraint shapes, a worked "Recognition in action" block, and positive and negative examples (Sections 5, 6.5).
 2. Look-alike pairs cited later topics and showed raw slugs → references are structured, may point only to the same or earlier topics, and render as card names (Sections 5, 6.11, 12).
 3. Some proofs were too dense for a beginner → a fixed proof layout with size limits (Section 6.4).
-4. Theorems had no code to look at → every theorem gets a small tested demo whose output is shown under it (Sections 6.4, 8.6).
-5. The page header and the "What you need" list disagreed → both render from one `uses` list in the topic data file (Sections 5, 6.2, 12).
+4. Theorems had no code to look at → every theorem gets a short, self-explanatory implementation (the gist function only, like a 5-line `gcd`) with a few worked examples under it (Sections 6.4, 8.6).
+5. The page header and the "What you need" list disagreed → prerequisites now appear once, as "What you need", rendered from the `uses` list in the topic data file; the page header has no "Builds on" line (Sections 5, 6.2, 12).
+
+**Revision 2.1 (after the 1.6 reference review).** Shown code is the gist only: a theorem shows its implementation as a short function with examples under it; templates and worked examples show just the function, never includes, `main` or input reading; the "C++ details explained" and "Tested" paragraphs are gone; the "Builds on" line is gone (Sections 6.2, 6.4, 6.6, 8.6, 10.9).
 Topics merged before this revision are brought up to the new standard in the retrofit milestone R1 (Section 15).
 
 ---
@@ -81,7 +83,7 @@ You may read these sources to check your understanding. Do not copy their text.
 | Lesson format | MDX files in `src/content/docs/` |
 | Structured data | One YAML file per topic in `src/data/topics/`, loaded as an Astro content collection with a Zod schema |
 | Math | `remark-math` + `rehype-katex`, KaTeX CSS added via Starlight `customCss` |
-| Code display | Starlight's `<Code>` component, fed by importing the tested `.cpp` file with `?raw`, so displayed code is always the tested code |
+| Code display | `<CodeSnippet>` and `<TheoremCode>` (Section 10.9) show only the gist function of a tested `.cpp` file, the lines between `// snippet:begin` and `// snippet:end`; the includes, `main` and input handling stay in the file and are tested but not shown. So displayed code is always tested code |
 | Interactive parts | React islands (`npx astro add react`), hydrated with `client:load` |
 | Learner data | Browser `localStorage`, with export/import as JSON (Section 10.6) |
 | Search | Starlight's built-in Pagefind search |
@@ -120,7 +122,7 @@ Keep dependencies minimal. No database, no server, no login.
 │       │   ├── brute.cpp
 │       │   ├── gen.cpp
 │       │   └── tests/1.in, 1.out, ...
-│       ├── thm-1/              # theorem demo unit (Section 8.6): solution.cpp + tests/1.in, 1.out
+│       ├── thm-1/              # theorem code unit (Section 8.6): solution.cpp + tests/1.out (the examples)
 │       └── card-shrinkable-window/   # card example unit (Section 8.6): produces the inline example numbers
 ├── notes/                      # private solution notes (Section 9.4); NOT rendered on the site
 │   └── 1.3.md
@@ -257,7 +259,7 @@ Each topic has `src/data/topics/{id-with-dash}.yaml`. The lesson MDX holds prose
 ```yaml
 id: "1.3"
 
-uses:                             # every earlier topic this lesson relies on; rendered by BOTH the page header ("Builds on") and "What you need"
+uses:                             # every earlier topic this lesson relies on; rendered as "What you need" (the page header has no prerequisite line)
   - {topic: "1.1", what: "Sorting, only to explain why order matters in the stretch problems"}
   - {topic: "1.2", what: "Prefix sums, used as the brute-force baseline and as a look-alike"}
   # must include every id in this topic's `requires` (curriculum.yaml) and every earlier topic cited anywhere in the lesson or this file
@@ -266,7 +268,7 @@ theorems:                         # one entry per numbered theorem in Section 4 
   - id: "1.3.1"
     title: "Shrinking a valid window keeps it valid"
     plain_words: "If a segment is allowed, every smaller piece cut from its ends is allowed too."
-    demo: "1.3/thm-1"             # code unit folder under code/ (Section 8.6)
+    code: "1.3/thm-1"             # code unit folder under code/ (Section 8.6)
 
 cards:
   - id: shrinkable-window
@@ -395,8 +397,8 @@ import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.tsx';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import TheoremDemo from '../../../components/TheoremDemo.astro';
-import windowSum from '../../../../code/1.3/window-sum/solution.cpp?raw';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
 
 <TopicHeader topic="1.3" />
 
@@ -407,11 +409,11 @@ import windowSum from '../../../../code/1.3/window-sum/solution.cpp?raw';
 ### What this topic does not cover
 ## 3. Definitions
 ## 4. Theory and proofs
-<TheoremDemo unit="1.3/thm-1" />
+<TheoremCode unit="1.3/thm-1" />
 ## 5. Recognition Cards
 <Cards topic="1.3" />
 ## 6. Templates
-<Code code={windowSum} lang="cpp" title="window-sum/solution.cpp" />
+<CodeSnippet unit="1.3/window-sum" />
 ## 7. Bug catalogue
 ## 8. Worked examples
 ## 9. Problem ladder
@@ -435,7 +437,7 @@ import windowSum from '../../../../code/1.3/window-sum/solution.cpp?raw';
 - One paragraph with the key idea in plain words. No code yet.
 
 ### 6.2 Section 2: Prerequisites and scope
-- `### What you need`: rendered by `<WhatYouNeed topic="…" />` from the `uses` list in the topic data file (Section 5). Do not hand-write this list. `<TopicHeader>` shows the same `uses` list under "Builds on", so the two can never disagree. Each entry is a link to the earlier lesson plus its one-line `what`.
+- `### What you need`: rendered by `<WhatYouNeed topic="…" />` from the `uses` list in the topic data file (Section 5). Do not hand-write this list. The page header (`<TopicHeader>`) shows no prerequisite line; this list is the only place. Each entry is a link to the earlier lesson plus its one-line `what`.
 - `### What this topic does not cover`: nearby ideas from later topics, each with "covered in topic X.Y". The only place later-topic keywords may appear.
 
 ### 6.3 Section 3: Definitions
@@ -455,7 +457,7 @@ Every theorem is numbered `Theorem {topic}.{n}`, has an entry in the data file's
    2. …
    :::
    ```
-6. **Demo:** `<TheoremDemo unit="{topic}/thm-{n}" />` shows a small tested program and its real output (Section 8.6). The demo runs the theorem's claim on the tiny instance from item 3 or a close variant, so the reader sees the numbers the proof talks about.
+6. **Implementation and examples:** `<TheoremCode unit="{topic}/thm-{n}" />` shows the theorem as code: the simplest correct function that carries out what the theorem says, with no explanation of language details, as a reader would write `int gcd(int a, int b) { return b == 0 ? a : gcd(b, a % b); }` for Euclid's theorem. Under it, 2–3 examples (input and result, one line each; at least one with ties or another edge case) show the numbers the proof talks about. After the examples, 1–3 sentences connect them to the proof's steps ("the first example is step 2 of the proof"). Section 8.6 defines the unit.
 7. **Complexity** (for algorithm theorems) with the reason, in one or two lines.
 
 Rules for proofs a beginner must be able to follow:
@@ -487,10 +489,9 @@ Rules for examples:
 
 ### 6.6 Section 6: Templates
 For each template:
-- A level-3 heading, then `<Code>` with the imported tested file.
+- A level-3 heading, then `<CodeSnippet unit="{topic}/{unit}" />`: only the gist function, not a whole program (no includes, no `main`, no input reading).
 - **How it works:** a walk-through referring to variable names.
-- **C++ details explained:** every macro, lambda, reference parameter, `auto`, structured binding, STL call, or other non-obvious construct, in plain words. If none: "None beyond earlier topics."
-- **Tested:** e.g., "Stress-tested against brute force on 5000 random inputs (n ≤ 8)."
+- There are no "C++ details explained" or "Tested" paragraphs. The reader trusts that shown code passed its tests; the stress test still runs (Section 8.5), it is just not described in the lesson. A language detail that matters for correctness (an overflow, a tie rule) goes into **How it works** as one sentence.
 - **Alternative formulation** (when one exists): a correct variant with its proof (see Section 8.5).
 
 ### 6.7 Section 7: Bug catalogue
@@ -502,10 +503,10 @@ For each template:
 2. `#### Step 2: Question form → candidate tools` (at least two candidates from allowed topics)
 3. `#### Step 3: Property check → decision` (why each rejected candidate fails)
 4. `#### Step 4: Proof for this problem`
-5. `#### Step 5: Code` (a tested code unit in `code/{topic}/example-{n}/`, shown with `<Code>`)
+5. `#### Step 5: Code` (a tested code unit in `code/{topic}/example-{n}/`, shown with `<CodeSnippet>`: the gist function only)
 6. `#### Step 6: Alternative approach` (another allowed solution, or one sentence on why there's no natural one)
 
-Worked-example problems are recorded with role `worked_example`. Since their code is shown in full, these are the only problems with code; test them on the samples from the problem page, written by hand into `tests/`, plus a stress test when a brute force is feasible.
+Worked-example problems are recorded with role `worked_example`. These are the only problems with code; test them on the samples from the problem page, written by hand into `tests/`, plus a stress test when a brute force is feasible.
 
 ### 6.9 Section 9: Problem ladder
 12–20 problems with role `ladder`, grouped by card (≥ 3 per card), ordered by rung. Difficulty bands within a ladder:
@@ -538,7 +539,7 @@ Rendered from `decision_map`. Add entries to every weak-signal group this topic 
 - Expand every abbreviation at its first occurrence on each page, as "breadth-first search (BFS)" or "BFS (breadth-first search)". Avoid unexpanded abbreviations in headings.
 - Never write "obviously", "clearly", "trivially", "it's easy to see", or "simply" in place of an argument.
 - Every correctness claim is proved here or cited to a numbered theorem in an earlier lesson. Every complexity claim includes its reason. Counterexamples use actual numbers.
-- Every mechanism described in prose also appears in code in the same lesson. Every theorem has a demo (Section 6.4, 8.6) and every card has examples (Section 6.5).
+- Every mechanism described in prose also appears in code in the same lesson. Every theorem has an implementation with examples (Section 6.4, 8.6) and every card has examples (Section 6.5).
 - Introduce a symbol, a technical word, or a C++ construct before using it. If a sentence needs a term from a later part of the page, move the definition up or rewrite the sentence.
 - Cross-references to other topics appear only as links to **earlier** lessons (or inside "What this topic does not cover"). Never show an internal id such as a card slug or a file name to the reader; show the card's or lesson's title.
 - Copyright: no copied statements or editorials; summaries are one line in your own words; never quote more than a few words from any source.
@@ -564,8 +565,8 @@ Rendered from `decision_map`. Add entries to every weak-signal group this topic 
 
 ### 8.2 Code units
 A code unit is a folder in `code/{topic}/` containing:
-- `solution.cpp`: complete program, standard input to standard output.
-- `tests/k.in` and `tests/k.out`: at least 3 pairs for template and worked-example units, including edge cases (smallest n, all equal values, maximum values for overflow). Theorem demo units and card example units (Section 8.6) need at least 1 pair. Expected outputs come from `brute.cpp` or careful hand calculation, never from `solution.cpp` alone.
+- `solution.cpp`: complete program, standard input to standard output. The gist function that the lesson shows sits between the lines `// snippet:begin` and `// snippet:end` (Section 8.6); everything else (includes, `main`, input and output) is not shown.
+- `tests/k.in` and `tests/k.out`: at least 3 pairs for template and worked-example units, including edge cases (smallest n, all equal values, maximum values for overflow). Theorem code units and card example units (Section 8.6) need at least 1 pair. Expected outputs come from `brute.cpp` or careful hand calculation, never from `solution.cpp` alone.
 - For templates, also `brute.cpp` (slow, obviously correct) and `gen.cpp` (random small inputs, seed from `argv[1]`).
 
 Generator skeleton (the `argc` check is required, or `-Werror` rejects the unused parameter):
@@ -646,24 +647,25 @@ Add `**/.build/` to `.gitignore`. If a problem allows several correct outputs, w
 - Inputs small enough for brute force (typically n ≤ 8–10, values ≤ 10–20), with forced edge cases (n = 1, all equal values, values at the condition's boundary).
 - **If a deliberately introduced bug passes the stress test, investigate before discarding it.** Either the generator is too weak (strengthen it and rerun) or the variant is actually correct, in which case it becomes an "Alternative formulation" with a proof. (Real example found while testing this plan: in the longest-window-with-sum-at-most-K template, replacing the inner `while` with `if` still returns the correct maximum length, because the window then never shrinks below the best length found so far. That is the known "non-shrinking window" variant.)
 
-### 8.6 Theorem demos and card example units
+### 8.6 Theorem code units, snippets and card example units
 
 Both kinds are ordinary code units (a folder with `solution.cpp` and `tests/`), so `test_units.sh` already compiles and checks them. They differ only in what they are for.
 
-**Theorem demo** (`code/{topic}/thm-{n}/`), one per numbered theorem:
-- `solution.cpp` is **5–30 lines** in total and written for reading, not speed. It runs the theorem's claim on a fixed tiny input, and prints the quantities the theorem is about, one labelled line per step (for example, for window validity: the window, its sum, and "valid" or "invalid" after each removal).
-- Where the theorem says "for every", the program checks the claim over all small inputs it can enumerate (e.g., every window of the tiny array) and prints one summary line ("all 6 windows: closed under shrinking: yes").
-- `tests/1.in` is the tiny input (may be empty) and `tests/1.out` the expected output, **calculated by hand from the proof first** and then compared with the program's output. If they disagree, one of them is wrong: investigate, never copy the program's output into the test.
-- It uses only constructs explained in earlier lessons; any new construct is explained under the demo.
-- Shown in the lesson by `<TheoremDemo unit="{topic}/thm-{n}" />`: the component loads `solution.cpp` and `tests/1.out` with `import.meta.glob('/code/**/{solution.cpp,tests/1.out}', { query: '?raw', eager: true })` and displays the code, then a block titled "Output". The output shown is therefore always the tested expected output.
-- After the output, 1–3 sentences connect the printed lines to the proof's steps ("line 3 is step 2 of the proof").
+**Shown code (snippets).** A lesson never shows a whole program. In every code unit that a lesson shows (theorem code, templates, worked examples) the gist function is wrapped in two marker lines, `// snippet:begin` and `// snippet:end`, and the lesson shows only the lines between them with `<CodeSnippet unit="{topic}/{unit}" />` (it reads the unit's `solution.cpp` with `import.meta.glob(..., { query: '?raw' })` and cuts at the markers; the build fails if the markers are missing). The gist is one function (or two short ones) with a one-line comment saying what it returns, such as a `gcd`; no includes, `main` or input reading. Everything outside the markers is still compiled and tested by `test_units.sh`.
+
+**Theorem code unit** (`code/{topic}/thm-{n}/`), one per numbered theorem:
+- `solution.cpp` has the marked snippet: **at most 30 lines**, the simplest correct implementation of what the theorem says, written for reading (clear names, a short comment at most on each non-obvious line, no tricks). It is the same style for every theorem: a reader should understand it without a paragraph of explanation.
+- Outside the snippet, `main` prints the examples and then checks the claim against a brute force on every small input it can enumerate (e.g. every array of length 5 over {1, 2, 3}); on a mismatch it returns a non-zero exit code, so `test_units.sh` fails. The check output is not printed and not shown.
+- `tests/1.out` holds the **examples**: 2–3 lines or short groups of lines (input, then result), **calculated by hand from the proof first** and then compared with the program's output. If they disagree, one of them is wrong: investigate, never copy the program's output into the test. `tests/1.in` is empty (may be missing).
+- Shown in the lesson by `<TheoremCode unit="{topic}/thm-{n}" />`: the component displays the snippet under the label "Implementation", then the contents of `tests/1.out` under the label "Examples". The examples shown are therefore always the tested expected output.
+- After the examples, 1–3 sentences connect them to the proof's steps ("the first example is steps 2 and 3 of the proof").
 
 **Card example unit** (`code/{topic}/card-{card-id}/`), one per card that has `inline` examples:
 - `solution.cpp` computes, for every inline example of that card, the correct answer by brute force and the answer of the card's method (and, for negatives, shows that they differ), and prints them in the order the examples appear in the data file, e.g. `N1 brute=3 method=2`.
 - `tests/1.out` contains those lines. The numbers in the card's `inline.answer` and `method_gives` fields must equal them; build-time validation (Section 12, item 12) parses the `tests/1.out` lines and compares.
-- It is allowed to be longer than a theorem demo (no display limit) because it is not shown, only run.
+- It is allowed to be longer than a theorem code unit (no display limit) because it is not shown, only run.
 
-**Which program a learner sees:** the Theorem demo only. Card example units are checks behind the scenes. In the lesson, an inline example shows the input, the answers, and the `why` text.
+**What a learner sees:** snippets and examples only. Card example units are checks behind the scenes. In the lesson, an inline example shows the input, the answers, and the `why` text.
 
 ---
 
@@ -768,10 +770,10 @@ Starlight defaults with small changes: readable prose width, KaTeX styled for bo
 
 ### 10.9 Lesson content components
 
-- `TopicHeader`: title, phase, estimated hours, and "Builds on" from the topic's `uses` list (links with their one-line `what`).
-- `WhatYouNeed`: the same `uses` list, rendered as a list for Section 2 of the lesson. Both components import one helper, `getUses(topicId)`, so they cannot diverge.
+- `TopicHeader`: title, phase, estimated hours, the link to the topic's problem list and the "current topic" control. It shows no prerequisite line; prerequisites appear once, in "What you need".
+- `WhatYouNeed`: the topic's `uses` list, rendered as a list for Section 2 of the lesson through the helper `getUses(topicId)`.
 - `Cards`: renders each card in the order given in Section 6.5, with the labels given there. Examples are shown as small "Works" (positive) and "Does not work" (negative) panels, each with the input, answers, and `why`. The `in_action` block is shown as a short numbered procedure. Card references from `correct_tool` and `lookalikes` are rendered through `cardLabel({topic, card})`, which returns the card's name and a link to its lesson. If the reference cannot be resolved, the build fails (Section 12).
-- `TheoremDemo`: Section 8.6.
+- `TheoremCode`: the implementation snippet and the examples of one theorem (Section 8.6). `CodeSnippet`: the snippet of any shown code unit (Section 8.6).
 - `LookalikePairs`: Section 6.11, using `cardLabel` for both tools.
 - Add a "Copy" button to every `<Code>` block (HTTPS makes the Clipboard API available, Section 14.2; use the same selectable-text fallback).
 
@@ -821,7 +823,7 @@ Implement in `src/content.config.ts` (Zod schemas) and `src/lib/data.ts` (cross-
 8. Every lesson MDX has the required headings in order (parse headings from the raw file).
 9. **References resolve and respect order.** Every `{topic, card}` reference (in `answer`, `a_tool`, `b_tool`, `correct_tool`, `lookalikes[].tool`, `decision_map`) points to an existing card whose topic has `order` ≤ the current topic's `order`. Free-text fields `needs` and `flipping_difference` may not contain a topic id of a later topic or any later topic's keyword (Section 4). Rendered pages must not contain any card id (search built HTML for the ids of cards in the same file).
 10. **`uses` is complete.** `uses` contains every id in this topic's `requires`; every topic id that appears in a link to another lesson, in a "Theorem x.y.z" citation, in `techniques` of this topic's problems, or in a card reference is in `uses` or is the current topic; every id in `uses` has `order` less than the current topic's. `WhatYouNeed` and `TopicHeader` both render from `uses` only; no other hand-written prerequisite list is allowed (fail if the lesson's Section 2 contains a bullet list under "What you need").
-11. **Theorems have demos and plain words.** Every `Theorem {topic}.{n}` heading in the lesson has a `theorems` entry, a `:::tip[In plain words]` block, a `:::note[This proof needs]` block, and a `<TheoremDemo>` whose `unit` is the entry's `demo`; that code unit exists, its `solution.cpp` has at most 30 lines, and it has `tests/1.out`. Each proof has at most 8 numbered steps (count the numbered list items between the plain-words block and the preconditions box).
+11. **Theorems have code, examples and plain words.** Every `Theorem {topic}.{n}` heading in the lesson has a `theorems` entry, a `:::tip[In plain words]` block, a `:::note[This proof needs]` block, and a `<TheoremCode>` whose `unit` is the entry's `code`; that code unit exists, its `solution.cpp` has the `// snippet:begin` / `// snippet:end` markers around at most 30 lines, and it has a non-empty `tests/1.out` (the examples). No lesson contains a paragraph starting with "**C++ details explained" or "**Tested". Each proof has at most 8 numbered steps (count the numbered list items between the plain-words block and the preconditions box).
 12. **Inline example numbers match their code unit.** For each card with `inline` examples, the unit `code/{topic}/card-{card-id}/tests/1.out` has lines `P1 …`, `P2 …`, `N1 …`, `N2 …` (P = positive in data-file order, N = negative); the `answer` field of each example contains the `brute` value, and each negative's `method_gives` equals the printed `method` value and differs from `brute`.
 13. **Examples do not spoil.** Positive examples that name a problem use a problem whose role is `worked_example` in the same topic or any role in an earlier topic; negative examples that name a problem use any problem from this or an earlier topic with role other than `drill`, `checkpoint`, `review`, `exam`, or `ladder` (of this topic).
 
@@ -834,7 +836,7 @@ The agent also runs, by hand before each merge, the keyword search from Section 
 Run these steps in order. After each: update `PROGRESS.md` and commit.
 
 1. **Scope.** Create the branch, empty lesson from the template, empty data file, `notes/{topic}.md`, code folder. Record in `PROGRESS.md`: allowed topics, new tools, forbidden keywords, glossary terms already defined.
-2. **Theory.** Lesson Sections 1–4; glossary entries. Write each theorem in the Section 6.4 layout: plain words, tiny instance, numbered proof steps, preconditions box. Fill `uses` and `theorems` in the data file. Then write each theorem demo unit (Section 8.6): compute the expected output by hand from the proof first, then run it.
+2. **Theory.** Lesson Sections 1–4; glossary entries. Write each theorem in the Section 6.4 layout: plain words, tiny instance, numbered proof steps, preconditions box. Fill `uses` and `theorems` in the data file. Then write each theorem code unit (Section 8.6): compute the examples by hand from the proof first, then run it.
 3. **Recognition Cards.** Cards in the data file; decisive property = preconditions in problem language. Write constraint shapes with arithmetic. Write each `in_action` on an invented problem and check the numbers. Write the inline positive and negative examples, then the card example unit (Section 8.6) that computes their numbers; copy the numbers into the data file from that output. Weak signals, kill signals, and non-inline examples are provisional until Step 6.
 4. **Templates.** Code units with brute and generator; `stress.sh` passes 5000; lesson Section 6.
 5. **Bug catalogue.** Break copies of templates, find failing inputs with `stress.sh`, write Section 7. Delete scratch copies.
@@ -891,7 +893,7 @@ If Saurabh wants deploy-on-merge: a separate GitHub Actions job on push to `main
 |---|---|---|
 | **M0** | Astro + Starlight project, KaTeX, React, schemas and validation, storage module, all components (Section 10) working on a small placeholder topic, all custom pages, method page, curriculum data, `stress.sh` and `test_units.sh`, CI, self-hosted deployment files (Section 14.2) with one successful test deploy to Saurabh's server once he fills in `.env.deploy`, `PROGRESS.md`, `FEEDBACK.md`, `README.md`. Delete the placeholder topic at the end. | None |
 | **B0–B7** | Problem bank, per `PROBLEM_BANK_PLAN.md` Section 8 (B0–B1 before M1; B2–B7 before M2 unless Saurabh chooses otherwise at the B1 gate) | See that file |
-| **R1** | **Quality retrofit** of every topic merged before Revision 2 (this runs first if topics are already live; otherwise skip). Order: 1.6 as the reference topic, then the rest in curriculum order. For each topic, on a `retrofit/{id}` branch: (a) add `uses` and `theorems`, switch to `WhatYouNeed`, fix header/list mismatches; (b) rewrite proofs into the Section 6.4 layout and add theorem demo units; (c) rewrite every card to the Section 5 and 6.5 schema with `in_action` and examples, with card example units; (d) fix look-alike pairs and drill references to structured, order-respecting references and card names. No problem is added, removed, or moved in this milestone (the bank is out of scope). `npm run build` and `test_units.sh` must pass. | ⏸ After 1.6 is retrofitted: set "R1 reference review" to `waiting`; continue with the remaining topics only when Saurabh sets it to `approved`. |
+| **R1** | **Quality retrofit** of every topic merged before Revision 2 (this runs first if topics are already live; otherwise skip). Order: 1.6 as the reference topic, then the rest in curriculum order. For each topic, on a `retrofit/{id}` branch: (a) add `uses` and `theorems`, switch to `WhatYouNeed`, fix header/list mismatches; (b) rewrite proofs into the Section 6.4 layout and add theorem code units (implementation and examples); (c) rewrite every card to the Section 5 and 6.5 schema with `in_action` and examples, with card example units; (d) fix look-alike pairs and drill references to structured, order-respecting references and card names. No problem is added, removed, or moved in this milestone (the bank is out of scope). `npm run build` and `test_units.sh` must pass. | ⏸ After 1.6 is retrofitted: set "R1 reference review" to `waiting`; continue with the remaining topics only when Saurabh sets it to `approved`. |
 | **M1** | **Topic 1.3 as the exemplar**, all 10 steps, plus its review sets. Missing 1.1 and 1.2 lessons appear as "coming soon" links. | ⏸ Stop. Set "M1 exemplar review" to `waiting` in `PROGRESS.md`; continue only when Saurabh sets it to `approved` (apply any requested changes from `FEEDBACK.md` first). |
 | **M2** | Phase 0 (0.1–0.6), phase intro, Phase 0 exam | ⏸ |
 | **M3** | 1.1, 1.2; then revise 1.3 to match what 1.1/1.2 taught (links, terms, theorem citations); then 1.4–1.7; Phase 1 exam | ⏸ |
@@ -963,10 +965,10 @@ Handle every `open` item before new topic work, on a `feedback/…` branch; set 
 - [ ] `npm run build` and `bash scripts/test_units.sh code` pass.
 - [ ] All 14 lesson sections complete and rendering; review sets render.
 - [ ] Every proof has a preconditions box; every card's decisive property restates it.
-- [ ] Every theorem follows the Section 6.4 layout: plain-words block, tiny instance, ≤ 8 numbered steps, preconditions box, `<TheoremDemo>` with hand-computed expected output.
+- [ ] Every theorem follows the Section 6.4 layout: plain-words block, tiny instance, ≤ 8 numbered steps, preconditions box, `<TheoremCode>` with a short implementation and hand-computed examples.
 - [ ] Every card has constraint shapes with arithmetic, weak signals as form + shape, an `in_action` block, ≥ 2 positive and ≥ 2 negative examples (inline ones backed by a card example unit), and look-alikes shown by card name.
 - [ ] No look-alike, drill answer, example, or decision-map reference points to a later topic; no internal id (card slug, file name) is visible in the rendered page.
-- [ ] The page header "Builds on" and the "What you need" list are identical (both from `uses`) and cover every earlier topic the lesson links or cites.
+- [ ] The "What you need" list (from `uses`) covers every earlier topic the lesson links or cites. The page header has no prerequisite line.
 - [ ] Every problem has a solution note with techniques; every link opened and title confirmed with `checked_on`.
 - [ ] Keyword search shows no later-topic terms outside "What this topic does not cover".
 - [ ] Every abbreviation expanded on first use on the page; every term defined before use; every C++ construct explained.
@@ -994,7 +996,7 @@ Handle every `open` item before new topic work, on a `feedback/…` branch; set 
 | Page cannot be opened | Drop the problem; note it under "Blocked". |
 | A card has no honest negative example from this or earlier topics | Use an inline counterexample with real numbers and name an earlier-topic tool; if the only correct tool is taught later, write the negative as an inline instance whose `correct_tool` is `brute force (topic 0.5)`, or drop the card from the topic and note it under "Blocked". Never name a later topic. |
 | A look-alike's other side is taught later | Remove it from this lesson. The later topic's lesson adds the pair (it may reference this card). Add a note in `PROGRESS.md` under the later topic's scope notes. |
-| Theorem demo output disagrees with the hand-computed expected output | Treat it as a possible error in the theorem, the proof, or the program. Resolve it before anything else; never overwrite `tests/1.out` with the program's output. |
-| A proof cannot fit in 8 steps | Split it into lemmas, each with its own plain words and preconditions box, and give each lemma a demo or a shared demo covering them. |
+| Theorem example output disagrees with the hand-computed expected output | Treat it as a possible error in the theorem, the proof, or the program. Resolve it before anything else; never overwrite `tests/1.out` with the program's output. |
+| A proof cannot fit in 8 steps | Split it into lemmas, each with its own plain words and preconditions box, and give each lemma an implementation or let one implementation cover them. |
 | Unsure a proof is right | Write a small exhaustive check of the theorem's claim on small inputs; if still unsure, note it in the merge message and "Questions for Saurabh". |
 | A teaching decision not covered here | Choose what best serves Section 1.2's priorities, note it in the merge message, continue. |

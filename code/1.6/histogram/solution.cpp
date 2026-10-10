@@ -7,14 +7,11 @@ Output: the largest area.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int n;
-    cin >> n;
-    vector<long long> h(n);
-    for (auto& x : h) cin >> x;
-    vector<int> L(n), R(n), st;  // nearest strictly lower bar on each side
+// snippet:begin
+// Theorem 1.6.2, part 3. Largest rectangle under bars of heights h.
+long long largestRectangle(const vector<long long>& h) {
+    int n = h.size();
+    vector<int> L(n), R(n), st;  // nearest strictly lower bar on the left (or -1) and on the right (or n)
     for (int i = 0; i < n; i++) {
         while (!st.empty() && h[st.back()] >= h[i]) st.pop_back();
         L[i] = st.empty() ? -1 : st.back();
@@ -26,7 +23,18 @@ int main() {
         R[i] = st.empty() ? n : st.back();
         st.push_back(i);
     }
-    long long best = 0;  // up to 2*10^5 * 10^9
-    for (int i = 0; i < n; i++) best = max(best, h[i] * (R[i] - L[i] - 1));  // Theorem 1.6.2, part 3
-    cout << best << "\n";
+    long long best = 0;
+    for (int i = 0; i < n; i++) best = max(best, h[i] * (R[i] - L[i] - 1));
+    return best;
+}
+// snippet:end
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int n;
+    cin >> n;
+    vector<long long> h(n);
+    for (auto& x : h) cin >> x;
+    cout << largestRectangle(h) << "\n";
 }

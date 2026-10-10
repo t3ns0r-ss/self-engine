@@ -7,6 +7,20 @@ Output: c_1 .. c_N.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// c[i] = number of buildings j > i that no building between i and j hides (permutation heights).
+vector<int> visibleCounts(const vector<int>& h) {
+    int n = h.size();
+    vector<int> c(n), st;  // st: buildings visible from just left of i + 1, nearest on top
+    for (int i = n - 1; i >= 0; i--) {
+        c[i] = st.size();
+        while (!st.empty() && h[st.back()] < h[i]) st.pop_back();  // hidden behind building i
+        st.push_back(i);
+    }
+    return c;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -14,11 +28,6 @@ int main() {
     cin >> n;
     vector<int> h(n);
     for (auto& x : h) cin >> x;
-    vector<int> c(n), st;  // st: buildings visible from just left of position i + 1, nearest on top
-    for (int i = n - 1; i >= 0; i--) {
-        c[i] = st.size();
-        while (!st.empty() && h[st.back()] < h[i]) st.pop_back();  // hidden behind building i
-        st.push_back(i);
-    }
+    vector<int> c = visibleCounts(h);
     for (int i = 0; i < n; i++) cout << c[i] << (i + 1 < n ? ' ' : '\n');
 }

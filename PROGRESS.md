@@ -4,7 +4,7 @@
 - Milestone: R1 (quality retrofit, PLAN.md Revision 2) and the bank fill (FILL_SHORT_TOPICS_PLAN.md) for the completed topics 0.1–3.8
 - Topic: R1 reference topic 1.6 done; bank fill for 0.1–3.8 done (see ## Bank fill)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: R1 infrastructure and the 1.6 reference retrofit
+- Last completed step: R1 infrastructure and the 1.6 reference retrofit; Revision 2.1 applied to 1.6 (theorem implementation snippets with examples, function-only code, no C++ details or Tested paragraphs, no Builds on)
 - Next action: ⏸ R1 reference review by Saurabh (topic 1.6); the other 24 topics are retrofitted only after approval. Pending lessons (4.1 onward) are written in the Revision 2 format.
 
 ## Gates

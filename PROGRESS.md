@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.3 Shortest paths (pipeline steps 1–8 done); 4.1 and 4.2 are done
+- Topic: 4.3 Shortest paths (pipeline steps 1–9 done); 4.1 and 4.2 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.3 step 8 (12-problem drill, 2 look-alike pairs)
-- Next action: step 9 (self-test 5-8, checkpoint 3, three review sets, decision map, remove draft flag)
+- Last completed step: topic 4.3 step 9 (self-test, checkpoint, review sets, decision map, draft removed); step 10 browser tests running
+- Next action: confirm browser tests for 4.3, then topic 4.4
 
 ## Gates
 | Gate | Status | Date |

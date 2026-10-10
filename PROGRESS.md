@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.1 Graph traversal (pipeline steps 1–7 done)
+- Topic: 4.1 Graph traversal (pipeline steps 1–8 done)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.1 step 7 (ladder: 17 rungs, 4+3+4+3+3 per card; CF 893C, 1833E, 1037D, 616C, 1272E are † problems whose statements could not be opened)
-- Next action: step 8 (identification drill, look-alike pairs from the reserved bank)
+- Last completed step: topic 4.1 step 8 (drill: 11 items, 3 answered by earlier cards; 2 look-alike pairs from the reserved bank)
+- Next action: step 9 (self-test, checkpoint, three review sets, decision map; remove the draft flag)
 
 ## Gates
 | Gate | Status | Date |

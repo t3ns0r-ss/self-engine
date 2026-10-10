@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.5 Trees (pipeline step 1 done); 4.1–4.4 are done except 4.4's browser-test confirmation
+- Topic: 4.5 Trees (pipeline steps 1–2 done); 4.1–4.4 are done except 4.4's browser-test confirmation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.5 step 1 (scope; sections 1–3 intro text). Topic 4.4 steps 1–9 done; its browser tests are running (step 10)
-- Next action: confirm 4.4 e2e result in \/tmp\/e2e44.log; then topic 4.5 step 2 (definitions, theorems 4.5.1–4.5.6, code units)
+- Last completed step: topic 4.5 step 2 (definitions, theorems 4.5.1–4.5.6 with code units, 8 glossary terms); build not yet re-run (4.4 e2e was running)
+- Next action: build check, then topic 4.5 step 3 (cards: depths-parents, subtree-values, subtree-ranges, longest-path, farthest-each; card example units)
 
 ## Gates
 | Gate | Status | Date |

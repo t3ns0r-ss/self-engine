@@ -43,8 +43,192 @@ The same walk answers more questions. If the walk is a depth-first one that writ
 
 ## 3. Definitions
 
+- A **tree** is a connected graph with no cycle. By [Theorem 4.2.2](../4-2-graph-structure/) a connected graph with $n$ vertices is a tree exactly when it has $n - 1$ edges, and in a tree there is exactly one path between any two vertices (Theorem 4.5.1). A tree with weights on the edges has weights as in [topic 4.3](../4-3-shortest-paths/); in this topic they are never negative.
+- To **root** a tree means to choose one vertex, the **root**. The **parent** of any other vertex is its neighbour on the path to the root (the same word as in [topic 4.2](../4-2-graph-structure/)), and the other neighbours of a vertex are its **children**. A vertex without children is a **leaf**. The **depth** of a vertex is the number of edges on its path to the root.
+- An **ancestor** of $v$ is a vertex on the path from $v$ to the root; in this topic $v$ counts as an ancestor of itself. The **subtree** of $v$ is $v$ and all vertices that have $v$ as an ancestor. The subtree of the root is the whole tree.
+- The **distance** between two vertices is the length of the path between them (the sum of its weights; the number of edges when all weights are 1). The **diameter** is the largest distance between two vertices, and the **eccentricity** of a vertex is the largest distance from it to any vertex.
+- An **Euler tour** here means the order in which a depth-first walk first reaches the vertices. The position of $v$ in this order is $\text{tin}[v]$ (starting at 0), and $\text{tout}[v]$ is the position of the last vertex of the subtree of $v$.
+- A tree with $n = 2 \cdot 10^5$ vertices can be a path of that many vertices, so a recursive walk can go $2 \cdot 10^5$ calls deep; the code here uses a loop with an explicit stack. The code units number the vertices from 1 and use `long long` for sums and distances.
+
 
 ## 4. Theory and proofs
+
+### 4.1 Rooting a tree
+
+**Theorem 4.5.1 (rooting a tree).** Let $T$ be a tree with $n$ vertices and $r$ a vertex. Set $\text{parent}[r] = 0$, $\text{depth}[r] = 0$ and put $r$ on a stack. Repeat: take $u$ from the stack, append it to the list `order`, and for every neighbour $v$ of $u$ other than $\text{parent}[u]$ set $\text{parent}[v] = u$, $\text{depth}[v] = \text{depth}[u] + 1$ and put $v$ on the stack. Then:
+
+(a) between any two vertices of $T$ there is exactly one path;
+
+(b) every vertex is put on the stack exactly once, so `order` has all $n$ vertices; $\text{parent}[v]$ is the neighbour of $v$ on the path from $v$ to $r$, and $\text{depth}[v]$ is the number of edges of this path;
+
+(c) in `order` every vertex comes after its parent;
+
+(d) the time is $O(n)$, and no marks are needed: the only neighbour of $u$ that has been reached before is its parent.
+
+:::tip[In plain words]
+In a tree there is only one way to get anywhere. So a walk from the root never meets a vertex twice: the only already-visited neighbour of a vertex is the one it came from. The walk gives each vertex its parent and its depth, and lists every vertex after its parent.
+:::
+
+**A tiny instance.** The tree with the edges $1\!-\!2$, $1\!-\!3$, $3\!-\!4$, $3\!-\!5$, rooted at 1. The stack starts as $[1]$. Vertex 1 gives its children 2 and 3. The last one pushed, 3, is taken next and gives 4 and 5; then 5, 4 and 2 follow. The order is $1, 3, 5, 4, 2$, the parents of $1, \dots, 5$ are $0, 1, 1, 3, 3$ and the depths are $0, 1, 1, 2, 2$.
+
+**Proof.**
+1. *Claim (a).* The graph is connected, so a path exists. Suppose two different paths from $u$ to $w$ existed. They start at $u$ and, at some vertex $x$, leave through different edges; later they meet again at a first common vertex $y$. The two pieces between $x$ and $y$ form a cycle. A tree has none, so the path is unique.
+2. *The walk reaches every vertex, and no marks are needed.* Compare with the walk of Theorem 4.1.1 that marks vertices when it puts them on the container. That walk reaches all vertices, since $T$ is connected, and by Theorem 4.2.2(a) it uses $n - 1$ tree edges. The tree has only $n - 1$ edges, so every edge is a tree edge: there is no non-tree edge, i.e., no edge from a vertex to an already reached vertex other than its parent (Theorem 4.2.2(c)).
+3. So when $u$ is taken from the stack, every neighbour of $u$ other than $\text{parent}[u]$ has not been reached yet, and the walk of this theorem (which tests only against the parent) puts exactly the same vertices on the stack as the walk with marks. Each vertex is put on the stack exactly once, from the vertex it is a child of.
+4. *Claims (b) and (c).* The vertex $v$ is first reached from $u = \text{parent}[v]$, and by induction on the order of reaching, the chain $v, \text{parent}[v], \text{parent}[\text{parent}[v]], \dots$ is a path to $r$ with $\text{depth}[v]$ edges. By (a) it is the only path. A vertex is put on the stack only while its parent is taken, so it comes later in `order` than its parent.
+5. *Claim (d).* Each vertex is put on the stack and taken once, and each edge is looked at twice (from both ends). $\square$
+
+:::note[This proof needs]
+1. The graph is a tree. With a cycle, a vertex could be reached twice and the walk would need marks (as in topic 4.1); for a tree with a million vertices the marks can be dropped.
+2. The vertices are numbered from 1 and `parent[root] = 0` is not a vertex.
+3. An explicit stack in place of recursion: a path of $10^6$ vertices would make a recursive walk go $10^6$ calls deep.
+:::
+
+<TheoremCode unit="4.5/thm-1" />
+
+The first example is the tiny instance. The second roots the same tree at vertex 4: the depths are $2, 3, 1, 0, 2$, so the root decides the depths but not the tree. The third has a single vertex. The check relaxes all edges again and again (no walk) on twenty thousand random trees and compares the depths, and checks that every parent comes before its child.
+
+### 4.2 Subtree values
+
+**Theorem 4.5.2 (subtree sums).** Let $T$ be rooted with the `order` and `parent` of Theorem 4.5.1, and let every vertex have a number $a[v]$. Set $\text{sum}[v] = a[v]$ and then go through `order` *backwards*, from the last vertex to the second: add $\text{sum}[v]$ to $\text{sum}[\text{parent}[v]]$. Then at the end $\text{sum}[v]$ is the sum of $a$ over the subtree of $v$, for every $v$. With $a[v] = 1$ for every $v$ this is the size of the subtree, and the time is $O(n)$.
+
+:::tip[In plain words]
+Go through the vertices from the last visited to the first. When a vertex is reached, all its descendants have already been added into it, so its total is final; hand the total to the parent. No recursion is needed.
+:::
+
+**A tiny instance.** The tree of the previous theorem with the order $1, 3, 5, 4, 2$ and $a = 10, 20, 30, 40, 50$. Backwards: vertex 2 adds 20 to vertex 1 (sum 30). Vertex 4 adds 40 to vertex 3 (sum 70). Vertex 5 adds 50 to vertex 3 (sum 120). Vertex 3 adds 120 to vertex 1 (sum 150). The subtree sums of $1, \dots, 5$ are $150, 20, 120, 40, 50$.
+
+**Proof.**
+1. Let $S(v)$ be the subtree of $v$. For $v \ne r$, the children of $v$ are the vertices whose parent is $v$, and $S(v) = \{v\} \cup \bigcup_{c \text{ child of } v} S(c)$, a disjoint union, because the path from the root to a vertex of $S(c)$ goes through $c$ and then $v$ (Theorem 4.5.1(a)).
+2. Every child of $v$ comes after $v$ in `order` (Theorem 4.5.1(c)). So in the backwards pass, each child $c$ of $v$ is handled before $v$ is.
+3. By induction on the backwards pass: when $v$ is handled, $\text{sum}[v]$ equals $a[v]$ plus the sums of all its children (each child added its final value when it was handled), and by the induction hypothesis these are the sums over $S(c)$; so $\text{sum}[v] = \sum_{u \in S(v)} a[u]$ by step 1. Handing this value to the parent keeps the hypothesis for the parent.
+4. Each vertex is handled once with one addition: $O(n)$. $\square$
+
+:::note[This proof needs]
+1. Parents come before children in `order` (Theorem 4.5.1(c)), so the backwards pass finishes the children first. Any order with this property works; a breadth-first order also does.
+2. The combination of the children's values is a sum (or a count, a maximum, a minimum): the value of $v$ may depend only on $a[v]$ and the values of its children, not on a table that depends on which child.
+3. Sums can be large: use `long long`.
+:::
+
+<TheoremCode unit="4.5/thm-2" />
+
+The first two examples are the tiny instance (sizes $5, 1, 3, 1, 1$ with $a = 1$ everywhere, and the sums $150, 20, 120, 40, 50$). The third is a single vertex. The check compares the sums with a count made separately for every vertex by following the parents of all the others.
+
+### 4.3 Subtrees as ranges
+
+**Theorem 4.5.3 (Euler tour).** Let `order` be the list of Theorem 4.5.1 and $\text{tin}[v]$ the position of $v$ in it (from 0). Let $\text{size}[v]$ be the size of the subtree of $v$ and $\text{tout}[v] = \text{tin}[v] + \text{size}[v] - 1$. Then:
+
+(a) the subtree of $v$ consists exactly of the vertices in the positions $\text{tin}[v], \dots, \text{tout}[v]$ of `order`;
+
+(b) $u$ is an ancestor of $v$ (or $u = v$) exactly when $\text{tin}[u] \le \text{tin}[v] \le \text{tout}[u]$;
+
+(c) $\text{tin}$, $\text{tout}$ and the sizes are found in $O(n)$ time.
+
+:::tip[In plain words]
+The walk goes deep first: once it enters a vertex, it visits the whole subtree before it takes anything that was waiting. So each subtree is a block of consecutive positions, and "is $u$ above $v$?" is a comparison of numbers.
+:::
+
+**A tiny instance.** The tree of Theorem 4.5.1 with the order $1, 3, 5, 4, 2$ gives $\text{tin} = 0, 4, 1, 3, 2$ for $1, \dots, 5$ and the sizes $5, 1, 3, 1, 1$. The ranges are $[0, 4]$ for vertex 1, $[4, 4]$ for 2, $[1, 3]$ for 3 (the vertices 3, 5, 4), $[3, 3]$ for 4 and $[2, 2]$ for 5. Vertex 3 is an ancestor of vertex 4 because $1 \le 3 \le 3$, and not of vertex 2 because $4 > 3$.
+
+**Proof.**
+1. When $v$ is taken from the stack, the vertices below it on the stack are those that were waiting before; the children of $v$ are put on top of them. A vertex stays on the stack until everything above it has been taken.
+2. So after $v$ is taken, everything that is put on the stack on account of $v$'s descendants is taken before any of the vertices that were below $v$. This means that, starting at the position of $v$, the walk takes the whole subtree of $v$ without interruption, and then continues with the vertices that were below. The subtree is the block of $\text{size}[v]$ consecutive positions starting at $\text{tin}[v]$: this is (a).
+3. For (b): if $u$ is an ancestor of $v$, then $v \in S(u)$, which by (a) means $\text{tin}[u] \le \text{tin}[v] \le \text{tout}[u]$. Conversely, if $\text{tin}[v]$ is in this range, then $v$ is in the block of $S(u)$, so it is in $S(u)$, and $u$ is an ancestor of $v$.
+4. Claim (c): the sizes come from Theorem 4.5.2 and the positions from one pass over `order`. $\square$
+
+:::note[This proof needs]
+1. The walk takes the most recently pushed vertex first (a stack). With a queue (a breadth-first order) the subtrees are not blocks.
+2. Positions start at 0 in the code; a program that uses 1-based arrays shifts all ranges by one.
+3. The ranges answer questions about subtrees with the tools for ranges of an array: sums by prefix sums (topic 1.2), counts of values by sorting and binary search (topic 1.4).
+:::
+
+<TheoremCode unit="4.5/thm-3" />
+
+The first example prints the ranges of the tiny instance and two ancestor tests. The second is a single vertex. The check compares the ancestor test with climbing the parents for every pair of vertices of twenty thousand random trees.
+
+### 4.4 The diameter
+
+**Theorem 4.5.4 (diameter).** Let $T$ be a tree with non-negative edge weights. Let $x$ be any vertex, $a$ a vertex farthest from $x$, and $b$ a vertex farthest from $a$. Then $d(a, b)$ is the diameter of $T$. The time is $O(n)$: two walks.
+
+:::tip[In plain words]
+Start anywhere and go to the vertex farthest from there; it is always one end of some longest path. From it, go to the farthest vertex; that gives the longest path. Two walks are enough.
+:::
+
+**A tiny instance.** Edges $1\!-\!2$ (3), $2\!-\!3$ (4), $2\!-\!4$ (1), $4\!-\!5$ (6), $1\!-\!6$ (2). From vertex 1 the distances are $0, 3, 7, 4, 10, 2$, so the farthest vertex is $a = 5$ (distance 10). From 5 the distances are $10$ to vertex 1, $7$ to 2, $11$ to 3, $6$ to 4 and $12$ to 6, so $b = 6$, and the diameter is $12$, on the path $5, 4, 2, 1, 6$.
+
+**Proof.**
+1. Let $(u, v)$ be a diameter, with $d(u, v) = D$, and $P$ the path between them. In a tree, for two vertices $p$ and $q$, $d(p, q)$ is the length of the only path, and for any three vertices $d(p, q) \le d(p, r) + d(r, q)$ (this uses weights $\ge 0$: a detour never gets shorter).
+2. Let $m$ be the vertex of $P$ closest to $x$, and $t$ the vertex of $P$ closest to $a$. Every path from $x$ to a vertex of $P$ passes through $m$, and every path from $a$ to a vertex of $P$ passes through $t$. By symmetry we may assume that $t$ is on the $v$ side of $m$ (or $t = m$), meaning $d(m, v) = d(m, t) + d(t, v)$.
+3. Since $a$ is farthest from $x$, $d(x, a) \ge d(x, v) = d(x, m) + d(m, t) + d(t, v)$.
+4. On the other hand $d(x, a) \le d(x, m) + d(m, t) + d(t, a)$ by the triangle inequality.
+5. From steps 3 and 4: $d(t, a) \ge d(t, v)$.
+6. The path from $a$ to $u$ passes through $t$ (as $t$ is the vertex of $P$ closest to $a$), so $d(a, u) = d(a, t) + d(t, u) \ge d(t, v) + d(t, u) = D$. So $a$ is an end of a path of length $D$, and the farthest vertex $b$ from $a$ satisfies $d(a, b) \ge D$. It cannot be more than $D$, the diameter; so $d(a, b) = D$. $\square$
+
+:::note[This proof needs]
+1. Weights are not negative (step 1). With a negative edge, a detour can be shorter and the farthest vertex need not be an end of a longest path.
+2. The graph is a tree: the paths in steps 2 and 6 are the only ones (Theorem 4.5.1(a)).
+3. Both walks are walks of a tree from a given vertex, with the weights added (the walk of Theorem 4.5.1 with distances).
+:::
+
+<TheoremCode unit="4.5/thm-4" />
+
+The first example is the tiny instance (12 between 5 and 6). The second is a single vertex, with diameter 0. The third has all weights 0, where every vertex is farthest and the diameter is 0. The check compares the result with the largest entry of a table of all distances (Floyd–Warshall, topic 4.3) on twenty thousand random trees with weights 0 to 1 or 0 to 9.
+
+### 4.5 The farthest vertex from every vertex
+
+**Theorem 4.5.5 (farthest vertices).** Let $T$ be a tree with non-negative weights, and let $a$ and $b$ be the ends of a diameter found as in Theorem 4.5.4. Then for every vertex $v$, the largest distance from $v$ to any vertex is $\max(d(v, a), d(v, b))$. All these values come from two more walks, from $a$ and from $b$.
+
+:::tip[In plain words]
+Whatever vertex you stand on, the vertex farthest from you is one of the two ends of the longest path. So walk from each end once, and take the larger of the two distances at every vertex.
+:::
+
+**A tiny instance.** The star with centre 1 and leaves 2, 3, 4 at the distances 5, 2 and 3. The diameter is from leaf 2 to leaf 4: $5 + 3 = 8$. For vertex 1 the larger distance to the ends is $\max(5, 3) = 5$; for 2, $\max(0, 8) = 8$; for 3, $\max(7, 5) = 7$; for 4, $\max(8, 0) = 8$.
+
+**Proof.**
+1. Let $a$, $b$ be the ends of a diameter with $D = d(a, b)$ and $P$ the path between them. Let $v$ be any vertex and $z$ any vertex. We show $d(v, z) \le \max(d(v, a), d(v, b))$; the maximum is attained at $a$ or $b$ itself, so this proves the claim.
+2. Let $m$ be the vertex of $P$ closest to $v$ and $t$ the vertex of $P$ closest to $z$. By symmetry assume $t$ is on the $b$ side of $m$ (or $t = m$).
+3. Then $d(v, b) = d(v, m) + d(m, t) + d(t, b)$.
+4. By the triangle inequality, $d(v, z) \le d(v, m) + d(m, t) + d(t, z)$.
+5. We have $d(t, z) \le d(t, b)$: otherwise the path from $z$ to $a$ through $t$ would have length $d(z, t) + d(t, a) > d(t, b) + d(t, a) = D$, longer than the diameter.
+6. From steps 4 and 5: $d(v, z) \le d(v, m) + d(m, t) + d(t, b) = d(v, b)$. $\square$
+
+:::note[This proof needs]
+1. $a$ and $b$ are the ends of a diameter, which Theorem 4.5.4 guarantees for the pair found by the two walks.
+2. Weights are not negative, as in the previous theorem.
+3. For a vertex $v$, the vertex farthest from it is not unique in general; the value $\max(d(v, a), d(v, b))$ is.
+:::
+
+<TheoremCode unit="4.5/thm-5" />
+
+The first example is a path of four vertices (farthest distances $3, 2, 2, 3$). The second is the star of the tiny instance ($5, 8, 7, 8$). The third is a single vertex. The check compares the values with the largest entry of each row of Floyd–Warshall's table for twenty thousand random trees.
+
+### 4.6 The sum of all distances
+
+**Theorem 4.5.6 (sum over all pairs).** Let $T$ be a rooted tree with non-negative weights, and for every non-root vertex $v$ let $w_v$ be the weight of the edge to its parent and $s_v$ the size of its subtree. Then the sum of $d(u, v)$ over all pairs of vertices $u < v$ is
+$$\sum_{v \ne r} w_v \cdot s_v \cdot (n - s_v).$$
+The time is $O(n)$.
+
+:::tip[In plain words]
+Cut an edge: the tree falls into two parts, and a path between two vertices uses the edge exactly when its ends are in different parts. So an edge is used by (size of one part) times (size of the other part) pairs, and pays its weight each time.
+:::
+
+**A tiny instance.** The path $1 - 2 - 3$ with both weights 1, rooted at 1. Vertex 2 has $s = 2$: $1 \cdot 2 \cdot 1 = 2$. Vertex 3 has $s = 1$: $1 \cdot 1 \cdot 2 = 2$. The total is 4, and the pairs agree: $d(1, 2) + d(2, 3) + d(1, 3) = 1 + 1 + 2 = 4$.
+
+**Proof.**
+1. For a non-root vertex $v$, removing the edge between $v$ and its parent splits $T$ into the subtree of $v$ ($s_v$ vertices) and the rest ($n - s_v$ vertices).
+2. A path between $u$ and $w$ is the unique path (Theorem 4.5.1(a)); it uses the edge exactly when $u$ and $w$ are in different parts, since the edge is the only link between the parts.
+3. The number of pairs with one vertex in each part is $s_v (n - s_v)$.
+4. The distance $d(u, w)$ is the sum of the weights of the edges on the path, so summing over all pairs, each edge contributes its weight once for each pair that uses it: $\sum_v w_v s_v (n - s_v)$. $\square$
+
+:::note[This proof needs]
+1. Unique paths: in a graph with cycles, the number of pairs that use an edge is not a product.
+2. The sizes $s_v$ come from Theorem 4.5.2.
+3. The result can be as large as about $n^3 w / 2$, which needs `long long` already for $n = 10^5$ with small weights.
+:::
+
+<TheoremCode unit="4.5/thm-6" />
+
+The first two examples are the path (4) and the star with weights 5, 2, 3 (30). The third is a single vertex. The check compares the result with the sum of the upper triangle of Floyd–Warshall's table for twenty thousand random trees.
 
 ## 5. Recognition Cards
 

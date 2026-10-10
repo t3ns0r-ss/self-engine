@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.3 Shortest paths (pipeline steps 1–9 done); 4.1 and 4.2 are done
+- Topic: 4.4 DSU and MST (not started); 4.1, 4.2, 4.3 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.3 step 9 (self-test, checkpoint, review sets, decision map, draft removed); step 10 browser tests running
-- Next action: confirm browser tests for 4.3, then topic 4.4
+- Last completed step: topic 4.3 done (all 10 steps; lesson browser tests pass; the placeholder phase of tests/e2e.sh fails on 3-7 referencing 1.3 card opposite-ends, unrelated to 4.3)
+- Next action: topic 4.4 DSU and MST, step 1 (scope)
 
 ## Gates
 | Gate | Status | Date |
@@ -60,6 +60,7 @@
 | Phase 3 intro and exam | done (on this session's branch) | — |
 | 4.1 | done (on this session's branch) | — |
 | 4.2 | done (on this session's branch) | — |
+| 4.3 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

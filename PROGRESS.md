@@ -4,8 +4,8 @@
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
 - Topic: 4.3 Shortest paths (pipeline steps 1–3 done); 4.1 and 4.2 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.3 step 3 (five recognition cards with card example units)
-- Next action: step 4 (templates: dijkstra-parents, grid-walls, high-score, pair-queries, free-rides; stress 5000)
+- Last completed step: topic 4.3 step 4 in progress (templates written; bug catalogue next)
+- Next action: finish step 4 (validate, build), then step 5 bug catalogue
 
 ## Gates
 | Gate | Status | Date |

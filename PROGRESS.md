@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.6 Lowest common ancestor (pipeline steps 1–3 done); 4.1–4.5 done except 4.5's browser-test confirmation
+- Topic: 4.6 Lowest common ancestor (pipeline steps 1–4 done); 4.1–4.5 done except 4.5's browser-test confirmation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.6 step 3 (five recognition cards with card example units; worked-example problems cses-1750, cses-1135, ac-abc241_e). Topic 4.5 browser tests pass (21 checks)
-- Next action: step 4 (templates; stress 5000)
+- Last completed step: topic 4.6 step 4 (seven templates with tests; stress run being confirmed in /tmp/u46.log)
+- Next action: confirm /tmp/u46.log passed, then step 5 bug catalogue
 
 ## Gates
 | Gate | Status | Date |

@@ -6,19 +6,23 @@ Output: the remainder.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorems 0.4.1 and 0.4.4. (a_1 b_1 + ... + a_n b_n) mod m as a value in [0, m). Reduce every factor first.
+long long sumOfProducts(const vector<pair<long long, long long>>& v, long long m) {
+    auto norm = [&](long long x) { return (x % m + m) % m; };  // a value in [0, m)
+    long long ans = 0;
+    for (auto [a, b] : v) ans = (ans + norm(a) * norm(b)) % m;  // both factors < m <= 2*10^9: product < 4*10^18
+    return ans;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
     int n;
     long long m;
     cin >> n >> m;
-    auto norm = [&](long long x) { return (x % m + m) % m; };  // a value in [0, m) (Theorem 0.4.1)
-    long long ans = 0;
-    for (int i = 0; i < n; i++) {
-        long long a, b;
-        cin >> a >> b;
-        // reduce first: both factors are below m <= 2*10^9, so the product is below 4*10^18
-        ans = (ans + norm(a) * norm(b)) % m;  // Theorem 0.4.4
-    }
-    cout << ans << "\n";
+    vector<pair<long long, long long>> v(n);
+    for (auto& p : v) cin >> p.first >> p.second;
+    cout << sumOfProducts(v, m) << "\n";
 }

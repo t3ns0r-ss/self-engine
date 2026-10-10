@@ -6,10 +6,13 @@ Output: the sum.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 0.2.3. a + (a + d) + ... + (a + (n - 1) d). The product is always even: multiply first, then halve.
+long long arithSum(long long a, long long d, long long n) { return n * (2 * a + (n - 1) * d) / 2; }
+// snippet:end
+
 int main() {
     long long a, d, n;  // the sum reaches about 5*10^17
     cin >> a >> d >> n;
-    // Theorem 0.2.3: n (2a + (n - 1) d) is always even; multiply first, then halve.
-    long long sum = n * (2 * a + (n - 1) * d) / 2;
-    cout << sum << "\n";
+    cout << arithSum(a, d, n) << "\n";
 }

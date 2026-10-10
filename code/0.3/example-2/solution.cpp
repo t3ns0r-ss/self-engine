@@ -7,14 +7,21 @@ Output: the new string.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n;
-    string s;
-    cin >> n >> s;
-    bool inside = false;  // the state: are we between an opening and a closing '"'?
+// snippet:begin
+// Replace every ',' that is not between a pair of '"' by '.'. The state: inside a quoted part or not.
+string replaceCommas(string s) {
+    bool inside = false;
     for (char& ch : s) {
         if (ch == '"') inside = !inside;
         else if (ch == ',' && !inside) ch = '.';
     }
-    cout << s << "\n";
+    return s;
+}
+// snippet:end
+
+int main() {
+    int n;
+    string s;
+    cin >> n >> s;
+    cout << replaceCommas(s) << "\n";
 }

@@ -8,6 +8,26 @@ Output: the final row and column (0-based).
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 0.3.2. The robot's final cell. Directions are arrays; turning right is +1, left is +3 (never negative);
+// the bounds are checked before the wall is read.
+pair<int, int> walk(const vector<string>& g, int r, int c, const string& cmd) {
+    int h = g.size(), w = g[0].size();
+    const int dr[4] = {-1, 0, 1, 0};  // up, right, down, left
+    const int dc[4] = {0, 1, 0, -1};
+    int d = 0;  // facing up
+    for (char ch : cmd) {
+        if (ch == 'R') d = (d + 1) % 4;
+        else if (ch == 'L') d = (d + 3) % 4;
+        else {
+            int nr = r + dr[d], nc = c + dc[d];
+            if (nr >= 0 && nr < h && nc >= 0 && nc < w && g[nr][nc] != '#') r = nr, c = nc;
+        }
+    }
+    return {r, c};
+}
+// snippet:end
+
 int main() {
     int h, w, r, c;
     cin >> h >> w >> r >> c;
@@ -15,20 +35,6 @@ int main() {
     for (auto& row : g) cin >> row;
     string cmd;
     cin >> cmd;
-
-    const int dr[4] = {-1, 0, 1, 0};  // up, right, down, left: turning right is +1
-    const int dc[4] = {0, 1, 0, -1};
-    int d = 0;  // facing up
-    for (char ch : cmd) {
-        if (ch == 'R') d = (d + 1) % 4;
-        else if (ch == 'L') d = (d + 3) % 4;  // +3 instead of -1 keeps d non-negative
-        else {
-            int nr = r + dr[d], nc = c + dc[d];
-            if (nr >= 0 && nr < h && nc >= 0 && nc < w && g[nr][nc] != '#') {  // bounds first, then the wall
-                r = nr;
-                c = nc;
-            }
-        }
-    }
-    cout << r << " " << c << "\n";
+    pair<int, int> end = walk(g, r, c, cmd);
+    cout << end.first << " " << end.second << "\n";
 }

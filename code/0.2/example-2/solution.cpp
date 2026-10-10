@@ -7,21 +7,27 @@ Output: the count.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n;
-    string s;
-    cin >> n >> s;
-    // For each letter c, the strings c, cc, ..., c^L all occur, where L is the longest block of c.
+// snippet:begin
+// Different strings made of one repeated letter: for each letter c, the strings c, cc, ..., c^L occur,
+// where L is the longest block of c.
+long long countRepeated(const string& s) {
+    int n = s.size(), i = 0;
     vector<int> longest(26, 0);
-    int i = 0;
     while (i < n) {
         int j = i;
-        while (j < n && s[j] == s[i]) j++;  // the block s[i..j-1]; j only moves forward (Theorem 0.2.4)
-        int c = s[i] - 'a';
-        longest[c] = max(longest[c], j - i);
+        while (j < n && s[j] == s[i]) j++;  // the block s[i..j-1]; j only moves forward
+        longest[s[i] - 'a'] = max(longest[s[i] - 'a'], j - i);
         i = j;
     }
     long long total = 0;
     for (int c = 0; c < 26; c++) total += longest[c];
-    cout << total << "\n";
+    return total;
+}
+// snippet:end
+
+int main() {
+    int n;
+    string s;
+    cin >> n >> s;
+    cout << countRepeated(s) << "\n";
 }

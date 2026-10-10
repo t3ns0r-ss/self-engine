@@ -6,18 +6,23 @@ Output: the divisors, separated by spaces.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    long long n;  // up to 10^12
-    cin >> n;
+// snippet:begin
+// Theorem 0.2.2. All divisors of n in increasing order; d is tried only up to sqrt(n), at most 10^6 values for n <= 10^12.
+vector<long long> divisors(long long n) {
     vector<long long> small, large;  // d <= sqrt(n), and their partners n / d
-    for (long long d = 1; d * d <= n; d++) {  // at most 10^6 values (Theorem 0.2.2)
-        if (n % d == 0) {
-            small.push_back(d);
-            if (d != n / d) large.push_back(n / d);  // a square root is recorded once
-        }
+    for (long long d = 1; d * d <= n; d++) {
+        if (n % d != 0) continue;
+        small.push_back(d);
+        if (d != n / d) large.push_back(n / d);  // a square root is recorded once
     }
-    // small is increasing, large is decreasing: print small, then large backwards
-    for (long long d : small) cout << d << " ";
-    for (int i = (int)large.size() - 1; i >= 0; i--) cout << large[i] << " ";
+    small.insert(small.end(), large.rbegin(), large.rend());
+    return small;
+}
+// snippet:end
+
+int main() {
+    long long n;
+    cin >> n;
+    for (long long d : divisors(n)) cout << d << " ";
     cout << "\n";
 }

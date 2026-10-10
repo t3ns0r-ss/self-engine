@@ -6,10 +6,12 @@ Output: one count per line.
 #include <bits/stdc++.h>
 using namespace std;
 
-// floor(a / b) for b > 0 and any sign of a (Theorem 0.1.4): C++ rounds toward zero
-long long floorDiv(long long a, long long b) {
-    return a / b - (a % b != 0 && a < 0 ? 1 : 0);
-}
+// snippet:begin
+// Theorem 0.4.2. Multiples of k in [l, r]. floor() is written out because C++ division rounds toward zero (Theorem 0.1.4).
+long long floorDiv(long long a, long long b) { return a / b - (a % b != 0 && a < 0 ? 1 : 0); }
+
+long long countMultiples(long long l, long long r, long long k) { return floorDiv(r, k) - floorDiv(l - 1, k); }
+// snippet:end
 
 int main() {
     ios::sync_with_stdio(false);
@@ -19,7 +21,6 @@ int main() {
     while (q--) {
         long long l, r, k;
         cin >> l >> r >> k;
-        // multiples of k that are <= r, minus those that are <= l - 1 (Theorem 0.4.2)
-        cout << floorDiv(r, k) - floorDiv(l - 1, k) << "\n";
+        cout << countMultiples(l, r, k) << "\n";
     }
 }

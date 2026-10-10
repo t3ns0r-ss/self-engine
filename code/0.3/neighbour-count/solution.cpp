@@ -7,11 +7,10 @@ Output: the H lines of the new grid.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int h, w;
-    cin >> h >> w;
-    vector<string> g(h);
-    for (auto& row : g) cin >> row;
+// snippet:begin
+// Theorem 0.3.2. Replace every '.' by the number of '#' among its 8 neighbours; every access is bounds-checked.
+vector<string> countMines(const vector<string>& g) {
+    int h = g.size(), w = g[0].size();
     vector<string> out = g;
     for (int r = 0; r < h; r++)
         for (int c = 0; c < w; c++) {
@@ -25,5 +24,14 @@ int main() {
                 }
             out[r][c] = char('0' + mines);
         }
-    for (auto& row : out) cout << row << "\n";
+    return out;
+}
+// snippet:end
+
+int main() {
+    int h, w;
+    cin >> h >> w;
+    vector<string> g(h);
+    for (auto& row : g) cin >> row;
+    for (auto& row : countMines(g)) cout << row << "\n";
 }

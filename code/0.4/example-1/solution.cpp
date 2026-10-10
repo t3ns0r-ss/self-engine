@@ -7,14 +7,19 @@ Output: the minimum final health.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// The smallest possible health of the last monster is the GCD of all healths (std::gcd runs Euclid's algorithm).
+long long finalHealth(const vector<long long>& a) {
+    long long g = 0;
+    for (long long x : a) g = gcd(g, x);
+    return g;
+}
+// snippet:end
+
 int main() {
     int n;
     cin >> n;
-    long long g = 0;
-    for (int i = 0; i < n; i++) {
-        long long a;
-        cin >> a;
-        g = gcd(g, a);  // std::gcd from <numeric>: Euclid (Theorem 0.4.5)
-    }
-    cout << g << "\n";
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    cout << finalHealth(a) << "\n";
 }

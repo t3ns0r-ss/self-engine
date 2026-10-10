@@ -6,14 +6,23 @@ Output: "g L" with L = -1 when the LCM is greater than C.
 #include <bits/stdc++.h>
 using namespace std;
 
-long long gcdLL(long long a, long long b) {  // Euclid (Theorem 0.4.5); std::gcd does the same
-    while (b != 0) {
-        long long r = a % b;
-        a = b;
-        b = r;
+// snippet:begin
+// Theorems 0.4.5 and 0.4.6. The GCD of all numbers and their LCM, or -1 if the LCM exceeds C.
+long long gcdLL(long long a, long long b) { return b == 0 ? a : gcdLL(b, a % b); }
+
+pair<long long, long long> gcdAndLcm(const vector<long long>& a, long long C) {
+    long long g = 0, L = 1;  // gcd(0, x) = x, lcm(1, x) = x
+    bool tooBig = false;
+    for (long long x : a) {
+        g = gcdLL(g, x);
+        if (tooBig) continue;
+        long long q = L / gcdLL(L, x);  // lcm(L, x) = q * x
+        if (q > C / x) tooBig = true;   // q * x > C, tested without computing q * x
+        else L = q * x;
     }
-    return a;
+    return {g, tooBig ? -1 : L};
 }
+// snippet:end
 
 int main() {
     ios::sync_with_stdio(false);
@@ -21,17 +30,8 @@ int main() {
     int n;
     long long C;
     cin >> n >> C;
-    long long g = 0, L = 1;  // gcd(0, x) = x, lcm(1, x) = x
-    bool tooBig = false;
-    for (int i = 0; i < n; i++) {
-        long long a;
-        cin >> a;
-        g = gcdLL(g, a);
-        if (!tooBig) {
-            long long q = L / gcdLL(L, a);  // lcm(L, a) = q * a (Theorem 0.4.6)
-            if (q > C / a) tooBig = true;   // q * a > C, tested without computing q * a
-            else L = q * a;
-        }
-    }
-    cout << g << " " << (tooBig ? -1 : L) << "\n";
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    pair<long long, long long> r = gcdAndLcm(a, C);
+    cout << r.first << " " << r.second << "\n";
 }

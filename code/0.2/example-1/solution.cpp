@@ -6,6 +6,17 @@ Output: one value per line.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// The number in row y, column x of the number spiral. Layer m = max(y, x) holds (m-1)^2 + 1 .. m^2.
+long long spiral(long long y, long long x) {
+    long long m = max(y, x);
+    if (m % 2 == 1)  // odd layer: row m left to right, then column m upwards
+        return y == m ? (m - 1) * (m - 1) + x : m * m - y + 1;
+    // even layer: column m downwards, then row m right to left
+    return x == m ? (m - 1) * (m - 1) + y : m * m - x + 1;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -14,17 +25,6 @@ int main() {
     while (t--) {
         long long y, x;  // the answer reaches about 10^18
         cin >> y >> x;
-        long long m = max(y, x);  // the cell lies on layer m, whose numbers are (m-1)^2 + 1 .. m^2
-        long long ans;
-        if (m % 2 == 1) {
-            // odd layer: row m left to right, then column m upwards
-            if (y == m) ans = (m - 1) * (m - 1) + x;
-            else ans = m * m - y + 1;
-        } else {
-            // even layer: column m downwards, then row m right to left
-            if (x == m) ans = (m - 1) * (m - 1) + y;
-            else ans = m * m - x + 1;
-        }
-        cout << ans << "\n";
+        cout << spiral(y, x) << "\n";
     }
 }

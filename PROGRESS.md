@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline not started); 4.1–4.6 done
+- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline step 1 done); 4.1–4.6 done
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.6 step 10 (e2e: 21 [4.6] checks pass; only the known 3-7 placeholder failure). Bank 4.6 additions (look-alike pair edge-weights I/II, checkpoint ABC133 F, review: cf-739B, ac-abc321_e, cf-1296F, ac-abc201_e, lc-path-existence-ii, lc-min-weighted-subgraph-ii, cf-702E) were added by me because the 4.6 bank was short; please review.
-Next action: topic 4.7 step 1 (scope)
+Last completed step: topic 4.7 step 1 (scope, sections 1–3, skeleton)
+Next action: step 2 (theory: Theorems 4.7.1–4.7.6 with proofs, code units thm-1..6)
 
 ## Gates
 | Gate | Status | Date |
@@ -155,10 +155,11 @@ Next action: topic 4.7 step 1 (scope)
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Topic 4.6 Lowest common ancestor (binary lifting). Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8, 4.1–4.5 (4.5's rooting, parents, depths, visit order, subtree sums and sizes; 4.4's union only as a contrast; 1.2 prefix sums and 1.4 binary search where a problem needs them).
-- New: the 2^j-th ancestor table up[j][v] built from up[j−1] in O(n log n); the k-th ancestor by the binary digits of k; the lowest common ancestor (equalise depths, then jump from the largest j to the smallest while the ancestors differ); distance depth(u) + depth(v) − 2·depth(lca) with weighted depths; the minimum, maximum or sum along a path stored with each jump; adding +1 along many paths offline (+1 at both ends, −1 at the lca and its parent) and reading the result with subtree sums. Cards (decide at step 3): jump-up, meeting-vertex, tree-distance, path-values, path-counts. Avoid writing hyphenated card ids in page text.
-- Forbidden keywords: every keyword of topics 4.7–7.8 (strongly connected component, articulation point, tarjan, kosaraju, sparse table, fenwick tree, segment tree, tree dp, rerooting, dp on dag, …). Sparse table, segment tree, Fenwick tree, tree dp and rerooting, SCC and bridges are named only under "does not cover".
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8, 4.1 (graph, vertex, edge, neighbour, path in a graph, reachable, distance in a graph, connected component, adjacency list, adjacency matrix, graph traversal, BFS, DFS, grid graph, state graph, source), 4.2 (simple graph, cycle, forest, two-colouring, bipartite graph, parent and tree edge, in-degree, topological order, DAG, vertex state), 4.3 (weighted graph, edge weight, shortest distance, relaxation, negative cycle, Dijkstra's algorithm, 0-1 BFS, Bellman–Ford algorithm, Floyd–Warshall algorithm), 4.4 (spanning tree, minimum spanning tree, cut, disjoint set union, leader of a group, union by size, Kruskal's algorithm, Prim's algorithm), 4.5 (tree, rooted tree, ancestor, subtree, depth of a vertex, diameter of a tree, eccentricity, Euler tour).
+- Topic 4.7 Strongly connected components, bridges, articulation points. Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8, 4.1–4.6 (4.5's entry times and subtree blocks; 4.4's union–find; 4.2's topological order for the condensation).
+- New: the low-link value; bridges (low[v] > tin[parent]); articulation points (low[child] ≥ tin[v], root with two children); 2-edge-connected components and the tree of them; strongly connected components by Kosaraju (finish order, reversed graph); the condensation is a DAG; sources and sinks; a vertex reaches everything iff its component is the only source. Cards (decided in step 3): mutual-reach, condensed-dag, bridges, cut-vertices, bridge-tree. Avoid hyphenated card ids in page text.
+- Forbidden keywords: every keyword of topics 5.1–7.8 (sparse table, fenwick tree, segment tree, tree dp, rerooting, dp on dag, …). 2-SAT, block-cut tree, flows are named only under "does not cover".
+- Glossary terms already defined: through 4.6 plus 4.7 (strongly connected component, condensation, bridge, articulation point, 2-edge-connected component, entry time, low-link value, back edge).
+- Bank 4.7 is short (reserved: checkpoint 1, lookalike 2, review 2; no exam): candidates are being researched; I add reserved problems with notes (as for 4.6) and flag them for review. Exam problems for Phase 4 come from the reserved exam sets of the 4.1–4.5 banks.
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

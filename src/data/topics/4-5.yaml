@@ -6,12 +6,16 @@ uses:
   what: 'Prefix sums: sums over a range of the visit order'
 - topic: '1.4'
   what: 'Binary search: counting values in a range of the visit order'
+- topic: '3.7'
+  what: 'Bitmask DP: the longest simple path of a small graph, the contrast'
 - topic: '4.1'
   what: 'Graph traversal: the walk that gives parents and distances'
 - topic: '4.2'
   what: 'Graph structure: a connected graph with n - 1 edges has no cycle, tree edges and non-tree edges'
 - topic: '4.3'
   what: 'Shortest paths: weighted distances, and Floyd-Warshall as the reference in the checks'
+- topic: '4.4'
+  what: 'Disjoint set union: groups that only merge, the contrast for a tree'
 theorems:
 - id: 4.5.1
   title: Rooting a tree
@@ -47,8 +51,469 @@ theorems:
     exactly when its ends are in different parts. So an edge is used by (size of one part) times (size
     of the other part) pairs, and pays its weight each time.'
   code: 4.5/thm-6
-cards: []
-problems: []
+cards:
+- id: depths-parents
+  name: 'Rooting a tree: parents and depths'
+  from_theorem: 4.5.1
+  decisive_property: 'The graph is a tree (connected, n − 1 edges), and the question uses a direction
+    in it: the boss of a vertex, the path up to the root, the depth, the vertices at a given depth, or
+    a walk that visits parents before children.'
+  how_to_test: Check n − 1 edges and connectivity. Choose the root the statement names (or any vertex),
+    walk from it with a stack, and record the parent and the depth of each vertex. If the graph has cycles,
+    use the walk with marks of topic 4.1.
+  constraint_shapes:
+  - 'n = 2·10^5 vertices in a tree: one walk is 4·10^5 steps; a recursive walk of a path of this length
+    would go 2·10^5 calls deep, so the walk uses a stack in a loop'
+  - 'q = 2·10^5 questions about the path from a vertex to the root: each one follows the parents, at most
+    the depth of the vertex, which is fine for shallow trees and up to 2·10^5 steps each for a long chain'
+  weak_signals:
+  - form: '"Every employee has one direct boss", "the parent of vertex i is P_i", a tree given with a
+      root and asked about levels or the path to the root'
+    shape: n up to 2·10^5 with the parent array or n − 1 edges
+  - form: Asks for the number of vertices at each depth, or the vertices at distance k from the root
+    shape: n up to 2·10^5
+  - form: Asks to process vertices so that every vertex comes after its parent (or before it), or to reach
+      a vertex from the root
+    shape: A tree with n − 1 edges
+  kill_signals:
+  - 'The graph has cycles (m > n − 1): a walk without marks would never stop; use the walk with marks
+    (topic 4.1)'
+  - 'The graph is not connected: the walk reaches only the component of the root, and the other vertices
+    keep the default values (the first negative example below)'
+  in_action:
+    statement: A tree has n vertices. The root is vertex 1. For every depth d, print how many vertices
+      have depth d.
+    constraints: n ≤ 2·10^5.
+    budget: One walk is O(n). A path-like tree would make a recursive walk 2·10^5 calls deep, so use a
+      stack.
+    candidates:
+    - tool: Walk with marks and a queue (topic 4.1)
+      verdict: rejected
+      because: Correct, but the marks are not needed in a tree, and the plain walk below also gives the
+        parents that other questions of the problem may need.
+    - tool: Walk from the root with a stack, recording parent and depth (this topic)
+      verdict: chosen
+      because: The graph is a tree, so the only visited neighbour is the parent (Theorem 4.5.1).
+    property_check: 'n − 1 edges and connected: a tree. The depth of a vertex is its distance from the
+      root by Theorem 4.5.1(b).'
+    decision: Root the tree at 1, compute depth[v] for all v with the walk, count how many vertices have
+      each depth.
+  examples:
+    positive:
+    - inline:
+        input: The tree with the edges 1–2, 1–3, 3–4, 3–5 rooted at 1. How many vertices lie at depth
+          0, 1 and 2?
+        answer: 1,2,2
+        why: 'Depth 0: the root. Depth 1: its children 2 and 3. Depth 2: the children 4 and 5 of vertex
+          3. The walk gives the same counts as relaxing distances from the root again and again.'
+    - inline:
+        input: The same tree rooted at 1. What is the path from vertex 5 up to the root?
+        answer: 5,3,1
+        why: The parent of 5 is 3 and the parent of 3 is 1; following the parents gives the only path
+          (Theorem 4.5.1(a)).
+    negative:
+    - inline:
+        input: The vertices 1, 2, 3, 4 with the edges 1–2 and 3–4 (two separate pieces). The root is 1.
+          What is the depth of vertex 4?
+        answer: unreachable
+        method_gives: '0'
+        why: 'This is a forest, not a tree: the walk from vertex 1 never reaches vertex 4, which keeps
+          the default depth 0. A tree is connected; for a graph that may fall into pieces, ask first which
+          vertices are reachable.'
+      correct_tool:
+        topic: '4.1'
+        card: components
+    - problem: cses-1667
+      why: The graph has cycles and many routes between two computers; the question asks for the fewest
+        connections, a shortest path found by the walk with marks.
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+  lookalikes:
+  - description: Fewest edges from a start vertex in a graph that may have cycles
+    tool:
+      topic: '4.1'
+      card: unweighted-shortest
+    flipping_difference: In a tree the depth from the root is the distance and the walk needs no marks;
+      with cycles the same numbers come from a queue with marks.
+  - description: The size of the subtree of every vertex
+    tool:
+      topic: '4.5'
+      card: subtree-values
+    flipping_difference: Depths and parents come from the walk itself; the sizes need the backward pass
+      over the visit order.
+  complexity: 'O(n): each vertex and each edge is looked at once.'
+- id: subtree-values
+  name: Subtree sizes, sums and counts
+  from_theorem: 4.5.2
+  decisive_property: 'The tree is rooted (or a root can be chosen), and the value of a vertex depends
+    only on its own number and the values of its children: the size, the sum of numbers, the count of
+    marked vertices, the number of leaves below it.'
+  how_to_test: Write the value of a vertex in terms of the values of its children. If it is their sum
+    (plus the vertex itself), go through the visit order backwards and add each vertex into its parent.
+    For sums over all pairs of vertices, add up over the edges the product of the sizes of the two sides.
+  constraint_shapes:
+  - 'n = 3·10^5 vertices: the backward pass is 3·10^5 additions, while a separate walk of the subtree
+    of each vertex is up to n² = 9·10^10'
+  - 'Sums of values up to 10^9 over 2·10^5 vertices reach 2·10^14: 64-bit numbers'
+  weak_signals:
+  - form: Asks for each vertex how many vertices (employees, rooms, files) are below it, or the total
+      of their numbers
+    shape: n up to 2·10^5, the tree given by parents or edges
+  - form: Asks which edge or vertex to cut so that the pieces have a given size or sum, or how many ways
+      there are to cut
+    shape: n up to 2·10^5
+  - form: Asks for the sum of the distances over all pairs of vertices of a tree, or how many times each
+      edge is used
+    shape: n up to 2·10^5 with weighted edges
+  kill_signals:
+  - The value of a vertex needs a table or an answer that depends on the choice made in each child (a
+    task of a later phase)
+  - 'The question is about the whole tree seen from each vertex as the root (farthest vertex, sum of distances
+    from each vertex): the subtree only sees the part below the vertex (the first negative example below)'
+  in_action:
+    statement: A company is a tree with the boss 1 at the root. For every employee, print the number of
+      employees below them (directly or indirectly).
+    constraints: n ≤ 2·10^5.
+    budget: A separate walk per employee is up to n² = 4·10^10 steps. Need O(n).
+    candidates:
+    - tool: A walk of the subtree of every employee (topic 4.1)
+      verdict: rejected
+      because: Up to 4·10^10 steps for a long chain.
+    - tool: Backward pass over the visit order, adding each size into the parent (this topic)
+      verdict: chosen
+      because: The size of a subtree is 1 plus the sizes of the children (Theorem 4.5.2); each vertex
+        is added once.
+    property_check: 'The number below a vertex is the sum over its children of (their number below plus
+      one): a sum of children values.'
+    decision: Root at 1, compute the visit order and parents, set size = 1 everywhere, go backwards adding
+      size[v] into size[parent[v]], print size[v] − 1.
+  examples:
+    positive:
+    - inline:
+        input: The tree 1–2, 1–3, 3–4, 3–5 rooted at 1. How many vertices does the subtree of each vertex
+          1, 2, 3, 4, 5 have?
+        answer: 5,1,3,1,1
+        why: Vertex 1 has everything (5); 2, 4, 5 are leaves (1); vertex 3 has itself and 4 and 5 (3).
+          The backward pass gives the same sizes as counting for each vertex the others whose path to
+          the root passes it.
+    - worked_example: ac-abc333_d
+      why: 'The cost of deleting vertex 1 is the size of the tree minus the largest subtree that hangs
+        under vertex 1: sizes of subtrees decide.'
+    negative:
+    - inline:
+        input: The path 1–2–3–4 rooted at 1 (edges count 1). How far is the vertex farthest from vertex
+          4?
+        answer: '3'
+        method_gives: '0'
+        why: The subtree of vertex 4 is only vertex 4, so a value built from the children is 0; but the
+          farthest vertex from 4 is vertex 1 above it, at distance 3. The farthest vertex from each vertex
+          is the next card.
+      correct_tool:
+        topic: '4.5'
+        card: farthest-each
+    - problem: ac-abc120_d
+      why: 'The graph is not a tree, and the question is about groups after bridges disappear one after
+        another: reverse the time and unite.'
+      correct_tool:
+        topic: '4.4'
+        card: reverse-time
+  lookalikes:
+  - description: Whether one vertex lies below another
+    tool:
+      topic: '4.5'
+      card: subtree-ranges
+    flipping_difference: The sizes are numbers per vertex; the ranges of the visit order also answer "is
+      u below v?" and range questions, by comparing positions.
+  - description: The depth of each vertex
+    tool:
+      topic: '4.5'
+      card: depths-parents
+    flipping_difference: Depths go down from the root during the walk; subtree values go up from the leaves
+      in the backward pass.
+  complexity: 'O(n): one walk and one backward pass.'
+- id: subtree-ranges
+  name: Subtrees as ranges (Euler tour)
+  from_theorem: 4.5.3
+  decisive_property: The questions ask whether one vertex is below another, or ask about a whole subtree
+    (its sum, its count of some value, the vertices at a given depth in it) many times, and the root is
+    fixed.
+  how_to_test: Number the vertices in the order of a walk with a stack; the subtree of v is the block
+    tin[v]..tout[v]. Then an ancestor test is a comparison of numbers, and a subtree question is a question
+    about a range of an array in that order, answered with the tools of arrays (prefix sums, sorting and
+    binary search).
+  constraint_shapes:
+  - 'q = 2·10^5 questions about subtrees of a tree with n = 2·10^5 vertices: walking each subtree is up
+    to 4·10^10 steps, while a comparison of two numbers or one binary search is O(1) or O(log n) per question'
+  - 'Values and queries on the same fixed rooted tree: one walk of 2·10^5 steps prepares everything'
+  weak_signals:
+  - form: Many questions "is u an ancestor of v?" or "is v in the subtree of u?"
+    shape: n, q up to 2·10^5, the root fixed
+  - form: 'Many questions about the vertices below u: how many have a given label, depth or value'
+    shape: n, q up to 2·10^5, labels up to n
+  - form: Asks to treat each subtree as a segment of a line, or to count pairs of ancestor and descendant
+    shape: n up to 2·10^5
+  kill_signals:
+  - 'The root changes from question to question: the ranges belong to one root (the first negative example
+    below)'
+  - The questions ask for changes to the values between queries together with subtree sums (a task of
+    a later phase with a structure for updates)
+  in_action:
+    statement: 'A rooted tree has n vertices with the root 1. There are q questions "u d": how many vertices
+      lie below u (u included) at depth exactly d?'
+    constraints: n, q ≤ 2·10^5.
+    budget: A walk of the subtree for each question is up to n·q = 4·10^10 steps. Need O((n + q) log n).
+    candidates:
+    - tool: A walk of the subtree of u for every question (topic 4.1)
+      verdict: rejected
+      because: Up to 4·10^10 steps.
+    - tool: Euler tour ranges with a sorted list of positions per depth, and a binary search (this topic)
+      verdict: chosen
+      because: The subtree of u is the range [tin[u], tout[u]] (Theorem 4.5.3); the vertices of depth
+        d in the range are counted by two binary searches in the sorted positions of depth d.
+    property_check: The root is fixed, the questions are about subtrees and one more property (the depth),
+      and the subtree is a range of positions.
+    decision: Walk once, fill tin and tout; for every depth, keep the sorted list of tin of its vertices;
+      answer (u, d) with upper_bound(tout[u]) − lower_bound(tin[u]) on the list of depth d.
+  examples:
+    positive:
+    - inline:
+        input: The tree 1–2, 1–3, 3–4, 3–5 rooted at 1. Is vertex 3 an ancestor of vertex 4? Of vertex
+          2?
+        answer: yes,no
+        why: With the visit order 1, 3, 5, 4, 2, vertex 3 has the range [1, 3] and vertex 4 has the position
+          3 (inside), while vertex 2 has the position 4 (outside). Climbing the parents agrees.
+    - worked_example: ac-abc202_e
+      why: 'Questions about the vertices of a given depth below a given vertex: the subtree is a range,
+        and the depth is a sorted list per level.'
+    negative:
+    - inline:
+        input: The tree 1–2, 1–3, 3–4, 3–5. How many vertices does the subtree of vertex 3 have when the
+          tree is rooted at vertex 4?
+        answer: '4'
+        method_gives: '3'
+        why: 'Rooted at 4, the vertex 3 hangs under 4 and has the children 1 and 5, and 1 has the child
+          2: the subtree is {3, 1, 5, 2}. The ranges made for the root 1 say 3. With changing roots, walk
+          again from the new root.'
+      correct_tool:
+        topic: '4.5'
+        card: subtree-values
+    - problem: ac-abc420_e
+      why: Edges are added while the questions come, so the shape of the graph changes and it is not a
+        tree; groups that only merge are the tool.
+      correct_tool:
+        topic: '4.4'
+        card: merge-groups
+  lookalikes:
+  - description: The size or sum of each subtree, with no further questions
+    tool:
+      topic: '4.5'
+      card: subtree-values
+    flipping_difference: One number per vertex is enough with the backward pass; ranges are needed when
+      questions ask about the contents of subtrees or about ancestors.
+  - description: Grouping vertices of a graph without a root
+    tool:
+      topic: '4.1'
+      card: components
+    flipping_difference: Components have no direction; here the root fixes who is above whom.
+  complexity: O(n) to prepare, then O(1) per ancestor test and O(log n) per range question.
+- id: longest-path
+  name: Longest path (diameter)
+  from_theorem: 4.5.4
+  decisive_property: The graph is a tree with non-negative weights, and the question asks for the longest
+    path (the diameter), a route that visits every vertex with the least walking, or something that depends
+    only on the two ends of the longest path.
+  how_to_test: Check that the graph is a tree and that no weight is negative. Walk from any vertex to
+    its farthest vertex a, then from a to its farthest vertex b; the distance from a to b is the diameter.
+    For "visit all vertices without returning", the answer is twice the total weight minus the diameter.
+  constraint_shapes:
+  - 'n = 2·10^5 vertices: two walks are 4·10^5 steps, while all pairs are 2·10^10 distances'
+  - 'Weights up to 10^9 and 2·10^5 edges: the diameter reaches 2·10^14, which needs 64-bit numbers'
+  weak_signals:
+  - form: Asks for the longest distance between two vertices (cities, nodes) of a tree, or the length
+      of the longest path
+    shape: n up to 2·10^5 with weighted edges
+  - form: Asks for the shortest walk that visits every vertex of a tree, with or without returning to
+      the start
+    shape: n up to 2·10^5, weights up to 10^9
+  - form: Asks for the best place to put something (a centre), or the smallest height of a rooted tree
+      over all roots, which sits in the middle of a longest path
+    shape: n up to 2·10^5
+  kill_signals:
+  - 'The graph has cycles: the longest simple path of a general graph is a hard problem, and the two walks
+    give the largest shortest distance instead (the first negative example below)'
+  - 'A weight is negative: a detour can be shorter and the farthest vertex need not be an end of a longest
+    path'
+  in_action:
+    statement: There are n cities and n − 1 roads with lengths; any two cities are connected. Find the
+      least total distance of a trip that starts in any city and visits all cities at least once; it need
+      not return.
+    constraints: n ≤ 2·10^5, lengths ≤ 10^9.
+    budget: Trying all orders of the cities is impossible. Need O(n).
+    candidates:
+    - tool: Trying every order of the cities (topic 0.5)
+      verdict: rejected
+      because: n! orders.
+    - tool: Twice the total length minus the diameter, found by two walks (this topic)
+      verdict: chosen
+      because: Visiting all cities and returning uses every road twice; not returning saves one path,
+        which should be the longest one (Theorem 4.5.4).
+    property_check: The roads form a tree, lengths are positive, and the trip must cover every road at
+      least once; the saved path can be any path from the start to the end, the longest one is the best.
+    decision: Add all lengths (64-bit), find the diameter with two walks, print 2 · total − diameter.
+  examples:
+    positive:
+    - inline:
+        input: The tree with the edges 1–2 (3), 2–3 (4), 2–4 (1), 4–5 (6), 1–6 (2). What is the length
+          of the longest path?
+        answer: '12'
+        why: The path 5–4–2–1–6 has length 6 + 1 + 3 + 2 = 12. Two walks find it; the table of all distances
+          agrees.
+    - inline:
+        input: Four towns, roads 1–2 (1), 2–3 (1), 2–4 (5). What is the shortest walk that visits every
+          town, starting anywhere and not returning?
+        answer: '8'
+        why: 'The total length is 7 and the diameter is 6 (3–2–4 or 1–2–4), so 2 · 7 − 6 = 8: start at
+          town 1, go 1–2–3–2–4 for 1 + 1 + 1 + 5 = 8. Trying all orders gives 8.'
+    - worked_example: ac-abc361_e
+      why: 'The shortest trip through all cities of a tree, without returning: twice the total length
+        minus the diameter.'
+    negative:
+    - inline:
+        input: A triangle 1–2, 2–3, 1–3 with the extra vertex 4 attached to 3 (every edge counts 1). What
+          is the length of the longest simple path (no vertex twice)?
+        answer: '3'
+        method_gives: '2'
+        why: The path 1–2–3–4 has 3 edges, but the graph has a cycle; two walks find the largest shortest
+          distance, which is 2. The longest simple path of a general graph is found by trying paths (a
+          mask over the vertices for small n).
+      correct_tool:
+        topic: '3.7'
+        card: path-mask
+    - problem: cses-1667
+      why: 'The question asks for the fewest connections between two given computers: a shortest path,
+        not the longest path of the graph.'
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+  lookalikes:
+  - description: The farthest vertex from every vertex
+    tool:
+      topic: '4.5'
+      card: farthest-each
+    flipping_difference: The diameter is one number; for every vertex, the farthest distance is the larger
+      of its distances to the two ends, found with two more walks.
+  - description: The cheapest route between two given vertices of a graph with cycles
+    tool:
+      topic: '4.3'
+      card: dijkstra
+    flipping_difference: A tree has one path between two vertices, so no search is needed; with cycles
+      the shortest of many routes must be found.
+  complexity: 'O(n): two walks.'
+- id: farthest-each
+  name: Farthest vertex from every vertex
+  from_theorem: 4.5.5
+  decisive_property: 'The graph is a tree with non-negative weights, and the question asks, for every
+    vertex, about the vertex farthest from it: its distance, the best meeting place (the vertex with the
+    smallest such distance), or how far the farthest of a set is.'
+  how_to_test: Find the two ends a and b of a diameter with two walks. Then walk from a and from b and
+    store both distances; the farthest distance of every vertex v is max(d(v, a), d(v, b)). The vertices
+    that minimise this value lie in the middle of the diameter.
+  constraint_shapes:
+  - 'n = 2·10^5 vertices: four walks are 8·10^5 steps, while a walk from every vertex is n² = 4·10^10'
+  - 'Weights up to 10^9 over 2·10^5 edges: distances up to 2·10^14, in 64 bits'
+  weak_signals:
+  - form: For each vertex asks how far the farthest vertex is, or which vertex it is
+    shape: n up to 2·10^5, a tree with weighted edges
+  - form: Asks for the vertex where a meeting, a hospital or a station should be so that the farthest
+      vertex is as near as possible
+    shape: n up to 2·10^5
+  - form: Asks for the smallest possible height of the tree over all roots
+    shape: n up to 2·10^5
+  kill_signals:
+  - 'The graph has cycles: the farthest distance of a vertex is not given by two ends (the first negative
+    example below)'
+  - 'Only a part of the vertices (marked ones, or those in a subtree) counts as a destination: the lemma
+    holds for the whole tree'
+  in_action:
+    statement: A tree of n cities has roads with lengths. For every city, print the distance to the city
+      farthest from it.
+    constraints: n ≤ 2·10^5, lengths ≤ 10^9.
+    budget: A walk from every city is n² = 4·10^10. Need O(n).
+    candidates:
+    - tool: A walk from every city (topic 4.1)
+      verdict: rejected
+      because: n walks of n steps each.
+    - tool: Floyd–Warshall (topic 4.3)
+      verdict: rejected
+      because: n³ steps and an n × n table do not fit.
+    - tool: Two walks to find the diameter ends, then walks from both ends (this topic)
+      verdict: chosen
+      because: The farthest distance of every vertex is the larger of its distances to the two ends (Theorem
+        4.5.5).
+    property_check: The roads form a tree with positive lengths, and the question concerns the farthest
+      city among all.
+    decision: Find a (farthest from city 1) and b (farthest from a); compute the distances from a and
+      from b; print max of the two at every city.
+  examples:
+    positive:
+    - inline:
+        input: A star with centre 1 and leaves 2, 3, 4 at the distances 5, 2, 3 from the centre. For each
+          vertex 1, 2, 3, 4, how far is the farthest vertex?
+        answer: 5,8,7,8
+        why: 'From the centre the farthest leaf is at 5. From leaf 2 the farthest is leaf 4: 5 + 3 = 8.
+          From leaf 3: 2 + 5 = 7. From leaf 4: 3 + 5 = 8. The ends of the diameter are the leaves 2 and
+          4, and the larger of the two distances gives each value.'
+    - inline:
+        input: The path 1–2–3–4–5 with every edge of length 1. Which vertex has the smallest farthest
+          distance?
+        answer: '3'
+        why: The farthest distances are 4, 3, 2, 3, 4; vertex 3 in the middle has 2. The two ends of the
+          diameter are 1 and 5, and the vertex in the middle minimises the larger of the two distances.
+    negative:
+    - inline:
+        input: A cycle of six cities 1–2–3–4–5–6–1 (every road counts 1). How far is the city farthest
+          from city 2?
+        answer: '3'
+        method_gives: '2'
+        why: City 5 is at distance 3 from city 2. The two walks pick the ends 1 and 4 (distance 3), city
+          2 is at distance 1 and 2 from them, so the method says 2. With cycles, the distances from every
+          vertex must be computed as in topic 4.3.
+      correct_tool:
+        topic: '4.3'
+        card: every-pair
+    - problem: ac-abc340_d
+      why: The graph of stages has cycles and the question asks for the cheapest cost from stage 1, not
+        for a farthest vertex.
+      correct_tool:
+        topic: '4.3'
+        card: dijkstra
+  lookalikes:
+  - description: The longest path, one number for the whole tree
+    tool:
+      topic: '4.5'
+      card: longest-path
+    flipping_difference: The diameter needs only two walks; the values for every vertex need two more
+      walks and a maximum at each vertex.
+  - description: The size of the part of the tree below each vertex
+    tool:
+      topic: '4.5'
+      card: subtree-values
+    flipping_difference: A subtree sees only the vertices below; the farthest vertex may lie above it.
+  complexity: 'O(n): four walks.'
+problems:
+- id: ac-abc333_d
+  role: worked_example
+  summary: A tree with N ≤ 3·10^5 vertices; repeatedly delete a leaf (a vertex of degree at most 1); find
+    the fewest deletions needed to delete vertex 1.
+- id: ac-abc361_e
+  role: worked_example
+  summary: A tree of N ≤ 2·10^5 cities with roads of length up to 10^9; find the least total distance
+    of a trip that visits all cities, starting anywhere and not returning.
+- id: ac-abc202_e
+  role: worked_example
+  summary: 'A rooted tree with N ≤ 2·10^5 vertices (root 1, parents given) and Q ≤ 2·10^5 questions (U,
+    D): how many vertices at depth exactly D lie in the subtree of U?'
 drill: []
 lookalike_pairs: []
 self_test: []

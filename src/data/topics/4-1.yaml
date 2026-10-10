@@ -1,38 +1,550 @@
 # Topic 4.1 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
-id: "4.1"
+id: '4.1'
 draft: true
 uses:
 - topic: '0.2'
   what: 'Complexity: the budget that rules out checking every pair'
+- topic: '0.3'
+  what: 'Grid processing: the contrast of a local rule on each cell'
+- topic: '0.5'
+  what: 'Brute force: checking every pair or route, the reference solutions in the tests'
 - topic: '0.6'
-  what: 'Stack, queue and vector: the containers a traversal uses'
+  what: 'Stack, queue, vector and map: the containers a traversal uses'
+- topic: '1.1'
+  what: 'Sorting: grouping ranges by sorting instead of building links'
+- topic: '1.4'
+  what: 'Binary search: nearest and k-th nearest on a line'
+- topic: '1.5'
+  what: 'Greedy choices: fewest jumps along a line'
+- topic: '3.1'
+  what: 'Backtracking: listing routes and puzzle solutions, the contrast for states'
+- topic: '3.2'
+  what: 'Dynamic programming: a table in a fixed order, the contrast when moves have costs'
+- topic: '3.5'
+  what: 'Counting dynamic programming: counting routes in a grid or by steps'
 theorems:
 - id: 4.1.1
   title: Traversal reaches exactly what can be reached
-  plain_words: "Walk out from the start, mark every place you reach, and never enter a marked place again. When you run out of places to enter, you have marked exactly the places that can be reached, and you looked at each road at most twice."
+  plain_words: Walk out from the start, mark every place you reach, and never enter a marked place again.
+    When you run out of places to enter, you have marked exactly the places that can be reached, and you
+    looked at each road at most twice.
   code: 4.1/thm-1
 - id: 4.1.2
   title: Components
-  plain_words: "Look for an unmarked vertex, walk out from it, and everything you mark is one group. Repeat until nothing is unmarked. Each group is found exactly once, so the number of walks is the number of groups."
+  plain_words: Look for an unmarked vertex, walk out from it, and everything you mark is one group. Repeat
+    until nothing is unmarked. Each group is found exactly once, so the number of walks is the number
+    of groups.
   code: 4.1/thm-2
 - id: 4.1.3
   title: Breadth-first search finds the fewest edges
-  plain_words: "A queue serves the oldest entry first, so the walk spreads out in rings: first the neighbours of the start, then their new neighbours, and so on. The first time a vertex is reached is by the shortest route, and remembering who reached it gives that route."
+  plain_words: 'A queue serves the oldest entry first, so the walk spreads out in rings: first the neighbours
+    of the start, then their new neighbours, and so on. The first time a vertex is reached is by the shortest
+    route, and remembering who reached it gives that route.'
   code: 4.1/thm-3
 - id: 4.1.4
   title: Many sources at once
-  plain_words: "If you start the walk from every source at the same moment, each vertex is first reached by whichever source is closest to it, so one pass gives the distance to the nearest source."
+  plain_words: If you start the walk from every source at the same moment, each vertex is first reached
+    by whichever source is closest to it, so one pass gives the distance to the nearest source.
   code: 4.1/thm-4
 - id: 4.1.5
   title: A grid is a graph
-  plain_words: "Treat every free cell as a dot and join side-by-side cells. You do not have to build the lists, because a cell's neighbours are found by adding four fixed offsets, so a traversal of the grid costs a constant per cell."
+  plain_words: Treat every free cell as a dot and join side-by-side cells. You do not have to build the
+    lists, because a cell's neighbours are found by adding four fixed offsets, so a traversal of the grid
+    costs a constant per cell.
   code: 4.1/thm-5
 - id: 4.1.6
   title: Puzzles as graphs
-  plain_words: "Any puzzle where you want the fewest moves and every move counts the same is a search through a graph whose dots are the positions of the puzzle. Walk it with a queue, remember each position you saw, and the first time you reach the goal is the fewest moves."
+  plain_words: Any puzzle where you want the fewest moves and every move counts the same is a search through
+    a graph whose dots are the positions of the puzzle. Walk it with a queue, remember each position you
+    saw, and the first time you reach the goal is the fewest moves.
   code: 4.1/thm-6
-cards: []
-problems: []
+cards:
+- id: components
+  name: Connected components
+  from_theorem: 4.1.2
+  decisive_property: 'Items are linked in pairs by a relation that works both ways (friends, two-way roads,
+    shared wires, side-by-side cells), the pairs are listed or each item has few neighbours, and the question
+    is about the groups the links form: how many, how big, which item is in which group, or can A reach
+    B.'
+  how_to_test: Check that a link from A to B is also a link from B to A, and that the pairs are given
+    as a list (or each item has a few neighbours). Then the groups are the components, and one walk per
+    group finds them.
+  constraint_shapes:
+  - 'n and m up to 2·10^5: asking about every pair of items means n(n−1)/2 ≈ 2·10^10 pairs, while one
+    pass over n + m = 4·10^5 entries is easy'
+  - 'A map of 1000 × 1000 cells: 10^6 cells with 4 neighbours each is 4·10^6 looks, so counting separate
+    regions is a single pass'
+  weak_signals:
+  - form: Asks how many separate groups there are, or the size of the largest or smallest group
+    shape: n and m up to 2·10^5, links given as pairs (friendships, roads, wires, "a and b are the same")
+  - form: Asks whether A can reach B through the links, or the fewest links to add so that everything
+      is connected
+    shape: A single graph of up to 10^5 vertices; the answer is one number or one yes/no per query
+  - form: Asks to count or label regions of a map ("rooms", "islands", "lakes")
+    shape: A grid with R·C ≤ 10^6 cells, where side-adjacent cells of the same kind belong together
+  kill_signals:
+  - 'The links are one-way arrows and "same group" means "can reach each other": for the arrows 1→2, 2→1,
+    2→3, 3→4 the groups {1, 2}, {3}, {4} number 3, but one walk from 1 marks all four vertices (the first
+    negative example below)'
+  - 'The links are not listed and would number about n² (ranges that overlap): for n = 10^5 ranges the
+    pairs can reach 5·10^9, so build the groups by sorting instead (the second negative example)'
+  in_action:
+    statement: A country has n cities and m two-way roads. Find the fewest new roads that make every city
+      reachable from every other.
+    constraints: n ≤ 10^5, m ≤ 2·10^5.
+    budget: 'Asking about all pairs: n(n−1)/2 ≈ 5·10^9 questions, each needing a search. One walk per
+      group touches each city and each road a constant number of times: n + m = 3·10^5. Need about O(n
+      + m).'
+    candidates:
+    - tool: Test every pair of cities for a route (brute force, topic 0.5)
+      verdict: rejected
+      because: 'About 5·10^9 pairs, each with its own search: far too slow.'
+    - tool: Walk from each unmarked city and count the walks (this topic)
+      verdict: chosen
+      because: The roads work both ways and are listed, so each walk marks exactly one group.
+    property_check: 'A road from a to b is also a road from b to a, so reachability is symmetric. The
+      roads are given as a list of 2·10^5 pairs. Groups = components (Theorem 4.1.2): yes.'
+    decision: Count the components k with the loop of Theorem 4.1.2. One new road merges at most two groups,
+      so k − 1 roads are needed, and a chain of k − 1 roads between the groups is enough. Time O(n + m).
+  examples:
+    positive:
+    - inline:
+        input: 6 cities, two-way roads 1–2, 2–3, 1–3, 4–5; how many groups?
+        answer: '3'
+        why: 'Every road works both ways, so a walk from 1 marks {1, 2, 3}, a walk from 4 marks {4, 5}
+          and city 6 is alone: 3 walks, 3 groups, equal to the count from merging pairs of groups one
+          by one.'
+    - worked_example: cses-1666
+      why: The cities are linked by two-way roads, so the number of components minus one is the number
+        of roads to build.
+    negative:
+    - inline:
+        input: 4 cities, one-way roads 1→2, 2→1, 2→3, 3→4; how many groups of cities that can all reach
+          one another?
+        answer: '3'
+        method_gives: '1'
+        why: 'The links have directions: a walk from 1 marks all of 1, 2, 3, 4, but 3 cannot get back
+          to 2, so the groups are {1, 2}, {3} and {4}. Counting walks needs links that work both ways.
+          With so few cities, testing every pair for "reach each other" is the right tool.'
+      correct_tool:
+        topic: '0.5'
+        card: enumerate-answer
+    - problem: lc-count-ways-to-group-overlapping-ranges
+      why: Two ranges are linked when they overlap, so for n = 10^5 ranges the links could number about
+        n²/2 and cannot be listed; after sorting by start, the ranges that overlap form runs found by
+        one scan.
+      correct_tool:
+        topic: '1.1'
+        card: sort-then-scan
+  lookalikes:
+  - description: Group the items that have the same key (the same remainder, the same sorted letters,
+      the same value)
+    tool:
+      topic: '0.6'
+      card: map-counting
+    flipping_difference: When every item carries a key that decides its group, a map from key to group
+      is enough. A walk is needed when the only information is pairs that link items, because A–B and
+      B–C put A and C together although they share nothing directly.
+  - description: How many edges are needed to get from A to B
+    tool:
+      topic: '4.1'
+      card: unweighted-shortest
+    flipping_difference: Components only say whether B is reachable from A; the fewest edges asks how
+      far B is, which needs the distances of Theorem 4.1.3.
+  complexity: 'O(n + m): each vertex is marked once and each adjacency-list entry is looked at at most
+    once.'
+- id: unweighted-shortest
+  name: Fewest edges
+  from_theorem: 4.1.3
+  decisive_property: Every move or edge counts as one step (no lengths, times or costs that differ between
+    edges), and the question asks for the fewest steps from one start to a target, or to every vertex,
+    possibly with the route itself.
+  how_to_test: 'Ask whether every step costs the same. If it does, walk from the start with a queue: the
+    first time a vertex is reached is by the fewest steps, and the parent pointers give the route.'
+  constraint_shapes:
+  - 'n and m up to 2·10^5: trying all routes is exponential in n, while one queue-based walk is n + m
+    = 4·10^5 steps'
+  - 'A 1000 × 1000 grid: 10^6 cells with 4 moves each is 4·10^6 steps for the distance to every cell'
+  weak_signals:
+  - form: Asks for the fewest moves, roads, corridors or jumps from A to B
+    shape: n, m ≤ 2·10^5 or a grid with R·C ≤ 10^6, where each move is described as "one step"
+  - form: Asks to print one shortest route, not just its length
+    shape: Same size; the output is a list of up to n vertices or a string of moves
+  - form: Asks for the distance from one vertex to every other
+    shape: A single start, n up to 2·10^5, queries about distances afterwards
+  kill_signals:
+  - 'Edges have different costs: with the edges 1–2 of cost 10, 1–3 of cost 1 and 3–2 of cost 1, the fewest-edges
+    route from 1 to 2 uses one edge and costs 10, while the cheapest route uses two edges and costs 2
+    (the first negative example below)'
+  - 'The statement gives a length, a time or a price for each road: that is a sign that steps are not
+    all equal, so the fewest edges is not the answer'
+  in_action:
+    statement: A maze has n rooms joined by m two-way corridors. Find the fewest corridors from room 1
+      to room n and print one such route.
+    constraints: n ≤ 10^5, m ≤ 2·10^5.
+    budget: The number of routes can be exponential in n. A single walk costs n + m = 3·10^5. Need about
+      O(n + m).
+    candidates:
+    - tool: Try every route and keep the shortest (backtracking, topic 3.1)
+      verdict: rejected
+      because: The number of routes grows exponentially with n.
+    - tool: Fill a table of best values in order (dynamic programming, topic 3.2)
+      verdict: rejected
+      because: Corridors go both ways, so no room comes "before" another and there is no order to fill
+        a table in.
+    - tool: Queue-based walk from room 1 (this topic)
+      verdict: chosen
+      because: Every corridor is one step, so the first time a room is reached is by the fewest corridors.
+    property_check: Each corridor counts as 1, so path length = number of edges. The first visit of a
+      vertex has the least distance (Theorem 4.1.3), and the parent of each room is the room it was reached
+      from.
+    decision: Walk from room 1 with a queue, store dist and parent, then follow parents from room n back
+      to room 1 and reverse them. Print −1 if room n was never reached. Time O(n + m).
+  examples:
+    positive:
+    - inline:
+        input: 6 rooms, corridors 1–2, 2–3, 3–4, 4–5, 1–6, 6–5; fewest corridors from 1 to 5?
+        answer: '2'
+        why: All corridors cost one step, so the walk reaches 6 in ring 1 and 5 in ring 2 (route 1, 6,
+          5), and the long way 1, 2, 3, 4, 5 with 4 corridors is never needed; it matches trying every
+          route.
+    - worked_example: cses-1193
+      why: Every move on the map costs one step and the route has to be printed, so the parent of each
+        cell is stored.
+    negative:
+    - inline:
+        input: Rooms 1, 2, 3; corridors 1–2 of length 10, 1–3 of length 1, 3–2 of length 1; the cheapest
+          route from 1 to 2?
+        answer: '2'
+        method_gives: '10'
+        why: 'Fewest corridors is not the cheapest route: the walk reaches room 2 directly in 1 corridor,
+          which costs 10, but the route through room 3 uses 2 corridors and costs only 2. The method assumes
+          all steps cost the same. With so few rooms, trying every route is the right tool.'
+      correct_tool:
+        topic: '0.5'
+        card: enumerate-answer
+    - problem: ac-dp_a
+      why: The frog pays the height difference of every jump, so jumps have different costs and the fewest
+        jumps is not the cheapest route; because it only moves forward, a table over the stones works.
+      correct_tool:
+        topic: '3.2'
+        card: linear-state
+  lookalikes:
+  - description: The fewest jumps along a line where each cell allows a jump of at most a given length
+    tool:
+      topic: '1.5'
+      card: left-to-right-forced
+    flipping_difference: When all moves go forward along a line, always jumping to the cell that reaches
+      farthest is forced and runs in O(n); a queue-based walk also works but looks at every possible jump.
+      The walk is needed when moves go in both directions.
+  - description: Count the vertices reachable from A (no distances asked)
+    tool:
+      topic: '4.1'
+      card: components
+    flipping_difference: When only reachability matters, one traversal with any container is enough; distances
+      need the queue and the dist values of Theorem 4.1.3.
+  complexity: 'O(n + m): each vertex enters the queue once and each adjacency-list entry is looked at
+    once.'
+- id: grid-graph
+  name: Grids as graphs
+  from_theorem: 4.1.5
+  decisive_property: The cells of a table (R·C up to about 10^6) are the vertices, and from every cell
+    the same few moves lead to its 4 (or 8) neighbours; whether a move is allowed depends on the target
+    cell only, never on how you got there, and each step costs one.
+  how_to_test: Write the moves as offsets such as (−1, 0), (1, 0), (0, −1), (0, 1). Check that the answer
+    depends only on the cell you stand on (no keys, no remaining budget, no memory of the path, no different
+    costs). Then each cell is a vertex.
+  constraint_shapes:
+  - 'R and C up to 1000: R·C = 10^6 cells with 4 neighbours each is 4·10^6 looks, while trying every route
+    is hopeless: an open 8 × 8 grid already has about 8·10^11 routes between opposite corners that never
+    visit a cell twice'
+  - 'R·C up to 2·10^5 with 8 directions: 8 · 2·10^5 = 1.6·10^6 steps'
+  weak_signals:
+  - form: A map of "." and "#" and a question about rooms, lakes or islands (how many, how large, which
+      one is largest)
+    shape: R, C ≤ 1000; side-adjacent cells of one kind belong together
+  - form: Asks for the fewest steps from S to T on a map, perhaps with the moves printed as L, R, U, D
+    shape: R·C ≤ 10^6; the allowed moves are the same from every cell
+  - form: Asks which cells can reach the border, or which cells are enclosed
+    shape: A grid up to 1000 × 1000 where cells are open or blocked
+  kill_signals:
+  - 'What you may do depends on something collected on the way (a key opens a door): on the row S.D.T
+    with a key K in a side cell, a search over cells alone reports a route that needs the key you have
+    not picked up (the first negative example below)'
+  - 'The path must not reuse a cell (word search): on the one-row map "AB", walking A, B, A spells ABA,
+    but the last step reuses the first cell, so the answer is no, while a search that remembers only the
+    cell and the letter reached says yes'
+  - 'Asks to count the paths, not to reach: a traversal marks each cell once and cannot count routes'
+  in_action:
+    statement: A map of floor (.) and wall (#) cells is given. Count the rooms, where two floor cells
+      are in the same room if they are joined by side-adjacent floor cells.
+    constraints: R, C ≤ 1000.
+    budget: '10^6 cells. Testing every pair of floor cells for a route: about 5·10^11 pairs. A walk looks
+      at each cell 4 times: 4·10^6 steps. Need about O(R·C).'
+    candidates:
+    - tool: Test every pair of floor cells for a route (brute force, topic 0.5)
+      verdict: rejected
+      because: About 5·10^11 pairs.
+    - tool: Grid as a graph, one walk per unmarked floor cell (this topic)
+      verdict: chosen
+      because: A move goes to the 4 side neighbours that are floor, and nothing else matters.
+    property_check: 'The neighbours of a cell are the 4 offsets that stay inside the map and are not walls.
+      The answer depends only on the cell. Rooms = components of this graph (Theorems 4.1.2 and 4.1.5):
+      yes.'
+    decision: Scan the cells row by row; each unmarked floor cell starts a walk that marks its room; the
+      number of walks started is the number of rooms. Time O(R·C).
+  examples:
+    positive:
+    - inline:
+        input: The map "..#..", ".##..", "#..#." (# is a wall); how many rooms?
+        answer: '3'
+        why: The top-left three cells form one room, the right-hand block of five cells another, and the
+          two bottom cells a third, since the wall cells cut them off; the count of walks equals the count
+          from merging neighbouring cells again and again.
+    - worked_example: cses-1193
+      why: Each step to a side neighbour costs one and the allowed moves are the same from every cell,
+        so a queue-based walk over the cells gives the fewest steps.
+    negative:
+    - inline:
+        input: The map "S.D.T", "#K###" where D is a door that opens only after K has been visited; fewest
+          steps from S to T?
+        answer: '6'
+        method_gives: '4'
+        why: 'A search over cells treats D as open and reports 4 steps along the top row. The true route
+          picks up the key first: right, down to K, back up, right through D, right, right = 6 steps.
+          Whether D can be entered depends on a fact beyond the cell, so (cell, key) is the state.'
+      correct_tool:
+        topic: '4.1'
+        card: state-graph
+    - problem: lc-word-search
+      why: The path may not reuse a cell, so whether a move is allowed depends on the cells already used;
+        a search that marks cells once finds the word where no valid path exists, and backtracking over
+        the path is needed.
+      correct_tool:
+        topic: '3.1'
+        card: constraint-placement
+  lookalikes:
+  - description: Count the right/down paths across a grid with blocked cells
+    tool:
+      topic: '3.5'
+      card: grid-paths
+    flipping_difference: The question asks how many routes there are, and moves only go right or down,
+      so a table filled cell by cell adds the counts of the two cells before. A walk marks each cell once
+      and loses the number of routes.
+  - description: Replace each cell by the number of bombs among its 8 neighbours
+    tool:
+      topic: '0.3'
+      card: grid-processing
+    flipping_difference: When each cell's answer depends only on the cells next to it, one pass over the
+      grid is enough. A walk is needed when the answer depends on cells far away that are joined through
+      a chain of free cells.
+  complexity: 'O(R·C): every cell is marked once and has at most 4 (or 8) moves.'
+- id: multi-source
+  name: Distance to the nearest source
+  from_theorem: 4.1.4
+  decisive_property: Several starting points (fires, exits, monsters, special cells) all start at the
+    same moment, every step costs one, and the question needs, for each vertex, the distance to the nearest
+    starting point or whether one start gets there first.
+  how_to_test: Check that every source starts at time 0 and that steps cost one. Then put all sources
+    into the queue at distance 0 before the walk begins; one pass gives every vertex its distance to the
+    nearest source.
+  constraint_shapes:
+  - 'A 1000 × 1000 grid with up to 10^6 sources: one walk per source is 10^6 · 10^6 = 10^12 steps, while
+    one walk with all sources in the queue is 4·10^6 steps'
+  - 'n = 2·10^5 vertices and k = 10^5 sources: k walks of n + m steps are 4·10^10, against n + m = 4·10^5
+    for one'
+  weak_signals:
+  - form: For every cell, the distance to the nearest fire, exit, monster or marked cell
+    shape: A grid with R·C ≤ 10^6 and many marked cells
+  - form: Can a person reach a cell before any monster or fire does?
+    shape: A grid up to 1000 × 1000; everybody moves one step per second and all start together
+  - form: After how many minutes has everything been reached, rotted or burnt?
+    shape: A grid with up to 10^4 cells where several cells start at minute 0
+  kill_signals:
+  - 'The sources do not start together: with the path 1–2–3–4–5, the source 1 at minute 0 and the source
+    5 at minute 3, vertex 4 is first reached at minute 3, but starting both at minute 0 gives 1 (the first
+    negative example below)'
+  - 'The question asks for the k-th nearest source or the farthest one: a single pass records only the
+    nearest, e.g. on the path 1–2–3–4–5 with sources 1 and 5, vertex 2 has nearest distance 1 but second
+    nearest distance 3'
+  in_action:
+    statement: A map has some cells on fire. Every minute the fire spreads to the 4 neighbouring non-wall
+      cells. For every cell, print the minute at which the fire reaches it.
+    constraints: R·C ≤ 10^6, up to 10^6 cells on fire at the start.
+    budget: 'One walk per burning cell: up to 10^6 walks of 10^6 steps = 10^12. One walk that starts from
+      all burning cells: R·C·4 = 4·10^6. Need about O(R·C).'
+    candidates:
+    - tool: A queue-based walk from every burning cell, keeping the smallest distance (Theorem 4.1.3,
+        repeated)
+      verdict: rejected
+      because: 'Up to 10^6 walks of 10^6 steps each: 10^12.'
+    - tool: One walk with all burning cells in the queue at minute 0 (this topic)
+      verdict: chosen
+      because: All fires start together and spread one step per minute, so the first arrival at a cell
+        is the nearest fire.
+    property_check: 'All sources start at minute 0 (no delayed fire), every step costs one, and only the
+      nearest fire matters (Theorem 4.1.4): yes.'
+    decision: Push every burning cell with minute 0 into the queue, run the walk of Theorem 4.1.3 over
+      the map, and print the stored minute (−1 for cells the fire never reaches). Time O(R·C).
+  examples:
+    positive:
+    - inline:
+        input: The map "S...#", ".##..", "...#.", "#.S.." with fire at both S cells, spreading one cell
+          per minute; when has the fire reached every cell it can reach?
+        answer: '4'
+        why: The two fires start together, so each cell is first reached by the nearer one, and the cells
+          (1, 3) and (1, 4) are reached last, in minute 4; this equals the smallest of two separate walks
+          for every cell.
+    - worked_example: cses-1194
+      why: All monsters move at once and one step per second, so one walk from all monsters gives the
+        time each cell is reached, and the player may use only cells reached earlier.
+    negative:
+    - inline:
+        input: The path 1–2–3–4–5; a fire at vertex 1 starts at minute 0 and a fire at vertex 5 starts
+          at minute 3; when does the fire first reach vertex 4?
+        answer: '3'
+        method_gives: '1'
+        why: The second fire is delayed by 3 minutes, so it reaches vertex 4 only in minute 3 + 1 = 4,
+          and the first reaches it in minute 0 + 3 = 3. The method lets both start at minute 0, so it
+          reports 1. With a handful of sources, the answer is the least of (start minute + distance) over
+          the sources.
+      correct_tool:
+        topic: '0.5'
+        card: enumerate-answer
+    - problem: ac-abc364_d
+      why: The query asks for the k-th nearest point, not the nearest, so one pass that keeps the nearest
+        source is not enough; on a line of sorted points the k-th nearest is found by binary searching
+        the distance.
+      correct_tool:
+        topic: '1.4'
+        card: kth-by-counting
+  lookalikes:
+  - description: The nearest marked position to a query on a line of sorted positions
+    tool:
+      topic: '1.4'
+      card: sorted-search
+    flipping_difference: On a sorted line, the nearest marked position is next to the place where the
+      query would be inserted, found by binary search in O(log n). A walk is needed when distance is measured
+      along a graph or a map with obstacles.
+  - description: The distance from one given start only
+    tool:
+      topic: '4.1'
+      card: unweighted-shortest
+    flipping_difference: 'With a single start there is nothing to combine: one ordinary queue-based walk.
+      Putting many starts in the queue is what makes the distances "to the nearest".'
+  complexity: 'O(n + m): one walk, whatever the number of sources.'
+- id: state-graph
+  name: Implicit graphs of states
+  from_theorem: 4.1.6
+  decisive_property: A puzzle or process in which a state (everything that matters about the situation)
+    fixes what moves are possible next, every move costs one, the state space is small enough to visit
+    (up to about 10^6 to 10^7 states), and the question asks for the fewest moves to a goal state.
+  how_to_test: 'Write down what must be remembered: that is the state. Multiply the ranges of its parts
+    to count the states. If the count times the number of moves is within the budget and every move costs
+    one, walk the states with a queue and a table (or map) of distances.'
+  constraint_shapes:
+  - 'A number up to 10^6 with two moves: 10^6 states × 2 moves = 2·10^6 steps'
+  - 'Boards with a few pieces: 9 cells of the sliding puzzle give 9!/2 = 181 440 reachable states with
+    at most 4 moves each, about 7·10^5 steps; 12 items in any order would give 12! ≈ 4.8·10^8 states,
+    too many'
+  weak_signals:
+  - form: Asks for the fewest operations that turn A into B (numbers, strings, boards)
+    shape: Numbers up to 10^6, strings of length ≤ 8, or boards with 6 to 9 cells, so the state space
+      is about 10^4 to 10^6
+  - form: A small puzzle with locks, jugs, tokens or a sliding board, and a goal configuration
+    shape: The board is tiny but the configurations are many (a 4-digit lock has 10^4)
+  - form: 'A map problem where something beyond the cell matters: a key, the direction, the number of
+      walls broken'
+    shape: R·C ≤ 10^6 with one extra field of at most 10 values, so the states are R·C·10 or fewer
+  kill_signals:
+  - 'Moves have different costs: on the line 0..6 with the move +1 costing 1 and the move +3 costing 5,
+    the fewest moves to 6 are two (+3, +3) at cost 10, while six moves of +1 cost only 6 (the first negative
+    example below)'
+  - 'The question asks how many ways or sequences there are: a search visits each state once and cannot
+    count routes (the second negative example)'
+  - 'The number of states is huge: arrangements of 20 items give 20! ≈ 2.4·10^18 states'
+  in_action:
+    statement: A counter shows 1. One button adds 1, another triples the number. The number may never
+      exceed 10 000. Find the fewest presses to show exactly 100.
+    constraints: Target 100, limit 10^4.
+    budget: 'The number of press sequences doubles with each press. The state is the number, at most 10^4
+      values, with 2 moves each: 2·10^4 steps. Need about O(states).'
+    candidates:
+    - tool: Try all press sequences (backtracking, topic 3.1)
+      verdict: rejected
+      because: The number of sequences doubles with each press; some targets below 10^4 need 22 presses
+        (2^22 ≈ 4·10^6 sequences), and for larger limits it explodes.
+    - tool: Queue-based walk over the numbers (this topic)
+      verdict: chosen
+      because: The number fully describes the situation, each press costs one, and there are at most 10^4
+        states.
+    property_check: 'The state is the shown number alone: the next numbers are x + 1 and 3x (if at most
+      10^4). Every press costs 1. 10^4 states fit. Theorem 4.1.6 applies.'
+    decision: 'Queue and a distance table (or map) over the numbers; start at 1; the first time 100 is
+      removed gives 7 presses: 1, 3, 9, 10, 11, 33, 99, 100. Time O(10^4 · 2).'
+  examples:
+    positive:
+    - inline:
+        input: 'The counter shows 2; buttons: add 1, triple; fewest presses to show 29 (never above 10
+          000)?'
+        answer: '5'
+        why: 'The numbers are the states and each press costs one: 2, 3, 9, 27, 28, 29 is 5 presses, found
+          by the search before any longer route; a table filled in increasing order gives the same.'
+    - inline:
+        input: 'Two jugs of 3 and 5 litres, operations: fill a jug, empty a jug, pour one into the other
+          until it is full or empty; fewest operations to get 4 litres in a jug?'
+        answer: '6'
+        why: A state is the pair (litres in the 3-litre jug, litres in the 5-litre jug), at most 4 · 6
+          = 24 states; the search reaches 4 litres after 6 operations, and trying all operation sequences
+          of that length agrees.
+    negative:
+    - inline:
+        input: Positions 0 to 6 on a line; the move +1 costs 1 and the move +3 costs 5; the cheapest way
+          from 0 to 6?
+        answer: '6'
+        method_gives: '10'
+        why: 'The search finds the fewest moves (+3, +3: two moves) at cost 10, but moves have different
+          costs and six moves of +1 cost only 6. Because every move goes forward, a table over the positions
+          gives the cheapest cost.'
+      correct_tool:
+        topic: '3.2'
+        card: linear-state
+    - problem: lc-number-of-ways-to-stay-in-the-same-place-after-some-steps
+      why: The question asks for the number of move sequences of a fixed length, and a search marks each
+        state once, so it loses the number of ways; a table over (step, position) adds the counts.
+      correct_tool:
+        topic: '3.5'
+        card: sequence-counting
+  lookalikes:
+  - description: List every arrangement of a puzzle that satisfies the rules (for example all placements
+      of queens)
+    tool:
+      topic: '3.1'
+      card: generate-all
+    flipping_difference: When every solution is wanted, or the question is whether a solution exists in
+      a huge space, backtracking with pruning builds them. The queue-based search answers "fewest moves
+      from a start" and needs a small state space.
+  - description: Count the ways to reach a target in exactly k moves
+    tool:
+      topic: '3.5'
+      card: sequence-counting
+    flipping_difference: A search finds how few moves are needed and visits each state once; counting
+      ways needs a table that adds the counts of every state at every step.
+  complexity: O(S·k) for S reachable states with k moves each (times log S with a map).
+problems:
+- id: cses-1666
+  role: worked_example
+  summary: Given n ≤ 10^5 cities and m ≤ 2·10^5 two-way roads, find the fewest new roads that make all
+    cities reachable from each other and list them.
+- id: cses-1193
+  role: worked_example
+  summary: On an n × m map (n, m ≤ 1000) with walls, find the shortest route from A to B using the moves
+    L, R, U, D and print it, or say there is none.
+- id: cses-1194
+  role: worked_example
+  summary: On an n × m map (n, m ≤ 1000) with walls, a player A and several monsters M all move one step
+    per second; can A reach the border of the map before any monster could reach that cell? Print a route
+    if so.
 drill: []
 lookalike_pairs: []
 self_test: []

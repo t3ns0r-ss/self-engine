@@ -6,14 +6,21 @@ Output: the count.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    long long k, s;
-    cin >> k >> s;
+// snippet:begin
+// Theorem 0.5.1. Triples (x, y, z) with 0 <= x, y, z <= k and x + 2y + 3z = s. x is determined by y and z: no third loop.
+long long countTriples(long long k, long long s) {
     long long count = 0;
     for (long long y = 0; y <= k; y++)
         for (long long z = 0; z <= k; z++) {
-            long long x = s - 2 * y - 3 * z;  // x is determined by y and z: no third loop
+            long long x = s - 2 * y - 3 * z;
             if (0 <= x && x <= k) count++;
         }
-    cout << count << "\n";
+    return count;
+}
+// snippet:end
+
+int main() {
+    long long k, s;
+    cin >> k >> s;
+    cout << countTriples(k, s) << "\n";
 }

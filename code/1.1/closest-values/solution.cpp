@@ -7,6 +7,18 @@ Output: "minDifference minSpread".
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.1.2. The smallest difference between two elements, and the smallest spread (largest - smallest)
+// of k chosen elements. Both are found among neighbours in sorted order.
+pair<long long, long long> closestValues(vector<long long> a, int k) {
+    sort(a.begin(), a.end());  // the question is order-free
+    long long minDiff = LLONG_MAX, minSpread = LLONG_MAX;
+    for (int i = 0; i + 1 < (int)a.size(); i++) minDiff = min(minDiff, a[i + 1] - a[i]);  // neighbours only
+    for (int i = 0; i + k - 1 < (int)a.size(); i++) minSpread = min(minSpread, a[i + k - 1] - a[i]);  // blocks of k
+    return {minDiff, minSpread};
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -14,9 +26,6 @@ int main() {
     cin >> n >> k;
     vector<long long> a(n);  // differences reach 2*10^9, beyond int
     for (auto& x : a) cin >> x;
-    sort(a.begin(), a.end());  // the question is order-free (Theorem 1.1.2)
-    long long minDiff = LLONG_MAX, minSpread = LLONG_MAX;
-    for (int i = 0; i + 1 < n; i++) minDiff = min(minDiff, a[i + 1] - a[i]);  // neighbours only
-    for (int i = 0; i + k - 1 < n; i++) minSpread = min(minSpread, a[i + k - 1] - a[i]);  // blocks of k
-    cout << minDiff << " " << minSpread << "\n";
+    pair<long long, long long> r = closestValues(a, k);
+    cout << r.first << " " << r.second << "\n";
 }

@@ -6,6 +6,9 @@ topic: "0.5"
 ---
 import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
 import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
 import Drill from '../../../components/Drill.astro';
@@ -13,13 +16,6 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
-import weightedSum from '../../../../code/0.5/weighted-sum/solution.cpp?raw';
-import subsetSumRange from '../../../../code/0.5/subset-sum-range/solution.cpp?raw';
-import bestOrder from '../../../../code/0.5/best-order/solution.cpp?raw';
-import boundedSteps from '../../../../code/0.5/bounded-steps/solution.cpp?raw';
-import smallestAnswer from '../../../../code/0.5/smallest-answer/solution.cpp?raw';
-import example1 from '../../../../code/0.5/example-1/solution.cpp?raw';
-import example2 from '../../../../code/0.5/example-2/solution.cpp?raw';
 
 <TopicHeader topic="0.5" />
 
@@ -35,10 +31,7 @@ This topic is about such exhaustive search, called **brute force**: list every c
 
 ### What you need
 
-- [Topic 0.1](../0-1-cpp-for-cp/), C++ for competitive programming (CP): `long long`, since subset sums of 20 weights up to $10^9$ reach $2 \cdot 10^{10}$.
-- [Topic 0.2](../0-2-complexity/), complexity analysis: the step budget, used here to decide whether the number of candidates is small enough.
-- [Topic 0.3](../0-3-implementation/), implementation and simulation: checking one candidate is often a small simulation or a grid scan.
-- [Topic 0.4](../0-4-elementary-math/): remainders and divisibility appear in many checks.
+<WhatYouNeed topic="0.5" />
 
 ### What this topic does not cover
 
@@ -64,12 +57,28 @@ This topic is about such exhaustive search, called **brute force**: list every c
 2. Its cost is (number of candidates) × (cost of checking one), plus the cost of listing them.
 3. The common search spaces have these sizes: pairs $i < j$ of $n$ items: $n(n-1)/2$; triples $i < j < k$: $n(n-1)(n-2)/6$; subsets: $2^n$; orders: $n!$; sequences of length $L$ with $k$ choices per position: $k^L$.
 
-*Proof.* 1. Every candidate is examined and the best one (or the one that passes) is kept, so the result is the best over the whole search space, which contains the answer. 2. Add the cost of each check. 3. Pairs: each of the $n(n-1)$ ordered pairs with $i \ne j$ is counted twice, once in each order. Triples: the $n(n-1)(n-2)$ ordered triples of different items contain each unordered triple $3! = 6$ times. Subsets: each of the $n$ items is in or out, independently: $2^n$. Orders: $n$ choices for the first position, $n - 1$ for the second, and so on: $n!$. Sequences: $k$ choices at each of $L$ positions: $k^L$. $\square$
+:::tip[In plain words]
+If you check every candidate and keep the best, you get the right answer; the cost is the number of candidates times the cost of one check. Pairs, triples, subsets and orders have well-known counts, so the budget can be checked before coding.
+:::
+
+**A tiny instance.** For $a = (1, 2, 3, 4, 5)$ there are $5 \cdot 4 / 2 = 10$ pairs $i < j$. Checking all of them finds the pairs with sum 6: $(1, 5)$ and $(2, 4)$.
+
+**Proof.**
+1. Part 1. Every candidate is examined and the best one (or the one that passes) is kept, so the result is the best over the whole search space, which contains the answer.
+2. Part 2. Add the cost of each check: the number of candidates times the cost of one check, plus the cost of listing them.
+3. Part 3, pairs. Each of the $n(n-1)$ ordered pairs with $i \ne j$ is counted twice, once in each order, so there are $n(n-1)/2$ unordered pairs.
+4. Triples. The $n(n-1)(n-2)$ ordered triples of different items contain each unordered triple $3! = 6$ times, so there are $n(n-1)(n-2)/6$.
+5. Subsets. Each of the $n$ items is in or out, independently: $2^n$. Orders. $n$ choices for the first position, $n - 1$ for the second, and so on: $n!$.
+6. Sequences. $k$ choices at each of $L$ positions: $k^L$. $\square$
 
 :::note[This proof needs]
 1. The search space really contains the answer: no candidate is missing and no constraint of the statement is dropped.
 2. The number of candidates times the cost of one check fits the budget.
 :::
+
+<TheoremCode unit="0.5/thm-1" />
+
+The second and third example are the limits in the table below: $5 \cdot 10^7$ pairs for $n = 10^4$ and $8.5 \cdot 10^7$ triples for $n = 800$, both about one second.
 
 Rough limits for about $10^8$ simple steps:
 
@@ -82,16 +91,30 @@ Rough limits for about $10^8$ simple steps:
 
 **Fixing all but one variable.** If a candidate is a tuple $(x, y, z)$ with $x + y + z = S$, loop over $x$ and $y$ only and compute $z = S - x - y$, then check that $z$ is allowed. The search space shrinks from $(S+1)^3$ to $(S+1)^2$ without missing anything, because $z$ is determined by the others. This is often the step that makes nested loops fit.
 
+
 ### 4.2 Subsets as bitmasks
 
 **Theorem 0.5.2 (bitmasks).** For $n$ items numbered $0, \dots, n-1$, the integers $0, 1, \dots, 2^n - 1$ correspond one-to-one to the subsets of the items: the subset of `mask` contains item $i$ exactly when `(mask >> i) & 1` is 1. So the loop `for (mask = 0; mask < (1 << n); mask++)` lists every subset exactly once, and checking each in $O(n)$ costs $O(2^n \cdot n)$.
 
-*Proof.* Every integer in $[0, 2^n)$ has a unique binary representation with $n$ digits (bits $0$ to $n-1$), and every choice of $n$ bits is the representation of exactly one integer in that range. Reading bit $i$ as "item $i$ is in" turns each integer into a subset and each subset into an integer, and these two maps undo each other. `mask >> i` shifts bit $i$ into position 0, and `& 1` keeps only that bit. $\square$
+:::tip[In plain words]
+The numbers from 0 to 2^n − 1, written in binary, correspond one to one to the subsets of n items, with bit i telling whether item i is in. A single loop over the numbers lists every subset exactly once.
+:::
+
+**A tiny instance.** For $n = 3$ the mask $5 = 101_2$ has bits 0 and 2 set, so it is the subset $\{0, 2\}$; mask 0 is the empty set and mask 7 the set of all three items.
+
+**Proof.**
+1. Every integer in $[0, 2^n)$ has a unique binary representation with $n$ digits (bits $0$ to $n-1$), and every choice of $n$ bits is the representation of exactly one integer in that range.
+2. Reading bit $i$ as "item $i$ is in" turns each integer into a subset and each subset into an integer, and these two maps undo each other.
+3. `mask >> i` shifts bit $i$ into position 0, and `& 1` keeps only that bit, so the test is 1 exactly when item $i$ is in. $\square$
 
 :::note[This proof needs]
 1. $n$ is small enough that `1 << n` fits the type: $n \le 30$ for `int`, $n \le 62$ for `1LL << n`, and in practice $2^n \cdot n$ must fit the budget.
 2. Each subset can be checked on its own, without knowing the results of other subsets.
 :::
+
+<TheoremCode unit="0.5/thm-2" />
+
+The two examples are mask 5 and mask 0 for $n = 3$; the complement mask of $101_2$ is $010_2 = 2$.
 
 A trace for $n = 3$:
 
@@ -108,18 +131,36 @@ A trace for $n = 3$:
 
 The complement of `mask` (the items not in it) is `((1 << n) - 1) ^ mask`: `(1 << n) - 1` has all $n$ bits set, and `^` (exclusive or) sets a bit of the result exactly when one of the two numbers has it, so every bit of `mask` is flipped; for a split into two groups, the second group is the complement of the first.
 
+
 ### 4.3 All orders with `next_permutation`
 
 **Theorem 0.5.3 (next permutation).** Let $a$ be a sequence that is not in decreasing order. Let $i$ be the largest index with $a_i < a_{i+1}$, and $j$ the largest index with $a_j > a_i$. Swapping $a_i$ and $a_j$ and then reversing $a_{i+1}, \dots, a_{n-1}$ produces the smallest arrangement of the same elements that is lexicographically greater than $a$. Consequently, starting from the sorted sequence and repeating this step until the sequence is in decreasing order visits every distinct arrangement exactly once, in increasing lexicographic order. C++'s `next_permutation(a.begin(), a.end())` does this step and returns `false` (after sorting the sequence back) when $a$ was already the largest.
 
-*Proof.* By the choice of $i$, the suffix $a_{i+1} \ge a_{i+2} \ge \dots \ge a_{n-1}$ is in non-increasing order, which is the largest possible arrangement of its elements. So no arrangement that keeps $a_0, \dots, a_i$ is greater than $a$; a greater one must change some position $\le i$. Keeping $a_0, \dots, a_{i-1}$ and putting at position $i$ a larger value from the suffix gives greater arrangements, and any arrangement that changes an earlier position upward is greater than all of those. The smallest choice at position $i$ is the smallest suffix value that exceeds $a_i$; since the suffix is non-increasing, that is $a_j$ with $j$ the *largest* index with $a_j > a_i$. After the swap, the suffix is still non-increasing (the value $a_i$ moved into position $j$ is at least $a_{j+1}$ and less than $a_{j-1}$, by the choice of $j$), and the smallest arrangement of it is its increasing order, which the reversal produces. Each step moves to the immediate successor, so starting from the smallest arrangement (sorted) the loop visits every arrangement once, in order, until the largest (decreasing). $\square$
+:::tip[In plain words]
+Starting from the sorted sequence and repeatedly taking the next larger arrangement visits every distinct arrangement exactly once, in increasing order. Starting from an unsorted sequence skips the arrangements before it.
+:::
+
+**A tiny instance.** From $a = (1, 3, 2)$: $i = 0$ (since $1 < 3$) and $j = 2$ (the last value above 1 is 2). Swap to get $(2, 3, 1)$, then reverse the part after position 0 to get $(2, 1, 3)$, the next arrangement after $132$.
+
+**Proof.**
+1. By the choice of $i$, the suffix $a_{i+1} \ge a_{i+2} \ge \dots \ge a_{n-1}$ is in non-increasing order, which is the largest possible arrangement of its elements.
+2. So no arrangement that keeps $a_0, \dots, a_i$ is greater than $a$; a greater one must change some position $\le i$.
+3. Keeping $a_0, \dots, a_{i-1}$ and putting at position $i$ a larger value from the suffix gives greater arrangements, and any arrangement that changes an earlier position upward is greater than all of those.
+4. The smallest choice at position $i$ is the smallest suffix value that exceeds $a_i$; the suffix is non-increasing, so that is $a_j$ with $j$ the *largest* index with $a_j > a_i$.
+5. After the swap the suffix is still non-increasing (the value $a_i$ now at position $j$ is at least $a_{j+1}$ and less than $a_{j-1}$, by the choice of $j$), and its smallest arrangement is its increasing order, which the reversal produces.
+6. Each step moves to the immediate successor, so starting from the sorted sequence the loop visits every arrangement once, in order, until the decreasing one. $\square$
 
 :::note[This proof needs]
 1. The loop starts from the sorted sequence; otherwise the arrangements before the starting one are skipped.
 2. The number of distinct arrangements (at most $n!$) times the cost of checking one fits the budget. With repeated values each distinct arrangement is visited once, so there are fewer than $n!$.
 :::
 
+<TheoremCode unit="0.5/thm-3" />
+
+The first example lists all $3! = 6$ arrangements; the second has a repeated value and only 3 distinct arrangements.
+
 A trace for $(1, 2, 3)$: $123 \to 132 \to 213 \to 231 \to 312 \to 321$, then `next_permutation` returns `false`. For $(1, 1, 2)$ it gives only $112 \to 121 \to 211$: three distinct arrangements, not $3! = 6$.
+
 
 ### 4.4 Recursive generation
 
@@ -135,27 +176,55 @@ rec(pos):
 
 Called as `rec(0)`, it checks every sequence $c_0, \dots, c_{L-1}$ with each $c_p$ allowed, exactly once. With $k$ choices per position, it checks $k^L$ sequences, makes fewer than $2k^L$ calls when $k \ge 2$, and its recursion depth is $L + 1$.
 
-*Proof.* By induction on $L - pos$, a call `rec(pos)` with $c_0, \dots, c_{pos-1}$ fixed checks every completion $c_{pos}, \dots, c_{L-1}$ exactly once. If $pos = L$ there is exactly one completion (the empty one), and the base case checks it. Otherwise the loop tries each allowed $c_{pos}$ once, and for each, by induction, `rec(pos + 1)` checks every completion of the rest exactly once; different values of $c_{pos}$ give different sequences. For the count, level $p$ of the recursion has $k^p$ calls, and $1 + k + \dots + k^L = (k^{L+1} - 1)/(k - 1) < 2k^L$ for $k \ge 2$. $\square$
+:::tip[In plain words]
+A function that fills one position, tries every allowed value there and calls itself for the next position checks every sequence exactly once. It works even when the number of positions comes from the input.
+:::
+
+**A tiny instance.** $L = 2$ positions with $k = 3$ choices: `rec(0)` tries 1, 2, 3 at position 0, and for each calls `rec(1)`, which tries 1, 2, 3 again: $3 \cdot 3 = 9$ sequences $11, 12, 13, 21, \dots, 33$.
+
+**Proof.**
+1. Claim: with $c_0, \dots, c_{pos-1}$ fixed, `rec(pos)` checks every completion $c_{pos}, \dots, c_{L-1}$ exactly once. The proof is by induction on $L - pos$.
+2. Base case: for $pos = L$ there is exactly one completion (the empty one), and the base case checks it.
+3. Step: the loop tries each allowed $c_{pos}$ once, and for each, by the claim for $pos + 1$, `rec(pos + 1)` checks every completion of the rest exactly once. Different values of $c_{pos}$ give different sequences.
+4. For the count, level $p$ of the recursion has $k^p$ calls, and $1 + k + \dots + k^L = (k^{L+1} - 1)/(k - 1) < 2k^L$ for $k \ge 2$. $\square$
 
 :::note[This proof needs]
 1. The allowed choices at position $pos$ may depend on the earlier choices (for example "at least $c_{pos-1}$" for a non-decreasing sequence), but the loop must try all of them.
 2. The number of sequences times the check fits the budget, and the depth $L$ is small (a few thousand calls deep is safe; very deep recursion can overflow the call stack).
 :::
 
+<TheoremCode unit="0.5/thm-4" />
+
+The first example is the tiny instance, the second $2^3 = 8$ sequences; in both the sequences come out in lexicographic order.
+
 Recursion is the tool when the number of positions $L$ is part of the input: nested loops would need $L$ loops written in the code. When each position has exactly 2 choices, a bitmask (Section 4.2) lists the same sequences without recursion.
+
 
 ### 4.5 Enumerating the answer
 
 **Theorem 0.5.5 (trying every answer).** If the answer is the smallest integer $x$ in a known range $[lo, hi]$ that satisfies a property $P$, then testing $x = lo, lo + 1, \dots$ and stopping at the first $x$ with $P(x)$ true returns the answer after $(x - lo + 1)$ tests; if no $x \le hi$ passes, there is no answer.
 
-*Proof.* Every $x$ smaller than the returned one was tested and failed, and the returned one passes, so it is the smallest. If the loop reaches $hi$ without success, every value in the range was tested and failed. $\square$
+:::tip[In plain words]
+If the answer is the smallest value in a known range that passes a test, trying the values from the smallest up and stopping at the first success returns it. If none passes, there is no answer.
+:::
+
+**A tiny instance.** The smallest $x$ in $1..100$ with $x^2 \ge 50$: testing $x = 1, 2, \dots$ the first success is $x = 8$ ($49 < 50 \le 64$), after 8 tests.
+
+**Proof.**
+1. Every $x$ smaller than the returned one was tested and failed, and the returned one passes, so it is the smallest.
+2. If the loop reaches $hi$ without success, every value in the range was tested and failed, so there is no answer. $\square$
 
 :::note[This proof needs]
 1. A proven bound $[lo, hi]$ that contains the answer if it exists; the bound often comes from the constraints (for example "the answer is at most 1000" or "the price is at most $10^4$").
 2. The range size times the cost of one test fits the budget.
 :::
 
+<TheoremCode unit="0.5/thm-5" />
+
+The third example has no answer: $x^2 = 50$ has no integer solution in $1..10$, and the loop reports $-1$ after testing all ten values.
+
 The same idea applies when the answer is not searched directly but one key quantity is: for "how many pizzas of the mixed kind to buy" or "which value to put first", try every value of that one quantity and compute the rest (Section 4.1).
+
 
 ## 5. Recognition Cards
 
@@ -165,75 +234,45 @@ Each card names one way to list a search space. The **decisive property** is the
 
 ## 6. Templates
 
-Five short programs, one for each card. Each brute force lists the same search space a different way, which is what makes it a useful check.
+Five short functions, one for each card. Each brute force lists the same search space a different way, which is what makes it a useful check.
 
 ### Nested loops, computing the last variable (Theorem 0.5.1)
 
-<Code code={weightedSum} lang="cpp" title="weighted-sum/solution.cpp" />
+<CodeSnippet unit="0.5/weighted-sum" />
 
 **How it works.** A candidate is a triple $(x, y, z)$, but once $y$ and $z$ are chosen, $x = S - 2y - 3z$ is forced. So two loops run over $y$ and $z$, compute $x$, and count the triple if $x$ is in $[0, K]$. Each triple with $x + 2y + 3z = S$ is counted exactly once, at its own $(y, z)$. For $K = 3000$ that is $3001^2 \approx 9 \cdot 10^6$ steps, while three loops would take $2.7 \cdot 10^{10}$.
-
-**C++ details explained.** None beyond earlier topics.
-
-**Tested.** Stress-tested against three nested loops over $x, y, z$ on 5000 random inputs ($K \le 15$, every $S$ from 0 to $6K$), plus 4 fixed tests including $K = 3000$ (right answers computed by a separate script).
 
 **Alternative formulation.** Loop over $z$ only and count the $y$ for which $x$ falls in $[0, K]$ with a formula: one loop, but the bounds need care. The two-loop version is the safe default when it fits.
 
 ### All subsets with a bitmask (Theorem 0.5.2)
 
-<Code code={subsetSumRange} lang="cpp" title="subset-sum-range/solution.cpp" />
+<CodeSnippet unit="0.5/subset-sum-range" />
 
 **How it works.** `mask` runs over $0, \dots, 2^n - 1$, one integer per subset. For each, the inner loop adds `a[i]` exactly when bit $i$ is set, and the subset is counted if its sum is in $[L, R]$. The cost is $2^n \cdot n \approx 2 \cdot 10^7$ for $n = 20$.
-
-**C++ details explained.**
-- `1 << n` is $2^n$: the 1 shifted left by $n$ bits.
-- `(mask >> i) & 1` moves bit $i$ to the lowest position and keeps only that bit: 1 if item $i$ is in the subset, else 0.
-- `sum` is a `long long`: 20 values up to $10^9$ add up to $2 \cdot 10^{10}$.
-
-**Tested.** Stress-tested against a recursion that takes or skips each item, on 5000 random inputs ($n \le 8$, values up to 15), plus 4 fixed tests including $n = 20$ with all values $10^9$ (all $2^{20}$ subsets count) and the apples $3, 3, 2, 2, 2$ of Section 1.
 
 **Alternative formulation.** The recursion of the brute force (take or skip item $i$, then continue with $i + 1$) lists the same subsets with the sum carried along, so each subset costs $O(1)$ instead of $O(n)$: $O(2^n)$ in total.
 
 ### All orders with `next_permutation` (Theorem 0.5.3)
 
-<Code code={bestOrder} lang="cpp" title="best-order/solution.cpp" />
+<CodeSnippet unit="0.5/best-order" />
 
 **How it works.** `order` starts as $0, 1, \dots, n - 1$, the smallest arrangement. The `do { … } while (next_permutation(…))` loop checks the current order first and then moves to the next one, so every one of the $n!$ orders is checked once, the sorted one included. For $n = 9$: $9! \cdot 8 \approx 2.9 \cdot 10^6$ additions.
-
-**C++ details explained.**
-- `iota(order.begin(), order.end(), 0)` (from `<numeric>`) fills the vector with $0, 1, 2, \dots$
-- `do { … } while (cond);` runs the body once before testing the condition. With a plain `while`, the first (sorted) order would be skipped.
-- `next_permutation` rearranges the vector into the next order and returns `false` once it wraps around from the largest order.
-- `LLONG_MAX` is the largest `long long`, a safe start for a minimum.
-
-**Tested.** Stress-tested against a recursion that picks the next unvisited place at every step, on 5000 random inputs ($n \le 6$, asymmetric costs), plus 4 fixed tests including $n = 1$ (cost 0) and $n = 9$ with costs up to $10^9$ (the right answer computed by a separate script).
 
 **Alternative formulation.** The recursion of the brute force is the same search written by hand. It is useful when some orders can be rejected early, which `next_permutation` cannot do.
 
 ### Recursive generation (Theorem 0.5.4)
 
-<Code code={boundedSteps} lang="cpp" title="bounded-steps/solution.cpp" />
+<CodeSnippet unit="0.5/bounded-steps" />
 
 **How it works.** `rec(pos)` fills position `pos` with every allowed value and calls itself for `pos + 1`; the base case `pos == L` records a finished sequence. The allowed values depend on the previous choice ($|v - c_{pos-1}| \le D$), which a fixed set of loops could also do, but the *number* of positions $L$ comes from the input: recursion handles any $L$ with the same code. Values are tried in increasing order at every position, so the sequences come out in lexicographic order.
-
-**C++ details explained.**
-- `void rec(int pos)` returns nothing; it works on the global vectors `c` and `found`.
-- `found.push_back(c)` stores a copy of the current sequence.
-- `continue` skips a value that breaks the condition.
-
-**Tested.** Stress-tested against a brute force that counts in base $M$ from 0 to $M^L - 1$ (each number is one sequence) and keeps the valid ones, on 5000 random inputs ($L, M \le 5$), plus 4 fixed tests including $L = M = 8$, $D = 7$ ($8^8 = 16\,777\,216$ sequences).
 
 **Alternative formulation.** Counting in base $M$, as the brute force does, lists all $M^L$ sequences with one loop; the recursion skips invalid sequences as soon as one position breaks the rule, so it does less work when the condition is strict.
 
 ### Trying every answer (Theorem 0.5.5)
 
-<Code code={smallestAnswer} lang="cpp" title="smallest-answer/solution.cpp" />
+<CodeSnippet unit="0.5/smallest-answer" />
 
 **How it works.** The answer is bounded by $10^6$, so the loop tests $x = 1, 2, \dots$ in order and prints the first $x$ that is a multiple of $K$ with digit sum $S$. By Theorem 0.5.5 that is the smallest. At most $10^6$ tests of about 7 steps each.
-
-**C++ details explained.** `for (; x > 0; x /= 10)` has an empty first part: the loop variable `x` is the function's parameter.
-
-**Tested.** Stress-tested against a brute force that walks the multiples of $K$ downward from $10^6$ and keeps the last one that passes, on 5000 random inputs (half with an answer), plus 5 fixed tests including $S = 55$ (impossible: the largest digit sum below $10^6$ is 54) and $K = 10^6$.
 
 **Alternative formulation.** Loop over the multiples of $K$ only ($x = K, 2K, \dots$), which tests $10^6 / K$ values instead of $10^6$.
 
@@ -327,7 +366,7 @@ $n \le 20$ is a strong hint: $2^{20} \approx 10^6$, and $2^{20} \cdot 20 \approx
 
 #### Step 2: Question form → candidate tools
 
-"Split into two groups" means each apple has two options: subset-bitmask (Theorem 0.5.2). The other candidate is a rule such as "put the next apple into the lighter group", which needs no search; Section 1 shows it fails on $3, 3, 2, 2, 2$.
+"Split into two groups" means each apple has two options: the card "All subsets as bitmasks" (Theorem 0.5.2). The other candidate is a rule such as "put the next apple into the lighter group", which needs no search; Section 1 shows it fails on $3, 3, 2, 2, 2$.
 
 #### Step 3: Property check → decision
 
@@ -339,9 +378,7 @@ Every split corresponds to exactly one mask (the apples in group 1), and the loo
 
 #### Step 5: Code
 
-<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
-
-**C++ details explained.** `llabs` is the absolute value of a `long long`. `total - 2 * s` can be negative, which is why the absolute value is taken. Tested on the sample from the problem page, on $n = 1$, on twenty apples of weight $10^9$ (answer 0), on the apples of Section 1, and on 5000 random inputs ($n \le 10$, weights up to 20 or up to $10^9$) against a recursion that sends each apple to one of the two groups.
+<CodeSnippet unit="0.5/example-1" />
 
 #### Step 6: Alternative approach
 
@@ -369,9 +406,7 @@ The vector `rest` starts as $1, 2, \dots, n - 1$ (0-based), which is sorted, so 
 
 #### Step 5: Code
 
-<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
-
-**C++ details explained.** `vector<vector<bool>> adj(n, vector<bool>(n, false))` is an $n \times n$ table of booleans, the *adjacency matrix*: `adj[a][b]` says whether $a$ and $b$ are joined. `a--, b--` turns the 1-based vertex numbers into 0-based indices. The `&& ok` in the loop condition stops checking an order at its first missing edge. Tested on the two samples from the problem page, on the complete graph with 8 vertices (all $7! = 5040$ orders count), on 2 vertices with no edge (answer 0), and on 5000 random graphs ($N \le 7$) against a recursion that walks along edges to unvisited vertices.
+<CodeSnippet unit="0.5/example-2" />
 
 #### Step 6: Alternative approach
 

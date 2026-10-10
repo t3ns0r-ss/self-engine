@@ -6,14 +6,13 @@ Output: the sorted values.
 #include <bits/stdc++.h>
 using namespace std;
 
-vector<int> a, buf;  // buf: room for merged output (Theorem 1.1.1, condition 2)
-
-// Sorts a[lo .. hi - 1].
-void mergeSort(int lo, int hi) {
+// snippet:begin
+// Theorem 1.1.1. Sorts a[lo .. hi - 1] by merge sort; buf is room for the merged output.
+void mergeSort(vector<int>& a, vector<int>& buf, int lo, int hi) {
     if (hi - lo <= 1) return;  // one element is already sorted
     int mid = (lo + hi) / 2;
-    mergeSort(lo, mid);
-    mergeSort(mid, hi);
+    mergeSort(a, buf, lo, mid);
+    mergeSort(a, buf, mid, hi);
     int i = lo, j = mid, k = lo;
     while (i < mid && j < hi) {
         if (a[j] < a[i]) buf[k++] = a[j++];  // right only when strictly smaller: stable
@@ -23,15 +22,15 @@ void mergeSort(int lo, int hi) {
     while (j < hi) buf[k++] = a[j++];
     for (int t = lo; t < hi; t++) a[t] = buf[t];
 }
+// snippet:end
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
     int n;
     cin >> n;
-    a.resize(n);
-    buf.resize(n);
+    vector<int> a(n), buf(n);
     for (auto& x : a) cin >> x;
-    mergeSort(0, n);
+    mergeSort(a, buf, 0, n);
     for (int i = 0; i < n; i++) cout << a[i] << (i + 1 < n ? ' ' : '\n');
 }

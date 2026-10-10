@@ -7,12 +7,10 @@ Output: the smallest total cost.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n;
-    cin >> n;
-    vector<vector<long long>> w(n, vector<long long>(n));
-    for (auto& row : w)
-        for (auto& x : row) cin >> x;
+// snippet:begin
+// Theorem 0.5.3. The cheapest way to visit all places once, trying every order with next_permutation.
+long long bestOrder(const vector<vector<long long>>& w) {
+    int n = w.size();
     vector<int> order(n);
     iota(order.begin(), order.end(), 0);  // 0, 1, ..., n-1: the smallest order
     long long best = LLONG_MAX;
@@ -20,6 +18,16 @@ int main() {
         long long cost = 0;
         for (int i = 0; i + 1 < n; i++) cost += w[order[i]][order[i + 1]];
         best = min(best, cost);
-    } while (next_permutation(order.begin(), order.end()));  // every order once (Theorem 0.5.3)
-    cout << best << "\n";
+    } while (next_permutation(order.begin(), order.end()));  // every order once
+    return best;
+}
+// snippet:end
+
+int main() {
+    int n;
+    cin >> n;
+    vector<vector<long long>> w(n, vector<long long>(n));
+    for (auto& row : w)
+        for (auto& x : row) cin >> x;
+    cout << bestOrder(w) << "\n";
 }

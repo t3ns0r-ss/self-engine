@@ -7,18 +7,25 @@ Output: the final sequence.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// The final sequence of "LR insertion". Process i = N down to 1: when i-1 is placed, i (and everything
+// inserted after it) is already a block in the deque. i-1 goes to its right if S_i is L, to its left if R.
+vector<int> lrInsertion(int n, const string& s) {
+    deque<int> d = {n};
+    for (int i = n; i >= 1; i--) {
+        if (s[i - 1] == 'L') d.push_back(i - 1);
+        else d.push_front(i - 1);
+    }
+    return vector<int>(d.begin(), d.end());
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
     int n;
     string s;
     cin >> n >> s;
-    // Process i = N, N-1, ..., 1. When i-1 is placed, i (and everything inserted after it) is
-    // already a block in the deque: i-1 goes to its right if S_i is L, to its left if S_i is R.
-    deque<int> d = {n};
-    for (int i = n; i >= 1; i--) {
-        if (s[i - 1] == 'L') d.push_back(i - 1);
-        else d.push_front(i - 1);
-    }
-    for (int k = 0; k <= n; k++) cout << d[k] << (k < n ? ' ' : '\n');
+    vector<int> r = lrInsertion(n, s);
+    for (int k = 0; k <= n; k++) cout << r[k] << (k < n ? ' ' : '\n');
 }

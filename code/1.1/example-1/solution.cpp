@@ -6,6 +6,17 @@ Output: the minimum total cost.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// The cheapest common length for all sticks, with the cost |p_i - target| per stick: a median is optimal.
+long long stickCost(vector<long long> p) {
+    sort(p.begin(), p.end());
+    long long target = p[p.size() / 2];  // a median is an optimal length
+    long long cost = 0;                  // up to 2*10^5 * 10^9 = 2*10^14
+    for (long long x : p) cost += llabs(x - target);
+    return cost;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -13,9 +24,5 @@ int main() {
     cin >> n;
     vector<long long> p(n);
     for (auto& x : p) cin >> x;
-    sort(p.begin(), p.end());
-    long long target = p[n / 2];  // a median is an optimal length
-    long long cost = 0;           // up to 2*10^5 * 10^9 = 2*10^14
-    for (long long x : p) cost += llabs(x - target);
-    cout << cost << "\n";
+    cout << stickCost(p) << "\n";
 }

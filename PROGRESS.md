@@ -4,7 +4,7 @@
 - Milestone: R1 (quality retrofit, PLAN.md Revision 2) and the bank fill (FILL_SHORT_TOPICS_PLAN.md) for the completed topics 0.1–3.8
 - Topic: R1 reference topic 1.6 done; bank fill for 0.1–3.8 done (see ## Bank fill)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: R1 retrofit of 0.1, 0.2, 0.3 (Revision 2.1); next 0.4
+- Last completed step: R1 retrofit of 0.1–0.6 (Phase 0 done, Revision 2.1); next 1.1
 - Next action: R1 retrofit of the remaining 24 topics in curriculum order (0.1 first), one commit per topic; reference review of 1.6 approved 2026-10-10
 
 ## Gates

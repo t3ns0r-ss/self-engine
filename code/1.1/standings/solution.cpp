@@ -7,9 +7,25 @@ Output: the contestant numbers in ranked order.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.1.3. Order contestants by more problems solved, then smaller penalty, then smaller id.
 struct Contestant {
     int solved, penalty, id;
 };
+
+vector<int> standings(vector<Contestant> c) {
+    // true when x must come before y; three keys in turn
+    auto before = [](const Contestant& x, const Contestant& y) {
+        if (x.solved != y.solved) return x.solved > y.solved;  // more solved first
+        if (x.penalty != y.penalty) return x.penalty < y.penalty;
+        return x.id < y.id;  // the statement's last tie-break; sort is not stable
+    };
+    sort(c.begin(), c.end(), before);
+    vector<int> order;
+    for (auto& x : c) order.push_back(x.id);
+    return order;
+}
+// snippet:end
 
 int main() {
     ios::sync_with_stdio(false);
@@ -21,12 +37,6 @@ int main() {
         cin >> c[i].solved >> c[i].penalty;
         c[i].id = i + 1;
     }
-    // true when x must come before y; three keys in turn (Theorem 1.1.3, part 2)
-    auto before = [](const Contestant& x, const Contestant& y) {
-        if (x.solved != y.solved) return x.solved > y.solved;  // more solved first
-        if (x.penalty != y.penalty) return x.penalty < y.penalty;
-        return x.id < y.id;  // the statement's last tie-break; sort is not stable
-    };
-    sort(c.begin(), c.end(), before);
-    for (int i = 0; i < n; i++) cout << c[i].id << (i + 1 < n ? ' ' : '\n');
+    vector<int> order = standings(c);
+    for (int i = 0; i < n; i++) cout << order[i] << (i + 1 < n ? ' ' : '\n');
 }

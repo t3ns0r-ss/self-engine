@@ -7,27 +7,35 @@ Output: one line per query of type 3 or 4.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int q;
-    cin >> q;
+// snippet:begin
+// Theorem 0.6.4. "1 x" adds x, "2 x" removes one copy of x, "3 x" asks for the largest element <= x,
+// "4 x" for the smallest element >= x (-1 if none).
+vector<int> processMultiset(const vector<array<int, 2>>& queries) {
     multiset<int> s;
-    while (q--) {
-        int type, x;
-        cin >> type >> x;
+    vector<int> answers;
+    for (auto [type, x] : queries) {
         if (type == 1) {
             s.insert(x);
         } else if (type == 2) {
             s.erase(s.find(x));  // one copy; s.erase(x) would remove every copy
         } else if (type == 3) {
-            auto it = s.upper_bound(x);  // first element > x (Theorem 0.6.4)
-            if (it == s.begin()) cout << -1 << "\n";
-            else cout << *prev(it) << "\n";  // the element before it is the largest <= x
+            auto it = s.upper_bound(x);  // first element > x
+            answers.push_back(it == s.begin() ? -1 : *prev(it));  // the one before it is the largest <= x
         } else {
             auto it = s.lower_bound(x);  // first element >= x
-            if (it == s.end()) cout << -1 << "\n";
-            else cout << *it << "\n";
+            answers.push_back(it == s.end() ? -1 : *it);
         }
     }
+    return answers;
+}
+// snippet:end
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int q;
+    cin >> q;
+    vector<array<int, 2>> queries(q);
+    for (auto& e : queries) cin >> e[0] >> e[1];
+    for (int a : processMultiset(queries)) cout << a << "\n";
 }

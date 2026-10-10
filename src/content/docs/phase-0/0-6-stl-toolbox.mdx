@@ -6,6 +6,9 @@ topic: "0.6"
 ---
 import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
 import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
 import Drill from '../../../components/Drill.astro';
@@ -13,14 +16,6 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
-import distinctQueries from '../../../../code/0.6/distinct-queries/solution.cpp?raw';
-import equalPairs from '../../../../code/0.6/equal-pairs/solution.cpp?raw';
-import nearestInSet from '../../../../code/0.6/nearest-in-set/solution.cpp?raw';
-import mergeSmallest from '../../../../code/0.6/merge-smallest/solution.cpp?raw';
-import bracketPartners from '../../../../code/0.6/bracket-partners/solution.cpp?raw';
-import roundRobin from '../../../../code/0.6/round-robin/solution.cpp?raw';
-import example1 from '../../../../code/0.6/example-1/solution.cpp?raw';
-import example2 from '../../../../code/0.6/example-2/solution.cpp?raw';
 
 <TopicHeader topic="0.6" />
 
@@ -36,10 +31,7 @@ The C++ Standard Template Library (STL) provides a handful of such containers, e
 
 ### What you need
 
-- [Topic 0.1](../0-1-cpp-for-cp/), C++ for competitive programming (CP): `vector`, `long long`, fast input and output.
-- [Topic 0.2](../0-2-complexity/), complexity analysis: the step budget, $O(\log n)$, and amortised analysis (Theorem 0.2.4).
-- [Topic 0.3](../0-3-implementation/), implementation and simulation: many problems here are simulations whose state lives in a container.
-- [Topic 0.5](../0-5-brute-force/), brute force: the reference solutions in this lesson's tests.
+<WhatYouNeed topic="0.6" />
 
 ### What this topic does not cover
 
@@ -75,27 +67,55 @@ Operations that are *not* fast: inserting or erasing in the middle of a `vector`
 
 **Theorem 0.6.1 (amortised `push_back`).** If a vector doubles its capacity whenever it is full, then $n$ calls of `push_back`, starting from an empty vector, copy fewer than $2n$ elements in total, so each call costs $O(1)$ on average.
 
-*Proof.* Copies happen only when the capacity grows from $c$ to $2c$, and then $c$ elements are copied. The capacities that occur are $1, 2, 4, \dots, 2^k$ with $2^k < n$, so the total number of copies is at most $1 + 2 + 4 + \dots + 2^k = 2^{k+1} - 1 < 2n$. Each call also writes one element, so the total work is less than $3n$ (Theorem 0.2.4). $\square$
+:::tip[In plain words]
+A vector that doubles its space when it is full copies fewer than two elements per push_back on average, so building a vector of n elements costs about n steps even though a single push_back can be slow.
+:::
+
+**A tiny instance.** Five `push_back` calls: the vector is full before the 2nd, 3rd and 5th call, when 1, 2 and 4 elements are copied: $1 + 2 + 4 = 7 < 10 = 2 \cdot 5$.
+
+**Proof.**
+1. Copies happen only when the capacity grows from $c$ to $2c$, and then $c$ elements are copied.
+2. The capacities that occur are $1, 2, 4, \dots, 2^k$ with $2^k < n$, so the total number of copies is at most $1 + 2 + 4 + \dots + 2^k = 2^{k+1} - 1$.
+3. Since $2^k < n$, we get $2^{k+1} - 1 < 2n$.
+4. Each call also writes one element, so the total work is less than $3n$ (Theorem 0.2.4). $\square$
 
 :::note[This proof needs]
 1. The capacity grows by a constant factor (here 2); growing by a constant amount would cost $O(n^2)$ in total.
 2. The bound is for the whole sequence of calls; a single `push_back` that triggers a copy costs $O(n)$.
 :::
 
+<TheoremCode unit="0.6/thm-1" />
+
+For $n = 8$ the copies are $1 + 2 + 4 = 7$, and for $n = 1000$ they are $1 + 2 + \dots + 512 = 1023 < 2000$.
+
 **Costs of a whole solution.** A program that performs $q$ operations on a container of at most $n$ elements, each costing $O(\log n)$, runs in $O(q \log n)$: for $q = n = 2 \cdot 10^5$, about $4 \cdot 10^6$ steps times a constant. The constants of tree-based containers are larger than those of arrays (each step follows pointers in memory), so $10^6$ to $10^7$ such operations per second is a safer estimate than $10^8$.
 
 **Hash tables.** "$O(1)$ on average" assumes the values spread evenly over the buckets. Inputs built on purpose to collide can make each operation $O(n)$; on sites where other contestants can submit such tests against your solution, the ordered `set` and `map` are the safe choice. In this course both are fine unless a lesson says otherwise.
+
 
 ### 4.2 Membership and distinct values
 
 **Theorem 0.6.2 (sets).** After inserting $a_1, \dots, a_n$ into a `set`, it contains each distinct value exactly once, so `s.size()` is the number of distinct values, and `s.count(x)` is 1 exactly when $x$ equals some $a_i$. Building it costs $O(n \log n)$; each later query costs $O(\log n)$.
 
-*Proof.* Inserting a value that is already present leaves the set unchanged, and inserting a new value adds it; by induction on the number of insertions, the set holds exactly the distinct values inserted so far. The costs follow from the table. $\square$
+:::tip[In plain words]
+After inserting values into a set it holds each distinct value exactly once, so its size is the number of distinct values and one lookup tells whether a value occurred. Each operation takes about log n steps.
+:::
+
+**A tiny instance.** Inserting $3, 1, 3, 3$ into a set leaves $\{1, 3\}$: size 2, `count(1)` is 1 and `count(2)` is 0.
+
+**Proof.**
+1. Inserting a value that is already present leaves the set unchanged, and inserting a new value adds it.
+2. Base case: the empty set holds no values. Step: if after $i$ insertions the set holds exactly the distinct values inserted so far, one more insertion keeps that true, by the previous step.
+3. So after $n$ insertions the set holds each distinct value once: `size()` is the number of distinct values, and `count(x)` is 1 exactly when $x$ occurred. The costs follow from the table. $\square$
 
 :::note[This proof needs]
 1. Only whether a value occurs matters, not how many times (otherwise use a `map` of counts, Theorem 0.6.3).
 2. The values can be compared (numbers, strings, pairs) or hashed for `unordered_set`.
 :::
+
+<TheoremCode unit="0.6/thm-2" />
+
+
 
 ### 4.3 Counting by key
 
@@ -105,7 +125,17 @@ Operations that are *not* fast: inserting or erasing in the middle of a `vector`
 
 All of this costs $O(n \log n)$ with `map`.
 
-*Proof.* 1. Each index increments the count of its own value once. 2. When $a_i$ is processed, `cnt[a_i]` counts exactly the earlier indices with the same value, so adding it over all $i$ counts each pair $j < i$ once, at its larger index. A value with $c_x$ occurrences contributes $0 + 1 + \dots + (c_x - 1) = c_x(c_x - 1)/2$. $\square$
+:::tip[In plain words]
+Walk through the values and keep a count per value. Just before counting a value, the stored count is the number of earlier equal values, and adding these up over all positions gives the number of equal pairs.
+:::
+
+**A tiny instance.** For $a = (3, 1, 3, 3)$ the counts read before each increment are $0, 0, 1, 2$, so there are 3 pairs of equal values; and $c_3 = 3$ gives $3 \cdot 2 / 2 = 3$.
+
+**Proof.**
+1. Part 1. Each index increments the count of its own value exactly once.
+2. Part 2. When $a_i$ is processed, `cnt[a_i]` counts exactly the earlier indices with the same value.
+3. So adding it over all $i$ counts each pair $j < i$ once, at its larger index.
+4. A value with $c_x$ occurrences contributes $0 + 1 + \dots + (c_x - 1) = c_x(c_x - 1)/2$. $\square$
 
 :::note[This proof needs]
 1. The answer depends only on the count per key (or on a list of indices per key, kept the same way).
@@ -113,7 +143,9 @@ All of this costs $O(n \log n)$ with `map`.
 3. Counts of pairs can reach $n^2/2 = 2 \cdot 10^{10}$ for $n = 2 \cdot 10^5$: `long long`.
 :::
 
-Example: for $a = (3, 1, 3, 3)$, the counts read before each increment are $0, 0, 1, 2$, so there are $3$ pairs of equal values; and $c_3 = 3$ gives $3 \cdot 2 / 2 = 3$.
+<TheoremCode unit="0.6/thm-3" />
+
+
 
 ### 4.4 Nearest values in a changing set
 
@@ -124,7 +156,18 @@ Example: for $a = (3, 1, 3, 3)$, the counts read before each increment are $0, 0
 
 Each of these costs $O(\log n)$, and they stay correct after any number of insertions and deletions.
 
-*Proof.* The container keeps its elements in increasing order at all times. 1. This is the definition of the two member functions. 2. All elements before `s.upper_bound(x)` are $\le x$ and all elements from it on are $> x$; so the last element before it is the largest $\le x$, and it exists exactly when the iterator is not the first position. The same argument with $\ge$ gives the largest element $< x$. 3. The first and last elements in increasing order are the smallest and largest. $\square$
+:::tip[In plain words]
+A set keeps its elements in order, so the smallest value at least x, and the largest value at most x, are found in log n steps, however many insertions and deletions came before.
+:::
+
+**A tiny instance.** In $\{2, 5, 9\}$ and for $x = 6$: `s.lower_bound(6)` points to 9, `s.upper_bound(6)` also to 9, so the largest element $\le 6$ is the one before it, 5. For $x = 1$ `s.upper_bound(1)` is `s.begin()`, so there is no element $\le 1$.
+
+**Proof.**
+1. The container keeps its elements in increasing order at all times.
+2. Part 1 is the definition of the two member functions.
+3. Part 2. All elements before `s.upper_bound(x)` are $\le x$ and all elements from it on are $> x$, so the last element before it is the largest $\le x$; it exists exactly when the iterator is not the first position.
+4. The same argument with $\ge$ gives the largest element $< x$, before `s.lower_bound(x)`.
+5. Part 3. The first and last elements in increasing order are the smallest and largest. $\square$
 
 :::note[This proof needs]
 1. The question is about the order of values (nearest, smallest, largest), and the collection changes between questions; a sorted `vector` would need $O(n)$ per insertion.
@@ -132,11 +175,24 @@ Each of these costs $O(\log n)$, and they stay correct after any number of inser
 3. In a `multiset`, `s.erase(x)` removes *every* copy of $x$; to remove one copy, use `s.erase(s.find(x))`.
 :::
 
+<TheoremCode unit="0.6/thm-4" />
+
+
+
 ### 4.5 Repeatedly taking the largest
 
 **Theorem 0.6.5 (priority queues).** Suppose a process holds a collection of numbers and, at each step, removes the largest one and possibly inserts new ones. A `priority_queue` performs each step with `top`, `pop` and `push` in $O(\log n)$, so $k$ steps cost $O(k \log n)$, and the sequence of removed elements is exactly the one the process describes.
 
-*Proof.* `top` always returns a largest element currently stored, `pop` removes it, and `push` adds an element; so after every step the queue holds exactly the process's collection, and the element removed at each step is a largest one, as the process requires (if several are equal, any of them is a largest one, and they are equal values). The costs come from the table. $\square$
+:::tip[In plain words]
+If a process says to take the largest number, possibly put new numbers back, and repeat, a priority queue does each round in about log n steps and gives exactly the numbers the process asks for.
+:::
+
+**A tiny instance.** Halve the largest of $(8, 3, 5)$ (rounding down) three times: take 8, push 4; take 5, push 2; take 4, push 2. What remains is $3, 2, 2$, sum 7.
+
+**Proof.**
+1. `top` always returns a largest element currently stored, `pop` removes it, and `push` adds an element.
+2. So after every step the queue holds exactly the process's collection, and the element removed at each step is a largest one, as the process requires (equal values are interchangeable).
+3. The costs come from the table. $\square$
 
 :::note[This proof needs]
 1. The statement (or a proof) says which element to take: always the largest, or always the smallest.
@@ -144,18 +200,34 @@ Each of these costs $O(\log n)$, and they stay correct after any number of inser
 3. Only the extreme element is needed; a query such as "the largest element at most $x$" needs an ordered set (Theorem 0.6.4).
 :::
 
-Example: halve the largest of $(8, 3, 5)$ (rounding down) three times. The queue holds $8, 3, 5$; take 8, push 4; take 5, push 2; take 4, push 2. What remains is $3, 2, 2$, sum 7.
+<TheoremCode unit="0.6/thm-5" />
+
+
 
 ### 4.6 Stacks and queues
 
 **Theorem 0.6.6 (last in, first out).** Read a string of brackets `(` and `)` left to right, pushing the position of each `(` onto a stack and, at each `)`, popping the top position. If the stack is never empty at a `)` and is empty at the end, every `)` has been matched with the nearest unmatched `(` before it, and these matches form properly nested pairs.
 
-*Proof.* The top of the stack is always the most recent `(` not yet matched, because each push adds the newest `(` on top and each pop removes the top. So each `)` is matched with the nearest unmatched `(` before it. Two matched pairs $(p, q)$ and $(p', q')$ with $p < p' < q$ satisfy $q' < q$: when the `)` at $q$ is read, the `(` at $p'$ was pushed after $p$, so it is above $p$ in the stack and must have been popped already, by some `)` at $q' < q$. So pairs never cross. $\square$
+:::tip[In plain words]
+When the newest unfinished item is always the one dealt with next, a stack handles it in constant time per step. For brackets, a closing bracket pairs with the most recent opening bracket not yet closed.
+:::
+
+**A tiny instance.** For `(())` the positions 0 and 1 are pushed; the `)` at position 2 pops 1, and the `)` at position 3 pops 0. The pairs $(1, 2)$ and $(0, 3)$ are nested, and the stack ends empty.
+
+**Proof.**
+1. The top of the stack is always the most recent `(` not yet matched, because each push adds the newest `(` on top and each pop removes the top.
+2. So each `)` is matched with the nearest unmatched `(` before it.
+3. Take two matched pairs $(p, q)$ and $(p', q')$ with $p < p' < q$. When the `)` at $q$ is read, the `(` at $p'$ was pushed after $p$, so it is above $p$ in the stack.
+4. Hence $p'$ must have been popped already, by some `)` at $q' < q$. So pairs never cross. $\square$
 
 :::note[This proof needs]
 1. The process only ever uses the most recent unfinished item (stack) or the oldest waiting item (queue).
 2. Before `top()` or `pop()` (stack) and `front()` or `pop()` (queue), check that the container is not empty; calling them on an empty container is undefined behaviour.
 :::
+
+<TheoremCode unit="0.6/thm-6" />
+
+
 
 A **queue** is the same idea for "first come, first served": elements leave in the order they arrived, so a process that always serves the earliest waiting item is simulated with `push` at the back and `pop` at the front, $O(1)$ each.
 
@@ -167,91 +239,53 @@ Each card names one container and the questions it answers fast. The **decisive 
 
 ## 6. Templates
 
-Six short programs: one for each card, and a second one for stack-queue so that both a stack and a queue appear in code. Every brute force keeps its data in a plain `vector` and scans it, which is slow but makes the expected answers easy to trust.
+Six short functions: one for each card, and a second one for the stack and queue card so that both a stack and a queue appear in code. Every brute force keeps its data in a plain `vector` and scans it, which is slow but makes the expected answers easy to trust.
 
 ### Membership and distinct values with `set` (Theorem 0.6.2)
 
-<Code code={distinctQueries} lang="cpp" title="distinct-queries/solution.cpp" />
+<CodeSnippet unit="0.6/distinct-queries" />
 
 **How it works.** The set holds each added value once. Adding a value that is already present changes nothing, so `s.size()` is always the number of distinct values, and `s.count(x)` (0 or 1 in a `set`) answers membership. Each query costs $O(\log n)$.
-
-**C++ details explained.**
-- `set<int> s;` is an empty ordered set of `int`.
-- `s.insert(x)` adds $x$ if it is missing; `s.count(x)` returns how many copies of $x$ the set holds, which is 0 or 1.
-- `s.size()` is the number of elements.
-
-**Tested.** Stress-tested against a brute force that keeps every added value in a `vector` and scans it, on 5000 random query lists (values from a small range, so repeats are common, or up to $10^9$), plus 2 fixed tests including $2 \cdot 10^5$ queries.
 
 **Alternative formulation.** `unordered_set<int>` has the same member functions with $O(1)$ average cost. If the values are small (say up to $10^6$), a `vector<bool>` indexed by value is faster still.
 
 ### Counting with `map` (Theorem 0.6.3)
 
-<Code code={equalPairs} lang="cpp" title="equal-pairs/solution.cpp" />
+<CodeSnippet unit="0.6/equal-pairs" />
 
 **How it works.** Before counting $a_i$, `cnt[a]` is the number of earlier elements equal to it; adding it to `pairs` counts every equal pair once, at its later index. After the loop the map holds the final count of every value, and going through it in increasing key order and keeping only strictly larger counts gives the most frequent value, the smallest one on ties.
-
-**C++ details explained.**
-- `map<int, int> cnt;` maps each value to its count. `cnt[a]` creates the entry with value 0 the first time `a` is used, so `cnt[a]++` works for new values too.
-- `for (auto [value, c] : cnt)` goes through the entries in increasing key order; `[value, c]` is a *structured binding* that names the two parts of each (key, count) pair.
-
-**Tested.** Stress-tested against a brute force that compares every pair and counts every value by a full scan, on 5000 random arrays (values in $[-3, 3]$ or up to $10^9$ in absolute value), plus 4 fixed tests including $2 \cdot 10^5$ equal values ($\approx 2 \cdot 10^{10}$ pairs, which needs `long long`).
 
 **Alternative formulation.** `unordered_map<int, int>` gives $O(1)$ average per step, but its iteration order is arbitrary, so the tie rule then needs an explicit comparison of values.
 
 ### Nearest values with `multiset` (Theorem 0.6.4)
 
-<Code code={nearestInSet} lang="cpp" title="nearest-in-set/solution.cpp" />
+<CodeSnippet unit="0.6/nearest-in-set" />
 
 **How it works.** The multiset keeps every element in increasing order. `s.upper_bound(x)` is the first element greater than $x$, so the element just before it, if there is one, is the largest element $\le x$. `s.lower_bound(x)` is the first element $\ge x$ directly. Removing one copy uses `s.find(x)`, which points to one copy, instead of `s.erase(x)`, which would remove all of them.
-
-**C++ details explained.**
-- `auto it = …;` lets the compiler write the long iterator type `multiset<int>::iterator` for us.
-- `prev(it)` is the iterator one position before `it`; it must not be used when `it == s.begin()`.
-- `*it` is the element the iterator points to; it must not be used when `it == s.end()`.
-
-**Tested.** Stress-tested against a brute force that scans a `vector` of the elements for every query, on 5000 random query lists with values up to 10 (so equal values and removals of one copy are frequent), plus 2 fixed tests including the values 0 and $10^9$.
 
 **Alternative formulation.** For "largest $\le x$" one can store the negated values and ask for the smallest $\ge -x$ with `s.lower_bound(-x)`; the `prev(s.upper_bound(x))` form avoids the sign change but needs the `begin` check.
 
 ### Repeatedly taking the smallest with `priority_queue` (Theorem 0.6.5)
 
-<Code code={mergeSmallest} lang="cpp" title="merge-smallest/solution.cpp" />
+<CodeSnippet unit="0.6/merge-smallest" />
 
 **How it works.** The statement fixes the process: always merge the two smallest piles. The priority queue gives the smallest element with `top`, removes it with `pop`, and takes the merged pile with `push`. There are $n - 1$ merges of $O(\log n)$ each.
-
-**C++ details explained.**
-- `priority_queue<long long>` alone gives the *largest* element at `top()`. Writing `priority_queue<long long, vector<long long>, greater<long long>>` reverses the order, so `top()` is the smallest: the second argument is the underlying storage and the third the ordering rule.
-- The sizes and the cost are `long long`: merged piles reach $2 \cdot 10^{14}$.
-
-**Tested.** Stress-tested against a brute force that finds the two smallest piles by scanning a `vector` at every step, on 5000 random inputs (sizes up to 10 or up to $10^9$), plus 3 fixed tests including $n = 1$ (cost 0) and $2 \cdot 10^5$ piles of $10^9$.
 
 **Alternative formulation.** Push the negated sizes into the default (largest-first) priority queue and negate again when reading them.
 
 ### Matching brackets with `stack` (Theorem 0.6.6)
 
-<Code code={bracketPartners} lang="cpp" title="bracket-partners/solution.cpp" />
+<CodeSnippet unit="0.6/bracket-partners" />
 
 **How it works.** Opening brackets wait on the stack; the top is always the most recent one not yet matched. A closing bracket must match the kind of that top bracket; otherwise, or if the stack is empty, the string is not properly nested. At the end every opening bracket must have been matched, so the stack must be empty. The partner of every position is recorded when its pair is closed.
-
-**C++ details explained.**
-- `stack<int> open;` with `push`, `top` and `pop`. `open.empty()` is checked before every `top()`.
-- The lambda `opener` returns the opening bracket of the same kind as a closing one; the nested `?:` reads as "if `)` then `(`, else if `]` then `[`, else `{`".
-
-**Tested.** Stress-tested against a brute force that repeatedly deletes an adjacent matching pair and records the two positions, on 5000 random strings (half properly nested by construction, some of those broken afterwards), plus 5 fixed tests including `([)]` (kinds cross), `)(` and $10^5$ nested pairs.
 
 **Alternative formulation.** A `vector<int>` with `push_back`, `back` and `pop_back` is a stack too, and also lets you look at elements below the top.
 
 ### First come, first served with `queue` (Theorem 0.6.6)
 
-<Code code={roundRobin} lang="cpp" title="round-robin/solution.cpp" />
+<CodeSnippet unit="0.6/round-robin" />
 
 **How it works.** The front of the queue is the task that has waited longest. It receives up to $Q$ units of work; if it finishes, it is recorded, otherwise it goes to the back with its remaining work. Each pass of the loop is $O(1)$, and the number of passes is the total number of turns, at most $\sum t_i / Q + n$.
-
-**C++ details explained.**
-- `queue<pair<int, long long>> q;` stores pairs (task number, remaining work); `q.front()` reads the oldest pair, `q.pop()` removes it, `q.push(…)` adds at the back.
-- `auto [id, rest] = q.front();` copies the two parts of the front pair into two variables before `pop` removes it.
-
-**Tested.** Stress-tested against a brute force that walks around the task numbers cyclically, skipping finished tasks, on 5000 random inputs ($n \le 8$, $Q \le 5$, work up to 15), plus 3 fixed tests including $Q = 10^9$.
 
 **Alternative formulation.** A `deque` can play the same role (`push_back`, `front`, `pop_front`); it also allows adding at the front when a statement needs that.
 
@@ -378,9 +412,7 @@ Before position $j$ is processed, the map holds every value among $a_1, \dots, a
 
 #### Step 5: Code
 
-<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
-
-**C++ details explained.** `firstPos.find(x - a)` returns an iterator to the entry with that key, or `firstPos.end()`; `it->second` is the stored position (`it->first` would be the key). Using `find` instead of `firstPos[x - a]` avoids creating an entry for every value that was only looked up. `x - a` is computed in `long long` because both are read as `long long`. Tested on the sample from the problem page, on $n = 1$, on two values of $5 \cdot 10^8$ that add up to $x = 10^9$, on equal values, and on 5000 random inputs (half with a pair planted) against a brute force that tries every pair, smallest $j$ first. Since any valid pair is accepted, both programs print the same canonical pair: smallest $j$, then smallest $i$.
+<CodeSnippet unit="0.6/example-1" />
 
 #### Step 6: Alternative approach
 
@@ -408,9 +440,7 @@ Claim: for every $k$, in the final sequence the numbers $k, \dots, N$ are contig
 
 #### Step 5: Code
 
-<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
-
-**C++ details explained.** `deque<int> d = {n};` creates a deque holding the single value $n$. `push_front` and `push_back` add at the two ends in $O(1)$, and `d[k]` reads the $k$-th element, also in $O(1)$. Tested on the two samples from the problem page, on $N = 1$, and on 5000 random strings ($N \le 12$) against a brute force that inserts into a `vector` exactly as described.
+<CodeSnippet unit="0.6/example-2" />
 
 #### Step 6: Alternative approach
 

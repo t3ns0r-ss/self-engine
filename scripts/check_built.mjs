@@ -24,6 +24,7 @@ for (const f of readdirSync('src/data/topics').filter((x) => x.endsWith('.yaml')
     .replace(/<style[\s\S]*?<\/style>/g, ' ')
     .replace(/<[^>]+>/g, ' ');
   for (const c of tf.cards) {
+    if (!c.id.includes('-')) continue; // a one-word id such as "parity" is an ordinary word of the lesson
     const re = new RegExp(`(^|[^A-Za-z0-9-])${c.id}([^A-Za-z0-9-]|$)`);
     if (re.test(text)) errors.push(`${page}: the internal card id "${c.id}" is visible in the page text`);
   }

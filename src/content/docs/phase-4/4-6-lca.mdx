@@ -412,6 +412,95 @@ Wrong output `-1 0 1`, correct output `0 0 1`. Only the road `3-4` is on the tri
 
 ## 8. Worked examples
 
+### Example 1: Planets Queries I
+
+[CSES 1750: Planets Queries I](https://cses.fi/problemset/task/1750). In short: there are $n \le 2 \cdot 10^5$ planets, and every planet has one teleporter that leads to some planet (possibly itself). There are $q \le 2 \cdot 10^5$ questions $(x, k)$ with $k \le 10^9$: starting on planet $x$ and using $k$ teleporters, on which planet does one arrive?
+
+#### Step 1: Constraints → budget
+
+$n, q = 2 \cdot 10^5$ and $k$ up to $10^9$. Following the teleporters one by one costs up to $10^9$ steps per question. A table with $\log_2 10^9 < 30$ levels has $30 \cdot 2 \cdot 10^5 = 6 \cdot 10^6$ cells, and each question takes at most 30 lookups, about $6 \cdot 10^6$ more.
+
+#### Step 2: Question form → candidate tools
+
+- Follow the teleporters step by step ([topic 0.5](../../phase-0/0-5-brute-force/)): $10^9$ steps per question.
+- Find the cycle of the walk and use the remainder of $k$ ([topic 4.1](../4-1-graph-traversal/)): works, but needs care with the part before the cycle for each start planet.
+- "Where am I after $k$ steps" for a fixed rule and many queries: the card "Jumping up by powers of two (k-th ancestor)".
+
+#### Step 3: Property check → decision
+
+The rule does not depend on the step number: from planet $v$ the next planet is always $t_v$. So two jumps of $2^{j-1}$ steps make one jump of $2^j$ steps. Decision: build $\text{up}[j][v]$ for $j = 0, \ldots, 29$ and answer each question by the bits of $k$.
+
+#### Step 4: Proof for this problem
+
+Here the "tree" is a graph in which every vertex has exactly one outgoing edge, and Theorem 4.6.1 needs only that: $\text{up}[0][v] = t_v$ and $\text{up}[j][v] = \text{up}[j-1][\text{up}[j-1][v]]$ hold by the definition of $2^j$ steps as two halves. Writing $k$ in binary, $k = 2^{j_1} + 2^{j_2} + \cdots$, the walk of $k$ steps is the walk of $2^{j_1}$ steps, followed by $2^{j_2}$ steps, and so on; the order of the pieces does not matter, as all of them are steps of the same rule. A planet that leads to itself is a valid planet in the table: it stays where it is for any number of jumps.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.6/example-1" />
+
+#### Step 6: Alternative approach
+
+Finding the cycle of the walk from each planet and reducing $k$ by the length of the cycle also works, with an array for the position in the cycle; it has more cases (the tail before the cycle, several components). The table has one rule for all of them. The same table also answers the questions in any order, so there is no need to sort them.
+
+### Example 2: Distance Queries
+
+[CSES 1135: Distance Queries](https://cses.fi/problemset/task/1135). In short: a tree has $n \le 2 \cdot 10^5$ nodes, and there are $q \le 2 \cdot 10^5$ questions $(a, b)$: how many edges are on the path from $a$ to $b$?
+
+#### Step 1: Constraints → budget
+
+$n, q = 2 \cdot 10^5$. A walk from $a$ for every question is up to $4 \cdot 10^{10}$ steps. A table of 18 levels has $3.6 \cdot 10^6$ cells, and one question takes about $2 \cdot 18$ steps, so $7 \cdot 10^6$ steps in total.
+
+#### Step 2: Question form → candidate tools
+
+- A breadth-first search from $a$ for every question ([topic 4.1](../4-1-graph-traversal/)): $O(n)$ per question.
+- Depths for the whole tree in one walk ([topic 4.5](../4-5-trees/)), plus a way to find where the two paths to the root meet: the card "Distances in a tree".
+
+#### Step 3: Property check → decision
+
+The graph is a tree (connected, $n - 1$ edges), so there is exactly one path between two nodes, and the number of edges is a number of steps up from $a$ and from $b$ to their lowest common ancestor. Decision: root the tree at node 1, build the lifting table, and answer each question with $\text{depth}[a] + \text{depth}[b] - 2 \cdot \text{depth}[\text{lca}(a, b)]$.
+
+#### Step 4: Proof for this problem
+
+Let $c = \text{lca}(a, b)$. The path from $a$ to $b$ goes up from $a$ to $c$ and then down to $b$ (Theorem 4.6.3). The first part has $\text{depth}[a] - \text{depth}[c]$ edges and the second has $\text{depth}[b] - \text{depth}[c]$; the two parts share only the node $c$, since $c$ is the lowest common ancestor. Their sum is the formula. For $a = b$ we get $c = a$ and the distance 0.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.6/example-2" />
+
+#### Step 6: Alternative approach
+
+An Euler tour with a range-minimum structure answers the lowest common ancestor in constant time per question, but the structure is a later topic, and $18$ jumps per question is far below the limit. Answering the questions offline with a walk and the union–find of [topic 4.4](../4-4-dsu-mst/) also works, but needs all questions in advance.
+
+### Example 3: Putting Candies
+
+[AtCoder Beginner Contest (ABC) 241 E: Putting Candies](https://atcoder.jp/contests/abc241/tasks/abc241_e). In short: a sequence $A_0, \ldots, A_{N-1}$ with $N \le 2 \cdot 10^5$ and $1 \le A_i \le 10^6$ is given. A dish starts empty; $K \le 10^{12}$ times, with $X$ the number of candies now on the dish, $A_{X \bmod N}$ more candies are put on it. How many candies are on the dish at the end?
+
+#### Step 1: Constraints → budget
+
+$K = 10^{12}$ operations cannot be simulated. The answer is at most $10^{12} \cdot 10^6 = 10^{18}$, which fits in 64-bit numbers. A table of 40 levels has $40 \cdot 2 \cdot 10^5 = 8 \cdot 10^6$ cells, and the answer needs 40 lookups.
+
+#### Step 2: Question form → candidate tools
+
+- Simulate $K$ steps ([topic 0.5](../../phase-0/0-5-brute-force/)): $10^{12}$ steps.
+- Detect the cycle in the sequence of positions $X \bmod N$ and use the sum over the cycle: this is the standard solution, with a tail and a cycle to handle.
+- A fixed rule from a position to the next, and a quantity (the candies) that adds up along the way: the card "Minimum, maximum or sum along a path".
+
+#### Step 3: Property check → decision
+
+The state is only the position $X \bmod N$: the next position is $(X + A_{X \bmod N}) \bmod N$, which depends on $X \bmod N$ alone, and the gain of the step is $A_{X \bmod N}$. Decision: let $v$ be the position, $\text{next}[0][v] = (v + A_v) \bmod N$ and $\text{gain}[0][v] = A_v$; build the levels with the sums, and walk $K$ steps from position 0 by the bits of $K$.
+
+#### Step 4: Proof for this problem
+
+The number of candies after $K$ operations is the sum of the gains along the walk of $K$ steps from position 0, and the positions of the walk only depend on the previous position. By Theorem 4.6.4 (on pointers instead of tree edges), the jump of $2^j$ steps from $v$ has the end $\text{next}[j][v]$ and the gain $\text{gain}[j-1][v] + \text{gain}[j-1][\text{next}[j-1][v]]$: the first half gains from $v$, the second from the place where the first half ended. Taking the jumps for the bits of $K$ one after another, always from the place where the previous jump ended, adds up the gains of the whole walk.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.6/example-3" />
+
+#### Step 6: Alternative approach
+
+Finding the first repeated position, then using the sum of the cycle and the remaining tail, needs about the same amount of code but several cases (the cycle may start late, $K$ may end before the cycle is complete). The table has the same code for every case.
+
 ## 9. Problem ladder
 
 <Ladder topic="4.6" />

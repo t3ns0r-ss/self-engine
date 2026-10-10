@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.3 Shortest paths (pipeline steps 1–2 done); 4.1 and 4.2 are done
+- Topic: 4.3 Shortest paths (pipeline steps 1–3 done); 4.1 and 4.2 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.3 step 2 (definitions, five theorems 4.3.1–4.3.5 with code units, 9 glossary terms)
-- Next action: step 3 (recognition cards: dijkstra, zero-one-weights, negative-weights, every-pair, extra-state; card example units)
+- Last completed step: topic 4.3 step 3 (five recognition cards with card example units)
+- Next action: step 4 (templates: dijkstra-parents, grid-walls, high-score, pair-queries, free-rides; stress 5000)
 
 ## Gates
 | Gate | Status | Date |

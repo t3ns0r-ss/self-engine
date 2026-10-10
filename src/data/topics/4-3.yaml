@@ -6,8 +6,16 @@ uses:
   what: 'Brute force: trying every route, the reference solutions in the tests'
 - topic: '0.6'
   what: 'Priority queue and deque: the heap and the deque of the algorithms'
+- topic: '3.2'
+  what: 'Dynamic programming: a table in a fixed order, the contrast for moves that only go forward'
+- topic: '3.5'
+  what: 'Counting dynamic programming: counting ways, the contrast for shortest paths'
+- topic: '3.7'
+  what: 'Bitmask DP: the longest route without repeats'
 - topic: '4.1'
   what: 'Graph traversal: the queue-based walk, distances by counting edges, adjacency lists'
+- topic: '4.2'
+  what: 'Graph structure: cycles of arrows, the contrast for negative cycles'
 theorems:
 - id: 4.3.1
   title: Dijkstra's algorithm
@@ -37,8 +45,487 @@ theorems:
   plain_words: If what you may do next depends on a small extra fact, make a separate vertex for every
     pair (place, fact) and run Dijkstra on those pairs.
   code: 4.3/thm-5
-cards: []
-problems: []
+cards:
+- id: dijkstra
+  name: Non-negative weights (Dijkstra)
+  from_theorem: 4.3.1
+  decisive_property: Every edge has a length, time or price that is at least 0 (the values may differ
+    and may be 0), and the question asks for the cheapest route from one start, to one target or to every
+    vertex, or for the route itself.
+  how_to_test: 'Read the weights: none may be negative, and the sums must fit in 64 bits. Then run Dijkstra:
+    each vertex that leaves the heap has its final distance. If all weights are equal, the plain queue
+    of topic 4.1 is enough.'
+  constraint_shapes:
+  - 'n up to 10^5 and m up to 3·10^5 with weights up to 10^9: a heap costs about (n + m) · log m ≈ 4·10^5
+    · 19 = 7.6·10^6 steps, while trying all routes is exponential and n rounds over all edges (Bellman–Ford)
+    cost n · m = 3·10^10'
+  - Distances can reach 10^5 · 10^9 = 10^14, so they need 64-bit integers
+  weak_signals:
+  - form: Asks for the cheapest, fastest or shortest route from A to B (or to every place), where roads
+      have different lengths, times or prices
+    shape: n, m ≤ 2·10^5 and weights up to 10^9
+  - form: Asks for the minimum total cost to reach the last stage or cell, where every step or cell has
+      its own cost
+    shape: A grid with R·C ≤ 10^6 cells, or N ≤ 2·10^5 stages with two or three actions each
+  - form: Asks to print one cheapest route, or to count how many cheapest routes there are
+    shape: Same size; the output is a list of up to n places, or a count modulo a prime
+  - form: Asks for the route whose largest step is as small as possible (the least effort, the lowest
+      climb)
+    shape: A grid up to 10^6 cells where a route costs its largest step instead of the sum
+  kill_signals:
+  - 'Some weight can be negative: with the arrows 1→2 (2), 1→3 (3), 3→2 (−2), 2→4 (1), Dijkstra finishes
+    vertex 2 with 2 before vertex 3 offers it 1, and reports the distance 3 to vertex 4 although it is
+    2 (the first negative example below)'
+  - 'Every weight is the same (each step costs 1): the plain queue of topic 4.1 already gives the answer
+    and is simpler'
+  in_action:
+    statement: A rail network has n stations and m two-way tracks, and each track has a travel time in
+      minutes. For every station, print the fewest minutes needed to get there from station 1.
+    constraints: n ≤ 10^5, m ≤ 3·10^5, times between 1 and 10^9.
+    budget: Trying all routes is exponential, and n rounds over all tracks (Bellman–Ford) would cost n
+      · m = 3·10^10. A heap costs about (n + m) · log m ≈ 7.6·10^6 steps. Need about O((n + m) log m).
+    candidates:
+    - tool: Queue-based walk (graph traversal, topic 4.1)
+      verdict: rejected
+      because: 'It counts tracks, not minutes: the route with the fewest tracks can take far longer than
+        another route.'
+    - tool: Repeated rounds over all tracks (Bellman–Ford, this topic)
+      verdict: rejected
+      because: 'n rounds of m tracks: 3·10^10 steps.'
+    - tool: Dijkstra with a heap (this topic)
+      verdict: chosen
+      because: Every time is at least 1, so the closest unfinished station is final (Theorem 4.3.1).
+    property_check: 'Every time is at least 1, so none is negative: yes. Sums reach 10^5 · 10^9 = 10^14,
+      so 64-bit integers are needed.'
+    decision: Dijkstra from station 1 with a heap of (minutes, station); print the distance of every station,
+      and −1 for stations that are never reached. Time O((n + m) log m).
+  examples:
+    positive:
+    - inline:
+        input: Towns 1 to 6 with two-way roads of lengths 1–2 (7), 1–3 (9), 1–6 (14), 2–3 (10), 2–4 (15),
+          3–4 (11), 3–6 (2), 4–5 (6), 5–6 (9); the shortest distance from 1 to 5?
+        answer: '20'
+        why: All lengths are positive. The towns are finished in the order 1 (0), 2 (7), 3 (9), 6 (11),
+          then 4 and 5 (20 each); the route 1, 3, 6, 5 has length 9 + 2 + 9 = 20. Repeated relaxation
+          of all roads gives the same number.
+    - worked_example: ac-abc340_d
+      why: Each stage offers two actions with their own times; stages and actions form a graph with non-negative
+        weights, and the least total time to reach stage N is a shortest path.
+    negative:
+    - inline:
+        input: One-way tunnels 1→2 (2), 1→3 (3), 3→2 (−2), 2→4 (1); the shortest distance from 1 to 4?
+        answer: '2'
+        method_gives: '3'
+        why: The tunnel 3→2 has weight −2, so reaching 2 through 3 costs 1, better than the direct 2.
+          Dijkstra has already finished vertex 2 with distance 2 when vertex 3 offers the improvement,
+          and the improvement never reaches vertex 4. The proof needs weights of at least 0.
+      correct_tool:
+        topic: '4.3'
+        card: negative-weights
+    - problem: cses-1193
+      why: Every move costs exactly one step, so the plain queue of topic 4.1 gives the fewest moves;
+        a heap only adds a logarithm.
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+  lookalikes:
+  - description: Fewest roads between two places when every road counts the same
+    tool:
+      topic: '4.1'
+      card: unweighted-shortest
+    flipping_difference: With equal weights the first visit of a vertex is the cheapest, so a queue gives
+      the answer in O(n + m). With different lengths the first visit is not the cheapest, and the heap
+      of Dijkstra's algorithm is needed.
+  - description: Cheapest route where every move goes forward to a later position, with a cost for each
+      jump
+    tool:
+      topic: '3.2'
+      card: linear-state
+    flipping_difference: When every move goes to a larger position, a table filled from left to right
+      gives the cheapest cost without a heap. Dijkstra is needed when moves go back and forth.
+  complexity: 'O((n + m) log m): at most m + 1 pushes, each O(log m).'
+- id: zero-one-weights
+  name: Weights 0 and 1 (0-1 BFS)
+  from_theorem: 4.3.2
+  decisive_property: Every move costs exactly 0 or 1 (free moves and moves of one unit, such as walking
+    and warping, or passing a gap and breaking a wall), and the question asks for the cheapest way from
+    a start.
+  how_to_test: 'List the kinds of moves and their costs. If every cost is 0 or 1, use a deque: improvements
+    by a free move go to the front, improvements by a move of cost 1 go to the back.'
+  constraint_shapes:
+  - 'A map of 1000 × 1000 = 10^6 cells with 4 moves per cell: a deque costs about 4·10^6 steps, while
+    a heap adds a factor of about 20, roughly 8·10^7'
+  - 'A warp to any cell of a 5 × 5 area has 24 targets per cell: 24 · 10^6 = 2.4·10^7 edge looks, still
+    fine with a deque'
+  weak_signals:
+  - form: Asks for the fewest uses of a special move (a warp, a magic spell, breaking a wall) while ordinary
+      moves are free
+    shape: A grid up to 1000 × 1000
+  - form: Asks for the fewest edges of a certain kind (reversed edges, colour changes) on a route
+    shape: A graph with n, m ≤ 2·10^5 whose edges are labelled 0 or 1
+  - form: Some moves are free and others cost one unit; asks for the fewest units
+    shape: A grid or graph with up to 10^6 vertices and a handful of move types
+  kill_signals:
+  - 'A weight of 2 or more appears: the keys in the deque are no longer within 1 of each other (step 2
+    of the proof), and the heap is needed'
+  - 'There is a limit on the number of special moves: then the number used so far is part of the state
+    (the first negative example below)'
+  in_action:
+    statement: A map has floor cells and wall cells. Walking onto a floor cell is free; walking onto a
+      wall cell breaks it and costs 1. Find the fewest walls to break to get from the top-left to the
+      bottom-right cell.
+    constraints: R, C ≤ 1000.
+    budget: '10^6 cells with 4 moves each: 4·10^6 edge looks. A heap would add a factor of about 20. Need
+      about O(R·C).'
+    candidates:
+    - tool: Queue-based walk (topic 4.1)
+      verdict: rejected
+      because: It counts steps, not broken walls.
+    - tool: Dijkstra with a heap (this topic)
+      verdict: rejected
+      because: Correct, but about 20 times more steps than needed when the only costs are 0 and 1.
+    - tool: A deque with free moves at the front (this topic)
+      verdict: chosen
+      because: Every cost is 0 or 1, so the deque keeps the distances in order (Theorem 4.3.2).
+    property_check: 'Entering a floor cell costs 0 and entering a wall cell costs 1: only 0 and 1 occur.
+      The deque holds at most two distinct distances.'
+    decision: '0-1 BFS from the top-left cell: a floor cell reached by an improvement goes to the front,
+      a wall cell to the back. Print the distance of the bottom-right cell. Time O(R·C).'
+  examples:
+    positive:
+    - inline:
+        input: The 3 × 4 map ".#..", "##.#", "...." (# is a wall that costs 1 to enter); the fewest walls
+          to break going from the top-left to the bottom-right cell?
+        answer: '1'
+        why: Both neighbours of the start are walls, so at least one must be broken; breaking the wall
+          below the start and walking along the bottom row costs exactly 1. The deque gives 1, and a table
+          of all distances agrees.
+    - worked_example: ac-abc176_d
+      why: 'Walking is free and a warp counts as one use of magic: the costs are 0 and 1 on a grid of
+        10^6 cells.'
+    negative:
+    - inline:
+        input: The row ".#.#." where at most ONE wall may be broken; the fewest walls to break going from
+          the first to the last cell?
+        answer: impossible
+        method_gives: '2'
+        why: Two walls lie on the way, so with a limit of one wall the trip is impossible. The deque only
+          knows the number of walls broken on the cheapest route to each cell, not the limit; with a limit,
+          (cell, walls broken so far) is the state.
+      correct_tool:
+        topic: '4.3'
+        card: extra-state
+    - problem: cses-1667
+      why: Every connection counts the same, so the fewest connections is found by the plain queue of
+        topic 4.1; there are no free moves and no weights.
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+  lookalikes:
+  - description: Cheapest route when the weights are small integers other than 0 and 1 (for example 1
+      and 2)
+    tool:
+      topic: '4.3'
+      card: dijkstra
+    flipping_difference: The deque needs at most two different distances waiting at any moment. With weights
+      1 and 2 the waiting distances can differ by 2, and the order breaks; use the heap.
+  - description: Fewest moves when every move costs exactly 1
+    tool:
+      topic: '4.1'
+      card: unweighted-shortest
+    flipping_difference: 'Without free moves there is nothing to put at the front: the plain queue is
+      the deque used only at the back.'
+  complexity: 'O(n + m): each vertex enters the deque at most twice.'
+- id: negative-weights
+  name: Negative weights (Bellman–Ford)
+  from_theorem: 4.3.3
+  decisive_property: Some edges can have negative weights (a profit, a refund, a score gained on a step),
+    the graph is directed, n·m steps are affordable (n up to a few thousand), and the question asks for
+    the best total from one start, or whether the total can be improved without end.
+  how_to_test: Look for a negative weight, or for "maximise the score" (negate the weights to get a shortest-path
+    problem). Relax all edges n times; a change in round n means a negative cycle can be reached from
+    the start. Then check whether that cycle can also reach the target.
+  constraint_shapes:
+  - 'n up to 2500 and m up to 5000: n · m = 1.25·10^7 steps, easily affordable; for n = 10^5 and m = 3·10^5
+    it would be 3·10^10'
+  - 'Scores up to 10^9 per edge on routes of up to 2500 edges: sums up to 2.5·10^12, so 64-bit integers'
+  weak_signals:
+  - form: Asks for the maximum score of a walk where steps add or subtract points, or "−1 if it can grow
+      without limit"
+    shape: n ≤ 2500, m ≤ 5000, scores up to 10^9 in absolute value
+  - form: Asks whether a chain of exchanges, tunnels or offers can gain without end (a negative cycle),
+      or to detect one
+    shape: n, m up to a few thousand
+  - form: Asks for the cheapest route with at most k stops or flights
+    shape: 'n ≤ 100 to 1000 and k ≤ n: k rounds over all edges'
+  - form: A graph with a few negative edges and small n where the answer for each vertex is asked
+    shape: n ≤ 5000
+  kill_signals:
+  - 'n and m are around 10^5: n · m is 10^10 or more; if no weight is negative, use Dijkstra instead'
+  - 'A negative cycle exists but cannot reach the target: it does not make the answer unbounded, although
+    a change in round n would suggest it (a check of reachability is needed)'
+  - 'The question asks for the longest route that visits no vertex twice: negating the lengths makes every
+    two-way road a negative cycle at once (the first negative example below)'
+  in_action:
+    statement: A bank has n accounts and m one-way transfers; each transfer has a fee or a bonus (a negative
+      fee). Print the smallest total fee from account 1 to every account, or report an account for which
+      the total can be pushed down without limit.
+    constraints: n ≤ 1500, m ≤ 4000, fees up to 10^9 in absolute value.
+    budget: 'Rounds over all transfers: n · m = 6·10^6 steps. Dijkstra needs fees of at least 0.'
+    candidates:
+    - tool: Dijkstra with a heap (this topic)
+      verdict: rejected
+      because: A bonus is a negative weight, and a vertex finished early can still improve (Theorem 4.3.1
+        needs weights of at least 0).
+    - tool: Rounds of relaxation over all transfers (Bellman–Ford, this topic)
+      verdict: chosen
+      because: Negative weights are allowed, and n · m = 6·10^6 is affordable.
+    property_check: 'Fees may be negative: yes. n · m = 6·10^6 fits: yes. A change in round n shows a
+      negative cycle reachable from account 1 (Theorem 4.3.3).'
+    decision: Relax all transfers up to n times. If round n still changes something, report that accounts
+      reached from a changing transfer have unbounded totals (reachability check); otherwise print the
+      distances. Time O(n·m).
+  examples:
+    positive:
+    - inline:
+        input: Tunnels 1→2 (2), 2→3 (−4), 1→3 (1); the shortest distance from 1 to 3?
+        answer: '-2'
+        why: The route through 2 costs 2 − 4 = −2, cheaper than the direct tunnel (1). After round 1 the
+          estimate of vertex 3 is already −2, and round 2 changes nothing; trying all routes agrees.
+    - worked_example: cses-1673
+      why: Maximising the score is a shortest-path problem with the weights negated; the negative weights
+        need Bellman–Ford, and a cycle that gains can make the score unbounded.
+    negative:
+    - inline:
+        input: Two-way roads 1–2, 2–3, 1–3 of length 1 each; the longest route from 1 to 3 that visits
+          no place twice?
+        answer: '2'
+        method_gives: unbounded
+        why: The longest route without repeats is 1, 2, 3 with length 2. Negating the lengths turns every
+          two-way road into two arrows of weight −1, which form a negative cycle at once, and Bellman–Ford
+          reports "unbounded". A route that may not repeat a place is not a shortest path of the negated
+          graph.
+      correct_tool:
+        topic: '3.7'
+        card: path-mask
+    - problem: ac-abc340_d
+      why: 'Every time is positive and N is up to 2·10^5: N rounds of M edges would be about 4·10^10 steps,
+        while a heap needs a few million.'
+      correct_tool:
+        topic: '4.3'
+        card: dijkstra
+  lookalikes:
+  - description: Cheapest route when all weights are non-negative
+    tool:
+      topic: '4.3'
+      card: dijkstra
+    flipping_difference: Negative weights are what Bellman–Ford is for. When there are none, the heap
+      of Dijkstra's algorithm is far faster, O((n + m) log m) against O(n · m).
+  - description: Is there a cycle at all, regardless of weights?
+    tool:
+      topic: '4.2'
+      card: directed-cycle
+    flipping_difference: If only the existence of a cycle matters, the search with vertex states is enough.
+      Bellman–Ford is for cycles whose total weight is negative.
+  complexity: 'O(n · m): at most n rounds over m edges.'
+- id: every-pair
+  name: Distances between all pairs (Floyd–Warshall)
+  from_theorem: 4.3.4
+  decisive_property: The distances between many or all pairs of vertices are needed, n is small enough
+    for n³ steps (up to about 500), and there is no negative cycle.
+  how_to_test: 'Check n: n³ must be at most about 10^8 (n ≤ 500). Check that the question uses many pairs,
+    a whole table, or a growing set of allowed stop-overs. Fill the table d[i][j] with three loops, the
+    stop-over k outermost.'
+  constraint_shapes:
+  - 'n = 400: n³ = 6.4·10^7 steps for the whole table, then every query is O(1)'
+  - 'n = 10^4: n³ = 10^12 is impossible; one Dijkstra per start would be n · (m log n)'
+  weak_signals:
+  - form: Asks for the distance between arbitrary pairs of vertices, many times
+    shape: n ≤ 500 and up to 10^5 queries
+  - form: Asks for the city with the fewest others within a given distance, or for the number of pairs
+      within a distance
+    shape: n ≤ 100 to 500
+  - form: Asks for the cost of changing one letter or state into another through chains of allowed changes
+    shape: about 26 letters, or a few hundred states
+  - form: Vertices are added or removed one at a time and the sum of all distances is asked after each
+      step
+    shape: n ≤ 500
+  kill_signals:
+  - 'n is large (about 10^5): n³ is hopeless, and if only one start is needed, Dijkstra from it is far
+    cheaper'
+  - 'There is a negative cycle: for the arrows 1→2 (1), 2→1 (−2) the table gives the distance 0 from 1
+    to 2 instead of "unbounded" (the first negative example below)'
+  in_action:
+    statement: A country has n cities and m two-way roads with lengths. Answer Q queries "how far is it
+      from city a to city b?".
+    constraints: n ≤ 300, m ≤ 3000, Q ≤ 10^5.
+    budget: A Dijkstra run per query costs about m · log n ≈ 3000 · 9 = 2.7·10^4, so Q of them cost 2.7·10^9.
+      One table costs n³ = 2.7·10^7, then every query is a lookup.
+    candidates:
+    - tool: A Dijkstra run for every query (this topic)
+      verdict: rejected
+      because: 2.7·10^9 steps in total.
+    - tool: Floyd–Warshall once, then lookups (this topic)
+      verdict: chosen
+      because: n³ = 2.7·10^7 steps, and all pairs are known afterwards.
+    property_check: 'n = 300 gives n³ = 2.7·10^7, which fits; lengths are positive, so there is no negative
+      cycle. Many pairs are asked: yes (Theorem 4.3.4).'
+    decision: Fill d[i][j] with the road lengths (INF if none, 0 on the diagonal), run the three loops
+      with k outermost, and answer each query with d[a][b] (−1 if INF). Time O(n³ + Q).
+  examples:
+    positive:
+    - inline:
+        input: 'Four towns in a ring of two-way roads: 1–2 (2), 2–3 (2), 3–4 (2), 1–4 (7); the distance
+          from 1 to 4?'
+        answer: '6'
+        why: After the towns 2 and 3 are allowed as stop-overs, the table entry for (1, 4) is 2 + 2 +
+          2 = 6, better than the direct road of 7; trying all routes agrees.
+    - inline:
+        input: Roads 1–2 (1) and 2–3 (1), and a town 4 with no road; how many pairs u < v are at distance
+          at most 2?
+        answer: '3'
+        why: 'The pairs (1, 2), (2, 3) and (1, 3) have distances 1, 1 and 2. Town 4 reaches nobody, so
+          its entries stay infinite: 3 pairs, as trying all routes confirms.'
+    negative:
+    - inline:
+        input: One-way roads 1→2 (1) and 2→1 (−2); the shortest distance from 1 to 2?
+        answer: unbounded
+        method_gives: '0'
+        why: The two roads form a cycle of total length −1; going around it again and again makes the
+          distance smaller without end. Floyd–Warshall assumes there is no negative cycle and puts a finite
+          number into the table.
+      correct_tool:
+        topic: '4.3'
+        card: negative-weights
+    - problem: ac-abc340_d
+      why: 'Only distances from stage 1 are needed and N is up to 2·10^5: the table would need N³ steps
+        and N² memory.'
+      correct_tool:
+        topic: '4.3'
+        card: dijkstra
+  lookalikes:
+  - description: Which pairs can reach each other, with no distances
+    tool:
+      topic: '4.1'
+      card: components
+    flipping_difference: For reachability alone, one walk per start (n · (n + m) steps) is enough and
+      works for larger n than n³ allows.
+  - description: The distance from one start to every other vertex
+    tool:
+      topic: '4.3'
+      card: dijkstra
+    flipping_difference: One start needs one run of Dijkstra, not the whole table; the table pays off
+      when many different starts are asked.
+  complexity: O(n³) time and O(n²) memory.
+- id: extra-state
+  name: Extra state (Dijkstra over pairs)
+  from_theorem: 4.3.5
+  decisive_property: A cheapest-route problem has a small extra fact that changes what you may do or what
+    a step costs (a voucher used or not, the parity of the steps, the number of walls broken, the fuel
+    left), that fact has only a few values, and the step costs stay at least 0.
+  how_to_test: Write the state as (vertex, extra fact); count the states (n times the number of values
+    of the fact) and the moves per state; check that every cost is at least 0. Then run Dijkstra (or the
+    deque if the costs are 0 and 1) on the pairs.
+  constraint_shapes:
+  - 'n = 10^5 vertices and 3 values of the fact: 3·10^5 states and about 6·m edges, a few million heap
+    steps'
+  - 'A fuel level from 0 to 100 on n = 1000 cities: 10^5 states; a fact with 10^9 values is impossible'
+  weak_signals:
+  - form: You may use a discount, coupon or free ride at most once (or at most k times)
+    shape: n, m ≤ 2·10^5 and k ≤ 2 or so
+  - form: Asks for the cheapest or shortest route with at most k special moves (walls broken, flights
+      taken)
+    shape: k up to about 20 on a grid with up to 10^5 cells
+  - form: 'The cost of a step depends on a small state: the time of day modulo something, the fuel left,
+      a switch'
+    shape: a few values; n ≤ 10^5
+  - form: Asks for the cheapest route with a parity condition (an even number of edges, or an odd number)
+    shape: n, m ≤ 2·10^5; the parity is the extra fact
+  kill_signals:
+  - 'The fact has too many values (the set of visited vertices of a big graph, a fuel of 10^9): the pairs
+    do not fit in the limits'
+  - 'The costs can be negative: with a bonus voucher that pays the price of one road, Dijkstra over pairs
+    reports 0 where the true total is −4 (the first negative example below)'
+  in_action:
+    statement: A subway has n stations and m tracks with ticket prices. A pass lets you ride at most two
+      tracks for free. Find the cheapest trip from station 1 to station n.
+    constraints: n ≤ 10^5, m ≤ 2·10^5.
+    budget: 'Choosing the two free tracks: about m² / 2 = 2·10^10 pairs, each needing a shortest-path
+      run. The pairs (station, free rides used) number 3n = 3·10^5, with about 6m = 1.2·10^6 edges.'
+    candidates:
+    - tool: Try every choice of two free tracks and run Dijkstra each time (this topic)
+      verdict: rejected
+      because: 2·10^10 runs.
+    - tool: Dijkstra over the pairs (station, free rides used) (this topic)
+      verdict: chosen
+      because: The extra fact has 3 values and every price is at least 0 (Theorem 4.3.5).
+    property_check: 'The extra fact (0, 1 or 2 free rides used) has 3 values, and prices are non-negative:
+      yes. The fact together with the station is the whole state.'
+    decision: Keep dist[v][k] for k = 0, 1, 2; a track costs its price (same k) or, if k < 2, costs 0
+      and moves to k + 1. Print the smallest of dist[n][0..2]. Time O((n + m) log m).
+  examples:
+    positive:
+    - inline:
+        input: One-way roads 1→2 (5), 2→3 (6), 3→4 (7); one road may be used for free; the cheapest trip
+          from 1 to 4?
+        answer: '11'
+        why: The whole trip costs 18; the best free road is the most expensive one (7), leaving 5 + 6
+          = 11. The pairs (station, free road used) give 11, and freeing each road in turn gives the same.
+    - inline:
+        input: The 3 × 4 map "..#.", ".##.", "...." where one wall may be broken; the fewest steps from
+          the top-left to the top-right cell?
+        answer: '3'
+        why: 'Without breaking a wall the route goes down, along the bottom row and up: 7 steps. Breaking
+          the wall in the top row gives 3 steps along the top row. The search over (cell, wall broken
+          yet) finds 3, and breaking each wall in turn agrees.'
+    negative:
+    - inline:
+        input: One-way roads 1→3 (1), 1→2 (5), 2→3 (10), 3→4 (1); a bonus voucher pays you the price of
+          ONE road instead of you paying it (that road costs −w); the cheapest total from 1 to 4?
+        answer: '-4'
+        method_gives: '0'
+        why: 'The best use is on the road 2→3 after 1→2: 5 − 10 + 1 = −4. Dijkstra over the pairs has
+          already finished the pair (3, voucher used) with the value −1 (voucher on the road 1→3) before
+          the route through 2 offers −5, because the costs are negative. Negative costs break Dijkstra;
+          Bellman–Ford on the pairs gives −4.'
+      correct_tool:
+        topic: '4.3'
+        card: negative-weights
+    - problem: ac-abc176_d
+      why: The cost depends on the kind of move only (walk 0, warp 1), with nothing extra to remember,
+        so a deque on the cells is enough; the pairs would only waste memory.
+      correct_tool:
+        topic: '4.3'
+        card: zero-one-weights
+  lookalikes:
+  - description: Cheapest route when every move goes forward to a later position and the extra fact is
+      small
+    tool:
+      topic: '3.2'
+      card: extra-small-state
+    flipping_difference: When every move goes to a larger position, a table indexed by (position, fact)
+      is filled in order without a heap. Dijkstra over pairs is needed when moves can go back.
+  - description: Count the ways to reach the end using exactly k special moves
+    tool:
+      topic: '3.5'
+      card: sequence-counting
+    flipping_difference: Counting ways needs a table that adds the counts of every state; a shortest-path
+      search finds only how cheap, and visits each pair once.
+  complexity: O(|F| (n + m) log(|F| m)) for |F| values of the extra fact.
+problems:
+- id: ac-abc340_d
+  role: worked_example
+  summary: N ≤ 2·10^5 stages; at stage i you can pay A_i seconds to unlock stage i + 1 or B_i seconds
+    to unlock stage X_i; find the fewest seconds until stage N can be played.
+- id: ac-abc176_d
+  role: worked_example
+  summary: On an H × W maze (H, W ≤ 1000) a magician can walk to an adjacent road square for free or use
+    magic to warp to any road square in the 5 × 5 area around him; find the fewest uses of magic to reach
+    a given square, or −1.
+- id: cses-1673
+  role: worked_example
+  summary: n ≤ 2500 rooms and m ≤ 5000 one-way tunnels, each adding a score that may be negative; find
+    the maximum score of a walk from room 1 to room n, or −1 if it can be arbitrarily large.
 drill: []
 lookalike_pairs: []
 self_test: []

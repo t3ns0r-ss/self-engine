@@ -239,6 +239,56 @@ The first example is the tiny instance (step 1: the path $3, 4, 5, 10$). The sec
 
 ## 6. Templates
 
+Six templates, one for each card (the components card has two: one with an explicit stack and one with recursion). Each shows only the function that matters. The program around it reads the input and builds `adj` by putting `b` into `adj[a]` and `a` into `adj[b]` for every edge `a b` (the vertices are numbered from 1, so `adj` has `n + 1` entries and `adj[0]` is unused). Every template is checked against a brute force that uses a different method (label propagation or repeated relaxation, until nothing changes) on thousands of random small graphs and grids, and on fixed tests with isolated vertices, repeated edges and unreachable targets.
+
+### Component sizes (Theorem 4.1.2)
+
+<CodeSnippet unit="4.1/component-sizes" />
+
+**How it works.** The outer loop visits the vertices in order; a vertex that is already `marked` belongs to a component that was walked before. Otherwise it starts a new walk: the vector `stack` holds the vertices still to be processed (`back` and `pop_back` use its end as the top, topic 0.6). A vertex is marked at the moment it is pushed, so it is pushed at most once, and `size` counts the vertices removed, which is the size of the component. The number of components is the length of the returned list.
+
+**Alternative formulation.** The walk can be written as a function that calls itself, which is the next template.
+
+### Recursive depth-first search (Theorem 4.1.1)
+
+<CodeSnippet unit="4.1/recursive-dfs" />
+
+**How it works.** `dfs(adj, marked, u)` marks `u` and calls itself for every neighbour that is not yet marked; each call returns how many vertices it marked below it, so the call from the outer loop returns the size of the component. The function takes `marked` by reference, so all calls share one array. Recursion is the shortest way to write a depth-first search, but the calls wait on the stack: on a path of $n$ vertices the depth is $n$. On the machine used for these tests (8 MB of stack) it works for $10^5$ vertices and crashes for $2 \cdot 10^5$; judges differ in the stack they give, so use the explicit stack of the previous template when a graph can be a long chain (Section 7).
+
+**Alternative formulation.** The explicit stack of the previous template visits the same vertices in a slightly different order and needs no deep recursion; by Theorem 4.1.1 both mark the same set.
+
+### Fewest edges and the route (Theorem 4.1.3)
+
+<CodeSnippet unit="4.1/fewest-route" />
+
+**How it works.** `parent[w]` records the vertex from which $w$ was first reached, and the value 0 means "not reached yet" (the vertices start at 1). The start gets `parent[s] = s`, so it is never reached again. The queue is first in, first out, which is what makes the first visit the shortest (Theorem 4.1.3). After the walk, the route is rebuilt backwards from `t` by repeating `v = parent[v]` until `s`, and reversed. An empty list means that `t` was never reached; if `s == t`, the route is just `s`.
+
+**Alternative formulation.** Keep an array `dist` instead of `parent`, and rebuild the route from `t` by stepping to any neighbour whose `dist` is one smaller; by Theorem 4.1.3(a) such a neighbour always exists.
+
+### Rooms of a map (Theorems 4.1.2 and 4.1.5)
+
+<CodeSnippet unit="4.1/grid-rooms" />
+
+**How it works.** The four moves are the pairs `(dr[d], dc[d])`: up, down, left, right. For each floor cell that is not yet `seen`, a walk with a queue marks the whole room and counts its cells. Inside the walk, the check "is the neighbour inside the map" comes first, because looking at `grid[nr][nc]` outside the map is an error. There is no adjacency list: the neighbours are computed from the offsets.
+
+**Alternative formulation.** For diagonal moves too, use eight offsets; nothing else changes. A stack instead of the queue gives the same rooms.
+
+### Distance to the nearest source (Theorem 4.1.4)
+
+<CodeSnippet unit="4.1/nearest-source" />
+
+**How it works.** Before the walk starts, every source is put into the queue with `dist = 0`; after that the loop is the ordinary one of Theorem 4.1.3. Cells that no source reaches keep the value $-1$, and walls are skipped.
+
+**Alternative formulation.** Add one new vertex joined to all sources and run the ordinary walk from it, subtracting 1 from every distance; this is the proof of Theorem 4.1.4, and it gives the same numbers.
+
+### Fewest steps with extra information in the state (Theorem 4.1.6)
+
+<CodeSnippet unit="4.1/key-door" />
+
+**How it works.** A state is the cell and the set of keys held, stored as four bits of `keys`; the table `dist` has `rows * cols * 16` entries, one per state. Stepping onto a key sets its bit, and stepping onto a door is allowed only if its bit is set. The reference `slot` is the table entry of the next state: if it is already filled the state was seen before, otherwise it receives `here + 1`. The search stops at the first time a state on `T` is removed, whatever keys are held.
+
+**Alternative formulation.** For a state with too many values to index, keep the distances in a `map` from the state (a `tuple` or a `pair`) to the distance, as in Theorem 4.1.6; it costs an extra logarithm.
+
 ## 7. Bug catalogue
 
 ## 8. Worked examples

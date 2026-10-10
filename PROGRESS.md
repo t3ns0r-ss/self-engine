@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.1 Graph traversal (pipeline steps 1–3 done)
+- Topic: 4.1 Graph traversal (pipeline steps 1–4 done)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.1 step 3 (five recognition cards with in-action blocks, examples and card example units; the three worked-example problems fixed: cses-1666, cses-1193, cses-1194)
-- Next action: step 4 (templates: code units with brute and generator, stress 5000, lesson Section 6)
+- Last completed step: topic 4.1 step 4 (six template units: component-sizes, recursive-dfs, fewest-route, grid-rooms, nearest-source, key-door; stress 5000 each)
+- Next action: step 5 (bug catalogue)
 
 ## Gates
 | Gate | Status | Date |

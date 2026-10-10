@@ -291,6 +291,114 @@ Six templates, one for each card (the components card has two: one with an expli
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`, except the recursion depth, which random small graphs cannot show. The inputs shown are small failing inputs, checked against the brute force.
+
+### Bug: marking a vertex when it is removed, not when it is pushed
+
+Template: component sizes.
+
+```cpp
+while (!stack.empty()) {
+    int u = stack.back();
+    stack.pop_back();
+    marked[u] = true;                     // moved here from the push
+    size++;
+    for (int w : adj[u]) if (!marked[w]) stack.push_back(w);
+}
+```
+
+Input: a triangle, `3 3`, then the edges `1 2`, `1 3`, `2 3`.
+
+Wrong output `1` and `4`, correct output `1` and `3`. Vertex 2 is pushed by 1 and again by 3 before either copy is removed, so it is counted twice. The proof of Theorem 4.1.1 needs each vertex to enter the container once (step 5).
+
+**Fix:** set `marked[w] = true` at the moment of `push_back`.
+
+### Bug: an undirected edge stored in one direction only
+
+Template: component sizes.
+
+```cpp
+adj[a].push_back(b);                      // adj[b].push_back(a) forgotten
+```
+
+Input: `2 1`, then the edge `2 1`.
+
+Wrong output `2` and `1 1`, correct output `1` and `2`. The walk from 1 finds no neighbours (the edge is stored only in `adj[2]`) and the walk from 2 finds 1 already marked, but 1 was counted as its own component. Reachability must be symmetric for components (Theorem 4.1.2, step 1).
+
+**Fix:** store both `b` in `adj[a]` and `a` in `adj[b]` for an undirected edge.
+
+### Bug: a stack where a queue is needed
+
+Template: fewest edges and the route.
+
+```cpp
+stack<int> q;                             // instead of queue<int>
+int u = q.top();                          // instead of q.front()
+```
+
+Input: `5 5 1 4`, then the edges `1 2`, `1 3`, `2 4`, `3 5`, `4 5` (a cycle of five vertices).
+
+Wrong output `3`, correct output `2`. The stack follows 1, 3, 5 and reaches vertex 4 from 5 before the route 1, 2, 4 is tried, so the first visit is not the shortest. Theorem 4.1.3 uses the first in, first out order (step 2 of its proof).
+
+**Fix:** use `queue<int>` with `front` and `pop`.
+
+### Bug: a typo in one direction offset
+
+Template: rooms of a map.
+
+```cpp
+const int dc[4] = {0, 0, -1, -1};         // the last one should be +1
+```
+
+Input: `1 2`, then the row `..`.
+
+Wrong output `2 1` (two rooms, the largest of size 1), correct output `1 2`. No move to the right exists, so the cell on the right is only reached by the walk that starts there.
+
+**Fix:** `{0, 0, -1, 1}`. Print the four offsets next to each other when debugging a grid walk: they must be the four directions, once each.
+
+### Bug: only one source in the queue
+
+Template: distance to the nearest source.
+
+```cpp
+if (grid[r][c] == 'S' && q.empty()) {     // only the first source
+```
+
+Input: `1 3`, then the row `S.S`.
+
+Wrong output `3 2 0`, correct output `1 1 0`. The second source is treated as an ordinary cell and receives distance 2, instead of 0. Theorem 4.1.4 needs all sources in the queue at distance 0 (step 3 of its proof).
+
+**Fix:** push every source before the loop starts.
+
+### Bug: a state that forgets the keys
+
+Template: fewest steps with extra information in the state.
+
+```cpp
+int& slot = dist[(nr * cols + nc) * 16];  // the keys left out of the index
+```
+
+Input: `2 5`, then the rows `S.A.T` and `#a###`.
+
+Wrong output `-1`, correct output `6`. The cell with the key was reached with the key, but the table cannot tell that state from the same cell without it; the cell next to the door is already filled, so the walk never returns to it with the key. This is the instance of the "Grids as graphs" card where the cell alone is not the state (Theorem 4.1.6, precondition 1).
+
+**Fix:** index the table by the cell and the keys, `dist[(nr * cols + nc) * 16 + nextKeys]`.
+
+### Bug: recursion that is too deep
+
+Template: recursive depth-first search.
+
+```cpp
+int count = 1;
+for (int w : adj[u]) if (!marked[w]) count += dfs(adj, marked, w);
+```
+
+The code is correct, and random small graphs pass. Input: a path `1 2`, `2 3`, ..., of $2 \cdot 10^5$ vertices.
+
+The program crashes with a segmentation fault on the 8 MB stack of the test machine (it still works for $10^5$ vertices). The brute force and every small test pass, because the recursion is only as deep as the longest chain of unmarked neighbours, and small graphs have no long chains. The explicit stack of the first template handles the same input.
+
+**Fix:** use the explicit stack, or make sure the judge's stack is large enough; test a path of $n$ vertices as a maximum case.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

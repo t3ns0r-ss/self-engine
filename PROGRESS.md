@@ -2,11 +2,11 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.2 Graph structure (pipeline steps 1–8 done, theorem 4.2.6 added); 4.1 is done
+- Topic: 4.2 Graph structure (pipeline steps 1–9 done, theorem 4.2.6 added); 4.1 is done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.2 step 7 (ladder: 17 rungs) plus Theorem 4.2.6 (earliest places for small numbers: thm-6, template earliest-labels, one more bug) so that the bank pair CSES 1679 / 1757 can be used
+- Last completed step: topic 4.2 step 9 (8 self-test questions, checkpoint ABC 292 D + ABC 223 D + CF 1594D†, review sets 3/3/4, four decision-map groups, draft flag removed; Theorem 4.2.6 added at step 8)
 - Note: CF problems 862B, 687A, 1144F, 1020B, 1027D, 510C, 103B, 977E, 131D in the ladder are † (statements not opened)
-- Next action: step 9 (self-test, checkpoint, three review sets, decision map; remove the draft flag)
+- Next action: step 10 (self-review: validate, build, tests, browser tests; then Phase 4 continues with 4.3)
 
 ## Gates
 | Gate | Status | Date |

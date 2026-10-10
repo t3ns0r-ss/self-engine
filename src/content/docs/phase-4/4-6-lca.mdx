@@ -254,6 +254,162 @@ Seven templates. Each shows only the function that matters; the program around i
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, checked against the brute force.
+
+### Bug: too few levels in the table
+
+Template: where do the teleporters lead after $k$ steps?
+
+```cpp
+int n = next.size() - 1, levels = 3;                    // instead of levels = 31
+```
+
+Input: `2 1`, then the teleporters `1 1`, then the question `2 8`.
+
+Wrong output `2`, correct output `1`. Planet 2 leads to planet 1 and planet 1 leads to itself, so after any $k \ge 1$ steps the answer is 1. With 3 levels only the bits 0, 1 and 2 of $k$ are used; $8$ is bit 3, so it is ignored and the traveller stays on planet 2 (Theorem 4.6.1: the table needs a level for every bit of the largest $k$).
+
+**Fix:** take levels with $2^{\text{levels}} > k_{\max}$; here 31 for $k \le 10^9$.
+
+### Bug: a jump of $2^j$ made from one half
+
+Template: where do the teleporters lead after $k$ steps?
+
+```cpp
+up[j][v] = up[j - 1][v];                                // instead of up[j - 1][up[j - 1][v]]
+```
+
+Input: `3 1`, then the teleporters `2 3 1`, then the question `3 9`.
+
+Wrong output `2`, correct output `3`. The planets form a cycle $1 \to 2 \to 3 \to 1$. Nine steps are three full turns, so the traveller is back on planet 3. With the wrong rule every level is the same single step, and the bits of 9 (levels 0 and 3) add up to two steps: planet 3 → 1 → 2 (Theorem 4.6.1, step 2: $2^j$ steps are two jumps of $2^{j-1}$).
+
+**Fix:** jump twice with the previous level.
+
+### Bug: lifting the shallower vertex
+
+Template: lowest common boss from a parent array.
+
+```cpp
+                                                        // the swap "if (depth[a] < depth[b]) swap(a, b);" is missing
+```
+
+Input: `3 1`, then the bosses `1 2` (employee 2 under 1, employee 3 under 2), then the question `1 3`.
+
+Wrong output `0`, correct output `1`. Here $a = 1$ is the top and $b = 3$ is two levels lower, so $\text{depth}[a] - \text{depth}[b] = -2$. The loop reads the bits of a negative number and lifts $a$ above the root, onto the dummy vertex 0 (Theorem 4.6.2, step 1: lift the *deeper* vertex).
+
+**Fix:** swap so that `a` is the deeper one before the difference is taken.
+
+### Bug: returning the vertex instead of its parent
+
+Template: lowest common boss from a parent array.
+
+```cpp
+answer.push_back(a);                                    // instead of a == b ? a : up[0][a]
+```
+
+Input: `3 1`, then the bosses `1 1`, then the question `3 2`.
+
+Wrong output `3`, correct output `1`. Employees 2 and 3 are both directly under 1 and are different. The jumping loop stops one step *below* the common ancestor (their parents are equal, so no jump is made), and `a` is still employee 3 (Theorem 4.6.2, step 3: the answer is the parent of the stopping place).
+
+**Fix:** return `a` only if the two were equal after the lift, otherwise `up[0][a]`.
+
+### Bug: jumping while the ancestor exists, not while the ancestors differ
+
+Template: lowest common boss from a parent array.
+
+```cpp
+if (up[j][a] != 0) a = up[j][a], b = up[j][b];          // instead of up[j][a] != up[j][b]
+```
+
+Input: `4 1`, then the bosses `1 2 2`, then the question `3 4`.
+
+Wrong output `1`, correct output `2`. Employees 3 and 4 are both under employee 2, which is under 1. The test "does the ancestor exist" lets both vertices jump to employee 1, which is a common ancestor but not the lowest one. The test must ask whether the two ancestors are *different*, so that the jump never goes past the meeting place.
+
+**Fix:** jump only when `up[j][a] != up[j][b]`.
+
+### Bug: forgetting the 2 in the distance
+
+Template: distances between towns.
+
+```cpp
+answer.push_back(L.depth[a] + L.depth[b] - L.depth[lca(L, a, b)]);   // instead of 2 * L.depth[...]
+```
+
+Input: `2 1`, then the road `2 1`, then the question `2 2`.
+
+Wrong output `1`, correct output `0`. A town is at distance 0 from itself. With $a = b = 2$ the formula gives $1 + 1 - 1 = 1$: the road above the common ancestor is counted from *both* ends, so it must be taken away twice (Theorem 4.6.3).
+
+**Fix:** subtract $2 \cdot \text{depth}[\text{lca}]$.
+
+### Bug: the roads below the meeting place are lost
+
+Template: the weakest road on a trip.
+
+```cpp
+return best;                                            // instead of min({best, mn[0][a], mn[0][b]})
+```
+
+Input: `4 1`, then the roads `3 1 6`, `4 3 5`, `2 3 9` (limits 6, 5, 9), then the question `4 2`.
+
+Wrong output `9223372036854775807` (the starting "infinity"), correct output `5`. Towns 4 and 2 are both children of 3, so the loop makes no jump at all, and the two roads `4-3` and `2-3` are the only ones on the trip. They are still waiting under the two vertices (Theorem 4.6.4, step 3: the last road from each side is not covered by any jump).
+
+**Fix:** finish with the roads from `a` and `b` to their parent.
+
+### Bug: the road above the common ancestor is counted
+
+Template: the weakest road on a trip.
+
+```cpp
+                                                        // the line "if (a == b) return best;" is missing
+```
+
+Input: `3 2`, then the roads `3 1 3` and `2 3 7`, then the questions `2 3` and `2 3`.
+
+Wrong output `3`, correct output `7`. Town 3 is above town 2, so the trip is the single road `2-3` with limit 7. After lifting, `a` and `b` are both town 3; without the early return the final line looks at the road from 3 to its parent as well (limit 3), and that road is not on the trip.
+
+**Fix:** when the two are equal after the lift, the answer is what the lift collected.
+
+### Bug: the second half of a jump is the same as the first
+
+Template: candies by jumps.
+
+```cpp
+gain[j][v] = gain[j - 1][v] * 2;                        // instead of gain[j - 1][v] + gain[j - 1][mid]
+```
+
+Input: `2 4`, then `1 3`.
+
+Wrong output `4`, correct output `8`. The dish gets $1$ (from the dish at 0), then $3$ (at 1), then $1$, then $3$: in total $8$. The two halves of a jump start at different vertices, so the second half must be read at `mid`, the place where the first half ended (Theorem 4.6.4, step 2).
+
+**Fix:** add the gain stored at `mid`.
+
+### Bug: −1 at the lowest common ancestor
+
+Template: how often is each road used?
+
+```cpp
+count[a]++, count[b]++, count[lca(L, a, b)] -= 1;       // instead of -= 2
+```
+
+Input: `2 1`, then the road `2 1`, then the trip `2 2`.
+
+Wrong output `1`, correct output `0`. A trip from a town to itself uses no road. The two $+1$ marks at town 2 are cancelled only by $-2$ at the lowest common ancestor, which is town 2 itself; with $-1$ one mark is left, and the subtree sum of town 2 reports a trip through the road above it (Theorem 4.6.5, step 1).
+
+**Fix:** subtract 2: one for each of the two paths that stop at the lowest common ancestor.
+
+### Bug: adding up in the wrong order
+
+Template: how often is each road used?
+
+```cpp
+for (int i = 1; i < n; i++) count[t.parent[t.order[i]]] += count[t.order[i]];   // instead of from n - 1 down to 1
+```
+
+Input: `4 1`, then the roads `1 2`, `3 2`, `3 4`, then the trip `4 3`.
+
+Wrong output `-1 0 1`, correct output `0 0 1`. Only the road `3-4` is on the trip. The root is 1, the order is $1, 2, 3, 4$, and the marks are $+1$ at 4 and $-1$ at 3. Going forwards, vertex 2 collects from vertex 3 *before* vertex 3 has collected from vertex 4, so the road `1-2` gets the $-1$ and never the matching $+1$. The children must be finished before their parent (Theorem 4.5.2, step 2).
+
+**Fix:** go from the last vertex of the order to the first.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

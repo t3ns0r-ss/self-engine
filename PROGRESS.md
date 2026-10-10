@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: none (Phase 4 complete: topics 4.1–4.7, intro and exam)
+- Milestone: M7 (Phase 5), started on Saurabh's "Continue" after the M6 report (M5, M6 and R1 gates still `waiting`; taken as go-ahead, as before)
+- Topic: 5.1 Sparse table and range minimum queries
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.7 step 10 (e2e: 21 [4.7] checks pass; only the known 3-7 placeholder failure). Bank 4.7 additions (13 reserved problems: cf-949C, cf-1900E, cf-711D, cf-659E, cf-1547G, cf-1927F, ac-abc266_f, cf-1454E, cf-542C, cf-883G, cf-698B, cf-1276B, lc-disconnect-path) were added by me because the 4.7 bank was short; the drill has few 4.7 answers; please review.
-Next action: report M6 (Phase 4) and wait for review; do not start Phase 5 without a go-ahead
+Last completed step: step 2 (sections 1-4, four theorems with code units, glossary). Bank extension for 5.1, 5.2, 5.4 delegated to research agents.
+Next action: step 3 recognition cards for 5.1
 
 ## Gates
 | Gate | Status | Date |

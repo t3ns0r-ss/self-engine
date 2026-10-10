@@ -1,0 +1,198 @@
+---
+title: "5.1 Sparse table and range minimum queries"
+sidebar:
+  order: 33
+topic: "5.1"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="5.1" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A weather station wrote down the temperature on $n = 2 \cdot 10^5$ days. You get $q = 2 \cdot 10^5$ questions, and each gives two days $l$ and $r$ and asks: "what was the lowest temperature from day $l$ to day $r$?" The readings never change between questions.
+
+The direct way scans the days from $l$ to $r$. A question about the whole record costs $2 \cdot 10^5$ steps, and $q$ such questions cost up to $4 \cdot 10^{10}$ steps. At about $10^8$ simple steps per second that is about 400 seconds, far over a typical time limit of 1 to 2 seconds. The prefix sums of [topic 1.2](../../phase-1/1-2-prefix-sums/) do not help: a sum can be undone by subtracting a smaller prefix, but a minimum cannot. Writing down the answer to every pair $(l, r)$ in advance needs about $n^2 / 2 = 2 \cdot 10^{10}$ numbers.
+
+The key idea: store the answers only for *blocks whose length is a power of two*: for every start $i$, the minimum of 1 day, of 2 days, of 4 days, of 8 days, and so on. That is about $\log_2 n \approx 18$ numbers per start, so $18 \cdot 2 \cdot 10^5 = 3.6 \cdot 10^6$ numbers in all, and each is the smaller of two numbers that are already in the table. Now take any range of $\ell$ days. The largest power of two that fits is $2^k \le \ell$, and two blocks of that length, one starting at $l$ and one ending at $r$, together cover the whole range. They may overlap, and for a minimum an overlap does no harm: the smaller of "the lowest in the first block" and "the lowest in the second block" is the lowest in the range. Each question is two lookups. This table is the **sparse table**, and it works for every operation that does not mind being counted twice: the minimum, the maximum, the greatest common divisor, the bitwise AND and the bitwise OR.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="5.1" />
+
+### What this topic does not cover
+
+- Questions on an array whose values change between the questions (a point is replaced, or a whole range gets a number added): the Fenwick tree of topic 5.2 and the segment tree of topic 5.3. Here the array is fixed.
+- Sums of ranges that must stay up to date, and other operations that are not safe to count twice: topic 5.2 and topic 5.3. For a fixed array the sums are the prefix sums of topic 1.2.
+- Splitting an array into blocks of about $\sqrt n$ elements, and answering questions in a clever order (sqrt decomposition and Mo's algorithm): topic 5.4.
+- Using an Euler tour of a tree with a sparse table to find the lowest common ancestor: not part of this course (topic 4.6 uses jumping tables instead).
+
+## 3. Definitions
+
+- A **range query** asks for a value computed from the elements $a_l, a_{l+1}, \dots, a_r$ of an array $a$. This page numbers the positions from 0 to $n - 1$ and writes $[l, r]$ for the positions from $l$ to $r$ *including both ends*. A **range minimum query** (**RMQ**) asks for $\min(a_l, \dots, a_r)$. Example: for $a = [5, 2, 4, 7, 1, 3, 6]$ the RMQ on $[1, 3]$ is $\min(2, 4, 7) = 2$.
+- An **operation** $\oplus$ combines two values into one. This lesson uses min, max, the greatest common divisor (GCD, [topic 0.4](../../phase-0/0-4-elementary-math/)), the bitwise AND (`&`) and the bitwise OR (`|`) ([topic 1.7](../../phase-1/1-7-bits/)), and the sum for contrast. The **range aggregate** of $\oplus$ over $[l, r]$ is $a_l \oplus a_{l+1} \oplus \dots \oplus a_r$.
+- An operation is **associative** if $(x \oplus y) \oplus z = x \oplus (y \oplus z)$ (so brackets are not needed), and **commutative** if $x \oplus y = y \oplus x$. All the operations above are both.
+- An operation is **idempotent** if $x \oplus x = x$ for every $x$. The minimum is: $\min(x, x) = x$. So are max, GCD, AND and OR. The sum is not ($x + x = 2x$), and neither is XOR ($x \oplus x = 0$).
+- A **block** of **level** $j$ is a group of $2^j$ consecutive positions $[i, i + 2^j - 1]$. The **sparse table** $\text{st}$ has one row for every level $j$ with $2^j \le n$; the entry $\text{st}[j][i]$ is the range aggregate over the block of level $j$ that starts at $i$. Level 0 is the array itself.
+- $\lfloor \log_2 \ell \rfloor$ is the largest $k$ with $2^k \le \ell$ (the floor of the base-2 logarithm). Example: for $\ell = 5$ it is 2, because $4 \le 5 < 8$. The code stores these values in a small array `lg` with $\text{lg}[1] = 0$ and $\text{lg}[\ell] = \text{lg}[\lfloor \ell / 2 \rfloor] + 1$.
+- In the code an operation is passed around as `function<int(int, int)>`: a value that holds any function taking two `int`s and returning an `int`, for example the lambda `[](int x, int y) { return min(x, y); }` ([topic 0.1](../../phase-0/0-1-cpp-for-cp/) and the lambdas of the graph lessons). The code units number positions from 0, as this page does.
+
+## 4. Theory and proofs
+
+### 4.1 Blocks of length $2^j$
+
+**Theorem 5.1.1 (the table of blocks).** Let $a_0, \dots, a_{n-1}$ be an array. Put $\text{st}[0][i] = a_i$, and for $j \ge 1$ with $2^j \le n$ and $0 \le i \le n - 2^j$,
+$$\text{st}[j][i] = \min\bigl(\text{st}[j-1][i],\ \text{st}[j-1][i + 2^{j-1}]\bigr).$$
+Then (a) $\text{st}[j][i] = \min(a_i, \dots, a_{i + 2^j - 1})$; (b) the table has $\lfloor \log_2 n \rfloor + 1$ levels and at most $n(\lfloor \log_2 n \rfloor + 1)$ entries, and building it takes time proportional to that number.
+
+:::tip[In plain words]
+The minimum of a block of 8 is the smaller of the minimums of its two halves of 4. So each row of the table is made from the row before it, with one comparison per entry, and there are only about $\log_2 n$ rows.
+:::
+
+**A tiny instance.** For $a = [5, 2, 4, 7, 1, 3, 6]$ ($n = 7$): level 0 is the array. Level 1 has the minimum of every pair: $[2, 2, 4, 1, 1, 3]$. Level 2 combines the pairs $i$ and $i + 2$: $\min(2, 4) = 2$, $\min(2, 1) = 1$, $\min(4, 1) = 1$, $\min(1, 3) = 1$, so $[2, 1, 1, 1]$. Level 3 would need $2^3 = 8 > 7$ elements, so there are 3 levels. The entry $\text{st}[2][1] = 1$ is the minimum of $2, 4, 7, 1$ (positions 1 to 4).
+
+**Proof.**
+1. *Claim (a) by induction on $j$.* For $j = 0$ the block is the single position $i$, and its minimum is $a_i = \text{st}[0][i]$.
+2. Let $j \ge 1$ and assume (a) for level $j - 1$. The block $[i, i + 2^j - 1]$ is the first half $[i, i + 2^{j-1} - 1]$ followed by the second half $[i + 2^{j-1}, i + 2^j - 1]$; both have $2^{j-1}$ positions.
+3. Both halves are inside the array and both entries exist: from $i \le n - 2^j$ we get $i + 2^{j-1} \le n - 2^{j-1}$, which is the last allowed start at level $j - 1$.
+4. By the assumption, $\text{st}[j-1][i]$ is the minimum of the first half and $\text{st}[j-1][i + 2^{j-1}]$ is the minimum of the second half. The minimum of a block is the smaller of the minimums of two parts that together make the block, so $\text{st}[j][i]$ is the minimum of the block. This proves (a).
+5. *Claim (b).* Level $j$ exists exactly when $2^j \le n$, that is $j \le \lfloor \log_2 n \rfloor$, which gives $\lfloor \log_2 n \rfloor + 1$ levels. Level $j$ has $n - 2^j + 1 \le n$ entries and each takes one comparison, so the total number of entries and the time are at most $n(\lfloor \log_2 n \rfloor + 1)$. $\square$
+
+:::note[This proof needs]
+1. The two halves are next to each other and do not overlap, so the same recipe works for any associative operation (a sum, for instance, would be built the same way).
+2. Only levels with $2^j \le n$ are built, and a level has $n - 2^j + 1$ entries, not $n$.
+3. Memory: for $n = 2 \cdot 10^5$ there are 18 levels, at most $3.6 \cdot 10^6$ numbers, about 14 MB of `int`.
+:::
+
+<TheoremCode unit="5.1/thm-1" />
+
+The first example is the tiny instance: the entry 1 at level 2, position 1, is step 4 of the proof (the minimum of the two halves 2, 4 and 7, 1). The second has all values equal, and the third has a single element, which has only level 0. The check compares every entry with the minimum of its block on every array of length 1 to 6 over $\{1, 2, 3\}$.
+
+### 4.2 Two blocks cover any range
+
+**Theorem 5.1.2 (the query).** Let $\oplus$ be an associative, commutative and idempotent operation (min, max, GCD, AND or OR), and let the table be built as in Theorem 5.1.1 with $\oplus$ in place of min. For a range $[l, r]$ of length $\ell = r - l + 1$ let $k = \lfloor \log_2 \ell \rfloor$. Then
+$$a_l \oplus \dots \oplus a_r = \text{st}[k][l] \oplus \text{st}[k][r - 2^k + 1].$$
+After $O(n \log n)$ preparation each query takes $O(1)$ time.
+
+:::tip[In plain words]
+Take the biggest power of two that fits in the range. One block of that length starts at the left end and another ends at the right end. Together they cover the range, and if they overlap, no harm is done as long as counting a value twice changes nothing.
+:::
+
+**A tiny instance.** The GCD of $a = [12, 18, 8, 24, 6]$ over $[0, 2]$: the length is 3, so $k = 1$. The blocks are $[0, 1]$ and $[1, 2]$ (they overlap at position 1), with $\gcd(12, 18) = 6$ and $\gcd(18, 8) = 2$. The answer is $\gcd(6, 2) = 2$, and indeed $\gcd(12, 18, 8) = 2$. With a **sum** the same rule fails: for $[1, 2, 3]$ the blocks give $(1 + 2) + (2 + 3) = 8$, while the sum is 6, because the middle element was added twice.
+
+**Proof.**
+1. Since $\ell \ge 1$ there is a unique $k$ with $2^k \le \ell < 2^{k+1}$. Let $A = [l, l + 2^k - 1]$ and $B = [r - 2^k + 1, r]$. Both have $2^k$ positions, and both lie inside $[l, r]$ because $2^k \le \ell$. So both entries exist, and by Theorem 5.1.1(a) (its proof used only that the operation is associative) they hold the aggregates over $A$ and over $B$.
+2. Every position $p \in [l, r]$ lies in $A$ or in $B$. If $p$ is not in $A$, then $p \ge l + 2^k$. And $l + 2^k \ge r - 2^k + 1$, because that says $2^{k+1} \ge r - l + 1 = \ell$, which holds as $\ell < 2^{k+1}$. So $p \ge r - 2^k + 1$ and $p \le r$, which means $p \in B$.
+3. So the right side of the formula combines every value of $[l, r]$ at least once, and the values at positions in both blocks twice; no value outside $[l, r]$ is used.
+4. Because $\oplus$ is associative and commutative, the result does not depend on the order or the brackets, so it is the combination of the values with these multiplicities. Because $\oplus$ is idempotent, $x \oplus x = x$, so a value that appears twice can be written once. The result is therefore $a_l \oplus \dots \oplus a_r$.
+5. Computing $k$ is one lookup in `lg`, and the query makes two table lookups and one $\oplus$, so it takes $O(1)$ time. $\square$
+
+:::note[This proof needs]
+1. The operation is idempotent. The proof breaks at step 4 for a sum, XOR, a count or a product (see the example), and then the table cannot be used with overlapping blocks.
+2. The array does not change after the table is built; one changed value can change about $n$ entries of the table.
+3. $k$ is the floor of the logarithm: `lg[len]` is computed once for all lengths with $\text{lg}[1] = 0$ and $\text{lg}[\ell] = \text{lg}[\lfloor \ell/2 \rfloor] + 1$.
+:::
+
+<TheoremCode unit="5.1/thm-2" />
+
+The first example is the tiny instance (step 4: the middle element is counted twice and the GCD does not care); the second has no overlap, since the length 4 is a power of two. The third uses AND and the fourth is a range of length 1. The last line is the sum, which the proof does not cover: it gives 8 instead of 6. The check compares the table with a plain left-to-right combination of the range, for the five operations on every array of length 1 to 6 over $\{1, 2, 3, 4\}$.
+
+### 4.3 Growing a range moves the answer one way
+
+**Theorem 5.1.3 (searching along a range).** Fix a start $l$ and let $f(r) = a_l \oplus \dots \oplus a_r$ for $r \ge l$. For $\oplus \in \{\min, \gcd, \text{AND}\}$ on non-negative numbers (positive numbers for gcd) we have $f(r + 1) \le f(r)$; for $\oplus \in \{\max, \text{OR}\}$ we have $f(r + 1) \ge f(r)$. Consequently, for any number $x$, the statement "$f(r) \le x$" (in the first case) or "$f(r) \ge x$" (in the second) is false for the smallest values of $r$ and true from some $r_0$ on. The first $r$ where it is true can be found with $O(\log n)$ range queries, which is $O(\log n)$ time with the table of Theorem 5.1.2.
+
+:::tip[In plain words]
+If you keep adding days to the right end of the range, the lowest temperature can only stay or go down; the GCD can only stay or shrink; the AND can only lose bits. So "has the minimum already dropped to $x$ or below?" starts as "no" and, once it turns "yes", stays "yes". That is exactly what binary search needs.
+:::
+
+**A tiny instance.** $a = [6, 9, 4, 3, 8, 1]$, $l = 0$, $\oplus = \min$: $f = 6, 6, 4, 3, 3, 1$ for $r = 0, \dots, 5$, which never goes up. For $x = 3$ the statement "$f(r) \le 3$" is false, false, false, true, true, true, so the first $r$ is 3. The AND of $[15, 14, 12, 8, 7]$ from $l = 0$ is $15, 14, 12, 8, 0$, and "$f(r) < 12$" first holds at $r = 3$.
+
+**Proof.**
+1. By associativity, $f(r + 1) = f(r) \oplus a_{r+1}$. Write $y = f(r)$ and $z = a_{r+1}$.
+2. For the minimum, $\min(y, z) \le y$. For AND, every bit set in $y \,\&\, z$ is set in $y$, so $y \,\&\, z \le y$. For the GCD, $\gcd(y, z)$ divides $y$ and both are positive, so $\gcd(y, z) \le y$.
+3. For the maximum, $\max(y, z) \ge y$. For OR, every bit of $y$ is set in $y \,|\, z$, so $y \,|\, z \ge y$.
+4. So $f$ never goes up (or never goes down), and the statement "$f(r) \le x$" cannot turn from true back to false as $r$ grows (the same for "$f(r) \ge x$" in the second case).
+5. Binary search keeps the invariant "the first true position is in $[\text{lo}, \text{hi}]$", where $\text{hi} = n$ stands for "there is none". For $\text{mid} = \lfloor (\text{lo} + \text{hi}) / 2 \rfloor < \text{hi}$: if the statement is true at $\text{mid}$, the first true position is at most $\text{mid}$, so set $\text{hi} = \text{mid}$; if false, it is greater than $\text{mid}$ (step 4), so set $\text{lo} = \text{mid} + 1$. The interval at least halves each time, so there are at most $\lceil \log_2 (n - l + 1) \rceil + 1$ steps, each one range query. When $\text{lo} = \text{hi}$ it is the answer. $\square$
+
+:::note[This proof needs]
+1. One of these five operations. For a sum with negative numbers, or for XOR, $f$ goes up and down, and the statement is not monotone (for $[5, -4, 1]$ the sums are $5, 1, 2$).
+2. The values are non-negative (positive for GCD). A GCD of 0 is a special case that the lesson avoids.
+3. The statement is a comparison of $f(r)$ with a number, in the direction in which $f$ moves.
+:::
+
+<TheoremCode unit="5.1/thm-3" />
+
+The first two examples are the minimum case (step 5: the first true position is 3, and the threshold 0 is never reached, so the answer is $-1$). The next two are AND: from $l = 0$ the value drops below 12 at $r = 3$, and from $l = 3$ it drops below 8 at $r = 4$. The last is the GCD, which reaches 2 at $r = 2$. The check compares the search with a scan from $l$, for the five operations, every start and every threshold from 0 to 8, on every array of length 1 to 5 over $\{1, 2, 3, 4\}$.
+
+### 4.4 Only a few changes
+
+**Theorem 5.1.4 (few different values).** Let $a_l, \dots, a_{n-1}$ be positive integers at most $A$ and $f(r) = \gcd(a_l, \dots, a_r)$. As $r$ grows from $l$ to $n - 1$, the value of $f$ changes at most $\lfloor \log_2 A \rfloor$ times, so there are at most $\lfloor \log_2 A \rfloor + 1$ **stretches** (maximal runs of consecutive $r$ with the same value). For AND and for OR on numbers below $2^B$, the value changes at most $B$ times. Using Theorem 5.1.3, the stretches for one $l$ can be listed in $O(\log A \cdot \log n)$ time.
+
+:::tip[In plain words]
+Every time the GCD changes it becomes a proper divisor, which is at most half as big. Starting at most $A \approx 10^9$, it can be halved at most about 30 times, so it has at most about 30 different values along any row. The same count works for the bits of an AND or an OR: each change loses (or gains) at least one bit.
+:::
+
+**A tiny instance.** $a = [64, 32, 16, 8, 4, 2, 1]$ and $l = 0$: the GCD is $64, 32, 16, 8, 4, 2, 1$, a change at every step: 7 stretches, and the bound is $\lfloor \log_2 64 \rfloor + 1 = 7$. For $a = [12, 18, 8, 24, 6]$ the GCD is $12, 6, 2, 2, 2$: three stretches.
+
+**Proof.**
+1. When $f(r + 1) \ne f(r)$, the new value $\gcd(f(r), a_{r+1})$ is a divisor of $f(r)$ different from $f(r)$, so it is at most $f(r) / 2$ (the largest proper divisor of $m$ is at most $m / 2$).
+2. At the start $f(l) = a_l \le A$. After $c$ changes the value is at most $A / 2^c$, and it is at least 1, so $2^c \le A$ and $c \le \lfloor \log_2 A \rfloor$. The number of stretches is the number of changes plus 1.
+3. For AND, a change removes at least one set bit and never adds one (proof of Theorem 5.1.3, step 2). The value starts with at most $B$ set bits, so there are at most $B$ changes. For OR a change adds at least one bit, and at most $B$ bits can be added.
+4. *Listing the stretches.* Let a stretch with value $g$ start at $r$. By Theorem 5.1.3 the statement "$f(r') < g$" is monotone, and its first true position is where the next stretch starts. One search finds it. Each of the at most $\lfloor \log_2 A \rfloor + 1$ stretches costs one search of $O(\log n)$ time, which gives the time bound. $\square$
+
+:::note[This proof needs]
+1. The values are positive (for GCD) or below $2^B$ (for AND and OR); the bound is about the *range of the values*, not about $n$.
+2. Only a single start $l$ is covered. For all starts the total is $n$ times the bound: $2 \cdot 10^5 \cdot 17 \cdot 18 \approx 6 \cdot 10^7$ steps.
+3. The search needs the table of Theorem 5.1.2 and the search of Theorem 5.1.3.
+:::
+
+<TheoremCode unit="5.1/thm-4" />
+
+The first example lists the three stretches of $[12, 18, 8, 24, 6]$ (step 4: each ends where the next search finds a smaller GCD). The second reaches the bound with equality (7 stretches; step 2). The third has all values equal and so a single stretch. The check compares the stretches with the GCD of every range on twenty thousand random arrays, and counts the changes of AND and OR on twenty thousand more.
+
+## 5. Recognition Cards
+
+<Cards topic="5.1" />
+
+## 6. Templates
+
+## 7. Bug catalogue
+
+## 8. Worked examples
+
+## 9. Problem ladder
+
+<Ladder topic="5.1" />
+
+## 10. Identification drill
+
+<Drill topic="5.1" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="5.1" />
+
+## 12. Self-test questions
+
+<SelfTest topic="5.1" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="5.1" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="5.1" />

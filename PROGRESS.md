@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.1 Graph traversal (pipeline steps 1–8 done)
+- Topic: 4.1 Graph traversal (pipeline steps 1–9 done)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.1 step 8 (drill: 11 items, 3 answered by earlier cards; 2 look-alike pairs from the reserved bank)
-- Next action: step 9 (self-test, checkpoint, three review sets, decision map; remove the draft flag)
+- Last completed step: topic 4.1 step 9 (8 self-test questions, checkpoint CSES-style: LC complete components, ABC 339 D, LC safest path; three review sets 3/3/4; five decision-map groups; draft flag removed)
+- Next action: step 10 (self-review: read the whole lesson as a beginner, e2e, tag; then Phase 4 continues with 4.2)
 
 ## Gates
 | Gate | Status | Date |

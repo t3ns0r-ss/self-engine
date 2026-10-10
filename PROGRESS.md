@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.5 Trees (pipeline steps 1–7 done); 4.1–4.4 are done except 4.4's browser-test confirmation
+- Topic: 4.5 Trees (pipeline steps 1–9 done); 4.1–4.4 are done except 4.4's browser-test confirmation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.5 step 7 (19-problem ladder)
-- Next action: step 8 (drill with 3+ earlier-topic answers; look-alike pairs: cses-1131/1132, lc-diameter-of-binary-tree/lc-binary-tree-maximum-path-sum)
+- Last completed step: topic 4.5 steps 8-9 (drill, look-alike pairs, self-test, checkpoint, review sets, decision map, draft removed); step 10 browser tests next
+- Next action: e2e for 4.5 (run bash tests/e2e.sh in background, check [4.5]), then topic 4.6 LCA
 
 ## Gates
 | Gate | Status | Date |

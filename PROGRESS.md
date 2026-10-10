@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: R1 (quality retrofit, PLAN.md Revision 2) and the bank fill (FILL_SHORT_TOPICS_PLAN.md) for the completed topics 0.1–3.8
-- Topic: R1 retrofit of all 25 completed topics 0.1–3.8 done (Revision 2.1); bank fill for 0.1–3.8 done (see ## Bank fill)
+- Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
+- Topic: 4.1 Graph traversal (pipeline step 1 done)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: R1 retrofit of 3.8, the last of the 25 completed topics (one commit per topic; validate, build, `npm test` and the unit tests pass)
-- Next action: wait for your review of the retrofitted topics (R1 gate below). Phase 4 and later lessons are not started
+- Last completed step: topic 4.1 step 1 (scope, lesson skeleton, draft data file)
+- Next action: step 2 (theory: definitions, five theorems with code units)
 
 ## Gates
 | Gate | Status | Date |
@@ -18,7 +18,7 @@
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
-| M5 Phase 3 review | waiting for review | — |
+| M5 Phase 3 review | waiting for review (work on M6 continued at Saurabh's request, 2026-10-10) | — |
 | R1 reference review (topic 1.6 retrofitted) | approved ("Rest seems okay" after the Revision 2.1 changes and the collapsed in-action block) | 2026-10-10 |
 | R1 retrofit of the other 24 topics (0.1–3.8) | done, waiting for review | 2026-10-10 |
 | Bank fill review | waiting for review (10 complete, 15 short with exhaustion records) | 2026-10-09 |
@@ -152,10 +152,10 @@
 - 7.8: complete: 40 fresh reserved problems, at least 2 per phase and 1 per Phase 1–6 topic, all tier 3–5. 9 Codeforces notes are recalled (†).
 
 ## Scope notes for current topic
-- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.7 (3.2's memoisation; 3.5's counting modulo a prime; 1.7's binary digits; 2.3's product rule as the contrast; 3.7's masks of used digits).
-- New: counting the numbers in [0, N] with a digit property by walking N's digits from the most significant, with a "tight" flag; ranges as f(R) − f(L − 1) (also for R and L given as strings); small states such as a digit sum or a remainder; a "started" flag for leading zeros and rules on neighbouring digits; DP values that carry (count, total) to add up a digit-based quantity over a range. Cards: decided at step 3 from the four bank patterns (count-up-to-n, digit-sum-state, neighbour-digits, digit-aggregate). After 3.8: the Phase 3 intro page and the 4-hour Phase 3 exam.
-- Forbidden keywords: every keyword of topics 4.1–7.8 (breadth-first search, depth-first search, topological sort, segment tree, fenwick tree, KMP, automaton, …). Digit DP over an automaton of a pattern (strings containing a word) is out of scope (named only under "does not cover").
-- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.7 (bitmask 0.5; DP state, transition, DP, tabulation 3.2; knapsack, subset sum 3.3; LIS, LCS, edit distance, common subsequence, alignment 3.4; monotone path, acyclic order, composition, integer partition, range transition 3.5; interval DP, split point, palindromic subsequence, score difference 3.6; bitmask DP, submask, Hamiltonian path, TSP 3.7).
+- Allowed: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8 (0.6's vector, stack, queue and map; 3.1's recursion and its depth; 3.2's states and memoisation as the contrast for implicit graphs; 2.3's bijection with paths only as a look-alike).
+- New: graphs as vertices and edges; adjacency lists (the keyword), edge lists, adjacency matrices; breadth-first search (BFS) and depth-first search (DFS) from a vertex (stack or queue, iterative and recursive) and what they visit; connected components by repeated traversal; fewest edges and the path by parent pointers; multi-source BFS; grids as graphs (4 and 8 directions, walls, direction arrays); implicit graphs of states (numbers, positions with extra data) searched by BFS with a map of distances. Cards: decided at step 3 from the five bank patterns (components, unweighted-shortest, grid-graph, multi-source, state-graph).
+- Forbidden keywords: every keyword of topics 4.2–7.8 (topological sort, bipartite, dijkstra, bellman-ford, floyd-warshall, 0-1 bfs, disjoint set union, union-find, kruskal, minimum spanning tree, tree diameter, euler tour, subtree size, lowest common ancestor, binary lifting, strongly connected component, articulation point, tarjan, sparse table, fenwick, segment tree, …). Directed-graph structure (cycles, order of tasks, strongly connected parts), weighted shortest paths, spanning trees, trees as a topic, and union–find are named only under "does not cover".
+- Glossary terms already defined: 0.1–0.6, 1.1–1.7, 2.1–2.4, 3.1–3.8 (stack, queue, deque 0.6; Hamiltonian path 3.7; the rest as before).
 
 ## Blocked
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.

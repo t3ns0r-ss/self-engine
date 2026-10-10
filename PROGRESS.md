@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.4 DSU and MST (pipeline steps 1–7 done); 4.1, 4.2, 4.3 are done
+- Topic: 4.4 DSU and MST (pipeline steps 1–9 done); 4.1, 4.2, 4.3 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.4 step 7 (15-problem ladder)
-- Next action: step 8 (drill with 3+ earlier-topic answers, 2-4 look-alike pairs: cses-1676/1677, cses-1675/ac-abc218_e)
+- Last completed step: topic 4.4 step 9 (12-problem drill... see data file; 2 look-alike pairs, self-test, checkpoint, review sets, decision map, draft removed); step 10 browser tests next
+- Next action: step 10 for 4.4 (e2e lessons test), then topic 4.5 trees
 
 ## Gates
 | Gate | Status | Date |

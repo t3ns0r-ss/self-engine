@@ -6,23 +6,23 @@ Output: "pairwise coprime", "setwise coprime" or "not coprime".
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int n;
-    cin >> n;
-    vector<int> a(n);
-    for (auto& v : a) cin >> v;
-    const int M = 1000000;
-    vector<int> spf(M + 1, 0);
-    for (int p = 2; p <= M; p++) {
-        if (spf[p] != 0) continue;
+// snippet:begin
+// Theorem 2.1.4. spf[x] = the smallest prime factor of x, for 2 <= x <= N.
+vector<int> buildSpf(int N) {
+    vector<int> spf(N + 1, 0);
+    for (int p = 2; p <= N; p++) {
+        if (spf[p] != 0) continue;  // p is prime
         spf[p] = p;
-        if ((long long)p * p > M) continue;
-        for (int j = p * p; j <= M; j += p)
+        if ((long long)p * p > N) continue;
+        for (int j = p * p; j <= N; j += p)
             if (spf[j] == 0) spf[j] = p;
     }
-    vector<int> used(M + 1, 0);  // used[p] = number of elements divisible by p
+    return spf;
+}
+// "pairwise coprime", "setwise coprime" or "not coprime": a prime dividing two elements breaks pairwise coprimality.
+string coprimeKind(const vector<int>& a) {
+    vector<int> spf = buildSpf(1000000);
+    vector<int> used(1000001, 0);  // used[p] = number of elements divisible by p
     bool pairwise = true;
     int g = 0;
     for (int v : a) {
@@ -33,7 +33,17 @@ int main() {
             while (v % p == 0) v /= p;              // count p once per element
         }
     }
-    if (pairwise) cout << "pairwise coprime\n";
-    else if (g == 1) cout << "setwise coprime\n";
-    else cout << "not coprime\n";
+    if (pairwise) return "pairwise coprime";
+    return g == 1 ? "setwise coprime" : "not coprime";
+}
+// snippet:end
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int n;
+    cin >> n;
+    vector<int> a(n);
+    for (auto& v : a) cin >> v;
+    cout << coprimeKind(a) << "\n";
 }

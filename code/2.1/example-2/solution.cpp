@@ -6,9 +6,9 @@ Output: the number of integers in [1, N] with exactly 9 positive divisors.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    long long N;
-    cin >> N;
+// snippet:begin
+// The numbers up to N with exactly 9 divisors are p^8 or p^2 q^2 (p < q primes); sieve the primes up to sqrt(N).
+long long nineDivisors(long long N) {
     long long s = sqrtl((long double)N);  // exact integer square root (topic 0.1)
     while (s * s > N) s--;
     while ((s + 1) * (s + 1) <= N) s++;
@@ -28,5 +28,12 @@ int main() {
         long long qmax = s / p;  // p^2 q^2 <= N  <=>  p q <= s, with q > p prime
         if (qmax > p) ans += cnt[qmax] - cnt[p];
     }
-    cout << ans << "\n";
+    return ans;
+}
+// snippet:end
+
+int main() {
+    long long N;
+    cin >> N;
+    cout << nineDivisors(N) << "\n";
 }

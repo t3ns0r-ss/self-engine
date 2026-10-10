@@ -7,13 +7,10 @@ Output: the least total cost.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n;
-    cin >> n;
-    vector<vector<long long>> c(n, vector<long long>(n));
-    for (auto& row : c)
-        for (auto& x : row) cin >> x;
-    // dp[mask] = least cost for workers 0..|mask|-1 to take exactly the jobs in mask (Theorem 3.7.1)
+// snippet:begin
+// Theorem 3.7.1. dp[mask] = the least cost for workers 0..|mask|-1 to take exactly the jobs in mask; the next worker is |mask|.
+long long assignment(const vector<vector<long long>>& c) {
+    int n = c.size();
     vector<long long> dp(1 << n, LLONG_MAX);
     dp[0] = 0;
     for (int mask = 0; mask < (1 << n); mask++) {
@@ -23,5 +20,15 @@ int main() {
         for (int j = 0; j < n; j++)
             if (!(mask >> j & 1)) dp[mask | 1 << j] = min(dp[mask | 1 << j], dp[mask] + c[worker][j]);
     }
-    cout << dp[(1 << n) - 1] << "\n";
+    return dp[(1 << n) - 1];
+}
+// snippet:end
+
+int main() {
+    int n;
+    cin >> n;
+    vector<vector<long long>> c(n, vector<long long>(n));
+    for (auto& row : c)
+        for (auto& x : row) cin >> x;
+    cout << assignment(c) << "\n";
 }

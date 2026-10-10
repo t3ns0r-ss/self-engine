@@ -6,6 +6,9 @@ topic: "3.7"
 ---
 import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
 import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
 import Drill from '../../../components/Drill.astro';
@@ -13,12 +16,6 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
-import assignment from '../../../../code/3.7/assignment/solution.cpp?raw';
-import tsp from '../../../../code/3.7/tsp/solution.cpp?raw';
-import fewestGroups from '../../../../code/3.7/fewest-groups/solution.cpp?raw';
-import bestPartition from '../../../../code/3.7/best-partition/solution.cpp?raw';
-import example1 from '../../../../code/3.7/example-1/solution.cpp?raw';
-import example2 from '../../../../code/3.7/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.7" />
 
@@ -34,10 +31,7 @@ The key idea: assign the workers in order $0, 1, 2, \dots$. After the first $k$ 
 
 ### What you need
 
-- [Topic 1.7](../../phase-1/1-7-bits/), bits: `1 << j`, `mask >> j & 1`, `mask | (1 << j)`, `mask ^ (1 << j)`, and `__builtin_popcount`.
-- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: enumerating all subsets as bitmasks, the method this topic improves on.
-- [Topic 3.2](../3-2-dp-foundations/), DP foundations: states, transitions, filling in an acyclic order (Theorem 3.2.3), memoisation.
-- [Topic 3.5](../3-5-counting-dp/), counting DP: counts modulo a prime.
+<WhatYouNeed topic="3.7" />
 
 ### What this topic does not cover
 
@@ -60,14 +54,11 @@ The key idea: assign the workers in order $0, 1, 2, \dots$. After the first $k$ 
 $$\text{dp}[m] = \min_{j \in m} \left(\text{dp}[m \setminus \{j\}] + c[|m| - 1][j]\right).$$
 The answer is $\text{dp}[2^n - 1]$. Filling the masks in increasing numeric order is an acyclic order. Time $O(2^n \cdot n)$, memory $O(2^n)$.
 
-*Proof.* In an assignment of the jobs $m$ to the first $|m|$ workers, the last of these workers, number $|m| - 1$, has some job $j \in m$, and the others have exactly the jobs $m \setminus \{j\}$. Their cost does not depend on which order they chose in, so the best for them is $\text{dp}[m \setminus \{j\}]$ (Theorem 3.2.1). Removing a bit makes the integer smaller, so every state is computed after the states it reads (Theorem 3.2.3). $\square$
-
-:::note[This proof needs]
-1. Only the **set** of used items matters for the future, not the order in which they were used or by whom. Which worker comes next follows from the size of the set.
-2. $n$ is small: $2^n \cdot n$ steps, so $n \le 20$ (or 23–25 with a light inner loop).
+:::tip[In plain words]
+When items are used at most once and the future depends only on which ones are used, store the set of used items as the bits of a number. The next item to place is given by how many are used, so the table has 2^n states instead of n! orders.
 :::
 
-Trace for $c = \begin{pmatrix} 4 & 1 & 3 \\ 2 & 0 & 5 \\ 3 & 2 & 2 \end{pmatrix}$ (rows are workers, columns jobs; masks written as job 2, job 1, job 0):
+**A tiny instance.** Trace for $c = \begin{pmatrix} 4 & 1 & 3 \\ 2 & 0 & 5 \\ 3 & 2 & 2 \end{pmatrix}$ (rows are workers, columns jobs; masks written as job 2, job 1, job 0):
 
 | mask | 000 | 001 | 010 | 011 | 100 | 101 | 110 | 111 |
 |---|---|---|---|---|---|---|---|---|
@@ -75,20 +66,47 @@ Trace for $c = \begin{pmatrix} 4 & 1 & 3 \\ 2 & 0 & 5 \\ 3 & 2 & 2 \end{pmatrix}
 
 For example $\text{dp}[011]$: worker 1 takes job 0 after worker 0 took job 1 ($1 + 2$), or job 1 after job 0 ($4 + 0$); the minimum is 3. The answer is 5: worker 0 takes job 1, worker 1 job 0, worker 2 job 2.
 
+
+**Proof.**
+1. In an assignment of the jobs $m$ to the first $|m|$ workers, the last of these workers, number $|m| - 1$, has some job $j \in m$, and the others have exactly the jobs $m \setminus \{j\}$.
+2. Their cost does not depend on which order they chose in, so the best for them is $\text{dp}[m \setminus \{j\}]$ (Theorem 3.2.1).
+3. Removing a bit makes the integer smaller, so every state is computed after the states it reads (Theorem 3.2.3). $\square$
+
+:::note[This proof needs]
+1. Only the **set** of used items matters for the future, not the order in which they were used or by whom. Which worker comes next follows from the size of the set.
+2. $n$ is small: $2^n \cdot n$ steps, so $n \le 20$ (or 23–25 with a light inner loop).
+:::
+
+<TheoremCode unit="3.7/thm-1" />
+
+
+
 ### 4.2 Visiting every vertex
 
 **Theorem 3.7.2 (paths through every vertex).** In a graph with $n$ vertices and edge lengths $d(v, u)$, let $\text{dp}[m][v]$ be the length of the shortest path that starts at vertex $s$, visits exactly the vertices of $m$, each once, and ends at $v \in m$. Then $\text{dp}[\{s\}][s] = 0$ and
 $$\text{dp}[m][v] = \min_{u \in m \setminus \{v\}} \left(\text{dp}[m \setminus \{v\}][u] + d(u, v)\right).$$
 The shortest Hamiltonian path from $s$ is $\min_v \text{dp}[\text{all}][v]$, and the shortest TSP tour is $\min_v (\text{dp}[\text{all}][v] + d(v, s))$. Time $O(2^n n^2)$, memory $O(2^n n)$. With $+$ in place of $\min$, the table counts the Hamiltonian paths.
 
-*Proof.* A path that visits exactly $m$ and ends at $v$ has a vertex $u$ just before $v$ (if $m \ne \{s\}$); without its last edge it visits exactly $m \setminus \{v\}$ and ends at $u$. Whether it can continue depends only on which vertices are used and where it stands, so the best path for $(m \setminus \{v\}, u)$ can be extended (Theorem 3.2.1). For counting, the last vertex before $v$ splits the paths into disjoint groups (Theorem 3.5.1). $\square$
+:::tip[In plain words]
+To visit every city exactly once, remember which cities are visited and where you are. The shortest path to a state comes from the shortest path to the state without the last city, plus one edge.
+:::
+
+**A tiny instance.** Four cities with distances $d$ (row = from, column = to) $\begin{pmatrix} 0 & 2 & 9 & 10 \\ 1 & 0 & 6 & 4 \\ 15 & 7 & 0 & 8 \\ 6 & 3 & 12 & 0 \end{pmatrix}$. Starting from city 0, the table gives the tour $0 \to 2 \to 3 \to 1 \to 0$ of length $9 + 8 + 3 + 1 = 21$; trying all $3! = 6$ orders confirms it.
+
+
+**Proof.**
+1. A path that visits exactly $m$ and ends at $v$ has a vertex $u$ just before $v$ (if $m \ne \{s\}$); without its last edge it visits exactly $m \setminus \{v\}$ and ends at $u$.
+2. Whether it can continue depends only on which vertices are used and where it stands, so the best path for $(m \setminus \{v\}, u)$ can be extended (Theorem 3.2.1).
+3. For counting, the last vertex before $v$ splits the paths into disjoint groups (Theorem 3.5.1). $\square$
 
 :::note[This proof needs]
 1. The future depends only on the set of visited vertices and the current vertex, not on the order of the earlier visits.
 2. $2^n n^2$ fits: $n \le 16$–18 for a minimum (about $10^8$ steps at $n = 18$), $n \le 20$ when many transitions can be skipped.
 :::
 
-Example: four cities with distances $d$ (row = from, column = to) $\begin{pmatrix} 0 & 2 & 9 & 10 \\ 1 & 0 & 6 & 4 \\ 15 & 7 & 0 & 8 \\ 6 & 3 & 12 & 0 \end{pmatrix}$. Starting from city 0, the table gives the tour $0 \to 2 \to 3 \to 1 \to 0$ of length $9 + 8 + 3 + 1 = 21$; trying all $3! = 6$ orders confirms it.
+<TheoremCode unit="3.7/thm-2" />
+
+
 
 ### 4.3 Packing into groups
 
@@ -96,27 +114,54 @@ Example: four cities with distances $d$ (row = from, column = to) $\begin{pmatri
 $$\text{best}[m] = \min_{j \in m} \text{add}(\text{best}[m \setminus \{j\}], w_j), \quad \text{add}((g, f), w) = \begin{cases} (g, f + w) & \text{if } f + w \le C,\\ (g + 1, w) & \text{otherwise.} \end{cases}$$
 The fewest groups for all items is the first number of $\text{best}[\text{all}]$. Time $O(2^n n)$.
 
-*Proof.* Any packing can be built by adding the items one at a time, finishing one group before starting the next; the last item added belongs to the last group. So every packing of $m$ comes from a packing of $m \setminus \{j\}$ for some $j$ followed by adding $j$. It remains to show that keeping only the smallest pair loses nothing: if $(g, f) \le (g', f')$, then $\text{add}((g, f), w) \le \text{add}((g', f'), w)$. If $g = g'$ and $f \le f'$, the item fits in the first case whenever it fits in the second, and the results compare in the same order. If $g < g'$, the first result has at most $g + 1 \le g'$ groups, and when it has exactly $g'$ groups its last group holds only $w$, at most the last group of the second result. $\square$
+:::tip[In plain words]
+To pack items into groups with a capacity, add the items one at a time and keep, for each set of packed items, the smallest pair of groups used and weight of the last group. A pair that is smaller is never worse for what comes next.
+:::
+
+**A tiny instance.** Weights $(4, 8, 6, 1)$ and capacity 10. The table gives $\text{best}[\text{all}] = (2, 9)$: two groups, for example $\{4, 6\}$ and then $\{8, 1\}$ with last fill 9.
+
+
+**Proof.**
+1. Any packing can be built by adding the items one at a time, finishing one group before starting the next; the last item added belongs to the last group.
+2. So every packing of $m$ comes from a packing of $m \setminus \{j\}$ for some $j$ followed by adding $j$.
+3. It remains to show that keeping only the smallest pair loses nothing: if $(g, f) \le (g', f')$, then $\text{add}((g, f), w) \le \text{add}((g', f'), w)$.
+4. If $g = g'$ and $f \le f'$, the item fits in the first case whenever it fits in the second, and the results compare in the same order.
+5. If $g < g'$, the first result has at most $g + 1 \le g'$ groups, and when it has exactly $g'$ groups its last group holds only $w$, at most the last group of the second result. $\square$
 
 :::note[This proof needs]
 1. Groups are interchangeable and their order does not matter, so a packing can be built group by group.
 2. For a pair of states with the same set, the one with fewer groups, or the same number and a lighter last group, is never worse for the future (the monotonicity shown in the proof).
 :::
 
-Example: weights $(4, 8, 6, 1)$ and capacity 10. The table gives $\text{best}[\text{all}] = (2, 9)$: two groups, for example $\{4, 6\}$ and then $\{8, 1\}$ with last fill 9.
+<TheoremCode unit="3.7/thm-3" />
+
+
 
 ### 4.4 All submasks
 
 **Theorem 3.7.4 (submask enumeration).** For a mask $m$, the loop `for (s = m; s > 0; s = (s - 1) & m)` visits every non-empty submask of $m$ exactly once, in decreasing order. Running it for every mask $m$ of $n$ bits takes $3^n$ steps in total.
 
-*Proof.* $(s - 1)$ turns the lowest 1 bit of $s$ into 0 and all bits below it into 1; `& m` keeps only the bits allowed by $m$. The result is the largest submask of $m$ that is smaller than $s$: it agrees with $s$ above the lowest 1 bit of $s$, has a 0 there, and has every allowed bit set below. So the loop steps through the submasks in decreasing order without skipping any, and stops after the smallest non-empty one. For the total, a pair (mask $m$, submask $s$) chooses for each of the $n$ elements one of three options: not in $m$, in $m$ but not in $s$, in $s$. That gives $3^n$ pairs. $\square$
+:::tip[In plain words]
+The loop s = (s − 1) & m visits every submask of m exactly once, from large to small. Running it for every mask makes 3^n steps, because each item is either outside the mask, in the mask only, or in the submask.
+:::
+
+**A tiny instance.** The non-empty submasks of $1011_2 = 11$, in the order the loop visits them, are $11, 10, 9, 8, 3, 2, 1$.
+
+
+**Proof.**
+1. $(s - 1)$ turns the lowest 1 bit of $s$ into 0 and all bits below it into 1; `& m` keeps only the bits allowed by $m$.
+2. The result is the largest submask of $m$ that is smaller than $s$: it agrees with $s$ above the lowest 1 bit of $s$, has a 0 there, and has every allowed bit set below.
+3. So the loop steps through the submasks in decreasing order without skipping any, and stops after the smallest non-empty one.
+4. For the total, a pair (mask $m$, submask $s$) chooses for each of the $n$ elements one of three options: not in $m$, in $m$ but not in $s$, in $s$. That gives $3^n$ pairs. $\square$
 
 :::note[This proof needs]
 1. $3^n$ fits: $3^{15} \approx 1.4 \cdot 10^7$, $3^{18} \approx 3.9 \cdot 10^8$; so $n \le 16$–18.
 2. A typical use: $\text{dp}[m] = \max_{s \subseteq m,\ s \ne \emptyset} (\text{value}[s] + \text{dp}[m \setminus s])$, splitting the set into a first group and the rest. Requiring that $s$ contain the lowest element of $m$ counts each split into groups once.
 :::
 
-Example: the non-empty submasks of $1011_2 = 11$, in the order the loop visits them, are $11, 10, 9, 8, 3, 2, 1$.
+<TheoremCode unit="3.7/thm-4" />
+
+
 
 ## 5. Recognition Cards
 
@@ -124,53 +169,37 @@ Example: the non-empty submasks of $1011_2 = 11$, in the order the loop visits t
 
 ## 6. Templates
 
-Four programs, one per card: assignment of jobs to workers, the shortest tour through all cities, the fewest groups under a capacity, and the best split of a set into groups by submasks. The brute forces try every permutation, or every partition into groups by recursion.
+Four functions, one per card: assignment of jobs to workers, the shortest tour through all cities, the fewest groups under a capacity, and the best split of a set into groups by submasks. The brute forces try every permutation, or every partition into groups by recursion.
 
 ### Assignment over masks (Theorem 3.7.1)
 
-<Code code={assignment} lang="cpp" title="assignment/solution.cpp" />
+<CodeSnippet unit="3.7/assignment" />
 
 **How it works.** `dp[mask]` is the least cost for the first `popcount(mask)` workers to take exactly the jobs in `mask`. The loop runs over the masks in increasing order and pushes each finished value forward: the next worker, number `popcount(mask)`, takes any free job $j$. Every mask is final before it is read, because adding a bit makes the integer larger. Time $2^{20} \cdot 20 \approx 2 \cdot 10^7$.
-
-**C++ details explained.** `mask >> j & 1` tests bit $j$ (shift binds tighter than `&`); `mask | 1 << j` adds job $j$ (`<<` binds tighter than `|`). `LLONG_MAX` marks masks that are not reachable yet; with "push" updates every mask is reachable, but the check also skips work in variants where some jobs are forbidden. `__builtin_popcount` counts the 1 bits (topic 1.7).
-
-**Tested.** Stress-tested against a brute force that tries every permutation of the jobs, on 5000 random inputs ($n \le 8$, costs up to 9 or $10^9$). There are also 5 fixed tests: the example of Section 4.1 (5), one worker, 16 workers with random costs (from a separate program), 20 workers with all costs $10^9$ ($2 \cdot 10^{10}$), and 20 workers each with one free job (0).
 
 **Alternative formulation.** "Pull" instead of "push": $\text{dp}[m] = \min_{j \in m} \text{dp}[m \setminus \{j\}] + c[|m| - 1][j]$, exactly the formula of Theorem 3.7.1. Both visit every (mask, job) pair once.
 
 ### Shortest tour (Theorem 3.7.2)
 
-<Code code={tsp} lang="cpp" title="tsp/solution.cpp" />
+<CodeSnippet unit="3.7/tsp" />
 
 **How it works.** `dp[mask][v]` is the shortest path from city 0 that visits exactly the cities of `mask` and stands at $v$. Only masks containing city 0 matter, so the loop steps by 2 (odd numbers have bit 0 set). From each reachable state, the path is extended to any unvisited city $u$. At the end, every full path is closed with the edge back to 0. Time $2^{16} \cdot 16^2 \approx 1.7 \cdot 10^7$.
-
-**C++ details explained.** `INF = LLONG_MAX / 4` leaves room for adding an edge without overflow before the comparison. The table has $2^{16} \cdot 16$ `long long` values, 8 MB. For $n = 1$ there is no edge to close the tour, so the answer is set to 0 directly.
-
-**Tested.** Stress-tested against a brute force that tries every order of the cities $1..n-1$, on 5000 random inputs ($n \le 8$, asymmetric times up to 9 or $10^9$). There are also 5 fixed tests: the four cities of Section 4.2 (21), one city (0), two cities ($5 + 7 = 12$), 13 cities with random times (from a separate program), and 16 cities with all times 1 (16).
 
 **Alternative formulation.** Memoised recursion `go(mask, v)` = the shortest way to finish from $v$ when `mask` is visited: try every next city, end with the edge back to 0. It computes the same states backwards and is often shorter to write.
 
 ### Fewest groups (Theorem 3.7.3)
 
-<Code code={fewestGroups} lang="cpp" title="fewest-groups/solution.cpp" />
+<CodeSnippet unit="3.7/fewest-groups" />
 
 **How it works.** `best[mask]` is the smallest pair (groups, weight of the last group) over all ways to pack the items of `mask`, filling groups one after another. The last item packed is some $j$: it either fits into the last group of the best packing of the other items, or opens a new group. `std::pair` compares by the first value, then the second, which is exactly the order of Theorem 3.7.3. The answer is the group count for all items.
-
-**C++ details explained.** `auto [groups, fill] = best[mask ^ 1 << j];` unpacks the pair (topic 0.6). `make_pair(groups, fill + w[j])` builds the option; the conditional expression needs both branches of the same type. The empty set starts as one open, empty group, $(1, 0)$, so the first item never opens a second group.
-
-**Tested.** Stress-tested against a brute force that puts each item into an existing group or a new one (all set partitions), on 5000 random inputs ($n \le 9$, small capacities or $10^9$). There are also 5 fixed tests: the example of Section 4.3 (2), one item filling a group (1), 20 items that each fill a group (20), 20 tiny items (1), and 15 random items (from a separate program).
 
 **Alternative formulation.** The submask method of the next template also works: $\text{groups}[m] = 1 + \min \text{groups}[m \setminus s]$ over submasks $s$ that fit in one group. It costs $3^n$ instead of $2^n n$, so the pair method is the one to use for $n = 20$.
 
 ### Best split into groups (Theorem 3.7.4)
 
-<Code code={bestPartition} lang="cpp" title="best-partition/solution.cpp" />
+<CodeSnippet unit="3.7/best-partition" />
 
 **How it works.** `sum[mask]` is precomputed for all masks from the mask without its lowest bit. Then `dp[mask]` is the best score for splitting `mask` into groups: the group containing the lowest item of `mask` is some submask $s$, allowed if it fits the capacity, and the rest is split independently. Requiring the lowest item in $s$ makes each split counted once. All masks with all submasks take $3^{16} \approx 4.3 \cdot 10^7$ steps.
-
-**C++ details explained.** `mask & -mask` keeps only the lowest 1 bit (two's complement, topic 1.7), and `__builtin_ctz` gives its index. `s = (s - 1) & mask` jumps to the next smaller submask (Theorem 3.7.4); the loop stops at 0, the empty set, which is not a group. `dp` starts at $-1$ for "not computed"; every mask can at least be split into single items, so the final values are never $-1$.
-
-**Tested.** Stress-tested against a brute force over all set partitions, on 5000 random inputs ($n \le 9$, small capacities or $10^4$). There are also 5 fixed tests: weights $2, 2, 3$ with capacity 5 (29: $\{2, 3\}, \{2\}$), one item (49), the weights of Section 4.3 with capacity 10 (181: $\{4, 6\}, \{8, 1\}$), 12 random items (from a separate program), and 16 items that all fit in one group ($10^8$).
 
 **Alternative formulation.** Without the lowest-item rule, also try every $s$; the result is the same (each split is just found several times), at a cost of roughly twice the work. The rule matters when counting splits instead of optimising.
 
@@ -262,7 +291,7 @@ $N = 21$: $2^{21} \approx 2 \cdot 10^6$ masks, times 21 choices, is $4.4 \cdot 1
 
 - Trying every permutation of the women (topic 0.5): $21!$.
 - A formula (topic 2.3): the compatibility table is arbitrary, so no product or binomial rule applies.
-- Counting over masks of used women (Theorem 3.7.1, with sums): the assignment-mask card.
+- Counting over masks of used women (Theorem 3.7.1, with sums): the "Assigning items with a mask of used ones" card.
 
 #### Step 3: Property check → decision
 
@@ -274,9 +303,7 @@ A pairing of the first $|m|$ men with the women $m$ has a unique woman $j$ for t
 
 #### Step 5: Code
 
-<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
-
-**C++ details explained.** The counts are pushed forward: a finished `ways[mask]` is added to every mask with one more compatible woman. `ways[mask] == 0` skips unreachable sets, which saves time when the table is sparse. The loop stops before the full mask, which has no next man. Tested on the four samples from the problem page and on a 21 × 21 table of 1s ($21!$ modulo $10^9 + 7$); and on 5000 random tables ($N \le 8$) against a brute force over all permutations.
+<CodeSnippet unit="3.7/example-1" />
 
 #### Step 6: Alternative approach
 
@@ -294,7 +321,7 @@ $n = 14$: $2^{14} \cdot 14^2 \approx 3.2 \cdot 10^6$ steps for a table over (set
 
 - Trying every order (topic 0.5): $14!$.
 - A table over the position and the last number only (topic 3.2): it cannot tell which numbers are still unused.
-- Counting paths through every vertex (Theorem 3.7.2): the path-mask card.
+- Counting paths through every vertex (Theorem 3.7.2): the "Paths through every vertex" card.
 
 #### Step 3: Property check → decision
 
@@ -306,9 +333,7 @@ An order of the set $m$ ending with $v$ has a unique number $u$ just before $v$ 
 
 #### Step 5: Code
 
-<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
-
-**C++ details explained.** The lambda `fits` tests divisibility in both directions with `long long` values up to $10^9$. Every number may start, so all masks with one bit are base states. The table has $2^{14} \cdot 14$ entries, about 1.8 MB. Tested on the two examples from the problem page, on the 14 powers of two ($14!$ modulo $10^9 + 7$, every order works), on 14 primes (0), and on 14 divisors of 144 (from a separate program); and on 5000 random inputs ($n \le 8$) against a brute force over all permutations.
+<CodeSnippet unit="3.7/example-2" />
 
 #### Step 6: Alternative approach
 

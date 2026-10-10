@@ -8,21 +8,25 @@ Output: the largest total value.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n, W;
-    cin >> n >> W;
-    vector<long long> best(W + 1, 0);  // values up to 10^11
-    for (int i = 0; i < n; i++) {
-        long long w, v;
-        int c;
-        cin >> w >> v >> c;
-        // bundles of 1, 2, 4, ... copies, then the remainder (Theorem 3.3.5); each bundle is a 0/1 item
-        for (int size = 1; c > 0; size *= 2) {
-            int take = min(size, c);
+// snippet:begin
+// Theorem 3.3.5. Split the c copies of an item into bundles of 1, 2, 4, ... copies and a remainder; each bundle is a 0/1 item.
+long long boundedKnapsack(const vector<array<long long, 3>>& kinds, int W) {  // {weight, value, copies}
+    vector<long long> best(W + 1, 0);
+    for (auto [w, v, c] : kinds)
+        for (long long size = 1; c > 0; size *= 2) {
+            long long take = min(size, c);
             c -= take;
             long long bw = w * take, bv = v * take;
             for (long long cap = W; cap >= bw; cap--) best[cap] = max(best[cap], best[cap - bw] + bv);
         }
-    }
-    cout << best[W] << "\n";
+    return best[W];
+}
+// snippet:end
+
+int main() {
+    int n, W;
+    cin >> n >> W;
+    vector<array<long long, 3>> kinds(n);
+    for (auto& k : kinds) cin >> k[0] >> k[1] >> k[2];
+    cout << boundedKnapsack(kinds, W) << "\n";
 }

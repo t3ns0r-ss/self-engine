@@ -7,15 +7,21 @@ Output: the largest total number of pages.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// CSES 1158. best[c] = the most pages with total price at most c; each book is used at most once.
+int bookShop(const vector<int>& h, const vector<int>& s, int x) {
+    vector<int> best(x + 1, 0);  // at most 10^6 pages, so int is enough
+    for (size_t i = 0; i < h.size(); i++)
+        for (int c = x; c >= h[i]; c--) best[c] = max(best[c], best[c - h[i]] + s[i]);
+    return best[x];
+}
+// snippet:end
+
 int main() {
     int n, x;
     cin >> n >> x;
     vector<int> h(n), s(n);
     for (int& p : h) cin >> p;
     for (int& p : s) cin >> p;
-    // best[c] = most pages with total price at most c (Theorem 3.3.1); at most 10^6 pages, so int is enough
-    vector<int> best(x + 1, 0);
-    for (int i = 0; i < n; i++)
-        for (int c = x; c >= h[i]; c--) best[c] = max(best[c], best[c - h[i]] + s[i]);
-    cout << best[x] << "\n";
+    cout << bookShop(h, s, x) << "\n";
 }

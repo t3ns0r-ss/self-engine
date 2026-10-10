@@ -7,17 +7,21 @@ Output: the largest total value.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 3.3.1. best[c] = the largest value with total weight at most c; the capacity loop runs downwards, so each item is
+// used at most once.
+long long knapsack(const vector<pair<int, long long>>& items, int W) {  // {weight, value}
+    vector<long long> best(W + 1, 0);
+    for (auto [w, v] : items)
+        for (int c = W; c >= w; c--) best[c] = max(best[c], best[c - w] + v);
+    return best[W];
+}
+// snippet:end
+
 int main() {
     int n, W;
     cin >> n >> W;
-    // best[c] = largest value with total weight at most c, using the items seen so far (Theorem 3.3.1)
-    vector<long long> best(W + 1, 0);  // values up to 10^11: long long
-    for (int i = 0; i < n; i++) {
-        int w;
-        long long v;
-        cin >> w >> v;
-        for (int c = W; c >= w; c--)  // downwards: best[c - w] is still the row without item i
-            best[c] = max(best[c], best[c - w] + v);
-    }
-    cout << best[W] << "\n";
+    vector<pair<int, long long>> items(n);
+    for (auto& [w, v] : items) cin >> w >> v;
+    cout << knapsack(items, W) << "\n";
 }

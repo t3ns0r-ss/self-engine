@@ -6,27 +6,25 @@ Output: the smallest possible difference.
 #include <bits/stdc++.h>
 using namespace std;
 
-const int MAXS = 1000000;
+// snippet:begin
+// Theorem 3.3.4. bit s of reach is 1 when some subset sums to s; reach |= reach << x adds a number, each used once.
+// The best split has one group sum s as close to total / 2 as possible.
+int balancedSplit(const vector<int>& a) {
+    static bitset<1000001> reach;
+    reach.reset();
+    reach[0] = 1;
+    int total = 0;
+    for (int x : a) reach |= reach << x, total += x;
+    for (int s = total / 2; s >= 0; s--)
+        if (reach[s]) return total - 2 * s;
+    return total;
+}
+// snippet:end
 
 int main() {
     int n;
     cin >> n;
     vector<int> a(n);
-    int total = 0;
-    for (int& x : a) {
-        cin >> x;
-        total += x;
-    }
-    // bit s of reach is 1 when some subset of the numbers seen so far sums to s (Theorem 3.3.4)
-    bitset<MAXS + 1> reach;
-    reach[0] = 1;
-    for (int x : a) reach |= reach << x;  // every old sum s also gives s + x; each number used once
-    // one group has sum s, the other total - s; the best s is the reachable sum closest to total / 2
-    int best = total;
-    for (int s = total / 2; s >= 0; s--)
-        if (reach[s]) {
-            best = total - 2 * s;
-            break;
-        }
-    cout << best << "\n";
+    for (int& x : a) cin >> x;
+    cout << balancedSplit(a) << "\n";
 }

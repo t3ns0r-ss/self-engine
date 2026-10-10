@@ -7,22 +7,29 @@ Output: the fewest coins (or -1), then the number of ways.
 #include <bits/stdc++.h>
 using namespace std;
 
-const long long MOD = 1000000007;
+// snippet:begin
+// Theorem 3.3.3. Unlimited coins: the amount loop runs upwards. With the coin loop outside, each multiset is counted once.
+pair<int, long long> coinChange(const vector<int>& coin, int x) {
+    const long long MOD = 1000000007;
+    const int INF = INT_MAX / 2;  // "cannot be paid"; INF + 1 does not overflow
+    vector<int> fewest(x + 1, INF);
+    vector<long long> ways(x + 1, 0);
+    fewest[0] = 0;
+    ways[0] = 1;  // the empty multiset
+    for (int c : coin)
+        for (int s = c; s <= x; s++) {
+            fewest[s] = min(fewest[s], fewest[s - c] + 1);
+            ways[s] = (ways[s] + ways[s - c]) % MOD;
+        }
+    return {fewest[x] >= INF ? -1 : fewest[x], ways[x]};
+}
+// snippet:end
 
 int main() {
     int m, x;
     cin >> m >> x;
     vector<int> coin(m);
     for (int& c : coin) cin >> c;
-    const int INF = INT_MAX / 2;  // "cannot be paid"; INF + 1 does not overflow
-    vector<int> fewest(x + 1, INF);
-    vector<long long> ways(x + 1, 0);
-    fewest[0] = 0;
-    ways[0] = 1;  // the empty multiset
-    for (int c : coin)                // items outside: each multiset is counted once (Theorem 3.3.3)
-        for (int s = c; s <= x; s++) {  // upwards: the same coin may be used again
-            fewest[s] = min(fewest[s], fewest[s - c] + 1);
-            ways[s] = (ways[s] + ways[s - c]) % MOD;
-        }
-    cout << (fewest[x] >= INF ? -1 : fewest[x]) << "\n" << ways[x] << "\n";
+    auto [fewest, ways] = coinChange(coin, x);
+    cout << fewest << "\n" << ways << "\n";
 }

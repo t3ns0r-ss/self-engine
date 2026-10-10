@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.3 Shortest paths (pipeline steps 1–7 done); 4.1 and 4.2 are done
+- Topic: 4.3 Shortest paths (pipeline steps 1–8 done); 4.1 and 4.2 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.3 step 7 (16-problem ladder)
-- Next action: step 8 (drill with 3+ earlier-topic answers, 2-4 look-alike pairs: cses-1671/1672, ac-abc237_e/ac-abc137_e)
+- Last completed step: topic 4.3 step 8 (12-problem drill, 2 look-alike pairs)
+- Next action: step 9 (self-test 5-8, checkpoint 3, three review sets, decision map, remove draft flag)
 
 ## Gates
 | Gate | Status | Date |

@@ -45,8 +45,187 @@ The second half of the topic uses the same structure for a second question. A co
 
 ## 3. Definitions
 
+- A **spanning tree** of a connected graph is a set of edges that connects all $n$ vertices and contains no cycle; by Theorem 4.2.2 it has exactly $n - 1$ edges. In a graph with $c$ components, a **spanning forest** is the same for each component: $n - c$ edges.
+- With a weight on every edge (as in [topic 4.3](../4-3-shortest-paths/)), the **weight** of a set of edges is the sum of their weights. A **minimum spanning tree** is a spanning tree of the smallest weight. It need not be unique: three vertices joined by three edges of weight 1 have three of them.
+- A **cut** splits the vertices into two non-empty sets $S$ and $V \setminus S$. An edge **crosses** the cut if one end is in $S$ and the other is not. A cycle that crosses a cut crosses it an even number of times, because it must come back to the side it started from.
+- A **disjoint set union** (also **union–find**) keeps the vertices in disjoint **groups**. Every group has one **leader**; `find(v)` returns the leader of the group of $v$, and `unite(a, b)` merges the groups of $a$ and $b$. **Union by size** attaches the smaller group to the larger one.
+- **Kruskal's algorithm** takes the edges from the lightest to the heaviest and keeps an edge if it joins two different groups. **Prim's algorithm** grows one tree from a start vertex and always adds the lightest edge that leaves it.
+- A path has many edges; its **largest edge** is the heaviest one on it. The weights add up: $10^5$ edges of weight $10^9$ give $10^{14}$, so the totals need `long long`.
+- The code units number the vertices from 0 (`Dsu dsu(n)`); a program whose vertices are numbered from 1 builds `Dsu dsu(n + 1)`.
+
 
 ## 4. Theory and proofs
+
+### 4.1 Disjoint set union
+
+**Theorem 4.4.1 (disjoint set union).** Keep an array `parent` (at the start `parent[v] = v` for every $v$) and an array `size` (at the start 1). `find(v)` follows `parent` from $v$ until a vertex is its own parent, and returns it. `unite(a, b)` finds the two leaders and, if they differ, hangs the leader of the smaller group under the leader of the larger one (adding the sizes) and returns true; if they are the same it returns false. Then, after any sequence of `unite` calls:
+
+(a) two vertices have the same leader exactly when they are connected by the edges $\{a, b\}$ of the calls made so far;
+
+(b) the `size` of a leader is the number of vertices of its group;
+
+(c) every vertex is at most $\log_2 n$ steps from its leader, so `find` and `unite` take $O(\log n)$ time;
+
+(d) exactly $n - c$ calls return true, where $c$ is the number of groups at the end, and the edges of these calls form a spanning forest.
+
+:::tip[In plain words]
+Each group is a tree of pointers with one leader at the top. Joining two groups hangs the smaller one under the larger one, so a vertex can only get deeper when its group at least doubles. That happens at most $\log_2 n$ times, so finding a leader is always quick.
+:::
+
+**A tiny instance.** Five vertices 0 to 4. `unite(0, 1)` joins the groups $\{0\}$ and $\{1\}$ (true); `unite(2, 3)` is true; `unite(1, 0)` finds the same leader and returns false. `unite(1, 2)` hangs the leader of one pair under the leader of the other (true), and now 0 and 3 have the same leader, while vertex 4 is still alone.
+
+**Proof.**
+1. *Groups are the components.* At the start every vertex is its own group, which is the component of the empty edge set. Suppose the groups are the components of the edges so far. A call `unite(a, b)` adds the edge $\{a, b\}$.
+2. If the leaders are the same, $a$ and $b$ are already connected, so the new edge changes no component, and the code changes no group.
+3. If the leaders differ, $a$ and $b$ are in different components, and the new edge merges exactly these two components into one. The code hangs one leader under the other, so the two groups become one group with a single leader, and no other group changes. By induction (a) holds; (b) holds because the sizes are added at the merge.
+4. *Claim (c).* The distance of a vertex $v$ from its leader grows by 1 only when the leader of its group is hung under another leader, and this only happens when the other group is at least as large. So the group of $v$ at least doubles in size each time its distance grows. A group has at most $n$ vertices, so its distance grows at most $\log_2 n$ times. (Path halving in `find` only moves a vertex closer to the leader, so it keeps the bound.)
+5. *Claim (d).* Each call that returns true merges two groups into one, so the number of groups drops by exactly 1; there are $n$ groups at the start and $c$ at the end, so there are $n - c$ such calls. A call that returns true joins two different components, so its edge closes no cycle with the earlier true edges. They form a graph without a cycle in which the vertices of every component are connected, which is a spanning forest. $\square$
+
+:::note[This proof needs]
+1. The smaller group goes under the larger one (step 4). If the larger group were hung under the smaller one, `unite(0, 1)`, `unite(1, 2)`, `unite(2, 3)`, ... would build a chain of $n$ vertices (each call hangs the whole chain so far under the new vertex), and `find(0)` would take $n$ steps.
+2. Groups only merge. A removed edge would need the group to split, and the structure cannot do that (see the next theorem).
+3. Vertices are numbered from 0 to $n - 1$ in the code; with numbers from 1, the arrays have $n + 1$ entries.
+:::
+
+<TheoremCode unit="4.4/thm-1" />
+
+The first example is the tiny instance. The second merges 1024 vertices in pairs, then pairs of pairs, and so on, which is the worst case for the depth: the longest chain has exactly $10 = \log_2 1024$ steps (step 4), and 1023 calls return true (step 5). The third example compares a thousand random sequences with a plain relabelling of whole groups.
+
+### 4.2 Deletions in reverse
+
+**Theorem 4.4.2 (deletions in reverse).** Let a graph on $n$ vertices have the edges $e_1, \dots, e_m$, and let the edges be removed in this order, so the graph after $i$ removals has the edges $e_{i+1}, \dots, e_m$. Start a disjoint set union with no edges and add $e_m, e_{m-1}, \dots, e_1$ in this order. Then the structure after adding $e_m, \dots, e_{i+1}$ has as groups exactly the components of the graph after $i$ removals, for every $i$ from $m$ down to 0; so the number of components and the sizes after every removal are known after $m$ calls of `unite`, in $O((n + m) \log n)$ time.
+
+:::tip[In plain words]
+A structure that only joins cannot undo a join. But if you know all the removals in advance, run the film backwards: the last removal becomes the first addition. Every state that the removals pass through appears on the way, and joining is all that is needed.
+:::
+
+**A tiny instance.** The path $0 - 1 - 2$ with the removals $e_1 = \{0,1\}$, $e_2 = \{1,2\}$. Backwards: nothing is added yet, 3 groups (the state after 2 removals). Add $e_2$: 2 groups (after 1 removal). Add $e_1$: 1 group (after 0 removals). Read forwards, the numbers of groups are 1, 2, 3.
+
+**Proof.**
+1. Let $G_i$ be the graph with the edges $e_{i+1}, \dots, e_m$, so $G_m$ has no edges and $G_0$ has all of them.
+2. $G_{i-1}$ is $G_i$ plus the single edge $e_i$. So the sequence $G_m, G_{m-1}, \dots, G_0$ is a sequence of single edge additions.
+3. By Theorem 4.4.1(a), the groups of the structure after the additions up to $e_{i+1}$ are exactly the components of $G_i$, and (b) gives their sizes.
+4. Reading the count of groups (or any size) just before adding $e_i$ gives the answer for $G_i$, the state after $i$ removals; the last reading is after adding $e_1$, the state before any removal.
+5. Each addition is one `unite`, so the whole run takes $m$ calls of $O(\log n)$ each, plus $O(n)$ to start. $\square$
+
+:::note[This proof needs]
+1. All removals are known before the first question is answered (offline). If the next removal depends on an earlier answer, the film cannot be run backwards.
+2. The questions asked between removals must be about groups (connected or not, sizes, counts); the structure knows nothing about distances.
+3. Removing a vertex is the same: in reverse it appears together with its edges to the vertices that are still present.
+:::
+
+<TheoremCode unit="4.4/thm-2" />
+
+The first example is the tiny instance. The second removes the three edges of a triangle one by one: the groups are 1, 1, 2, 3, because after the first removal the other two edges still connect everything (step 3). The third has no edges at all. The check recomputes the groups from scratch after every removal for twenty thousand random graphs.
+
+### 4.3 The cut property
+
+**Theorem 4.4.3 (cut property).** Let $G$ be a connected graph with edge weights, let $F$ be a set of edges that lies inside some minimum spanning tree, and let a cut be crossed by no edge of $F$. If $e$ is a lightest edge among those that cross the cut, then $F \cup \{e\}$ also lies inside some minimum spanning tree.
+
+:::tip[In plain words]
+If you split the vertices into two sides, the cheapest edge between the sides is always safe to buy. Whatever the best network looks like, it can use this edge in place of any other edge that crosses between the sides, and that can only make it cheaper or equal.
+:::
+
+**A tiny instance.** Vertices 0, 1, 2, 3 with the edges $0\!-\!1$ (4), $1\!-\!2$ (2), $0\!-\!2$ (3), $2\!-\!3$ (7), $1\!-\!3$ (5). Take the cut $\{0\}$ and $\{1, 2, 3\}$: the crossing edges are $0\!-\!1$ (4) and $0\!-\!2$ (3), and the lightest is $0\!-\!2$. The cheapest spanning tree is $1\!-\!2, 0\!-\!2, 1\!-\!3$ (weight 10), and it contains $0\!-\!2$.
+
+**Proof.**
+1. Let $T$ be a minimum spanning tree that contains $F$. If $e \in T$, we are done.
+2. Otherwise add $e$ to $T$. The ends of $e$ were already connected in $T$, so $T + e$ has a cycle through $e$.
+3. This cycle crosses the cut at $e$, so by the definition of a cut it crosses the cut an even number of times, and at least one more edge $f \ne e$ of the cycle crosses the cut. All edges of the cycle except $e$ belong to $T$, so $f \in T$.
+4. Since $f$ crosses the cut, $f \notin F$ (no edge of $F$ crosses), and $w(f) \ge w(e)$ because $e$ is a lightest crossing edge.
+5. Let $T' = T - f + e$. It still connects all vertices (anything that went through $f$ can go around the rest of the cycle) and has $n - 1$ edges, so it is a spanning tree (Theorem 4.2.2). Its weight is $w(T) - w(f) + w(e) \le w(T)$.
+6. $T$ is minimum, so $T'$ is minimum too. It contains $F$ (we only removed $f \notin F$) and $e$. $\square$
+
+:::note[This proof needs]
+1. No edge of $F$ crosses the cut (step 4). Take a triangle with all weights 1. $F = \{0\!-\!1, 1\!-\!2\}$ is a minimum spanning tree, and the cut $\{0\} | \{1, 2\}$ is crossed by $0\!-\!1 \in F$. The lightest crossing edges are $0\!-\!1$ and $0\!-\!2$, and adding $0\!-\!2$ to $F$ closes a cycle: with a crossing edge in $F$ there is no guarantee.
+2. $e$ is lightest among the edges crossing *this* cut. The lightest edge of the whole graph is a special case (take any cut that separates its ends).
+3. The graph is connected, so a spanning tree exists. With several equally light crossing edges, any one of them works.
+:::
+
+<TheoremCode unit="4.4/thm-3" />
+
+The three examples use the same graph as the tiny instance, with the cuts $\{0\}$, $\{0, 1, 2\}$ and $\{1\}$. The check tries all spanning trees of six thousand random graphs: it picks a random minimum spanning tree, a random part $F$ of it, a random cut that no edge of $F$ crosses, and verifies that some minimum spanning tree contains $F$ and the edge found.
+
+### 4.4 Kruskal's algorithm
+
+**Theorem 4.4.4 (Kruskal's algorithm).** Let $G$ be a connected graph with edge weights. Sort the edges by weight (ties in any order), start a disjoint set union with no edges, and go through the edges in this order: if `unite(a, b)` returns true, keep the edge. Then the kept edges form a minimum spanning tree. If $G$ is not connected, the kept edges form a minimum spanning forest, one minimum spanning tree per component. The time is $O(m \log m)$.
+
+:::tip[In plain words]
+Look at the edges from the cheapest to the dearest, and buy an edge only when its two ends are still in different groups. An edge that would close a loop is never needed, and each bought edge is the cheapest way to leave the group it starts from.
+:::
+
+**A tiny instance.** A square $0\!-\!1$ (4), $1\!-\!2$ (2), $2\!-\!3$ (4), $3\!-\!0$ (3) with the diagonal $0\!-\!2$ (5). In order: $1\!-\!2$ (2) joins two groups, kept; $3\!-\!0$ (3) kept; $0\!-\!1$ (4) joins $\{3, 0\}$ with $\{1, 2\}$, kept; $2\!-\!3$ (4) has both ends in the same group, skipped; the diagonal is skipped too. The weight is $2 + 3 + 4 = 9$.
+
+**Proof.**
+1. Let $F$ be the kept edges at some moment. We show by induction on the edges that $F$ lies inside some minimum spanning tree. At the start $F = \emptyset$, which lies inside every tree.
+2. If the next edge $e$ is skipped, $F$ does not change.
+3. If $e = \{a, b\}$ is kept, $a$ and $b$ are in different groups of $F$. Let $S$ be the group of $a$ (the component of $a$ in $F$, by Theorem 4.4.1(a)). No edge of $F$ crosses the cut $(S, V \setminus S)$, since $S$ is a whole component of $F$.
+4. $e$ crosses this cut. Suppose an edge $f$ also crosses it and comes earlier in the sorted order. Then $f$ was considered before $e$; if it had been kept it would be in $F$, but no edge of $F$ crosses the cut; if it had been skipped, its ends were already in one group, and groups only grow, so its ends would be in one group now, which contradicts that $f$ crosses the cut. So every crossing edge comes after $e$ in the order, and $e$ is a lightest crossing edge.
+5. By Theorem 4.4.3, $F \cup \{e\}$ lies inside some minimum spanning tree.
+6. At the end of a connected graph, the kept edges have $n - 1$ edges by Theorem 4.4.1(d) and lie inside a minimum spanning tree, which also has $n - 1$ edges, so they are that tree. For a graph that is not connected, apply this to each component. Sorting takes $O(m \log m)$ and the $m$ calls of `unite` take $O(m \log n)$. $\square$
+
+:::note[This proof needs]
+1. The edges are processed in order of weight (step 4). In the opposite order, the algorithm builds a *maximum* spanning tree (the proof is the same with "heaviest").
+2. The structure tells groups correctly (Theorem 4.4.1), so a kept edge never closes a cycle.
+3. The total weight is stored in 64 bits.
+:::
+
+<TheoremCode unit="4.4/thm-4" />
+
+The first example is a triangle: 1 + 2 = 3. The second is the square of the tiny instance (weight 9). The third has two separate edges on four vertices, so no spanning tree exists and the function returns $-1$ (fewer than $n - 1$ edges are kept, step 6). The fourth is a single vertex, with total weight 0. The check compares the weight with the best of all sets of $n - 1$ edges for twenty thousand random graphs.
+
+### 4.5 Prim's algorithm
+
+**Theorem 4.4.5 (Prim's algorithm).** Let $G$ be a connected graph with edge weights. Put vertex 0 into the tree, and put its edges into a heap that gives the lightest edge first. Repeat: take the lightest edge out of the heap; if its other end is already in the tree, skip it; otherwise add the other end and the edge to the tree, and push the edges from the new vertex to vertices outside the tree. Then the tree after $n - 1$ additions is a minimum spanning tree, and the time is $O(m \log m)$.
+
+:::tip[In plain words]
+Grow one group from a start vertex. At every step add the cheapest edge that leaves the group. This is the cut property again, with the group as one side of the cut. It looks like Dijkstra's algorithm, but the key is the edge weight alone, not the distance from the start.
+:::
+
+**A tiny instance.** The same square with a diagonal. From vertex 0 the heap has $0\!-\!1$ (4), $0\!-\!3$ (3), $0\!-\!2$ (5). Take $0\!-\!3$ (3). Add the edges of vertex 3: $3\!-\!2$ (4). Now the lightest is $0\!-\!1$ (4) (or $3\!-\!2$ (4)): take $0\!-\!1$; add $1\!-\!2$ (2). The lightest is $1\!-\!2$ (2): vertex 2 joins. Total $3 + 4 + 2 = 9$.
+
+**Proof.**
+1. Let $S$ be the set of vertices in the tree and $F$ the tree edges. Every edge of $F$ has both ends in $S$, so no edge of $F$ crosses the cut $(S, V \setminus S)$. At the start $F = \emptyset$ lies inside every minimum spanning tree.
+2. The heap holds every edge from a vertex of $S$ to a vertex outside, because such an edge was pushed when its end in $S$ joined (edges that lead to vertices inside the tree are skipped when taken).
+3. The edge taken, when its other end is outside $S$, is therefore a lightest edge crossing the cut. By Theorem 4.4.3 the tree plus this edge lies inside some minimum spanning tree.
+4. A graph that is connected always has an edge leaving $S$ while $S \ne V$, so the heap does not run dry before $n$ vertices are in the tree. After $n - 1$ additions the tree is inside a minimum spanning tree and has as many edges, so it is one.
+5. Each edge is pushed at most twice (once from each end) and each push and removal costs $O(\log m)$. $\square$
+
+:::note[This proof needs]
+1. The heap key is the weight of one edge. Using the distance from the start (as in Theorem 4.3.1) builds the tree of shortest paths instead, which can be heavier.
+2. An edge whose far end is already in the tree is skipped when it is taken.
+3. The graph is connected; otherwise the heap runs dry early and the function reports $-1$.
+:::
+
+<TheoremCode unit="4.4/thm-5" />
+
+The examples are those of Theorem 4.4.4 (triangle 3, the square 9, two separate edges $-1$, one vertex 0), and the twenty thousand random graphs are checked against the best of all sets of $n - 1$ edges.
+
+### 4.6 The largest edge on a path
+
+**Theorem 4.4.6 (smallest largest edge).** Let $G$ be a graph with edge weights and let $s$, $t$ be two vertices. Among all paths from $s$ to $t$, let $b(s, t)$ be the smallest possible value of the largest edge on the path. Go through the edges in the order of Kruskal's algorithm (Theorem 4.4.4) and let $e^*$ be the first edge after whose `unite` the vertices $s$ and $t$ are in one group. Then $b(s, t) = w(e^*)$; if no such edge exists, there is no path. The path from $s$ to $t$ in the tree built by Kruskal's algorithm contains $e^*$, and no edge on it is heavier.
+
+:::tip[In plain words]
+To go from $s$ to $t$ using only light edges, raise the limit step by step and add every edge up to the limit. The first moment $s$ and $t$ are in one group is exactly the smallest limit that allows a path, and it is the weight of the edge that closed the gap.
+:::
+
+**A tiny instance.** Edges $0\!-\!2$ (9), $0\!-\!1$ (4), $1\!-\!2$ (6). To go from 0 to 2: the direct edge has largest edge 9, the route through 1 has largest edge $\max(4, 6) = 6$. In sorted order $0\!-\!1$ (4) joins 0 and 1; $1\!-\!2$ (6) puts 0 and 2 in one group: $b(0, 2) = 6$.
+
+**Proof.**
+1. Let $e^*$ be as in the statement, with weight $w^*$. All edges before $e^*$ in the order have weight at most $w^*$.
+2. After `unite` for $e^*$, $s$ and $t$ are connected by kept edges, all of which are $e^*$ or come before it. So a path exists whose edges all have weight at most $w^*$, and $b(s, t) \le w^*$.
+3. Before $e^*$, the vertices $s$ and $t$ were in different groups, i.e. not connected by the edges before $e^*$ (Theorem 4.4.1(a)). So every path from $s$ to $t$ uses an edge that is $e^*$ or comes after $e^*$ in the order, and that edge has weight at least $w^*$. So $b(s, t) \ge w^*$.
+4. In the tree built by Kruskal's algorithm, the path from $s$ to $t$ is unique and lies inside the kept edges up to $e^*$, so its edges have weight at most $w^*$, and it contains $e^*$ (otherwise $s$ and $t$ would have been connected earlier). So $e^*$ is on it and no edge on it is heavier. $\square$
+
+:::note[This proof needs]
+1. The edges are taken in non-decreasing order of weight (steps 1 to 3).
+2. The question is about the largest edge. For the sum of a path, shortest paths are needed (topic 4.3), and the spanning tree gives no help.
+3. For many pairs, the pairs can be answered offline while the edges are added in order; reading the answer off the tree is a method of a later topic.
+:::
+
+<TheoremCode unit="4.4/thm-6" />
+
+The first example is a path of two edges, where the largest edge is the only choice (5). The second is the tiny instance (6, not 9). The third has no road between 0 and 3 ($-1$). The check tries every limit from 1 to 7 with a plain walk for twenty thousand random graphs and pairs.
 
 ## 5. Recognition Cards
 

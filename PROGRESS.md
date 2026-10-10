@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: R1 (quality retrofit, PLAN.md Revision 2) and the bank fill (FILL_SHORT_TOPICS_PLAN.md) for the completed topics 0.1–3.8
-- Topic: R1 reference topic 1.6 done; bank fill for 0.1–3.8 done (see ## Bank fill)
+- Topic: R1 retrofit of all 25 completed topics 0.1–3.8 done (Revision 2.1); bank fill for 0.1–3.8 done (see ## Bank fill)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: R1 retrofit of 0.1–0.6 (Phase 0 done, Revision 2.1); next 1.1
-- Next action: R1 retrofit of the remaining 24 topics in curriculum order (0.1 first), one commit per topic; reference review of 1.6 approved 2026-10-10
+- Last completed step: R1 retrofit of 3.8, the last of the 25 completed topics (one commit per topic; validate, build, `npm test` and the unit tests pass)
+- Next action: wait for your review of the retrofitted topics (R1 gate below). Phase 4 and later lessons are not started
 
 ## Gates
 | Gate | Status | Date |
@@ -20,6 +20,7 @@
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
 | M5 Phase 3 review | waiting for review | — |
 | R1 reference review (topic 1.6 retrofitted) | approved ("Rest seems okay" after the Revision 2.1 changes and the collapsed in-action block) | 2026-10-10 |
+| R1 retrofit of the other 24 topics (0.1–3.8) | done, waiting for review | 2026-10-10 |
 | Bank fill review | waiting for review (10 complete, 15 short with exhaustion records) | 2026-10-09 |
 
 ## Saurabh is studying
@@ -201,7 +202,7 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
   - 3.2: `reconstruct` has no review problem (same question).
   - Others (2.1, 2.3, 3.3–3.8): see their exhaustion records in `bank-fill/SHORTFALL.md`.
 - **Spot-check the new † problems** (recalled notes): cf-1692A, 1921C, 1560A, 1543A, 143A, 6A, 886A, 363B, 1807D, 474B, 1676E, 919E, 359C, 312B, 621C, 204C. Three LeetCode Hard problems in 3.5 and 3.6 moved to tier 3.
-- **R1 reference review.** Topic 1.6 is retrofitted to Revision 2 (`uses`, theorem blocks with demos, card examples with runnable units). The other 24 completed topics wait for your approval of it.
+- **R1 retrofit review.** All 25 completed topics (0.1–3.8) are now on Revision 2.1: `uses`, theorem blocks with a plain-words box, a tiny instance, a numbered proof, a preconditions box and a tested implementation with its examples, recognition cards with runnable example units, and templates and worked examples that show only the gist function. Not rewritten: the old worked-example step texts and bug catalogues (only the "C++ details explained" and "Tested" paragraphs were removed and the code swapped for the gist function). The Playwright end-to-end tests (`tests/e2e.sh`) were not re-run after the Revision 2.1 changes. The old Phase 0 and Phase 1 intro and exam pages are untouched.
 - No `bank-filled` git tag was created (pushing partial refs was denied).
 - Keyword scan and ordered sets (0.6): `lower_bound` and `upper_bound` are keywords of 1.4 (binary search), but topic 0.6 needs the `set`/`map` member functions of the same name. The scan now ignores a keyword written as a member call (preceded by a dot, as in `s.lower_bound(x)`); the free functions on arrays stay reserved for 1.4. Say if you would rather keep the scan strict and have 0.6 describe these calls without naming them.
 - Changes made while building 1.3 (change any you disagree with):

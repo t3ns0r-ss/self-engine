@@ -417,6 +417,96 @@ Wrong output `2`, correct output `1`. One guide at stop 1 reaches both other sto
 
 ## 8. Worked examples
 
+### Example 1: Planets and Kingdoms
+
+[CSES 1683: Planets and Kingdoms](https://cses.fi/problemset/task/1683). In short: a game has $n \le 10^5$ planets and $m \le 2 \cdot 10^5$ one-way teleporters. Two planets belong to the same kingdom exactly when one can travel from each to the other. Print the number of kingdoms and a kingdom label for every planet.
+
+#### Step 1: Constraints → budget
+
+$n = 10^5$, $m = 2 \cdot 10^5$. A search from every planet to find who reaches whom is $n \cdot (n + m) = 3 \cdot 10^{10}$ steps. Two walks of the whole graph are about $6 \cdot 10^5$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A search from every planet ([topic 4.1](../4-1-graph-traversal/)) and comparing the reach sets: $3 \cdot 10^{10}$ steps.
+- The disjoint set union of [topic 4.4](../4-4-dsu-mst/): it merges both ends of a teleporter, so it ignores the direction and merges planets that are not in one kingdom.
+- Groups of planets that reach each other, with one-way edges: the card "Groups that can all reach each other (strongly connected components)".
+
+#### Step 3: Property check → decision
+
+The teleporters are one-way and the kingdoms are defined by "a route both from $a$ to $b$ and from $b$ to $a$", which is the definition of a strongly connected component. Decision: two walks, with the reversed graph in the second (Theorem 4.7.5), and print the labels.
+
+#### Step 4: Proof for this problem
+
+By Theorem 4.7.5, "reach each other" is an equivalence relation, so the planets split into classes, and the classes are the kingdoms of the statement. The second pass of the algorithm collects exactly one class in each walk. The labels $1, \dots, k$ of the walks are therefore a valid answer, and $k$ is the number of kingdoms. The program renames the labels by the first planet in each kingdom; any numbering is accepted.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.7/example-1" />
+
+#### Step 6: Alternative approach
+
+Tarjan's method finds the same groups in a single walk, with a stack of the vertices that are not yet assigned and the low-link values of Theorem 4.7.1. It is a little faster, but its correctness needs a longer argument, and the two simple walks of Kosaraju's method are easy to get right.
+
+### Example 2: Flight Routes Check
+
+[CSES 1682: Flight Routes Check](https://cses.fi/problemset/task/1682). In short: $n \le 10^5$ cities and $m \le 2 \cdot 10^5$ one-way flights. Print `YES` if one can travel from every city to every other; otherwise print `NO` and two cities $a$, $b$ such that there is no route from $a$ to $b$.
+
+#### Step 1: Constraints → budget
+
+$n = 10^5$ and $m = 2 \cdot 10^5$. A search from each city is $3 \cdot 10^{10}$ steps; the labels of the groups cost $6 \cdot 10^5$ steps. Only the pair of cities is asked for, no list of routes.
+
+#### Step 2: Question form → candidate tools
+
+- A search from every city ([topic 4.1](../4-1-graph-traversal/)): $3 \cdot 10^{10}$ steps.
+- One search from city 1 on the flights and one on the reversed flights: this decides the question and finds a pair, but the two searches have to be argued separately.
+- Reasoning on the groups of cities (the card "Reasoning on the graph of groups (sources and sinks)"): one set of labels gives both the answer and the pair.
+
+#### Step 3: Property check → decision
+
+The flights are one-way and the answer depends on whether the graph is one group. Decision: label the groups by Theorem 4.7.5. If there is one group, print `YES`. Otherwise take a city $a$ of the last group and a city $b$ of the first.
+
+#### Step 4: Proof for this problem
+
+If there is only one group, every city reaches every city by the definition of a group. Otherwise, by Theorem 4.7.6 (a), every flight goes from a city with a smaller or equal group number to a city with a larger or equal number. A route is a chain of flights, so the numbers along it never decrease. Hence a city in the last group cannot reach a city in the first group, and since there are at least two groups, these are different groups: the pair $(a, b)$ is a valid answer.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.7/example-2" />
+
+#### Step 6: Alternative approach
+
+A search from city 1 on the flights and another on the reversed flights: if both reach every city, the answer is `YES`; otherwise a city not reached by the first gives the pair $(1, v)$, and a city not reached by the second gives the pair $(v, 1)$. It is shorter, and it needs no labels of the groups.
+
+### Example 3: Critical Connections in a Network
+
+[LeetCode: Critical Connections in a Network](https://leetcode.com/problems/critical-connections-in-a-network/). In short: $n \le 10^5$ servers numbered from 0 are joined by at most $10^5$ two-way connections (no repeated ones) so that every server can reach every other. A connection is critical if its removal makes some server unable to reach another. List all critical connections.
+
+#### Step 1: Constraints → budget
+
+$n, m \le 10^5$. Removing each connection and searching again is $m \cdot (n + m) = 2 \cdot 10^{10}$ steps. One walk is about $3 \cdot 10^5$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- Remove each connection and search ([topic 4.1](../4-1-graph-traversal/)): $2 \cdot 10^{10}$ steps.
+- The union structure of [topic 4.4](../4-4-dsu-mst/): it adds connections, it cannot remove them in the middle of a computation.
+- A critical connection is a road whose loss disconnects the network: the card "Roads whose loss splits the network (bridges)".
+
+#### Step 3: Property check → decision
+
+The connections are two-way and the question is exactly the definition of a bridge. Decision: one walk with entry times and low-link values, and report the tree edges $p\!-\!v$ with $\text{low}[v] > \text{tin}[p]$ (Theorem 4.7.2).
+
+#### Step 4: Proof for this problem
+
+The network is connected, so one walk from server 0 covers it, and Theorem 4.7.2 characterises the bridges among the tree edges and says that no other edge is a bridge. A critical connection in the sense of the statement is exactly a bridge: removing it makes some servers unreachable from some others if and only if the number of pieces grows. The walk has to be explicit-stack, since a chain of $10^5$ servers is a valid input. The program prints the connections in the order of the input, and LeetCode accepts any order.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.7/example-3" />
+
+#### Step 6: Alternative approach
+
+Every connection that is not a bridge lies on a cycle: one can mark, for each back edge, the tree edges on the path between its ends, using the union structure of topic 4.4 to skip the already marked ones. The edges that are never marked are the bridges. It is the same result as the low-link values, with more code.
+
 ## 9. Problem ladder
 
 <Ladder topic="4.7" />

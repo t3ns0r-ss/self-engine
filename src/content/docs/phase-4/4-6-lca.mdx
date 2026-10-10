@@ -42,8 +42,151 @@ The key idea: do not climb one step at a time. For every vertex store its ancest
 
 ## 3. Definitions
 
+- In a rooted tree ([topic 4.5](../4-5-trees/)) the **$k$-th ancestor** of $v$ is the vertex reached by climbing $k$ parents from $v$; it does not exist when $k$ is larger than the depth of $v$ (the code uses 0 for "none"). The 0-th ancestor is $v$ itself.
+- The **lowest common ancestor** (LCA) of $u$ and $v$ is the common ancestor with the largest depth. Since a vertex counts as its own ancestor, $\text{lca}(u, v) = u$ when $u$ is an ancestor of $v$.
+- **Binary lifting** stores, for every vertex $v$ and every $j = 0, 1, 2, \dots$, the $2^j$-th ancestor $\text{up}[j][v]$ (the **jump table**). It needs $\lceil \log_2 n \rceil$ levels, which is 18 for $n = 2 \cdot 10^5$, so about $3.6 \cdot 10^6$ numbers.
+- The path between $u$ and $v$ goes up from $u$ to $\text{lca}(u, v)$ and then down to $v$. The **weighted depth** $\text{wd}[v]$ is the sum of the weights on the path from the root to $v$ (equal to the depth when all weights are 1).
+- The code units number the vertices from 1, use 0 for "no vertex", and take the root of the tree to be the vertex named in the call.
+
 
 ## 4. Theory and proofs
+
+### 4.1 Jumps by powers of two
+
+**Theorem 4.6.1 (binary lifting).** Let $T$ be a tree rooted as in Theorem 4.5.1, with $\text{depth}$ and $\text{parent}$ (0 for the root). Let $L$ be the least number with $2^L > n$. Put $\text{up}[0][v] = \text{parent}[v]$, $\text{up}[j][0] = 0$ and $\text{up}[j][v] = \text{up}[j-1][\text{up}[j-1][v]]$ for $j = 1, \dots, L - 1$. Then:
+
+(a) $\text{up}[j][v]$ is the $2^j$-th ancestor of $v$, or 0 if $v$ has fewer than $2^j$ ancestors;
+
+(b) if $k \le \text{depth}[v]$ and $k = 2^{j_1} + 2^{j_2} + \dots$ is the binary form of $k$, then applying the jumps $\text{up}[j_1], \text{up}[j_2], \dots$ one after the other (in any order) gives the $k$-th ancestor of $v$; if $k > \text{depth}[v]$ there is none;
+
+(c) the table is built in $O(n \log n)$ time and each $k$-th ancestor takes $O(\log n)$ time.
+
+:::tip[In plain words]
+To climb $2^j$ levels, climb $2^{j-1}$ levels twice. So write down, for every vertex, where one step, two steps, four steps, eight steps and so on lead, each level built from the one before it. Any number of steps is a sum of different powers of two, so any climb is at most about 18 jumps.
+:::
+
+**A tiny instance.** The tree $1\!-\!2\!-\!3\!-\!4\!-\!5\!-\!6$ (a path rooted at 1) with the extra edges $2\!-\!7$ and $7\!-\!8$. For vertex 6: $\text{up}[0][6] = 5$, $\text{up}[1][6] = \text{up}[0][5] = 4$, $\text{up}[2][6] = \text{up}[1][4] = 2$. The 5th ancestor of 6 is reached by $5 = 4 + 1$: $\text{up}[2][6] = 2$, then $\text{up}[0][2] = 1$. The 6th ancestor does not exist (the depth of 6 is 5), so the answer is 0.
+
+**Proof.**
+1. *Claim (a) by induction on $j$.* For $j = 0$ it is the definition of the parent. For $j \ge 1$, the $2^j$-th ancestor of $v$ is reached by climbing $2^{j-1}$ levels from $v$ and then $2^{j-1}$ levels from there; this is $\text{up}[j-1][\text{up}[j-1][v]]$ by the hypothesis. If $v$ has fewer than $2^{j-1}$ ancestors, the first jump gives 0, and $\text{up}[j-1][0] = 0$; if the second jump falls short, it gives 0 as well. In both cases there are fewer than $2^j$ ancestors, and the result 0 is right.
+2. *Claim (b).* Each jump $\text{up}[j]$ climbs exactly $2^j$ levels when it exists. The jumps of the binary form of $k$ climb $\sum 2^{j_i} = k$ levels in total, and their order does not matter because the total number of levels is the same. When $k \le \text{depth}[v]$, no intermediate jump goes above the root, since the partial sums are at most $k$.
+3. The digits of $k$ need at most $L$ levels: since $k \le \text{depth}[v] \le n - 1 < 2^L$, all its binary digits $j_i$ are below $L$.
+4. *Claim (c).* The table has $L \le \lceil \log_2 n \rceil + 1$ rows of $n + 1$ entries, each computed with two lookups. A query makes at most $L$ jumps. $\square$
+
+:::note[This proof needs]
+1. The check $k \le \text{depth}[v]$ first. Otherwise a $k$ with a binary digit beyond the table would silently use the wrong jumps.
+2. The entry for "none" is 0 and $\text{up}[j][0] = 0$, so that jumps past the root stay at 0.
+3. Memory: $18 \cdot 2 \cdot 10^5 = 3.6 \cdot 10^6$ numbers, which is fine for `int`.
+:::
+
+<TheoremCode unit="4.6/thm-1" />
+
+The first example prints the ancestors of vertex 6 at $k = 0, \dots, 6$ (ending with 0) and two more queries on vertex 8. The second is a single vertex (the 0-th ancestor is itself, the first does not exist). The check compares every vertex and every $k$ with climbing the parents one step at a time on twenty thousand random trees.
+
+### 4.2 The lowest common ancestor
+
+**Theorem 4.6.2 (lowest common ancestor).** With the table of Theorem 4.6.1, let $u$ and $v$ be vertices with $\text{depth}[u] \ge \text{depth}[v]$. Let $u'$ be the $(\text{depth}[u] - \text{depth}[v])$-th ancestor of $u$. If $u' = v$, then $\text{lca}(u, v) = v$. Otherwise, for $j = L - 1$ down to 0: if $\text{up}[j][u'] \ne \text{up}[j][v']$, replace $u'$ by $\text{up}[j][u']$ and $v'$ by $\text{up}[j][v']$ (start with $v' = v$). Then $\text{lca}(u, v) = \text{parent}[u']$. The time is $O(\log n)$.
+
+:::tip[In plain words]
+First bring the deeper vertex up to the level of the other. If they are the same vertex, that is the answer. Otherwise they are on the same level but different, so climb both together; look from the biggest jump to the smallest, and take a jump only if you would still land on two different vertices. You stop just below the meeting point, and its parent is the answer.
+:::
+
+**A tiny instance.** The tree of the previous theorem (path $1-\dots-6$ and the branch $2\!-\!7\!-\!8$), $u = 6$ (depth 5) and $v = 8$ (depth 3). Lift 6 by 2 levels to $u' = 4$. The 8th and 4th ancestors of 4 and 8 are both 0 (equal), no jump; the 2nd ancestors $\text{up}[1][4] = 2$ and $\text{up}[1][8] = 2$ are equal, no jump; the 1st ancestors 3 and 7 differ, jump: $u' = 3$, $v' = 7$. The parent of 3 is 2: $\text{lca}(6, 8) = 2$.
+
+**Proof.**
+1. After the lift, $u'$ and $v$ are on the same level. The lca of $u$ and $v$ has depth at most $\text{depth}[v]$, so it is an ancestor of $u'$ (the ancestors of $u$ that are not deeper than $v$ are exactly the ancestors of $u'$), and $\text{lca}(u, v) = \text{lca}(u', v)$. If $u' = v$, then $v$ is an ancestor of $u$ and is the lca.
+2. Otherwise $u' \ne v$ are at the same depth. Let $l$ be their lca and $h = \text{depth}[u'] - \text{depth}[l] \ge 1$. For $k \ge 0$ let $P(k)$ say: "the $k$-th ancestors of $u'$ and $v$ differ". Below the lca the ancestors are different vertices, and from the lca upwards they are the same vertex, so $P(k)$ holds exactly for $k < h$. In particular, if $P(k)$ holds then $P(k')$ holds for every smaller $k'$.
+3. Let $c$ be the number of levels the loop has climbed so far. We show by induction on the loop that after the step $j$, $c \le h - 1$ and $h - 1 - c < 2^j$. Before the loop, $c = 0$ and $h - 1 < n \le 2^L$ hold, so the claim holds for $j = L$.
+4. In the step $j$: before it, $h - 1 - c < 2^{j+1}$. The jump is taken exactly when the $2^j$-th ancestors of the current vertices differ, i.e., when $P(c + 2^j)$ holds, which means $c + 2^j \le h - 1$. In this case $c$ grows by $2^j$ and $h - 1 - c < 2^j$ holds afterwards. Otherwise $c + 2^j > h - 1$ and $h - 1 - c < 2^j$ already.
+5. After the step $j = 0$ we have $h - 1 - c < 1$, so $c = h - 1$: the current vertices are the children of $l$ on the way to $u'$ and $v$, and the parent of $u'$ is $l$. Each step is $O(1)$, so the time is $O(L)$. $\square$
+
+:::note[This proof needs]
+1. The lift to equal depths comes first; the loop compares the ancestors at the same level.
+2. The loop goes from the largest jump to the smallest. From the smallest to the largest the monotone test $P$ cannot be used greedily.
+3. Jumps past the root give 0 on both sides, equal, so they are never taken.
+:::
+
+<TheoremCode unit="4.6/thm-2" />
+
+The first example prints four queries on the tree of the tiny instance (2, 4, 7 and 5; the third and fourth show that an ancestor, or the same vertex, is its own answer). The second is a single vertex. The check marks the ancestors of $u$ by climbing and then climbs from $v$ to the first marked vertex, for every pair of vertices of twenty thousand random trees.
+
+### 4.3 Distances in a tree
+
+**Theorem 4.6.3 (distance).** Let $T$ be a tree with non-negative weights and a root, and let $\text{wd}[v]$ be the weighted depth of $v$. Then for all vertices $u$ and $v$,
+$$d(u, v) = \text{wd}[u] + \text{wd}[v] - 2\,\text{wd}[\text{lca}(u, v)].$$
+With all weights 1 this is $\text{depth}[u] + \text{depth}[v] - 2\,\text{depth}[\text{lca}(u, v)]$, and one query takes $O(\log n)$ time after $O(n \log n)$ preparation.
+
+:::tip[In plain words]
+The trip from $u$ to $v$ goes up to their meeting point and down again. The two ends' distances from the root count the stretch above the meeting point twice, so take it off twice.
+:::
+
+**A tiny instance.** The tree with the edges $1\!-\!2$ (3), $2\!-\!3$ (4), $2\!-\!4$ (1), $4\!-\!5$ (6), $1\!-\!6$ (2), rooted at 1. The weighted depths of $3$ and $5$ are $7$ and $10$; their lca is vertex 2 with weighted depth 3. So $d(3, 5) = 7 + 10 - 6 = 11$, which is the path $4 + 1 + 6$.
+
+**Proof.**
+1. Let $l = \text{lca}(u, v)$. The vertices on the path from $u$ up to $l$ are ancestors of $u$, and the vertices on the path from $v$ up to $l$ are ancestors of $v$.
+2. Below $l$ the two climbs use different children of $l$ (a shared vertex below $l$ would be a common ancestor deeper than $l$), so they have no vertex in common except $l$. Together they form a path from $u$ to $v$, which is the only path (Theorem 4.5.1(a)).
+3. The weight from $u$ up to $l$ is $\text{wd}[u] - \text{wd}[l]$ (the root-to-$u$ path passes through $l$), and likewise $\text{wd}[v] - \text{wd}[l]$ on the other side. The sum is the formula. $\square$
+
+:::note[This proof needs]
+1. The weights are the same in both directions along an edge; for a directed cost on each edge the formula does not apply.
+2. $\text{wd}$ is computed in the visit order (parents first), with 64-bit numbers.
+:::
+
+<TheoremCode unit="4.6/thm-3" />
+
+The example prints four distances on the tiny instance (11, 12, 0 and 4), the last one between a vertex and its descendant. The check compares all pairs of twenty thousand random weighted trees with the table of Floyd–Warshall ([topic 4.3](../4-3-shortest-paths/)).
+
+### 4.4 The smallest edge on a path
+
+**Theorem 4.6.4 (aggregates on a path).** Let every non-root vertex $v$ have a weight $w_v$ on the edge to its parent. Put $\text{mn}[0][v] = w_v$ and $\text{mn}[j][v] = \min(\text{mn}[j-1][v], \text{mn}[j-1][\text{up}[j-1][v]])$ (just the first term when $\text{up}[j-1][v] = 0$). Then $\text{mn}[j][v]$ is the smallest weight among the $2^j$ edges climbed by $\text{up}[j][v]$ (when $\text{up}[j][v] \ne 0$). The smallest weight on the path from $u$ to $v$ is the minimum of the values $\text{mn}[j][\cdot]$ over the jumps made by the search of Theorem 4.6.2, together with the two edges $\text{mn}[0][u']$ and $\text{mn}[0][v']$ at the end. The same works for the largest weight, the sum or the XOR in place of the minimum. The time is $O(\log n)$ per query after $O(n \log n)$ preparation.
+
+:::tip[In plain words]
+Along with each jump of $2^j$ levels, remember the smallest edge it passes over. A path is cut into exactly the same jumps as in the search for the meeting point, so the smallest edge of the path is the smallest of the smallest edges of the jumps. The idea works for anything that can be combined piece by piece: a sum, a maximum, a minimum.
+:::
+
+**A tiny instance.** The tree of Theorem 4.6.3. For the path from 3 to 5: vertex 5 has depth 3 and vertex 3 has depth 2, so 5 is lifted by one level to vertex 4, collecting the edge $5\!-\!4$ of weight 6. The vertices 4 and 3 are different, but their parents are the same vertex 2, so no jump of the loop is taken; the last step adds the two edges $4\!-\!2$ (1) and $3\!-\!2$ (4). The minimum of $6, 1, 4$ is 1.
+
+**Proof.**
+1. The claim about $\text{mn}[j][v]$ follows by induction on $j$ as in Theorem 4.6.1(a): the $2^j$ edges climbed by $\text{up}[j][v]$ are the $2^{j-1}$ edges climbed from $v$ and the $2^{j-1}$ edges climbed from $\text{up}[j-1][v]$.
+2. The path from $u$ to $v$ consists of the edges climbed from $u$ in the lift to the depth of $v$, the edges climbed in the jumps of the loop on each side, and the two last edges to $l$ (the parent steps from the children of $l$).
+3. Each of these edges is climbed by exactly one jump, so the pieces cover the path without overlap, and the minimum of the pieces is the minimum of the path. For the sum or the XOR the pieces are added, with no overlap either. $\square$
+
+:::note[This proof needs]
+1. Every edge of the path is covered exactly once for sums and XOR; for minimum and maximum an overlap would be harmless, but the pieces here do not overlap.
+2. A weight "INF" is used for the root's missing edge and is never taken into a piece.
+3. Memory: one extra table of the size of the jump table.
+:::
+
+<TheoremCode unit="4.6/thm-4" />
+
+The example prints the smallest edge on four paths of the tiny instance (1, 2, 4 and "none" for a path with no edge, from a vertex to itself). The check compares the answers with a search from each vertex that records the smallest weight on the way, for every pair of vertices of twenty thousand random weighted trees.
+
+### 4.5 Adding along many paths
+
+**Theorem 4.6.5 (counting along paths offline).** Let a rooted tree and paths $\{u_i, v_i\}$ be given. Set $c[x] = (\text{number of path ends at } x) - 2 \cdot (\text{number of paths whose lca is } x)$. Then for every non-root vertex $v$, the number of paths that use the edge between $v$ and its parent is the sum of $c$ over the subtree of $v$. With the subtree sums of Theorem 4.5.2 the whole answer takes $O((n + q) \log n)$ time for $q$ paths.
+
+:::tip[In plain words]
+A path uses the edge above $v$ exactly when one of its ends is inside the subtree of $v$ and the other is outside. Put $+1$ at both ends and $-2$ at the meeting point: the contributions of a path cancel inside every subtree that holds the whole path, and leave exactly $+1$ in each subtree that holds just one end.
+:::
+
+**A tiny instance.** The tree with the edges $1\!-\!2$, $1\!-\!3$, $2\!-\!4$, $2\!-\!5$, $3\!-\!6$ and the paths $\{4, 5\}$, $\{4, 6\}$, $\{5, 6\}$. The lcas are 2, 1 and 1. The ends give $c[4] = 2$, $c[5] = 2$, $c[6] = 2$ (each is an end of two paths), and the lcas give $c[2] = -2$ and $c[1] = -4$. The sums over the subtrees of $4, 5, 6$ are $2$ each, over the subtree of $3$ it is $2$ (vertex 6), and over the subtree of $2$ it is $2 + 2 - 2 = 2$. Each of the five edges is used by two paths; for example the edge $2\!-\!1$ is used by $\{4, 6\}$ and $\{5, 6\}$.
+
+**Proof.**
+1. Fix a vertex $v \ne$ root, and a path with ends $a$, $b$ and lca $l$. The edge between $v$ and its parent is on the path exactly when exactly one of $a$ and $b$ lies in the subtree $S(v)$ (the path has to enter or leave $S(v)$ through this edge, once).
+2. Both ends in $S(v)$: then $l$, an ancestor of both that is on the path between them, lies in $S(v)$ too (the path between two vertices of a subtree stays inside it). The path contributes $2 - 2 = 0$ to the sum over $S(v)$.
+3. Exactly one end in $S(v)$: then $l$ is not in $S(v)$ (otherwise the other end, a descendant of $l$, would be in $S(v)$ too). The contribution is $1$, and the edge is used.
+4. No end in $S(v)$: then $l$ is not in $S(v)$ either (an lca in $S(v)$ would have its descendants, the ends, in $S(v)$). The contribution is $0$, and the edge is not used.
+5. Summing over all paths gives the claim. The subtree sums come from Theorem 4.5.2, and the lcas from Theorem 4.6.2. $\square$
+
+:::note[This proof needs]
+1. All paths are known before the answer is needed (offline), and the values are added only, never asked in between. For questions interleaved with changes, a structure for updates is needed (a later phase).
+2. The counts for the vertices are put on the vertices; the number for an edge is stored at the lower vertex.
+3. The sums are 64-bit when there are many paths.
+:::
+
+<TheoremCode unit="4.6/thm-5" />
+
+The first example is the tiny instance (every edge is used by 2 paths). The second has no paths (all 0). The check climbs from both ends of every path, counting each edge on the way, for twenty thousand random trees and sets of paths.
 
 ## 5. Recognition Cards
 

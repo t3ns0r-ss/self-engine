@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.6 Lowest common ancestor (pipeline step 1 done); 4.1–4.5 done except 4.5's browser-test confirmation
+- Topic: 4.6 Lowest common ancestor (pipeline steps 1–2 done); 4.1–4.5 done except 4.5's browser-test confirmation
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.6 step 1 (scope). Topic 4.5 steps 1–9 done; its browser tests (/tmp/e2e45.log) are running
-- Next action: check [4.5] in /tmp/e2e45.log; then topic 4.6 step 2 (definitions, theorems 4.6.1–4.6.5, code units)
+- Last completed step: topic 4.6 step 2 (definitions, theorems 4.6.1–4.6.5 with code units, 4 glossary terms); build not re-run yet (4.5 e2e running)
+- Next action: unit tests + build for 4.6, check [4.5] in /tmp/e2e45.log, then step 3 (cards: jump-up, meeting-vertex, tree-distance, path-values, path-counts)
 
 ## Gates
 | Gate | Status | Date |

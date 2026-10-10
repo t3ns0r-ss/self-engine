@@ -7,31 +7,34 @@ Output: the count modulo 10^9 + 7.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorems 3.5.1 and 3.5.3. The sums of n from the given parts (ordered: totals outside; unordered: parts outside), and
+// "at least one part >= d" as all sums minus the sums that use only parts below d.
 const long long MOD = 1'000'000'007;
-int t, n;
-
-// the number of sums of n using only the given parts
-long long countSums(const vector<int>& parts) {
+long long countSums(bool ordered, int n, const vector<int>& parts) {
     vector<long long> f(n + 1, 0);
     f[0] = 1;  // the empty sum
-    if (t == 0) {
-        for (int total = 1; total <= n; total++)       // ordered: totals outside,
-            for (int p : parts)                        // split by the last part (Theorem 3.5.1)
+    if (ordered) {
+        for (int total = 1; total <= n; total++)
+            for (int p : parts)
                 if (p <= total) f[total] = (f[total] + f[total - p]) % MOD;
     } else {
-        for (int p : parts)                            // unordered: parts outside (Theorem 3.3.3)
+        for (int p : parts)
             for (int total = p; total <= n; total++) f[total] = (f[total] + f[total - p]) % MOD;
     }
     return f[n];
 }
+long long atLeastOneBig(bool ordered, int n, int d, const vector<int>& parts) {
+    vector<int> small;
+    for (int p : parts) if (p < d) small.push_back(p);
+    return (countSums(ordered, n, parts) - countSums(ordered, n, small) + MOD) % MOD;
+}
+// snippet:end
 
 int main() {
-    int d, m;
+    int t, n, d, m;
     cin >> t >> n >> d >> m;
-    vector<int> parts(m), small;
+    vector<int> parts(m);
     for (int& p : parts) cin >> p;
-    for (int p : parts)
-        if (p < d) small.push_back(p);
-    // all sums minus the sums with no part >= d (Theorem 3.5.3)
-    cout << (countSums(parts) - countSums(small) + MOD) % MOD << "\n";
+    cout << atLeastOneBig(t == 0, n, d, parts) << "\n";
 }

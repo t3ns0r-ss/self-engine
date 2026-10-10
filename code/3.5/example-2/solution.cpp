@@ -7,25 +7,30 @@ Output: the count modulo 998244353.
 #include <bits/stdc++.h>
 using namespace std;
 
-const long long MOD = 998244353;
-
-int main() {
-    int n, k;
-    cin >> n >> k;
-    vector<int> lo(k), hi(k);
-    for (int s = 0; s < k; s++) cin >> lo[s] >> hi[s];
-    // ways[i] = ways to reach cell i; prefix[i] = ways[1] + ... + ways[i - 1]
+// snippet:begin
+// ABC 179 D. ways[i] = the ways to reach cell i; the previous cell is i - d for d in a segment [lo, hi], a range of ways,
+// summed with prefix sums.
+long long leapingTak(int n, const vector<pair<int, int>>& seg) {
+    const long long MOD = 998244353;
     vector<long long> ways(n + 1, 0), prefix(n + 2, 0);
     ways[1] = 1;
     prefix[2] = 1;
     for (int i = 2; i <= n; i++) {
-        for (int s = 0; s < k; s++) {
-            // the previous cell is i - d for d in [lo, hi]: the cells [i - hi, i - lo], clipped at 1
-            int from = max(1, i - hi[s]), to = i - lo[s];
+        for (auto [lo, hi] : seg) {
+            int from = max(1, i - hi), to = i - lo;
             if (to < 1) continue;
             ways[i] = (ways[i] + prefix[to + 1] - prefix[from] + MOD) % MOD;
         }
         prefix[i + 1] = (prefix[i] + ways[i]) % MOD;
     }
-    cout << ways[n] << "\n";
+    return ways[n];
+}
+// snippet:end
+
+int main() {
+    int n, k;
+    cin >> n >> k;
+    vector<pair<int, int>> seg(k);
+    for (auto& [lo, hi] : seg) cin >> lo >> hi;
+    cout << leapingTak(n, seg) << "\n";
 }

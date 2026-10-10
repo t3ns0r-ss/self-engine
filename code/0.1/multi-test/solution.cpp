@@ -6,6 +6,18 @@ Output: one line per test.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 0.1.3. One test: how many elements are above the average. Everything is created per test.
+int countAboveAverage(const vector<long long>& a) {
+    long long n = a.size(), sum = 0;
+    for (long long x : a) sum += x;
+    int count = 0;
+    for (long long x : a)
+        if (x * n > sum) count++;  // x > sum / n without dividing
+    return count;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -15,14 +27,7 @@ int main() {
         int n;
         cin >> n;
         vector<long long> a(n);  // a fresh vector per test: nothing to clear, nothing left over
-        long long sum = 0;       // up to 2*10^14
-        for (auto& x : a) {
-            cin >> x;
-            sum += x;
-        }
-        int count = 0;
-        for (long long x : a)
-            if (x * n > sum) count++;  // x > sum / n without division; x * n <= 2*10^14
-        cout << count << "\n";
+        for (auto& x : a) cin >> x;
+        cout << countAboveAverage(a) << "\n";
     }
 }

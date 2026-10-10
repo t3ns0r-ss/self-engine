@@ -6,21 +6,18 @@ Output: one line per query: the floor and the ceiling.
 #include <bits/stdc++.h>
 using namespace std;
 
-// floor(a / b) for b != 0 (Theorem 0.1.4, part 2)
+// snippet:begin
+// Theorem 0.1.4. floor(a / b) for b != 0.
 long long floorDiv(long long a, long long b) {
-    if (b < 0) {  // a / b == (-a) / (-b), and now the divisor is positive
-        a = -a;
-        b = -b;
-    }
+    if (b < 0) a = -a, b = -b;     // a / b == (-a) / (-b), and now the divisor is positive
     long long q = a / b;           // truncated toward zero
     if (a % b != 0 && a < 0) q--;  // a negative non-multiple was rounded up: go one lower
     return q;
 }
 
 // ceil(a / b) = -floor(-a / b)
-long long ceilDiv(long long a, long long b) {
-    return -floorDiv(-a, b);
-}
+long long ceilDiv(long long a, long long b) { return -floorDiv(-a, b); }
+// snippet:end
 
 int main() {
     int q;

@@ -7,16 +7,23 @@ Output: the values, separated by spaces.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// The values of the process, starting from n. They exceed 2^31 for some n below 10^6, so long long.
+vector<long long> weirdSequence(long long n) {
+    vector<long long> seq = {n};
+    while (n != 1) {
+        n = (n % 2 == 0) ? n / 2 : 3 * n + 1;
+        seq.push_back(n);
+    }
+    return seq;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
-    long long n;  // the values climb above 2^31 for some starting n below 10^6
+    long long n;
     cin >> n;
-    cout << n;
-    while (n != 1) {
-        if (n % 2 == 0) n /= 2;
-        else n = 3 * n + 1;
-        cout << " " << n;
-    }
-    cout << "\n";
+    vector<long long> seq = weirdSequence(n);
+    for (int i = 0; i < (int)seq.size(); i++) cout << seq[i] << (i + 1 < (int)seq.size() ? " " : "\n");
 }

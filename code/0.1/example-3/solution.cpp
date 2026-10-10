@@ -6,11 +6,17 @@ Output: the count.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    long long a, b, x;  // values up to 10^18
-    cin >> a >> b >> x;
-    // Multiples of x in [0, v] for v >= 0: floor(v / x) + 1 (counting 0). For [a, b], subtract those in [0, a - 1].
+// snippet:begin
+// Integers in [a, b] divisible by x, for 0 <= a <= b <= 10^18. Multiples of x in [0, v]: v / x + 1.
+long long countMultiples(long long a, long long b, long long x) {
     long long upToB = b / x + 1;
     long long belowA = (a == 0) ? 0 : (a - 1) / x + 1;  // a - 1 >= 0 here, so / is the floor
-    cout << upToB - belowA << "\n";
+    return upToB - belowA;
+}
+// snippet:end
+
+int main() {
+    long long a, b, x;
+    cin >> a >> b >> x;
+    cout << countMultiples(a, b, x) << "\n";
 }

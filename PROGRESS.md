@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline steps 1–7 done); 4.1–4.6 done
+- Topic: Phase 4 intro and exam pages (topics 4.1–4.7 done)
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.7 step 7 (ladder: 15 rungs, 3 per card)
-Next action: step 8 (drill and look-alike pairs; bank 4.7 is short: new reserved problems needed for pair 2, checkpoint, review)
+Last completed step: topic 4.7 step 10 (e2e: 21 [4.7] checks pass; only the known 3-7 placeholder failure). Bank 4.7 additions (13 reserved problems: cf-949C, cf-1900E, cf-711D, cf-659E, cf-1547G, cf-1927F, ac-abc266_f, cf-1454E, cf-542C, cf-883G, cf-698B, cf-1276B, lc-disconnect-path) were added by me because the 4.7 bank was short; the drill has few 4.7 answers; please review.
+Next action: phase-4/index.mdx and phase-4/exam.mdx
 
 ## Gates
 | Gate | Status | Date |

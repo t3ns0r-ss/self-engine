@@ -7,26 +7,34 @@ Output: the number of sub-multisets, then one per line: its size followed by its
 #include <bits/stdc++.h>
 using namespace std;
 
-int n;
-vector<int> a, chosen;
-vector<vector<int>> found;
-
-void rec(int start) {
-    found.push_back(chosen);  // every node is one sub-multiset (its values in increasing index order)
-    for (int i = start; i < n; i++) {
-        if (i > start && a[i] == a[i - 1]) continue;  // same value as the previous try in this loop (Theorem 3.1.2)
-        chosen.push_back(a[i]);
-        rec(i + 1);  // later choices only from larger indices
-        chosen.pop_back();  // undo
-    }
+// snippet:begin
+// Theorem 3.1.2. Every distinct sub-multiset once: the next index is larger than the last one taken, and inside one loop
+// a value equal to the previous try is skipped. The values must be sorted.
+vector<vector<int>> distinctSubsets(vector<int> a) {
+    sort(a.begin(), a.end());
+    int n = a.size();
+    vector<vector<int>> found;
+    vector<int> chosen;
+    function<void(int)> rec = [&](int start) {
+        found.push_back(chosen);  // every node is one sub-multiset
+        for (int i = start; i < n; i++) {
+            if (i > start && a[i] == a[i - 1]) continue;  // same value as the previous try in this loop
+            chosen.push_back(a[i]);
+            rec(i + 1);
+            chosen.pop_back();  // undo
+        }
+    };
+    rec(0);
+    return found;
 }
+// snippet:end
 
 int main() {
+    int n;
     cin >> n;
-    a.resize(n);
+    vector<int> a(n);
     for (int& x : a) cin >> x;
-    sort(a.begin(), a.end());  // equal values next to each other
-    rec(0);
+    auto found = distinctSubsets(a);
     cout << found.size() << "\n";
     for (auto& s : found) {
         cout << s.size();

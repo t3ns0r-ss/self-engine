@@ -6,6 +6,9 @@ topic: "3.1"
 ---
 import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
 import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
 import Drill from '../../../components/Drill.astro';
@@ -13,13 +16,6 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
-import distinctSubsets from '../../../../code/3.1/distinct-subsets/solution.cpp?raw';
-import distinctPermutations from '../../../../code/3.1/distinct-permutations/solution.cpp?raw';
-import queens from '../../../../code/3.1/queens/solution.cpp?raw';
-import minMaxLoad from '../../../../code/3.1/min-max-load/solution.cpp?raw';
-import mitmCount from '../../../../code/3.1/mitm-count/solution.cpp?raw';
-import example1 from '../../../../code/3.1/example-1/solution.cpp?raw';
-import example2 from '../../../../code/3.1/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.1" />
 
@@ -35,10 +31,7 @@ The key idea of this topic: build the answer one choice at a time, check the par
 
 ### What you need
 
-- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: recursion over choices (Theorem 0.5.4), bitmasks for subsets (Theorem 0.5.2), counting candidates against the budget.
-- [Topic 0.2](../../phase-0/0-2-complexity/), complexity: the budget of about $10^8$ simple operations per second.
-- [Topic 1.1](../../phase-1/1-1-sorting/), sorting: sorting the choices so that equal values are next to each other and large values come first.
-- [Topic 1.4](../../phase-1/1-4-binary-search/), binary search: combining two sorted lists in meet in the middle.
+<WhatYouNeed topic="3.1" />
 
 ### What this topic does not cover
 
@@ -73,12 +66,8 @@ rec(pos):
 
 **Theorem 3.1.1 (pruning by feasibility).** Suppose that on a complete sequence ($pos = L - 1$) `ok` is the full validity check, and that `ok` never rejects a partial solution that has a valid completion; that is, whenever $c_0, \dots, c_p$ can be extended to a valid complete sequence, `ok` returns true. Then `rec(0)` outputs every valid complete sequence exactly once. If, in addition, `ok` is **exact** (it accepts exactly the partial solutions that have a valid completion), then every call lies on the path from the root to some output, so the number of calls is at most $(L + 1) \cdot S$, where $S$ is the number of outputs.
 
-*Proof.* Without the test, Theorem 0.5.4 shows that every sequence is reached exactly once, along the path of its prefixes. A valid sequence has a valid completion at every prefix (itself), so `ok` accepts each of its prefixes and its path is never cut: it is output. An invalid sequence is never output, because it fails the test at $pos = L - 1$, which is the full validity check. So the outputs are exactly the valid sequences, each once. If `ok` is exact, every node that is called has a valid completion, so it is a prefix of some output; each output has $L + 1$ prefixes, so there are at most $(L + 1) S$ calls. $\square$
-
-:::note[This proof needs]
-1. The test never rejects a partial solution that can still be completed: it may only use the choices made so far and must be implied by the final validity condition. A constraint that is checked only when it involves already-placed items has this property.
-2. The shared state (counters, "used" marks) is restored when a call returns, so that each call sees exactly the state of its own partial solution.
-3. For the running time: the number of nodes that pass the test, times the cost of a test, fits the budget. With an exact test, that is at most (depth + 1) × the number of outputs.
+:::tip[In plain words]
+Build the answer one choice at a time and test the partial answer after every choice. If the test never rejects a partial answer that can still be completed, the search still finds every valid answer exactly once, and the rejected branches cost nothing.
 :::
 
 Trace for 4 queens, one queen per row, `ok` = "the new queen attacks none of the earlier ones". The test only looks at placed queens, so it never rejects a placement that could be completed.
@@ -92,7 +81,26 @@ Trace for 4 queens, one queen per row, `ok` = "the new queen attacks none of the
 
 In all, 17 calls instead of the 341 nodes of the unpruned tree; for 8 queens 2 057 calls instead of about $1.9 \cdot 10^7$; for 10 queens 35 539 calls instead of about $1.1 \cdot 10^{10}$. The queens test is not exact (row 2 is reached after (0, 2) although nothing can follow), so the count is more than $(L + 1) S$, but still small.
 
+
+**Proof.**
+1. Without the test, Theorem 0.5.4 shows that every sequence is reached exactly once, along the path of its prefixes.
+2. A valid sequence has a valid completion at every prefix (itself), so `ok` accepts each of its prefixes and its path is never cut: it is output.
+3. An invalid sequence is never output, because it fails the test at $pos = L - 1$, which is the full validity check. So the outputs are exactly the valid sequences, each once.
+4. If `ok` is exact, every node that is called has a valid completion, so it is a prefix of some output.
+5. Each output has $L + 1$ prefixes, so there are at most $(L + 1) S$ calls. $\square$
+
+:::note[This proof needs]
+1. The test never rejects a partial solution that can still be completed: it may only use the choices made so far and must be implied by the final validity condition. A constraint that is checked only when it involves already-placed items has this property.
+2. The shared state (counters, "used" marks) is restored when a call returns, so that each call sees exactly the state of its own partial solution.
+3. For the running time: the number of nodes that pass the test, times the cost of a test, fits the budget. With an exact test, that is at most (depth + 1) × the number of outputs.
+:::
+
+<TheoremCode unit="3.1/thm-1" />
+
+In all, 17 calls instead of the 341 nodes of the unpruned tree; for 8 queens 2 057 calls instead of about $1.9 \cdot 10^7$; for 10 queens 35 539 calls instead of about $1.1 \cdot 10^{10}$. The queens test is not exact (row 2 is reached after (0, 2) although nothing can follow), so the count is more than $(L + 1) S$, but still small.
+
 **Undoing.** If the test reads shared arrays, such as "column $j$ is taken", the recursion sets the mark before the call and clears it after. Each call then sees the marks of exactly its own partial solution (precondition 2), and each test costs $O(1)$ instead of a loop over the earlier queens.
+
 
 ### 4.2 Listing without repeats
 
@@ -102,16 +110,28 @@ Many problems ask for all *sets* of choices, not all sequences. Listing sequence
 1. Let the recursion choose the next element only among those with a larger index than the last one chosen. Then every subset of indices is produced exactly once, as its elements in increasing order.
 2. Let the values $a_0 \le a_1 \le \dots \le a_{n-1}$ be sorted, and at each call let the loop skip index $i$ when $i$ is not the first index tried in that loop and $a_i = a_{i-1}$. Then every distinct multiset of values (every sub-multiset of $a$) is produced exactly once.
 
-*Proof.* 1. A subset of indices has exactly one increasing order, and the recursion produces every increasing sequence (Theorem 0.5.4 with the allowed choices "larger than the last"); it produces no other sequence. 2. Fix a multiset $M$ of values. Among the index sequences that give $M$ in non-decreasing order, call the one that uses, for each value, the *leftmost* available indices the canonical one. The skip rule allows exactly the canonical sequence: in one loop, the first index of each run of equal values is tried, and later indices of the same run are skipped. So when a value $x$ is taken at some depth, it is taken at the first index of $x$ after the previous choice, which is what the canonical sequence does; any other sequence for $M$ takes some value at a later index of a run whose first index was available, and is skipped. $\square$
+:::tip[In plain words]
+To list every subset once, always choose the next element from the ones after the last chosen. To list every collection of values once when some values repeat, sort first and skip a value that equals the previous try in the same loop.
+:::
+
+**A tiny instance.** $a = (1, 2, 2)$. Without the skip, part 1 gives the subsets $\{\}, \{1\}, \{1, 2\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2\}, \{2, 2\}$, with $\{1, 2\}$ and $\{2\}$ twice. With the skip, the second $2$ is never the first choice of a loop where the first $2$ was available, and the six distinct multisets $\{\}, \{1\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2, 2\}$ come out once each.
+
+**Proof.**
+1. Part 1. A subset of indices has exactly one increasing order, and the recursion produces every increasing sequence (Theorem 0.5.4 with the allowed choices "larger than the last"); it produces no other sequence.
+2. Part 2. Fix a multiset $M$ of values. Among the index sequences that give $M$ in non-decreasing order, call the one that uses, for each value, the *leftmost* available indices the canonical one.
+3. The skip rule allows exactly the canonical sequence: in one loop, the first index of each run of equal values is tried, and later indices of the same run are skipped.
+4. So when a value $x$ is taken at some depth, it is taken at the first index of $x$ after the previous choice, which is what the canonical sequence does.
+5. Any other sequence for $M$ takes some value at a later index of a run whose first index was available, and is skipped. $\square$
 
 :::note[This proof needs]
 1. Part 1: the output is a set (order does not matter); producing elements in increasing index order is enough.
 2. Part 2: the values are sorted, so equal values are next to each other, and the skip compares with the previous index *within the same loop* (at the same depth), not with the last value taken.
 :::
 
-Example: $a = (1, 2, 2)$. Without the skip, part 1 gives the subsets $\{\}, \{1\}, \{1, 2\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2\}, \{2, 2\}$, with $\{1, 2\}$ and $\{2\}$ twice. With the skip, the second $2$ is never the first choice of a loop where the first $2$ was available, and the six distinct multisets $\{\}, \{1\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2, 2\}$ come out once each.
+<TheoremCode unit="3.1/thm-2" />
 
 For permutations of a list with repeated values the same idea works with a "used" array: at one position, try each *value* once (skip index $i$ when $a_i = a_{i-1}$ and index $i - 1$ is not used, so equal values are placed left to right). The number of outputs is then the multinomial coefficient of [topic 2.3](../../phase-2/2-3-combinatorics/) instead of $n!$.
+
 
 ### 4.3 Branch and bound
 
@@ -119,7 +139,18 @@ For an optimisation problem ("the largest total value of a valid choice"), feasi
 
 **Theorem 3.1.3 (branch and bound).** Let backtracking keep `best`, the best value of a complete solution found so far (initially $-\infty$), and prune a partial solution $s$ when $U(s) \le$ `best`. If $U$ is optimistic ($U(s) \ge$ the value of every complete solution extending $s$), the search still returns the optimum.
 
-*Proof.* Let $s^*$ be an optimal complete solution, of value $v^*$. If $s^*$ is reached, `best` becomes $v^*$. Otherwise some prefix $s$ of $s^*$ was pruned, at a moment when $U(s) \le$ `best`. Since $U$ is optimistic, $v^* \le U(s) \le$ `best`, so a solution of value at least $v^*$ had already been found, and `best` $= v^*$ because nothing beats the optimum. Pruning on feasibility (Theorem 3.1.1) is kept as well. $\square$
+:::tip[In plain words]
+When looking for the best answer, keep the best one found so far and give up on any partial answer whose most optimistic completion cannot beat it. As long as the estimate never understates what is still possible, the optimum is still found.
+:::
+
+**A tiny instance.** Distribute jobs of lengths $(8, 7, 5, 4, 3)$ to 2 workers so that the larger load is as small as possible. This is a minimisation, so the bound is reversed: a partial assignment is cut when its current larger load is already $\ge$ `best`, because loads only grow (the current larger load never exceeds the larger load of any completion). Jobs are tried longest first, each first on the less loaded worker. The first complete assignment is $8 + 4 + 3 = 15$ and $7 + 5 = 12$, so `best` $= 15$. From then on, every branch that puts 8 and 7 on the same worker reaches load 15 at the second job and is cut with its whole subtree of $2^3$ completions. The search ends with `best` $= 14$ ($8 + 5$ against $7 + 4 + 3$), and the total $27$ shows that no assignment does better than $\lceil 27 / 2 \rceil = 14$. A symmetry cut helps too: the first job may go to worker 0 only, because swapping the two workers gives the same loads.
+
+
+**Proof.**
+1. Let $s^*$ be an optimal complete solution, of value $v^*$. If $s^*$ is reached, `best` becomes $v^*$.
+2. Otherwise some prefix $s$ of $s^*$ was pruned, at a moment when $U(s) \le$ `best`.
+3. Since $U$ is optimistic, $v^* \le U(s) \le$ `best`, so a solution of value at least $v^*$ had already been found.
+4. Nothing beats the optimum, so `best` $= v^*$. Pruning on feasibility (Theorem 3.1.1) is kept as well. $\square$
 
 :::note[This proof needs]
 1. The estimate never understates what the rest can achieve (for a maximum: never smaller than the best completion; for a minimum: never larger than the cheapest completion).
@@ -127,20 +158,36 @@ For an optimisation problem ("the largest total value of a valid choice"), feasi
 3. Running time has no useful worst-case guarantee: the bound helps only as much as the estimate is tight, so test the worst inputs. Two habits make it tight sooner: try the most promising choices first (for example the largest items), so that a good `best` is found early, and make the estimate as sharp as an easy formula allows.
 :::
 
-Example: distribute jobs of lengths $(8, 7, 5, 4, 3)$ to 2 workers so that the larger load is as small as possible. This is a minimisation, so the bound is reversed: a partial assignment is cut when its current larger load is already $\ge$ `best`, because loads only grow (the current larger load never exceeds the larger load of any completion). Jobs are tried longest first, each first on the less loaded worker. The first complete assignment is $8 + 4 + 3 = 15$ and $7 + 5 = 12$, so `best` $= 15$. From then on, every branch that puts 8 and 7 on the same worker reaches load 15 at the second job and is cut with its whole subtree of $2^3$ completions. The search ends with `best` $= 14$ ($8 + 5$ against $7 + 4 + 3$), and the total $27$ shows that no assignment does better than $\lceil 27 / 2 \rceil = 14$. A symmetry cut helps too: the first job may go to worker 0 only, because swapping the two workers gives the same loads.
+<TheoremCode unit="3.1/thm-3" />
+
+The unit shows the search without the symmetry cut: it makes 41 calls where the unpruned tree has 63 nodes.
+
 
 ### 4.4 Meet in the middle
 
 **Theorem 3.1.4 (meet in the middle).** Given $n$ numbers and a target $T$, the number of subsets with sum exactly $T$ (or at most $T$, or the subset sum closest to $T$) can be found in $O(2^{n/2} \cdot n)$ time: split the numbers into halves $A$ and $B$, list the $2^{|A|}$ subset sums of $A$ and the $2^{|B|}$ subset sums of $B$, sort the list of $B$, and for each sum $x$ of $A$ look up the sums $y$ of $B$ with $x + y = T$ (or $\le T$, or closest to $T$) by binary search.
 
-*Proof.* Every subset $S$ of the numbers splits uniquely as $S = S_A \cup S_B$ with $S_A \subseteq A$, $S_B \subseteq B$, and $\operatorname{sum}(S) = \operatorname{sum}(S_A) + \operatorname{sum}(S_B)$. So subsets correspond one-to-one to pairs (a sum from the list of $A$, a sum from the list of $B$), each list entry counted with its own subset. The subsets with sum $T$ are the pairs with $x + y = T$; for a fixed $x$, the matching $y$ form one block of the sorted list of $B$, whose two ends binary search finds (Theorem 1.4.1). Lists: $2^{n/2}$ sums each, built in $O(2^{n/2} \cdot n)$ by bitmasks or by recursion; sorting costs $O(2^{n/2} \cdot n)$; the lookups cost $O(2^{n/2} \cdot n)$. $\square$
+:::tip[In plain words]
+Split n numbers into two halves, list the 2^(n/2) subset sums of each, sort one list, and for each sum of the other half look up the partner by binary search. That is about 2^(n/2) · n steps instead of 2^n.
+:::
+
+**A tiny instance and a budget.** For $n = 40$: Listing all $2^{40} \approx 1.1 \cdot 10^{12}$ subsets is out of budget, but two lists of $2^{20} \approx 10^6$ sums, a sort, and $10^6$ binary searches of 20 steps are about $5 \cdot 10^7$ operations. A small trace: numbers $(3, 5 \mid 2, 6)$, $T = 8$. Sums of $A$: $0, 3, 5, 8$. Sorted sums of $B$: $0, 2, 6, 8$. Look up $8 - x$: for $x = 0$, the value 8 is found once (the subset $\{2, 6\}$); for $x = 3$ and $x = 5$, the values 5 and 3 are not in the list; for $x = 8$, the value 0 is found once (the subset $\{3, 5\}$). So 2 subsets have sum 8, which a check by hand confirms.
+
+
+**Proof.**
+1. Every subset $S$ of the numbers splits uniquely as $S = S_A \cup S_B$ with $S_A \subseteq A$, $S_B \subseteq B$, and $\operatorname{sum}(S) = \operatorname{sum}(S_A) + \operatorname{sum}(S_B)$.
+2. So subsets correspond one-to-one to pairs (a sum from the list of $A$, a sum from the list of $B$), each list entry counted with its own subset.
+3. The subsets with sum $T$ are the pairs with $x + y = T$; for a fixed $x$, the matching $y$ form one block of the sorted list of $B$, whose two ends binary search finds (Theorem 1.4.1).
+4. Lists: $2^{n/2}$ sums each, built in $O(2^{n/2} \cdot n)$ by bitmasks or by recursion; sorting and the lookups cost $O(2^{n/2} \cdot n)$ each. $\square$
 
 :::note[This proof needs]
 1. The objective splits into a part from each half that are combined by a simple rule (a sum, a bitwise exclusive or (XOR), a product), and the question about the combination can be answered from a sorted list (equal to, at most, closest to).
 2. Each half is small enough to list: $2^{20} \approx 10^6$ is comfortable, $2^{25}$ is at the edge of memory.
 :::
 
-Example: $n = 40$. Listing all $2^{40} \approx 1.1 \cdot 10^{12}$ subsets is out of budget, but two lists of $2^{20} \approx 10^6$ sums, a sort, and $10^6$ binary searches of 20 steps are about $5 \cdot 10^7$ operations. A small trace: numbers $(3, 5 \mid 2, 6)$, $T = 8$. Sums of $A$: $0, 3, 5, 8$. Sorted sums of $B$: $0, 2, 6, 8$. Look up $8 - x$: for $x = 0$, the value 8 is found once (the subset $\{2, 6\}$); for $x = 3$ and $x = 5$, the values 5 and 3 are not in the list; for $x = 8$, the value 0 is found once (the subset $\{3, 5\}$). So 2 subsets have sum 8, which a check by hand confirms.
+<TheoremCode unit="3.1/thm-4" />
+
+
 
 ### 4.5 Choosing among the tools
 
@@ -156,29 +203,21 @@ Every tool in this topic is still exhaustive search: it gives the exact answer b
 
 ## 6. Templates
 
-Five programs: two that list objects without repeats, one placement search, one branch and bound and one meet in the middle. Each brute force uses a different method: bitmasks, `next_permutation`, or every assignment without any cut.
+Five functions: two that list objects without repeats, one placement search, one branch and bound and one meet in the middle. Each brute force uses a different method: bitmasks, `next_permutation`, or every assignment without any cut.
 
 ### Distinct sub-multisets (Theorem 3.1.2)
 
-<Code code={distinctSubsets} lang="cpp" title="distinct-subsets/solution.cpp" />
+<CodeSnippet unit="3.1/distinct-subsets" />
 
 **How it works.** Every call of `rec` is one sub-multiset, the values in `chosen`; it is recorded at once, and then each possible next value is added in turn. The next index is always larger than the last one taken (`rec(i + 1)`), and inside one loop a value equal to the previous try is skipped (`i > start && a[i] == a[i - 1]`), so each collection of values is produced once (Theorem 3.1.2). After each child call, `chosen.pop_back()` undoes the addition. Because the values are sorted and the loop goes left to right, the collections come out in lexicographic order.
-
-**C++ details explained.** `chosen.push_back(a[i])` and `chosen.pop_back()` add and remove the last element of a vector in $O(1)$, so `chosen` works as a stack of the current choices. `found.push_back(chosen)` stores a copy. `vector<vector<int>>` is a vector whose elements are vectors (topic 0.6).
-
-**Tested.** Stress-tested against a brute force that tries every bitmask (Theorem 0.5.2), sorts each subset and collects them in a `set`, which removes repeats, on 5000 random inputs ($n \le 8$, values from a range of 1 to 11 numbers, so repeats are frequent). There are also 4 fixed tests: one value, $(1, 2, 2)$ from Section 4.2, fifteen equal values (16 collections), and twelve values with many repeats.
 
 **Alternative formulation.** Group equal values: for each distinct value with $c$ copies, choose how many copies to take, from 0 to $c$. A recursion over the distinct values then produces each collection once without any skip rule, and the count is $\prod (c + 1)$, the product rule of topic 2.3.
 
 ### Distinct arrangements (Theorem 3.1.2)
 
-<Code code={distinctPermutations} lang="cpp" title="distinct-permutations/solution.cpp" />
+<CodeSnippet unit="3.1/distinct-permutations" />
 
 **How it works.** `current` holds the values placed so far and `used[i]` tells whether index $i$ is already placed. At each position, every unused index is tried, except that a value is skipped if an equal value at a smaller index is still unused. So equal values are always placed in the order of their indices, and two arrangements that differ only by swapping equal values are not both produced. Both changes, `used[i]` and `current`, are undone after the call.
-
-**C++ details explained.** `vector<bool> used` stores one flag per index; `used.assign(n, false)` sets its size to $n$ and every flag to false. The condition `!used[i - 1]` is the whole trick.
-
-**Tested.** Stress-tested against a brute force that runs `next_permutation` from the sorted list (Theorem 0.5.3), on 5000 random inputs ($n \le 7$, values from 1 to at most 4). There are also 5 fixed tests: one value, $(1, 1, 2)$, four equal values, three copies each of 1, 2, 3 ($\frac{9!}{3!\,3!\,3!} = 1680$ arrangements), and seven different values (5040).
 
 **Alternative formulation.** Writing `used[i - 1]` instead of `!used[i - 1]` is also correct, and it passed the same 5000 stress tests when tried as a bug: it forces equal values to be placed right to left instead of left to right, which again allows exactly one order of the equal copies. But it finds that out late. A copy can be placed only after all the copies to its right, so most branches place a wrong copy first and run into a dead end deeper down: for eight equal values, the version above makes 9 calls and this one 2 781, and for $(1, 1, 1, 2, 2, 2)$ it is 69 calls against 327, for the same 20 arrangements.
 
@@ -186,37 +225,25 @@ Another variant keeps a count for each distinct value instead of `used`: at each
 
 ### Counting queen placements (Theorem 3.1.1)
 
-<Code code={queens} lang="cpp" title="queens/solution.cpp" />
+<CodeSnippet unit="3.1/queens" />
 
 **How it works.** Row `row` gets one queen; a column `c` is tried only if the square is free and no earlier queen uses its column, its diagonal or its anti-diagonal. On one diagonal (down and to the right), `row - c` is the same for every square; on one anti-diagonal, `row + c` is. So three arrays of marks answer the test in $O(1)$; `row - c + n - 1` shifts the diagonal number from $-(n - 1) \dots n - 1$ to $0 \dots 2n - 2$. The test only reads queens already placed, so it never rejects a placement that could be completed, and the marks are cleared after each call (both conditions of Theorem 3.1.1). The function returns the number of completions, so the answer is `rec(0)`.
-
-**C++ details explained.** `colUsed[c] = diagUsed[…] = antiUsed[…] = true;` assigns from right to left, setting all three marks in one statement. `long long rec(int row)` returns a value, unlike the earlier `void` recursions: each call adds up the counts of its children.
-
-**Tested.** Stress-tested against a brute force that tries all $n^n$ ways to give each row a column and checks every pair of queens, on 5000 random boards ($n \le 6$, up to 40% blocked squares). There are also 6 fixed tests: $n = 1$, $n = 2$ (no placement), the free boards for $n = 8, 10, 12$ (92, 724 and 14 200 placements) and a $9 \times 9$ board with blocked squares; the expected values were computed by a separate program that checks each new queen against the earlier ones by a loop.
 
 **Alternative formulation.** Store the occupied columns, diagonals and anti-diagonals of the current partial placement as three bitmasks (topic 1.7); the free columns of the next row are then the zero bits of their bitwise or, shifted. This is the same search with a faster test.
 
 ### Smallest largest load (Theorem 3.1.3)
 
-<Code code={minMaxLoad} lang="cpp" title="min-max-load/solution.cpp" />
+<CodeSnippet unit="3.1/min-max-load" />
 
 **How it works.** Job $i$ goes to each worker in turn; `currentMax` is the largest load so far. Loads only grow, so `currentMax` never exceeds the largest load of any completion: it is an optimistic estimate for a minimum, and a branch with `currentMax >= best` is cut (Theorem 3.1.3). Two habits make the cut effective. The jobs are sorted longest first, so loads become large early and branches die near the root. And a worker whose load equals that of an earlier worker is skipped: swapping two workers with equal loads turns any completion into one with the same largest load, so trying one of them is enough (the canonical-order idea of Theorem 3.1.2, applied to workers).
-
-**C++ details explained.** `sort(job.rbegin(), job.rend())` sorts in decreasing order: `rbegin()` and `rend()` walk the vector backwards. `LLONG_MAX` is the largest `long long`, used as "no solution found yet".
-
-**Tested.** Stress-tested against a brute force that tries all $k^n$ assignments without any cut, on 5000 random inputs ($n \le 8$, $k \le 4$, lengths up to 3 or up to 20, so ties between workers are frequent). There are also 6 fixed tests: one job, the example of Section 4.3 (answer 14), twelve equal jobs of length $10^8$ on 3 workers, twelve random long jobs on 3 workers, eleven short jobs on 4 workers, and 7 jobs on 7 workers; their expected values come from a separate program that tries all $k^n$ assignments. On random inputs with $n = 12$ and any $k$, the search takes about 10 milliseconds.
 
 **Alternative formulation.** Binary search on the answer $L$ (topic 1.4) and ask "can the jobs be packed into $k$ workers of capacity $L$?" with the same backtracking; the cut is then "the job does not fit". It is the same search with a different cut, and it can be faster because a fixed capacity rejects a job as soon as it overflows.
 
 ### Counting subsets with a bounded sum (Theorem 3.1.4)
 
-<Code code={mitmCount} lang="cpp" title="mitm-count/solution.cpp" />
+<CodeSnippet unit="3.1/mitm-count" />
 
 **How it works.** `subsetSums` lists the $2^{h}$ subset sums of one half: it starts with the empty sum, and each element doubles the list by adding itself to every sum already there. The right half's list is sorted. For each left sum $x \le T$, the right sums $y$ with $x + y \le T$ are exactly those $\le T - x$, a prefix of the sorted list, whose length `upper_bound` returns (Theorem 3.1.4). With $n = 40$, each list has $2^{20} \approx 10^6$ sums.
-
-**C++ details explained.** `const vector<long long>& v` passes the vector by reference without copying it, and `const` promises not to change it (topic 0.6). `upper_bound(…, T - x)` returns an iterator to the first element greater than $T - x$; subtracting `right.begin()` turns it into a count of the elements before it (topic 1.4). `int size = sums.size();` is read once before the loop, because the loop itself makes `sums` longer.
-
-**Tested.** Stress-tested against a brute force that tries all $2^n$ bitmasks, on 5000 random inputs ($n \le 12$, values up to 5 or up to $10^9$, $T$ from 0 to just above the total). There are also 4 fixed tests: one element with $T = 0$, forty ones with $T = 20$ (answer $\sum_{j \le 20} \binom{40}{j}$), forty values $10^9$ with a huge $T$ (all $2^{40}$ subsets), and $1, 2, 4, \dots, 2^{29}$ with ten copies of $2^{30}$, whose answer follows from binary representations.
 
 **Alternative formulation.** Sort both lists and move two pointers (topic 1.3): as $x$ increases through the sorted left list, the largest valid $y$ only moves down. This replaces the binary searches by one $O(2^{n/2})$ pass after sorting.
 
@@ -336,7 +363,7 @@ At most 100 starting cells and 11 moves. A walk is a sequence of 12 cells; listi
 
 #### Step 2: Question form → candidate tools
 
-Recursion over choices (Theorem 0.5.4) with "4 directions per move" lists $100 \cdot 4^{11} \approx 4 \cdot 10^8$ sequences and then checks each one for repeated cells: too slow, and most of the work goes into walks that died on their second move. Backtracking with a check after every move (Theorem 3.1.1) cuts those walks at the first revisit: the constraint-placement card. A formula from topic 2.3 does not apply: the blocked cells and the no-revisit rule destroy any simple count.
+Recursion over choices (Theorem 0.5.4) with "4 directions per move" lists $100 \cdot 4^{11} \approx 4 \cdot 10^8$ sequences and then checks each one for repeated cells: too slow, and most of the work goes into walks that died on their second move. Backtracking with a check after every move (Theorem 3.1.1) cuts those walks at the first revisit: the "Place with checks and undo" card. A formula from topic 2.3 does not apply: the blocked cells and the no-revisit rule destroy any simple count.
 
 #### Step 3: Property check → decision
 
@@ -348,9 +375,7 @@ A valid walk is a sequence $(p_0, \dots, p_K)$ of empty cells, each adjacent to 
 
 #### Step 5: Code
 
-<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
-
-**C++ details explained.** `dr` and `dc` list the four moves as row and column changes, so one loop over `d` replaces four copies of the same code. `visited.assign(H, vector<bool>(W, false))` makes an $H \times W$ grid of false values. The start cell is marked before the first call, so the walk cannot come back to it. Tested on the three samples from the problem page, on a $1 \times 1$ grid, a $1 \times 10$ line with $K = 5$ (10 walks: 5 starts in each direction), and the empty $10 \times 10$ grid with $K = 11$, checked against a separate program that grows all walks one level at a time; and on 5000 random grids ($H, W \le 3$) against a brute force that tries every sequence of $K + 1$ cells.
+<CodeSnippet unit="3.1/example-1" />
 
 #### Step 6: Alternative approach
 
@@ -381,9 +406,7 @@ Every subset $S$ splits uniquely into $S_L$ (its elements among the first $\lflo
 
 #### Step 5: Code
 
-<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
-
-**C++ details explained.** `upper_bound` returns an iterator to the first sum greater than $T - x$; `prev(it)` moves one step back to the largest sum that is at most $T - x$, and `*` reads the value there. It never steps before the beginning, because 0 is the smallest right sum and $0 \le T - x$. Tested on the four samples from the problem page, on forty times of $10^9$ with $T = 10^9$ (answer $10^9$), on the times $1, \dots, 40$ with a large $T$ (answer 820, everything), and on 5000 random inputs ($N \le 12$) against a brute force over all bitmasks.
+<CodeSnippet unit="3.1/example-2" />
 
 #### Step 6: Alternative approach
 

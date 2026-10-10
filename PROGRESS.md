@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.2 Graph structure (pipeline steps 1–6 done); 4.1 is done
+- Topic: 4.2 Graph structure (pipeline steps 1–7 done); 4.1 is done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.2 step 6 (worked examples: CSES 1668, ABC 288 C, LeetCode 802 with code units example-1..3, stress 5000 each)
-- Next action: step 7 (problem ladder from the 4.2 bank)
+- Last completed step: topic 4.2 step 7 (ladder: 17 rungs, 4+4+4+5 per card; the CF problems 862B, 687A, 1144F, 1020B, 1027D, 510C, 103B, 977E, 131D are † problems whose statements could not be opened)
+- Next action: step 8 (identification drill, look-alike pairs from the reserved bank)
 
 ## Gates
 | Gate | Status | Date |

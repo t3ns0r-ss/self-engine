@@ -825,7 +825,7 @@ Run these steps in order. After each: update `PROGRESS.md` and commit.
 7. **Worked examples.** Section 8 in the six-step format; code units tested.
 8. **Drill, look-alikes, self-test, checkpoint, reviews.** Fill the data file; review set pages render from it.
 9. **Decision map.** Add entries; check the Handbook page renders them in the right groups. Resolve every look-alike and negative-example reference against the card list; replace any that would need a later topic (Section 6.11).
-10. **Self-review and merge.** `npm run build` and `bash scripts/test_units.sh code` pass; keyword search clean; read the whole lesson in the browser as a beginner would against Section 17.1; fix anything unclear; merge.
+10. **Self-review and merge.** `npm run build` passes and `bash scripts/test_units.sh code/{topic}` passes locally; keyword search clean; read the whole lesson in the browser as a beginner would against Section 17.1; fix anything unclear; merge.
 
 ---
 
@@ -839,7 +839,7 @@ Run these steps in order. After each: update `PROGRESS.md` and commit.
 - Never force-push or rewrite `main`.
 
 ### 14.1 Continuous integration
-A GitHub Actions workflow (if the repository is on GitHub) that, on every push and pull request, installs dependencies, runs `bash scripts/test_units.sh code` (g++ is preinstalled on Ubuntu runners), and runs `npm run build`. It does not deploy unless Section 14.3 is enabled.
+A GitHub Actions workflow (if the repository is on GitHub) that, on every push and pull request, installs dependencies, runs the validator tests (`npm test`) and `npm run build`. CI does **not** run the code units: `test_units.sh` is slow, so the agent runs it locally (on the units it wrote or changed, e.g. `bash scripts/test_units.sh code/1.6`) while writing a lesson, and the step 10 self-review (Section 13) requires it to pass there. Whoever wants it in CI can add one step `bash scripts/test_units.sh code` (units run in parallel and unchanged ones can be skipped with a cached `.unit-stamps/`). It does not deploy unless Section 14.3 is enabled.
 
 ### 14.2 Self-hosted serving
 The site is static: `npm run build` produces `dist/`, which any web server can serve. No Node.js process runs on the server.

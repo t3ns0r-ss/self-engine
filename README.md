@@ -13,7 +13,7 @@ npm run build && npm run preview    # check the production build
 ## Tests
 | Command | What it checks |
 |---|---|
-| `bash scripts/test_units.sh code` | every lesson code unit: compiles with `-Wall -Wextra -Werror`, passes its fixed tests, and passes 5000 random cases against its brute force |
+| `bash scripts/test_units.sh code` | every lesson code unit: compiles with `-Wall -Wextra -Werror`, passes its fixed tests, and passes 5000 random cases against its brute force. Run it locally (for example `code/1.6`); CI does not run it |
 | `bash scripts/stress.sh code/1.3/window-sum 2000` | one unit against its brute force |
 | `npm test` | the data validators |
 | `npm run test:e2e` | every component and page in a real browser, on a temporary placeholder topic (needs Playwright: `npm install --no-save playwright && npx playwright install chromium`) |

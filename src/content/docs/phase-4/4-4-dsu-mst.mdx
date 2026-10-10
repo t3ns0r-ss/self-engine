@@ -423,6 +423,94 @@ Wrong output `11`, correct output `19`. After the road of toll 3, towns 2 and 3 
 
 ## 8. Worked examples
 
+### Example 1: Reachability Query
+
+[AtCoder Beginner Contest (ABC) 420 E: Reachability Query](https://atcoder.jp/contests/abc420/tasks/abc420_e). In short: a graph has $N \le 2 \cdot 10^5$ vertices, all white, and no edges. Then $Q \le 6 \cdot 10^5$ queries arrive: add an edge between $u$ and $v$; flip the colour of a vertex between white and black; or ask whether a black vertex can be reached from $v$ (zero or more edges).
+
+#### Step 1: Constraints → budget
+
+$Q = 6 \cdot 10^5$ queries on up to $2 \cdot 10^5$ vertices. A walk for every question of the third kind is up to $Q \cdot (N + Q) \approx 5 \cdot 10^{11}$ steps. About $\log_2 N \approx 18$ steps per query give $10^7$.
+
+#### Step 2: Question form → candidate tools
+
+- A fresh walk from $v$ for each question ([topic 4.1](../4-1-graph-traversal/)): too slow.
+- Edges are only added and never removed, and the question is about the group of $v$: the card "Merging groups (disjoint set union)".
+
+#### Step 3: Property check → decision
+
+Every query of the first kind joins two groups; no edge is removed. The question asks whether the group of $v$ contains a black vertex, which is a property of the group. Decision: a disjoint set union that keeps, at each leader, the number of black vertices of its group.
+
+#### Step 4: Proof for this problem
+
+By Theorem 4.4.1(a), a black vertex can be reached from $v$ exactly when the group of $v$ contains one. The number of black vertices in a group is kept at the leader: when two groups merge, the new count is the sum of the two counts (it is read before the merge, because after the merge only one of the two leaders is left), and when a vertex changes colour, the count of its leader changes by one. So the count at the leader is always the true number of black vertices of its group, and the answer is Yes exactly when it is positive. Each query takes $O(\log N)$ steps by Theorem 4.4.1(c).
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.4/example-1" />
+
+#### Step 6: Alternative approach
+
+Walking the group of $v$ for each question is simple but too slow. A weighted version of the structure (a count that is moved when the leader changes) is the same idea written differently. There is no shortcut for the colour changes without the count at the leader.
+
+### Example 2: Decayed Bridges
+
+[AtCoder Beginner Contest (ABC) 120 D: Decayed Bridges](https://atcoder.jp/contests/abc120/tasks/abc120_d). In short: $N \le 10^5$ islands are joined by $M \le 10^5$ bridges; initially any two islands can reach each other. The bridges collapse one by one, from the first to the last. After each collapse, print the number of pairs of islands that can no longer reach each other.
+
+#### Step 1: Constraints → budget
+
+$M = 10^5$ collapses. A walk of the whole map after each is $M \cdot (N + M) = 2 \cdot 10^{10}$ steps. The answer for one state can be as large as $\binom{N}{2} \approx 5 \cdot 10^9$, which needs `long long`.
+
+#### Step 2: Question form → candidate tools
+
+- A fresh walk after each collapse ([topic 4.1](../4-1-graph-traversal/)): $2 \cdot 10^{10}$ steps.
+- The union structure can only join, but all the collapses are given in advance: the card "Deletions in reverse".
+
+#### Step 3: Property check → decision
+
+The order of the collapses is fully known, and each question is about which islands can still reach each other: groups only. Decision: add the bridges from the last to the first, keeping the number of pairs that are linked.
+
+#### Step 4: Proof for this problem
+
+By Theorem 4.4.2, the groups just after $i$ collapses are those of the structure after adding the bridges $i+1, \dots, M$. A pair of islands can reach each other exactly when it is in one group (Theorem 4.4.1(a)). Adding a bridge between two different groups of sizes $a$ and $b$ makes exactly the $a \cdot b$ pairs with one island in each group reachable, and no other pair changes. So the number of linked pairs after each addition is known, and the answer after $i$ collapses is $\binom{N}{2}$ minus the linked pairs just before bridge $i$ is added back.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.4/example-2" />
+
+#### Step 6: Alternative approach
+
+An offline divide and conquer that processes the time axis with an undoable structure would work, but it needs the rollback that this course does not cover, and it is more complicated. Going backwards makes the problem plain.
+
+### Example 3: Min Cost to Connect All Points
+
+[LeetCode 1584: Min Cost to Connect All Points](https://leetcode.com/problems/min-cost-to-connect-all-points/). In short: given $n \le 1000$ points in the plane, connecting two points costs the Manhattan distance between them; find the least total cost so that all points are connected.
+
+#### Step 1: Constraints → budget
+
+$n = 1000$ gives $n(n-1)/2 \approx 5 \cdot 10^5$ possible links. Sorting them takes about $5 \cdot 10^5 \cdot 19 \approx 10^7$ steps. Trying all sets of $n - 1$ links is impossible. The sum of 999 links of cost up to $4 \cdot 10^6$ could in principle reach $4 \cdot 10^9$, so a general program uses `long long`; LeetCode fixes the return type as `int`, and the example follows it.
+
+#### Step 2: Question form → candidate tools
+
+- Try every set of $n - 1$ links ([topic 0.5](../../phase-0/0-5-brute-force/)): impossible.
+- Shortest paths from one point ([topic 4.3](../4-3-shortest-paths/)): they give the cheapest route to each point, which is not a cheapest network.
+- A set of links that connects everything at the least total cost: the card "Cheapest way to connect everything (spanning tree)".
+
+#### Step 3: Property check → decision
+
+The answer is a set of links that connects all points, and its total is minimised. Decision: Kruskal's algorithm on the complete graph. Since the graph is complete, Prim's algorithm with an array (the template for points) is an equally good choice.
+
+#### Step 4: Proof for this problem
+
+The points and all possible links form a connected weighted graph, and a set of links connects all points at the least total cost exactly when it is a minimum spanning tree (a set that connects everything and contains a cycle can lose an edge of the cycle and stay connected, at no higher cost). By Theorem 4.4.4, taking the links from the cheapest and keeping a link when it joins two groups gives a minimum spanning tree. The total of the kept links is the answer.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.4/example-3" />
+
+#### Step 6: Alternative approach
+
+Prim's algorithm of Theorem 4.4.5 on an array runs in $O(n^2)$ and does not store the links. For $n \le 1000$ both take a few milliseconds.
+
 ## 9. Problem ladder
 
 <Ladder topic="4.4" />

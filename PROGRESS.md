@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.4 DSU and MST (pipeline steps 1–5 done); 4.1, 4.2, 4.3 are done
+- Topic: 4.4 DSU and MST (pipeline steps 1–6 done); 4.1, 4.2, 4.3 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.4 step 5 (seven templates, nine bugs)
-- Next action: step 6 (worked examples: ac-abc420_e, ac-abc120_d, lc-min-cost-to-connect-all-points with code units)
+- Last completed step: topic 4.4 step 6 (three worked examples with code units)
+- Next action: step 7 (problem ladder from the 4.4 bank, 12-20 problems, >= 3 per card)
 
 ## Gates
 | Gate | Status | Date |

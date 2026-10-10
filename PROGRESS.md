@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.3 Shortest paths (pipeline steps 1–6 done); 4.1 and 4.2 are done
+- Topic: 4.3 Shortest paths (pipeline steps 1–7 done); 4.1 and 4.2 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.3 step 6 (three worked examples with code units)
-- Next action: step 7 (problem ladder from the 4.3 bank)
+- Last completed step: topic 4.3 step 7 (16-problem ladder)
+- Next action: step 8 (drill with 3+ earlier-topic answers, 2-4 look-alike pairs: cses-1671/1672, ac-abc237_e/ac-abc137_e)
 
 ## Gates
 | Gate | Status | Date |

@@ -615,32 +615,13 @@ done
 echo "OK: $N random cases matched"
 ```
 
-### 8.4 `scripts/test_units.sh` (use exactly; tested)
-Compiles every unit, checks its fixed tests, and stress-tests every unit that has `brute.cpp` and `gen.cpp` with 5000 cases.
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-ROOT="${1:-code}"
-fail=0
-while IFS= read -r unit; do
-  mkdir -p "$unit/.build"
-  g++ -std=c++17 -O2 -Wall -Wextra -Werror -o "$unit/.build/solution" "$unit/solution.cpp"
-  for in_file in "$unit"/tests/*.in; do
-    [ -e "$in_file" ] || continue
-    expected="${in_file%.in}.out"
-    actual="$unit/.build/actual.out"
-    "$unit/.build/solution" < "$in_file" > "$actual"
-    if ! diff -q -Z "$actual" "$expected" > /dev/null; then
-      echo "FAIL: $in_file"; fail=1
-    fi
-  done
-  if [ -f "$unit/brute.cpp" ] && [ -f "$unit/gen.cpp" ]; then
-    bash "$(dirname "$0")/stress.sh" "$unit" 5000 > /dev/null || { echo "STRESS FAIL: $unit"; fail=1; }
-  fi
-done < <(find "$ROOT" -name solution.cpp -exec dirname {} \; | sort)
-[ "$fail" -eq 0 ] && echo "All code units passed" || exit 1
-```
-Add `**/.build/` to `.gitignore`. If a problem allows several correct outputs, write a `checker.cpp` for that unit and document how to run it in the unit folder.
+### 8.4 `scripts/test_units.sh` (see the file in the repository; tested)
+Compiles every unit, checks its fixed tests, and stress-tests every unit that has `brute.cpp` and `gen.cpp` with 5000 cases (`STRESS_N`). Why it is built this way: a stress run spawns three processes per case, so about 180 units take well over an hour one after another.
+- Units run **in parallel** (`xargs -P`, all cores, or `JOBS`).
+- A unit that already passed with **identical files** is skipped: the script keeps a content hash per unit (all files of the folder except `.build/`, plus `stress.sh` and `STRESS_N`) in `.unit-stamps/`, written only after the unit passed. CI caches that folder (`actions/cache`, restore key `unit-stamps-`), so a normal push re-tests only the units it changed.
+- Any failure prints the unit and exits non-zero; passing units print nothing.
+Add `.unit-stamps/` and `**/.build/` to `.gitignore`.
+If a problem allows several correct outputs, write a `checker.cpp` for that unit and document how to run it in the unit folder.
 
 ### 8.5 Rules for stress testing
 - Templates must pass 5000 iterations. Never lower the count to make a test pass.

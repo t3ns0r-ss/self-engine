@@ -7,24 +7,29 @@ Output: the minimum total cost.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n;
-    cin >> n;
+// snippet:begin
+// EDPC N. best[l][r] = the least cost to combine slimes l..r into one: the last combination joins [l, k] and [k + 1, r] and
+// costs the total size, found with prefix sums.
+long long slimes(const vector<long long>& a) {
+    int n = a.size();
     vector<long long> prefix(n + 1, 0);
-    for (int i = 1; i <= n; i++) {
-        long long a;
-        cin >> a;
-        prefix[i] = prefix[i - 1] + a;
-    }
-    // best[l][r] = least cost to combine slimes l..r (1-based) into one
+    for (int i = 1; i <= n; i++) prefix[i] = prefix[i - 1] + a[i - 1];
     vector<vector<long long>> best(n + 2, vector<long long>(n + 2, 0));
-    for (int len = 2; len <= n; len++) {
+    for (int len = 2; len <= n; len++)
         for (int l = 1; l + len - 1 <= n; l++) {
             int r = l + len - 1;
             long long low = LLONG_MAX;
-            for (int k = l; k < r; k++) low = min(low, best[l][k] + best[k + 1][r]);  // the last combination
-            best[l][r] = low + prefix[r] - prefix[l - 1];                             // it costs the total size
+            for (int k = l; k < r; k++) low = min(low, best[l][k] + best[k + 1][r]);
+            best[l][r] = low + prefix[r] - prefix[l - 1];
         }
-    }
-    cout << best[1][n] << "\n";
+    return best[1][n];
+}
+// snippet:end
+
+int main() {
+    int n;
+    cin >> n;
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    cout << slimes(a) << "\n";
 }

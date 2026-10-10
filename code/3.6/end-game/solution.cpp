@@ -7,20 +7,26 @@ Output: the first player's total.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 3.6.3. diff[l] = the score difference for the player to move on the segment [l, l + len - 1]; the first player's
+// total is (sum + diff) / 2.
+long long endGame(const vector<long long>& a) {
+    int n = a.size();
+    long long sum = accumulate(a.begin(), a.end(), 0LL);
+    vector<long long> diff(a);  // length 1: take the only number
+    for (int len = 2; len <= n; len++)
+        for (int l = 0; l + len - 1 < n; l++) {
+            int r = l + len - 1;
+            diff[l] = max(a[l] - diff[l + 1], a[r] - diff[l]);  // diff[l] still holds [l, r - 1]
+        }
+    return (sum + diff[0]) / 2;
+}
+// snippet:end
+
 int main() {
     int n;
     cin >> n;
     vector<long long> a(n);
-    long long sum = 0;
-    for (auto& x : a) cin >> x, sum += x;
-    // diff[l] = score difference for the player to move on the segment [l, l + len - 1] (Theorem 3.6.3)
-    vector<long long> diff(a);                    // length 1: take the only number
-    for (int len = 2; len <= n; len++) {
-        for (int l = 0; l + len - 1 < n; l++) {
-            int r = l + len - 1;
-            // diff[l] still holds [l, r - 1] (length len - 1), diff[l + 1] holds [l + 1, r]
-            diff[l] = max(a[l] - diff[l + 1], a[r] - diff[l]);
-        }
-    }
-    cout << (sum + diff[0]) / 2 << "\n";
+    for (auto& x : a) cin >> x;
+    cout << endGame(a) << "\n";
 }

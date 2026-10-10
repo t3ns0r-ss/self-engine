@@ -7,25 +7,28 @@ Output: the length.
 #include <bits/stdc++.h>
 using namespace std;
 
-bool matches(char open, char close) {
-    return (open == '(' && close == ')') || (open == '[' && close == ']');
+// snippet:begin
+// Theorem 3.6.5 for brackets. best[l][r] for the segment s[l..r]: s[l] is unused, or matched with a later s[k] of the matching
+// type, which splits the segment into the inside (l, k) and the rest [k + 1, r].
+int longestCorrectBrackets(const string& s) {
+    int n = s.size();
+    auto matches = [](char open, char close) { return (open == '(' && close == ')') || (open == '[' && close == ']'); };
+    vector<vector<int>> best(n + 1, vector<int>(n + 1, 0));
+    auto get = [&](int l, int r) { return l > r ? 0 : best[l][r]; };
+    for (int len = 2; len <= n; len++)
+        for (int l = 0; l + len - 1 < n; l++) {
+            int r = l + len - 1;
+            int value = get(l + 1, r);  // s[l] is not used
+            for (int k = l + 1; k <= r; k++)
+                if (matches(s[l], s[k])) value = max(value, 2 + get(l + 1, k - 1) + get(k + 1, r));
+            best[l][r] = value;
+        }
+    return get(0, n - 1);
 }
+// snippet:end
 
 int main() {
     string s;
     cin >> s;
-    int n = s.size();
-    // best[l][r] for the segment s[l..r]; an empty segment (l > r) counts 0
-    vector<vector<int>> best(n + 1, vector<int>(n + 1, 0));
-    auto get = [&](int l, int r) { return l > r ? 0 : best[l][r]; };
-    for (int len = 2; len <= n; len++) {
-        for (int l = 0; l + len - 1 < n; l++) {
-            int r = l + len - 1;
-            int value = get(l + 1, r);                    // s[l] is not used
-            for (int k = l + 1; k <= r; k++)              // s[l] is matched with s[k] (Theorem 3.6.5)
-                if (matches(s[l], s[k])) value = max(value, 2 + get(l + 1, k - 1) + get(k + 1, r));
-            best[l][r] = value;
-        }
-    }
-    cout << get(0, n - 1) << "\n";
+    cout << longestCorrectBrackets(s) << "\n";
 }

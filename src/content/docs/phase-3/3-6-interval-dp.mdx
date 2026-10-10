@@ -6,6 +6,9 @@ topic: "3.6"
 ---
 import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
 import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
 import Drill from '../../../components/Drill.astro';
@@ -13,12 +16,6 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
-import matrixChain from '../../../../code/3.6/matrix-chain/solution.cpp?raw';
-import endGame from '../../../../code/3.6/end-game/solution.cpp?raw';
-import palindromeSubsequence from '../../../../code/3.6/palindrome-subsequence/solution.cpp?raw';
-import bracketPairs from '../../../../code/3.6/bracket-pairs/solution.cpp?raw';
-import example1 from '../../../../code/3.6/example-1/solution.cpp?raw';
-import example2 from '../../../../code/3.6/example-2/solution.cpp?raw';
 
 <TopicHeader topic="3.6" />
 
@@ -34,10 +31,7 @@ The key idea: look at the **last** merge. It joins a pile made from piles $1..k$
 
 ### What you need
 
-- [Topic 3.2](../3-2-dp-foundations/), dynamic programming (DP) foundations: states and transitions (Theorem 3.2.1), filling in an acyclic order (Theorem 3.2.3), memoisation (Theorem 3.2.4) and reconstruction (Theorem 3.2.6).
-- [Topic 1.2](../../phase-1/1-2-prefix-sums/), prefix sums: the sum of a segment in $O(1)$.
-- [Topic 3.4](../3-4-sequence-dp/), sequence DP: tables over pairs of prefixes, the model for the palindrome tables here.
-- [Topic 3.5](../3-5-counting-dp/), counting DP: interval counts modulo a prime use the same sum rule.
+<WhatYouNeed topic="3.6" />
 
 ### What this topic does not cover
 
@@ -59,12 +53,24 @@ The key idea: look at the **last** merge. It joins a pile made from piles $1..k$
 
 **Theorem 3.6.1 (filling by length).** Suppose the value $f[l][r]$ of every segment is determined by the values of segments strictly inside it (shorter segments $[l', r'] \subset [l, r]$), plus base values for segments of length 1 (or 0). Then computing the segments in order of increasing length computes every value correctly. With $n$ elements there are $O(n^2)$ states; if each takes $O(n)$ work, the total is $O(n^3)$.
 
-*Proof.* Number the segments by length, breaking ties arbitrarily. Every transition goes from a strictly shorter segment to a longer one, so this numbering is an acyclic order, and Theorem 3.2.3 applies. $\square$
+:::tip[In plain words]
+When the value of a segment depends only on shorter segments inside it, compute the segments in order of increasing length. Looping over the left end first would ask for a value that has not been computed yet.
+:::
+
+**A tiny instance.** Which segments of "abaca" are palindromes: `pal[l][r]` needs `pal[l + 1][r - 1]`, so the segments are filled by length; the palindromic segments are a, aba, b, a, aca, c, a, seven in all.
+
+**Proof.**
+1. Number the segments by length, breaking ties arbitrarily.
+2. Every transition goes from a strictly shorter segment to a longer one, so this numbering is an acyclic order, and Theorem 3.2.3 applies. $\square$
 
 :::note[This proof needs]
 1. A segment's value uses only shorter segments. Filling row by row in $l$ from 1 to $n$ is **wrong** here: $f[l][r]$ needs $f[l+1][r]$, which comes later in that order. Loop over the length outside (or over $l$ from $n$ down to 1, with $r$ from $l$ up).
 2. The budget: $n \le 500$ for $O(n^3)$, $n \le 5000$ for $O(n^2)$.
 :::
+
+<TheoremCode unit="3.6/thm-1" />
+
+
 
 ### 4.2 The best split point
 
@@ -72,15 +78,11 @@ The key idea: look at the **last** merge. It joins a pile made from piles $1..k$
 $$\text{best}[l][r] = \min_{l \le k < r} \left(\text{best}[l][k] + \text{best}[k+1][r]\right) + S(l, r),$$
 where $S(l, r) = a_l + \dots + a_r$ is computed with prefix sums. Time $O(n^3)$.
 
-*Proof.* Consider any way to merge the piles $l..r$. Its last merge joins two piles; since only neighbours are merged, each of them was built from a contiguous block, so they are $[l, k]$ and $[k+1, r]$ for some $k$, and the merges inside one block never touched the other. The last merge costs $S(l, r)$ whatever $k$ is. So the total is (cost of merging $[l, k]$) + (cost of merging $[k+1, r]$) + $S(l, r)$, and for a fixed $k$ the two parts are minimised independently (Theorem 3.2.1). Every $k$ is possible, so the minimum over $k$ is the answer. $\square$
-
-:::note[This proof needs]
-1. Some last step splits the segment into **independent** sub-segments: what happens inside one does not change the cost of the other.
-2. The cost of the last step depends only on $l$, $r$ (and $k$), not on how the parts were built.
-3. Other problems choose a different "last" event: the last balloon burst inside $(l, r)$, the first cut of a stick, the root of a tree on keys $l..r$. The proof is the same once that event splits the segment into independent parts.
+:::tip[In plain words]
+Look at the last merge of a solution: it joins two blocks that were built separately and never interacted. So the best cost of a segment is the best, over the split point, of the two parts plus the cost of that last step.
 :::
 
-Trace for piles $(4, 1, 2, 3)$, entry $(l, r)$ = best cost for piles $l..r$:
+**A tiny instance.** Piles $(4, 1, 2, 3)$, entry $(l, r)$ = best cost for piles $l..r$:
 
 | | $r = 1$ | $r = 2$ | $r = 3$ | $r = 4$ |
 |---|---|---|---|---|
@@ -91,6 +93,24 @@ Trace for piles $(4, 1, 2, 3)$, entry $(l, r)$ = best cost for piles $l..r$:
 
 For $[1, 4]$: $k = 1$ gives $0 + 9$, $k = 2$ gives $5 + 5$, $k = 3$ gives $10 + 0$; the minimum is 9, plus $S = 10$: 19.
 
+
+**Proof.**
+1. Consider any way to merge the piles $l..r$. Its last merge joins two piles; since only neighbours are merged, each of them was built from a contiguous block, so they are $[l, k]$ and $[k+1, r]$ for some $k$.
+2. The merges inside one block never touched the other.
+3. The last merge costs $S(l, r)$ whatever $k$ is.
+4. So the total is (cost of merging $[l, k]$) + (cost of merging $[k+1, r]$) + $S(l, r)$, and for a fixed $k$ the two parts are minimised independently (Theorem 3.2.1).
+5. Every $k$ is possible, so the minimum over $k$ is the answer. $\square$
+
+:::note[This proof needs]
+1. Some last step splits the segment into **independent** sub-segments: what happens inside one does not change the cost of the other.
+2. The cost of the last step depends only on $l$, $r$ (and $k$), not on how the parts were built.
+3. Other problems choose a different "last" event: the last balloon burst inside $(l, r)$, the first cut of a stick, the root of a tree on keys $l..r$. The proof is the same once that event splits the segment into independent parts.
+:::
+
+<TheoremCode unit="3.6/thm-2" />
+
+
+
 ### 4.3 Taking from the ends
 
 In some games and processes, items are removed only from the two ends of a row. Then whatever remains is always one segment $[l, r]$.
@@ -99,43 +119,76 @@ In some games and processes, items are removed only from the two ends of a row. 
 $$D[l][r] = \max\left(a_l - D[l+1][r], \ a_r - D[l][r-1]\right).$$
 The first player's total is $(S + D[1][n]) / 2$, where $S$ is the sum of all numbers.
 
-*Proof.* By induction on the length. If the player to move takes $a_l$, the opponent faces $[l+1, r]$ and, playing best, ends $D[l+1][r]$ ahead from there; so the mover ends $a_l - D[l+1][r]$ ahead. The same holds for $a_r$. The mover picks the better option. Since the two totals add up to $S$ and differ by $D[1][n]$, the first player's total is $(S + D[1][n])/2$. $\square$
+:::tip[In plain words]
+When two players take from the ends of a row, what remains is always one segment. The score difference for the player to move is the best, over the two ends, of the number taken minus the opponent's difference on what is left.
+:::
+
+**A tiny instance.** Row $(3, 9, 1, 2)$. Greedy "take the larger end" takes 3, the opponent takes 9, then 2 and 1: totals 5 and 10. The table gives $D[1][4] = 7$: take 2 first; the opponent must open the 9 to you (taking 3 or 1), and you finish with 11 against 4.
+
+
+**Proof.**
+1. By induction on the length.
+2. If the player to move takes $a_l$, the opponent faces $[l+1, r]$ and, playing best, ends $D[l+1][r]$ ahead from there; so the mover ends $a_l - D[l+1][r]$ ahead. The same holds for $a_r$.
+3. The mover picks the better option.
+4. Since the two totals add up to $S$ and differ by $D[1][n]$, the first player's total is $(S + D[1][n])/2$. $\square$
 
 :::note[This proof needs]
 1. Every move removes items from the ends only, so the position is one segment (and whose turn it is follows from the length).
 2. The game is zero-sum in the sense that maximising your total is the same as maximising the difference (the totals add up to a fixed $S$).
 :::
 
-Example: row $(3, 9, 1, 2)$. Greedy "take the larger end" takes 3, the opponent takes 9, then 2 and 1: totals 5 and 10. The table gives $D[1][4] = 7$: take 2 first; the opponent must open the 9 to you (taking 3 or 1), and you finish with 11 against 4.
+<TheoremCode unit="3.6/thm-3" />
+
+
 
 ### 4.4 Palindromes inside segments
 
 **Theorem 3.6.4 (longest palindromic subsequence).** Let $P[l][r]$ be the length of the longest palindromic subsequence of $s_l..s_r$. Then $P[l][l] = 1$, $P[l][l-1] = 0$ (empty segment), and for $l < r$
 $$P[l][r] = \begin{cases} P[l+1][r-1] + 2 & \text{if } s_l = s_r,\\ \max(P[l+1][r], \ P[l][r-1]) & \text{otherwise.} \end{cases}$$
 
-*Proof.* If $s_l \ne s_r$, a palindromic subsequence cannot use both $s_l$ and $s_r$ as its two ends (they differ), and if it used both, they would be its first and last letters. So it avoids $s_l$ or avoids $s_r$, and lies in $[l+1, r]$ or $[l, r-1]$. If $s_l = s_r$, take a longest palindromic subsequence $Z$ of $[l, r]$. If it does not use both ends, replace its first letter by $s_l$ and its last by $s_r$ (or add them if it misses one), as in the exchange argument of Theorem 3.4.4: the result is a palindrome at least as long, made of $s_l$, a palindromic subsequence of $[l+1, r-1]$, and $s_r$. So $P[l][r] = P[l+1][r-1] + 2$. $\square$
+:::tip[In plain words]
+For a segment, if the two end letters are equal they can both be used and the inside is solved on its own. If they differ, at least one end is unused, so drop it and take the better of the two shorter segments.
+:::
+
+**A tiny instance.** Trace for "abcab": the table gives $P[1][5] = 3$ ("aba", "bcb", "aca" or "bab"). The ends a and b differ, so $P[1][5] = \max(P[2][5], P[1][4]) = \max(3, 3)$; and $P[1][4]$ ("abca") has equal ends a, so it is $P[2][3] + 2 = 1 + 2$.
+
+
+**Proof.**
+1. If $s_l \ne s_r$, a palindromic subsequence cannot use both $s_l$ and $s_r$ as its two ends (they differ), and if it used both, they would be its first and last letters.
+2. So it avoids $s_l$ or avoids $s_r$, and lies in $[l+1, r]$ or $[l, r-1]$.
+3. If $s_l = s_r$, take a longest palindromic subsequence $Z$ of $[l, r]$. If it does not use both ends, replace its first letter by $s_l$ and its last by $s_r$ (or add them if it misses one), as in the exchange argument of Theorem 3.4.4.
+4. The result is a palindrome at least as long, made of $s_l$, a palindromic subsequence of $[l+1, r-1]$, and $s_r$.
+5. So $P[l][r] = P[l+1][r-1] + 2$. $\square$
 
 :::note[This proof needs]
 1. The answer for a segment depends on its two end characters and the inner segments.
 2. The same table answers "fewest insertions (or deletions) to make $s$ a palindrome": $n - P[1][n]$. It also equals the LCS of $s$ and its reverse (topic 3.4).
 :::
 
-Trace for "abcab": the table gives $P[1][5] = 3$ ("aba", "bcb", "aca" or "bab"). The ends a and b differ, so $P[1][5] = \max(P[2][5], P[1][4]) = \max(3, 3)$; and $P[1][4]$ ("abca") has equal ends a, so it is $P[2][3] + 2 = 1 + 2$.
+<TheoremCode unit="3.6/thm-4" />
 
 Another table over segments answers "is $s_l..s_r$ a palindrome?": $\text{pal}[l][r]$ holds when $s_l = s_r$ and $\text{pal}[l+1][r-1]$ (true for lengths 0 and 1). It costs $O(n^2)$ and is the first step of every problem that cuts a string into palindromes.
+
 
 ### 4.5 The first element and its partner
 
 **Theorem 3.6.5 (pairing the first element).** One operation deletes a contiguous block of equal letters (after earlier deletions, letters that were apart may have become neighbours). Let $C[l][r]$ be the fewest operations that delete all of $s_l..s_r$, with $C$ of an empty segment 0. Then
 $$C[l][r] = \min\left(1 + C[l+1][r], \ \min_{l < k \le r,\ s_k = s_l} \left(C[l+1][k-1] + C[k][r]\right)\right).$$
 
-*Proof.* Take an optimal sequence of operations for $[l, r]$ and look at the operation that deletes $s_l$.
+:::tip[In plain words]
+The first letter of a segment is either removed alone or removed together with a later equal letter, after everything between them is gone. Choosing that partner splits the segment into an inside part and an outside part that do not interact.
+:::
 
-Case 1: it deletes no other letter. Since $s_l$ is the leftmost letter, no other operation can use it to join letters, so the other operations delete $[l+1, r]$ on their own: at least $C[l+1][r]$ of them, plus one. Conversely, solving $[l+1, r]$ and then deleting $s_l$ alone works.
+**A tiny instance.** "abaca" takes 3 operations: delete b, delete c, then the three a's have become neighbours and go in one operation. In the recurrence, the first a pairs with the a at position 3: $C[2][2] + C[3][5] = 1 + 2$.
 
-Case 2: it also deletes other letters; let $s_k$ be the nearest one to the right, so $s_k = s_l$. When this operation happens, $s_l$ and $s_k$ are neighbours, so every letter of $[l+1, k-1]$ was deleted earlier, by operations that stay inside $[l+1, k-1]$ (to reach outside they would have to cross $s_l$ or $s_k$, which are still present): at least $C[l+1][k-1]$ operations. The remaining operations delete $[k, r]$, with $s_l$ riding along in the operation of $s_k$: at least $C[k][r]$ of them. Conversely, delete $[l+1, k-1]$ first; then $s_l$ is the left neighbour of $s_k$, which stays the leftmost letter of $[k, r]$, so adding $s_l$ to the operation that deletes $s_k$ keeps that block contiguous and equal, at no extra cost.
 
-The optimal solution falls into one of the cases, and every case is achievable, so $C[l][r]$ is the minimum over them. $\square$
+**Proof.**
+1. Take an optimal sequence of operations for $[l, r]$ and look at the operation that deletes $s_l$.
+2. Case 1: it deletes no other letter. Since $s_l$ is the leftmost letter, no other operation can use it to join letters, so the other operations delete $[l+1, r]$ on their own: at least $C[l+1][r]$ of them, plus one. Conversely, solving $[l+1, r]$ and then deleting $s_l$ alone works.
+3. Case 2: it also deletes other letters; let $s_k$ be the nearest one to the right, so $s_k = s_l$. When this operation happens, $s_l$ and $s_k$ are neighbours, so every letter of $[l+1, k-1]$ was deleted earlier, by operations that stay inside $[l+1, k-1]$ (to reach outside they would have to cross $s_l$ or $s_k$, which are still present): at least $C[l+1][k-1]$ operations.
+4. The remaining operations delete $[k, r]$, with $s_l$ riding along in the operation of $s_k$: at least $C[k][r]$ of them.
+5. Conversely, delete $[l+1, k-1]$ first; then $s_l$ is the left neighbour of $s_k$, which stays the leftmost letter of $[k, r]$, so adding $s_l$ to the operation that deletes $s_k$ keeps that block contiguous and equal, at no extra cost.
+6. The optimal solution falls into one of the cases, and every case is achievable, so $C[l][r]$ is the minimum over them. $\square$
 
 :::note[This proof needs]
 1. Fixing the partner $k$ of the first element splits the segment into an inside part $(l, k)$ and an outside part $[k, r]$ that do not interact.
@@ -143,7 +196,9 @@ The optimal solution falls into one of the cases, and every case is achievable, 
 3. The time is $O(n^3)$: $O(n^2)$ segments, $O(n)$ partners each.
 :::
 
-Example: "abaca" takes 3 operations: delete b, delete c, then the three a's have become neighbours and go in one operation. In the recurrence, the first a pairs with the a at position 3: $C[2][2] + C[3][5] = 1 + 2$.
+<TheoremCode unit="3.6/thm-5" />
+
+
 
 ## 5. Recognition Cards
 
@@ -151,53 +206,37 @@ Example: "abaca" takes 3 operations: delete b, delete c, then the three a's have
 
 ## 6. Templates
 
-Four programs, one per card: the cheapest bracketing of a matrix product (split point), the game of taking from the ends, the longest palindromic subsequence, and the longest correct bracket subsequence (pairing the first element). The brute forces use plain recursion without a table, or list subsequences as bitmasks.
+Four functions, one per card: the cheapest bracketing of a matrix product (split point), the game of taking from the ends, the longest palindromic subsequence, and the longest correct bracket subsequence (pairing the first element). The brute forces use plain recursion without a table, or list subsequences as bitmasks.
 
 ### Cheapest bracketing (Theorem 3.6.2)
 
-<Code code={matrixChain} lang="cpp" title="matrix-chain/solution.cpp" />
+<CodeSnippet unit="3.6/matrix-chain" />
 
 **How it works.** The last multiplication of the product $M_l \cdots M_r$ joins the product of $M_l..M_k$ (a $d_{l-1} \times d_k$ matrix) with the product of $M_{k+1}..M_r$ (a $d_k \times d_r$ matrix), for some split point $k$, and costs $d_{l-1} d_k d_r$ whatever happened inside the two parts. So `best[l][r]` is the minimum over $k$ of the two parts plus that cost (Theorem 3.6.2). The length loop is outside, so both parts are always ready (Theorem 3.6.1). Time $O(n^3)$: about $n^3 / 6 = 4.5 \cdot 10^6$ steps for $n = 300$.
-
-**C++ details explained.** The costs are `long long`: one product costs up to $10^6$ and there are up to 299 of them. `best[l][r] = LLONG_MAX` starts the minimum; it is replaced in the first iteration of `k`. The table has $n + 2$ rows and columns so that `best[k + 1][r]` with `k + 1 = r` stays inside.
-
-**Tested.** Stress-tested against plain recursion over every last multiplication, on 5000 random inputs ($n \le 9$, sizes up to 5 or up to 100). There are also 5 fixed tests: one matrix (0), the sizes $10, 30, 5, 60$ (4500, for $(M_1 M_2) M_3$; the other order costs 27000), 300 random sizes (from a separate program), 300 matrices of size $1 \times 1$ (299), and 300 matrices of size $100 \times 100$ ($299 \cdot 10^6$).
 
 **Alternative formulation.** Memoised recursion (Theorem 3.2.4): `solve(l, r)` tries every `k` and caches the result. It visits the same $O(n^2)$ states in the order the recursion needs them, which avoids thinking about the loop order; the recursion depth is at most $n$.
 
 ### Taking from the ends (Theorem 3.6.3)
 
-<Code code={endGame} lang="cpp" title="end-game/solution.cpp" />
+<CodeSnippet unit="3.6/end-game" />
 
 **How it works.** `diff[l]` holds the score difference of the player to move on the segment of the current length that starts at $l$. For a new length, the segment $[l, r]$ needs $[l + 1, r]$ and $[l, r - 1]$, both one shorter: before `diff[l]` is overwritten it still holds $[l, r - 1]$, and `diff[l + 1]` still holds $[l + 1, r]$ (it is overwritten later in the loop). Taking $a_l$ leaves the opponent $D[l+1][r]$ ahead, so the mover gets $a_l - D[l+1][r]$; the same on the right; the maximum is the new value. The first player's total is $(S + D)/2$.
-
-**C++ details explained.** `vector<long long> diff(a)` copies `a`: for length 1 the difference is the only number. `for (auto& x : a) cin >> x, sum += x;` uses the comma operator to read and add in one statement. $S + D$ is always even ($S + D = 2 \cdot$ the first total), so the division is exact even for negative values.
-
-**Tested.** Stress-tested against a plain minimax recursion that returns both totals, on 5000 random inputs ($n \le 14$, values up to 9 or $10^9$, sometimes negative). There are also 5 fixed tests: the example of Section 4.3 (11), one negative number ($-7$), the row $1, 5, 2, 1$ (6), 5000 random values in $[-10^9, 10^9]$ (from a separate program), and 5000 equal values ($2.5 \cdot 10^{12}$).
 
 **Alternative formulation.** Store the first player's best total directly: $F[l][r] = \max(a_l + (S(l+1, r) - F[l+1][r]), \ a_r + (S(l, r-1) - F[l][r-1]))$, since the mover gets what the opponent does not. It needs segment sums from prefix sums; the difference form avoids them.
 
 ### Longest palindromic subsequence (Theorem 3.6.4)
 
-<Code code={palindromeSubsequence} lang="cpp" title="palindrome-subsequence/solution.cpp" />
+<CodeSnippet unit="3.6/palindrome-subsequence" />
 
 **How it works.** The rows of the table $P[l][r]$ are filled for $l$ from $n - 1$ down to 0, and within a row for $r$ from $l$ upwards. $P[l][r]$ needs $P[l+1][r-1]$ and $P[l+1][r]$ (the previous row, `next`) and $P[l][r-1]$ (the same row, already filled). Equal ends add 2 to the inside; different ends drop one end (Theorem 3.6.4). Two rows of $n$ ints replace the $n^2$ table: $2.5 \cdot 10^7$ steps for $n = 5000$.
-
-**C++ details explained.** `swap(next, cur)` exchanges the two vectors in $O(1)$; after the last swap, `next` holds row 0. The inner segment of $[l, l + 1]$ is empty, which the test `l + 1 <= r - 1` handles. Stale values in `cur` from two rows ago are never read: each entry `cur[r]` with $r \ge l$ is written before it is used.
-
-**Tested.** Stress-tested against a brute force that checks every subsequence, on 5000 random strings (length $\le 14$, 1–4 letters). There are also 5 fixed tests: "abcab" (3), one letter (1), 5000 equal letters (5000), "abab…ab" of length 5000 (4999), and a random string of length 3000 over three letters (from a separate program).
 
 **Alternative formulation.** The longest palindromic subsequence of $s$ is the LCS of $s$ and its reverse (topic 3.4), with the same $O(n^2)$ cost. The segment table is more direct, and its rows are what the palindrome problems of the ladder build on.
 
 ### Longest correct bracket subsequence (Theorem 3.6.5)
 
-<Code code={bracketPairs} lang="cpp" title="bracket-pairs/solution.cpp" />
+<CodeSnippet unit="3.6/bracket-pairs" />
 
 **How it works.** Look at the first bracket $s_l$ of the segment. Either it is not used, and the answer is that of $[l + 1, r]$; or it is matched with a closing bracket $s_k$ of the same type. Then everything used strictly between them must be matched among itself (brackets cannot cross), and everything after $s_k$ likewise: $2 + \text{best}[l+1][k-1] + \text{best}[k+1][r]$. This is the "first element and its partner" pattern of Theorem 3.6.5: fixing the partner splits the rest into an inside and an outside that do not interact. Time $O(n^3)$.
-
-**C++ details explained.** The lambda `get` returns 0 for empty segments ($l > r$), which removes the special cases for $k = l + 1$ and $k = r$. `matches` keeps the bracket types in one place; a closing bracket at position $l$ is simply never matched as an opener.
-
-**Tested.** Stress-tested against a brute force that checks every subsequence with a stack, on 5000 random strings (length $\le 14$, one or two bracket types). There are also 5 fixed tests: "([)]" (2: crossing pairs are not allowed), a single "(" (0), "([])[]" (6), 250 opening followed by 250 closing brackets (500), and a random string of length 300 (from a separate program).
 
 **Alternative formulation.** Match the last element instead: either $s_r$ is unused, or it closes some opener $s_k$ with $k < r$, giving $\text{best}[l][k-1] + 2 + \text{best}[k+1][r-1]$. Any fixed end works, as long as one end is always the one being matched.
 
@@ -305,7 +344,7 @@ $N = 400$: $O(N^3) \approx 400^3 / 6 \approx 10^7$ steps is fast. The costs reac
 - Trying every order of combinations (topic 3.1): $(N - 1)!$ orders.
 - Greedy "combine the cheapest neighbouring pair" (topic 1.5): fails, as Section 1 shows with $(2, 2, 1, 2)$.
 - Huffman's greedy with a heap (topic 0.6): only valid when any two slimes may be combined, not just neighbours.
-- The best split point (Theorem 3.6.2): the merge-split card.
+- The best split point (Theorem 3.6.2): the "Best split point of a segment" card.
 
 #### Step 3: Property check → decision
 
@@ -317,9 +356,7 @@ This is Theorem 3.6.2 word for word, with slimes as piles: the last combination 
 
 #### Step 5: Code
 
-<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
-
-**C++ details explained.** The sizes are not stored; only their prefix sums are, since the recurrence uses nothing else. `low` collects the best split before the segment's total is added once. Tested on the four samples from the problem page and on 400 random sizes up to $10^9$ (from a separate program); and on 5000 random inputs ($N \le 7$) against a brute force that tries every order of combinations.
+<CodeSnippet unit="3.6/example-1" />
 
 #### Step 6: Alternative approach
 
@@ -338,7 +375,7 @@ $n = 2000$: $O(n^2) = 4 \cdot 10^6$ fits; $O(n^3) = 8 \cdot 10^9$ does not.
 - Trying every set of cuts (topic 0.5): $2^{1999}$ sets.
 - Greedy "take the longest palindrome from the left" (topic 1.5): fails. For "abaab" the longest palindrome at the start is "aba", leaving "a" and "b" (2 cuts), while "a" + "baab" needs only 1.
 - A segment table with a split point (Theorem 3.6.2): correct but $O(n^3)$.
-- The palindrome table of Section 4.4, followed by a one-index table over prefixes (topic 3.2): the palindrome-segment card.
+- The palindrome table of Section 4.4, followed by a one-index table over prefixes (topic 3.2): the "Palindromes inside segments" card.
 
 #### Step 3: Property check → decision
 
@@ -350,9 +387,7 @@ $\text{pal}[l][r]$ is correct by induction on the length: a string of length at 
 
 #### Step 5: Code
 
-<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
-
-**C++ details explained.** `vector<vector<char>>` stores the $4 \cdot 10^6$ true/false values in 4 MB; `vector<bool>` would also work but is slower to index. The condition `r - l < 2 || pal[l + 1][r - 1]` handles lengths 1 and 2, whose inside is empty. Tested on the three examples from the problem page, on a random string of length 2000 over two letters, and on 1000 a's, one b and 999 a's (1 cut: "a" and the rest); and on 5000 random strings (length $\le 14$) against a brute force that tries every set of cuts.
+<CodeSnippet unit="3.6/example-2" />
 
 #### Step 6: Alternative approach
 

@@ -6,20 +6,27 @@ Output: one sum per line.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.2.1. P[k] = sum of the first k elements; the sum of a[l..r] (0-based) is P[r + 1] - P[l].
+vector<long long> prefixSums(const vector<long long>& a) {
+    vector<long long> P(a.size() + 1, 0);
+    for (int i = 0; i < (int)a.size(); i++) P[i + 1] = P[i] + a[i];
+    return P;
+}
+long long rangeSum(const vector<long long>& P, int l, int r) { return P[r + 1] - P[l]; }
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
     int n, q;
     cin >> n >> q;
-    vector<long long> P(n + 1, 0);  // P[k] = sum of the first k elements; sums reach 2*10^14
-    for (int i = 0; i < n; i++) {
-        long long a;
-        cin >> a;
-        P[i + 1] = P[i] + a;
-    }
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    vector<long long> P = prefixSums(a);
     while (q--) {
         int l, r;
         cin >> l >> r;  // elements l..r (1-based) are a[l-1..r-1] (0-based)
-        cout << P[r] - P[l - 1] << "\n";  // Theorem 1.2.1
+        cout << rangeSum(P, l - 1, r - 1) << "\n";
     }
 }

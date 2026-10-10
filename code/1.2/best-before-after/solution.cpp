@@ -7,6 +7,28 @@ Output: line 1: the largest subarray sum; line 2: n values.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Theorem 1.2.5. The largest subarray sum, and for each i the largest element other than a_i.
+long long bestSubarray(const vector<long long>& a) {
+    long long P = 0, minP = 0, best = LLONG_MIN;  // minP starts as P_0 = 0
+    for (long long x : a) {
+        P += x;                       // now P = P_{j+1}
+        best = max(best, P - minP);   // subarray ending here, best start
+        minP = min(minP, P);          // P_{j+1} becomes available for later ends
+    }
+    return best;
+}
+
+vector<long long> maxWithout(const vector<long long>& a) {
+    int n = a.size();
+    vector<long long> pre(n + 1, LLONG_MIN), suf(n + 1, LLONG_MIN), res(n);  // LLONG_MIN stands for an empty side
+    for (int i = 0; i < n; i++) pre[i + 1] = max(pre[i], a[i]);       // pre[k] = max of a[0..k-1]
+    for (int i = n - 1; i >= 0; i--) suf[i] = max(suf[i + 1], a[i]);  // suf[k] = max of a[k..n-1]
+    for (int i = 0; i < n; i++) res[i] = max(pre[i], suf[i + 1]);
+    return res;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -14,19 +36,7 @@ int main() {
     cin >> n;
     vector<long long> a(n);
     for (auto& x : a) cin >> x;
-
-    // (1) best P_j - min(P_0..P_{j-1}) over j = 1..n (Theorem 1.2.5, part 4)
-    long long P = 0, minP = 0, best = LLONG_MIN;  // minP starts as P_0 = 0
-    for (int j = 0; j < n; j++) {
-        P += a[j];                    // now P = P_{j+1}
-        best = max(best, P - minP);   // subarray ending at j, best start
-        minP = min(minP, P);          // P_{j+1} becomes available for later ends
-    }
-    cout << best << "\n";
-
-    // (2) max(prefix before i, suffix after i) (part 2); LLONG_MIN stands for an empty side
-    vector<long long> pre(n + 1, LLONG_MIN), suf(n + 1, LLONG_MIN);
-    for (int i = 0; i < n; i++) pre[i + 1] = max(pre[i], a[i]);          // pre[k] = max of a[0..k-1]
-    for (int i = n - 1; i >= 0; i--) suf[i] = max(suf[i + 1], a[i]);     // suf[k] = max of a[k..n-1]
-    for (int i = 0; i < n; i++) cout << max(pre[i], suf[i + 1]) << (i + 1 < n ? ' ' : '\n');
+    cout << bestSubarray(a) << "\n";
+    vector<long long> r = maxWithout(a);
+    for (int i = 0; i < n; i++) cout << r[i] << (i + 1 < n ? ' ' : '\n');
 }

@@ -7,27 +7,35 @@ Output: "countEqualK countDivisibleByM".
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int n;
-    long long K, m;
-    cin >> n >> K >> m;
-    map<long long, int> seen;     // prefix sum -> how many earlier prefixes had it
-    map<long long, int> seenMod;  // prefix sum mod m -> how many earlier prefixes had it
-    long long P = 0, equalK = 0, divisible = 0;  // counts reach n(n+1)/2, about 2*10^10
-    seen[0] = 1;                                   // P_0 = 0 (Theorem 1.2.2, condition 2)
+// snippet:begin
+// Theorem 1.2.2. The number of subarrays with sum exactly K, and the number with sum divisible by m,
+// from a map of how often each earlier prefix value occurred.
+pair<long long, long long> countSubarrays(const vector<long long>& a, long long K, long long m) {
+    map<long long, int> seen, seenMod;  // prefix sum (and its remainder) -> how many earlier prefixes had it
+    long long P = 0, equalK = 0, divisible = 0;
+    seen[0] = 1;  // P_0 = 0
     seenMod[0] = 1;
-    for (int i = 0; i < n; i++) {
-        long long a;
-        cin >> a;
-        P += a;
-        long long r = (P % m + m) % m;  // P can be negative (condition 3)
+    for (long long x : a) {
+        P += x;
+        long long r = (P % m + m) % m;  // P can be negative
         auto it = seen.find(P - K);
         if (it != seen.end()) equalK += it->second;  // earlier P_i with P_i = P_j - K
         divisible += seenMod[r];                     // earlier P_i with the same remainder
         seen[P]++;
         seenMod[r]++;
     }
-    cout << equalK << " " << divisible << "\n";
+    return {equalK, divisible};
+}
+// snippet:end
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int n;
+    long long K, m;
+    cin >> n >> K >> m;
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    pair<long long, long long> r = countSubarrays(a, K, m);
+    cout << r.first << " " << r.second << "\n";
 }

@@ -7,6 +7,19 @@ Output: the amount of water.
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// Water trapped between bars of heights h: above bar i the water reaches min(highest bar to its left, highest to its right).
+long long trappedWater(const vector<int>& h) {
+    int n = h.size();
+    vector<int> left(n), right(n);  // left[i] = max(h_0..h_i), right[i] = max(h_i..h_{n-1})
+    for (int i = 0; i < n; i++) left[i] = max(i > 0 ? left[i - 1] : 0, h[i]);
+    for (int i = n - 1; i >= 0; i--) right[i] = max(i + 1 < n ? right[i + 1] : 0, h[i]);
+    long long water = 0;
+    for (int i = 0; i < n; i++) water += min(left[i], right[i]) - h[i];
+    return water;
+}
+// snippet:end
+
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -14,10 +27,5 @@ int main() {
     cin >> n;
     vector<int> h(n);
     for (auto& x : h) cin >> x;
-    vector<int> left(n), right(n);  // left[i] = max(h_0..h_i), right[i] = max(h_i..h_{n-1})
-    for (int i = 0; i < n; i++) left[i] = max(i > 0 ? left[i - 1] : 0, h[i]);
-    for (int i = n - 1; i >= 0; i--) right[i] = max(i + 1 < n ? right[i + 1] : 0, h[i]);
-    long long water = 0;  // up to 2*10^4 * 10^5 = 2*10^9, beyond int
-    for (int i = 0; i < n; i++) water += min(left[i], right[i]) - h[i];
-    cout << water << "\n";
+    cout << trappedWater(h) << "\n";
 }

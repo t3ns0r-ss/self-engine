@@ -6,21 +6,26 @@ Output: the count modulo 10^9 + 7.
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
+// snippet:begin
+// Theorem 2.3.1. Sequences of pairwise different integers with 1 <= A_i <= C_i: fill the most limited position first,
+// so position i always has C_i - i options, whichever smaller values were taken.
+long long distinctLimits(vector<long long> c) {
     const long long MOD = 1000000007;
+    sort(c.begin(), c.end());
+    long long ways = 1;
+    for (int i = 0; i < (int)c.size(); i++) {
+        long long options = c[i] - i;  // i smaller values are already taken, all within [1, c[i]]
+        if (options <= 0) return 0;
+        ways = ways * (options % MOD) % MOD;
+    }
+    return ways;
+}
+// snippet:end
+
+int main() {
     int n;
     cin >> n;
     vector<long long> c(n);
     for (auto& x : c) cin >> x;
-    sort(c.begin(), c.end());  // choose the most limited position first
-    long long ways = 1;
-    for (int i = 0; i < n; i++) {
-        long long options = c[i] - i;  // i smaller values are already taken, all within [1, c[i]]
-        if (options <= 0) {
-            ways = 0;
-            break;
-        }
-        ways = ways * (options % MOD) % MOD;  // product rule (Theorem 2.3.1)
-    }
-    cout << ways << "\n";
+    cout << distinctLimits(c) << "\n";
 }

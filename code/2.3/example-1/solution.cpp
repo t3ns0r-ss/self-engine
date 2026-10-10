@@ -6,8 +6,10 @@ Output: the number of ways to reach (X, Y) from (0, 0) with moves (+1, +2) and (
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// ABC 145 D. A moves (+1, +2) and b moves (+2, +1) with a + 2b = X and 2a + b = Y; the order of the moves is a choice of
+// which of the a + b moves are of the first kind: C(a + b, a).
 const long long MOD = 1000000007;
-
 long long power(long long a, long long b) {
     long long r = 1;
     a %= MOD;
@@ -18,18 +20,17 @@ long long power(long long a, long long b) {
     }
     return r;
 }
+long long knightWays(long long X, long long Y) {
+    if ((2 * Y - X) % 3 != 0 || 2 * Y < X || 2 * X < Y) return 0;
+    long long a = (2 * Y - X) / 3, b = (2 * X - Y) / 3, n = a + b;
+    vector<long long> fact(n + 1, 1);
+    for (long long i = 1; i <= n; i++) fact[i] = fact[i - 1] * i % MOD;
+    return fact[n] * power(fact[a], MOD - 2) % MOD * power(fact[b], MOD - 2) % MOD;
+}
+// snippet:end
 
 int main() {
     long long X, Y;
     cin >> X >> Y;
-    // a moves (+1, +2) and b moves (+2, +1): a + 2b = X and 2a + b = Y
-    if ((2 * Y - X) % 3 != 0 || 2 * Y < X || 2 * X < Y) {
-        cout << 0 << "\n";
-        return 0;
-    }
-    long long a = (2 * Y - X) / 3, b = (2 * X - Y) / 3, n = a + b;
-    vector<long long> fact(n + 1, 1);
-    for (long long i = 1; i <= n; i++) fact[i] = fact[i - 1] * i % MOD;
-    // a move sequence is fixed by which of the n moves are of the first kind: C(n, a)
-    cout << fact[n] * power(fact[a], MOD - 2) % MOD * power(fact[b], MOD - 2) % MOD << "\n";
+    cout << knightWays(X, Y) << "\n";
 }

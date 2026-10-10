@@ -1,12 +1,8 @@
-/*
-Problem: answer q queries C(n, r) modulo 10^9 + 7.
-Input: q (1 <= q <= 2*10^5), then q lines n r (0 <= n <= 10^6, 0 <= r <= 10^6).
-Output: C(n, r) mod 10^9 + 7 for each query (0 when r > n).
-*/
 #include <bits/stdc++.h>
 using namespace std;
 
 // snippet:begin
+// Theorem 2.3.3. Tables of i! and (i!)^(-1) modulo a prime MOD > N give C(n, r) in O(1).
 const long long MOD = 1000000007;
 long long power(long long a, long long b) {
     long long r = 1;
@@ -18,7 +14,6 @@ long long power(long long a, long long b) {
     }
     return r;
 }
-// Theorem 2.3.3. fact[i] = i! and inv[i] = (i!)^(-1) modulo the prime MOD, for i <= N < MOD; C(n, r) in O(1).
 struct Binom {
     vector<long long> fact, inv;
     Binom(int N) : fact(N + 1, 1), inv(N + 1, 1) {
@@ -34,14 +29,15 @@ struct Binom {
 // snippet:end
 
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    Binom b(1000000);
-    int q;
-    cin >> q;
-    while (q--) {
-        int n, r;
-        cin >> n >> r;
-        cout << b.C(n, r) << "\n";
+    Binom b(2000);
+    cout << "C(5, 2) = " << b.C(5, 2) << ", C(2000, 1000) = " << b.C(2000, 1000) << " (modulo 10^9 + 7)\n";
+    vector<vector<long long>> P(201, vector<long long>(201, 0));
+    for (int n = 0; n <= 200; n++) {
+        P[n][0] = 1;
+        for (int r = 1; r <= n; r++) P[n][r] = (P[n - 1][r - 1] + P[n - 1][r]) % MOD;
+    }
+    for (int n = 0; n <= 200; n++) for (int r = -2; r <= n + 2; r++) {
+        long long want = (r < 0 || r > n) ? 0 : P[n][r];
+        if (b.C(n, r) != want) return 1;
     }
 }

@@ -293,6 +293,134 @@ Seven templates. Each shows only the function that matters; the program around i
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, checked against the brute force.
+
+### Bug: the size of a vertex that is not a leader
+
+Template: sizes of the groups after each event.
+
+```cpp
+sizes.push_back(dsu.size[a]);          // instead of dsu.size[dsu.find(a)]
+```
+
+Input: `4 2`, then the events `3 2` and `2 3`.
+
+Wrong output `2 1`, correct output `2 2`. After the first event vertex 3 is the leader and vertex 2 hangs under it. The size is stored only at the leader, so asking vertex 2 for its size gives the stale value 1 (Theorem 4.4.1(b) is about the leader).
+
+**Fix:** go through `find` first: `dsu.size[dsu.find(a)]`.
+
+### Bug: uniting vertices instead of leaders
+
+Template: sizes of the groups after each event (the `unite` of the structure).
+
+```cpp
+// the line "a = find(a), b = find(b);" removed from unite
+```
+
+Input: `4 2`, then the events `3 2` and `2 3`.
+
+Wrong output `2 3`, correct output `2 2`. The second event repeats the first, but without the leaders the two vertices look different: `unite` returns true and adds the size of the group to itself. Two vertices are in one group exactly when their *leaders* are the same (Theorem 4.4.1(a)).
+
+**Fix:** replace both vertices by their leaders at the start of `unite`.
+
+### Bug: adding the sizes instead of multiplying them
+
+Template: pairs cut off after each removal.
+
+```cpp
+linked += 1LL * (dsu.size[a] + dsu.size[b]);   // instead of dsu.size[a] * dsu.size[b]
+```
+
+Input: `3 2`, then the bridges `2 3` and `1 3`.
+
+Wrong output `1` then `3`, correct output `2` then `3`. Adding the bridge `1 3` back joins the groups $\{1\}$ and $\{2, 3\}$, which links $1 \cdot 2 = 2$ new pairs (vertex 1 with 2 and with 3), not $1 + 2 = 3$.
+
+**Fix:** every vertex of one group is linked to every vertex of the other: multiply.
+
+### Bug: no test that the network is connected
+
+Template: the cheapest network of cables.
+
+```cpp
+return total;                          // instead of return taken == n - 1 ? total : -1;
+```
+
+Input: `4 0` (four computers, no cables).
+
+Wrong output `0`, correct output `IMPOSSIBLE`. With no cable at all the loop buys nothing, and the total of nothing is 0. A network of $n$ computers needs $n - 1$ cables (Theorem 4.4.1(d)); fewer cables mean more than one group.
+
+**Fix:** count the cables bought and report failure unless the count is $n - 1$.
+
+### Bug: sorting the cables by the wrong key
+
+Template: the cheapest network of cables.
+
+```cpp
+sort(cables.begin(), cables.end());    // instead of sorting by price, index 2
+```
+
+Input: `2 2`, then `2 1 8` and `1 2 9`.
+
+Wrong output `9`, correct output `8`. The plain `sort` of arrays compares the first element first (the number of the first computer), so the cable `1 2 9` comes before `2 1 8`. Kruskal's algorithm is correct only when the edges are taken in the order of their weight (Theorem 4.4.4, step 4).
+
+**Fix:** sort with a comparison on the price: `x[2] < y[2]`.
+
+### Bug: overwriting the cheapest link in Prim's algorithm
+
+Template: the cheapest network of points.
+
+```cpp
+best[v] = llabs(p[u].first - p[v].first) + llabs(p[u].second - p[v].second);   // without min(best[v], ...)
+```
+
+Input: `3`, then the points `0 -1`, `2 4`, `6 0`.
+
+Wrong output `15`, correct output `14`. From the first point the links to the other two points cost 7 and 7. After the second point joins, its link to the third (cost 8) overwrites the cheaper link 7 that the first point already offered, and the tree buys the dearer one. `best[v]` must stay the cheapest link from *any* point of the tree.
+
+**Fix:** `best[v] = min(best[v], ...)`.
+
+### Bug: answering the questions in the order of the input
+
+Template: is there a trip under the limit?
+
+```cpp
+// the sort of `order` by the limit removed
+```
+
+Input: `4 2 2`, the roads `4 2 9` and `1 4 8`, then the questions `4 4 9` and `1 2 2`.
+
+Wrong output `YES`, `YES`, correct output `YES`, `NO`. The first question has the limit 9, so both roads are added; the second question has limit 2, but the roads cannot be taken away again, so towns 1 and 2 look linked. The roads are only added, so the limits must grow (Theorem 4.4.6, step 1).
+
+**Fix:** sort the questions by the limit and keep their original numbers for printing.
+
+### Bug: strictly less than the limit
+
+Template: is there a trip under the limit?
+
+```cpp
+while (next < roads.size() && roads[next][2] < limit)     // instead of <=
+```
+
+Input: `2 1 1`, the road `1 2 2`, then the question `1 2 2`.
+
+Wrong output `NO`, correct output `YES`. The road has toll 2 and the limit is 2, and "at most 2" allows it.
+
+**Fix:** use `<=` when the statement says "at most".
+
+### Bug: multiplying with the sizes of vertices instead of groups
+
+Template: sum of the largest road over all pairs.
+
+```cpp
+// the line "a = dsu.find(a), b = dsu.find(b);" removed
+```
+
+Input: `3`, then the roads `2 3 3` and `3 1 8`.
+
+Wrong output `11`, correct output `19`. After the road of toll 3, towns 2 and 3 form one group of size 2. The road of toll 8 joins that group with town 1: $8 \cdot 2 \cdot 1 = 16$ to the sum. Without `find`, town 3 is asked for its own size, which is 1 (it is not the leader), and the product is only $8$.
+
+**Fix:** take the sizes of the leaders.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

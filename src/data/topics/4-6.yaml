@@ -2,8 +2,14 @@
 id: '4.6'
 draft: true
 uses:
+- topic: '4.1'
+  what: 'Graph traversal: state graphs and shortest routes as the contrast'
+- topic: '4.2'
+  what: 'Graph structure: pointers and cycles'
 - topic: '4.3'
   what: 'Shortest paths: Floyd-Warshall as the reference in the checks'
+- topic: '4.4'
+  what: 'Disjoint set union and Kruskal order: the contrast for graphs with cycles'
 - topic: '4.5'
   what: 'Trees: rooting, parents and depths, visit order, subtree sums'
 theorems:
@@ -39,8 +45,456 @@ theorems:
     a path cancel inside every subtree that holds the whole path, and leave exactly $+1$ in each subtree
     that holds just one end.'
   code: 4.6/thm-5
-cards: []
-problems: []
+cards:
+- id: jump-up
+  name: Jumping up by powers of two (k-th ancestor)
+  from_theorem: 4.6.1
+  decisive_property: Every item has exactly one next item (a parent, or a teleporter), and the questions
+    ask where one ends up after k steps, with k large and many questions.
+  how_to_test: Check that the next item depends only on the current item (not on the step number or on
+    a choice) and that k is too large for stepping. Then build the table of the 1, 2, 4, 8, ... steps
+    ahead from the table before it, and answer a query by the binary digits of k.
+  constraint_shapes:
+  - 'n = 2·10^5 items and q = 2·10^5 queries with k up to 10^9: stepping is up to 2·10^14 steps, while
+    the table has 30 · 2·10^5 = 6·10^6 entries and a query takes 30 jumps'
+  - 'A tree of 2·10^5 vertices that is a path: climbing one parent at a time costs 2·10^5 steps per query'
+  weak_signals:
+  - form: Asks for the k-th boss, ancestor or parent of a vertex, for many vertices and many k
+    shape: n, q up to 2·10^5, k up to n
+  - form: Each place has one teleporter, bus or pointer, and asks where one ends up after k moves, with
+      k up to 10^9 or 10^18
+    shape: n up to 2·10^5, q up to 2·10^5
+  - form: Asks for the first place on the way to the root that satisfies a condition that never goes from
+      true back to false
+    shape: A tree with n up to 2·10^5
+  kill_signals:
+  - 'The next item depends on the step number, or there is a choice at each step: the pair (item, step
+    number) is the state (the first negative example below)'
+  - 'The graph has several arrows out of an item: there is no single next item to jump to'
+  in_action:
+    statement: 'There are n planets and each has one teleporter to a planet (possibly itself). There are
+      q queries (x, k): starting on planet x and using k teleporters, which planet is reached?'
+    constraints: n, q ≤ 2·10^5, k ≤ 10^9.
+    budget: Stepping is q · k = 2·10^14. Need about O((n + q) log k).
+    candidates:
+    - tool: Simulating the k steps (topic 0.5)
+      verdict: rejected
+      because: Up to 10^9 steps per query.
+    - tool: Table of the 2^j-th successors and the binary digits of k (this topic)
+      verdict: chosen
+      because: Each planet has one next planet, so 2^j steps are two steps of 2^(j-1); a query uses at
+        most 30 jumps (Theorem 4.6.1).
+    property_check: One teleporter per planet, the same at every step; k is large; many queries. The property
+      holds.
+    decision: Build up[j][v] for j = 0..29 from up[0] = teleporter; for each query take the jumps of the
+      set bits of k and print the result.
+  examples:
+    positive:
+    - inline:
+        input: The tree 1–2–3–4–5–6 with the extra branch 2–7–8, rooted at 1. What is the 5th ancestor
+          of vertex 6?
+        answer: '1'
+        why: Climbing five parents from 6 gives 5, 4, 3, 2, 1. The table gives the same with two jumps,
+          4 + 1 = 5.
+    - inline:
+        input: Four planets with the teleporters 1→2, 2→1, 3→1, 4→4. Starting on planet 3 and using 4
+          teleporters, where does one arrive?
+        answer: '2'
+        why: 3 → 1 → 2 → 1 → 2. The jumps of 4 steps (one table lookup) give the same planet.
+    - worked_example: cses-1750
+      why: 'One teleporter per planet and k up to 10^9: the table of 2^j-th successors answers each query
+        in 30 jumps.'
+    negative:
+    - inline:
+        input: Planets 1, 2, 3. On odd-numbered steps the teleporters are 1→2, 2→3, 3→1; on even-numbered
+          steps all lead to planet 1. Starting on planet 1, where does one arrive after 2 steps?
+        answer: '1'
+        method_gives: '3'
+        why: Step 1 goes 1 → 2 and step 2 goes 2 → 1. A table built for the odd-step teleporters alone
+          says 1 → 2 → 3. The next place depends on the step number, so the state is (planet, parity of
+          the step).
+      correct_tool:
+        topic: '4.1'
+        card: state-graph
+    - problem: ac-abc340_d
+      why: 'At each stage there are two ways to go on, with different costs: there is no single next stage,
+        and the question asks for the cheapest way, not for a fixed number of steps.'
+      correct_tool:
+        topic: '4.3'
+        card: dijkstra
+  lookalikes:
+  - description: The lowest common ancestor of two vertices
+    tool:
+      topic: '4.6'
+      card: meeting-vertex
+    flipping_difference: 'The same table is used, but the jump length is not given: it is found by comparing
+      the two ancestors at each level.'
+  - description: Following pointers until a place repeats, to find the cycle
+    tool:
+      topic: '4.2'
+      card: directed-cycle
+    flipping_difference: With k small or a cycle asked for, one walk with states is enough; the table
+      is for many queries with large k.
+  complexity: O(n log k) to prepare, O(log k) per query.
+- id: meeting-vertex
+  name: Lowest common ancestor
+  from_theorem: 4.6.2
+  decisive_property: 'The tree has a fixed root, and the questions ask for the lowest vertex that is above
+    (or equal to) both of two vertices, or what that vertex tells: the meeting point, the shared part
+    of two paths, the vertex where two routes to the root merge.'
+  how_to_test: Check that the root is fixed and that the question is about the first common vertex when
+    climbing from two vertices. Equalise the depths with the k-th ancestor, then jump both together from
+    the largest jump to the smallest while the ancestors differ.
+  constraint_shapes:
+  - 'q = 2·10^5 pairs in a tree of 2·10^5 vertices: climbing is up to 4·10^10 steps, while two lifts of
+    at most 18 jumps each are about 7·10^6'
+  - 'A chain-like tree: depth 2·10^5, so a plain climb for each pair is too slow'
+  weak_signals:
+  - form: Asks for the lowest common boss, ancestor or meeting point of two vertices, for many pairs
+    shape: n, q up to 2·10^5
+  - form: Asks whether a vertex lies on the path between two others, or which vertex is the top of a path
+    shape: n, q up to 2·10^5
+  - form: Needs the number of edges or the total weight between two vertices (the next card), or the top
+      of a path to place counts on it
+    shape: n, q up to 2·10^5
+  kill_signals:
+  - 'The root is not fixed: the meeting vertex changes with the root (the first negative example below)'
+  - 'The graph is not a tree (a vertex may have several parents): "lowest common ancestor" is not unique'
+  in_action:
+    statement: A company is a tree with the boss 1 at the root. For each of q pairs (a, b), print the
+      lowest employee who is a boss of both (an employee counts as his own boss).
+    constraints: n, q ≤ 2·10^5.
+    budget: Climbing is up to q · n = 4·10^10 steps. Need about O((n + q) log n).
+    candidates:
+    - tool: Climbing one parent at a time (topic 4.5)
+      verdict: rejected
+      because: 4·10^10 steps for a chain.
+    - tool: 'Binary lifting: equalise the depths, then jump while the ancestors differ (this topic)'
+      verdict: chosen
+      because: The test "the ancestors differ" is monotone in the jump length, so the largest-to-smallest
+        loop finds the child of the meeting point (Theorem 4.6.2).
+    property_check: A fixed root, pairs of vertices, and the answer is the first common vertex above them.
+    decision: Prepare the jump table and depths once; for each pair run the lift and the loop, and print
+      the parent of the stopping vertex.
+  examples:
+    positive:
+    - inline:
+        input: The tree 1–2–3–4–5–6 with the branch 2–7–8, rooted at 1. What is the lowest common ancestor
+          of 6 and 8?
+        answer: '2'
+        why: The ancestors of 6 are 6, 5, 4, 3, 2, 1 and those of 8 are 8, 7, 2, 1; the lowest one they
+          share is 2. Marking one chain and climbing the other agrees.
+    - inline:
+        input: The same tree. What is the lowest common ancestor of 8 and 7?
+        answer: '7'
+        why: Vertex 7 is an ancestor of 8, and a vertex counts as its own ancestor, so 7 is the answer.
+    negative:
+    - inline:
+        input: The tree 1–2, 1–3, 3–4, 3–5. What is the lowest common ancestor of 2 and 5 when the tree
+          is rooted at vertex 4?
+        answer: '3'
+        method_gives: '1'
+        why: Rooted at 4, the path from 2 to 5 is 2–1–3–5, and its top is 3 (the vertex closest to 4).
+          The table made for the root 1 gives vertex 1. A different root needs a new walk and a new table.
+      correct_tool:
+        topic: '4.5'
+        card: depths-parents
+    - problem: ac-abc202_e
+      why: 'The question is about the vertices below a given vertex at a given depth: a subtree range
+        and a sorted list per depth, not a meeting point of two vertices.'
+      correct_tool:
+        topic: '4.5'
+        card: subtree-ranges
+  lookalikes:
+  - description: The k-th ancestor of one vertex
+    tool:
+      topic: '4.6'
+      card: jump-up
+    flipping_difference: There the jump length is given; here it is found by comparing two chains, which
+      needs both vertices at the same depth first.
+  - description: The distance between two vertices
+    tool:
+      topic: '4.6'
+      card: tree-distance
+    flipping_difference: The distance uses the lowest common ancestor, but asks for a number about the
+      whole path.
+  complexity: O(n log n) to prepare, O(log n) per query.
+- id: tree-distance
+  name: Distances in a tree
+  from_theorem: 4.6.3
+  decisive_property: The graph is a tree and the questions ask for the distance (edges or total weight)
+    between two given vertices, for many pairs, or for something that is built from such distances.
+  how_to_test: Check that the graph is a tree (n − 1 edges, connected) and that weights are not negative.
+    Compute the weighted depth of every vertex from a root, find the lowest common ancestor of each pair,
+    and answer wd[u] + wd[v] − 2·wd[lca].
+  constraint_shapes:
+  - 'q = 2·10^5 pairs in a tree of n = 2·10^5: a walk for each pair is up to 8·10^10 steps, while the
+    formula needs two lookups and one lowest common ancestor'
+  - 'Weights up to 10^9: distances up to 2·10^14, in 64 bits'
+  weak_signals:
+  - form: Asks for the distance between a and b in a tree, for many pairs
+    shape: n, q up to 2·10^5
+  - form: 'Asks whether a vertex lies on the path between two others: d(a, c) + d(c, b) = d(a, b)'
+    shape: n, q up to 2·10^5
+  - form: Asks for the length of a cycle made by adding an edge to a tree, or the length of the shortest
+      route when one extra edge may be used
+    shape: A tree plus a few extra edges, q up to 2·10^5
+  kill_signals:
+  - 'The graph has cycles: the formula gives the length of the tree path, not the shortest route (the
+    first negative example below)'
+  - 'A weight is negative or edges are directed with different costs each way: the formula is not valid'
+  in_action:
+    statement: A tree of n cities is given. For each of q pairs (a, b), print the number of roads on the
+      trip between a and b.
+    constraints: n, q ≤ 2·10^5.
+    budget: A walk per pair is up to 8·10^10 steps. Need about O((n + q) log n).
+    candidates:
+    - tool: A walk from a for every pair (topic 4.5)
+      verdict: rejected
+      because: Up to 8·10^10 steps.
+    - tool: depth[a] + depth[b] − 2·depth[lca] with binary lifting (this topic)
+      verdict: chosen
+      because: The unique path goes up to the lowest common ancestor and down again (Theorem 4.6.3).
+    property_check: The graph is a tree with unit edges, and the answer is a path length between two given
+      vertices.
+    decision: Root the tree at 1, compute depths and the jump table, and answer each pair with the formula.
+  examples:
+    positive:
+    - inline:
+        input: The tree with the edges 1–2 (3), 2–3 (4), 2–4 (1), 4–5 (6), 1–6 (2). What is the distance
+          between 3 and 5?
+        answer: '11'
+        why: 'The path is 3–2–4–5 with 4 + 1 + 6 = 11. With the root 1, the weighted depths of 3 and 5
+          are 7 and 10 and their lowest common ancestor 2 has 3: 7 + 10 − 6 = 11. A table of all distances
+          agrees.'
+    - inline:
+        input: The tree 1–2, 1–3, 3–4, 3–5 (every edge counts 1). What are the distances for the pairs
+          (1, 3), (2, 5), (1, 4)?
+        answer: 1,3,2
+        why: The paths are 1–3, 2–1–3–5 and 1–3–4, with 1, 3 and 2 edges; the formula gives the same.
+    - worked_example: cses-1135
+      why: 'A tree and 2·10^5 distance questions: depths and the lowest common ancestor.'
+    negative:
+    - inline:
+        input: The triangle 1–2, 2–3, 1–3 (every edge counts 1). What is the distance between 2 and 3?
+        answer: '1'
+        method_gives: '2'
+        why: The tree of a walk from 1 has the edges 1–2 and 1–3, and the formula gives 1 + 1 − 0 = 2,
+          but the edge 2–3 gives 1. With a cycle, the tree path is not the shortest route; use the walk
+          of topic 4.1 from the first vertex.
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+    - problem: ac-abc361_e
+      why: The question asks for the length of a whole trip through all cities, which uses the diameter,
+        not a distance between two given cities.
+      correct_tool:
+        topic: '4.5'
+        card: longest-path
+  lookalikes:
+  - description: The farthest vertex from every vertex
+    tool:
+      topic: '4.5'
+      card: farthest-each
+    flipping_difference: There the distances from one vertex to all others are all needed (two walks);
+      here single pairs are asked, and the lowest common ancestor answers each in O(log n).
+  - description: The smallest edge on the path between two vertices
+    tool:
+      topic: '4.6'
+      card: path-values
+    flipping_difference: The distance is a sum that comes from two depths; the minimum cannot be subtracted,
+      so values are stored with the jumps.
+  complexity: O(n log n) to prepare, O(log n) per query.
+- id: path-values
+  name: Minimum, maximum or sum along a path
+  from_theorem: 4.6.4
+  decisive_property: The tree is fixed, and each question asks for a combination (the smallest, the largest,
+    the sum, the XOR) of the values on the path between two vertices, or on a long walk along pointers.
+  how_to_test: Check that the combination can be done piece by piece (it is associative) and that the
+    values do not change between questions. Store with each jump of 2^j levels the combination of the
+    values it passes, and combine the pieces along the same jumps as the search for the meeting point.
+  constraint_shapes:
+  - 'q = 2·10^5 questions on paths of a tree of 2·10^5 vertices: walking each path is up to 4·10^10 steps,
+    while the combined jumps are about 40 table lookups'
+  - 'A pointer graph and k up to 10^12 steps with a sum of gains: jumps of 2^j steps with their sums,
+    40 jumps per query'
+  weak_signals:
+  - form: Asks for the smallest or largest edge weight (toll, height limit) on the path between two vertices
+    shape: n, q up to 2·10^5
+  - form: Asks for the sum of values collected after k moves along pointers, with k up to 10^12
+    shape: n up to 2·10^5
+  - form: Asks for the sum or XOR of the values on a vertex-to-vertex path of a tree without changes between
+      questions
+    shape: n, q up to 2·10^5
+  kill_signals:
+  - 'The values change between questions: the tables become stale (a task for a structure with updates,
+    in a later phase)'
+  - 'The graph has cycles and the question wants the best route: the unique tree path is not the best
+    route (the first negative example below)'
+  in_action:
+    statement: A tree has n cities and roads with toll limits. For each of q pairs (a, b), print the smallest
+      limit on the road path between them.
+    constraints: n, q ≤ 2·10^5, limits ≤ 10^9.
+    budget: A walk per question is up to 4·10^10 steps. Need about O((n + q) log n).
+    candidates:
+    - tool: A walk of the path for every question (topic 4.5)
+      verdict: rejected
+      because: Up to 4·10^10 steps.
+    - tool: Binary lifting with a table of minima over the jumps (this topic)
+      verdict: chosen
+      because: The path is cut into the same disjoint jumps as the search for the lowest common ancestor,
+        and the minimum is associative (Theorem 4.6.4).
+    property_check: A fixed tree, fixed limits, many path questions about a minimum.
+    decision: Store mn[j][v] with the jump table; for each pair, lift the deeper vertex, jump both while
+      the ancestors differ, taking minima, and add the last two edges.
+  examples:
+    positive:
+    - inline:
+        input: The tree 1–2 (3), 2–3 (4), 2–4 (1), 4–5 (6), 1–6 (2). What is the smallest edge weight
+          on the path from 3 to 5?
+        answer: '1'
+        why: The path 3–2–4–5 has the weights 4, 1, 6, and the smallest is 1. The table of minima over
+          the jumps gives the same.
+    - inline:
+        input: A dish starts empty. K = 5 times, put A[X mod 3] more candies on it, where X is the number
+          of candies on it and A = (1, 2, 3). How many candies are on the dish at the end?
+        answer: '7'
+        why: 'X = 0 → 1 → 3 → 4 → 6 → 7. The position X mod 3 is the vertex, the next position is (X +
+          A) mod 3, and the jump table also stores the sum of the gains: 5 = 4 + 1 steps.'
+    - worked_example: ac-abc241_e
+      why: 'The same dish with N up to 2·10^5 and K up to 10^12: jumps of 2^j steps with the sum of the
+        candies they add.'
+    negative:
+    - inline:
+        input: The triangle 1–2 (5), 2–3 (5), 1–3 (1). What is the largest possible smallest edge on a
+          trip from 2 to 3?
+        answer: '5'
+        method_gives: '1'
+        why: The direct edge 2–3 has weight 5. A table built for the tree of a walk from vertex 1 (edges
+          1–2 and 1–3) gives the path 2–1–3 with smallest edge 1. With cycles, the best trip lies in a
+          maximum spanning tree (the Kruskal order of topic 4.4), and the table is built on that tree.
+      correct_tool:
+        topic: '4.4'
+        card: largest-edge
+    - problem: ac-abc333_d
+      why: The question asks which vertices to delete in a tree, decided by the sizes of subtrees, not
+        by a combination along a path.
+      correct_tool:
+        topic: '4.5'
+        card: subtree-values
+  lookalikes:
+  - description: The distance between two vertices
+    tool:
+      topic: '4.6'
+      card: tree-distance
+    flipping_difference: A sum can be built from the two depths and the meeting point; a minimum or a
+      maximum cannot be subtracted, so the values travel with the jumps.
+  - description: Counting how many given paths use each edge
+    tool:
+      topic: '4.6'
+      card: path-counts
+    flipping_difference: 'There all paths are known first and nothing is asked in between: +1 at the ends
+      and −2 at the meeting point, then subtree sums; here each query is answered separately.'
+  complexity: O(n log n) to prepare, O(log n) per query.
+- id: path-counts
+  name: Adding along many paths (offline)
+  from_theorem: 4.6.5
+  decisive_property: Many paths of a tree are given, each adds one (or a value) to every edge or vertex
+    on it, and the totals are asked only at the end.
+  how_to_test: Check that the totals are asked after all the paths and that the tree is fixed. Put +1
+    at both ends of each path and −2 at the lowest common ancestor, then take the sums over the subtrees;
+    the sum at v is the count of the edge above v. For vertices, put −1 at the meeting point and −1 at
+    its parent.
+  constraint_shapes:
+  - 'q = 2·10^5 paths in a tree of 2·10^5 vertices: adding along each path is up to 4·10^10 steps, while
+    the counts need q lowest-common-ancestor queries and one pass over the tree'
+  - 'Counts up to q per edge, and sums of values up to 10^14: 64-bit numbers'
+  weak_signals:
+  - form: Many trips are made along the roads of a tree; asks how many times each road is used, or which
+      is used most
+    shape: n, q up to 2·10^5
+  - form: Many ranges of a path are painted or incremented; asks for the final values on all vertices
+      or edges
+    shape: n, q up to 2·10^5
+  - form: Asks for the cost of the busiest edge, or the total cost when each use of a road costs a price
+    shape: n, q up to 2·10^5
+  kill_signals:
+  - 'Questions about the counts come between the additions (online): an offline sum cannot answer them
+    (a task for a structure with updates, in a later phase)'
+  - 'The question counts vertices rather than edges: use the vertex form of the counts, with −1 at the
+    meeting point and at its parent (the first negative example below)'
+  in_action:
+    statement: A tree of n cities and q trips, each from a city a to a city b along the roads. For each
+      road, print the number of trips that use it.
+    constraints: n, q ≤ 2·10^5.
+    budget: Walking each trip is up to q · n = 4·10^10 steps. Need about O((n + q) log n).
+    candidates:
+    - tool: Walking each trip and adding 1 on its edges (topic 4.5)
+      verdict: rejected
+      because: 4·10^10 steps for a chain.
+    - tool: +1 at both ends, −2 at the meeting point, then subtree sums (this topic)
+      verdict: chosen
+      because: The sum over the subtree of v counts exactly the paths with one end inside (Theorem 4.6.5).
+    property_check: All trips are known first, the answers are totals per road, and the tree is fixed.
+    decision: Root the tree, find each trip's lowest common ancestor with binary lifting, add the counts,
+      and sum over subtrees in the backward pass over the visit order.
+  examples:
+    positive:
+    - inline:
+        input: The tree 1–2, 1–3, 2–4, 2–5, 3–6 and the trips 4–5, 4–6, 5–6. How many trips use the road
+          above each of the vertices 2, 3, 4, 5, 6?
+        answer: 2,2,2,2,2
+        why: Every road is used by two of the three trips; for example the road 2–1 is used by 4–6 and
+          5–6. The counts +1, +1, −2 and the subtree sums give the same.
+    - inline:
+        input: The path 1–2–3–4 and the trips 1–4 and 2–3. How many trips use the road above each of the
+          vertices 2, 3, 4?
+        answer: 1,2,1
+        why: The trip 1–4 uses all three roads and the trip 2–3 uses only the road 3–2, so the counts
+          are 1, 2, 1.
+    negative:
+    - inline:
+        input: The path 1–2–3 and the single trip 2–3. How many trips pass through the vertex 2?
+        answer: '1'
+        method_gives: '0'
+        why: 'The trip starts at vertex 2, so it passes through it. The edge version puts the count of
+          the road above vertex 2 at vertex 2, and the road 2–1 is not used: 0. For vertices the lowest
+          common ancestor and its parent each get −1.'
+      correct_tool:
+        topic: '4.6'
+        card: path-counts
+    - problem: ac-abc333_d
+      why: The question deletes vertices of a tree and depends on subtree sizes; no trips are given.
+      correct_tool:
+        topic: '4.5'
+        card: subtree-values
+  lookalikes:
+  - description: The smallest or largest value on one path
+    tool:
+      topic: '4.6'
+      card: path-values
+    flipping_difference: One path per question is answered at once; counting along many paths needs all
+      paths known first.
+  - description: The sum of the values in each subtree
+    tool:
+      topic: '4.5'
+      card: subtree-values
+    flipping_difference: The same backward pass, but here the values to add come from the ends and meeting
+      points of the paths.
+  complexity: 'O((n + q) log n): q lowest-common-ancestor queries and one backward pass.'
+problems:
+- id: cses-1750
+  role: worked_example
+  summary: 'n ≤ 2·10^5 planets each with one teleporter, and q ≤ 2·10^5 queries (x, k): starting on planet
+    x and using k ≤ 10^9 teleporters, which planet is reached?'
+- id: cses-1135
+  role: worked_example
+  summary: 'A tree with n ≤ 2·10^5 nodes and q ≤ 2·10^5 queries: the distance (number of edges) between
+    nodes a and b.'
+- id: ac-abc241_e
+  role: worked_example
+  summary: A sequence A of length N ≤ 2·10^5; K ≤ 10^12 times, put A[X mod N] more candies on the dish,
+    X being the number there now; how many candies are on the dish at the end?
 drill: []
 lookalike_pairs: []
 self_test: []

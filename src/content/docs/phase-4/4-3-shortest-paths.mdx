@@ -376,6 +376,93 @@ Wrong output `7`, correct output `0`. The only road can be free, which is state 
 
 ## 8. Worked examples
 
+### Example 1: Super Takahashi Bros.
+
+[AtCoder Beginner Contest (ABC) 340 D: Super Takahashi Bros.](https://atcoder.jp/contests/abc340/tasks/abc340_d). In short: a game has $N \le 2 \cdot 10^5$ stages and only stage 1 can be played at first. At stage $i$ you can pay $A_i$ seconds to open stage $i + 1$, or pay $B_i$ seconds to open stage $X_i$ (any stage); find the fewest seconds until stage $N$ can be played.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$ stages and $2(N - 1)$ ways to clear them. Trying every order of choices is $2^{N-1}$. A heap search is about $2N \log N \approx 7 \cdot 10^6$ steps. The times add up to $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$, which needs `long long`.
+
+#### Step 2: Question form → candidate tools
+
+- Try every choice at every stage ([topic 0.5](../../phase-0/0-5-brute-force/)): $2^{N-1}$ of them.
+- Stages are vertices, every way of clearing a stage is an arrow with its time as weight, and the question asks for the cheapest cost from stage 1 to stage $N$: the card "Cheapest route (Dijkstra)".
+
+#### Step 3: Property check → decision
+
+All times are at least 1, so no weight is negative; the arrows are listed (two per stage), and a single start and a single target are given. That is the card's property. Decision: Dijkstra's algorithm from stage 1, answer `dist[N]`.
+
+#### Step 4: Proof for this problem
+
+Clearing stages in any order amounts to a walk along the arrows from stage 1: each arrow is paid once when it is used, and you can play a stage exactly when a walk has reached it. The time to be able to play stage $N$ is the cost of the cheapest walk that ends at $N$. By Theorem 4.3.1, Dijkstra's algorithm computes the cheapest cost to every vertex when the weights are non-negative, so the value `dist[N]` is the answer. A stage that is opened by a jump backwards is no problem: the weights stay positive, and the graph is general.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.3/example-1" />
+
+#### Step 6: Alternative approach
+
+The problem looks like a dynamic programme over the stages, but the jumps $X_i$ may go backwards, so no order of the stages makes the values depend only on earlier ones; that is exactly what the heap's order handles. Bellman–Ford would also give the right value, in $O(N^2)$ time: too slow here.
+
+### Example 2: Wizard in Maze
+
+[AtCoder Beginner Contest (ABC) 176 D: Wizard in Maze](https://atcoder.jp/contests/abc176/tasks/abc176_d). In short: on an $H \times W$ maze ($H, W \le 10^3$) of roads and walls, a magician walks to an adjacent road square for free, or uses magic to warp to any road square in the $5 \times 5$ area around him. Find the fewest uses of magic to reach a given square, or $-1$.
+
+#### Step 1: Constraints → budget
+
+$HW = 10^6$ squares, each with at most 24 warp targets: about $2.5 \cdot 10^7$ moves. A heap would add a factor $\log HW \approx 20$ to that, which is still fine here, but a deque avoids it.
+
+#### Step 2: Question form → candidate tools
+
+- Search over the number of magic uses with a BFS per level ([topic 4.1](../4-1-graph-traversal/)): a new level for each use, rebuilding the reachable set every time.
+- Squares as vertices; walking costs 0 and a warp costs 1; the question asks for the cheapest cost: the card "Weights only 0 and 1 (0-1 BFS)".
+
+#### Step 3: Property check → decision
+
+There are exactly two kinds of moves, with costs 0 and 1, and a single start. Decision: 0-1 BFS from the start; walks go to the front of the deque, warps to the back.
+
+#### Step 4: Proof for this problem
+
+The squares and the two kinds of moves form a graph whose weights are 0 (a step to a neighbouring road square) and 1 (a warp). The number of magic uses on a route is its cost, so the answer is the cheapest cost to the target. By Theorem 4.3.2, 0-1 BFS computes the cheapest cost for weights 0 and 1, and `dist` of the target is the answer, with $-1$ when it keeps its initial value (the target is not reachable).
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.3/example-2" />
+
+#### Step 6: Alternative approach
+
+Dijkstra with a heap gives the same numbers in $O(24\,HW \log HW)$. A BFS over levels does it too: first mark everything reachable by walking, then everything that one warp from there reaches, then the walks from those, and so on; it is the same computation arranged by level.
+
+### Example 3: High Score
+
+[CSES 1673: High Score](https://cses.fi/problemset/task/1673). In short: $n \le 2500$ rooms and $m \le 5000$ one-way tunnels are given; each tunnel adds a score $x$ (possibly negative, $|x| \le 10^9$) and may be used again and again. Find the largest score of a walk from room 1 to room $n$, or print $-1$ if it can be arbitrarily large. Room $n$ can always be reached.
+
+#### Step 1: Constraints → budget
+
+$n \cdot m = 2500 \cdot 5000 = 1.25 \cdot 10^7$ edge relaxations for $n$ rounds of Bellman–Ford. Scores reach $2500 \cdot 10^9 \approx 2.5 \cdot 10^{12}$: `long long`.
+
+#### Step 2: Question form → candidate tools
+
+- Try every walk ([topic 0.5](../../phase-0/0-5-brute-force/)): there are infinitely many, since tunnels can repeat.
+- The largest score is the cheapest cost with every gain negated, negative weights occur, and a cycle may make the answer unbounded: the card "Negative weights (Bellman–Ford)".
+
+#### Step 3: Property check → decision
+
+Weights have both signs, so Dijkstra's algorithm does not apply (Theorem 4.3.1 needs non-negative weights). $n \cdot m$ is small enough for rounds of relaxation. Decision: Bellman–Ford on the gains, after restricting to rooms that lie on some walk from room 1 to room $n$.
+
+#### Step 4: Proof for this problem
+
+If a positive cycle (total gain above 0) can be used on a walk from 1 to $n$, going round it again and again makes the score as large as you like, so the answer is $-1$; this is Theorem 4.3.3 (b) and (c) for the negated weights. If no such cycle exists, the largest score is attained by a path with at most $n - 1$ tunnels, so $n - 1$ rounds finish the improvements and a change in round $n$ proves a cycle. A positive cycle that is not on a way from 1 to $n$ is not allowed to matter, so only rooms that can be reached from 1 and can reach $n$ take part. Hence "round $n$ still improves" is the right test for $-1$, and `best[n]` is the answer otherwise.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.3/example-3" />
+
+#### Step 6: Alternative approach
+
+Negate the gains and run the shortest-path form of Bellman–Ford: it is the same algorithm with the sign flipped. The queue-based variant of Bellman–Ford (SPFA) is faster on many inputs but has the same worst case.
+
 ## 9. Problem ladder
 
 <Ladder topic="4.3" />

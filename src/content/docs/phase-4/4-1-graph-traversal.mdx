@@ -21,6 +21,14 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A country has $n = 10^5$ cities and $m = 2 \cdot 10^5$ two-way roads. What is the fewest number of new roads that must be built so that a traveller can get from any city to any other?
+
+Asking, for every pair of cities, "is there a route?" means $n(n-1)/2 \approx 5 \cdot 10^9$ pairs. Even one step per pair is 50 seconds at about $10^8$ steps per second ([topic 0.2](../../phase-0/0-2-complexity/)), and every question needs a whole search of its own. Trying sets of new roads is worse.
+
+The key idea: draw each city as a dot and each road as a line between two dots (a **graph**). Stand on one city, walk along roads, mark every city you reach, and never step on a marked city again. When the walk cannot go on, the marked cities are exactly the cities you can reach from the start, and the work was one step per city and one look per road in that group: no pairs at all. Start again from any unmarked city and you find the next group. All groups together cost $n + m = 3 \cdot 10^5$ steps. If there are $k$ groups, the answer is $k - 1$: one new road merges at most two groups, so at least $k - 1$ are needed, and joining the groups in a chain uses exactly that many.
+
+The same walk, done with a queue instead of a stack, also tells the **fewest roads** from the start to every city, and the idea reaches far beyond maps: the cells of a grid, or the positions of a puzzle, are dots too. That is the plan of this lesson: graph traversal, components, fewest edges, several starting points, grids, and puzzles as graphs.
+
 ## 2. Prerequisites and scope
 
 ### What you need
@@ -29,10 +37,202 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ### What this topic does not cover
 
+- Putting tasks in an order that respects "A before B", finding cycles in a directed graph, and splitting a graph into two sides with no edge inside a side: topic 4.2.
+- Fewest edges is not the same as the shortest total length when roads have different lengths; Dijkstra's algorithm and its relatives handle lengths, in topic 4.3. Here every edge costs 1.
+- Merging groups while roads arrive one at a time with a union–find structure (disjoint set union), and minimum spanning trees: topic 4.4.
+- Trees as a topic (parents, subtree sizes, diameters, Euler tours) and the lowest common ancestor: topics 4.5 and 4.6.
+- Strongly connected components of a directed graph, bridges and articulation points: topic 4.7. Here directed edges appear only to say what a traversal reaches.
+
 ## 3. Definitions
+
+- A **graph** is a set of **vertices** (points) together with a set of **edges**, each joining two vertices. We write $n$ for the number of vertices and $m$ for the number of edges, and number the vertices $1, 2, \dots, n$. Cities and roads, people and friendships, the cells of a table and the steps between them are all graphs. An edge is **undirected** if it can be used in both directions (a two-way road) and **directed** if it can be used in one direction only (an arrow $u \to v$). Unless a sentence says "directed", edges are undirected.
+- A vertex $w$ is a **neighbour** of $u$ if an edge joins them (for an arrow $u \to w$: $w$ is a neighbour of $u$, but $u$ is not a neighbour of $w$).
+- A **path** from $u$ to $v$ is a sequence of vertices $u = v_0, v_1, \dots, v_k = v$ in which every vertex is a neighbour of the one before it; its **length** is $k$, the number of edges. The vertex $v$ is **reachable** from $u$ if such a path exists (every vertex is reachable from itself by the path of length 0).
+- The **distance** $d(u, v)$ is the smallest length of a path from $u$ to $v$, that is, the fewest edges you must use. If $v$ is not reachable from $u$, the code stores $-1$.
+- A **connected component** of an undirected graph is a maximal set of vertices in which every two are reachable from each other. Example: the graph on vertices $1..6$ with edges $1\!-\!2$, $2\!-\!3$, $4\!-\!5$ has the components $\{1, 2, 3\}$, $\{4, 5\}$ and $\{6\}$.
+- An **adjacency list** stores, for every vertex, the list of its neighbours: `vector<vector<int>> adj(n + 1)`, where `adj[u]` is the list for $u$. An undirected edge $a\!-\!b$ is stored twice (`b` in `adj[a]` and `a` in `adj[b]`), so the lists hold $2m$ entries in total, and the structure takes $n + 2m$ memory. An **adjacency matrix** is an $n \times n$ table whose cell $(a, b)$ says whether the edge exists: for $n = 10^5$ it has $10^{10}$ cells, far too many, and listing the neighbours of one vertex costs $n$ steps instead of its own number of neighbours. An **edge list** is just the $m$ pairs, enough when you only need to sort or count edges.
+- **Graph traversal** visits the vertices reachable from a start vertex $s$, using a container of vertices still to be processed. In **breadth-first search (BFS)** the container is a queue, so the vertices closest to $s$ leave first. In **depth-first search (DFS)** the container is a stack, so the search follows one route as far as it can before it backs up.
+- A vertex is **marked** (or visited) from the moment it is put into the container.
+- A **grid graph** has one vertex for each cell of an $R \times C$ table and an edge between two cells that share a side (4 directions; with corners, 8 directions). A **state graph** has one vertex for each configuration (state) of a puzzle and an edge from a state to every state one move away; it is **implicit**: it is never written down, the program computes the neighbours of a state from the rules when it needs them.
+- A **source** is a start vertex of a traversal; with several sources, all of them start at once.
 
 ## 4. Theory and proofs
 
+### 4.1 One walk reaches exactly what can be reached
+
+**Theorem 4.1.1 (traversal).** Let $G$ be a graph and $s$ a vertex. Start with $s$ marked and in a container. While the container is not empty, remove any vertex $u$ from it, and for each neighbour $w$ of $u$ that is not marked, mark $w$ and put it in the container. Then:
+
+(a) when the loop ends, the marked vertices are exactly the vertices reachable from $s$;
+
+(b) every vertex is put in the container at most once, so the loop runs at most $n$ times and looks at each adjacency-list entry at most once: the total time is $O(n + m)$.
+
+The container may be a stack (the search goes deep first) or a queue (the search goes level by level); the result is the same set.
+
+:::tip[In plain words]
+Walk out from the start, mark every place you reach, and never enter a marked place again. When you run out of places to enter, you have marked exactly the places that can be reached, and you looked at each road at most twice.
+:::
+
+**A tiny instance.** Six vertices, edges $1\!-\!2$, $2\!-\!3$, $1\!-\!3$, $4\!-\!5$, start $s = 1$. The container holds 1; removing 1 marks 2 and 3; removing 3 finds 1 and 2 marked; removing 2 finds 1 and 3 marked. The container is empty and the marked set is $\{1, 2, 3\}$: the vertices 4, 5 and 6 are not reachable from 1, and the walk never looked at them.
+
+**Proof.**
+1. *Marked $\subseteq$ reachable.* The start $s$ is reachable (path of length 0). A vertex $w$ is only marked while looking at a neighbour $u$ that is already marked; if $u$ is reachable by some path, that path followed by the edge $u \to w$ reaches $w$. By induction over the order of marking, every marked vertex is reachable.
+2. *Reachable $\subseteq$ marked.* Take a reachable vertex $v$ and a path $s = v_0, v_1, \dots, v_k = v$. We show by induction on $i$ that $v_i$ is marked. The vertex $v_0 = s$ is marked at the start.
+3. Suppose $v_i$ is marked. It was put into the container when it was marked, and the loop only ends when the container is empty, so $v_i$ is removed before the end.
+4. When $v_i$ is removed, the loop looks at all its neighbours, among them $v_{i+1}$; if $v_{i+1}$ is not marked yet, it is marked now. So $v_{i+1}$ is marked, and $v = v_k$ is marked. Steps 1 to 4 show statement (a).
+5. A vertex enters the container only when it is marked, and a marked vertex is never marked again, so each vertex enters (and leaves) the container at most once: the loop runs at most $n$ times.
+6. Each run looks at the whole adjacency list of the removed vertex, and each list is looked at at most once. The lists hold $2m$ entries in total (undirected), or $m$ (directed). So the loop costs $O(n + m)$, which is statement (b). $\square$
+
+:::note[This proof needs]
+1. A vertex is marked at the moment it is put into the container, not when it is removed (otherwise it could enter many times and step 5 fails).
+2. The neighbours of a vertex come from an adjacency list, so looking at them costs their number, not $n$.
+3. For arrows, the lists hold the out-neighbours; then (a) is about paths that follow the arrows.
+:::
+
+<TheoremCode unit="4.1/thm-1" />
+
+The first example is the walk of the tiny instance (steps 2 to 4 of the proof): from 1 the marked set is $\{1, 2, 3\}$, and from 4 it is $\{4, 5\}$. The third example has arrows: from 3 the arrow $3 \to 2$ is followed, but from 2 nothing leaves, so the sets differ; reaching is not symmetric when edges have directions.
+
+**Which container.** The proof never used which vertex is removed, so any container gives (a) and (b). A queue visits vertices in rings around $s$ (BFS, Theorem 4.1.3 uses this). A stack follows one route as deep as possible first (DFS). The version above marks a vertex when it is pushed; the usual *recursive* DFS marks it when it is entered, which visits the vertices in a slightly different order. For reachability and components the order does not matter, so the stack version is used throughout; it also avoids deep recursion (Section 6 and Section 7).
+
+### 4.2 Components
+
+**Theorem 4.1.2 (components).** In an undirected graph, "$v$ is reachable from $u$" is an equivalence relation, so the vertices split into components. The loop "for $s = 1, \dots, n$: if $s$ is not marked, start a traversal from $s$ (keeping all marks)" starts exactly one traversal per component, and the traversal started at $s$ marks exactly the component of $s$. Hence the number of traversals started is the number of components, and giving each traversal its own number labels every vertex by its component. Total time $O(n + m)$.
+
+:::tip[In plain words]
+Look for an unmarked vertex, walk out from it, and everything you mark is one group. Repeat until nothing is unmarked. Each group is found exactly once, so the number of walks is the number of groups.
+:::
+
+**A tiny instance.** The graph on $1..6$ with edges $1\!-\!2$, $2\!-\!3$, $1\!-\!3$, $4\!-\!5$. The loop starts at $s = 1$ and marks $\{1, 2, 3\}$ (label 1). Vertices 2 and 3 are marked, so it skips them. It starts at $s = 4$ and marks $\{4, 5\}$ (label 2), skips 5, and starts at $s = 6$ (label 3). Three walks, three components.
+
+**Proof.**
+1. *Equivalence.* Every vertex is reachable from itself (path of length 0). If $v$ is reachable from $u$, reverse the path to reach $u$ from $v$ (edges are undirected). If $w$ is reachable from $v$ and $v$ from $u$, join the two paths. So the relation is reflexive, symmetric and transitive, and its classes (the components) split the vertices into disjoint groups.
+2. By Theorem 4.1.1(a), a traversal from $s$ marks exactly the vertices reachable from $s$, that is, the component of $s$. (Vertices marked earlier stay marked; the traversal does not enter them again.)
+3. *One traversal per component.* Suppose the loop reaches an unmarked vertex $s$. If any vertex of $s$'s component had been marked before, the traversal that marked it would have marked the whole component by step 2, including $s$. So no vertex of the component is marked yet, and this is the first traversal in it.
+4. After a traversal in a component, all its vertices are marked, so the loop never starts a second one there. Hence one traversal is started per component, and the number of traversals equals the number of components.
+5. The traversals together look at each vertex and each adjacency-list entry at most once (Theorem 4.1.1(b), marks are kept), and the outer loop adds $n$ checks: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. The edges are undirected, so that reachability is symmetric (step 1). With arrows, "same group" is a different question (Section 5 shows an instance).
+2. The marks are kept from one traversal to the next. Clearing them between traversals makes the same component start many walks and costs $O(n)$ each.
+:::
+
+<TheoremCode unit="4.1/thm-2" />
+
+The first example is the tiny instance (steps 2 to 4): three walks start at 1, 4 and 6, and the labels 1, 1, 1, 2, 2, 3 mark the groups. The second graph has no edges, so every vertex is a component by itself, and the third is a path, one component.
+
+### 4.3 Fewest edges
+
+**Theorem 4.1.3 (breadth-first search finds fewest edges).** Run the traversal of Theorem 4.1.1 with a queue, with $\text{dist}[s] = 0$ and, when a vertex $u$ is removed, $\text{dist}[w] = \text{dist}[u] + 1$ and $\text{parent}[w] = u$ for each neighbour $w$ that is not marked yet. Then:
+
+(a) for every vertex $v$ reachable from $s$, $\text{dist}[v] = d(s, v)$, the fewest edges on any path from $s$ to $v$;
+
+(b) the vertices leave the queue in non-decreasing order of $\text{dist}$;
+
+(c) following $\text{parent}$ from $v$ back to $s$ gives a path of exactly $\text{dist}[v]$ edges, a shortest path.
+
+Time $O(n + m)$.
+
+:::tip[In plain words]
+A queue serves the oldest entry first, so the walk spreads out in rings: first the neighbours of the start, then their new neighbours, and so on. The first time a vertex is reached is by the shortest route, and remembering who reached it gives that route.
+:::
+
+**A tiny instance.** Vertices $1..6$, edges $1\!-\!2$, $1\!-\!3$, $2\!-\!4$, $3\!-\!4$, $4\!-\!5$, start $s = 1$. Ring 0 is $\{1\}$. Ring 1 is $\{2, 3\}$ (neighbours of 1). Ring 2 is $\{4\}$ (neighbour of 2 and 3, first reached from 2). Ring 3 is $\{5\}$. Vertex 6 is not reachable. So $\text{dist} = 0, 1, 1, 2, 3, -1$ and the parents give the path $1, 2, 4, 5$.
+
+**Proof.**
+1. *The parent chain is a path.* By induction on the order of marking: $\text{dist}[s] = 0$ with the path $(s)$; if $u$ has a path of $\text{dist}[u]$ edges, then the path to $u$ followed by the edge $u \to w$ has $\text{dist}[u] + 1 = \text{dist}[w]$ edges. This shows (c), and it shows $\text{dist}[v] \ge d(s, v)$ since a path with $\text{dist}[v]$ edges exists.
+2. *Queue order.* At every moment the $\text{dist}$ values in the queue, from front to back, do not decrease, and the last is at most the first plus 1. At the start the queue holds only $s$. Removing the front keeps both properties. A pushed vertex gets $\text{dist}[u] + 1$ where $u$ was just removed from the front, and all vertices still in the queue have $\text{dist}$ equal to $\text{dist}[u]$ or $\text{dist}[u] + 1$ by the invariant; so appending $\text{dist}[u] + 1$ keeps both properties. Consequently vertices leave the queue in non-decreasing order of $\text{dist}$, which is (b).
+3. *Distances are right.* We show by induction on $k = d(s, v)$ that every such $v$ is marked and has $\text{dist}[v] \le k$. For $k = 0$, $v = s$ and $\text{dist}[s] = 0$.
+4. Let $d(s, v) = k \ge 1$ and let $v'$ be the vertex before $v$ on a shortest path, so $d(s, v') = k - 1$. By the induction hypothesis and step 1, $v'$ is marked with $\text{dist}[v'] = k - 1$, and it is removed from the queue at some time.
+5. When $v'$ is removed, it looks at its neighbour $v$. If $v$ is not marked yet, it is marked now with $\text{dist}[v] = \text{dist}[v'] + 1 = k$. If $v$ is already marked, it was marked by some $u$ removed no later than $v'$, so $\text{dist}[v] = \text{dist}[u] + 1 \le \text{dist}[v'] + 1 = k$ by the order (b).
+6. So $v$ is marked with $\text{dist}[v] \le k$, and with step 1, $\text{dist}[v] = k = d(s, v)$. This is (a). The time bound is Theorem 4.1.1(b). $\square$
+
+:::note[This proof needs]
+1. Every edge costs 1 (the length of a path is its number of edges), so a vertex one ring further out costs exactly one more.
+2. A vertex gets its $\text{dist}$ the first time it is reached, and never changes it afterwards.
+3. The container is a queue (first in, first out); with a stack the order (b) fails and so does step 5.
+:::
+
+<TheoremCode unit="4.1/thm-3" />
+
+The first example is the tiny instance: rings 0, 1, 2, 3 are steps 2 and 4 of the proof, and the path $1, 2, 4, 5$ is the parent chain of step 1 (vertex 4 is first reached from 2, so its parent is 2, not 3). The second example is a square, where the opposite corner is two edges away by two routes, and the third has arrows: from 2 only vertex 3 can be reached, and vertex 1 stays at $-1$.
+
+### 4.4 Several sources
+
+**Theorem 4.1.4 (many sources at once).** Let $S$ be a set of sources. Put all of them into the queue at the start with $\text{dist} = 0$ and run the loop of Theorem 4.1.3. Then for every vertex $v$, $\text{dist}[v] = \min_{s \in S} d(s, v)$, the fewest edges from the nearest source (and $-1$ if no source reaches $v$). The time is $O(n + m)$ in total, not $O(|S| (n + m))$.
+
+:::tip[In plain words]
+If you start the walk from every source at the same moment, each vertex is first reached by whichever source is closest to it, so one pass gives the distance to the nearest source.
+:::
+
+**A tiny instance.** A path $1\!-\!2\!-\!3\!-\!4\!-\!5\!-\!6\!-\!7$ with sources 1 and 7. Ring 0 is $\{1, 7\}$, ring 1 is $\{2, 6\}$, ring 2 is $\{3, 5\}$, ring 3 is $\{4\}$: distances $0, 1, 2, 3, 2, 1, 0$.
+
+**Proof.**
+1. Add a new vertex $z$ and an edge $z \to s$ for every source $s \in S$. Every path from $z$ starts with one such edge and then continues in the old graph, so $d(z, v) = 1 + \min_{s \in S} d(s, v)$.
+2. By Theorem 4.1.3 on the new graph with start $z$, a queue-based traversal from $z$ computes $d(z, v)$ for every $v$.
+3. That traversal removes $z$ first and pushes all of $S$ with distance 1. From then on it is the loop of Theorem 4.1.3 started with all sources in the queue, with every distance larger by 1.
+4. So the seeded loop computes $d(z, v) - 1 = \min_{s \in S} d(s, v)$. It is one traversal, so the time is $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. All sources start at the same time, at distance 0 (no source is delayed).
+2. Every edge costs 1.
+3. Only the distance to the nearest source is needed, not which source it is (storing the source with each vertex is a small extension).
+:::
+
+<TheoremCode unit="4.1/thm-4" />
+
+The first example is the tiny instance (steps 3 and 4 of the proof: both ends are in ring 0). The second shows a vertex that no source reaches (vertex 6 stays at $-1$), and the third, a cycle with two sources.
+
+### 4.5 Grids
+
+**Theorem 4.1.5 (a grid is a graph).** Take an $R \times C$ grid of cells, some of them walls, and let the vertices be the free cells, with an edge between two free cells that share a side. A traversal does not need the adjacency list: the neighbours of cell $(r, c)$ are $(r + \Delta r, c + \Delta c)$ for the four offsets $(-1, 0), (1, 0), (0, -1), (0, 1)$, keeping those inside the grid and free. Then Theorems 4.1.1 to 4.1.4 hold for this graph, with $n \le RC$, $m \le 2RC$ and time $O(RC)$. With diagonal moves too (8 offsets) the time is still $O(RC)$.
+
+:::tip[In plain words]
+Treat every free cell as a dot and join side-by-side cells. You do not have to build the lists, because a cell's neighbours are found by adding four fixed offsets, so a traversal of the grid costs a constant per cell.
+:::
+
+**A tiny instance.** The grid with rows `....`, `.##.`, `....` (`#` is a wall) and start at the top-left corner. The fewest steps to the cell at the bottom-right is 5: right, right, right, down, down, or down, down, right, right, right. The cell $(1, 1)$ is a wall, so it is never entered.
+
+**Proof.**
+1. The graph described has the free cells as vertices and an edge for each pair of free cells that share a side; moving one step in the grid is exactly following one edge, so a sequence of steps from a cell to another is a path, and the fewest steps equal the distance.
+2. Theorems 4.1.1 to 4.1.4 are about any graph given by its neighbour lists, and the proofs only use the lists through "look at all neighbours of $u$". Computing the same neighbours from the four offsets gives the same lists, so the theorems hold.
+3. There are at most $RC$ vertices, each with at most 4 neighbours (8 with diagonals), found in $O(1)$ steps each; marks and distances are stored in an $R \times C$ table. So the traversal runs in $O(RC)$ time. $\square$
+
+:::note[This proof needs]
+1. A move from a cell depends on the cell only (and the walls), the same four offsets from every cell, and every step costs 1.
+2. The grid is small enough to store, $RC$ cells ($10^6$ for a $1000 \times 1000$ grid).
+3. The check "inside the grid" comes before looking at the cell, or the table is accessed out of range.
+:::
+
+<TheoremCode unit="4.1/thm-5" />
+
+The first example is the tiny instance: the distances of the middle row are 1, wall, wall, 4, and the bottom-right cell is 5 (step 3: one table cell per grid cell). In the second example the wall column splits the grid, so the cells on the far side stay at $-1$; the third is a grid with no walls, where the distance to a cell is its number of rows plus its number of columns away from the start (here the start is the bottom-right corner).
+
+### 4.6 Puzzles as graphs
+
+**Theorem 4.1.6 (states).** A puzzle has a start state and a rule that lists, for every state, the states one move away. Let the states be the vertices and the moves the edges. If every move costs 1 and the states reachable from the start number $S$, with at most $k$ moves from each, then a traversal with a queue (Theorem 4.1.3) finds the fewest moves from the start to every reachable state in $O(S \cdot k)$ steps (times $O(\log S)$ when the distances are kept in a map instead of a table). The graph is not stored; the neighbours of a state are computed from the rule when the state is removed from the queue.
+
+:::tip[In plain words]
+Any puzzle where you want the fewest moves and every move counts the same is a search through a graph whose dots are the positions of the puzzle. Walk it with a queue, remember each position you saw, and the first time you reach the goal is the fewest moves.
+:::
+
+**A tiny instance.** Turn 3 into 10 using the moves "add 1" and "double". Ring 0: $\{3\}$. Ring 1: $\{4, 6\}$. Ring 2: $\{5, 8, 7, 12\}$. Ring 3 reaches 10 from 5 by doubling. So the fewest moves is 3: $3 \to 4 \to 5 \to 10$.
+
+**Proof.**
+1. A sequence of moves from the start to a state $t$ is exactly a path from the start to $t$ in the state graph, so the fewest moves to $t$ equals $d(\text{start}, t)$.
+2. Theorem 4.1.3 computes $d(\text{start}, t)$ for every reachable $t$ by a queue-based traversal, using the neighbour lists only through "look at all neighbours of $u$"; computing the list of $u$ from the rule when $u$ is removed gives the same neighbours (as in Theorem 4.1.5).
+3. Each reachable state is removed from the queue once (Theorem 4.1.1(b)), and each removal tries at most $k$ moves, each with one lookup of the stored distance: $O(1)$ in a table, $O(\log S)$ in a map. This gives $O(S \cdot k)$, or $O(S \cdot k \log S)$. $\square$
+
+:::note[This proof needs]
+1. The state contains everything that the rules of the moves and the goal depend on. Two situations that differ in anything relevant must be two states; two situations that differ in nothing relevant must be the same state (or the search counts them separately and may be too slow).
+2. Every move costs the same, 1.
+3. The number of reachable states $S$ fits in the time and memory limits: $S \cdot k$ steps and the distance table or map.
+:::
+
+<TheoremCode unit="4.1/thm-6" />
+
+The first example is the tiny instance (step 1: the path $3, 4, 5, 10$). The second target is the start itself, which costs 0 moves, and in the third no move ever lowers a number, so a smaller target is unreachable and the search ends with an empty queue.
+
+'''
 ## 5. Recognition Cards
 
 <Cards topic="4.1" />

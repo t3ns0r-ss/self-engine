@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.1 Graph traversal (pipeline step 1 done)
+- Topic: 4.1 Graph traversal (pipeline steps 1–2 done)
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.1 step 1 (scope, lesson skeleton, draft data file)
-- Next action: step 2 (theory: definitions, five theorems with code units)
+- Last completed step: topic 4.1 step 2 (definitions, six theorems 4.1.1–4.1.6 with code units, 16 glossary terms)
+- Next action: step 3 (recognition cards: components, unweighted-shortest, grid-graph, multi-source, state-graph; card example units)
 
 ## Gates
 | Gate | Status | Date |

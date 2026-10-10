@@ -6,6 +6,9 @@ topic: "2.2"
 ---
 import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
 import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
 import Drill from '../../../components/Drill.astro';
@@ -13,13 +16,6 @@ import LookalikePairs from '../../../components/LookalikePairs.astro';
 import SelfTest from '../../../components/SelfTest.astro';
 import Checkpoint from '../../../components/Checkpoint.astro';
 import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
-import powMod from '../../../../code/2.2/pow-mod/solution.cpp?raw';
-import inverseCode from '../../../../code/2.2/inverse/solution.cpp?raw';
-import fractionSum from '../../../../code/2.2/fraction-sum/solution.cpp?raw';
-import powerTower from '../../../../code/2.2/power-tower/solution.cpp?raw';
-import inverseTable from '../../../../code/2.2/inverse-table/solution.cpp?raw';
-import example1 from '../../../../code/2.2/example-1/solution.cpp?raw';
-import example2 from '../../../../code/2.2/example-2/solution.cpp?raw';
 
 <TopicHeader topic="2.2" />
 
@@ -37,10 +33,7 @@ This topic is about computing modulo a number: powers with huge exponents, divis
 
 ### What you need
 
-- [Topic 0.1](../../phase-0/0-1-cpp-for-cp/), C++ for competitive programming (CP): `long long`, overflow, and `__int128`.
-- [Topic 0.4](../../phase-0/0-4-elementary-math/), elementary mathematics: congruences, `%` with negative numbers, and reducing after every operation (Theorem 0.4.4).
-- [Topic 0.5](../../phase-0/0-5-brute-force/), brute force: reading the bits of an exponent (bitmasks).
-- [Topic 2.1](../2-1-number-theory/), number theory: primes, Euclid's lemma and the extended Euclidean algorithm (Theorem 2.1.2).
+<WhatYouNeed topic="2.2" />
 
 ### What this topic does not cover
 
@@ -59,28 +52,13 @@ This topic is about computing modulo a number: powers with huge exponents, divis
 
 ### 4.1 Binary exponentiation
 
-**Theorem 2.2.1 (binary exponentiation).** Let $m \ge 1$, $a \ge 0$ and $b \ge 0$. The loop
+**Theorem 2.2.1 (binary exponentiation).** Let $m \ge 1$, $a \ge 0$ and $b \ge 0$. The loop in the implementation below (start with $r = 1 \bmod m$ and $x = a \bmod m$; while $b > 0$, multiply $r$ by $x$ if $b$ is odd, square $x$, and halve $b$) returns $a^b \bmod m$ after at most $\lfloor \log_2 b \rfloor + 1$ rounds, each with at most two multiplications.
 
-```
-r = 1 mod m; x = a mod m; e = b
-while e > 0:
-    if e is odd: r = r * x mod m
-    x = x * x mod m
-    e = e / 2   (rounded down)
-answer r
-```
-
-returns $a^b \bmod m$ after at most $\lfloor \log_2 b \rfloor + 1$ rounds, each with at most two multiplications.
-
-*Proof.* Invariant: at the start of every round, $r \cdot x^e \equiv a^b \pmod m$. At the start, $r = 1$, $x \equiv a$ and $e = b$. In a round with $e$ odd, $r \cdot x^e = (r \cdot x) \cdot (x^2)^{(e-1)/2}$; with $e$ even, $r \cdot x^e = r \cdot (x^2)^{e/2}$. In both cases the new $r$, $x$ and $e$ satisfy the invariant, because reducing modulo $m$ after each product keeps congruences (Theorem 0.4.4). When $e = 0$, the invariant says $r \equiv a^b$. Each round halves $e$ (rounded down), so a positive $e$ reaches 0 after as many rounds as $b$ has bits, $\lfloor \log_2 b \rfloor + 1$. $\square$
-
-:::note[This proof needs]
-1. The products `r * x` and `x * x` must not overflow before the reduction. With $m \le 3 \cdot 10^9$ both factors are below $m$ and the product is below $9 \cdot 10^{18}$, which fits in `long long`. For $m$ up to $10^{18}$, multiply in `__int128`.
-2. The base is reduced first: $a$ may be up to $10^{18}$, or negative (make it non-negative, topic 0.4).
-3. $a^0 = 1$, even for $a = 0$; with $m = 1$ every answer is 0, which `1 % m` handles.
+:::tip[In plain words]
+To compute a^b modulo m, square the base repeatedly and multiply it into the result at each bit of b that is 1. That takes one round per bit of b, about 60 rounds for b up to 10^18, instead of b multiplications.
 :::
 
-A trace for $3^{13} \bmod 1000$, with $13 = 1101_2$:
+**A tiny instance.** $3^{13} \bmod 1000$, with $13 = 1101_2$:
 
 | round | $e$ | bit | $r$ before | $x$ |
 |---|---|---|---|---|
@@ -89,7 +67,25 @@ A trace for $3^{13} \bmod 1000$, with $13 = 1101_2$:
 | 3 | 3 | 1 | 3 | 81 |
 | 4 | 1 | 1 | 243 | 561 |
 
-After round 4, $r = 243 \cdot 561 \bmod 1000 = 323$, and indeed $3^{13} = 1\,594\,323$. Four rounds, one per bit of 13.
+After round 4, $r = 243 \cdot 561 \bmod 1000 = 323$, and indeed $3^{13} = 1\,594\,323$.
+
+**Proof.**
+1. Invariant: at the start of every round, $r \cdot x^e \equiv a^b \pmod m$. At the start, $r = 1$, $x \equiv a$ and $e = b$.
+2. In a round with $e$ odd, $r \cdot x^e = (r \cdot x) \cdot (x^2)^{(e-1)/2}$; with $e$ even, $r \cdot x^e = r \cdot (x^2)^{e/2}$.
+3. In both cases the new $r$, $x$ and $e$ satisfy the invariant, because reducing modulo $m$ after each product keeps congruences (Theorem 0.4.4).
+4. When $e = 0$, the invariant says $r \equiv a^b$.
+5. Each round halves $e$ (rounded down), so a positive $e$ reaches 0 after as many rounds as $b$ has bits, $\lfloor \log_2 b \rfloor + 1$. $\square$
+
+:::note[This proof needs]
+1. The products `r * x` and `x * x` must not overflow before the reduction. With $m \le 3 \cdot 10^9$ both factors are below $m$ and the product is below $9 \cdot 10^{18}$, which fits in `long long`. For $m$ up to $10^{18}$, multiply in `__int128`.
+2. The base is reduced first: $a$ may be up to $10^{18}$, or negative (make it non-negative, topic 0.4).
+3. $a^0 = 1$, even for $a = 0$; with $m = 1$ every answer is 0, which `1 % m` handles.
+:::
+
+<TheoremCode unit="2.2/thm-1" />
+
+The second line is the example of Section 1; the third shows the two edge cases of the preconditions.
+
 
 ### 4.2 Fermat's little theorem
 
@@ -97,18 +93,28 @@ After round 4, $r = 243 \cdot 561 \bmod 1000 = 323$, and indeed $3^{13} = 1\,594
 1. If $p \nmid a$, then $a^{p-1} \equiv 1 \pmod p$.
 2. For every integer $a$, $a^p \equiv a \pmod p$.
 
-*Proof.* 1. Consider the $p - 1$ numbers $a \cdot 1, a \cdot 2, \dots, a \cdot (p-1)$ modulo $p$. None is 0: $p$ divides $a \cdot i$ only if it divides $a$ or $i$ (Euclid's lemma, Theorem 2.1.2, part 3), and it divides neither. No two are equal: if $a i \equiv a j$, then $p \mid a (i - j)$, so $p \mid i - j$, and $|i - j| < p$ forces $i = j$. So their remainders are $1, 2, \dots, p - 1$ in some order, and the products agree modulo $p$:
-$a^{p-1} \cdot (p-1)! \equiv (p-1)! \pmod p$.
-So $p$ divides $(a^{p-1} - 1) \cdot (p-1)!$. It does not divide $(p-1)!$, a product of numbers below $p$ (Euclid's lemma again), so it divides $a^{p-1} - 1$.
+:::tip[In plain words]
+For a prime p and a not divisible by p, raising a to the power p − 1 gives remainder 1. The numbers a, 2a, …, (p − 1)a are just 1, …, p − 1 in another order, which makes their products equal.
+:::
 
-2. If $p \nmid a$, multiply part 1 by $a$. If $p \mid a$, both sides are $\equiv 0$. $\square$
+**A tiny instance.** $3^6 = 729 = 104 \cdot 7 + 1$, so $3^6 \equiv 1 \pmod 7$.
+
+**Proof.**
+1. Consider the $p - 1$ numbers $a \cdot 1, a \cdot 2, \dots, a \cdot (p-1)$ modulo $p$. None is 0: $p$ divides $a \cdot i$ only if it divides $a$ or $i$ (Euclid's lemma, Theorem 2.1.2, part 3), and it divides neither.
+2. No two are equal: if $a i \equiv a j$, then $p \mid a (i - j)$, so $p \mid i - j$, and $|i - j| < p$ forces $i = j$.
+3. So their remainders are $1, 2, \dots, p - 1$ in some order, and the products agree modulo $p$: $a^{p-1} \cdot (p-1)! \equiv (p-1)! \pmod p$.
+4. So $p$ divides $(a^{p-1} - 1) \cdot (p-1)!$. It does not divide $(p-1)!$, a product of numbers below $p$ (Euclid's lemma again), so it divides $a^{p-1} - 1$. This is part 1.
+5. Part 2. If $p \nmid a$, multiply part 1 by $a$. If $p \mid a$, both sides are $\equiv 0$. $\square$
 
 :::note[This proof needs]
 1. $p$ is prime. For $m = 4$: $3^3 = 27 \equiv 3$, not 1. With a composite modulus, use the extended Euclidean algorithm instead (Section 4.3).
 2. $p \nmid a$ for part 1: $0^{p-1} \equiv 0$.
 :::
 
-Example: $3^6 = 729 = 104 \cdot 7 + 1$, so $3^6 \equiv 1 \pmod 7$.
+<TheoremCode unit="2.2/thm-2" />
+
+The second line is the composite-modulus warning of the preconditions.
+
 
 ### 4.3 Modular inverses
 
@@ -118,7 +124,18 @@ Example: $3^6 = 729 = 104 \cdot 7 + 1$, so $3^6 \equiv 1 \pmod 7$.
 3. If $m = p$ is prime and $p \nmid a$, the inverse is $a^{p-2} \bmod p$.
 4. Inverses of products: if $a$ and $b$ have inverses, then $(ab)^{-1} \equiv a^{-1} b^{-1} \pmod m$.
 
-*Proof.* 1. $a x \equiv 1 \pmod m$ means $a x + m y = 1$ for some integer $y$. By Bézout's identity (Theorem 2.1.2, part 2), such $x, y$ exist exactly when $\gcd(a, m)$ divides 1. If $x$ and $x'$ are both inverses, then $x' \equiv x' (a x) = (x' a) x \equiv x \pmod m$. 2. Reduce $a x + m y = 1$ modulo $m$. 3. By Fermat, $a \cdot a^{p-2} = a^{p-1} \equiv 1$. 4. $(ab)(a^{-1} b^{-1}) = (a a^{-1})(b b^{-1}) \equiv 1$, and the inverse is unique. $\square$
+:::tip[In plain words]
+A number a can be divided out modulo m exactly when a and m share no factor. The inverse comes from extended Euclid for any such m, and equals a^(p−2) when m is a prime p.
+:::
+
+**A tiny instance.** $3^{-1} \bmod 7$ is $3^5 \bmod 7 = 243 \bmod 7 = 5$. Modulo 10, which is not prime, $3 \cdot 7 = 21 \equiv 1$, so $3^{-1} \equiv 7$, but 4 has no inverse since $\gcd(4, 10) = 2$.
+
+**Proof.**
+1. Part 1. $a x \equiv 1 \pmod m$ means $a x + m y = 1$ for some integer $y$. By Bézout's identity (Theorem 2.1.2, part 2), such $x, y$ exist exactly when $\gcd(a, m)$ divides 1.
+2. If $x$ and $x'$ are both inverses, then $x' \equiv x' (a x) = (x' a) x \equiv x \pmod m$, so the inverse is unique.
+3. Part 2. Reduce $a x + m y = 1$ modulo $m$: $a x \equiv 1$.
+4. Part 3. By Fermat (Theorem 2.2.2), $a \cdot a^{p-2} = a^{p-1} \equiv 1$.
+5. Part 4. $(ab)(a^{-1} b^{-1}) = (a a^{-1})(b b^{-1}) \equiv 1$, and the inverse is unique. $\square$
 
 :::note[This proof needs]
 1. $\gcd(a, m) = 1$. Modulo a prime this means $p \nmid a$; if the value to invert can be a multiple of $p$ (for example 0), there is no inverse and the formula $a^{p-2}$ silently returns 0.
@@ -126,7 +143,9 @@ Example: $3^6 = 729 = 104 \cdot 7 + 1$, so $3^6 \equiv 1 \pmod 7$.
 3. The extended Euclidean algorithm may return a negative $x$: take `((x % m) + m) % m`.
 :::
 
-Examples: $3^{-1} \bmod 7$ is $3^5 \bmod 7 = 243 \bmod 7 = 5$. Modulo 10, which is not prime, $3 \cdot 7 = 21 \equiv 1$, so $3^{-1} \equiv 7$, but 4 has no inverse since $\gcd(4, 10) = 2$.
+<TheoremCode unit="2.2/thm-3" />
+
+
 
 ### 4.4 Fractions modulo a prime
 
@@ -136,14 +155,27 @@ Examples: $3^{-1} \bmod 7$ is $3^5 \bmod 7 = 243 \bmod 7 = 5$. Modulo 10, which 
 
 So a computation with fractions can be carried out entirely modulo $p$, replacing every division by multiplication with an inverse, and the result is the residue of the exact rational answer.
 
-*Proof.* 1. $\frac PQ = \frac{P'}{Q'}$ means $P Q' = P' Q$. Multiply both sides by $Q^{-1} Q'^{-1}$ modulo $p$: $P Q^{-1} \equiv P' Q'^{-1}$. 2. For $u = \frac PQ$ and $v = \frac RS$: $u + v = \frac{PS + RQ}{QS}$, and $p \nmid QS$ by Euclid's lemma. Its value is $(PS + RQ)(QS)^{-1} \equiv (PS + RQ) Q^{-1} S^{-1} = P Q^{-1} + R S^{-1}$, using part 4 of Theorem 2.2.3. The other operations are the same calculation. $\square$
+:::tip[In plain words]
+A fraction P/Q with Q not divisible by p stands for the residue P·Q^(−1). Adding, multiplying and dividing fractions then agrees with doing the same on residues, so a whole computation with fractions can be done modulo p.
+:::
+
+**A tiny instance.** Modulo 7: $\frac12 + \frac13 = \frac56$. Modulo 7, $\frac12 \equiv 4$ and $\frac13 \equiv 5$, so the sum is $9 \equiv 2$; directly, $5 \cdot 6^{-1} \equiv 5 \cdot 6 = 30 \equiv 2$.
+
+**Proof.**
+1. Part 1. $\frac PQ = \frac{P'}{Q'}$ means $P Q' = P' Q$.
+2. Multiply both sides by $Q^{-1} Q'^{-1}$ modulo $p$: $P Q^{-1} \equiv P' Q'^{-1}$.
+3. Part 2. For $u = \frac PQ$ and $v = \frac RS$: $u + v = \frac{PS + RQ}{QS}$, and $p \nmid QS$ by Euclid's lemma.
+4. Its value is $(PS + RQ)(QS)^{-1} \equiv (PS + RQ) Q^{-1} S^{-1} = P Q^{-1} + R S^{-1}$, using part 4 of Theorem 2.2.3.
+5. The other operations are the same calculation. $\square$
 
 :::note[This proof needs]
 1. Every denominator that appears, including intermediate ones, is not divisible by $p$. Problems that ask for a fraction modulo $p$ guarantee this for the final answer; check it for your intermediate steps too.
 2. The residue alone does not tell you the fraction, or which of two fractions is larger. Compare exact values before reducing if the problem needs a comparison.
 :::
 
-Example modulo 7: $\frac12 + \frac13 = \frac56$. Modulo 7, $\frac12 \equiv 4$ and $\frac13 \equiv 5$, so the sum is $9 \equiv 2$; directly, $5 \cdot 6^{-1} \equiv 5 \cdot 6 = 30 \equiv 2$.
+<TheoremCode unit="2.2/thm-4" />
+
+
 
 ### 4.5 Reducing exponents
 
@@ -151,7 +183,16 @@ Example modulo 7: $\frac12 + \frac13 = \frac56$. Modulo 7, $\frac12 \equiv 4$ an
 1. If $p \nmid a$, then $a^e \equiv a^{e \bmod (p-1)} \pmod p$.
 2. If $p \mid a$, then $a^e \equiv 0$ for $e \ge 1$ (and $a^0 = 1$).
 
-*Proof.* 1. Write $e = q (p-1) + r$ with $r = e \bmod (p-1)$. Then $a^e = (a^{p-1})^q \cdot a^r \equiv 1^q \cdot a^r$ by Fermat's little theorem. 2. Every positive power of a multiple of $p$ is a multiple of $p$. $\square$
+:::tip[In plain words]
+When the modulus p is prime and p does not divide the base, powers repeat with period p − 1, so the exponent can be taken modulo p − 1. If p divides the base, every positive power is 0.
+:::
+
+**A tiny instance.** $3^{100} \bmod 7$. Since $100 \bmod 6 = 4$, it is $3^4 = 81 \equiv 4$. And $2^{10^{18}} \bmod (10^9 + 7)$ equals $2^{10^{18} \bmod (10^9 + 6)}$, both $719\,476\,260$.
+
+**Proof.**
+1. Part 1. Write $e = q (p-1) + r$ with $r = e \bmod (p-1)$.
+2. Then $a^e = (a^{p-1})^q \cdot a^r \equiv 1^q \cdot a^r$ by Fermat's little theorem (Theorem 2.2.2).
+3. Part 2. Every positive power of a multiple of $p$ is a multiple of $p$. $\square$
 
 :::note[This proof needs]
 1. The modulus of the base is prime, and the exponent is reduced modulo $p - 1$, not $p$: the two are different numbers.
@@ -159,7 +200,9 @@ Example modulo 7: $\frac12 + \frac13 = \frac56$. Modulo 7, $\frac12 \equiv 4$ an
 3. When the exponent is itself a product or a power, compute it modulo $p - 1$ with the rules of topic 0.4. $p - 1$ is not prime, so do not divide in the exponent.
 :::
 
-Example: $3^{100} \bmod 7$. Since $100 \bmod 6 = 4$, it is $3^4 = 81 \equiv 4$. And $2^{10^{18}} \bmod (10^9 + 7)$ equals $2^{10^{18} \bmod (10^9 + 6)}$, both $719\,476\,260$.
+<TheoremCode unit="2.2/thm-5" />
+
+
 
 ### 4.6 The inverses of $1, \dots, n$
 
@@ -167,16 +210,27 @@ Example: $3^{100} \bmod 7$. Since $100 \bmod 6 = 4$, it is $3^4 = 81 \equiv 4$. 
 $\operatorname{inv}[i] = -\lfloor p / i \rfloor \cdot \operatorname{inv}[p \bmod i] \bmod p$.
 Then $\operatorname{inv}[i] = i^{-1} \bmod p$ for every $i \le n$, computed in $O(n)$ total.
 
-*Proof.* By induction on $i$. Write $p = q i + r$ with $q = \lfloor p/i \rfloor$ and $r = p \bmod i$. Then $1 \le r < i$: $r \ne 0$ because the prime $p$ has no divisor $i$ with $1 < i < p$. So $\operatorname{inv}[r]$ is already correct. Reducing $p = q i + r$ modulo $p$ gives $q i + r \equiv 0$; multiply by $i^{-1} r^{-1}$: $q r^{-1} + i^{-1} \equiv 0$, so $i^{-1} \equiv -q \cdot r^{-1}$. $\square$
+:::tip[In plain words]
+The inverses of 1, …, n modulo a prime p can all be computed in O(n) time, each from an earlier one by inv[i] = −(p / i)·inv[p mod i], without a power for each.
+:::
+
+**A tiny instance.** $p = 7$: $\operatorname{inv}[2] = -3 \cdot 1 \equiv 4$, $\operatorname{inv}[3] = -2 \cdot 1 \equiv 5$, $\operatorname{inv}[4] = -1 \cdot \operatorname{inv}[3] \equiv 2$, $\operatorname{inv}[5] = -1 \cdot \operatorname{inv}[2] \equiv 3$, $\operatorname{inv}[6] = -1 \cdot 1 \equiv 6$. Check: $4 \cdot 2 = 8 \equiv 1$ and $5 \cdot 3 = 15 \equiv 1$.
+
+**Proof.**
+1. By induction on $i$. Write $p = q i + r$ with $q = \lfloor p/i \rfloor$ and $r = p \bmod i$.
+2. Then $1 \le r < i$: $r \ne 0$ because the prime $p$ has no divisor $i$ with $1 < i < p$. So $\operatorname{inv}[r]$ is already correct.
+3. Reducing $p = q i + r$ modulo $p$ gives $q i + r \equiv 0$.
+4. Multiply by $i^{-1} r^{-1}$: $q r^{-1} + i^{-1} \equiv 0$, so $i^{-1} \equiv -q \cdot r^{-1}$. $\square$
 
 :::note[This proof needs]
 1. $p$ is prime and $n < p$.
 2. The result of `-(p / i) * inv[p % i] % p` is negative or zero in C++; add $p$ to make it non-negative.
 :::
 
-Example, $p = 7$: $\operatorname{inv}[2] = -3 \cdot 1 \equiv 4$, $\operatorname{inv}[3] = -2 \cdot 1 \equiv 5$, $\operatorname{inv}[4] = -1 \cdot \operatorname{inv}[3] \equiv 2$, $\operatorname{inv}[5] = -1 \cdot \operatorname{inv}[2] \equiv 3$, $\operatorname{inv}[6] = -1 \cdot 1 \equiv 6$. Check: $4 \cdot 2 = 8 \equiv 1$ and $5 \cdot 3 = 15 \equiv 1$.
+<TheoremCode unit="2.2/thm-6" />
 
 **Why these moduli.** $10^9 + 7$ and $998\,244\,353 = 119 \cdot 2^{23} + 1$ are primes, so every number not divisible by them has an inverse, and both are below $2^{30}$, so the product of two residues is below $2^{60}$ and fits in `long long`.
+
 
 ## 5. Recognition Cards
 
@@ -184,68 +238,45 @@ Example, $p = 7$: $\operatorname{inv}[2] = -3 \cdot 1 \equiv 4$, $\operatorname{
 
 ## 6. Templates
 
-Five short programs: one for each theorem except Fermat's, which the others use. The brute forces multiply one step at a time or try every candidate.
+Five short functions: one for each theorem except Fermat's, which the others use. The brute forces multiply one step at a time or try every candidate.
 
 ### Powers modulo $m$ (Theorem 2.2.1)
 
-<Code code={powMod} lang="cpp" title="pow-mod/solution.cpp" />
+<CodeSnippet unit="2.2/pow-mod" />
 
 **How it works.** `power` is the loop of Theorem 2.2.1: `b & 1` reads the lowest bit of the exponent, `x` holds $a^{2^k}$ for the current bit $k$, and `r` collects the powers for the bits that are 1. `mulmod` multiplies two residues without overflow.
-
-**C++ details explained.**
-- `__int128` is a 128-bit integer type of g++ (topic 0.1). A product of two residues below $10^{18}$ is below $10^{36} < 2^{127}$, so it fits; the result after `% m` fits back into `long long`. When the modulus is below about $3 \cdot 10^9$, plain `long long` products are enough and faster.
-- `b >>= 1` shifts the exponent right by one bit, which is `b /= 2` for $b \ge 0$.
-- `1 % m` is 0 when $m = 1$, so every answer modulo 1 is 0.
-
-**Tested.** Stress-tested against a brute force that multiplies $b$ times, on 5000 random inputs ($b \le 60$, moduli up to 10, up to $2 \cdot 10^9$ or up to $10^{18}$). There are also 2 fixed tests: the trace of Section 4.1 together with $0^0$, $m = 1$, $2^{10^{18}} \bmod (10^9 + 7)$ and $10^{18}$-sized values, and $10^5$ random queries with $a, b, m$ up to $10^{18}$, checked against Python's `pow`.
 
 **Alternative formulation.** The recursive form $a^b = (a^{\lfloor b/2 \rfloor})^2 \cdot a^{b \bmod 2}$ computes the same products from the top bit down.
 
 ### The inverse modulo any $m$ (Theorem 2.2.3)
 
-<Code code={inverseCode} lang="cpp" title="inverse/solution.cpp" />
+<CodeSnippet unit="2.2/inverse" />
 
 **How it works.** The extended Euclidean algorithm of topic 2.1 gives $x, y$ with $(a \bmod m) x + m y = g$. If $g \ne 1$ there is no inverse; otherwise $x$, made non-negative, is the inverse (Theorem 2.2.3, parts 1 and 2).
-
-**C++ details explained.** `a % m` first brings $a$ below $m$; this does not change the GCD or the inverse. The coefficient `x` is at most $m$ in absolute value (Theorem 2.1.2, part 1), so `x % m + m` cannot overflow.
-
-**Tested.** Stress-tested against a brute force that tries every $x$ from 0 to $m - 1$, on 5000 random inputs ($m \le 12$ or $m \le 3000$, $a$ up to $3m$ or up to $10^{18}$). There are also 2 fixed tests: the examples of Section 4.3 ($3^{-1}$ modulo 7 and 10, and no inverse for 4 modulo 10), $a = 0$, $m = 2$, values near $10^{18}$, and $10^5$ random pairs up to $10^{18}$.
 
 **Alternative formulation.** For a prime modulus, `power(a, p - 2, p)` gives the same inverse (Theorem 2.2.3, part 3), but it returns 0 instead of reporting failure when $p \mid a$.
 
 ### A sum of fractions modulo a prime (Theorem 2.2.4)
 
-<Code code={fractionSum} lang="cpp" title="fraction-sum/solution.cpp" />
+<CodeSnippet unit="2.2/fraction-sum" />
 
 **How it works.** Each fraction $\frac PQ$ becomes $P \cdot Q^{-1} \bmod p$, and the residues are added. By Theorem 2.2.4, the result is the residue of the exact sum, without ever computing that sum.
-
-**C++ details explained.** `P % MOD * inv` reduces $P$ first; both factors are then below $2^{30}$ and the product fits in `long long`. `MOD - 2` is the exponent for Fermat's inverse.
-
-**Tested.** Stress-tested against a brute force that adds the fractions exactly (numerator and denominator in `long long`, reduced by their GCD) and finds the inverse of the final denominator by trying multiples of the modulus, on 5000 random inputs (up to 4 fractions with denominators up to 12). There are also 4 fixed tests: $\frac13$ (the example of Section 1), $\frac12 + \frac13$, $\frac05$, and $2 \cdot 10^5$ random fractions with values up to $10^9$.
 
 **Alternative formulation.** Keep the sum as a fraction $\frac{R}{S}$ modulo $p$ and invert only once at the end: $\frac RS + \frac PQ = \frac{RQ + PS}{SQ}$. This needs one inverse instead of $n$, which matters when inverses are the bottleneck.
 
 ### A power tower $a^{b^c}$ modulo a prime (Theorem 2.2.5)
 
-<Code code={powerTower} lang="cpp" title="power-tower/solution.cpp" />
+<CodeSnippet unit="2.2/power-tower" />
 
 **How it works.** The exponent $b^c$ is far too large, so it is reduced modulo $p - 1$ with fast power, and then $a$ is raised to the reduced exponent. Multiples of $p$ are treated first, because reducing their exponent to 0 would turn 0 into 1 (Theorem 2.2.5, part 2).
-
-**C++ details explained.** `power(b, c, p - 1)` uses the modulus $p - 1$, which can be 1 (for $p = 2$); `1 % m` makes that case return 0. `expZero` is true exactly when $b^c = 0$, that is, $b = 0$ and $c \ge 1$ (with $0^0 = 1$).
-
-**Tested.** Stress-tested against a brute force that computes $b^c$ exactly and multiplies that many times, on 5000 random inputs with the small primes 2 to 13 as moduli, so that exponents larger than $p - 1$ and multiples of $p$ are common. There are also 2 fixed tests: small cases including $0^{0^0}$, $0^{0^5}$, $a = p$, and the largest values, and $10^5$ random queries modulo $10^9 + 7$ or $998\,244\,353$.
 
 **Alternative formulation.** For a tower of three or more levels, apply the reduction one level at a time; each level needs its own modulus ($p - 1$ for the exponent of the base), and $p - 1$ is not prime, so the next level cannot use Fermat again. That case is outside this topic.
 
 ### The inverses of $1, \dots, n$ (Theorem 2.2.6)
 
-<Code code={inverseTable} lang="cpp" title="inverse-table/solution.cpp" />
+<CodeSnippet unit="2.2/inverse-table" />
 
 **How it works.** Each `inv[i]` is computed from `inv[p % i]`, an inverse already in the table because $p \bmod i < i$. One pass gives all $n$ inverses.
-
-**C++ details explained.** `(p / i) * inv[p % i] % p` is in $[0, p)$, so `p - …` is in $(0, p]$ and the final `% p` maps $p$ to 0. Both factors are below $p \le 10^9 + 7$, so the product fits in `long long`.
-
-**Tested.** Stress-tested against a brute force that tries every candidate inverse, on 5000 random inputs (primes up to 997, $n$ up to 60). There are also 5 fixed tests: $n = 1$ with $p = 2$, all inverses modulo 7 (the example of Section 4.6), $n = 10^6$ modulo $10^9 + 7$ and modulo $998\,244\,353$, and $n = p - 1$ for $p = 1\,000\,003$.
 
 **Alternative formulation.** Compute the prefix products $1 \cdot 2 \cdots i$, invert only the last one with Fermat, and walk back: $i^{-1} = (\text{product up to } i - 1) \cdot (\text{product up to } i)^{-1}$. It also takes $O(n)$ and works for the inverses of any $n$ numbers, not only $1, \dots, n$.
 
@@ -374,11 +405,11 @@ $K^N$ sequences is astronomically many, so they cannot be listed. $N, K \le 10^5
 
 #### Step 2: Question form → candidate tools
 
-Brute force (topic 0.5) lists all sequences. Instead, group the sequences by their GCD $d$: the answer is $\sum_d d \cdot f(d)$, where $f(d)$ counts the sequences with GCD exactly $d$. "GCD exactly $d$" is hard, but "every entry a multiple of $d$" is easy: each entry has $\lfloor K/d \rfloor$ choices, so there are $\lfloor K/d \rfloor^N$ such sequences. That is the multiples-sieve card of topic 2.1 (Theorem 2.1.6, part 3), with a power whose exponent $N$ is large: the fast-power card (Theorem 2.2.1).
+Brute force (topic 0.5) lists all sequences. Instead, group the sequences by their GCD $d$: the answer is $\sum_d d \cdot f(d)$, where $f(d)$ counts the sequences with GCD exactly $d$. "GCD exactly $d$" is hard, but "every entry a multiple of $d$" is easy: each entry has $\lfloor K/d \rfloor$ choices, so there are $\lfloor K/d \rfloor^N$ such sequences. That is the multiples-sieve card of topic 2.1 (Theorem 2.1.6, part 3), with a power whose exponent $N$ is large: the "Powers with huge exponents" card (Theorem 2.2.1).
 
 #### Step 3: Property check → decision
 
-The multiples card needs a bound on the values: the GCD is at most $K \le 10^5$, an array size. The fast-power card needs only that the answer is a power modulo $m$: $\lfloor K/d \rfloor^N \bmod (10^9 + 7)$. Decision: for $d$ from $K$ down to 1, set $f(d) = \lfloor K/d \rfloor^N - \sum_{k \ge 2} f(kd)$ modulo $10^9 + 7$, and add $d \cdot f(d)$.
+The multiples card needs a bound on the values: the GCD is at most $K \le 10^5$, an array size. The "Powers with huge exponents" card needs only that the answer is a power modulo $m$: $\lfloor K/d \rfloor^N \bmod (10^9 + 7)$. Decision: for $d$ from $K$ down to 1, set $f(d) = \lfloor K/d \rfloor^N - \sum_{k \ge 2} f(kd)$ modulo $10^9 + 7$, and add $d \cdot f(d)$.
 
 #### Step 4: Proof for this problem
 
@@ -386,9 +417,7 @@ Let $F(d)$ be the number of sequences whose entries are all multiples of $d$. A 
 
 #### Step 5: Code
 
-<Code code={example1} lang="cpp" title="example-1/solution.cpp" />
-
-**C++ details explained.** `(f[d] - f[k] + MOD) % MOD` adds `MOD` before the remainder so the result stays non-negative (topic 0.4). `d % MOD * f[d]` multiplies two numbers below $10^9 + 7$, which fits in `long long`. Tested on the three samples from the problem page, on $K = 1$, and on 5000 random inputs ($N \le 5$, $K \le 12$) against a brute force that lists every sequence.
+<CodeSnippet unit="2.2/example-1" />
 
 #### Step 6: Alternative approach
 
@@ -404,7 +433,7 @@ The number itself has up to $10^5 \cdot 30 \cdot 10^9$ bits: it cannot be built.
 
 #### Step 2: Question form → candidate tools
 
-The number and sum of divisors come from the exponents (Theorem 2.1.3, part 2): $\prod (k + 1)$ and $\prod (1 + x + \dots + x^k)$. The sum per prime is a geometric sum, $\frac{x^{k+1} - 1}{x - 1}$: a division modulo a prime, the inverse-prime card (Theorems 2.2.3 and 2.2.4). The product of the divisors is a power of each prime whose exponent is itself huge: the exponent-reduction card (Theorem 2.2.5).
+The number and sum of divisors come from the exponents (Theorem 2.1.3, part 2): $\prod (k + 1)$ and $\prod (1 + x + \dots + x^k)$. The sum per prime is a geometric sum, $\frac{x^{k+1} - 1}{x - 1}$: a division modulo a prime, the "Division and fractions modulo a prime" card (Theorems 2.2.3 and 2.2.4). The product of the divisors is a power of each prime whose exponent is itself huge: the "Reducing huge exponents" card (Theorem 2.2.5).
 
 #### Step 3: Property check → decision
 
@@ -418,9 +447,7 @@ The exponent $c \, k (k+1)/2$ can be enormous, but $x$ is not a multiple of $p$,
 
 #### Step 5: Code
 
-<Code code={example2} lang="cpp" title="example-2/solution.cpp" />
-
-**C++ details explained.** `k * (k + 1) / 2` is at most $5 \cdot 10^{17}$, which fits in `long long`, and it is reduced modulo $p - 1$ before it is multiplied by `cntE`. Two counters are kept: `cnt` modulo $p$ for the printed answer and `cntE` modulo $p - 1$ for exponents. Tested on the sample from the problem page, on the single prime 2, on all $78\,498$ primes below $10^6$ with random exponents up to $10^9$ (checked against a Python program using a different formula), on $999\,983^{10^9}$, and on 5000 random inputs ($n \le 10^5$ as a number) against a brute force that lists every divisor.
+<CodeSnippet unit="2.2/example-2" />
 
 #### Step 6: Alternative approach
 

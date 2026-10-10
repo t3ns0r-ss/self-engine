@@ -6,30 +6,34 @@ Output: (P_1/Q_1 + ... + P_n/Q_n) mod 998244353, that is, the sum as a fraction 
 #include <bits/stdc++.h>
 using namespace std;
 
-const long long MOD = 998244353;
-
-long long power(long long a, long long b) {
-    long long r = 1;
-    a %= MOD;
-    while (b > 0) {
-        if (b & 1) r = r * a % MOD;
-        a = a * a % MOD;
+// snippet:begin
+long long power(long long a, long long b, long long m) {
+    long long r = 1 % m;
+    a %= m;
+    while (b > 0) {  // invariant: r * a^b = (the answer) mod m
+        if (b & 1) r = r * a % m;
+        a = a * a % m;
         b >>= 1;
     }
     return r;
 }
+// Theorems 2.2.3 and 2.2.4. The sum of P/Q fractions as residues modulo the prime MOD: add P * Q^(MOD-2).
+long long sumFractions(const vector<pair<long long, long long>>& f, long long MOD) {
+    long long sum = 0;
+    for (auto [P, Q] : f) {
+        long long inv = power(Q, MOD - 2, MOD);  // Q^(-1) by Fermat
+        sum = (sum + P % MOD * inv) % MOD;
+    }
+    return sum;
+}
+// snippet:end
 
 int main() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
     int n;
     cin >> n;
-    long long sum = 0;
-    for (int i = 0; i < n; i++) {
-        long long P, Q;
-        cin >> P >> Q;
-        long long inv = power(Q, MOD - 2);  // Q^(-1) by Fermat (Theorem 2.2.3, part 3)
-        sum = (sum + P % MOD * inv) % MOD;  // fractions add as residues (Theorem 2.2.4)
-    }
-    cout << sum << "\n";
+    vector<pair<long long, long long>> f(n);
+    for (auto& [P, Q] : f) cin >> P >> Q;
+    cout << sumFractions(f, 998244353) << "\n";
 }

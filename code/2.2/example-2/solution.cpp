@@ -6,8 +6,9 @@ Output: the number, the sum and the product of the divisors of x_1^k_1 * ... * x
 #include <bits/stdc++.h>
 using namespace std;
 
+// snippet:begin
+// The number, the sum and the product of the divisors of prod x_i^k_i (distinct primes x_i), modulo 10^9 + 7.
 const long long MOD = 1000000007;
-
 long long power(long long a, long long b, long long m) {
     long long r = 1 % m;
     a %= m;
@@ -18,17 +19,10 @@ long long power(long long a, long long b, long long m) {
     }
     return r;
 }
-
-int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int n;
-    cin >> n;
+array<long long, 3> divisorAnalysis(const vector<pair<long long, long long>>& f) {
     long long cnt = 1, sum = 1, prod = 1;
     long long cntE = 1;  // the number of divisors so far, modulo MOD - 1, for exponents
-    for (int i = 0; i < n; i++) {
-        long long x, k;
-        cin >> x >> k;
+    for (auto [x, k] : f) {
         cnt = cnt * ((k + 1) % MOD) % MOD;
         // 1 + x + ... + x^k = (x^(k+1) - 1) / (x - 1), with x - 1 not a multiple of MOD
         long long geo = (power(x, k + 1, MOD) - 1 + MOD) % MOD * power(x - 1, MOD - 2, MOD) % MOD;
@@ -38,5 +32,17 @@ int main() {
         prod = power(prod, k + 1, MOD) * power(x, tri * cntE % (MOD - 1), MOD) % MOD;
         cntE = cntE * ((k + 1) % (MOD - 1)) % (MOD - 1);
     }
-    cout << cnt << " " << sum << " " << prod << "\n";
+    return {cnt, sum, prod};
+}
+// snippet:end
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    int n;
+    cin >> n;
+    vector<pair<long long, long long>> f(n);
+    for (auto& [x, k] : f) cin >> x >> k;
+    auto r = divisorAnalysis(f);
+    cout << r[0] << " " << r[1] << " " << r[2] << "\n";
 }

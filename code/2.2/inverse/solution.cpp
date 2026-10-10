@@ -6,7 +6,8 @@ Output: the x in [0, m) with a*x = 1 (mod m), or -1 if gcd(a, m) != 1.
 #include <bits/stdc++.h>
 using namespace std;
 
-// Returns g = gcd(a, b) and sets x, y with a*x + b*y = g (Theorem 2.1.2).
+// snippet:begin
+// Theorem 2.2.3, part 2. ext gives g = gcd(a, b) and x, y with a*x + b*y = g; then x is the inverse of a modulo m.
 long long ext(long long a, long long b, long long& x, long long& y) {
     if (b == 0) {
         x = 1, y = 0;
@@ -18,6 +19,13 @@ long long ext(long long a, long long b, long long& x, long long& y) {
     y = x1 - (a / b) * y1;
     return g;
 }
+long long inverseMod(long long a, long long m) {  // -1 when gcd(a, m) != 1
+    long long x, y;
+    long long g = ext(a % m, m, x, y);  // (a mod m)*x + m*y = g
+    if (g != 1) return -1;
+    return ((x % m) + m) % m;
+}
+// snippet:end
 
 int main() {
     ios::sync_with_stdio(false);
@@ -27,12 +35,6 @@ int main() {
     while (t--) {
         long long a, m;
         cin >> a >> m;
-        long long x, y;
-        long long g = ext(a % m, m, x, y);  // (a mod m)*x + m*y = g
-        if (g != 1) {
-            cout << -1 << "\n";  // no inverse (Theorem 2.2.3, part 1)
-            continue;
-        }
-        cout << ((x % m) + m) % m << "\n";
+        cout << inverseMod(a, m) << "\n";
     }
 }

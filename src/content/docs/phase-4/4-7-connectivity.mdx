@@ -301,6 +301,120 @@ Eight templates. Each shows only the function that matters; the program around i
 
 ## 7. Bug catalogue
 
+Each bug below was made by changing a template from Section 6 (or the walk of Theorem 4.7.1 that it uses) and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, checked against the brute force.
+
+### Bug: skipping the parent by the town instead of the road
+
+Template: towns cut off by a closed road (the walk of Theorem 4.7.1).
+
+```cpp
+if (to == parent[v]) continue;                         // instead of: if (id == parentEdge[v]) continue;
+```
+
+Input: `2 2`, then the roads `2 1` and `1 2` (two parallel roads between the two towns).
+
+Wrong output `1 0`, correct output `0 0`. Closing either of the two roads leaves the other, so nothing is cut off. The wrong walk treats the second road as the road it came by and ignores it, so the first road looks like a bridge. Parallel roads are different roads, and only the road by number is the one to skip (Theorem 4.7.1, note 1).
+
+**Fix:** skip the edge whose number is `parentEdge[v]`.
+
+### Bug: "at least" in the test for a bridge
+
+Template: towns cut off by a closed road.
+
+```cpp
+if (L.low[v] >= L.tin[L.parent[v]]) cutOff[L.parentEdge[v]] = size[v];   // instead of >
+```
+
+Input: `3 3`, then the roads `1 2`, `2 3`, `3 1` (a triangle).
+
+Wrong output `2 0 0`, correct output `0 0 0`. In the triangle the walk goes $1 \to 2 \to 3$ and the road $3\!-\!1$ gives $\text{low}[2] = \text{low}[3] = 0 = \text{tin}[1]$. A back edge to the parent itself still keeps the part below connected, so for a bridge the test is *strictly* greater (Theorem 4.7.2, step 4); the test with "$\ge$" is the one for articulation points.
+
+**Fix:** use `>`.
+
+### Bug: adding the sizes in the wrong order
+
+Template: towns cut off by a closed road.
+
+```cpp
+for (int i = 1; i < n; i++) size[L.parent[L.order[i]]] += size[L.order[i]];   // instead of from n - 1 down to 1
+```
+
+Input: `4 3`, then the roads `2 4`, `4 3` and `1 3` (a chain 1–3–4–2).
+
+Wrong output `1 2 2`, correct output `1 2 3`. The visit order is $1, 3, 4, 2$. Going forwards, vertex 3 gives its size (1) to vertex 1 before vertex 4 has given its size to vertex 3, so the sizes of the upper vertices lack their descendants: vertex 3 ends with size 2, not 3. The children must be finished before the parent (Theorem 4.5.2, step 2).
+
+**Fix:** go from the last vertex of the visit order to the first.
+
+### Bug: the first town treated like the others
+
+Template: pieces after a failure.
+
+```cpp
+for (int v = 1; v <= n; v++) pieces[v] = 1 + cutOff[v];       // instead of: L.parent[v] ? 1 + cutOff[v] : children[v]
+```
+
+Input: `3 2`, then the roads `1 2` and `1 3`.
+
+Wrong output `1 1 1`, correct output `2 1 1`. The walk starts at town 1, which has two children, and when town 1 fails the two towns are separate. For the first town there is no "part above": each child subtree is a piece, and no child has a back edge to something above (Theorem 4.7.3, step 5).
+
+**Fix:** for the first town of a walk, the number of pieces is its number of children.
+
+### Bug: "greater than" in the test for a cut town
+
+Template: pieces after a failure.
+
+```cpp
+if (L.parent[p] && L.low[c] > L.tin[p]) cutOff[p]++;          // instead of >=
+```
+
+Input: `3 3`, then the roads `2 3`, `2 3` and `1 3`.
+
+Wrong output `1 1 1`, correct output `1 1 2`. The walk goes $1 \to 3 \to 2$, and the second road between 2 and 3 gives $\text{low}[2] = \text{tin}[3] = 1$. A road that goes back to the town itself does not help when this town fails, so the branch below 2 is cut off from town 1 and the town 3 splits the network into two pieces. For an articulation point the test is "$\ge$" (Theorem 4.7.3, step 3).
+
+**Fix:** use `>=`.
+
+### Bug: one position too many in the range of a subtree
+
+Template: roads on every route.
+
+```cpp
+L.tin[target] <= L.tin[v] + size[v]                           // instead of < L.tin[v] + size[v]
+```
+
+Input: `3 2`, then the roads `2 1` and `1 3`.
+
+Wrong output `2`, correct output `1`. The walk from town 1 meets $1, 2, 3$, so the subtree of town 2 is the single position 1. Town 3 has the position 2, which is $\text{tin}[2] + \text{size}[2]$, the first position after the subtree (Theorem 4.5.3). The road $1\!-\!2$ is a bridge, but town 3 is not behind it.
+
+**Fix:** the subtree of $v$ occupies the positions $\text{tin}[v], \dots, \text{tin}[v] + \text{size}[v] - 1$, so the test is strictly less.
+
+### Bug: the second walk follows the roads, not the reversed roads
+
+Template: kingdoms.
+
+```cpp
+for (int v : walk(adj, finish[i], seen)) comp[v] = count;     // instead of walk(rev, finish[i], seen)
+```
+
+Input: `7 1`, then the road `6 5`.
+
+Wrong output `6` kingdoms with the labels `1 2 3 4 5 5 6`, correct output `7` kingdoms. In the first walk the towns finish in the order $1, 2, \dots, 7$. The second walk starts at 6 and, following the road $6 \to 5$, takes town 5 into the group of 6. But 5 cannot reach 6. On the reversed roads the walk from 6 finds only the towns that can reach 6 (Theorem 4.7.5, step 5).
+
+**Fix:** walk on the reversed graph.
+
+### Bug: counting the groups with a line leaving
+
+Template: fewest guides.
+
+```cpp
+if (comp[v] != comp[to]) entered[comp[v]] = true;             // instead of entered[comp[to]]
+```
+
+Input: `3 2`, then the lines `1 2` and `1 3`.
+
+Wrong output `2`, correct output `1`. One guide at stop 1 reaches both other stops. The wrong code marks the group that a line *leaves*, so it counts the groups with no line leaving them (sinks, here 2 and 3). The guides are needed for the groups that no line *enters* (Theorem 4.7.6).
+
+**Fix:** mark `comp[to]`, the group at the end of the line.
+
 ## 8. Worked examples
 
 ## 9. Problem ladder

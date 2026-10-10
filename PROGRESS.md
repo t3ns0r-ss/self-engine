@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: Phase 4 intro and exam pages (topics 4.1–4.7 done)
+- Topic: none (Phase 4 complete: topics 4.1–4.7, intro and exam)
 - Branch: claude/problemset-implementation-yja039
 Last completed step: topic 4.7 step 10 (e2e: 21 [4.7] checks pass; only the known 3-7 placeholder failure). Bank 4.7 additions (13 reserved problems: cf-949C, cf-1900E, cf-711D, cf-659E, cf-1547G, cf-1927F, ac-abc266_f, cf-1454E, cf-542C, cf-883G, cf-698B, cf-1276B, lc-disconnect-path) were added by me because the 4.7 bank was short; the drill has few 4.7 answers; please review.
-Next action: phase-4/index.mdx and phase-4/exam.mdx
+Next action: report M6 (Phase 4) and wait for review; do not start Phase 5 without a go-ahead
 
 ## Gates
 | Gate | Status | Date |
@@ -18,6 +18,7 @@ Next action: phase-4/index.mdx and phase-4/exam.mdx
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
+| M6 Phase 4 review | waiting for review (all seven topics, intro and exam written; bank additions for 4.6 and 4.7 listed in Questions for Saurabh) | — |
 | M5 Phase 3 review | waiting for review (work on M6 continued at Saurabh's request, 2026-10-10) | — |
 | R1 reference review (topic 1.6 retrofitted) | approved ("Rest seems okay" after the Revision 2.1 changes and the collapsed in-action block) | 2026-10-10 |
 | R1 retrofit of the other 24 topics (0.1–3.8) | done, waiting for review | 2026-10-10 |
@@ -61,6 +62,11 @@ Next action: phase-4/index.mdx and phase-4/exam.mdx
 | 4.1 | done (on this session's branch) | — |
 | 4.2 | done (on this session's branch) | — |
 | 4.3 | done (on this session's branch) | — |
+| 4.4 | done (on this session's branch) | — |
+| 4.5 | done (on this session's branch) | — |
+| 4.6 | done (on this session's branch; bank additions to review) | — |
+| 4.7 | done (on this session's branch; bank additions to review) | — |
+| Phase 4 intro and exam | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -197,6 +203,7 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 | 3.8 | short | short | 14 → 19 | 19 → 22 | yes |
 
 ## Questions for Saurabh
+- **Phase 4 bank additions (M6).** The banks of 4.6 and 4.7 were short (4.6 had one look-alike pair, two checkpoint problems, three review problems and no exam problem; 4.7 had one pair, one checkpoint problem, two review problems and no exam problem), so I added reserved problems with notes, found by research (AtCoder, LeetCode and CSES statements were fetched; Codeforces ones are recalled and marked †, with title and rating checked through the API). 4.6: lc-number-of-ways-to-assign-edge-weights-i/ii (look-alike pair), ac-abc133_f (checkpoint), review cf-739B, ac-abc321_e, cf-1296F, ac-abc201_e, lc-path-existence-queries-in-a-graph-ii, cf-702E, exam lc-minimum-weighted-subgraph-with-the-required-paths-ii. 4.7: cf-711D and cf-659E (look-alike pair), cf-949C and cf-1900E (checkpoint), review cf-1927F, ac-abc266_f, cf-1454E, cf-542C, cf-883G, cf-698B, cf-1131D, exam cf-1547G, drill cf-1276B and lc-disconnect-path. Please spot-check the Codeforces notes. Known weak points: the 4.7 drill has few 4.7 answers (the bank has no reserved drill problems for the topic), cf-962F in the 4.7 ladder needs the blocks between articulation points (marked as a stretch), cf-1131D and cf-883G are weaker fits, and the 4.6 bug catalogue has 11 bugs (the plan says 4–8).
 - **Bank fill (15 short topics).** For each, pick: (1) accept `short`; (2) lower the minimum; (3) merge a narrow pattern into a neighbour; (4) allow another source. My proposals:
   - 0.1: fold `fast-io` into the lesson as a rule and drop the pattern (exam has 1 of 2).
   - 1.4: merge `real-search` into `answer-search` (kth-by-counting also short).

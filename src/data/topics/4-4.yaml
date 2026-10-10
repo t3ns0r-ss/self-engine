@@ -52,8 +52,396 @@ theorems:
     edge up to the limit. The first moment $s$ and $t$ are in one group is exactly the smallest limit
     that allows a path, and it is the weight of the edge that closed the gap.
   code: 4.4/thm-6
-cards: []
-problems: []
+cards:
+- id: merge-groups
+  name: Merging groups (disjoint set union)
+  from_theorem: 4.4.1
+  decisive_property: 'Items are only ever joined into groups (pairs are added, nothing is taken away),
+    and the questions are about groups: are two items in the same group, how big is a group, how many
+    groups are there, or does the next pair close a loop.'
+  how_to_test: Write the events in order. If every event is "join these two" and every question asks about
+    groups, keep a disjoint set union. If something can be taken away or split again, check whether all
+    events are known in advance (the next card).
+  constraint_shapes:
+  - 'n = 10^5 items and q = 2·10^5 events: a fresh walk after each event is up to 6·10^10 steps, while
+    the structure costs about 17 steps per event, 3.4·10^6 in all'
+  - 'n = 2·10^5 and q = 6·10^5 events and questions mixed together: about 10^7 steps, no sorting and no
+    heap'
+  weak_signals:
+  - form: After each new link (friendship, road, cable) asks whether two items are connected, the size
+      of a group, or the number of groups
+    shape: n, q ≤ 2·10^5 with a list of events in order
+  - form: Items are in the same group if they share something (a letter, a language, a number), given
+      as pairs; asks for the number or the sizes of the groups
+    shape: n up to 10^5, pairs up to 2·10^5
+  - form: Asks whether the next edge would close a loop, or which edge is the first to close one
+    shape: m ≤ 2·10^5 edges processed in order
+  kill_signals:
+  - 'A link can be taken away later: a group cannot split (step 4 of the proof gives no way back). If
+    all events are known in advance, run them backwards (the next card)'
+  - 'The question asks for a distance or a route, not only for whether two items are linked: the group
+    says nothing about how many edges lie between two items'
+  in_action:
+    statement: A site has n users. The events "user a and user b become friends" arrive one after another.
+      After each event, print the size of the group of friends (direct or through others) that a belongs
+      to.
+    constraints: n ≤ 10^5, q ≤ 2·10^5 events.
+    budget: A fresh walk after every event is up to q · (n + q) = 6·10^10 steps. Need about O((n + q)
+      log n).
+    candidates:
+    - tool: A fresh walk of the graph after every event (topic 4.1)
+      verdict: rejected
+      because: 'Up to 6·10^10 steps: the walk forgets everything between events, although groups only
+        grow.'
+    - tool: Disjoint set union with union by size (this topic)
+      verdict: chosen
+      because: Every event joins two groups, and the size of a group is kept at its leader (Theorem 4.4.1).
+    property_check: Every event only joins two users, and no friendship ends; each question asks for the
+      size of a group. That is the property of the card.
+    decision: 'Keep a disjoint set union: for each event call unite(a, b), then print the size stored
+      at find(a). About 17 steps per event.'
+  examples:
+    positive:
+    - inline:
+        input: Six users; the events are the friendships 1–2, 3–4, 2–3 and 5–6. After each event, what
+          is the size of the group of the first user named in it?
+        answer: 2,2,4,2
+        why: After 1–2 the group {1, 2} has 2; after 3–4 the group {3, 4} has 2; 2–3 joins them into {1,
+          2, 3, 4}, size 4; after 5–6 the group has 2. The union gives the same numbers as walking the
+          graph again after every event.
+    - worked_example: ac-abc420_e
+      why: Edges are only added; each question asks whether any black vertex is in the group of v, which
+        is a number kept at the leader.
+    negative:
+    - inline:
+        input: 'Users 1, 2, 3. The events: 1 and 2 become friends, 2 and 3 become friends, then 1 and
+          2 stop being friends. Are 1 and 3 in the same group at the end?'
+        answer: 'no'
+        method_gives: 'yes'
+        why: After the split only 2–3 remains, so user 1 is alone. A disjoint set union cannot split a
+          group, so the plain structure still reports yes. All events are known in advance, so the next
+          card (deletions in reverse) is the right tool.
+      correct_tool:
+        topic: '4.4'
+        card: reverse-time
+    - problem: cses-1667
+      why: The question asks for the fewest connections between two computers, a distance; groups only
+        say whether some route exists.
+      correct_tool:
+        topic: '4.1'
+        card: unweighted-shortest
+  lookalikes:
+  - description: Counting the groups of a graph whose edges are all given first, with no questions in
+      between
+    tool:
+      topic: '4.1'
+      card: components
+    flipping_difference: One walk over the whole graph gives all groups; the structure is worth it when
+      questions come between the events.
+  - description: Choosing which edges to keep so that everything is connected at the least cost
+    tool:
+      topic: '4.4'
+      card: cheapest-connect
+    flipping_difference: Both use unite, but here the order of the events is given; there the edges are
+      sorted by weight first.
+  complexity: 'O((n + q) log n) with union by size: about 17 steps per call for n = 10^5.'
+- id: reverse-time
+  name: Deletions in reverse
+  from_theorem: 4.4.2
+  decisive_property: 'Edges or items are removed one by one in an order that is given in advance, and
+    after each removal the question is about groups: how many are there, how big, are two items still
+    linked.'
+  how_to_test: 'Check that the whole sequence of removals is known from the input (offline) and that each
+    question is only about groups. Then reverse the sequence: start with nothing, add the last removed
+    item first, and answer the question about each state just before the next addition.'
+  constraint_shapes:
+  - 'm = 10^5 removals with a question after each: recomputing the groups each time is m · (n + m) = 2·10^10
+    steps, while the reversed run is m calls of about 17 steps'
+  - 'n = 2·10^5 vertices destroyed one by one: the reversed run adds n vertices with their edges, about
+    (n + m) log n ≈ 8·10^6 steps'
+  weak_signals:
+  - form: Bridges, wires or roads fail one by one in a known order; asks for the number of pairs (or groups)
+      that are cut off after each failure
+    shape: n, m ≤ 10^5 to 2·10^5, a list of m failures
+  - form: Elements of an array or vertices of a graph are destroyed in a given order; asks for the largest
+      group (or block sum) that is left after each step
+    shape: n ≤ 10^5, a permutation giving the order
+  - form: Cells are hit or removed one by one and asks how many are cut off from the rest
+    shape: A grid up to 200 × 200 with up to 4·10^4 hits
+  kill_signals:
+  - 'The next removal depends on an earlier answer (online): the sequence is not known in advance, so
+    it cannot be reversed'
+  - 'The question is about distances or directions after a removal: the structure joins both ways and
+    forgets distances (the first negative example below)'
+  in_action:
+    statement: N islands are joined by M bridges, and the whole map is connected. The bridges collapse
+      one by one in a given order. After each collapse, print the number of pairs of islands that can
+      no longer reach each other.
+    constraints: N, M ≤ 10^5.
+    budget: Walking the map after each of M collapses is M · (N + M) = 2·10^10 steps. Need about O((N
+      + M) log N).
+    candidates:
+    - tool: A fresh walk after every collapse (topic 4.1)
+      verdict: rejected
+      because: 2·10^10 steps in the worst case.
+    - tool: Disjoint set union, adding the collapsed bridges in the order they collapse (this topic)
+      verdict: rejected
+      because: The structure can only join; a collapse needs a split, which it cannot do (Theorem 4.4.1).
+    - tool: Disjoint set union in reverse time (this topic)
+      verdict: chosen
+      because: 'The order of the collapses is known, so run the film backwards: bridges are added, and
+        every state appears on the way (Theorem 4.4.2).'
+    property_check: 'All collapses are given in advance, and each question is about which islands can
+      reach each other: only groups matter. The property holds.'
+    decision: Start with no bridges (every pair is cut off). Add the bridges from the last to the first,
+      keeping the number of linked pairs (a union of sizes a and b links a · b new pairs); the answer
+      after a collapse is the number of cut-off pairs just before the bridge is added back. Use 64-bit
+      numbers.
+  examples:
+    positive:
+    - inline:
+        input: 'The path 1–2–3–4 loses its edges in this order: 2–3, then 1–2, then 3–4. How many groups
+          of vertices are there after each removal?'
+        answer: 2,3,4
+        why: 'After removing 2–3: {1, 2} and {3, 4}, 2 groups; after removing 1–2: 3 groups; after removing
+          3–4: 4 groups. Reversing the order, the union starts with 4 singletons, adds 3–4 (3 groups),
+          1–2 (2 groups) and 2–3 (1 group), which reads the same numbers backwards.'
+    - worked_example: ac-abc120_d
+      why: 'Bridges collapse in a known order and the question asks which islands are still linked: add
+        them in reverse.'
+    negative:
+    - inline:
+        input: The arrows 1→4, 1→2 and 3→2; the arrow 1→4 is removed. Can vertex 1 still reach vertex
+          3 by following arrows?
+        answer: 'no'
+        method_gives: 'yes'
+        why: The arrows 1→2 and 3→2 both lead into vertex 2, so from 1 one can never get to 3. The union
+          treats every arrow as a two-way link and says that 1 and 3 are in one group. Reachability along
+          arrows is a walk from the start vertex.
+      correct_tool:
+        topic: '4.1'
+        card: components
+    - problem: ac-abc288_c
+      why: No order of removals is given; the task is to choose which edges to delete. The answer is m
+        − (n − c) (Theorem 4.2.2).
+      correct_tool:
+        topic: '4.2'
+        card: undirected-cycle
+  lookalikes:
+  - description: Events that only add edges, with questions after each
+    tool:
+      topic: '4.4'
+      card: merge-groups
+    flipping_difference: Additions can be processed in the order they come; the reversal is needed only
+      when things are removed.
+  - description: Counting the groups of one fixed graph
+    tool:
+      topic: '4.1'
+      card: components
+    flipping_difference: With no sequence of changes, one walk is enough; the reversal pays off when there
+      are m states to answer.
+  complexity: 'O((n + m) log n): one unite call per removed edge.'
+- id: cheapest-connect
+  name: Cheapest way to connect everything (spanning tree)
+  from_theorem: 4.4.4
+  decisive_property: A set of edges must connect all vertices (every vertex reaches every other) and the
+    total price of the set is to be as small as possible; the question is about the network, not about
+    the route between two vertices.
+  how_to_test: Check that the answer is a set of edges whose total weight is minimised and which keeps
+    everything connected. Then sort the edges by weight and keep an edge when it joins two groups (Kruskal),
+    or grow one tree from a vertex with a heap (Prim). If the question is the cost of a route between
+    two vertices, it is a shortest path instead.
+  constraint_shapes:
+  - 'n = 10^5 vertices and m = 2·10^5 edges: sorting plus 2·10^5 unite calls is about 5·10^6 steps'
+  - A complete graph on n = 1000 points has 5·10^5 edges, still fine; at n = 10^5 points it has 5·10^9
+    edges and the edges cannot all be listed
+  weak_signals:
+  - form: Connect all offices, cities or points with cables or roads at the least total price
+    shape: n up to 10^5, m up to 2·10^5, or n up to 1000 with a price for every pair
+  - form: Asks which roads can be dropped (the most expensive ones) while every city stays reachable
+    shape: m ≤ 2·10^5 roads with prices
+  - form: Total cost of a network in which a few special options also exist (a power station, an airport)
+      that link a vertex to a virtual one
+    shape: n ≤ 2000 with a cost per vertex
+  kill_signals:
+  - 'The question is the cheapest route between two given vertices: a path, not a tree. The tree path
+    can be much longer than the shortest path (the first negative example below)'
+  - 'The edges are one-way arrows: a spanning tree of arrows needs another algorithm, which this course
+    does not cover'
+  in_action:
+    statement: There are n points in the plane. Connecting two points costs the Manhattan distance between
+      them. Find the least total cost so that every point can reach every other.
+    constraints: n ≤ 1000, coordinates up to 10^6 in absolute value.
+    budget: n²/2 = 5·10^5 possible links. Sorting them is about 10^7 steps; trying all sets of links is
+      impossible.
+    candidates:
+    - tool: Trying every set of n − 1 links (topic 0.5)
+      verdict: rejected
+      because: The number of sets is astronomically large.
+    - tool: Dijkstra from point 1 (topic 4.3)
+      verdict: rejected
+      because: It gives the cheapest route to each point, but the union of those routes costs more than
+        the cheapest network.
+    - tool: 'Kruskal: sort the links, keep one when it joins two groups (this topic)'
+      verdict: chosen
+      because: The total must connect everything at the least price, which is exactly a minimum spanning
+        tree (Theorem 4.4.4).
+    property_check: The answer is a set of links that connects all points, and its total price is minimised;
+      no route between two particular points is asked for.
+    decision: List all n(n − 1)/2 links with their distances, sort them, and keep a link when unite(a,
+      b) joins two groups. Print the total in 64 bits. (Prim with an array is equally fast for a complete
+      graph.)
+  examples:
+    positive:
+    - inline:
+        input: 'Five offices and the possible cables (price): 1–2 (4), 1–3 (2), 2–3 (1), 2–4 (5), 3–4
+          (8), 3–5 (10), 4–5 (3). The cheapest set of cables that connects all five offices?'
+        answer: '11'
+        why: 'In order of price: 2–3 (1) kept, 1–3 (2) kept, 4–5 (3) kept, 1–2 (4) skipped because 1 and
+          2 are already linked, 2–4 (5) kept; total 1 + 2 + 3 + 5 = 11. Trying every set of 4 cables gives
+          the same.'
+    - worked_example: lc-min-cost-to-connect-all-points
+      why: 'Connect all points at the least total price: the minimum spanning tree of the complete graph
+        with Manhattan distances.'
+    negative:
+    - inline:
+        input: Three towns and the roads 1–2 (3), 2–3 (3), 1–3 (5). What is the cheapest route from town
+          1 to town 3?
+        answer: '5'
+        method_gives: '6'
+        why: The cheapest network uses the roads 1–2 and 2–3 (total 6), and the path inside it from 1
+          to 3 costs 6, but the direct road costs only 5. The tree is the cheapest network, not a set
+          of cheapest routes. For routes, use Dijkstra.
+      correct_tool:
+        topic: '4.3'
+        card: dijkstra
+    - problem: ac-abc340_d
+      why: The question is the fewest seconds from stage 1 to stage N, the cost of one route, not a network
+        that connects everything.
+      correct_tool:
+        topic: '4.3'
+        card: dijkstra
+  lookalikes:
+  - description: Cheapest route from one vertex to the others
+    tool:
+      topic: '4.3'
+      card: dijkstra
+    flipping_difference: 'A route from a start is a path whose costs add up; a network is a set of edges
+      that connects all vertices. The heap keys differ too: the distance for routes, the edge weight alone
+      for Prim.'
+  - description: The smallest possible largest edge on a trip between two vertices
+    tool:
+      topic: '4.4'
+      card: largest-edge
+    flipping_difference: The same sorted order of edges, but the answer is the weight at which two vertices
+      first meet, not the sum of the kept edges.
+  complexity: 'O(m log m): sorting dominates, plus m unite calls of O(log n).'
+- id: largest-edge
+  name: Largest edge on a path (Kruskal order)
+  from_theorem: 4.4.6
+  decisive_property: 'The cost of a trip between two vertices is its largest (or smallest) edge, not the
+    sum of the edges, and everything depends on the order of the edge weights: the answer for two vertices
+    is the weight at which they first share a group while the edges are added from the lightest.'
+  how_to_test: 'Ask whether the cost of a route is its heaviest edge (a toll, a height, a difficulty limit).
+    Then sort the edges, add them with the structure, and read the answers off the moments of the merges:
+    the weight at which two vertices first meet, or w · (size a) · (size b) pairs that have w as their
+    largest edge when two groups of those sizes are joined by an edge of weight w.'
+  constraint_shapes:
+  - 'A graph with m = 2·10^5 edges and many questions: a search per question is 10^10 steps or more; sorting
+    once and processing the questions offline is about 4·10^6 steps'
+  - 'All pairs of n = 10^5 vertices: 5·10^9 pairs cannot be listed, but only n − 1 merges happen, each
+    counting a · b pairs at once'
+  weak_signals:
+  - form: Asks for the smallest possible largest edge (toll, height, effort) on a trip between two places,
+      or whether such a trip exists under a limit
+    shape: A graph with n, m ≤ 2·10^5 and many questions
+  - form: Asks to count the pairs of vertices that can reach each other using only edges of weight at
+      most L, or to sum the largest edge over all pairs
+    shape: n ≤ 10^5; the number of pairs is about 5·10^9
+  - form: Asks from which day (limit) two places are connected, while links appear in order of weight
+    shape: m ≤ 2·10^5 weighted links
+  kill_signals:
+  - 'The cost of a trip is the sum of its edges: the largest edge says nothing about it, and shortest
+    paths are needed (topic 4.3)'
+  - 'The edges are one-way arrows: the structure links in both directions (the first negative example
+    below)'
+  in_action:
+    statement: A tree has n cities joined by n − 1 roads, each with a toll. The toll of a trip is the
+      largest toll on it. Find the sum of the tolls over all pairs of cities.
+    constraints: n ≤ 10^5, tolls ≤ 10^7.
+    budget: There are about 5·10^9 pairs, so they cannot be listed one by one. Need about O(n log n).
+    candidates:
+    - tool: A walk from every city, tracking the largest toll (topic 4.1)
+      verdict: rejected
+      because: n · n = 10^10 steps.
+    - tool: Sort the roads by toll and add them with the structure, counting the pairs each merge makes
+        (this topic)
+      verdict: chosen
+      because: When a road of toll w joins groups of sizes a and b, it is the largest road on exactly
+        a · b new pairs (Theorem 4.4.6).
+    property_check: The cost of a trip is its largest toll, and the answer sums over all pairs. Each pair
+      is first linked at the merge that gives its largest toll.
+    decision: 'Sort the roads by toll; for each road, add toll · size(a) · size(b) to the answer and unite.
+      Use 64-bit numbers: the sum can reach 10^7 · 5·10^9.'
+  examples:
+    positive:
+    - inline:
+        input: Four towns and the roads 1–2 (4), 2–3 (6), 1–3 (9), 3–4 (2). What is the smallest possible
+          largest road on a trip from town 1 to town 4?
+        answer: '6'
+        why: The trip 1–2–3–4 has largest road 6; the trip 1–3–4 has 9. In sorted order the roads 3–4
+          (2), 1–2 (4) and then 2–3 (6) put towns 1 and 4 into one group, at weight 6.
+    - inline:
+        input: 'The same four towns and roads: how many pairs of towns can travel to each other using
+          only roads of length at most 5?'
+        answer: '2'
+        why: 'The roads of length at most 5 are 3–4 (2) and 1–2 (4): the pairs {1, 2} and {3, 4}. Adding
+          them in order merges two groups of size 1 twice, each adding 1 · 1 = 1 pair.'
+    negative:
+    - inline:
+        input: The one-way roads 1→2 (1) and 3→2 (1). Can a driver go from town 1 to town 3 along the
+          roads, and with which largest toll?
+        answer: impossible
+        method_gives: '1'
+        why: Both roads lead into town 2, so there is no way from 1 to 3 at all. The union treats the
+          roads as two-way and links 1 and 3 at weight 1. With arrows, the reachable set comes from a
+          walk.
+      correct_tool:
+        topic: '4.1'
+        card: components
+    - problem: ac-abc340_d
+      why: The cost of a route here is the sum of its times, so the largest edge decides nothing; a shortest-path
+        method is needed.
+      correct_tool:
+        topic: '4.3'
+        card: dijkstra
+  lookalikes:
+  - description: Cheapest total cost of a route between two vertices
+    tool:
+      topic: '4.3'
+      card: dijkstra
+    flipping_difference: Dijkstra adds the weights along a route; here only the heaviest edge counts,
+      and the sorted order of the edges decides.
+  - description: Cheapest total cost of a network that connects everything
+    tool:
+      topic: '4.4'
+      card: cheapest-connect
+    flipping_difference: The same Kruskal order, but the answer is the sum of the kept edges instead of
+      the weight of one merge.
+  complexity: O(m log m) for sorting plus O(m log n) for the unite calls.
+problems:
+- id: ac-abc420_e
+  role: worked_example
+  summary: 'N ≤ 2·10^5 white vertices and Q ≤ 6·10^5 queries: add an edge, flip the colour of a vertex,
+    or ask whether a black vertex can be reached from a given vertex.'
+- id: ac-abc120_d
+  role: worked_example
+  summary: N ≤ 10^5 islands joined by M ≤ 10^5 bridges that collapse one by one in a given order; after
+    each collapse, count the pairs of islands that can no longer reach each other.
+- id: lc-min-cost-to-connect-all-points
+  role: worked_example
+  summary: n ≤ 1000 points in the plane; connecting two points costs their Manhattan distance; find the
+    least total cost that makes all points connected.
 drill: []
 lookalike_pairs: []
 self_test: []

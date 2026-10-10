@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.4 DSU and MST (pipeline steps 1–2 done); 4.1, 4.2, 4.3 are done
+- Topic: 4.4 DSU and MST (pipeline steps 1–3 done); 4.1, 4.2, 4.3 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.4 step 2 (definitions, theorems 4.4.1–4.4.6 with code units, 8 glossary terms)
-- Next action: step 3 (recognition cards: merge-groups, reverse-time, cheapest-connect, largest-edge; card example units)
+- Last completed step: topic 4.4 step 3 (four recognition cards with card example units; worked-example problems ac-abc420_e, ac-abc120_d, lc-min-cost-to-connect-all-points)
+- Next action: step 4 (templates: online groups, reverse removals, MST, bottleneck queries, variants; stress 5000)
 
 ## Gates
 | Gate | Status | Date |

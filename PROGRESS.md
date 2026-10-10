@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline steps 1–3 done); 4.1–4.6 done
+- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline steps 1–4 done); 4.1–4.6 done
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.7 step 3 (five cards with card units)
-Next action: step 4 (templates: ~7 problems with stress; code units)
+Last completed step: topic 4.7 step 4 (eight templates with stress tests, all pass)
+Next action: step 5 (bug catalogue: mutation search over the eight templates)
 
 ## Gates
 | Gate | Status | Date |

@@ -21,6 +21,14 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ## 1. Why this topic exists
 
+Here is a small problem. A university offers $n = 2 \cdot 10^5$ courses, and there are $m = 2 \cdot 10^5$ rules of the form "course $a$ must be taken before course $b$". Can a student take all the courses, one at a time, obeying every rule? If so, in which order?
+
+Trying the orders one by one ([topic 0.5](../../phase-0/0-5-brute-force/)) means $n!$ of them; already $20! \approx 2.4 \cdot 10^{18}$. A greedy choice such as "always take the course with the smallest number" fails when that course has an unmet rule.
+
+The key idea: if a good order exists, its first course has no rule pointing at it. So take any course that no remaining rule points at, cross it off together with the rules it started, and repeat. If at some moment every remaining course is still waiting for another remaining course, then following the "waits for" rules from any course can never stop, so it must come back to a course it has already visited: the rules contain a **cycle**, and no order exists. This costs one pass over the courses and rules, $n + m = 4 \cdot 10^5$ steps.
+
+That is one of three questions about the *shape* of a graph that this lesson answers by a walk: is there a cycle (in a two-way graph, or in a graph of arrows), can the vertices be split into two sides with every edge going from one side to the other, and in what order can the vertices be listed so that all arrows go forward.
+
 ## 2. Prerequisites and scope
 
 ### What you need
@@ -29,9 +37,184 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 ### What this topic does not cover
 
+- Shortest routes when the edges have different lengths: topic 4.3.
+- Merging groups while edges arrive one at a time, and spanning trees: topic 4.4. Trees as a topic (parents, subtree sizes, diameters): topic 4.5.
+- Strongly connected components (the groups of vertices that all reach one another in a directed graph), bridges and articulation points: topic 4.7. Here a directed cycle is only found, not described by components.
+- Counting or maximising something along a topological order with a table (dynamic programming on an acyclic graph): topic 7.2.
+- Matching the two sides of a bipartite graph (pairing vertices of one side with the other): not part of this course.
+
 ## 3. Definitions
 
+- An undirected graph is **simple** if it has no edge from a vertex to itself and no two edges between the same two vertices.
+- A **cycle** is a path $v_0, v_1, \dots, v_k$ with $v_k = v_0$ and $k \ge 3$ in which the vertices $v_0, \dots, v_{k-1}$ are all different; its length is $k$. In a directed graph a **directed cycle** is the same with arrows $v_0 \to v_1 \to \dots \to v_k = v_0$, and $k \ge 1$ (a vertex with an arrow to itself is a directed cycle of length 1). A cycle is **odd** if its length is odd. A graph without a cycle is a **forest**.
+- A **two-colouring** of an undirected graph gives each vertex colour 0 or 1 so that every edge joins vertices of different colours. A graph that has one is **bipartite**: the vertices split into two sides, and every edge goes from one side to the other.
+- When a walk (Theorem 4.1.1) reaches a new vertex $w$ along an edge from $u$, $u$ is the **parent** of $w$ and that edge is a **tree edge**. Every other edge is a **non-tree edge**. The **depth** of a vertex is its distance from the start of its walk.
+- In a directed graph, the **in-degree** of a vertex is the number of arrows that point to it; the **out-degree** is the number of arrows that leave it.
+- A **topological order** of a directed graph is a list of all its vertices in which every arrow goes from an earlier vertex to a later one. A **directed acyclic graph (DAG)** is a directed graph without a directed cycle. "Sorting the vertices in a topological order" is called **topological sort**.
+- During a depth-first search each vertex is in one of three **states**: not entered yet, **on the stack** (entered but not finished: the search is still working below it), or **finished** (all its arrows have been tried).
+- The **lexicographic order** of two sequences (topic 1.1) compares them at the first position where they differ.
+
 ## 4. Theory and proofs
+
+### 4.1 Two sides, and odd cycles
+
+**Theorem 4.2.1 (two-colouring).** Let $G$ be an undirected graph without loops. In every component pick a start vertex $s$ and give each vertex $v$ of the component the colour $d(s, v) \bmod 2$ (its distance from $s$, taken modulo 2). The following three statements are equivalent:
+
+(a) $G$ has a two-colouring;
+
+(b) in this distance-parity colouring no edge joins two vertices of the same colour;
+
+(c) $G$ has no cycle of odd length.
+
+The walk of Theorem 4.1.3 produces the parity colouring: a vertex reached from $u$ gets the colour opposite to $u$. Time $O(n + m)$.
+
+:::tip[In plain words]
+Walk out from a vertex and give every vertex the colour opposite to the one it was reached from. The vertices split into two sides if and only if this never gives two neighbours the same colour, and that happens exactly when the graph contains a cycle with an odd number of edges.
+:::
+
+**A tiny instance.** The path $1\!-\!2\!-\!3\!-\!4$ gets the colours $0, 1, 0, 1$: it is bipartite. The triangle $1\!-\!2\!-\!3$ gets $0$ for vertex 1 and $1$ for vertices 2 and 3 (both are one step from 1), but 2 and 3 are joined: the edge $2\!-\!3$ lies inside one colour, and the triangle is a cycle of length 3.
+
+**Proof.**
+1. *(a) implies (c).* In a two-colouring the colours alternate along every path. After going once around a cycle of length $k$ we are back at the first vertex, so its colour has changed $k$ times and returned: $k$ is even. So no cycle is odd.
+2. *(c) implies (b), by contraposition.* Suppose an edge $uv$ joins two vertices of the same colour, that is, $d(s, u)$ and $d(s, v)$ have the same parity. A shortest path from $s$ to $u$, the edge $uv$, and a shortest path from $v$ back to $s$ form a closed walk of length $d(s, u) + 1 + d(s, v)$, which is odd.
+3. *Lemma: a closed walk of odd length contains a cycle of odd length.* We use induction on the length $L$. If the walk repeats no vertex (except that it ends where it starts), it is a cycle ($L \ge 3$ because there are no loops and $L = 2$ is even). Otherwise some vertex $x$ occurs twice inside it, and cutting the walk at $x$ gives two shorter closed walks whose lengths add up to the odd number $L$, so one of them is odd; it contains an odd cycle by induction.
+4. By steps 2 and 3, an edge inside one colour yields an odd cycle: if (b) fails, (c) fails. So (c) implies (b).
+5. *(b) implies (a).* If no edge joins two vertices of the same colour, the parity colouring is a two-colouring.
+6. The walk gives each vertex the colour opposite to its parent, which is the parity of its distance (Theorem 4.1.3(a)), and it looks at every edge from at least one end, so it reports a conflict exactly when (b) fails. Every vertex and edge is handled once: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. The edges are undirected. For a graph of arrows, "two sides" is asked about the graph with the directions forgotten.
+2. The graph has no loops. A loop (an edge from a vertex to itself) would join a vertex to its own colour, so a graph with a loop cannot be two-coloured; the code reports this at once.
+3. Each component is coloured on its own, from any start vertex.
+:::
+
+<TheoremCode unit="4.2/thm-1" />
+
+The first two examples are the tiny instance: on the path, the parities of distance from vertex 1 are the colours (steps 5 and 6); on the triangle, vertices 2 and 3 get the same colour, which is the edge inside one colour of step 2. The third example has two components and an isolated vertex, each coloured from its own start.
+
+### 4.2 Cycles in an undirected graph
+
+**Theorem 4.2.2 (cycles and non-tree edges).** Let $G$ be a simple undirected graph with $n$ vertices, $m$ edges and $c$ components, and let a walk (Theorem 4.1.3) record for every vertex its parent and depth. Then:
+
+(a) there are exactly $n - c$ tree edges;
+
+(b) every non-tree edge $uw$ closes a cycle: climb from $u$ and from $w$ along the parents to the first vertex $x$ they have in common; the two climbs together with the edge $uw$ form a cycle;
+
+(c) $G$ has a cycle if and only if it has a non-tree edge, if and only if $m > n - c$.
+
+Time $O(n + m)$.
+
+:::tip[In plain words]
+A walk reaches each vertex by one edge, and uses $n - c$ edges to do so. Any other edge leads to a vertex that is already reached, and together with the two routes back to their common start it closes a cycle. So extra edges beyond $n - c$ are exactly the cycles.
+:::
+
+**A tiny instance.** Edges $1\!-\!2$, $2\!-\!3$, $1\!-\!3$, $3\!-\!4$, walked from 1: the tree edges are $1\!-\!2$, $1\!-\!3$ and $3\!-\!4$ ($n - c = 4 - 1 = 3$). The edge $2\!-\!3$ is a non-tree edge; climbing from 2 and from 3 both reach 1, giving the cycle $2, 1, 3$. And $m = 4 > 3$.
+
+**Proof.**
+1. Every vertex that is not a start gets exactly one parent edge when it is first reached, and every component has exactly one start. So there are $n - c$ tree edges, which is (a).
+2. Take a non-tree edge $uw$. Both ends are in one component, so their parent chains end at the same start, and climbing the deeper end first (as the code does) they reach a first common vertex $x$.
+3. The chain from $u$ to $x$ and the chain from $w$ to $x$ share only $x$, and neither contains the edge $uw$, so together with $uw$ they are a closed path with different vertices. It has at least 3 edges: a total of 2 would mean one chain has length 0 and the other length 1, and then $uw$ would be the parent edge of one end, a tree edge. So it is a cycle, which is (b).
+4. Conversely, suppose every edge is a tree edge and there were a cycle. Consider its vertex $y$ that the walk reached last; both cycle neighbours of $y$ were reached earlier. But the only tree edge from $y$ to an earlier vertex is its parent edge (every other tree edge at $y$ leads to a child, reached later), so $y$ has two different tree edges to earlier vertices: impossible. So a graph whose edges are all tree edges has no cycle.
+5. The $m$ edges are the $n - c$ tree edges plus the non-tree edges, so there is a non-tree edge if and only if $m > n - c$. With steps 3 and 4 this is (c). Every vertex and edge is handled once: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. The graph is simple. With a repeated edge the formula $m > n - c$ still counts it (a cycle of length 2), but the test "an edge to a marked vertex other than the parent" skips it, because both copies lead to the parent.
+2. Edges are undirected. For arrows, a marked neighbour does not mean a cycle (Theorem 4.2.4).
+3. The walk stores the parent and the depth of every vertex.
+:::
+
+<TheoremCode unit="4.2/thm-2" />
+
+The first example is the tiny instance: the non-tree edge $2\!-\!3$ gives the cycle $2, 1, 3$ (steps 2 and 3). The path has $m = 2 = n - c$ and no non-tree edge (step 5). In the square, the walk from 1 reaches 2 and 4 first, then 3 from 2; the edge $4\!-\!3$ is the non-tree edge, and the two climbs meet at vertex 1 (the cycle $4, 1, 2, 3$).
+
+### 4.3 An order for the arrows
+
+**Theorem 4.2.3 (topological order).** Let $G$ be a directed graph. Compute the in-degree of every vertex and put all vertices of in-degree 0 into a queue. While the queue is not empty, remove a vertex $u$, output it, and for every arrow $u \to w$ decrease the in-degree of $w$ by 1, putting $w$ into the queue when it reaches 0. Then:
+
+(a) every output vertex comes after all vertices that have an arrow to it;
+
+(b) all $n$ vertices are output if and only if $G$ has no directed cycle;
+
+(c) if fewer than $n$ vertices are output, the vertices not output contain a directed cycle.
+
+Hence a topological order exists if and only if there is no directed cycle. Time $O(n + m)$.
+
+:::tip[In plain words]
+Keep taking a vertex that nothing unfinished points at. If you can take them all, the order you took them in is the answer. If you get stuck, every vertex left is pointed at by another vertex left, and going backwards among them must eventually run in a circle.
+:::
+
+**A tiny instance.** Arrows $1 \to 2$, $1 \to 3$, $2 \to 4$, $3 \to 4$: only 1 has in-degree 0. Taking 1 frees 2 and 3; taking 2 leaves the in-degree of 4 at 1; taking 3 frees 4. The order is $1, 2, 3, 4$. If we add the arrow $4 \to 1$, nothing has in-degree 0 and nothing can be taken: the cycle $1 \to 2 \to 4 \to 1$ blocks everything.
+
+**Proof.**
+1. A vertex enters the queue only when its in-degree has dropped to 0, which means every arrow into it came from a vertex that was already removed. So each vertex is output after all vertices with an arrow to it: (a).
+2. Suppose $G$ has a directed cycle, and suppose some vertex $v$ on it is output; take the first such. The cycle vertex $u$ with an arrow $u \to v$ has not been output yet (as $v$ is the first), so the in-degree of $v$ is still at least 1: contradiction. So no vertex of a cycle is output, and fewer than $n$ vertices come out.
+3. Suppose fewer than $n$ vertices are output. Each vertex $z$ not output has in-degree at least 1 at the end (otherwise it would have entered the queue), and the arrows still counted come from vertices that were not output either (arrows from output vertices were subtracted). So every vertex not output has an in-neighbour that is not output.
+4. Start at a vertex not output and repeatedly step to such an in-neighbour. There are finitely many vertices, so a vertex repeats; the steps between its two visits, read backwards, are a directed cycle among the vertices not output. This is (c), and with step 2, (b).
+5. Each vertex enters the queue at most once and each arrow decreases one counter once: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. The arrows point from the thing that must come first to the thing that depends on it ("a before b" is the arrow $a \to b$).
+2. The in-degrees are computed before the loop, counting a repeated arrow as many times as it occurs (and subtracting it as many times).
+3. Any ready vertex may be taken; the proof never used which one (Theorem 4.2.5 uses this).
+:::
+
+<TheoremCode unit="4.2/thm-3" />
+
+The first example is the tiny instance (step 1: 4 is output last, after both of its predecessors). In the second, the vertex 5 is output, but 1, 2, 3 form a cycle and 4 is reachable from it, so none of them is output (steps 2 to 4). The third has an arrow $3 \to 1$ and $3 \to 2$, $1 \to 2$: the only order is $3, 1, 2$.
+
+### 4.4 Cycles of arrows, found by a search
+
+**Theorem 4.2.4 (directed cycles by a depth-first search).** Run a depth-first search on a directed graph with an explicit stack: the top vertex tries its arrows one by one, entering a vertex that has not been entered, and is finished when all its arrows have been tried. Then $G$ has a directed cycle if and only if the search meets an arrow $u \to w$ where $w$ is on the stack. In that case the stack from $w$ up to $u$ is a directed cycle. Time $O(n + m)$.
+
+:::tip[In plain words]
+Follow arrows as far as you can, remembering the route you are on. If an arrow leads back to a vertex on your current route, you have gone around a circle. If every arrow leads to places already finished or new, there is no circle.
+:::
+
+**A tiny instance.** Arrows $1 \to 2$, $2 \to 3$, $3 \to 2$, $3 \to 4$ with the search started at 1: the stack grows $1, 2, 3$. The first arrow of 3 leads to 2, which is on the stack: the stack from 2 up to 3 is the cycle $2 \to 3 \to 2$. In the graph with arrows $1 \to 2$, $1 \to 3$, $2 \to 3$ the search enters 2 and 3 and finishes them, and only then tries the arrow $1 \to 3$, which leads to a finished vertex and not to one on the stack: no cycle.
+
+**Proof.**
+1. *An arrow into the stack gives a cycle.* The stack holds a path from $w$ to $u$ (each vertex was entered by an arrow from the vertex below it), and the arrow $u \to w$ closes it into a directed cycle.
+2. *Claim:* if a vertex $v$ is entered at a moment when there is a path $v = x_0 \to x_1 \to \dots \to x_k$ in which $x_1, \dots, x_k$ have not been entered, then every $x_i$ is entered before $v$ is finished.
+3. Suppose not, and let $x_j$ ($j \ge 1$) be the first on the path that is not entered before $v$ finishes. Then $x_{j-1}$ is $v$ or was entered after $v$ and before $v$ finished, so it finishes no later than $v$.
+4. Before $x_{j-1}$ finishes it tries its arrow to $x_j$. At that moment $x_j$ is either already entered or is entered right then. It was not entered when $v$ was, so in both cases it is entered after $v$ and before $x_{j-1}$ finishes, hence before $v$ finishes: a contradiction. The claim holds.
+5. *A cycle gives an arrow into the stack.* Let $v$ be the first vertex of a directed cycle that the search enters. At that moment the other cycle vertices have not been entered, and the cycle gives a path from $v$ through them to the vertex $u$ with the arrow $u \to v$. By the claim, $u$ is entered before $v$ finishes, that is, while $v$ is on the stack; when $u$ tries its arrow to $v$, the vertex $v$ is on the stack.
+6. Each vertex is entered once and each arrow is tried once: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. Arrows have directions that are followed only forwards. In an undirected graph, an arrow back to the parent is not a cycle (Theorem 4.2.2).
+2. The three states are kept apart: "on the stack" and "finished" must not be mixed, because an arrow to a finished vertex is not a cycle.
+3. The stack stores the route, so that the cycle can be read from it.
+:::
+
+<TheoremCode unit="4.2/thm-4" />
+
+The first example is a triangle of arrows, found as soon as the arrow $3 \to 1$ is tried (step 1). The second has no arrow into the stack (step 5 fails to apply). The third is the tiny instance: the cycle $2, 3$ is found while vertex 4 has not even been entered.
+
+### 4.5 The smallest order
+
+**Theorem 4.2.5 (smallest topological order).** Replace the queue in Theorem 4.2.3 by a priority queue that always gives the smallest vertex number (a min-heap, topic 0.6). If $G$ has no directed cycle, the output is the smallest of all topological orders, comparing orders as sequences of vertex numbers (lexicographically). Time $O((n + m) \log n)$.
+
+:::tip[In plain words]
+When several vertices are free to be taken, take the one with the smallest number. This never blocks a later choice, and at every position it puts the smallest number that any valid order could put there.
+:::
+
+**A tiny instance.** Three vertices and the arrow $2 \to 1$. Free at the start: 2 and 3. The smallest is 2; taking it frees 1, so now 1 and 3 are free. The order is $2, 1, 3$. The queue of Theorem 4.2.3 would give $2, 3, 1$, which is also valid but larger as a sequence.
+
+**Proof.**
+1. The output is a topological order, because the proof of Theorem 4.2.3 never used which ready vertex is taken.
+2. Let $P = (p_1, \dots, p_n)$ be any topological order and $H = (h_1, \dots, h_n)$ the output; suppose $H \ne P$ and let $i$ be the first position where they differ, so $h_j = p_j$ for $j < i$.
+3. In $P$ every vertex with an arrow to $p_i$ stands before position $i$, that is, among $p_1, \dots, p_{i-1} = h_1, \dots, h_{i-1}$. So after those vertices have been taken, the in-degree of $p_i$ is 0: $p_i$ is among the ready vertices when the heap chooses $h_i$.
+4. The heap chooses the smallest ready vertex, so $h_i \le p_i$, and $h_i \ne p_i$ gives $h_i < p_i$. Then $H$ is smaller than $P$ at the first position where they differ, so $H < P$. $\square$
+
+:::note[This proof needs]
+1. "Smallest" refers to the order of the vertex numbers as sequences; a different aim (for example, putting a certain vertex as early as possible) needs another argument.
+2. The graph has no directed cycle, so that all $n$ vertices come out (Theorem 4.2.3).
+3. Ties do not exist: vertex numbers are different.
+:::
+
+<TheoremCode unit="4.2/thm-5" />
+
+The first example is the tiny instance (steps 3 and 4: vertex 3 is ready from the start but 1 becomes ready first and is smaller). In the second, vertices 1 and 4 are ready at first and 1 is taken; then 4 is the only one ready, then 2, then 3. The third example has a single valid order.
 
 ## 5. Recognition Cards
 

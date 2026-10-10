@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.2 Graph structure (pipeline step 1 done); 4.1 is done
+- Topic: 4.2 Graph structure (pipeline steps 1–2 done); 4.1 is done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.2 step 1 (scope, lesson skeleton, draft data file)
-- Next action: step 2 (theory: definitions, five theorems with code units)
+- Last completed step: topic 4.2 step 2 (definitions, five theorems 4.2.1–4.2.5 with code units, 10 glossary terms)
+- Next action: step 3 (recognition cards: two-colouring, undirected-cycle, dependency-order, directed-cycle; card example units)
 
 ## Gates
 | Gate | Status | Date |

@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.4 DSU and MST (pipeline steps 1–6 done); 4.1, 4.2, 4.3 are done
+- Topic: 4.4 DSU and MST (pipeline steps 1–7 done); 4.1, 4.2, 4.3 are done
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.4 step 6 (three worked examples with code units)
-- Next action: step 7 (problem ladder from the 4.4 bank, 12-20 problems, >= 3 per card)
+- Last completed step: topic 4.4 step 7 (15-problem ladder)
+- Next action: step 8 (drill with 3+ earlier-topic answers, 2-4 look-alike pairs: cses-1676/1677, cses-1675/ac-abc218_e)
 
 ## Gates
 | Gate | Status | Date |

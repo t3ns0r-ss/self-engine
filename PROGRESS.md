@@ -2,11 +2,11 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.2 Graph structure (pipeline steps 1–9 done, theorem 4.2.6 added); 4.1 is done
+- Topic: 4.2 Graph structure (done; steps 1–10, theorem 4.2.6 added at step 8); next topic 4.3
 - Branch: claude/problemset-implementation-yja039
-- Last completed step: topic 4.2 step 9 (8 self-test questions, checkpoint ABC 292 D + ABC 223 D + CF 1594D†, review sets 3/3/4, four decision-map groups, draft flag removed; Theorem 4.2.6 added at step 8)
+- Last completed step: topic 4.2 step 10 (self-review: validate, build, `npm test` 71/71, all 4.2 units pass (stress 5000), browser tests of all 27 lessons pass: 567 checks, no failures)
 - Note: CF problems 862B, 687A, 1144F, 1020B, 1027D, 510C, 103B, 977E, 131D in the ladder are † (statements not opened)
-- Next action: step 10 (self-review: validate, build, tests, browser tests; then Phase 4 continues with 4.3)
+- Next action: topic 4.3 (Dijkstra, 0-1 BFS, Bellman–Ford, Floyd–Warshall), step 1
 
 ## Gates
 | Gate | Status | Date |
@@ -60,6 +60,7 @@
 | 3.8 | done (on this session's branch) | — |
 | Phase 3 intro and exam | done (on this session's branch) | — |
 | 4.1 | done (on this session's branch) | — |
+| 4.2 | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |

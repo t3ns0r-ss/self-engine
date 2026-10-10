@@ -1,8 +1,3 @@
-/*
-Problem: over all pairs i < j, print the sums of a_i XOR a_j, a_i AND a_j and a_i OR a_j.
-Input: n (1 <= n <= 10^5), then a_1 .. a_n (0 <= a_i < 2^30).
-Output: the three sums on one line (each below 6*10^18).
-*/
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -23,12 +18,17 @@ array<long long, 3> pairSums(const vector<int>& a) {
 // snippet:end
 
 int main() {
-    ios::sync_with_stdio(false);
-    cin.tie(nullptr);
-    int n;
-    cin >> n;
-    vector<int> a(n);
-    for (auto& x : a) cin >> x;
-    array<long long, 3> r = pairSums(a);
-    cout << r[0] << " " << r[1] << " " << r[2] << "\n";
+    array<long long, 3> r = pairSums({1, 2, 3});
+    cout << "1 2 3: sum of XOR " << r[0] << ", AND " << r[1] << ", OR " << r[2] << '\n';
+    r = pairSums({5, 5});
+    cout << "5 5: sum of XOR " << r[0] << ", AND " << r[1] << ", OR " << r[2] << '\n';
+    mt19937 rng(3);
+    for (int round = 0; round < 300; round++) {
+        int n = rng() % 7;
+        vector<int> a(n);
+        for (int& x : a) x = rng() % 64;
+        array<long long, 3> want = {0, 0, 0};
+        for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) want[0] += a[i] ^ a[j], want[1] += a[i] & a[j], want[2] += a[i] | a[j];
+        if (want != pairSums(a)) return 1;
+    }
 }

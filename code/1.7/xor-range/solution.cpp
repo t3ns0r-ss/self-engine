@@ -6,7 +6,8 @@ Output: one line per query.
 #include <bits/stdc++.h>
 using namespace std;
 
-// XOR of 0, 1, ..., n (n >= 0), by the period-4 pattern of Section 4.1
+// snippet:begin
+// Theorem 1.7.1. The XOR of 0, 1, ..., n by the period-4 pattern, and the XOR of L..R: the part 0..L-1 cancels.
 long long xorUpTo(long long n) {
     switch (n % 4) {
         case 0: return n;
@@ -15,6 +16,8 @@ long long xorUpTo(long long n) {
         default: return 0;
     }
 }
+long long xorRange(long long L, long long R) { return xorUpTo(R) ^ (L == 0 ? 0 : xorUpTo(L - 1)); }
+// snippet:end
 
 int main() {
     ios::sync_with_stdio(false);
@@ -24,8 +27,6 @@ int main() {
     while (q--) {
         long long L, R;
         cin >> L >> R;
-        // 0..R = (0..L-1) followed by (L..R); the first part cancels (Theorem 1.7.1)
-        long long below = L == 0 ? 0 : xorUpTo(L - 1);
-        cout << (xorUpTo(R) ^ below) << "\n";
+        cout << xorRange(L, R) << "\n";
     }
 }

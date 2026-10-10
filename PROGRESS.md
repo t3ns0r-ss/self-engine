@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M6 (Phase 4), started on Saurabh's "continue writing the articles" (the M5 and R1 gates were still `waiting`; taken as go-ahead)
-- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline steps 1–6 done); 4.1–4.6 done
+- Topic: 4.7 Strongly connected components, bridges, articulation points (pipeline steps 1–7 done); 4.1–4.6 done
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 4.7 step 6 (worked examples cses-1683, cses-1682, lc-critical-connections-in-a-network; bug catalogue step 5 done)
-Next action: step 7 (ladder: 15 rungs, 3 per card)
+Last completed step: topic 4.7 step 7 (ladder: 15 rungs, 3 per card)
+Next action: step 8 (drill and look-alike pairs; bank 4.7 is short: new reserved problems needed for pair 2, checkpoint, review)
 
 ## Gates
 | Gate | Status | Date |

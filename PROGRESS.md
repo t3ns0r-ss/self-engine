@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M7 (Phase 5), started on Saurabh's "Continue" after the M6 report (M5, M6 and R1 gates still `waiting`; taken as go-ahead, as before)
-- Topic: none yet (5.1–5.3 done; next 5.4 sqrt decomposition and Mo)
+- Milestone: M7 (Phase 5) done; report sent, waiting for Saurabh's review (M5, M6, M7 and R1 gates are `waiting`). Phase 6 is not started.
+- Topic: none
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 5.3 step 10 (validate, build and unit tests pass). Banks of 5.1, 5.2 and 5.4 were extended by research agents (5.3 was complete).
-Next action: topic 5.4. The Phase 5 exam problems are stored in the 5.4 data file: reserved exam problems so far are cf-1904D2 (5.1) and those in the 5.2, 5.3 and 5.4 banks.
+Last completed step: Phase 5 intro and exam (validate, build, link check, unit tests and `npm test` pass).
+Next action: wait for Saurabh's review of M7; do not start Phase 6 without a go-ahead.
 
 ## Gates
 | Gate | Status | Date |
@@ -18,6 +18,7 @@ Next action: topic 5.4. The Phase 5 exam problems are stored in the 5.4 data fil
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
+| M7 Phase 5 review | waiting for review (topics 5.1–5.4, intro and exam written; the exam holds 6 problems, one from 5.1, two each from 5.2 and 5.3, one from 5.4; bank additions and weak points listed in Questions for Saurabh) | — |
 | M6 Phase 4 review | waiting for review (all seven topics, intro and exam written; bank additions for 4.6 and 4.7 listed in Questions for Saurabh) | — |
 | M5 Phase 3 review | waiting for review (work on M6 continued at Saurabh's request, 2026-10-10) | — |
 | R1 reference review (topic 1.6 retrofitted) | approved ("Rest seems okay" after the Revision 2.1 changes and the collapsed in-action block) | 2026-10-10 |
@@ -70,6 +71,8 @@ Next action: topic 5.4. The Phase 5 exam problems are stored in the 5.4 data fil
 | 5.1 | done (on this session's branch; bank additions to review) | — |
 | 5.2 | done (on this session's branch; Codeforces notes marked † need a spot-check) | — |
 | 5.3 | done (on this session's branch; Codeforces notes marked † need a spot-check) | — |
+| 5.4 | done (on this session's branch; Codeforces notes marked † need a spot-check) | — |
+| Phase 5 intro and exam | done (on this session's branch) | — |
 
 ## Bank
 | topic | status | practice | reserved |
@@ -249,3 +252,4 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - Decisions received (2026-10-03): merge 4.2 `smallest-order` into `dependency-order` and 4.6 `path-updates` into `path-aggregate` (done); ARC tasks are allowed in all banks from B5 on (and in 4.7), tiered by judgement from the AtCoder Problems difficulty.
 - Decisions received (2026-10-03, second batch): keep 6.2 `prefix-counts` and 6.3 `xor-count` as separate patterns; accept 5.4 and 6.4 as short banks for now (to be extended later with higher-rated problems); keep 5.1 as a small bank of its own.
 - **Phase 5 bank additions (M7).** Research agents added reserved problems (notes in `notes/bank/5.x.md`; AtCoder statements fetched, LeetCode through its GraphQL endpoint, Codeforces recalled and marked †, titles and ratings checked through the API). 5.1: 22 problems (checkpoint cf-1706E, lc-minimum-stability-factor-of-array; review cf-675E, cf-1454F, lc-find-subarray-with-bitwise-or-closest-to-k, cf-6E, cf-1208E, cf-5C; look-alike pairs lc-maximum-total-subarray-value-ii/i and cf-1611F/cf-1486D; 8 drill problems of which 7 are solved by earlier tools; practice cf-1237D, lc-shortest-subarray-with-or-at-least-k-ii). 5.2: ac-abc402_d/ac-abc405_f (look-alike pair), review cf-1076E and cf-540E. 5.4: 25 problems (checkpoint cf-438D, cf-830C; exam cf-1654E; 8 review; 8 drill, only cf-425D solved by 5.4; look-alike pairs cf-522D/ac-abc242_g and cf-301D/ac-abc293_g; practice ac-abc384_g, ac-abc405_g). Weak points: 5.1 has only one sparse-table drill problem; cf-5C, cf-1208E, cf-6E and lc-shortest-subarray-with-or-at-least-k-ii have a natural earlier-tool solution; 5.4 supply of real sqrt/Mo problems in tiers 3–4 is thin (cf-463E and several others also fit a Fenwick or segment tree); the 5.4 review set has no Mo problem. Please spot-check the Codeforces notes. In 5.1 I moved cf-675E's technique from 3.1 to 3.2 (it is a DP).
+- **Phase 5 lessons (M7), things to look at.** (1) The 5.4 ladder has only three blocks problems (cf-785E, cf-342E, cf-1619H, all marked †) and no worked example for the blocks card; the cards for blocks use the two block templates and two inline examples. (2) The 5.4 drill has one 5.4 answer (cf-425D); the other seven are solved by 5.2 or 5.3. (3) Several templates are restatements of ladder problems: mo-power is cf-86D and step-sums is cf-103D, kept as base rungs. (4) The 5.4 review sets contain no Mo problem. (5) Hints for Codeforces problems marked † come from recalled statements and need a spot-check on the problem pages. (6) A segment tree in 5.3 is written recursively with 4n nodes; I did not teach the bottom-up form (mentioned only as an alternative).

@@ -1,0 +1,490 @@
+---
+title: "5.4 Square-root decomposition, Mo's algorithm"
+sidebar:
+  order: 36
+topic: "5.4"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="5.4" />
+
+## 1. Why this topic exists
+
+Here is a small problem. An array has $n = 2 \cdot 10^5$ numbers. There are $q = 2 \cdot 10^5$ questions $(l, r)$, and for each you must print the sum, over every value $v$ that occurs in $a_l, \dots, a_r$, of $v \cdot c_v^2$, where $c_v$ is how many times $v$ occurs in the range. Nothing changes between the questions.
+
+A sparse table needs an operation that tolerates overlap, and a Fenwick tree or a segment tree needs the answer of a range to be a combination of the answers of its halves. Here it is not: the halves can hold the same value, and the cross terms $2 c_v c'_v$ appear. Counting the values of each range separately costs up to $4 \cdot 10^{10}$ steps.
+
+The key idea: if the window $a_l, \dots, a_r$ is known together with its answer, then moving the right end by one place changes the answer by an amount that takes one step to compute: adding a value $v$ that already occurs $c$ times changes $v c^2$ into $v (c+1)^2$, so the answer grows by $v (2c + 1)$. So answer the questions in a good *order*, moving the window from one question to the next: group the questions by the block of $\sqrt n$ positions that holds $l$, and inside a group sort by $r$. Then the left end moves at most $\sqrt n$ places per question and the right end moves at most $n$ places per group, about $n \sqrt q \approx 9 \cdot 10^7$ steps in all. This is **Mo's algorithm**.
+
+The same idea of cutting into pieces of size about $\sqrt n$ solves other problems where trees do not fit. An operation on a whole piece costs one step and the leftover positions cost at most $\sqrt n$ steps: this is **square-root decomposition**. And a *threshold* of about $\sqrt n$ splits the cases: if there are many big and few small, or few big and many small, each side is cheap in its own way.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="5.4" />
+
+### What this topic does not cover
+
+- Operations that a segment tree can do directly (changes with a tag that composes, sums, minimums): the segment tree of [topic 5.3](../5-3-segment-tree/) has $O(\log n)$ per operation; use blocks only if no tree fits.
+- Mo's algorithm with changes to the array between the questions, and Mo's algorithm on a tree: not in this course.
+- Sums or counts that a Fenwick tree can answer ([topic 5.2](../5-2-fenwick/)).
+- Splitting a graph or a tree into pieces of size $\sqrt n$: not in this course.
+
+## 3. Definitions
+
+- A **block decomposition** of an array of $n$ positions with **block size** $B$ cuts the positions into blocks of $B$ consecutive positions (the last block may be shorter): block $b$ holds positions $bB, \dots, \min(n, (b+1)B) - 1$. Example: $n = 10$, $B = 3$ gives the blocks $0..2$, $3..5$, $6..8$ and $9..9$. There are $\lceil n / B \rceil$ blocks.
+- A range $[l, r]$ is split into **partial blocks** (the first and the last block, if the range does not cover them completely) and **whole blocks** between them. Example: with $B = 3$ the range $[2, 8]$ has the partial position 2 and the whole blocks 1 and 2.
+- Mo's algorithm keeps a **window** $[l, r]$ of the array and a value that describes it; the operations **add** and **remove** move the right or left end by one place and update the value. The questions are answered **offline**: all are read first, and the order of answering is chosen.
+- The **Mo order** of questions $(l, r)$ with block size $B$: sort by the block $\lfloor l / B \rfloor$; inside a block of even number sort by $r$ ascending, inside a block of odd number by $r$ descending.
+- A **threshold** $B$ splits a quantity into the **large** ones ($\ge B$) and the **small** ones ($< B$). Example: for steps $k$ of a progression, the large steps are those with $k \ge B$.
+- The **step sum** with start $p$ and step $k$ is $a_p + a_{p+k} + a_{p+2k} + \dots$, up to the end of the array.
+
+## 4. Theory and proofs
+
+### 4.1 Blocks with a note for the whole block
+
+**Theorem 5.4.1 (blocks, range add and range sum).** Cut the array into blocks of size $B$. Keep for each block $b$ the true sum $\text{sum}[b]$ and a number $\text{add}[b]$, and for each position a number $a[i]$, so that the true value of position $i$ is $a[i] + \text{add}[b(i)]$. To add $x$ to a range: for each partial position do $a[i] \mathrel{+}= x$, $\text{sum}[b(i)] \mathrel{+}= x$; for each whole block do $\text{add}[b] \mathrel{+}= x$, $\text{sum}[b] \mathrel{+}= x \cdot \text{len}(b)$. To sum a range: add $a[i] + \text{add}[b(i)]$ for each partial position and $\text{sum}[b]$ for each whole block. Each operation takes at most $2(B - 1) + \lceil n / B \rceil$ steps, which is $O(\sqrt n)$ for $B \approx \sqrt n$.
+
+:::tip[In plain words]
+Treat a whole block as one thing: a note "everyone here got $x$" and the total of the block. For the ragged ends of a range, which cut a block in the middle, change or read the positions one by one. There are at most two ragged ends of less than $B$ positions each, and at most $n / B$ blocks in between; with $B = \sqrt n$ both are about $\sqrt n$.
+:::
+
+**A tiny instance.** $a = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]$, $B = 3$: the block sums are $8, 15, 13, 3$. Add 10 to $[2, 8]$: position 2 is a partial position ($a_2$ becomes 14, $\text{sum}[0] = 18$); blocks 1 and 2 are whole and get the note 10 each, with the sums $15 + 30 = 45$ and $13 + 30 = 43$. The sum of $[1, 9]$ is $1 + 14$ (partial positions of block 0) $+ 45 + 43 + 3 = 106$.
+
+**Proof.**
+1. *Invariant:* the true value of position $i$ is $a[i] + \text{add}[b(i)]$, and $\text{sum}[b]$ is the sum of the true values in block $b$. It holds at the start (all notes 0).
+2. Adding $x$ to a partial position raises its true value by $x$ and the true sum of its block by $x$: the invariant holds.
+3. Adding $x$ to a whole block raises every true value of the block by $x$, because $\text{add}[b]$ is part of each of them, and the true sum by $x \cdot \text{len}(b)$: the invariant holds.
+4. A sum reads the true values of partial positions and the true sums of whole blocks, which is exactly the sum of the true values of the range (each position once).
+5. A range has partial positions only in its first and last block, fewer than $B$ in each, and at most $\lceil n / B \rceil$ whole blocks, each costing one step. $\square$
+
+:::note[This proof needs]
+1. A change to the whole block must be summarised by a note that can be applied to the stored block sum in one step (here $x \cdot \text{len}$); the note is added to the true value of every position and never needs to be pushed down.
+2. The last block can be shorter than $B$; its length is used in the formulas.
+3. The sums need 64 bits.
+:::
+
+<TheoremCode unit="5.4/thm-1" />
+
+The first example prints the block sums 8, 15, 13, 3; after the addition the notes are 0, 10, 10, 0 and the sums are 106, 45 and 3. The check compares with a plain array on random operations, for every $n$ up to 30 and the block sizes 1, 2, 3, 5 and 7.
+
+### 4.2 Blocks that keep a sorted copy
+
+**Theorem 5.4.2 (blocks, count of smaller values with changes).** Keep a sorted copy of the values of each block. The number of positions in $[l, r]$ with a value smaller than $x$ is found by looking at each partial position and by a binary search in the sorted copy of each whole block. A change of one value is done by removing the old value from the sorted copy of its block and inserting the new one. A query takes $O(B + (n / B) \log B)$ steps and a change $O(B)$.
+
+:::tip[In plain words]
+A block cannot say how many of its values are below $x$ unless it keeps its values in order. Keep them in order, so that one binary search per whole block counts them. A change touches one block, and putting one value in a sorted list of $B$ values costs about $B$ moves.
+:::
+
+**A tiny instance.** $a = [5, 2, 8, 1, 9, 3, 7, 4, 6]$, $B = 3$: the sorted copies are $[2, 5, 8]$, $[1, 3, 9]$, $[4, 6, 7]$. Count the values below 5 in $[1, 7]$: positions 1 and 2 (values 2 and 8) are partial and only the 2 counts; the whole block 1 has $\text{lower\_bound}(5)$ at index 2 in $[1, 3, 9]$, so 2 values; positions 6 and 7 (values 7 and 4) are partial and only the 4 counts. Total $1 + 2 + 1 = 4$. After $a_4 = 0$ the copy of block 1 is $[0, 1, 3]$ and the same query gives 5.
+
+**Proof.**
+1. *Invariant:* for every block, the sorted copy holds exactly the values of the block, in non-decreasing order.
+2. For a whole block, the number of its values below $x$ is the index returned by a binary search for the first value $\ge x$ in the copy. A partial position is counted by comparing its value.
+3. A change from $y$ to $z$ at position $i$: remove one copy of $y$ from the sorted copy of its block (found by binary search, then shifting the later elements), insert $z$ at its place (the same), and set $a[i] = z$. The copy again holds the values of the block, in order (step 1).
+4. The query makes fewer than $2B$ comparisons for partial positions and at most $\lceil n / B \rceil$ binary searches of $O(\log B)$ steps each. The change moves at most $B$ elements twice. $\square$
+
+:::note[This proof needs]
+1. The question can be answered for a whole block from a sorted copy. Counts below or above a bound, and the $k$-th smallest by binary search over the answer, fit; a question that needs the elements in their original order does not.
+2. With $B = \sqrt{n \log n}$ a query costs about $\sqrt{n \log n}$ and a change the same.
+3. Equal values are allowed; the removal erases exactly one of them.
+:::
+
+<TheoremCode unit="5.4/thm-2" />
+
+The first example prints the sorted copies, the count 4 and the counts after the change (5 and 3). The check compares with a loop on random sets and queries, for every $n$ up to 30 and five block sizes.
+
+### 4.3 The cost of Mo's order
+
+**Theorem 5.4.3 (Mo's order).** Let the questions $(l_i, r_i)$ on an array of $n$ positions be visited in the Mo order with block size $B$. Then the total number of one-step moves of the two ends of the window, starting from the empty window ($l = 0$, $r = -1$), is at most $qB + 2n \lceil n / B \rceil + 4n + 2B$. For $B \approx n / \sqrt q$ this is about $3 n \sqrt q + 4n$, so $O(n \sqrt q + q)$.
+
+:::tip[In plain words]
+Group the questions by the block of their left end. Inside a group the left end hops around within one block (less than $B$ steps for each question) while the right end only goes one way, up or down, so it moves at most $n$ for the whole group. Going from one group to the next costs at most $n$ for the right end and about $2B$ for the left. Count: $q$ questions times $B$, plus $n / B$ groups times about $2n$.
+:::
+
+**A tiny instance.** $n = 10$, six questions numbered 0 to 5: $(5,9)$, $(0,3)$, $(6,7)$, $(1,8)$, $(4,4)$, $(0,9)$, and $B = \lfloor 10 / \sqrt 6 \rfloor = 4$. Block 0 of the left end (positions 0 to 3) holds the questions 1, 3 and 5, sorted by $r$ ascending: $1, 3, 5$. Block 1 (positions 4 to 7) holds the questions 0, 2 and 4, sorted by $r$ descending: $0, 2, 4$. The window moves $4 + 6 + 2 + 5 + 3 + 5 = 25$ steps in this order, against 58 in the order of the input.
+
+**Proof.**
+1. *Left end, inside a group.* Two consecutive questions of one group have their left ends in the same block of $B$ places, so the left end moves fewer than $B$ steps: at most $qB$ in all.
+2. *Left end, between groups.* The block number of the left end only goes up, so the sum of the jumps between groups is at most $\lceil n / B \rceil \cdot B$ for the block starts plus $\lceil n / B \rceil \cdot B$ for the positions inside blocks, which is at most $2n + 2B$. The first move from the start is at most $n$.
+3. *Right end, inside a group.* The right ends of a group are sorted (up for an even block, down for an odd one), so the right end moves in one direction through the group, at most $n$ steps in all.
+4. *Right end, between groups.* One jump of at most $n$ steps from the last right end of a group to the first of the next; at most $\lceil n / B \rceil$ groups. The first move from the start is at most $n$.
+5. Adding up: $qB + (2n + 2B + n) + (n \lceil n/B \rceil + n \lceil n/B \rceil + n) = qB + 2n \lceil n/B \rceil + 4n + 2B$. With $B = n / \sqrt q$ the first term is $n \sqrt q$ and the second is about $2 n \sqrt q$. $\square$
+
+:::note[This proof needs]
+1. All the questions are known beforehand (offline): the order is chosen by the algorithm.
+2. $B$ is about $n / \sqrt q$, not $\sqrt n$; the two agree only when $q \approx n$. For $q$ much smaller than $n$ the block must be larger; for $q$ larger than $n$ at least 1.
+3. Going down in odd blocks (the "snake" order) halves the right-end movement between groups; the proof above works with or without it, but the snake order is the common practice.
+:::
+
+<TheoremCode unit="5.4/thm-3" />
+
+The example prints the order $1\ 3\ 5\ 0\ 2\ 4$ for the six questions of the tiny instance and the number of steps, 25 against 58. The check generates random questions for several $n$ and $q$ and compares the real movement with the bound of the theorem, and checks that the order is a permutation of the questions.
+
+### 4.4 Answering questions in that order
+
+**Theorem 5.4.4 (Mo's algorithm).** Let the questions be sorted in the Mo order, and let `add(i)` and `remove(i)` change the value for the window when position $i$ enters or leaves it. Then the following loop, which moves the window to each question $(q_l, q_r)$ by: grow to the left while $l > q_l$; grow to the right while $r < q_r$; shrink from the left while $l < q_l$; shrink from the right while $r > q_r$, leaves the window equal to $[q_l, q_r]$ and the value equal to the answer of the question. The total number of calls to `add` and `remove` is the number of moves of Theorem 5.4.3, and each call takes $O(1)$ steps when the answer changes by an amount computed from a count array.
+
+:::tip[In plain words]
+Keep a window and its answer. To go to the next question, move each end until it is where the question wants it, adding or removing one element at a time and repairing the answer after each step. Grow before shrinking, so that the window is never "negative" and a removed element was really added before.
+:::
+
+**A tiny instance.** $a = [1, 2, 1, 3, 2, 2, 4, 1]$, the question $[0, 3]$: from the empty window ($l = 0$, $r = -1$) grow the right end: add positions 0, 1, 2, 3; the counts are $c_1 = 2$, $c_2 = 1$, $c_3 = 1$, and the number of different values is 3. Then the question $[1, 4]$: grow right (add position 4, $c_2 = 2$), shrink left (remove position 0, $c_1 = 1$): the window is $[1, 4]$ with the values 2, 1, 3, 2 and 3 different values.
+
+**Proof.**
+1. *Invariant:* the count array $c$ holds the number of occurrences of each value in the window $a_l, \dots, a_r$, and the stored answer is the answer for this window.
+2. The initial window is empty and the answer is that of the empty window. The invariant holds.
+3. `add(i)` raises $c[a_i]$ by one and `remove(i)` lowers it by one; the stored answer is repaired by the change this makes to the answer of the window (for the number of different values: +1 when $c$ goes from 0 to 1, $-1$ when it goes from 1 to 0). The invariant is preserved by each call.
+4. With the order of the four loops, growing first, a position is only removed after it was added: the left end never passes $r + 1$, because it moves right only after the right end has reached $q_r \ge q_l$.
+5. After the four loops $l = q_l$ and $r = q_r$, so by the invariant the stored answer is the answer of the question. The number of calls is the number of moves of the two ends. $\square$
+
+:::note[This proof needs]
+1. The answer of a window can be repaired in $O(1)$ steps after one element enters or leaves (maintaining counts, sums, or a count of counts). If it cannot, the algorithm is as slow as the repairs.
+2. The array does not change between the questions, and the questions are known beforehand.
+3. The order of the loops: growing first is required whenever `remove` would break on an empty window.
+:::
+
+<TheoremCode unit="5.4/thm-4" />
+
+The example runs six questions $(0,3), (1,4), (2,2), (0,7), (5,6), (3,7)$ on $[1, 2, 1, 3, 2, 2, 4, 1]$ and prints $3\ 3\ 1\ 4\ 2\ 4$. The check compares with the number of different values from a set, on three thousand random arrays and sets of questions.
+
+### 4.5 Small steps from a table, large steps by walking
+
+**Theorem 5.4.5 (threshold on the step).** Let $B$ be a threshold. For every step $k < B$ keep the table $T_k[p] = a_p + T_k[p + k]$ (with $T_k[p] = 0$ for $p \ge n$). Then the step sum with start $p$ and step $k$ is $T_k[p]$ if $k < B$, and otherwise is found by walking $p, p + k, p + 2k, \dots$ in at most $\lceil n / B \rceil$ steps. The tables take $O(nB)$ time and memory, so $q$ questions take $O(nB + q n / B)$ time, which is $O((n + q)\sqrt n)$ for $B \approx \sqrt n$ and $q$ about $n$.
+
+:::tip[In plain words]
+A big step leaves the array after only a few jumps, so just make the jumps. A small step has only a few different values (fewer than $B$), so for each small step precompute the answer from every start. The two costs are balanced at $B \approx \sqrt n$.
+:::
+
+**A tiny instance.** $a = [3, 1, 4, 1, 5, 9, 2, 6, 5, 3]$, $B = 3$. For $k = 2$ the table is $T_2 = [19, 20, 16, 19, 12, 18, 7, 9, 5, 3]$ (for example $T_2[7] = 6 + T_2[9] = 6 + 3 = 9$). The question $(p = 1, k = 2)$ is $T_2[1] = 20 = 1 + 1 + 9 + 6 + 3$. The question $(p = 4, k = 7)$ has $k \ge B$: walk $4, 11$; the sum is $a_4 = 5$.
+
+**Proof.**
+1. The step sum with start $p$ and step $k$ is $a_p$ plus the step sum with start $p + k$ and the same step, and it is 0 when $p \ge n$. So $T_k[p] = a_p + T_k[p + k]$ is the step sum, by induction from the right end.
+2. Filling $T_k$ from $p = n - 1$ down to 0 takes $n$ steps, and there are $B - 1$ tables.
+3. For $k \ge B$ the walk visits $p, p + k, \dots$ below $n$, at most $\lceil n / k \rceil \le \lceil n / B \rceil$ positions.
+4. A question costs 1 step for $k < B$ and at most $\lceil n / B \rceil$ steps otherwise. The total is $O(nB + q \lceil n / B \rceil)$; the two terms are equal for $B = \sqrt q$, which gives $O(n \sqrt q + q)$, and $O((n + q)\sqrt n)$ when $q$ is about $n$. $\square$
+
+:::note[This proof needs]
+1. The question depends on the step only through a table that can be built from the right end; a question where the table of a small step needs more than $O(n)$ steps does not fit.
+2. Memory is $n B$ numbers, which limits $B$ (for $n = 10^5$ and $B = 300$ it is $3 \cdot 10^7$ numbers).
+3. A shorter table size $n + k$ avoids a test for $p + k \ge n$.
+:::
+
+<TheoremCode unit="5.4/thm-5" />
+
+The example prints the table for $k = 2$ and the answers for four questions. The check compares with a loop for every start and every step up to $n + 2$ on random arrays, for several thresholds.
+
+### 4.6 Few large values
+
+**Theorem 5.4.6 (few values can be large).** For an array of $n$ positive integers let $H$ be the set of values $x$ that occur at least $x$ times in the whole array. Then $|H| \le \sqrt{2n}$. A value $x \notin H$ occurs fewer than $x$ times in the array, hence in every range. So the number of values that occur *exactly* $x$ times in $[l, r]$ is the number of $x \in H$ whose count in $[l, r]$ is exactly $x$, and all $q$ questions are answered in $O(\sqrt{n} (n + q))$ steps: for each $x \in H$ one pass builds the prefix counts, and each question looks at two of them.
+
+:::tip[In plain words]
+A value $x$ can only occur exactly $x$ times in a range if it occurs at least $x$ times in the whole array. The total number of places is $n$, and different values of $H$ use at least $1 + 2 + 3 + \dots$ of them. So there are only about $\sqrt{2n}$ candidates, and for each candidate one pass over the array and the questions is enough.
+:::
+
+**A tiny instance.** $a = [3, 1, 2, 2, 3, 3, 1, 3]$: the counts are $c_1 = 2$, $c_2 = 2$, $c_3 = 4$. So $H = \{1, 2, 3\}$ (each has at least its own value as a count). The question $[0, 4]$ holds $3, 1, 2, 2, 3$: the value 1 occurs once (yes), 2 occurs twice (yes), 3 occurs twice (no), so the answer is 2.
+
+**Proof.**
+1. Every $x \in H$ takes at least $x$ of the $n$ positions, and different values take different positions, so $\sum_{x \in H} x \le n$.
+2. The values of $H$ are different positive integers, so $\sum_{x \in H} x \ge 1 + 2 + \dots + |H| = |H|(|H| + 1)/2$. Hence $|H|(|H|+1)/2 \le n$ and $|H| \le \sqrt{2n}$.
+3. If $x \notin H$, then $x$ occurs fewer than $x$ times in the whole array and fewer than $x$ times in any range; it can never be counted.
+4. For $x \in H$ the prefix counts $P_x[i]$ give the number of occurrences in $[l, r]$ as $P_x[r + 1] - P_x[l]$. One pass builds $P_x$ in $O(n)$ steps; checking all $q$ questions takes $O(q)$ steps.
+5. The total is $|H| \cdot O(n + q) = O(\sqrt{n}(n + q))$. $\square$
+
+:::note[This proof needs]
+1. The answer depends on a value only through its count in the range and its own size. A condition like "the count is at least $t$" for a fixed $t$ gives the same kind of bound (at most $n / t$ values qualify).
+2. The values should be positive integers (or mapped to them); values above $n$ are skipped.
+3. The tables for all candidates at once would take $O(n \sqrt n)$ memory; processing one candidate at a time takes $O(n + q)$.
+:::
+
+<TheoremCode unit="5.4/thm-6" />
+
+The first example is the tiny instance with four questions (1, 2, 1, 1). The second builds an array of length 5050 in which every value $1..100$ occurs as often as its own size: all 100 values qualify, and 100 is exactly the bound $\sqrt{2n}$. The check compares with a count inside each range on three thousand random arrays and sets of questions.
+
+## 5. Recognition Cards
+
+<Cards topic="5.4" />
+
+## 6. Templates
+
+Six templates. Each shows only the structure or function that matters; the program around it reads the input. The three Mo templates use the function `moOrder` of Theorem 5.4.3 and say so. Each is checked against a brute force that follows the statement directly (scan the range, count the pairs), on thousands of random small inputs and on fixed tests with a single element, equal values and the largest numbers.
+
+### Set a range to one value, sum of a range (Theorem 5.4.1)
+
+<CodeSnippet unit="5.4/block-assign-sum" />
+
+**How it works.** The array is cut into blocks of $B \approx \sqrt n$ positions. A block that lies fully inside the range is not touched position by position: it gets the flag `asg[b]` and the value `val[b]`, and its sum becomes `x * length`. A block that the range only cuts through is first brought up to date by `push` (it writes the pending value into `a[]` and clears the flag), and then the positions inside the range are changed one at a time while `sum[b]` is repaired by `x - a[i]`. A query takes the sum of the whole blocks and reads the single positions of the others after `push`. The length of the last block may be smaller than $B$, so the formulas use `hi(b) - lo(b) + 1`.
+
+**Alternative formulation.** A segment tree with an assignment tag (topic 5.3, Theorem 5.3.4) does this in $O(\log n)$ steps per operation and is the better choice when it fits. Blocks are the choice when the summary of a block cannot be composed as a tag, or when a block is rebuilt from its positions anyway.
+
+### Count the values between two bounds, with changes (Theorem 5.4.2)
+
+<CodeSnippet unit="5.4/block-count-between" />
+
+**How it works.** Each block keeps its values in a sorted copy. `countBetween` reads the first and last blocks position by position and uses two binary searches in each whole block: `upper_bound(hi) - lower_bound(lo)` is the number of values from `lo` to `hi`. `set` removes one copy of the old value from the sorted copy of its block (`erase(lower_bound(...))`) and inserts the new value in its place (`insert(upper_bound(...))`), $O(B)$ moves, then writes `a[i]`. The program uses $B = \lfloor \sqrt n \rfloor$.
+
+**Alternative formulation.** Offline, a Fenwick tree with sorted questions (topic 5.2) answers a count of values in a range without changes. With changes, a Fenwick tree of sorted vectors or a block structure like this one is used; for $n$ near $10^5$ the sorted blocks have the shortest code.
+
+### Sum of the squares of the counts, in many ranges (Theorems 5.4.3 and 5.4.4)
+
+<CodeSnippet unit="5.4/mo-power" />
+
+**How it works.** The window is the range $[l, r]$ and `power` is the sum of $v \cdot c_v^2$ over its values. Taking a value $v$ with count $c$ into the window changes $v c^2$ into $v (c + 1)^2$, so `power` grows by $v (2c + 1)$; taking one out lowers it by $v (2c' + 1)$ where $c'$ is the count after the removal. The questions are visited in the order `moOrder`, and each is answered after the four loops have moved the window onto it (grow first, then shrink, Theorem 5.4.4). The answer can be as large as $10^6 \cdot (2 \cdot 10^5)^2 = 4 \cdot 10^{16}$, so it is `long long`; the counts and the loop indices are `int`.
+
+**Alternative formulation.** There is no tree solution; the answer of a range is not a combination of the answers of its halves. Splitting the array into blocks and storing the answer for each pair of block ends costs $O(n \sqrt n)$ memory and the same time, and is harder to write.
+
+### Pairs of positions with a given XOR, in many ranges (Theorems 5.4.3 and 5.4.4)
+
+<CodeSnippet unit="5.4/mo-xor-pairs" />
+
+**How it works.** Let $p_0 = 0$ and $p_i = a_1 \oplus \dots \oplus a_i$. The XOR of $a_i, \dots, a_j$ is $p_{i-1} \oplus p_j$, so a question $(l, r)$ asks for the pairs of prefix indices $x < y$ in the window $l - 1, \dots, r$ with $p_x \oplus p_y = k$ (this is the same as $p_x \oplus k = p_y$). The window is over the *prefix indices*, so the question $(l, r)$ becomes the window $(l - 1, r)$ in the array of $n + 1$ values. Taking index $i$ in adds `cnt[p[i] ^ k]` new pairs (one for each index already in the window whose prefix value is $p_i \oplus k$) and then counts $p_i$; taking it out undoes both steps in the opposite order. The count array has $2^{20}$ entries.
+
+**Alternative formulation.** If $k = 0$, the pairs are equal prefix values and the answer is the number of equal pairs (the next template). Without the ranges, a map of counts of prefix values counts the pairs in one pass ([topic 1.7](../../phase-1/1-7-bits/)).
+
+### Pairs of equal values in many ranges (Theorems 5.4.3 and 5.4.4)
+
+<CodeSnippet unit="5.4/mo-pairs" />
+
+**How it works.** A value that occurs $c$ times in the window makes $c(c-1)/2$ pairs. Taking in one more copy adds $c$ pairs (one with each copy already there), and `pairs += cnt[v]++` does exactly that: it adds the old count and then raises it. Taking one out first lowers the count to $c - 1$ and then subtracts it: `pairs -= --cnt[v]`. The answers are stored by the number of the question, not by the position in the sorted order, so that they can be printed in the order of the input.
+
+**Alternative formulation.** For the number of *disjoint* pairs of equal values, change the update to depend on whether the new count is even. For the number of pairs with the order of the positions or with a difference condition, a count array is not enough.
+
+### Sums along every k-th position (Theorem 5.4.5)
+
+<CodeSnippet unit="5.4/step-sums" />
+
+**How it works.** The table `table[k]` for a step $k$ below the threshold is filled from the right: the sum along $p, p + k, p + 2k, \dots$ is `a[p]` plus the sum along $p + k, \dots$, and the entries past the end are 0 (the table has $n + k$ entries so that `p + k` is always inside). A question with a small step is one lookup. A question with a large step walks `p, p + k, ...` and makes at most $n / B$ jumps. The program takes $B = \lfloor \sqrt n \rfloor$. The sums are `long long`.
+
+**Alternative formulation.** Offline, group the questions by their step $k$ and, for each different step, build the table once and throw it away, so that the memory is $O(n)$: for each distinct $k < B$ the work is $O(n)$ and for the others a walk. With a changing array the tables would need an update for each step.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found.
+
+### Bug: a whole block is given the full block length
+
+Template: set a range to one value.
+
+```cpp
+asg[b] = 1, val[b] = x, sum[b] = x * B;                 // instead of x * (hi(b) - lo(b) + 1)
+```
+
+Input: `5 2`, then `0 0 0 0 0`, then `1 1 5 4` and `2 1 5`.
+
+Wrong output `24`, correct output `20`. With $B = 2$ the blocks are $0..1$, $2..3$ and $4..4$; the last block has one position, but the line gives it $2 \cdot 4 = 8$. The last block can be shorter than $B$ (Theorem 5.4.1, step 5), so its length must be computed.
+
+**Fix:** use the length of the block, `hi(b) - lo(b) + 1`.
+
+### Bug: a partial change on a block that holds a pending value
+
+Template: set a range to one value.
+
+```cpp
+// in assign, the call  push(b);  before the single-position loop is missing
+```
+
+Input: `4 3`, then `1 1 1 1`, then `1 1 4 5`, `1 2 2 0` and `2 1 4`.
+
+Wrong output `19`, correct output `15`. The first operation assigns 5 to the blocks $0..1$ and $2..3$ as wholes; `a[]` still holds the old 1s. The second operation changes position 2 alone: without the push, `sum[0] += x - a[i]` uses the stale `a[1] = 1` instead of the pending 5, and the sum of the block ends up at $10 - 1 = 9$ instead of $5$ (Theorem 5.4.1: the true value is not `a[i]` while a note is pending).
+
+**Fix:** call `push(b)` before changing single positions of a block that the range only cuts through.
+
+### Bug: the old value stays in the sorted copy
+
+Template: count the values between two bounds.
+
+```cpp
+// the line  s.erase(lower_bound(s.begin(), s.end(), a[i]));  is missing at the start of set
+```
+
+Input: `1 3`, then `3`, then `1 1 8`, `1 1 5` and `2 1 1 3 7`.
+
+Wrong output `2`, correct output `1`. After the two changes the array holds $5$, but the sorted copy holds $3, 5, 8$ (the old values were never removed), so the count between 3 and 7 finds two values. The copy must hold exactly the values of its block (Theorem 5.4.2, step 1).
+
+**Fix:** erase one copy of the old value before inserting the new one.
+
+### Bug: the new copy is counted with the pairs it has not made yet
+
+Template: pairs of equal values.
+
+```cpp
+auto add = [&](int i) { pairs += ++cnt[a[i]]; };        // instead of pairs += cnt[a[i]]++
+```
+
+Input: `1 1`, then `1`, then the question `1 1`.
+
+Wrong output `1`, correct output `0`. A single element makes no pair. The new copy forms a pair with each copy that was already in the window, that is, with `cnt` copies *before* it is counted; the wrong line adds the count after the increase, which includes the element itself (Theorem 5.4.4, step 3: the answer is repaired by the change the step makes).
+
+**Fix:** add first, increase afterwards.
+
+### Bug: the answers are written in the order of the sorted questions
+
+Template: pairs of equal values.
+
+```cpp
+answer[cntq++] = pairs;                                 // instead of answer[q] = pairs
+```
+
+Input: `5 3`, then `1 1 2 2 2`, then the questions `2 5`, `1 2` and `1 1`.
+
+Wrong output `0`, `1`, `3`, correct output `3`, `1`, `0`. Mo's order visits the questions in a different order from the input (here the last one first), and the answers must go to the places of the questions they belong to. The sorted order is only a way to move the window.
+
+**Fix:** store the answer at the index `q` of the question.
+
+### Bug: the window starts at the question's left end, not one before
+
+Template: pairs with a given XOR.
+
+```cpp
+win[i] = {queries[i][0], queries[i][1]};                // instead of {queries[i][0] - 1, queries[i][1]}
+```
+
+Input: `4 1 2`, then `0 2 1 3`, then the question `2 4`.
+
+Wrong output `1`, correct output `2`. The XOR of $a_l, \dots, a_r$ is $p_{l-1} \oplus p_r$, so the window must start at the prefix index $l - 1$. Starting at $l$ leaves out the prefix value just before the range. Here $a = [0, 2, 1, 3]$ and $k = 2$: the subarrays of positions 2 to 4 with XOR 2 are $[2]$ and $[1, 3]$, but the one that starts at position 2 needs the prefix value $p_1$, which the wrong window never counts.
+
+**Fix:** use $l - 1$ for the left end of the window over the prefix values.
+
+### Bug: the walk for a large step starts one jump too late
+
+Template: sums along every k-th position.
+
+```cpp
+for (p += k; p < n; p += k) s += a[p];                  // instead of for (; p < n; p += k)
+```
+
+Input: `1 1`, then `6`, then the question `1 2`.
+
+Wrong output `0`, correct output `6`. The sum along $p, p + k, \dots$ includes $a_p$ itself. The wrong loop skips the first position, so a question with a large step and a start that is the only position in the range returns 0 (Theorem 5.4.5, step 1: the sum is $a_p$ plus the rest).
+
+**Fix:** start the loop at `p` without the first jump.
+
+
+## 8. Worked examples
+
+### Example 1: Little Elephant and Array
+
+[Codeforces 220B: Little Elephant and Array](https://codeforces.com/problemset/problem/220/B). In short: an array of $n \le 10^5$ numbers and $m \le 10^5$ questions $(l, r)$; for each, print how many numbers $x$ occur exactly $x$ times among $a_l, \dots, a_r$.
+
+#### Step 1: Constraints → budget
+
+$n = m = 10^5$. Counting the values of each range is up to $10^{10}$ steps, about 100 seconds. About $\sqrt n \cdot (n + m) \approx 10^8$ steps is fine.
+
+#### Step 2: Question form → candidate tools
+
+- Count the values of each range ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(nm)$.
+- Prefix sums for every value ([topic 1.2](../../phase-1/1-2-prefix-sums/)): one table of $n$ entries for each of up to $n$ values is $n^2$ memory.
+- Mo's algorithm: possible, with a count array and a count of counts.
+- A threshold: the card "Split by a threshold of about $\sqrt n$".
+
+#### Step 3: Property check → decision
+
+A value $x$ can occur exactly $x$ times in a range only if it occurs at least $x$ times in the whole array. The sum of such values is at most $n$, so there are at most $\sqrt{2n} \approx 447$ of them. Decision: for each of these values, one pass over the array builds the prefix counts, and each question reads two of them.
+
+#### Step 4: Proof for this problem
+
+By Theorem 5.4.6, the set $H$ of values with at least $x$ occurrences has at most $\sqrt{2n}$ elements, and a value outside $H$ never occurs exactly $x$ times in a range. For $x \in H$ the prefix counts give the number of occurrences in $[l, r]$ as `prefix[r] - prefix[l - 1]` (1-based), and a question's answer is the number of $x \in H$ for which this equals $x$. One pass per value takes $O(n + m)$ steps, in all $O(\sqrt{n}(n + m))$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.4/example-1" />
+
+#### Step 6: Alternative approach
+
+Mo's algorithm keeps the counts of the window and the number of values whose count equals the value itself; each step changes this number in $O(1)$ and the total is $O(n\sqrt{m})$. It needs no bound on the number of qualifying values, and it works if the condition is changed; the threshold solution is shorter here.
+
+### Example 2: Array Queries
+
+[Codeforces 797E: Array Queries](https://codeforces.com/problemset/problem/797/E). In short: an array of $n \le 10^5$ numbers $a_p$ with $1 \le a_p \le n$ and $q \le 10^5$ questions $(p, k)$. Starting at $p$, repeat $p \to p + a_p + k$ until $p > n$; print the number of repetitions.
+
+#### Step 1: Constraints → budget
+
+$n = q = 10^5$. A question with $k = 1$ and all $a_p = 1$ makes about $n / 2$ jumps; $q$ such questions make $5 \cdot 10^9$ steps. A walk is at most $n / k$ jumps; a table for each step of size $n$ costs $n$ steps to fill.
+
+#### Step 2: Question form → candidate tools
+
+- Simulate each question ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(nq)$ in the worst case.
+- A table for every $k$: $n^2$ memory.
+- A threshold on $k$: the card "Split by a threshold of about $\sqrt n$".
+
+#### Step 3: Property check → decision
+
+Every jump is at least $k + 1$ places, so for $k \ge B$ a question makes at most $n / B$ jumps. For $k < B$ the number of jumps from $p$ is $1 +$ the number from the next position, which depends only on $(p, k)$: a table of $n$ numbers for each small $k$, filled from the right. Decision: $B \approx \sqrt n \approx 316$.
+
+#### Step 4: Proof for this problem
+
+The jump from $p$ with step $k$ is $p \to p + a_p + k$, which depends only on $p$ and $k$. So the count from $p$ is $1 + \text{count}(p + a_p + k)$ when that position is inside the array, and 1 otherwise: this is the table recurrence of Theorem 5.4.5 with $a_p + k$ in place of the fixed step. Filling it from the right needs $n$ steps for each $k < B$, and a walk for $k \ge B$ makes at most $\lceil n / (B + 1) \rceil$ jumps.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.4/example-2" />
+
+#### Step 6: Alternative approach
+
+Offline, sort the questions by $k$ and keep a single table for the current $k$, recomputed when $k$ changes only for the $k$ values that have many questions, so the memory is $O(n)$. The time is the same.
+
+### Example 3: Cut and Stick
+
+[Codeforces 1514D: Cut and Stick](https://codeforces.com/problemset/problem/1514/D). In short: an array of $n \le 3 \cdot 10^5$ numbers and $q \le 3 \cdot 10^5$ questions $(l, r)$. The elements $a_l, \dots, a_r$ are to be split into the fewest subsequences such that in each of length $len$ no value occurs more than $\lceil len / 2 \rceil$ times. Print the fewest for each question.
+
+#### Step 1: Constraints → budget
+
+$n = q = 3 \cdot 10^5$. Counting the values of each range is up to $9 \cdot 10^{10}$ steps. Mo's algorithm makes about $3 n \sqrt q \approx 5 \cdot 10^8$ moves in the worst case; each is a few array operations, and the limit (a few seconds) allows it.
+
+#### Step 2: Question form → candidate tools
+
+- Count each range ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(nq)$.
+- A segment tree ([topic 5.3](../5-3-segment-tree/)): the most common value of a range is not a combination of the answers of its halves (a majority element can be found that way, but the highest frequency cannot).
+- Mo's algorithm: the card "Offline range queries, with a cheap add and remove".
+
+#### Step 3: Property check → decision
+
+If a value occurs $f$ times in a range of length $len$, the pieces that contain it can hold at most $\lceil len_i / 2 \rceil$ of its copies each. The answer is $\max(1, 2f - len)$ (known from the statement's analysis). So the question is about the highest frequency $f$ of the range. When an element enters the window, $f$ can grow by one; when it leaves, $f$ drops by one only if no other value still has the top count. A count of counts tells that in $O(1)$. Decision: Mo's algorithm.
+
+#### Step 4: Proof for this problem
+
+Theorem 5.4.4 applies with the stored value $f$. For an `add` of a value with count $c$ the count of counts moves one entry from $c$ to $c + 1$ and $f = \max(f, c + 1)$. For a `remove` of a value with count $c$ the entry moves from $c$ to $c - 1$, and $f$ drops by one exactly when $c = f$ and the count of counts at $f$ was 1. Both are $O(1)$. The order of Theorem 5.4.3 bounds the moves by about $3 n \sqrt q$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.4/example-3" />
+
+#### Step 6: Alternative approach
+
+The only value that can have a frequency above half of the range is the majority element, and a random position of the range is it with probability above one half; trying 25 random positions and counting its occurrences with a sorted list of positions for each value gives the answer in $O(q \cdot 25 \cdot \log n)$ and needs no Mo order.
+
+## 9. Problem ladder
+
+<Ladder topic="5.4" />
+
+## 10. Identification drill
+
+<Drill topic="5.4" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="5.4" />
+
+## 12. Self-test questions
+
+<SelfTest topic="5.4" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="5.4" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="5.4" />

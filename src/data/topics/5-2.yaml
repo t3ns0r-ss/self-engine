@@ -1,0 +1,437 @@
+id: '5.2'
+draft: true
+uses:
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check'
+- topic: '0.6'
+  what: 'Standard containers: map and ordered sets, the tools of the contrast problems'
+- topic: '1.1'
+  what: 'Sorting and coordinate compression: values become ranks, queries are sorted by right end'
+- topic: '1.2'
+  what: 'Prefix sums: the tool for a fixed array, and the formula for a range sum'
+- topic: '1.7'
+  what: 'Bit operations: the lowest set bit i & -i'
+- topic: '2.1'
+  what: 'Divisors and multiples: the contrast for a divisibility condition'
+- topic: '5.1'
+  what: 'Sparse table: the tool for minimums and maximums when nothing changes'
+theorems:
+- id: 5.2.1
+  title: Prefix sums from blocks
+  plain_words: Take the block that ends at $i$. What is left of the prefix is everything before that block,
+    and that is again a prefix whose last block is found the same way. Each step cuts away the lowest
+    set bit of the index, so there are at most about 18 steps for $n = 2 \cdot 10^5$.
+  code: 5.2/thm-1
+- id: 5.2.2
+  title: A change touches few blocks
+  plain_words: A block that contains position $i$ must end at $i$ or later. Going to the next index by
+    adding the lowest set bit always lands on the next bigger block that still contains $i$, and no index
+    in between has a block that reaches back to $i$. So one change is a short walk to the right.
+  code: 5.2/thm-2
+- id: 5.2.3
+  title: Adding to a range, reading one value
+  plain_words: 'Instead of the values, store how much each value differs from the one before it. Adding
+    $v$ to a whole range changes only two such differences: the jump up where the range starts and the
+    jump down just after it ends. A value is the sum of all differences up to it.'
+  code: 5.2/thm-3
+- id: 5.2.4
+  title: Counting inversions
+  plain_words: Look at each number and count the earlier numbers that are bigger. These are exactly the
+    inversions that end at this number. A Fenwick tree over the values tells how many earlier numbers
+    are not bigger, and the rest of the earlier numbers are bigger.
+  code: 5.2/thm-4
+- id: 5.2.5
+  title: Distinct values in ranges, offline
+  plain_words: Count each value only at its last visible position. When the right end of the range moves
+    one step, only the new element and the previous copy of the same value change their marks. If the
+    questions are taken in order of their right end, a single sweep of the right end serves all of them,
+    and the answer to a question is a range sum of the marks.
+  code: 5.2/thm-5
+- id: 5.2.6
+  title: The k-th element of a changing collection
+  plain_words: 'Think of the positions in binary. Decide the highest bit of the answer first: does the
+    first half of the positions hold fewer than $k$ elements? If yes, skip that half and look for the
+    rest inside the second half; if not, stay in the first. Then do the same for the next bit. The blocks
+    of the tree are exactly these halves.'
+  code: 5.2/thm-6
+cards:
+- id: updates-and-range-sums
+  name: Changing values and asking range sums (Fenwick tree)
+  from_theorem: 5.2.1
+  decisive_property: The questions mix changes of single values (or additions to a whole range) with sums,
+    counts or XORs; the quantity can be added and taken back again, and the positions can be numbered
+    1 to n.
+  how_to_test: Check that there are both changes and range questions, so that prefix sums alone would
+    go stale, and that the quantity has an inverse (the range answer is prefix(r) minus prefix(l − 1)).
+    If the questions read one value after additions to ranges, store the differences of neighbours instead.
+  constraint_shapes:
+  - 'n = q = 2·10^5 with changes: rebuilding the prefix sums after every change is up to 4·10^10 steps
+    (about 400 seconds); one Fenwick operation is at most 18 steps, about 7·10^6 in all'
+  - 'A 1000 × 1000 grid with 2·10^5 changes and rectangle sums: a two-dimensional tree needs about 10
+    · 10 = 100 steps per operation, 2·10^7 in all'
+  weak_signals:
+  - form: Asks for the sum, count or XOR of a range after some values were replaced or increased
+    shape: n, q up to 2·10^5, operations of two kinds mixed in the input
+  - form: Adds a number to every element of a range many times and asks for single values
+    shape: n, q up to 2·10^5, the reads are interleaved with the additions
+  - form: Counts marked cells in rectangles while cells are switched on and off
+    shape: a grid of up to 1000 × 1000 and up to 2·10^5 operations
+  kill_signals:
+  - 'The question is the minimum or maximum of an arbitrary range while values change: a minimum cannot
+    be taken back, so "prefix(r) minus prefix(l − 1)" has no meaning. For a = [1, 5, 4] the minimum of
+    positions 2 to 3 is 4, but the prefix minimum up to 3 is 1'
+  - 'Nothing changes between the questions: prefix sums are simpler and just as fast'
+  in_action:
+    statement: 'A shop has the sales of n days. There are q operations: "set day k to x" and "total sales
+      from day a to day b".'
+    constraints: n, q ≤ 2·10^5, sales up to 10^9.
+    budget: 'Rebuilding the prefix sums for every change: up to n · q = 4·10^10 steps, about 400 seconds.
+      Need about O(log n) per operation.'
+    candidates:
+    - tool: Prefix sums rebuilt after each change (topic 1.2)
+      verdict: rejected
+      because: 'One change moves all later prefixes: n steps per change.'
+    - tool: Sparse table (topic 5.1)
+      verdict: rejected
+      because: It needs a fixed array, and a sum is not an operation that tolerates overlapping blocks.
+    - tool: Fenwick tree (this topic)
+      verdict: chosen
+      because: Changes and prefix sums both take at most 18 block steps (Theorems 5.2.1 and 5.2.2), and
+        the range sum is a difference of two prefixes.
+    property_check: Changes and sums are mixed. A sum has an inverse, so prefix(b) − prefix(a − 1) is
+      the answer. The property holds.
+    decision: Fenwick tree of 64-bit sums; to set day k to x, add x minus the current value, kept in a
+      separate array.
+  examples:
+    positive:
+    - inline:
+        input: a = [3, 1, 4, 1, 5]. Set a_3 to 10 (add 6 at position 3), then ask the sum of positions
+          2 to 4.
+        answer: '12'
+        why: Changes and sums are mixed and a sum has an inverse. After the change the range holds 1,
+          10, 1, so the sum is 12; two prefix queries on the tree give the same.
+    - inline:
+        input: n = 5, all zeros. Add 5 to every position from 2 to 4, then ask the value at position 3.
+        answer: '5'
+        why: 'Store the differences of neighbours: adding 5 on [2, 4] adds 5 at position 2 and subtracts
+          5 at position 5. The prefix sum of the differences up to 3 is 5.'
+    negative:
+    - inline:
+        input: a = [1, 5, 4]. What is the minimum of positions 2 to 3, if the tree is used for prefix
+          minimums and a range is answered from the prefix up to position 3?
+        answer: '4'
+        method_gives: '1'
+        why: The prefix minimum up to 3 is 1, which comes from position 1, outside the range. A minimum
+          cannot be subtracted, so a range cannot be read from two prefixes. With n and q this small a
+          scan of the range is the tool now; for large inputs the segment tree of a later topic is.
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - problem: cses-1646
+      why: The array never changes, so two prefix sums answer each question and no tree is needed.
+      correct_tool:
+        topic: '1.2'
+        card: range-sum
+  lookalikes:
+  - description: Sums of ranges on an array that never changes
+    tool:
+      topic: '1.2'
+      card: range-sum
+    flipping_difference: With no changes the prefix sums are built once and each question is two lookups.
+  - description: Many additions to ranges, and only afterwards the whole array is printed
+    tool:
+      topic: '1.2'
+      card: difference-array
+    flipping_difference: If all the reads come after all the additions, one pass over the differences
+      is enough; the tree is for reads between additions.
+  complexity: O(log n) per change and per query, O(n) memory (O(n log n) to build by n changes).
+- id: inversion-count
+  name: Counting earlier elements that are larger (inversions)
+  from_theorem: 5.2.4
+  decisive_property: The answer counts pairs of positions i < j whose values stand in an order relation
+    (a_i greater than a_j, not greater, in a value range), so for each j the count is the number of earlier
+    elements with a value in a range.
+  how_to_test: Write the count for one j as "how many earlier elements have a value in this range of values".
+    If that works for every j, sweep left to right, keep a tree over the compressed values with a 1 at
+    each earlier value, and read the count with a prefix query.
+  constraint_shapes:
+  - 'n = 2·10^5 elements: all pairs are n(n − 1)/2 = 2·10^10 (about 200 seconds); one pass with a tree
+    is 2 · 2·10^5 · 18 ≈ 7·10^6 steps'
+  - 'Values up to 10^9: they are compressed to ranks 1..m with m ≤ n first, so the tree has at most 2·10^5
+    entries'
+  weak_signals:
+  - form: Counts the pairs i < j with a_i > a_j (or the minimum number of adjacent swaps to sort)
+    shape: n up to 2·10^5 and an answer up to 2·10^10
+  - form: Counts, for each element, how many earlier or later elements are smaller or larger
+    shape: n up to 2·10^5, values up to 10^9 or a permutation
+  - form: Counts triples or pairs of intervals or wires that cross or nest, which becomes an order condition
+      after sorting by one coordinate
+    shape: n up to 2·10^5 with two coordinates per item
+  kill_signals:
+  - 'The relation between the two numbers is not an order: for a = [2, 4, 6, 3], pairs where the earlier
+    divides the later are 2, but "earlier ≤ later" counts 4'
+  - 'n ≤ 2000: all pairs are 2·10^6, so two loops are enough'
+  in_action:
+    statement: n people stand in a queue with different heights. Every person counts the taller people
+      standing in front of them. Print the total of all counts.
+    constraints: n ≤ 2·10^5, heights up to 10^9.
+    budget: 'All pairs: n(n − 1)/2 = 2·10^10, about 200 seconds. Need about O(n log n).'
+    candidates:
+    - tool: Two nested loops (topic 0.5)
+      verdict: rejected
+      because: 2·10^10 pairs.
+    - tool: Prefix counts by value (topic 1.2)
+      verdict: rejected
+      because: The counts change as people arrive, so a prefix array would be rebuilt for every person.
+    - tool: Fenwick tree over the ranks of the heights (this topic)
+      verdict: chosen
+      because: For each person the taller people in front are the earlier ones minus those not taller,
+        which is one prefix query (Theorem 5.2.4).
+    property_check: For person j the count is "earlier people with height greater than h_j", a range of
+      values. The property holds.
+    decision: Compress the heights, sweep left to right, add the number of earlier people minus prefix(rank),
+      then add a 1 at the rank. Use 64-bit numbers.
+  examples:
+    positive:
+    - inline:
+        input: a = [2, 4, 1, 3, 5]. How many inversions (pairs i < j with a_i > a_j)?
+        answer: '3'
+        why: 'For each j the count is the earlier elements that are larger: 0, 0, 2, 1, 0. The tree gives
+          each as j − 1 minus a prefix count, and the total is 3.'
+    - inline:
+        input: a = [2, 2, 1]. How many inversions?
+        answer: '2'
+        why: The two 2s are equal and do not count; each of them forms an inversion with the 1. The prefix
+          uses "not greater", so equal values are not counted.
+    - worked_example: cf-1676H2
+      why: Counting the pairs of wires that cross reduces to counting pairs i < j with a_i ≥ a_j; one
+        pass with a tree over the values gives it.
+    negative:
+    - inline:
+        input: a = [2, 4, 6, 3]. How many pairs i < j have a_i dividing a_j?
+        answer: '2'
+        method_gives: '4'
+        why: The pairs are (2, 4) and (2, 6). Counting the earlier elements with a_i ≤ a_j, as the tree
+          does, also counts (4, 6) and (2, 3). Divisibility is not a range of values.
+      correct_tool:
+        topic: '2.1'
+        card: multiples-sieve
+    - problem: ac-abc143_d
+      why: The condition is about three sticks together (a triangle) and the order of the positions does
+        not matter; sorting and a binary search count it.
+      correct_tool:
+        topic: '1.4'
+        card: sorted-search
+  lookalikes:
+  - description: Counting subarrays whose sum has a given value
+    tool:
+      topic: '1.2'
+      card: prefix-count-lookup
+    flipping_difference: There two prefix values must be equal, which a table of counts answers; here
+      they must stand in an order, which needs a prefix count over a range of values.
+  - description: Counting how many values are below a given number in a fixed sorted list
+    tool:
+      topic: '1.4'
+      card: sorted-search
+    flipping_difference: In a fixed list one binary search answers it; the tree is for a collection that
+      grows as the sweep goes.
+  complexity: 'O(n log n): two chains of at most log m steps for each element, after sorting for the ranks.'
+- id: offline-sweep-count
+  name: Range counts answered offline, sorted by right end
+  from_theorem: 5.2.5
+  decisive_property: All the questions are known beforehand and ask for a count over a range [l, r] of
+    a fixed array (distinct values, elements below a bound) which is not additive over positions, but
+    for a fixed right end r can be written as marks per left position, so that the answer is a sum of
+    marks over [l, r].
+  how_to_test: Fix r and try to write the answer for every l as a sum of marks over positions l to r.
+    Check how few marks change when r moves one step right. If it is one or two, sort the questions by
+    r, sweep r from left to right and answer each question with a range sum.
+  constraint_shapes:
+  - 'n = q = 2·10^5: collecting the values of each range in a set is up to 4·10^10 steps; the sweep makes
+    n + q operations of 18 steps, about 7·10^6'
+  - 'Colours up to 10^9: a map from colour to last position keeps the sweep at O(log n) per step'
+  weak_signals:
+  - form: Asks for the number of different values or colours in many ranges
+    shape: n, q up to 2·10^5, all ranges given in the input, nothing changes
+  - form: Asks for how many elements in a range are at most a given number
+    shape: n, q up to 2·10^5, three numbers (l, r, x) per question
+  - form: Asks for each interval how many other intervals contain it or lie inside it
+    shape: n up to 2·10^5 intervals with distinct ends
+  kill_signals:
+  - 'The array changes between questions: for a = [1, 2, 1] the marks give 2 different values in [1, 3];
+    after a_2 is set to 1 the true answer is 1, and the marks computed before are out of date'
+  - 'Each question depends on the previous answer (forced online): the questions cannot be sorted by r'
+  in_action:
+    statement: A row of n lamps has colours c_1, ..., c_n. For q questions (l, r), print how many different
+      colours appear on the lamps l to r.
+    constraints: n, q ≤ 2·10^5, colours up to 10^9.
+    budget: 'Collecting the colours of each range: up to n · q = 4·10^10 steps. Need about O((n + q) log
+      n).'
+    candidates:
+    - tool: A set for each range (topic 0.6)
+      verdict: rejected
+      because: 4·10^10 steps in the worst case.
+    - tool: Prefix counts per colour (topic 1.2)
+      verdict: rejected
+      because: Up to 2·10^5 colours times 2·10^5 positions is too much memory and time.
+    - tool: Sweep by right end with a Fenwick tree (this topic)
+      verdict: chosen
+      because: Mark only the last occurrence of each colour; the answer is a range sum of the marks (Theorem
+        5.2.5).
+    property_check: The questions are all known, the lamps never change, and for a fixed r the answer
+      for l is the number of last occurrences in [l, r]. The property holds.
+    decision: Sort the questions by r; sweep r, moving the mark of each colour to its newest position;
+      answer with a range sum.
+  examples:
+    positive:
+    - inline:
+        input: a = [1, 2, 1, 3, 2]. How many different values are in positions 2 to 5?
+        answer: '3'
+        why: At r = 5 the last occurrences are at positions 3 (value 1), 4 (value 3) and 5 (value 2),
+          all inside [2, 5], so the marks sum to 3.
+    - inline:
+        input: a = [5, 1, 4, 2, 3]. How many elements of positions 2 to 4 are at most 3?
+        answer: '2'
+        why: Sort the elements by value and insert their positions into the tree in that order. After
+          inserting the values up to 3, the positions 2 (value 1), 4 (value 2) and 5 (value 3) are marked;
+          two of them are in [2, 4].
+    - worked_example: cses-1734
+      why: 'Distinct values in many ranges of a fixed array of up to 2·10^5 numbers: sort the questions
+        by right end and keep one mark per value.'
+    negative:
+    - inline:
+        input: a = [1, 2, 1]. The marks for r = 3 are computed. Then a_2 is set to 1. How many different
+          values are in positions 1 to 3 now?
+        answer: '1'
+        method_gives: '2'
+        why: The marks were computed for the old array and say 2. After the change the array is [1, 1,
+          1] and the answer is 1. The sweep needs an array that does not change; with changes the work
+          is a scan of the range, as long as n and q are small.
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - problem: ac-abc122_c
+      why: The count is additive over positions, so prefix sums answer each question when it is asked,
+        in any order.
+      correct_tool:
+        topic: '1.2'
+        card: range-sum
+  lookalikes:
+  - description: The number of marked positions in a range for a fixed array
+    tool:
+      topic: '1.2'
+      card: range-sum
+    flipping_difference: When the marks are fixed in advance prefix sums are enough; the sweep is for
+      marks that depend on the right end of the range.
+  - description: Counting intervals that lie inside others after sorting by start
+    tool:
+      topic: '1.1'
+      card: event-sweep
+    flipping_difference: Sorting events gives the order, but counting how many earlier ends are larger
+      needs the tree.
+  complexity: 'O((n + q) log n): sorting the questions, n sweep steps with two updates, q range sums.'
+- id: kth-present
+  name: The k-th smallest of a changing collection
+  from_theorem: 5.2.6
+  decisive_property: Items are added to and removed from a collection (or positions are used up), and
+    the questions ask for the k-th smallest item, or the item at place k, in the current collection; the
+    possible values can be numbered 1 to m.
+  how_to_test: Number the possible values (compress them if they are large), keep the count of each value
+    in a tree, and answer "the k-th" by the descent that finds the first value whose prefix count reaches
+    k. Check that insertions are by value and not at a given place of the list.
+  constraint_shapes:
+  - 'n = q = 2·10^5: removing the k-th element of a list by shifting costs up to n steps, in all 4·10^10;
+    a descent costs at most 18'
+  - 'Values up to 10^9 known in advance: sort and compress them to at most 2·10^5 ranks'
+  weak_signals:
+  - form: Repeatedly prints and removes the element at place k of the current list
+    shape: n, q up to 2·10^5, the list shrinks
+  - form: Inserts a value, deletes a value, and asks for the k-th smallest of the current collection
+    shape: q up to 2·10^5, values small or known beforehand
+  - form: Removes every m-th person from a circle, or puts each item into the k-th free slot
+    shape: n up to 2·10^5, m up to 10^9
+  kill_signals:
+  - 'Items are inserted at a given place of the list: for [5, 6], inserting 7 at place 2 gives [5, 7,
+    6], whose 3rd element is 6, while a tree over values would call 7 the 3rd smallest'
+  - 'k is tiny (at most 5): walking k steps in a set of the standard library is enough'
+  in_action:
+    statement: 'A list holds the numbers x_1, ..., x_n. For n times, a place p_i is given: print the element
+      at that place in the current list and remove it.'
+    constraints: n ≤ 2·10^5.
+    budget: 'Shifting the list after each removal: n · n / 2 = 2·10^10 steps. Need about O(log n) per
+      removal.'
+    candidates:
+    - tool: A vector with erase (topic 0.6)
+      verdict: rejected
+      because: Each erase shifts up to n elements, 2·10^10 steps in total.
+    - tool: Ordered set (topic 0.6)
+      verdict: rejected
+      because: The standard set cannot jump to the k-th element in O(log n).
+    - tool: Fenwick tree of 1s with descent (this topic)
+      verdict: chosen
+      because: Keep a 1 at every original place that is still present; the p-th present place is found
+        by the descent of Theorem 5.2.6.
+    property_check: Removals are by place in the original order, so the places can be numbered 1 to n
+      and a tree of counts holds them. The property holds.
+    decision: Initialise 1 at every place, find the place of the p_i-th remaining element by descent,
+      print its value, add −1 there.
+  examples:
+    positive:
+    - inline:
+        input: Places 2, 3, 5 and 8 of 8 hold an element. Which place holds the 3rd element?
+        answer: '5'
+        why: The counts are 0, 1, 1, 0, 1, 0, 0, 1. The descent skips the block of positions 1 to 4 (two
+          elements, fewer than 3), then finds the third element at position 5.
+    - inline:
+        input: A list [10, 20, 30, 40]. Remove the element at place 2, then the element at place 2 of
+          what remains. Which value is removed the second time?
+        answer: '30'
+        why: The first removal takes 20 and leaves [10, 30, 40]. The 2nd present place is then place 3
+          of the original, holding 30, found by the descent.
+    - worked_example: cses-1749
+      why: 'Print and remove the elements at given places of a list of up to 2·10^5 numbers: a tree of
+        1s with the descent finds each place.'
+    negative:
+    - inline:
+        input: The list [5, 6]. Insert 7 at place 2, then ask for the element at place 3. What is it?
+        answer: '6'
+        method_gives: '7'
+        why: The list is [5, 7, 6], so the element at place 3 is 6. A tree over the values 5, 6, 7 calls
+          7 the 3rd smallest. The place of an insertion changes the list, and the values do not say where
+          it goes.
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - problem: ac-abc241_d
+      why: The question asks for the k-th smallest value but k is at most 5, so walking a few steps from
+        an iterator of the standard library is enough.
+      correct_tool:
+        topic: '0.6'
+        card: ordered-set-lookup
+  lookalikes:
+  - description: The nearest value above or below a number in a changing set
+    tool:
+      topic: '0.6'
+      card: ordered-set-lookup
+    flipping_difference: The nearest value is one step from a position found by a tree search in the standard
+      set; the k-th for a large k needs counts.
+  - description: The k-th smallest of a fixed collection
+    tool:
+      topic: '1.4'
+      card: kth-by-counting
+    flipping_difference: A fixed collection can be sorted once; the tree is for a collection that changes.
+  complexity: O(log n) per question and per change.
+problems: []
+drill: []
+lookalike_pairs: []
+self_test: []
+checkpoint:
+  time_limit_minutes: 150
+  problems: []
+decision_map: []
+glossary_added:
+- Fenwick tree
+- lowbit
+- inversion
+- offline
+- order statistic

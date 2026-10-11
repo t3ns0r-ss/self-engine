@@ -1,0 +1,256 @@
+---
+title: "5.2 Fenwick tree (binary indexed tree), inversion counting"
+sidebar:
+  order: 34
+topic: "5.2"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="5.2" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A shop writes down its sales for each of $n = 2 \cdot 10^5$ days. Then $q = 2 \cdot 10^5$ operations come, mixed in any order: "the sales of day $k$ were wrong, change them to $x$", and "what were the total sales from day $a$ to day $b$?"
+
+Prefix sums ([topic 1.2](../../phase-1/1-2-prefix-sums/)) answer the second operation with two lookups, but one change breaks all the prefix sums after it. Rebuilding them costs $n$ steps, so $q$ operations cost up to $2 \cdot 10^5 \cdot 2 \cdot 10^5 = 4 \cdot 10^{10}$ steps, about 400 seconds at $10^8$ steps per second. Adding up the days one by one for every question is just as slow. The sparse table of [topic 5.1](../5-1-sparse-table/) needs the array to stay fixed.
+
+The key idea: keep the sums of *some* blocks, chosen so that a change touches only about $\log_2 n \approx 18$ of them and a prefix is the sum of only about 18 of them. Number the days from 1. Day $i$ stores the sum of the block of days that *ends at $i$* and has as many days as the lowest set bit of $i$. For $i = 12 = 1100_2$ the lowest set bit is 4, so day 12 stores the sum of days 9 to 12. For $i = 8$ it stores days 1 to 8, and for odd $i$ just day $i$. The prefix up to 11 is then the block ending at 11 (day 11), the block ending at 10 (days 9 and 10), and the block ending at 8 (days 1 to 8): each step drops the lowest set bit of the index. A change at day 5 is added to the blocks that contain day 5, which are found by adding the lowest set bit to the index: 5, 6, 8, 16, ... This is the **Fenwick tree** (also called the binary indexed tree). Both operations take about 18 steps instead of $2 \cdot 10^5$.
+
+Counting is a sum too. The same tree answers "how many of the numbers seen so far are at most $x$?", which turns a pass over an array into a count of the *inversions* (pairs that are in the wrong order) in $O(n \log n)$, and also finds the $k$-th smallest number of a changing collection.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="5.2" />
+
+### What this topic does not cover
+
+- Operations that cannot be undone, such as the minimum or the maximum of a range **while values change**: the segment tree of topic 5.3. (If the values only ever grow, a Fenwick tree can keep a prefix maximum, but it cannot answer an arbitrary range.)
+- Adding a number to a whole range *and* asking sums of ranges at the same time: topic 5.3 (lazy propagation).
+- Splitting the array into blocks of about $\sqrt n$ elements and answering questions in a special order: topic 5.4.
+- A Fenwick tree over a huge range of values (up to $10^9$) without sorting the values first: the code below always compresses the values to ranks.
+
+## 3. Definitions
+
+- This page numbers the positions from **1** to $n$. The **lowest set bit** of a positive integer $i$ is the value $2^b$ of the lowest bit that is 1 ([topic 1.7](../../phase-1/1-7-bits/)); written $\text{lowbit}(i)$, it equals `i & -i`. Examples: $\text{lowbit}(12) = 4$, $\text{lowbit}(7) = 1$, $\text{lowbit}(8) = 8$.
+- The **block** of $j$ is the set of positions $(j - \text{lowbit}(j),\ j]$, that is $j - \text{lowbit}(j) + 1, \dots, j$: it has $\text{lowbit}(j)$ positions and ends at $j$. Examples: block(12) = $\{9, \dots, 12\}$, block(6) = $\{5, 6\}$, block(5) = $\{5\}$.
+- A **Fenwick tree** over an array $a_1, \dots, a_n$ is the array $\text{tree}[1..n]$ with $\text{tree}[j] = $ the sum of $a$ over the block of $j$. Example: for $a = [3, 1, 4, 1, 5, 9, 2, 6]$ it is $[3, 4, 4, 9, 5, 14, 2, 31]$. The words *Fenwick tree* and *binary indexed tree* (BIT) mean the same.
+- The **prefix** $\text{prefix}(i) = a_1 + \dots + a_i$. A **point update** adds a number $d$ to one $a_i$. To *set* $a_i$ to $x$, add $x - a_i$.
+- An **inversion** of an array is a pair of positions $i < j$ with $a_i > a_j$. Example: in $[2, 4, 1, 3, 5]$ the inversions are $(2, 1)$, $(4, 1)$ and $(4, 3)$ (as values), so there are 3. Equal values are not an inversion.
+- A method is **offline** if it reads all the questions first and answers them in an order of its own choice; an **online** method must answer each question before it sees the next.
+- The **$k$-th smallest** of a collection counts repeated values separately: in $\{4, 4, 7\}$ the 2nd smallest is 4 and the 3rd is 7.
+- **Coordinate compression** replaces each value by its rank ([topic 1.1](../../phase-1/1-1-sorting/)); here equal values get equal ranks, from 1 to $m$, the number of different values.
+
+## 4. Theory and proofs
+
+### 4.1 The blocks and the prefix query
+
+**Theorem 5.2.1 (prefix sums from blocks).** Let $\text{tree}$ be the Fenwick tree of $a_1, \dots, a_n$. For $1 \le i \le n$ put $i_0 = i$ and $i_{m+1} = i_m - \text{lowbit}(i_m)$, until the value 0 is reached at $i_s = 0$. Then
+$$a_1 + \dots + a_i = \text{tree}[i_0] + \text{tree}[i_1] + \dots + \text{tree}[i_{s-1}],$$
+and $s$ is the number of 1 bits of $i$, which is at most $\lfloor \log_2 i \rfloor + 1$. The sum of $a_l, \dots, a_r$ is $\text{prefix}(r) - \text{prefix}(l - 1)$.
+
+:::tip[In plain words]
+Take the block that ends at $i$. What is left of the prefix is everything before that block, and that is again a prefix whose last block is found the same way. Each step cuts away the lowest set bit of the index, so there are at most about 18 steps for $n = 2 \cdot 10^5$.
+:::
+
+**A tiny instance.** For $a = [3, 1, 4, 1, 5, 9, 2, 6]$, $\text{tree} = [3, 4, 4, 9, 5, 14, 2, 31]$. To get $\text{prefix}(7)$: $7 = 111_2$, then $7 - 1 = 6 = 110_2$, then $6 - 2 = 4 = 100_2$, then $4 - 4 = 0$. So $\text{prefix}(7) = \text{tree}[7] + \text{tree}[6] + \text{tree}[4] = 2 + 14 + 9 = 25$, and indeed $3 + 1 + 4 + 1 + 5 + 9 + 2 = 25$.
+
+**Proof.**
+1. Write $B(j) = (j - \text{lowbit}(j),\ j]$ for the block of $j$; then $\text{tree}[j]$ is the sum of $a$ over $B(j)$.
+2. The step $i_{m+1} = i_m - \text{lowbit}(i_m)$ is exactly the left end of $B(i_m)$, so $B(i_m) = (i_{m+1}, i_m]$.
+3. So the blocks $B(i_0), B(i_1), \dots, B(i_{s-1})$ are $(i_1, i_0], (i_2, i_1], \dots, (0, i_{s-1}]$. Each starts where the next one ends, so they leave no gap and do not overlap, and together they are $(0, i] = \{1, \dots, i\}$.
+4. Hence the sum of the $\text{tree}$ values is the sum of $a_1, \dots, a_i$, each position counted exactly once.
+5. Each step clears the lowest 1 bit of the index, so the chain reaches 0 after as many steps as $i$ has 1 bits, at most $\lfloor \log_2 i \rfloor + 1$.
+6. The sum of $a_l, \dots, a_r$ is $\text{prefix}(r) - \text{prefix}(l-1)$ by Theorem 1.2.1. $\square$
+
+:::note[This proof needs]
+1. Positions start at 1. For position 0, $\text{lowbit}(0) = 0$ and the loops never end.
+2. The final subtraction in step 6 needs the operation to have an *inverse*: a sum, a count or an XOR has one, a minimum or a maximum does not. The chain itself works for any associative operation.
+3. The values in the tree are sums, so use 64-bit numbers when the total can pass $2 \cdot 10^9$.
+:::
+
+<TheoremCode unit="5.2/thm-1" />
+
+The first example is the tiny instance: the chain 7, 6, 4 is steps 2 and 3 of the proof, and the sum 25 is step 4. The second is a single element, and the third shows that for $n = 7$ with all ones the chain 7, 6, 4 gives $1 + 2 + 4 = 7$. The check compares every prefix with the plain sum on every array of length 1 to 6 over $\{0, 1, 2\}$.
+
+### 4.2 A change touches few blocks
+
+**Theorem 5.2.2 (point update).** Let $i$ be a position and put $j_0 = i$, $j_{m+1} = j_m + \text{lowbit}(j_m)$ as long as the value is at most $n$. Then the blocks $B(j)$ that contain position $i$ are exactly $B(j_0), B(j_1), \dots$. So adding $d$ to $a_i$ means adding $d$ to $\text{tree}[j_0], \text{tree}[j_1], \dots$ and nothing else. There are at most $\lfloor \log_2 n \rfloor + 1$ of them.
+
+:::tip[In plain words]
+A block that contains position $i$ must end at $i$ or later. Going to the next index by adding the lowest set bit always lands on the next bigger block that still contains $i$, and no index in between has a block that reaches back to $i$. So one change is a short walk to the right.
+:::
+
+**A tiny instance.** $n = 8$, $i = 3$: $j = 3, 4, 8$ (since $3 + 1 = 4$, $4 + 4 = 8$, $8 + 8 = 16 > 8$). Indeed $B(3) = \{3\}$, $B(4) = \{1, \dots, 4\}$ and $B(8) = \{1, \dots, 8\}$ contain 3. The blocks $B(5) = \{5\}$, $B(6) = \{5, 6\}$, $B(7) = \{7\}$ do not, and neither do $B(1)$ and $B(2)$, which end before 3.
+
+**Proof.**
+1. Let $2^b = \text{lowbit}(j_m)$. Then $j_m$ is an odd multiple of $2^b$, so $j_{m+1} = j_m + 2^b$ is a multiple of $2^{b+1}$ and $\text{lowbit}(j_{m+1}) \ge 2^{b+1}$.
+2. *The chain blocks contain $i$.* The block $B(j_{m+1})$ starts at $j_{m+1} - \text{lowbit}(j_{m+1}) \le j_{m+1} - 2^{b+1} = j_m - 2^b$, where $B(j_m)$ starts, and it ends at $j_{m+1} > j_m$. So $B(j_m) \subseteq B(j_{m+1})$. Since $i \in B(j_0)$, the position $i$ is in every chain block.
+3. *No other block contains $i$.* A block that contains $i$ ends at some $j \ge i$. Take $j$ that is not in the chain; it lies strictly between two chain elements (or between the last one and $n$): $j = j_m + t$ with $0 < t < 2^b$.
+4. Since $j_m$ is a multiple of $2^b$ and $t < 2^b$, the lowest set bit of $j$ is the lowest set bit of $t$, so $\text{lowbit}(j) \le t$. Then $B(j)$ starts at $j - \text{lowbit}(j) \ge j - t = j_m \ge i$, and the block $(j - \text{lowbit}(j), j]$ does not contain $i$.
+5. Every step at least doubles $\text{lowbit}$ (step 1), and $\text{lowbit} \le n$, so the chain has at most $\lfloor \log_2 n \rfloor + 1$ elements. $\square$
+
+:::note[This proof needs]
+1. Positions from 1 (as for Theorem 5.2.1), and $n$ is the size of the tree.
+2. The change is an *addition*: to set a value, add the difference to the current value (which must be known, for example from a separate array).
+3. Each step of the chain is a separate memory access; for $n = 2 \cdot 10^5$ that is at most 18.
+:::
+
+<TheoremCode unit="5.2/thm-2" />
+
+The first example is the tiny instance: the touched entries 3, 4, 8 are step 2 and the tree afterwards is the tree of Theorem 5.2.1 with $a_3$ raised by 10. The second touches only entry 8, and the third shows a tree with $n = 6$ where the chain stops at 6 because $6 + 2 = 8 > n$. The check rebuilds the tree from the changed array by its definition, and checks which entries changed against "the block contains $i$", for every $n$ up to 20, every position and random arrays.
+
+### 4.3 Adding to a range, reading one value
+
+**Theorem 5.2.3 (range add, point read).** Put $d_i = a_i - a_{i-1}$ for $i = 1, \dots, n$ with $a_0 = 0$. Adding $v$ to every $a_l, \dots, a_r$ changes $d_l$ by $+v$ and $d_{r+1}$ by $-v$ (only $d_l$ if $r = n$) and no other $d$, and $a_i = d_1 + \dots + d_i$. So a Fenwick tree over $d$ does a range addition with two point updates and reads one value with one prefix query, each in $O(\log n)$.
+
+:::tip[In plain words]
+Instead of the values, store how much each value differs from the one before it. Adding $v$ to a whole range changes only two such differences: the jump up where the range starts and the jump down just after it ends. A value is the sum of all differences up to it.
+:::
+
+**A tiny instance.** $n = 6$, all zeros. Add 3 on $[2, 5]$: $d$ becomes $[0, 3, 0, 0, 0, -3]$. Add 2 on $[4, 6]$: $d = [0, 3, 0, 2, 0, -3]$ (no change at 7, it does not exist). The prefix sums of $d$ are $a = [0, 3, 3, 5, 5, 2]$.
+
+**Proof.**
+1. By definition, $a_i = d_1 + \dots + d_i$, since the sum telescopes: $(a_1 - a_0) + \dots + (a_i - a_{i-1}) = a_i$.
+2. For $i < l$ both $a_i$ and $a_{i-1}$ are unchanged, so $d_i$ is unchanged. For $l < i \le r$ both are raised by $v$, so $d_i$ is unchanged. At $i = l$ only $a_l$ is raised ($a_{l-1}$ is not): $d_l$ rises by $v$. At $i = r + 1 \le n$ only $a_{r+1}$'s predecessor is raised: $d_{r+1}$ falls by $v$. For $i > r + 1$ nothing changes.
+3. The two point updates and one prefix query are those of Theorems 5.2.2 and 5.2.1. $\square$
+
+:::note[This proof needs]
+1. Additions only; the questions are about one value at a time. For the *sum* of a range after range additions, this tree is not enough (topic 5.3).
+2. The position $r + 1$ may be $n + 1$, which is outside the tree and is skipped.
+3. The first value $a_0 = 0$ is used; if the array starts with other numbers, add the starting value $a_i$ to the result (keep the array aside).
+:::
+
+<TheoremCode unit="5.2/thm-3" />
+
+The first example is the tiny instance (step 2: the two jumps), the second adds to the whole array, and the third adds 7 and then $-7$ to the same position, which cancels. The check compares every value with a plain array on twenty thousand random sequences of range additions.
+
+### 4.4 Counting inversions
+
+**Theorem 5.2.4 (inversions).** Let $a_1, \dots, a_n$ be numbers with ranks $r_1, \dots, r_n$ in $\{1, \dots, m\}$ (equal values have equal ranks, smaller values have smaller ranks). Let $c_j$ be the number of $i < j$ with $r_i \le r_j$. Then the number of inversions is
+$$\sum_{j=1}^{n} \bigl( (j - 1) - c_j \bigr).$$
+If a Fenwick tree over the ranks holds a 1 at the rank of every earlier element, $c_j = \text{prefix}(r_j)$, so all of it takes $O(n \log n)$ time.
+
+:::tip[In plain words]
+Look at each number and count the earlier numbers that are bigger. These are exactly the inversions that end at this number. A Fenwick tree over the values tells how many earlier numbers are not bigger, and the rest of the earlier numbers are bigger.
+:::
+
+**A tiny instance.** $a = [2, 4, 1, 3, 5]$ (ranks equal values here). For $j = 1$: no earlier numbers, 0. For $j = 2$ (value 4): earlier 2 is not bigger, $c = 1$, $(2 - 1) - 1 = 0$. For $j = 3$ (value 1): earlier 2 and 4 are bigger, $c = 0$, $2 - 0 = 2$. For $j = 4$ (value 3): earlier 2, 4, 1, with 2 and 1 not bigger, $c = 2$, $3 - 2 = 1$. For $j = 5$: $c = 4$, $4 - 4 = 0$. Total $0 + 0 + 2 + 1 + 0 = 3$.
+
+**Proof.**
+1. Every inversion is a pair $i < j$ with $a_i > a_j$, so it is counted once by its later position $j$.
+2. For a fixed $j$, the $j - 1$ earlier positions $i$ split into those with $a_i \le a_j$ and those with $a_i > a_j$. The second group are the inversions with later position $j$.
+3. Ranks keep the order of values and give equal values equal ranks, so $a_i \le a_j$ exactly when $r_i \le r_j$. Hence the first group has $c_j$ elements and the second has $(j-1) - c_j$.
+4. Summing over $j$ counts each inversion once (step 1), which gives the formula.
+5. Before step $j$ the tree holds a 1 at the rank of each of $a_1, \dots, a_{j-1}$, so $\text{prefix}(r_j)$ is $c_j$ (Theorem 5.2.1); then a 1 is added at $r_j$ (Theorem 5.2.2). That is two chains of at most $\lfloor \log_2 m \rfloor + 1$ steps for each $j$. $\square$
+
+:::note[This proof needs]
+1. The values are replaced by ranks first ([topic 1.1](../../phase-1/1-1-sorting/)), so the tree has $m \le n$ entries, however large the values are.
+2. Strictness: with $r_i \le r_j$ in $c_j$, equal values are *not* inversions. To count equal pairs as well, use $\text{prefix}(r_j - 1)$ in place of $\text{prefix}(r_j)$.
+3. The answer can reach $n(n-1)/2 \approx 2 \cdot 10^{10}$, so it needs 64 bits.
+:::
+
+<TheoremCode unit="5.2/thm-4" />
+
+The first example is the tiny instance (3 inversions). The second has all values equal: no pair counts, because the proof uses $\le$ in step 3. The third is a decreasing array, where every pair is an inversion: $\binom{5}{2} = 10$. The check compares with counting all pairs on every array of length 1 to 6 over $\{1, 2, 3\}$.
+
+### 4.5 Questions answered in a different order
+
+**Theorem 5.2.5 (distinct values in ranges, offline).** For an array $a_1, \dots, a_n$ and a position $r$ let $f^{(r)}_i = 1$ if $i \le r$ and no position in $(i, r]$ holds the value $a_i$ (so $i$ is the *last occurrence so far* of its value), and $f^{(r)}_i = 0$ otherwise. Then the number of different values among $a_l, \dots, a_r$ is $f^{(r)}_l + \dots + f^{(r)}_r$. Moving from $r$ to $r + 1$ changes only two entries: $f_{r+1}$ becomes 1 and $f$ at the previous position with the value $a_{r+1}$, if there is one, becomes 0. So sorting the questions by their right end and keeping $f$ in a Fenwick tree answers all $q$ questions in $O((n + q) \log n)$ time.
+
+:::tip[In plain words]
+Count each value only at its last visible position. When the right end of the range moves one step, only the new element and the previous copy of the same value change their marks. If the questions are taken in order of their right end, a single sweep of the right end serves all of them, and the answer to a question is a range sum of the marks.
+:::
+
+**A tiny instance.** $a = [1, 2, 1, 3, 2]$. At $r = 3$ the marks are $f = [0, 1, 1, 0, 0]$ (position 1 has a later 1, position 2 has the last 2 so far, position 3 has the last 1 so far). The question $[1, 3]$ asks for $f_1 + f_2 + f_3 = 2$: the values 1 and 2. At $r = 5$ the marks are $[0, 0, 1, 1, 1]$, and the question $[2, 5]$ gives $f_2 + \dots + f_5 = 3$: the values 1, 3 and 2.
+
+**Proof.**
+1. Fix $l \le r$. Let $v$ be a value that occurs among $a_l, \dots, a_r$, and let $p$ be its last position at or before $r$. Then $p \ge l$ and $p \le r$, and $f^{(r)}_p = 1$ (no later copy up to $r$).
+2. Every position $i \in [l, r]$ with $f^{(r)}_i = 1$ is the last position of its own value up to $r$; two different such positions have different values (if they had the same value, the earlier one would have a later copy). So the positions with $f = 1$ in $[l, r]$ correspond one to one to the different values in the range (step 1 gives a position for each value, and each such position has a value).
+3. So the sum of $f^{(r)}$ over $[l, r]$ is the number of different values.
+4. When $r$ becomes $r + 1$: position $r + 1$ is now the last occurrence of $a_{r+1}$, so $f_{r+1} = 1$; the previous position $p$ with the same value stops being a last occurrence, so $f_p = 0$; all other marks stay the same. These are at most two point updates.
+5. Processing the questions in the order of $r$, the marks are exactly $f^{(r)}$ when a question with right end $r$ is answered, and the answer is a range sum (Theorem 5.2.1). Sorting costs $O(q \log q)$, the sweep $O(n)$ updates, and the question answering $O(q)$ queries, each $O(\log n)$. $\square$
+
+:::note[This proof needs]
+1. All questions are known beforehand (offline); an online version needs another structure.
+2. The array does not change during the questions. The sweep itself changes the marks, but not $a$.
+3. The previous position with the same value is found from a dictionary of last positions, as in the code (`map`), or an array when the values are small.
+:::
+
+<TheoremCode unit="5.2/thm-5" />
+
+The first example is the tiny instance with two more questions: $[3, 3]$ has one value and $[1, 5]$ has three. The second has all values equal, where every range has one value. The check compares the answers with putting the range into a set, on twenty thousand random arrays and sets of questions.
+
+### 4.6 The $k$-th element of a changing collection
+
+**Theorem 5.2.6 (descent).** Let $c_1, \dots, c_n \ge 0$ be counts and $\text{tree}$ their Fenwick tree, let $P$ be the largest power of two with $P \le n$, and let $1 \le k \le c_1 + \dots + c_n$. Run: $\text{pos} = 0$; for $s = P, P/2, \dots, 1$: if $\text{pos} + s \le n$ and $\text{tree}[\text{pos} + s] < k$, then $k \mathrel{-}= \text{tree}[\text{pos} + s]$ and $\text{pos} \mathrel{+}= s$. The result $\text{pos} + 1$ is the smallest position $p$ with $c_1 + \dots + c_p \ge k_{\text{original}}$, found in $O(\log n)$ steps.
+
+:::tip[In plain words]
+Think of the positions in binary. Decide the highest bit of the answer first: does the first half of the positions hold fewer than $k$ elements? If yes, skip that half and look for the rest inside the second half; if not, stay in the first. Then do the same for the next bit. The blocks of the tree are exactly these halves.
+:::
+
+**A tiny instance.** Positions $1, \dots, 8$ hold one element each at positions $2, 3, 5, 8$, so $c = [0, 1, 1, 0, 1, 0, 0, 1]$ and $\text{tree} = [0, 1, 1, 2, 1, 1, 0, 4]$. For $k = 3$: $s = 8$: $\text{tree}[8] = 4 \ge 3$, no move. $s = 4$: $\text{tree}[4] = 2 < 3$, so $\text{pos} = 4$, $k = 1$. $s = 2$: $\text{tree}[6] = 1 \ge 1$, no move. $s = 1$: $\text{tree}[5] = 1 \ge 1$, no move. The answer is $\text{pos} + 1 = 5$, the third element.
+
+**Proof.**
+1. Let $p^*$ be the answer and $k_0$ the original $k$. Let the *invariant before the step $s$* be: $\text{pos}$ is a multiple of $2s$, $p^* \in (\text{pos}, \text{pos} + 2s]$, and $k = k_0 - \text{prefix}(\text{pos})$.
+2. It holds before the first step: $\text{pos} = 0$, and $p^* \le n < 2P$.
+3. In the step $s$ the position $\text{pos} + s$ is an odd multiple of $s$, so its lowest set bit is $s$ and $\text{tree}[\text{pos} + s]$ is the sum over $(\text{pos}, \text{pos} + s]$ (the definition of the tree; if $\text{pos} + s > n$ then $p^* \le n < \text{pos} + s$ and nothing is skipped).
+4. If this sum is less than $k$, the prefix up to $\text{pos} + s$ is less than $k_0$, so $p^* > \text{pos} + s$; after the move $p^* \in (\text{pos}+s, \text{pos}+2s]$, which is $(\text{pos}', \text{pos}' + s]$ for the new position, and $k$ is reduced by the sum, so $k = k_0 - \text{prefix}(\text{pos}')$.
+5. Otherwise the prefix up to $\text{pos} + s$ is at least $k_0$, so $p^* \le \text{pos} + s$ and $p^* \in (\text{pos}, \text{pos} + s]$. In both cases the invariant holds for the step $s / 2$.
+6. After the step $s = 1$ the invariant says $p^* \in (\text{pos}, \text{pos} + 1]$, so $p^* = \text{pos} + 1$. There are $\lfloor \log_2 n \rfloor + 1$ steps. $\square$
+
+:::note[This proof needs]
+1. All counts are non-negative, so that prefixes grow with the position.
+2. $1 \le k \le$ the total number of elements; otherwise the answer is not defined.
+3. The first step uses the largest power of two that is at most $n$; starting with a larger one is harmless because of the check $\text{pos} + s \le n$.
+:::
+
+<TheoremCode unit="5.2/thm-6" />
+
+The first example is the tiny instance with all four ranks: $k = 3$ is the third element, 5. The second has a single position. The third has a position with count 2 (value 1 twice) and shows that the 2nd smallest is still 1 and the 3rd is the value 3. The check compares the result with scanning the counts for every array of counts over $\{0, 1, 2\}$ of length 1 to 7 and every $k$.
+
+## 5. Recognition Cards
+
+<Cards topic="5.2" />
+
+## 6. Templates
+
+## 7. Bug catalogue
+
+## 8. Worked examples
+
+## 9. Problem ladder
+
+<Ladder topic="5.2" />
+
+## 10. Identification drill
+
+<Drill topic="5.2" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="5.2" />
+
+## 12. Self-test questions
+
+<SelfTest topic="5.2" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="5.2" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="5.2" />

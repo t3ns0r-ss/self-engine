@@ -16,8 +16,8 @@ const check = (cond, msg) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`); 
   await p.waitForSelector('.ladder');
   check(await p.locator('.katex').count() >= 2, 'KaTeX renders inline and display math');
   check(await p.locator('pre:has-text("sum -= a[l++]")').count() === 1, 'tested code is shown');
-  check(await p.locator('.recognition-card').count() === 3, 'three recognition cards');
-  check(await p.locator('.ladder-group').count() === 3, 'three ladder groups');
+  check(await p.locator('.recognition-card').count() === 5, 'five recognition cards');
+  check(await p.locator('.ladder-group').count() === 5, 'five ladder groups');
   check(await p.locator('text=More practice').count() === 1, '"More practice" lists unused bank problems');
 
   // Hints: reminder first, then reveal; count recorded.

@@ -60,11 +60,12 @@ const prob = (rating, tier, extra) => {
   };
 };
 const cards = ['shrinkable-window', 'fixed-window', 'count-windows'];
+const ladderCards = [...cards, 'opposite-ends', 'merge-walk'];
 const bank13 = [];
 const topicProblems = [];
-// Ladder: 4 per card, ratings rising.
-for (const card of cards)
-  for (let r = 1; r <= 4; r++) {
+// Ladder: 4 rungs for each of the first three cards, 3 for the two extra cards, ratings rising.
+for (const card of ladderCards)
+  for (let r = 1; r <= (cards.includes(card) ? 4 : 3); r++) {
     const p = prob(800 + 200 * r, r === 1 ? 1 : r === 4 ? 4 : 3, { pattern: card });
     if (r === 1) p.difficulty = '800';
     bank13.push(p);
@@ -101,7 +102,9 @@ const card = (id, name, k) => ({
 });
 const topic = {
   id: '1.3',
-  cards: [card('shrinkable-window', 'Shrinkable window', 1), card('fixed-window', 'Fixed-size window', 2), card('count-windows', 'Count valid windows', 3)],
+  cards: [card('shrinkable-window', 'Shrinkable window', 1), card('fixed-window', 'Fixed-size window', 2), card('count-windows', 'Count valid windows', 3),
+    // Later lessons refer to these two real 1.3 cards, so the placeholder must have them too.
+    card('opposite-ends', 'Opposite ends', 4), card('merge-walk', 'Merge walk', 5)],
   problems: topicProblems,
   drill: [
     ...drillOwn.map((p) => ({ problem: p.id, answer_card: 'shrinkable-window', answer_topic: '1.3', property: 'Closed under shrinking.', why_others_fail: 'Placeholder.' })),

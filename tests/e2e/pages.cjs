@@ -32,7 +32,7 @@ const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 1
   await p.locator('button:has-text("Make this my current topic")').click();
   await p.goto(`${BASE}/`);
   await p.waitForSelector('.dashboard');
-  check(await p.locator('text=0 / 12 ladder problems solved').isVisible(), 'dashboard shows current topic progress');
+  check(await p.locator('text=0 / 18 ladder problems solved').isVisible(), 'dashboard shows current topic progress');
   check(await p.locator('text=finish rung 1 of Shrinkable window').isVisible(), 'next step names the first unsolved rung in card order');
   await p.locator('summary:has-text("Phase 1")').first().click().catch(() => {});
   check(await p.locator('a[data-topic="1.4"] .later-badge').count() === 1, 'sidebar marks later topics');

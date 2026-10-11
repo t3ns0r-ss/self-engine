@@ -128,7 +128,7 @@ Instead of the values, store how much each value differs from the one before it.
 3. The two point updates and one prefix query are those of Theorems 5.2.2 and 5.2.1. $\square$
 
 :::note[This proof needs]
-1. Additions only; the questions are about one value at a time. For the *sum* of a range after range additions, this tree is not enough (topic 5.3).
+1. Additions only; the questions are about one value at a time. For the *sum* of a range after range additions, this tree is not enough (a later topic).
 2. The position $r + 1$ may be $n + 1$, which is outside the tree and is skipped.
 3. The first value $a_0 = 0$ is used; if the array starts with other numbers, add the starting value $a_i$ to the result (keep the array aside).
 :::
@@ -227,9 +227,235 @@ The first example is the tiny instance with all four ranks: $k = 3$ is the third
 
 ## 6. Templates
 
+Six templates. Each shows only the function or structure that matters; the program around it reads the input. Each is checked against a brute force that follows the statement directly (recompute the sum, count the pairs, list the values), on thousands of random small inputs and on fixed tests with a single element, equal values and large numbers.
+
+### Point changes and range sums (Theorems 5.2.1 and 5.2.2)
+
+<CodeSnippet unit="5.2/range-sum-updates" />
+
+**How it works.** `tree[i]` holds the sum of the block of `lowbit(i)` positions that ends at `i` (the lowest set bit of `i`, written `i & -i`). `prefix(i)` adds `tree[i]`, then jumps to `i - lowbit(i)`, until it reaches 0 (Theorem 5.2.1). `add(i, d)` adds `d` to `tree[i]`, then jumps to `i + lowbit(i)`, up to `n` (Theorem 5.2.2). The sum of days `l..r` is `prefix(r) - prefix(l - 1)`. Sums are `long long`: a hundred thousand values near $10^9$ pass $2^{31}$. The program adds the starting values one by one with `add`; that is $O(n \log n)$ and simpler than the linear build.
+
+**Alternative formulation.** For a fixed array without changes, prefix sums ([topic 1.2](../../phase-1/1-2-prefix-sums/)) answer in $O(1)$. A structure from a later topic of this phase does the same job with more code and also handles minimum and maximum.
+
+### Add to a range, read one value (Theorem 5.2.3)
+
+<CodeSnippet unit="5.2/range-add-point" />
+
+**How it works.** The tree stores the differences $d_i = a_i - a_{i-1}$. Adding `d` to `l..r` raises the difference at `l` and lowers the one at `r + 1`, so it is two point updates; `r + 1` is skipped when it is past `n`. The value at `k` is the sum of the differences `1..k` (one prefix query) plus the starting value, which the caller keeps in a plain array.
+
+**Alternative formulation.** If all the changes come before all the reads, a difference array ([topic 1.2](../../phase-1/1-2-prefix-sums/)) is enough. If the task also needs range *sums* after range additions, one tree is not enough: use two trees, or a structure from a later topic.
+
+### Count inversions (Theorem 5.2.4)
+
+<CodeSnippet unit="5.2/count-inversions" />
+
+**How it works.** The values are replaced by ranks (sort, remove duplicates, `lower_bound`), so the tree has `m` positions, one per different value. For each `j` the loop counts how many earlier elements have a rank at most the current one, `notGreater`; the other `j - notGreater` earlier elements are greater, and they are exactly the inversions that end at `j`. Equal values are not greater, so they are not counted. Then the rank of `a[j]` gets a 1. The total can be near $2 \cdot 10^{10}$, so `inversions` is `long long`.
+
+**Alternative formulation.** Merge sort counts the same pairs in $O(n \log n)$ while it sorts ([topic 1.1](../../phase-1/1-1-sorting/)); the tree version is the one that also answers "for each element, how many earlier elements are greater".
+
+### Different values in ranges, offline (Theorem 5.2.5)
+
+<CodeSnippet unit="5.2/distinct-in-ranges" />
+
+**How it works.** The questions are sorted by their right end and the right end `r` sweeps from left to right. The tree keeps a 1 at the *last occurrence so far* of each value. When position `r + 1` is added, the old last occurrence of its value (kept in `last`) loses its 1 and the new position gains one. Then a question `(l, ri)` with `ri` equal to the current `r` is a range sum over `l..ri`: it counts the values whose last occurrence in `1..ri` is at `l` or later, which are the values that appear in `l..ri`. The answers are stored by the original index so that they print in the input order.
+
+**Alternative formulation.** A square-root method (a later topic) answers the same questions with $O((n + q)\sqrt{n})$ time and no tree. For "how many values appear exactly once", the sweep needs a second mark and is harder.
+
+### The k-th element still in the list (Theorem 5.2.6)
+
+<CodeSnippet unit="5.2/kth-removal" />
+
+**How it works.** The tree holds a 1 for each element still present. `kthPlace(tree, k)` walks down from the largest power of two: if the block `tree[pos + step]` has fewer than `k` ones, the answer is to the right, so `pos` moves past it and `k` shrinks by that count. When the walk ends, `pos + 1` is the smallest place whose prefix count reaches `k`. After printing, the program removes the element with a count change of $-1$ at that place. Each step costs $O(\log n)$, so the whole list takes $O(n \log n)$. The starting tree is built by `n` increments of 1 over the chain of Theorem 5.2.2.
+
+**Alternative formulation.** A tree of a later topic walks down for the same answer, and `__gnu_pbds` `tree` with `find_by_order` does it with a non-standard header; the Fenwick walk needs one array and no header.
+
+### A board of lamps (Theorems 5.2.1 and 5.2.2 in two dimensions)
+
+<CodeSnippet unit="5.2/grid-lamps" />
+
+**How it works.** The two loops are the loops of Theorems 5.2.1 and 5.2.2, one inside the other: `tree[i][j]` is the count of lamps in the rectangle of `lowbit(i)` rows and `lowbit(j)` columns that ends at `(i, j)`. A change touches the rows `i, i + lowbit(i), ...` and, for each, the columns `j, j + lowbit(j), ...`, about $\log^2 n$ entries. A rectangle is four prefixes by inclusion and exclusion: add the big one, take away the strip above and the strip to the left, and add back the corner that was taken away twice. The memory is $n^2$ entries, which is fine for $n \le 1000$ and not for $n$ near $10^5$.
+
+**Alternative formulation.** For a board without changes, two-dimensional prefix sums ([topic 1.2](../../phase-1/1-2-prefix-sums/)) answer in $O(1)$. When the grid is large but the points are few, compress the coordinates and sweep one dimension, as in the offline template.
+
 ## 7. Bug catalogue
 
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found.
+
+### Bug: the range sum starts at the wrong prefix
+
+Template: point changes and range sums.
+
+```cpp
+long long range(int l, int r) const { return prefix(r) - prefix(l); }  // instead of prefix(l - 1)
+```
+
+Input: `1 1`, then `5`, then the question `2 1 1`.
+
+Wrong output `0`, correct output `5`. The sum of days $l..r$ is the prefix up to $r$ minus the prefix *before* $l$. With `prefix(l)` the day $l$ itself is taken away, so a range of one day is always 0 (Theorem 5.2.1 gives prefixes $a_1 + \dots + a_i$, which include $a_i$).
+
+**Fix:** use `prefix(l - 1)`.
+
+### Bug: the last position is never reached by an update
+
+Template: point changes and range sums.
+
+```cpp
+for (; i < n; i += i & -i) tree[i] += d;  // instead of i <= n
+```
+
+Input: `1 1`, then `5`, then the question `2 1 1`.
+
+Wrong output `0`, correct output `5`. The positions of the tree are $1..n$, and a block may end exactly at $n$ (Theorem 5.2.2 stops when the value is *larger* than $n$). With `<` the entry $n$ is skipped, and any prefix that reads it is too small.
+
+**Fix:** use `<=`.
+
+### Bug: the range addition ends one place early in the differences
+
+Template: add to a range, read one value.
+
+```cpp
+addAt(r, -d);                                    // instead of: if (r + 1 <= n) addAt(r + 1, -d);
+```
+
+Input: `1 2`, then `0`, then the operations `1 1 1 8` and `2 1`.
+
+Wrong output `0`, correct output `8`. Adding $d$ to positions $l..r$ raises the difference at $l$ and lowers the difference at $r + 1$, the first place that is *not* changed (Theorem 5.2.3). Lowering the difference at $r$ cancels the rise there, so a range of one place changes nothing.
+
+**Fix:** update $r + 1$, and skip it when $r = n$.
+
+### Bug: equal values are counted as greater
+
+Template: count inversions.
+
+```cpp
+for (int i = rank - 1; i > 0; i -= i & -i) notGreater += tree[i];  // instead of i = rank
+```
+
+Input: `2`, then `0 0`.
+
+Wrong output `1`, correct output `0`. An inversion needs a *strictly* greater earlier value. The query must include the rank itself, so that earlier equal values are counted among the "not greater"; with `rank - 1` they count as greater and the pair $(0, 0)$ is called an inversion (Theorem 5.2.4 counts $c_j$ with $r_i \le r_j$).
+
+**Fix:** start the query at `rank`.
+
+### Bug: the old last occurrence keeps its mark
+
+Template: different values in ranges, offline.
+
+```cpp
+// the line  if (last.count(a[r])) add(last[a[r]], -1);  is missing
+```
+
+Input: `2 2`, then `1000000 1000000`, then the questions `1 2` and `1 1`.
+
+Wrong output `2` and `1`, correct output `1` and `1`. The tree must have a mark only at the *last* occurrence of each value (Theorem 5.2.5). Without the removal, both positions of the repeated value carry a mark and the question `1 2` counts the value twice.
+
+**Fix:** before marking position $r + 1$, remove the mark at the previous position of the same value.
+
+### Bug: the corner is taken away twice and not added back
+
+Template: a board of lamps.
+
+```cpp
+return prefix(r2, c2) - prefix(r1 - 1, c2) - prefix(r2, c1 - 1) - prefix(r1 - 1, c1 - 1);  // instead of + for the last term
+```
+
+Input: `2 1`, then the rows `11` and `00`, then the question `2 2 2 2 2`.
+
+Wrong output `-2`, correct output `0`. The strip above the rectangle and the strip to its left both contain the corner (rows $1..r_1 - 1$, columns $1..c_1 - 1$), so the corner has been subtracted twice and must be added back once. (The reading of the question is: the rectangle is the single cell in row 2, column 2, which is dark.)
+
+**Fix:** use `+` for the last term (inclusion and exclusion).
+
 ## 8. Worked examples
+
+### Example 1: Maximum Crossings (Hard Version)
+
+[Codeforces 1676H2: Maximum Crossings (Hard Version)](https://codeforces.com/problemset/problem/1676/H2). In short: several tests (total $n$ up to $2 \cdot 10^5$); each gives $n$ numbers $a_1, \dots, a_n$ with $1 \le a_i \le n$. Wires go from the top point $i$ to the bottom point $a_i$; print the number of pairs of wires that cross, that is, the pairs $i < j$ with $a_i \ge a_j$.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$. Checking every pair is $n(n-1)/2 \approx 2 \cdot 10^{10}$ steps, about 200 seconds. The count itself can be $2 \cdot 10^{10}$, so it needs 64 bits. With a tree, $n \log n \approx 3.6 \cdot 10^6$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- Check every pair ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(n^2)$.
+- Merge sort with a count of the pairs moved over ([topic 1.1](../../phase-1/1-1-sorting/)): $O(n \log n)$, but the tie rule needs care.
+- A Fenwick tree: the card "Count the pairs in the wrong order (inversions)".
+
+#### Step 3: Property check → decision
+
+The question asks for pairs $i < j$ with a value relation, and the values are already in $1..n$ (no compression needed). The pairs with $a_i \ge a_j$ differ from the usual inversions only in that equal values count. Decision: for each $j$, count the earlier numbers that are *smaller* and take the rest.
+
+#### Step 4: Proof for this problem
+
+Apply Theorem 5.2.4 with the relation changed to "not smaller". Before step $j$ the tree holds a 1 at the value of each earlier number. The earlier numbers smaller than $a_j$ number $s_j = \text{prefix}(a_j - 1)$ (Theorem 5.2.1), so the earlier numbers with $a_i \ge a_j$ number $(j - 1) - s_j$ for 1-based $j$, written `j - smaller` with 0-based `j` in the code. The sum over $j$ is the answer, and adding $a_j$ to the tree is Theorem 5.2.2.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.2/example-1" />
+
+#### Step 6: Alternative approach
+
+Merge sort counts the same pairs: while merging two sorted halves, every element taken from the right half that is *not larger* than the left one adds the number of elements left in the left half; the rule for equal values has to match the task. It uses no tree but gives only the total, not the count for each element.
+
+### Example 2: Distinct Values Queries
+
+[CSES 1734: Distinct Values Queries](https://cses.fi/problemset/task/1734). In short: an array of $n \le 2 \cdot 10^5$ numbers (up to $10^9$) and $q \le 2 \cdot 10^5$ questions $(a, b)$; for each, print how many different values appear in positions $a$ to $b$ (1-based).
+
+#### Step 1: Constraints → budget
+
+$n = q = 2 \cdot 10^5$. A set per question is up to $4 \cdot 10^{10}$ steps. A sweep with a tree is $(n + q) \log n \approx 7 \cdot 10^6$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A set of the values of each range ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(nq)$.
+- Prefix sums ([topic 1.2](../../phase-1/1-2-prefix-sums/)): they cannot count *different* values, because the same value in the two halves would be counted twice.
+- A sweep with a Fenwick tree: the card "Count in a range, with all the questions known first (offline sweep)".
+
+#### Step 3: Property check → decision
+
+All the questions are given before any answer is needed, and the array does not change. The questions ask for a sum over a range of a property that changes with the right end (the last occurrence of each value). Decision: sort the questions by their right end and sweep.
+
+#### Step 4: Proof for this problem
+
+By Theorem 5.2.5, if the tree holds a 1 at the last occurrence of each value in $a_1, \dots, a_r$, then the number of different values in $a_l, \dots, a_r$ is the sum of the marks in $l..r$, which is `prefix(r) - prefix(l - 1)` (Theorem 5.2.1). Moving $r$ one step changes at most two marks (Theorem 5.2.2). The values are first replaced by ranks so that "the last position of a value" is an array lookup.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.2/example-2" />
+
+#### Step 6: Alternative approach
+
+A square-root method (a later topic) answers the same questions in $O((n + q)\sqrt{n})$ time with a plain counter and no tree; at $n = 2 \cdot 10^5$ it is several times slower than the sweep, which is why the sweep is preferred when the questions are known first.
+
+### Example 3: List Removals
+
+[CSES 1749: List Removals](https://cses.fi/problemset/task/1749). In short: a list of $n \le 2 \cdot 10^5$ numbers, then $n$ numbers $p_1, \dots, p_n$; at step $i$, print the element at place $p_i$ of the current list and remove it from the list (the places after it move one step left).
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$. Erasing from the middle of a vector costs $O(n)$, so $n$ removals cost up to $2 \cdot 10^{10}$ element moves in the worst case. With a tree each removal is two walks of $\log_2 n \approx 18$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A vector with `erase` ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(n^2)$ moves; fast in practice for this limit only on some machines, so not a safe plan.
+- A balanced tree with sizes: works, but is long to write.
+- A Fenwick tree of ones and a walk down it: the card "Find the k-th element that is still present".
+
+#### Step 3: Property check → decision
+
+The place $p_i$ is counted *among the elements still present*, so it is the position of the $p_i$-th one in an array with a 1 for each present element. Counts are non-negative, which is what the walk of Theorem 5.2.6 needs. Decision: keep the ones in a tree, find the $k$-th one by the walk, and remove it by a change of $-1$.
+
+#### Step 4: Proof for this problem
+
+Let $c_p = 1$ if the element that was originally at place $p$ is still present. The element at current place $k$ is the one at the smallest original place $p$ with $c_1 + \dots + c_p \ge k$, and Theorem 5.2.6 finds that $p$ in $O(\log n)$ steps. The removal sets $c_p = 0$, which is the point update of Theorem 5.2.2 with $d = -1$. The starting tree is built by $n$ updates of $+1$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.2/example-3" />
+
+#### Step 6: Alternative approach
+
+Going backwards does not help here, but a tree of a later topic walks down for the same answer. `__gnu_pbds` `tree` with `find_by_order` and `erase` is the shortest code and is not standard C++.
 
 ## 9. Problem ladder
 

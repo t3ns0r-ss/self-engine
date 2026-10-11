@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M7 (Phase 5), started on Saurabh's "Continue" after the M6 report (M5, M6 and R1 gates still `waiting`; taken as go-ahead, as before)
-- Topic: none yet (5.1 done; next 5.2 Fenwick tree)
+- Topic: none yet (5.1 and 5.2 done; next 5.3 segment tree)
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 5.1 step 10 (validate, build and unit tests pass; e2e check pending). Banks of 5.1, 5.2 and 5.4 were extended by research agents (5.3 was complete).
-Next action: topic 5.2. The Phase 5 exam problems are stored in the 5.4 data file: reserved exam problems so far are cf-1904D2 (5.1) and those in the 5.2, 5.3 and 5.4 banks.
+Last completed step: topic 5.2 step 10 (validate, build and unit tests pass). Banks of 5.1, 5.2 and 5.4 were extended by research agents (5.3 was complete).
+Next action: topic 5.3. The Phase 5 exam problems are stored in the 5.4 data file: reserved exam problems so far are cf-1904D2 (5.1) and those in the 5.2, 5.3 and 5.4 banks.
 
 ## Gates
 | Gate | Status | Date |
@@ -68,6 +68,7 @@ Next action: topic 5.2. The Phase 5 exam problems are stored in the 5.4 data fil
 | 4.7 | done (on this session's branch; bank additions to review) | — |
 | Phase 4 intro and exam | done (on this session's branch) | — |
 | 5.1 | done (on this session's branch; bank additions to review) | — |
+| 5.2 | done (on this session's branch; Codeforces notes marked † need a spot-check) | — |
 
 ## Bank
 | topic | status | practice | reserved |

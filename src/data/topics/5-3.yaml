@@ -1,0 +1,1052 @@
+id: '5.3'
+uses:
+- topic: '0.2'
+  what: 'Amortised total work: the contrast for operations that cannot be a tag'
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check'
+- topic: '0.6'
+  what: 'Standard containers: sets for the contrast problems'
+- topic: '1.1'
+  what: 'Sorting and coordinate compression: positions or values become ranks, items are sorted before
+    a sweep'
+- topic: '1.2'
+  what: 'Prefix sums: the tool when nothing changes'
+- topic: '1.3'
+  what: 'Two pointers: the contrast for a window that can shrink, and the sweep of the contrast problems'
+- topic: '1.4'
+  what: 'Binary search: the contrast for an answer found by search on a fixed array'
+- topic: '1.7'
+  what: 'Bit operations: masks of letters and flips per bit'
+- topic: '2.1'
+  what: 'Divisors and GCD: the join of a GCD tree'
+- topic: '3.2'
+  what: 'Dynamic programming over one index: the linear pass for the best subarray of a fixed array'
+- topic: '5.1'
+  what: 'Sparse table: the tool for minimums and maximums when nothing changes'
+- topic: '5.2'
+  what: 'Fenwick tree: the shorter tool for sums with changes, and the sweep for counts'
+theorems:
+- id: 5.3.1
+  title: The tree and the range query
+  plain_words: 'Cut the range into halves again and again until the pieces are single positions. A question
+    about $l..r$ goes down from the root: a piece fully inside the question is taken whole, a piece outside
+    is ignored, and a piece that sticks out is opened. Only the pieces at the two edges of the question
+    can stick out, so about two pieces per level are opened and the question touches about $4 \log_2 n$
+    pieces.'
+  code: 5.3/thm-1
+- id: 5.3.2
+  title: A change touches one path
+  plain_words: A node's value depends only on the positions in its range. A change at position $i$ therefore
+    affects only the nodes whose range contains $i$, and these form one line from the root down to the
+    leaf of $i$. Fix that line from the bottom to the top.
+  code: 5.3/thm-2
+- id: 5.3.3
+  title: Adding to a range with lazy tags
+  plain_words: A piece that is entirely inside an update does not pass the update down. It just updates
+    its own sum, as if it had added $x$ to each of its positions, and writes a note "$x$ for everything
+    below". Any later visit that wants to look *inside* this piece first gives the note to the two halves.
+    So a note travels down only when it is needed.
+  code: 5.3/thm-3
+- id: 5.3.4
+  title: 'Tags that combine: add, assign, multiply'
+  plain_words: 'A note can be "add 5" or "set to 7" or "multiply by 3". Two notes in a row are the same
+    as one note of the same kind, so a node only ever needs to keep one note. The order is important:
+    "add 2, then multiply by 3" is not "multiply by 3, then add 2".'
+  code: 5.3/thm-4
+- id: 5.3.5
+  title: Walking down the tree to find a position
+  plain_words: The root knows the biggest number in the whole array. If the left half contains a big enough
+    number, the first big enough number is in the left half, because everything in the left half comes
+    before everything in the right half. If it does not, look in the right half. One step down per level,
+    and no search through the positions.
+  code: 5.3/thm-5
+- id: 5.3.6
+  title: A node with more than one number
+  plain_words: To know the best stretch of a joined range, a node must remember more than its own best.
+    The best stretch of two parts is either inside the left part, inside the right part, or crosses the
+    border, in which case it is the best ending of the left part glued to the best beginning of the right
+    part. And to be able to say these things about the next join, the new node must also know its own
+    best beginning and ending.
+  code: 5.3/thm-6
+cards:
+- id: point-update-range-query
+  name: Changing values and asking range minimum, maximum or GCD (segment tree)
+  from_theorem: 5.3.2
+  decisive_property: Single values are replaced between the questions, and a question asks for a combination
+    of a range that cannot be taken back (minimum, maximum, GCD, product modulo a number, a bit operation),
+    but whose value for a range is the combination of the values for its two halves.
+  how_to_test: Check that there are changes between the questions (otherwise a table is enough) and that
+    the combination of two halves is the combination of the whole (associative), but a sum with an inverse
+    would be better done by the Fenwick tree. Then store the value of every piece of a halving of the
+    array.
+  constraint_shapes:
+  - 'n = q = 2·10^5 with changes: a scan per question is up to 4·10^10 steps (about 400 seconds); one
+    tree operation is at most 4 · 18 = 72 steps, about 1.4·10^7 in all'
+  - 'Total n of 5·10^5 over many tests: build the tree for each test in O(n); do not reallocate arrays
+    of the maximum size for every test'
+  weak_signals:
+  - form: Asks for the minimum, maximum or GCD of a range after single values were replaced
+    shape: n, q up to 2·10^5, operations of two kinds mixed in the input
+  - form: Asks, after each change, a property of the whole array that is the combination of the properties
+      of its parts (the largest value, the number of values below a bound that is fixed)
+    shape: n up to 2·10^5, the answer printed after every change
+  - form: Repeatedly replaces an element by a combination of its neighbours or by a value that depends
+      on its position, and then asks for a total
+    shape: n, q up to 2·10^5, each change affects one position
+  kill_signals:
+  - 'The combination of the halves does not give the answer for the whole: the number of different values
+    in [1, 2, 1, 2] is 2, but the halves [1, 2] and [1, 2] have 2 each, and adding gives 4'
+  - 'The only changes are additions to single values and the questions ask sums: the Fenwick tree is shorter
+    and about three times faster'
+  in_action:
+    statement: 'A shop has the price of each of n products. There are q operations: "set the price of
+      product k to x" and "the lowest price among products a to b".'
+    constraints: n, q ≤ 2·10^5, prices up to 10^9.
+    budget: 'Scanning the range for each question: up to n · q = 4·10^10 steps, about 400 seconds. Need
+      about O(log n) per operation.'
+    candidates:
+    - tool: Sparse table (topic 5.1)
+      verdict: rejected
+      because: 'It needs a fixed array: one change would have to rebuild n log n entries.'
+    - tool: Fenwick tree (topic 5.2)
+      verdict: rejected
+      because: It answers a range from two prefixes, and a minimum cannot be subtracted.
+    - tool: Segment tree (this topic)
+      verdict: chosen
+      because: A change recomputes one path of at most 18 nodes (Theorem 5.3.2) and a question combines
+        at most 36 whole nodes (Theorem 5.3.1).
+    property_check: There are changes between questions, the minimum of a range is the minimum of the
+      minimums of its halves, and it cannot be taken back. The property holds.
+    decision: Segment tree of minimums; set a leaf and recompute the path above it; combine the whole
+      nodes of a question.
+  examples:
+    positive:
+    - inline:
+        input: a = [5, 2, 7, 3]. Set a_2 to 9, then ask the minimum of positions 1 to 3.
+        answer: '5'
+        why: Changes and range minimums are mixed. After the change the range holds 5, 9, 7. The tree
+          recomputes the path of the leaf of position 2 and combines two whole nodes for the question.
+    - inline:
+        input: a = [12, 18, 8, 6]. Set a_3 to 9, then ask the GCD of positions 2 to 4.
+        answer: '3'
+        why: The GCD of two halves is the GCD of the whole, and it cannot be taken back. After the change
+          the range holds 18, 9, 6 and the GCD is 3.
+    - worked_example: cses-1649
+      why: 'Replace single values and ask the minimum of a range, for arrays of up to 2·10^5 numbers:
+        a segment tree of minimums.'
+    negative:
+    - inline:
+        input: a = [3, 7, 2, 9]. How many values in positions 1 to 4 are smaller than 5, if each node
+          keeps the minimum of its range and the answer is 1 when the minimum of the range is below 5?
+        answer: '2'
+        method_gives: '1'
+        why: The minimum below 5 only says that at least one value is below 5. The count of values below
+          a bound is not the combination of the minimums of the halves. A sweep with sorted questions
+          and a Fenwick tree counts it.
+      correct_tool:
+        topic: '5.2'
+        card: offline-sweep-count
+    - problem: cses-1648
+      why: The questions ask for sums, and a sum can be taken back by subtracting; the Fenwick tree is
+        shorter and faster.
+      correct_tool:
+        topic: '5.2'
+        card: updates-and-range-sums
+  lookalikes:
+  - description: Minimum of a range of an array that never changes
+    tool:
+      topic: '5.1'
+      card: idempotent-range-query
+    flipping_difference: Without changes the table answers in O(1) after one build; the segment tree is
+      for arrays that change.
+  - description: Sums of a range with single changes
+    tool:
+      topic: '5.2'
+      card: updates-and-range-sums
+    flipping_difference: A sum can be taken back, so two prefixes give a range and the tree is shorter
+      than the segment tree.
+  complexity: O(n) to build, O(log n) per change and per query, O(n) memory (4n entries).
+- id: lazy-range-update
+  name: Adding to or setting a whole range, then asking range sums or minimums (lazy propagation)
+  from_theorem: 5.3.3
+  decisive_property: An operation changes every value of a range in the same way (adds a number, sets
+    to a number, multiplies), the questions ask a combination of a range (sum, minimum, maximum), and
+    the effect of the operation on the combination of a node is known from the node value and its length.
+  how_to_test: 'Write what happens to the stored value of a node that lies fully inside the range: the
+    new sum, or the new minimum. If that needs only the old value, the length and the operation, the operation
+    can be a tag. Check that two operations in a row can be merged into one tag, and in which order.'
+  constraint_shapes:
+  - 'n = q = 2·10^5 with range changes: changing each value is up to 4·10^10 steps; a lazy tree makes
+    each operation at most about 4 · 18 = 72 visits with a push at each'
+  - 'Operations of three kinds (add, assign, sum) mixed: the tag must be able to hold an assignment followed
+    by an addition'
+  weak_signals:
+  - form: Adds a number to every element of a range many times and asks the sum or the minimum of other
+      ranges between the additions
+    shape: n, q up to 2·10^5, both kinds of operations mixed
+  - form: Sets every element of a range to a number and asks for sums or the number of elements of some
+      kind
+    shape: n, q up to 2·10^5 with three kinds of operations
+  - form: Switches (flips) all the elements of a range and asks how many are on
+    shape: n, q up to 2·10^5, a node keeps a count that turns into its length minus itself
+  kill_signals:
+  - 'The operation does not act on a node in one step: replacing each value by its square root changes
+    the sum of [4, 9] from 13 to 5, but the root of the sum is 3'
+  - 'Only single reads follow range additions: a Fenwick tree over the differences is shorter (topic 5.2)'
+  in_action:
+    statement: 'A row of n lamps has brightness values. There are q operations: "add d to the brightness
+      of lamps l to r" and "what is the total brightness of lamps l to r?".'
+    constraints: n, q ≤ 2·10^5, d up to 10^9.
+    budget: 'Adding to each lamp of the range: up to n · q = 4·10^10 steps. Need about O(log n) per operation.'
+    candidates:
+    - tool: Fenwick tree over differences (topic 5.2)
+      verdict: rejected
+      because: It reads one value after range additions, but the sum of a range after range additions
+        needs more than one tree.
+    - tool: A segment tree with point updates (this topic, Theorem 5.3.2)
+      verdict: rejected
+      because: 'A range addition would touch every leaf: n steps.'
+    - tool: Segment tree with lazy tags (this topic)
+      verdict: chosen
+      because: A whole node inside the range takes the addition at once and keeps a tag for its children
+        (Theorem 5.3.3).
+    property_check: Adding d to a node of length len adds d · len to its sum, and two additions merge
+      by adding the numbers. The property holds.
+    decision: Lazy tree of sums with a tag for pending additions; push before opening a node.
+  examples:
+    positive:
+    - inline:
+        input: a = [3, 1, 4, 1, 5]. Add 10 to positions 2 to 4, then ask the sum of positions 3 to 5.
+        answer: '30'
+        why: After the addition the array is [3, 11, 14, 11, 5]. The tree gives the added 10 to a whole
+          node and a tag; the question pushes the tag down only where it needs to look inside.
+    - inline:
+        input: a = [2, 2, 2, 2]. Set positions 2 to 3 to 7, then ask the sum of all positions.
+        answer: '18'
+        why: An assignment of a node of length len gives the sum 7 · len, and a tag that says "assigned
+          7". The array is [2, 7, 7, 2] and the sum is 18.
+    - worked_example: cf-52C
+      why: 'Add a number to a circular range and ask the minimum of a circular range, for up to 2·10^5
+        numbers: a lazy tree of minimums, with a range that wraps split in two.'
+    negative:
+    - inline:
+        input: a = [4, 9]. Replace every value of positions 1 to 2 by its integer square root and ask
+          the sum. What is it?
+        answer: '5'
+        method_gives: '3'
+        why: The values become 2 and 3, sum 5. A tag that applies the square root to the stored sum gives
+          the root of 13, which is 3. The operation has no effect on a node that is known from the sum
+          and the length. Every value can be rooted at most 6 times before it is 1, so doing it value
+          by value costs little in total.
+      correct_tool:
+        topic: '0.2'
+        card: amortised-total
+    - problem: cses-1651
+      why: Range additions are followed only by reads of single values, so a Fenwick tree over the differences
+        does everything with a short code.
+      correct_tool:
+        topic: '5.2'
+        card: updates-and-range-sums
+  lookalikes:
+  - description: Adding to ranges and printing the whole array at the end
+    tool:
+      topic: '1.2'
+      card: difference-array
+    flipping_difference: If every read comes after every addition, one pass over a difference array is
+      enough; the tree is for reads between the additions.
+  - description: Changing single values and asking range minimums
+    tool:
+      topic: '5.3'
+      card: point-update-range-query
+    flipping_difference: 'With single changes no tag is needed: a change recomputes one path.'
+  complexity: O(n) to build, O(log n) per operation, O(n) memory (4n entries for sums and for tags).
+- id: custom-node
+  name: A node that stores several numbers (best subarray, matched brackets, smallest value and its count)
+  from_theorem: 5.3.6
+  decisive_property: The answer for a range is not one number that combines directly, but it can be computed
+    from a small fixed set of numbers kept for each range, and the set for a joined range is computed
+    from the sets of its two parts.
+  how_to_test: Ask what the answer for the joined range needs from each part. If the answer is decided
+    by a few facts about each part (the best prefix, the best suffix, the total) and those facts for the
+    joined range also come from the same facts of the parts, the node is that set of facts. Check that
+    the join is not commutative when the order of the positions matters.
+  constraint_shapes:
+  - 'n = q = 2·10^5 with changes: recomputing the best subarray from scratch is up to 4·10^10 steps; one
+    tree operation combines at most about 36 nodes of four numbers'
+  - 'Several tests with total n ≤ 5·10^5: build the tree per test in O(n)'
+  weak_signals:
+  - form: Asks for the best sum of a subarray or the longest stretch with some property, after single
+      changes, for the whole array or for a range
+    shape: n, q up to 2·10^5, the answer is printed after each change
+  - form: Asks for the longest balanced bracket sequence or the number of matched pairs inside a range
+    shape: n up to 10^6, a string of brackets and ranges
+  - form: Asks for the smallest value of a range together with how many times it occurs, or the second
+      largest
+    shape: n, q up to 2·10^5, node needs a pair or a triple of numbers
+  kill_signals:
+  - 'The set of facts grows with the range: the number of different values of [1, 2, 1, 2] is 2 and the
+    halves give 2 and 2, so no fixed set of numbers per node can join them'
+  - 'The node joins in a way that needs the elements themselves (median, k-th): a different structure
+    is needed'
+  in_action:
+    statement: 'An array of n numbers can change: "set a_k to x". After each change print the largest
+      sum of a subarray (it may be empty, sum 0).'
+    constraints: n, q ≤ 2·10^5, values up to 10^9 in absolute value.
+    budget: 'Recomputing the best subarray after each change: O(n) per change, 4·10^10 steps. Need about
+      O(log n) per change.'
+    candidates:
+    - tool: Kadane after each change (topic 3.2, linear)
+      verdict: rejected
+      because: 'O(n) per change: 4·10^10 steps.'
+    - tool: Segment tree of sums (this topic, Theorem 5.3.1)
+      verdict: rejected
+      because: A node with only the sum cannot say where the best stretch is.
+    - tool: Segment tree with a node of four numbers (this topic)
+      verdict: chosen
+      because: The best subarray of a joined range is inside a part or crosses the border, and the node
+        (sum, prefix, suffix, best) joins in O(1) (Theorem 5.3.6).
+    property_check: The four numbers of a joined range are computed from the four numbers of the parts.
+      The property holds.
+    decision: Tree of four numbers per node; after each change recompute the path and print the best of
+      the root.
+  examples:
+    positive:
+    - inline:
+        input: a = [-1, 2, 3, -4, 5, -2]. What is the best sum of a non-empty subarray of positions 2
+          to 5 (counting from 1)?
+        answer: '6'
+        why: The range holds 2, 3, -4, 5. The best stretch is the whole range, 2 + 3 - 4 + 5 = 6. The
+          node of a joined range keeps sum, prefix, suffix and best, so the answer comes from two nodes.
+    - inline:
+        input: a = [4, -10, 3, -1, 3]. What is the best sum of a non-empty subarray of positions 2 to
+          5 (counting from 1)?
+        answer: '5'
+        why: The range holds -10, 3, -1, 3; the best stretch is 3, -1, 3 = 5. It crosses the border of
+          two nodes, as the suffix of one and the prefix of the other.
+    - worked_example: cses-1190
+      why: 'The largest sum of a subarray after each of up to 2·10^5 changes: the node keeps the sum,
+        the best prefix, the best suffix and the best subarray.'
+    negative:
+    - inline:
+        input: a = [1, 2, 1, 2]. How many different values are in positions 1 to 4, if each node keeps
+          the number of different values of its range and two nodes are joined by adding their numbers?
+        answer: '2'
+        method_gives: '4'
+        why: The halves [1, 2] and [1, 2] have 2 different values each, and 2 + 2 = 4. The whole range
+          has 2. The number of different values cannot be computed from the two numbers alone, because
+          the same value can be in both halves. A sweep with sorted questions and a Fenwick tree counts
+          them.
+      correct_tool:
+        topic: '5.2'
+        card: offline-sweep-count
+    - problem: cses-1749
+      why: Finding the element at place k of a shrinking list needs only counts, and the descent on a
+        Fenwick tree does it with a short code.
+      correct_tool:
+        topic: '5.2'
+        card: kth-present
+  lookalikes:
+  - description: Largest sum of a subarray of a fixed array
+    tool:
+      topic: '3.2'
+      card: linear-state
+    flipping_difference: For one array without changes, one pass of Kadane gives the answer in O(n).
+  - description: Minimum of a range with single changes
+    tool:
+      topic: '5.3'
+      card: point-update-range-query
+    flipping_difference: The minimum is one number that joins directly; a node of several numbers is needed
+      only when the answer depends on more than one fact about each part.
+  complexity: O(n) to build, O(log n) per change or query (each join is O(1)), O(n) memory.
+- id: tree-descent
+  name: The first position that fits (walking down the tree)
+  from_theorem: 5.3.5
+  decisive_property: The question asks for the first (or last) position where a value reaches a bound,
+    where the values change by single updates or range updates between the questions, and the value of
+    a node tells whether such a position exists inside it (maximum for "at least", minimum for "at most").
+  how_to_test: Write the condition as "some value in this range is at least x". If a node can answer that
+    from its stored value, the walk from the root goes left whenever the left child can answer yes. Check
+    that after the answer the structure must change (a value is reduced, a position is removed), which
+    a binary search over prefix queries would make as slow as the sum.
+  constraint_shapes:
+  - 'n = q = 2·10^5 with changes: a scan to the first fitting position is up to 4·10^10 steps; a binary
+    search with a range query at each step is 18 · 72 steps; a descent is 18 steps'
+  - 'The answer position changes the array (a room is used up): each question is followed by a point update,
+    O(log n)'
+  weak_signals:
+  - form: Finds the first position (room, seat, slot) where the value is at least a given number, and
+      then reduces it
+    shape: n, q up to 2·10^5, each request depends on the changes made by the earlier ones
+  - form: Finds the first or last element after position l that is greater than a given number, with changes
+      between questions
+    shape: n, q up to 2·10^5, changing values
+  - form: Finds the smallest value not present or the smallest index with a count of zero in a changing
+      set
+    shape: values up to 10^6 and n, q up to 2·10^5
+  kill_signals:
+  - 'The condition is equality, which a maximum cannot decide: for a = [3, 1, 5] and the value 4, the
+    maximum of the array is 5 ≥ 4 but no value is 4'
+  - 'The array does not change: a sparse table with a binary search (topic 5.1) or an offline sort is
+    enough'
+  in_action:
+    statement: A hotel has n rooms, each with a number of free beds. q groups arrive; each wants the first
+      room with at least g free beds; it takes that room, and its free beds drop by g. Print the room
+      for each group, or 0 if none.
+    constraints: n, q ≤ 2·10^5, free beds up to 10^9.
+    budget: 'Scanning the rooms for each group: up to n · q = 4·10^10 steps. Need about O(log n) per group.'
+    candidates:
+    - tool: Sparse table of maximums and binary search (topic 5.1)
+      verdict: rejected
+      because: The free beds change after each group, so the table would have to be rebuilt.
+    - tool: Ordered set of free beds (topic 0.6)
+      verdict: rejected
+      because: It finds the nearest value, but the first room by position is needed, not the first by
+        size.
+    - tool: Segment tree of maximums with a descent (this topic)
+      verdict: chosen
+      because: The walk down finds the first room with enough beds in at most 18 steps (Theorem 5.3.5),
+        and the room is updated by a path recomputation (Theorem 5.3.2).
+    property_check: The condition is "at least g", a maximum answers it for every node, and the array
+      changes after each answer. The property holds.
+    decision: Tree of maximums; if the root is below g print 0; otherwise descend, print the room, subtract
+      g and recompute the path.
+  examples:
+    positive:
+    - inline:
+        input: 'Free beds per room: [3, 1, 4, 1, 5, 9, 2, 6]. Which room (counting from 0) is the first
+          with at least 5 free beds?'
+        answer: '4'
+        why: The root maximum 9 is at least 5. The left half has maximum 4, which is less than 5, so the
+          answer is in the right half; there the left quarter has maximum 9, and then the first of its
+          two leaves has 5.
+    - inline:
+        input: 'Free beds: [3, 1, 4, 1, 5, 9, 2, 6]. After room 2 is set to 0, which room is the first
+          with at least 4 free beds?'
+        answer: '4'
+        why: The change recomputes the path of room 2. The left half now has maximum 3, so the walk goes
+          right, and finds room 4.
+    negative:
+    - inline:
+        input: a = [3, 1, 5]. Which position (counting from 0) is the first with value exactly 4, or -1
+          if none, if the walk goes left whenever the left child has a maximum of at least 4?
+        answer: '-1'
+        method_gives: '2'
+        why: The maximum is 5, which is at least 4, so the walk ends at the value 5 and calls it the answer.
+          A maximum only answers "at least". Finding an exact value is a membership question for a set.
+      correct_tool:
+        topic: '0.6'
+        card: set-membership
+    - problem: cses-1749
+      why: The question is about counts of present places, a sum with a prefix that reaches k; the descent
+        on a Fenwick tree does this with less code.
+      correct_tool:
+        topic: '5.2'
+        card: kth-present
+  lookalikes:
+  - description: The k-th present element of a changing list
+    tool:
+      topic: '5.2'
+      card: kth-present
+    flipping_difference: There the node value is a count and the descent compares the prefix with k; the
+      Fenwick tree does it with a shorter code.
+  - description: The first element at least x in a fixed array
+    tool:
+      topic: '5.1'
+      card: monotone-range-search
+    flipping_difference: For a fixed array a table and a binary search find it without any tree.
+  complexity: O(log n) per descent and per update.
+problems:
+- id: cses-1649
+  role: worked_example
+  summary: 'An array of n ≤ 2·10^5 numbers and q ≤ 2·10^5 operations: set a_k to u, or print the smallest
+    number in positions a to b.'
+- id: cf-52C
+  role: worked_example
+  summary: 'A circle of n ≤ 2·10^5 numbers and m ≤ 2·10^5 operations: add v to a circular range, or print
+    the smallest number on a circular range.'
+- id: cses-1190
+  role: worked_example
+  summary: An array of n ≤ 2·10^5 numbers and m ≤ 2·10^5 changes "set a_k to x"; after each change print
+    the largest sum of a subarray (the empty subarray is allowed).
+- id: ac-abc309_f
+  role: ladder
+  card: point-update-range-query
+  rung: 1
+  twist: 'Base case with the tree as a helper: sort first, then answer by a range minimum over a changing
+    array.'
+  summary: N ≤ 2·10^5 boxes with three sides each (rotation allowed); is there a box that fits strictly
+    inside another?
+  hints:
+  - Sort the sides of every box so that rotation does not matter. Then box i fits inside box j when every
+    side of i is smaller than the same side of j.
+  - Sort the boxes by the smallest side and process them in groups of equal smallest side. For each box,
+    ask whether an already inserted box (with a strictly smaller first side) has a smaller second side
+    and a smaller third side.
+  - Keep a tree over the compressed second sides that stores the smallest third side among the inserted
+    boxes; query the prefix of strictly smaller second sides. Insert a whole group only after the group
+    has been queried.
+- id: ac-abc283_f
+  role: ladder
+  card: point-update-range-query
+  rung: 2
+  twist: The value in the tree is a combination of position and value, and each query is split in two
+    halves.
+  summary: A permutation P of 1..N (N ≤ 2·10^5); for every i print the smallest value of |P_i − P_j| +
+    |i − j| over j ≠ i.
+  hints:
+  - 'Remove the absolute values: for j before i and P_j below P_i the distance is (P_i + i) − (P_j + j),
+    and the other three cases are similar.'
+  - Process the positions in order, with two trees over the values of P that hold the best P_j + j and
+    P_j − j among the positions already seen; query the part of the values below P_i and the part above.
+  - Do the same again from the right (or process the positions from the end) for the positions after i.
+    The answer is the smallest of the four candidates.
+- id: ac-abc285_f
+  role: ladder
+  card: point-update-range-query
+  rung: 3
+  twist: The tree answers a yes/no question by keeping counts that can be compared with a formula.
+  summary: 'A string S of length N ≤ 2·10^5 and Q ≤ 2·10^5 operations: change one character, or ask whether
+    the substring l..r is a substring of the sorted version of the whole string.'
+  hints:
+  - A substring of a sorted string is non-decreasing, and for the letters strictly between its smallest
+    and largest letter it must contain all the copies that exist in S.
+  - Keep, for each of the 26 letters, a tree of counts over the positions (or one count per letter in
+    a Fenwick tree), and a tree that counts the positions where S_i > S_{i+1}.
+  - Answer yes when no descent lies inside l..r and, for every letter strictly between the first and the
+    last letter of the substring, the count in l..r equals the count in the whole string.
+- id: lc-maximum-sum-queries
+  role: ladder
+  card: point-update-range-query
+  rung: 4
+  twist: 'Offline: sort the queries by one bound and let the tree answer the other.'
+  summary: 'Two arrays of up to 10^5 numbers and queries (x, y): the largest nums1[j] + nums2[j] with
+    nums1[j] ≥ x and nums2[j] ≥ y, or −1.'
+  hints:
+  - A query has two lower bounds. Fix one of them by sorting.
+  - Sort the indices by nums1 from large to small and the queries by x from large to small; insert an
+    index when its nums1 is at least x.
+  - Keep a tree over the compressed values of nums2 that stores the best sum; the answer is the maximum
+    over the values at least y (a suffix query).
+- id: ac-abc382_f
+  role: ladder
+  card: lazy-range-update
+  rung: 1
+  twist: 'Base case: range chmax and point read of a height, processing the bars in a good order.'
+  summary: Horizontal bars of length given by columns in a tall grid fall straight down until the floor
+    or another bar stops them; print where each bar ends up.
+  hints:
+  - Process the bars from the bottom upwards, so that a bar only has to look at bars that are lower than
+    it.
+  - A bar over the columns l..r rests at the height one above the highest top among those columns.
+  - 'Keep for every column the current top height: read the maximum over l..r, put the bar there, and
+    set those columns to the new top (a range assignment with a range maximum).'
+- id: ac-abc327_f
+  role: ladder
+  card: lazy-range-update
+  rung: 2
+  twist: 'Range add with a global maximum: the tree answers one number for the whole array.'
+  summary: N ≤ 2·10^5 apples at positions (time, place); choose a window of D time units and W places
+    that contains the most apples.
+  hints:
+  - Fix the time window by sweeping its left end, and treat the places as a line.
+  - 'An apple adds 1 to all window positions that would cover it: a range of W places.'
+  - Keep a lazy tree of range additions with a global maximum; add when an apple enters the time window,
+    subtract when it leaves, and take the root maximum at each step.
+- id: ac-abc357_f
+  role: ladder
+  card: lazy-range-update
+  rung: 3
+  twist: The node stores more than the sum, and the tag changes several fields.
+  summary: 'Two sequences A and B of length N ≤ 2·10^5 and Q ≤ 2·10^5 operations: add x to A_l..A_r, add
+    x to B_l..B_r, or print the sum of A_i · B_i over l..r (modulo 998244353).'
+  hints:
+  - What does the sum of A_i · B_i do when A_i grows by x?
+  - It grows by x times B_i, so the node needs ΣB as well as ΣAB.
+  - Keep ΣA, ΣB and ΣAB in each node and two addition tags; applying (x to A) changes ΣAB by x · ΣB and
+    ΣA by x · length, and applying (y to B) changes ΣAB by y · ΣA. Apply both tags when they are pushed.
+- id: ac-abc322_f
+  role: ladder
+  card: lazy-range-update
+  rung: 4
+  twist: A flip tag that exchanges two sets of node fields.
+  summary: 'A binary string of length N ≤ 5·10^5 and Q ≤ 5·10^5 operations: flip every bit of l..r, or
+    ask for the longest block of 1s inside l..r.'
+  hints:
+  - Keep the longest block of 1s, and also the longest block of 0s, because a flip exchanges them.
+  - A node needs the length of the longest block, the longest prefix block and the longest suffix block
+    for both 0 and 1; two nodes are joined as in Theorem 5.3.6.
+  - The flip tag swaps the two sets of fields of a node and toggles the tag; two flips cancel. The query
+    joins the nodes in order.
+- id: cf-242E
+  role: ladder
+  card: lazy-range-update
+  rung: 5
+  twist: 'Treat each bit as its own 0/1 problem: a flip tag per bit.'
+  summary: 'n ≤ 10^5 numbers up to 10^6 and m ≤ 5·10^4 operations: print the sum of l..r, or XOR every
+    number in l..r with x.'
+  hints:
+  - XOR works bit by bit. For a fixed bit, XOR with x flips the bit of the numbers in the range if the
+    bit of x is 1.
+  - Keep for each bit the count of numbers with that bit set in each node; a flip of a node of length
+    len turns the count c into len − c.
+  - Use 20 trees (one per bit) or one tree whose node holds 20 counts, with a flip tag as a 20-bit mask;
+    the sum is the sum of count · 2^bit. The sum is up to 10^11, so use 64 bits.
+- id: cf-1320C
+  role: ladder
+  card: lazy-range-update
+  rung: 6
+  twist: Sorted sweep with a range add and a global maximum, with two sets of costs.
+  summary: 'n weapons (attack, cost), m armors (defense, cost) and p monsters (x, y, z): a monster is
+    defeated if attack > x and defense > y, and gives z coins; choose one weapon and one armor to maximise
+    coins minus costs. †'
+  hints:
+  - Sort the weapons by attack and the monsters by x; sweep the weapons from the weakest.
+  - 'For each armor store the value (−cost) plus the coins of the monsters already defeated by the current
+    weapon with y below its defense: a range of armors.'
+  - Keep a lazy tree over the armors sorted by defense; when a monster becomes defeated, add z to the
+    armors with defense above y; for each weapon the best is (the maximum of the tree) minus the weapon
+    cost.
+- id: ac-abc343_f
+  role: ladder
+  card: custom-node
+  rung: 1
+  twist: 'Base case: a node of four numbers, joined with a case split.'
+  summary: 'A sequence of N ≤ 2·10^5 numbers and Q ≤ 2·10^5 operations: set A_p = x, or take the range
+    l..r and print how many times its second largest value occurs (counting different values).'
+  hints:
+  - A node needs the largest value and the second largest, with how many times each occurs.
+  - To join two nodes, collect the four (value, count) pairs, merge equal values by adding the counts,
+    and keep the two largest different values.
+  - For a query join the nodes of the range; the answer is the count of the second largest value, or 0
+    if it does not exist.
+- id: ac-abc223_f
+  role: ladder
+  card: custom-node
+  rung: 2
+  twist: 'The node is two numbers: the total of the range and its lowest prefix.'
+  summary: 'A bracket string of length N ≤ 5·10^5 and operations: swap two neighbouring characters, or
+    ask whether the substring l..r is a correct bracket sequence.'
+  hints:
+  - Count +1 for "(" and −1 for ")". A substring is correct when its total is 0 and no prefix is negative.
+  - A node keeps the total and the lowest prefix sum of its range; joining gives total = A.total + B.total
+    and lowest = min(A.lowest, A.total + B.lowest).
+  - A swap is two point changes. Answer yes when the total of the query range is 0 and its lowest prefix
+    is at least 0.
+- id: cf-474F
+  role: ladder
+  card: custom-node
+  rung: 3
+  twist: The node holds a gcd and how many elements equal it; static, but the join is not a plain gcd.
+  summary: 'n ≤ 10^5 ants with strengths s_i and queries (l, r): the number of ants in l..r that are not
+    freed, where an ant is freed if its strength divides the strengths of all ants in the range.'
+  hints:
+  - An ant is freed exactly when its strength equals the gcd of the range, because it divides everything
+    and the gcd divides it.
+  - So the answer is (r − l + 1) minus the number of elements in the range equal to the gcd of the range.
+  - 'A node keeps the gcd g of its range and the count of elements equal to g. Joining two nodes: take
+    the gcd of both g values, and add the counts of the parts whose g equals this gcd.'
+- id: cf-1093G
+  role: ladder
+  card: custom-node
+  rung: 4
+  twist: 'A node with 2^k numbers: one maximum for each choice of signs.'
+  summary: 'n ≤ 2·10^5 points in k ≤ 5 dimensions; operations: replace a point, or for a range of points
+    print the largest Manhattan distance between two of them.'
+  hints:
+  - The Manhattan distance is the maximum, over all choices of a sign for each coordinate, of the signed
+    sum of the differences.
+  - For each of the 2^k sign choices keep the maximum and the minimum of the signed sum over the points
+    of the node.
+  - The answer for the range is the maximum over the sign choices of (maximum − minimum); a change recomputes
+    the leaf for all sign choices, then the path above it.
+- id: cses-1143
+  role: ladder
+  card: tree-descent
+  rung: 1
+  twist: 'Base case: the first position with a large enough value, and the value then drops.'
+  summary: n ≤ 2·10^5 hotels with free rooms; m ≤ 2·10^5 groups, each wants the first hotel with at least
+    r free rooms (and takes them).
+  hints:
+  - A scan from the left costs n per group. What does a node need to say, so that you can choose the left
+    or the right half?
+  - 'A tree of maximums: if the left child has a maximum of at least r, the answer is there; otherwise
+    it is in the right child.'
+  - At the leaf subtract r and recompute the nodes above it; if the root maximum is less than r print
+    0.
+- id: ac-abc392_f
+  role: ladder
+  card: tree-descent
+  rung: 2
+  twist: The position is "the k-th free slot", after the process is turned around.
+  summary: A permutation is built by n steps; at step i the number i is inserted into the list at place
+    P_i; print the final list. (N ≤ 5·10^5)
+  hints:
+  - 'Do it backwards: the last number inserted is at the place P_n of the final list.'
+  - Going from i = n down to 1, number i occupies the P_i-th free place among those not yet taken.
+  - A tree of counts of free places finds the k-th one by descent (Theorem 5.3.5 with counts, or Theorem
+    5.2.6 with a Fenwick tree); mark the place as taken.
+- id: ac-abc389_f
+  role: ladder
+  card: tree-descent
+  rung: 3
+  twist: The descent runs on a monotone function that keeps changing under range additions.
+  summary: N ≤ 2·10^5 contests; contest i adds 1 to the rating if the rating is in [L_i, R_i]; for each
+    of Q starting ratings find the final rating.
+  hints:
+  - The function "final rating from starting rating" is non-decreasing. Process the contests in order
+    and keep, for every starting rating, its current rating.
+  - Contest i adds 1 to the ratings in [L_i, R_i]; since the order is preserved, the starting ratings
+    that currently fall in [L_i, R_i] form one block of starting ratings.
+  - Find the ends of this block by descent in a tree of current ratings (a range add with a monotone array
+    lets you binary search), and add 1 to the block with a lazy tag.
+- id: lc-booking-concert-tickets-in-groups
+  role: ladder
+  card: tree-descent
+  rung: 4
+  twist: 'Two operations on one tree: a first row that fits, and a total over a prefix of rows.'
+  summary: n rows with m seats each; gather(k, maxRow) books k seats together in the first row ≤ maxRow
+    that has them; scatter(k, maxRow) books k seats in the first rows (≤ maxRow) in order, if there are
+    enough in total.
+  hints:
+  - 'gather needs the first row (by position) whose number of free seats is at least k: a descent on a
+    tree of maximums, then check that its index is at most maxRow.'
+  - 'scatter needs the total number of free seats in rows 0..maxRow: a sum in the same tree, and then
+    the rows are filled from the top until k seats are booked.'
+  - Keep both the maximum and the sum in each node. Fill rows one at a time; each row that is filled completely
+    is not looked at again, so the total number of row visits is amortised.
+- id: cf-339D
+  role: drill
+  summary: 2^n numbers (n ≤ 17) and m ≤ 10^5 changes "set a_p to b"; the numbers are combined in pairs,
+    first by OR, then the results by XOR, then by OR, and so on up to one number, which is printed after
+    each change. †
+- id: cf-1234D
+  role: drill
+  summary: 'A string of up to 10^5 letters; operations: replace one letter, or print the number of different
+    letters in a range. †'
+- id: cses-3226
+  role: drill
+  summary: An array of n ≤ 2·10^5 numbers and q ≤ 2·10^5 questions (a, b); for each, the largest sum of
+    a non-empty subarray inside positions a to b.
+- id: cf-380C
+  role: drill
+  summary: A string of up to 10^6 brackets and m ≤ 10^5 questions (l, r); for each, the length of the
+    longest correct bracket subsequence of the substring. †
+- id: lc-my-calendar-iii
+  role: drill
+  summary: 'A calendar class: book(start, end) adds a half-open interval and returns the largest number
+    of bookings that overlap at one time; at most 400 calls, times up to 10^9.'
+- id: cf-1198B
+  role: drill
+  summary: 'n ≤ 2·10^5 people with money a_i and q events: set one person to x, or give everyone who has
+    less than x exactly x; print the final amounts. †'
+- id: lc-count-integers-in-intervals
+  role: drill
+  summary: 'A class: add(left, right) adds an interval of integers (up to 10^9), count() returns how many
+    integers are in at least one added interval; up to 10^5 calls.'
+- id: lc-fruits-into-baskets-iii
+  role: drill
+  summary: Fruits and baskets of up to 10^5 each; each fruit, in order, goes into the first unused basket
+    with capacity at least the fruit; print the number of fruits that find no basket.
+- id: cf-1567E
+  role: checkpoint
+  card: custom-node
+  summary: 'An array of n ≤ 2·10^5 numbers; operations: set a_i = x, or print the number of non-decreasing
+    subarrays inside a range l..r. †'
+- id: cses-1735
+  role: checkpoint
+  card: lazy-range-update
+  summary: 'An array of n ≤ 2·10^5 numbers and q ≤ 2·10^5 operations: add x to a range, set a range to
+    x, or print the sum of a range.'
+- id: cf-914D
+  role: checkpoint
+  card: tree-descent
+  summary: 'An array of n ≤ 5·10^5 numbers; operations: for a range l..r and a number x, can at most one
+    element of the range be changed so that the gcd of the range becomes x; or set a_i = y. †'
+- id: ac-abc330_e
+  role: review
+  review_set: 1
+  card: tree-descent
+  summary: A sequence of N ≤ 2·10^5 numbers; Q changes "set A_i to x"; after each change print the smallest
+    non-negative integer that is not in the sequence.
+- id: lc-longest-substring-of-one-repeating-character
+  role: review
+  review_set: 1
+  card: custom-node
+  summary: A string of up to 10^5 letters and up to 10^5 changes "set character i to c"; after each change
+    print the length of the longest substring of one repeated letter.
+- id: lc-handling-sum-queries-after-update
+  role: review
+  review_set: 1
+  card: lazy-range-update
+  summary: 'A 0/1 array nums1, an array nums2 and queries: flip nums1 on a range, add p · nums1[i] to
+    every nums2[i], or print the sum of nums2 (up to 10^5 elements and queries).'
+- id: cf-1295E
+  role: review
+  review_set: 2
+  card: lazy-range-update
+  summary: A permutation p of 1..n (n ≤ 2·10^5) with a cost a_i for moving p_i; the smallest total cost
+    to split the array into a prefix and a suffix and move elements so that every value of the prefix
+    is smaller than every value of the suffix. †
+- id: lc-block-placement-queries
+  role: review
+  review_set: 2
+  card: custom-node
+  summary: A number line with obstacles that are added one by one (up to 1.5·10^5 queries); a query asks
+    whether a block of length sz fits between the origin and a point x without covering an obstacle.
+- id: cses-3356
+  role: review
+  review_set: 2
+  card: point-update-range-query
+  summary: An array of n ≤ 2·10^5 numbers with changes "set a_k to x"; a question asks whether all the
+    values in a range are different.
+- id: cf-1555E
+  role: review
+  review_set: 3
+  card: lazy-range-update
+  summary: n ≤ 3·10^5 segments with weights on the integer line 1..m; choose segments that together cover
+    the line from 1 to m (neighbouring segments share a unit) with the smallest difference between the
+    largest and the smallest chosen weight. †
+- id: cf-1179C
+  role: review
+  review_set: 3
+  card: tree-descent
+  summary: n dishes with prices, m pupils with money, and q changes to a price or to money; pupils in
+    order take the most expensive dish they can afford; after each change print the price of the dish
+    left for the last person, or −1. †
+- id: lc-online-majority-element-in-subarray
+  role: review
+  review_set: 3
+  card: custom-node
+  summary: A class built from an array (up to 2·10^4 elements); query(left, right, threshold) returns
+    an element that occurs at least threshold times in the range, or −1 (up to 10^4 queries).
+- id: lc-subarrays-distinct-element-sum-of-squares-ii
+  role: review
+  review_set: 3
+  card: lazy-range-update
+  summary: An array of up to 10^5 numbers; the sum, over all subarrays, of the square of the number of
+    different values in the subarray, modulo 10^9 + 7.
+- id: ac-abc341_e
+  role: lookalike
+  card: point-update-range-query
+  summary: 'A 0/1 string of length N ≤ 5·10^5 and Q ≤ 5·10^5 operations: flip every bit in a range, or
+    ask whether a range is alternating (no two neighbours equal).'
+- id: ac-practice2_l
+  role: lookalike
+  card: lazy-range-update
+  summary: 'A 0/1 sequence of N ≤ 2·10^5 and Q ≤ 2·10^5 operations: flip every bit in a range, or print
+    the number of inversions (pairs of a 1 before a 0) inside a range.'
+- id: ac-practice2_j
+  role: lookalike
+  card: tree-descent
+  summary: 'A sequence of N ≤ 2·10^5 numbers; operations: set one value, print the maximum of a range,
+    or find the first position at or after x with a value at least v.'
+- id: ac-practice2_b
+  role: lookalike
+  card: point-update-range-query
+  summary: 'A sequence of N ≤ 5·10^5 numbers; operations: add a number to one value, or print the sum
+    of a range.'
+drill:
+- problem: cf-339D
+  answer:
+    topic: '5.3'
+    card: point-update-range-query
+  property: The levels of the halving are the levels of the tree, so a change recomputes one leaf-to-root
+    path; the join at each node depends on its level (OR or XOR), and the root holds the answer.
+  why_others_fail: The whole array changes its meaning after every change, so a table or prefix sums cannot
+    be reused; a scan of 2^17 numbers per change is 1.3·10^10 steps.
+- problem: cf-1234D
+  answer:
+    topic: '5.3'
+    card: point-update-range-query
+  property: A node can keep a 26-bit mask of the letters in its range (join by OR); a change recomputes
+    one path and the answer is the number of 1 bits of the OR over the range.
+  why_others_fail: Counting different values in general needs a sweep, but there are only 26 letters,
+    so a mask per node is a fixed-size summary that joins directly.
+- problem: cses-3226
+  answer:
+    topic: '5.3'
+    card: custom-node
+  property: The best stretch of a range is a combination of four facts about its parts (sum, best prefix,
+    best suffix, best); the query joins the whole nodes in order.
+  why_others_fail: A sparse table needs an operation that tolerates overlap, and the best-subarray join
+    does not (the overlap would be counted twice).
+- problem: cf-380C
+  answer:
+    topic: '5.3'
+    card: custom-node
+  property: A node keeps the number of matched pairs, the unmatched "(" and the unmatched ")"; joining
+    two nodes matches min(open of the left, close of the right) more pairs.
+  why_others_fail: Prefix counts of brackets give the balance of a range but not how many pairs are matched
+    inside it, because a closing bracket early in the range matches nothing.
+- problem: lc-my-calendar-iii
+  answer:
+    topic: '1.2'
+    card: difference-array
+  property: 'With at most 400 calls, keep a sorted map of +1 at each start and −1 at each end and scan
+    it after every booking: 400 · 800 steps.'
+  why_others_fail: A lazy tree over the times up to 10^9 needs a dynamic tree and much more code; the
+    limit makes a plain scan of the events enough.
+- problem: cf-1198B
+  answer:
+    topic: '1.2'
+    card: prefix-extremes
+  property: A person who is never set again ends with the larger of their money and the largest payout
+    after their last change, which is a suffix maximum over the events.
+  why_others_fail: A lazy tree with a "raise to at least x" tag also works, but every question comes at
+    the end, so one backward pass with a running maximum is shorter and has no log.
+- problem: lc-count-integers-in-intervals
+  answer:
+    topic: '0.6'
+    card: ordered-set-lookup
+  property: Keep the disjoint intervals in a sorted container; a new interval absorbs all the intervals
+    it touches, and the total is updated as intervals are merged. Each interval is merged away once, so
+    the work is amortised.
+  why_others_fail: A dynamic segment tree with assign tags works, but the sorted container has less code
+    and the same total time.
+- problem: lc-fruits-into-baskets-iii
+  answer:
+    topic: '5.3'
+    card: tree-descent
+  property: A tree of maximums over the basket capacities finds the first basket with enough capacity
+    by one walk down; the basket is then used up (set to 0).
+  why_others_fail: A sorted set of capacities finds the smallest capacity that fits, not the first basket
+    by position, and a scan per fruit is 10^10 steps.
+lookalike_pairs:
+- a: ac-abc341_e
+  b: ac-practice2_l
+  a_tool:
+    topic: '5.3'
+    card: point-update-range-query
+  b_tool:
+    topic: '5.3'
+    card: lazy-range-update
+  shared_surface: Both flip every bit in a range of a 0/1 sequence of up to 5·10^5 places and then ask
+    a question about a range.
+  flipping_difference: In Alternating String let d_i say whether neighbours i and i + 1 are equal. A flip
+    of [L, R] keeps d unchanged inside the range and changes only d at L − 1 and at R, so two point changes
+    and a range sum answer it. In Lazy Segment Tree the asked count of inversions changes for every pair
+    inside the flipped range, so a flip tag on whole nodes is needed.
+  flipping_input: 'S = 0101. Flip positions 2..3: S = 0011. The equal-neighbour marks d go from (0, 0,
+    0) to (0, 1, 0): only the marks at 1 (= L − 1) and 3 (= R) changed. For 1010 the inversions (a 1 before
+    a 0) are 3; after flipping all four bits, 0101, they are 1: the pairs inside all changed.'
+- a: ac-practice2_j
+  b: ac-practice2_b
+  a_tool:
+    topic: '5.3'
+    card: tree-descent
+  b_tool:
+    topic: '5.2'
+    card: updates-and-range-sums
+  shared_surface: Both keep a sequence of up to 5·10^5 numbers with single changes and ask about ranges.
+  flipping_difference: In Fenwick Tree the range sum is the difference of two prefix sums, so a Fenwick
+    tree is enough. In Segment Tree the range maximum cannot be got from prefixes, and the third question
+    (the first position with a value at least v) needs the walk down node maxima, so a segment tree is
+    needed.
+  flipping_input: A = [5, 1, 4]. The sum of positions 2..3 is prefix(3) − prefix(1) = 10 − 5 = 5. The
+    maximum of positions 2..3 is 4, but the prefix maximums are 5 up to 1 and 5 up to 3; the two prefixes
+    cannot give it.
+self_test:
+- q: For a = [3, 1, 4, 1, 5, 9, 2, 6] build the tree of sums of Theorem 5.3.1. How many nodes does it
+    have, and what do the root and its two children hold?
+  a: There are 2n − 1 = 15 nodes. The root covers 0..7 and holds 31; its left child covers 0..3 and holds
+    3 + 1 + 4 + 1 = 9; its right child covers 4..7 and holds 5 + 9 + 2 + 6 = 22.
+- q: For the same array, which whole nodes does the query for the minimum of positions 2..6 take, and
+    what is the answer?
+  a: The nodes 2..3, 4..5 and 6..6 (the root and the nodes 0..3, 4..7 and 6..7 are opened; 0..1 and 7..7
+    are outside). Their minimums are 1, 5 and 2, so the answer is 1.
+- q: Set a_5 to 0 (positions counted from 0). Which nodes are recomputed, and what is the minimum of the
+    whole array afterwards?
+  a: 'The nodes whose range contains position 5: 0..7, 4..7, 4..5 and 5..5, from the leaf up. The minimum
+    of 3, 1, 4, 1, 5, 0, 2, 6 is 0.'
+- q: With the tree of sums, add 10 to positions 2..5. Which nodes receive a tag, and what do their sums
+    become?
+  a: 'The nodes taken whole are 2..3 and 4..5. Their sums become 5 + 20 = 25 and 14 + 20 = 34, each with
+    the tag 10. The nodes above them are recomputed without a tag: 0..3 becomes 4 + 25 = 29, 4..7 becomes
+    34 + 8 = 42 and the root 71.'
+- q: 'Continue: ask for the value at position 3. What is pushed on the way, and what is the answer?'
+  a: 'The query opens the root (no tag), the node 0..3 (no tag) and the node 2..3, which has the tag 10:
+    it gives 10 to the leaves 2 and 3 and clears its own tag. The leaf 3 held 1 and now holds 11, so the
+    answer is 11.'
+- q: A node of length 3 first gets "set to 5" and then "add 2". What is its tag, and what is its sum?
+    What if the two operations come in the other order?
+  a: 'Set to 5 is (0, 5), then add 2 is (1, 2): the composition is (1 · 0, 1 · 5 + 2) = (0, 7), so every
+    value is 7 and the sum is 21. In the other order, add 2 is (1, 2) and then set to 5 is (0, 5): the
+    composition is (0 · 1, 0 · 2 + 5) = (0, 5), every value is 5 and the sum is 15. The order matters.'
+- q: Join the nodes of [3, -5] and [4, -1] for the best non-empty subarray. What are the four numbers
+    of each part and of the whole, and what is the best?
+  a: 'The left part: sum −2, prefix 3, suffix −2, best 3. The right part: sum 3, prefix 4, suffix 3, best
+    4. The whole: sum 1, prefix max(3, −2 + 4) = 3, suffix max(3, 3 − 2) = 3, best max(3, 4, −2 + 4) =
+    4. The best stretch is the single 4.'
+checkpoint:
+  time_limit_minutes: 150
+  problems:
+  - cf-1567E
+  - cses-1735
+  - cf-914D
+decision_map:
+- weak_signal: Changes to single values mixed with questions about the minimum, maximum or GCD of a range,
+    with n and q up to 2·10^5
+  choose: point-update-range-query
+  when: 'The value of a range is the combination of the values of its halves and it cannot be taken back
+    (Theorems 5.3.1 and 5.3.2): keep a segment tree and do each operation in O(log n).'
+  over:
+  - card: idempotent-range-query
+    topic: '5.1'
+    because: A table needs an array that never changes.
+  - card: updates-and-range-sums
+    topic: '5.2'
+    because: A Fenwick tree needs a quantity that can be subtracted, such as a sum.
+  - card: nested-loops
+    topic: '0.5'
+    because: Scanning the range for each question is O(nq).
+- weak_signal: An operation changes every value in a range (add, set, flip) and the questions ask a sum,
+    minimum or count over ranges
+  choose: lazy-range-update
+  when: What the operation does to a node is known from the node value and its length, and two operations
+    can be merged into one tag (Theorems 5.3.3 and 5.3.4).
+  over:
+  - card: updates-and-range-sums
+    topic: '5.2'
+    because: If the reads are of single values after the range additions, a Fenwick tree over the differences
+      is shorter.
+  - card: difference-array
+    topic: '1.2'
+    because: If all reads come after all the changes, one pass over the differences is enough.
+  - card: point-update-range-query
+    topic: '5.3'
+    because: If only single values change, no tag is needed.
+- weak_signal: The answer for a range is a pair of numbers or a short list of numbers about each part
+    (best stretch, matched brackets, the smallest value and its count)
+  choose: custom-node
+  when: 'The facts of the joined range are computed from the same facts of the two parts, and the join
+    may not be commutative (Theorem 5.3.6): a node holds the facts.'
+  over:
+  - card: linear-state
+    topic: '3.2'
+    because: For a single array that never changes, one pass computes the best stretch.
+  - card: offline-sweep-count
+    topic: '5.2'
+    because: If the node would need the set of values (different values, a median), the facts do not fit
+      in a fixed size.
+  - card: point-update-range-query
+    topic: '5.3'
+    because: If one number per node is enough, the plain segment tree suffices.
+- weak_signal: The first or last position where a value passes a bound, in an array whose values are used
+    up or changed between the questions
+  choose: tree-descent
+  when: 'A node can say whether such a position exists inside it (the maximum for "at least"): walk down
+    from the root, left first (Theorem 5.3.5).'
+  over:
+  - card: monotone-range-search
+    topic: '5.1'
+    because: On an array that never changes, a table and a binary search find it.
+  - card: kth-present
+    topic: '5.2'
+    because: If the node values are counts and the position is the k-th one, the Fenwick descent is shorter.
+  - card: ordered-set-lookup
+    topic: '0.6'
+    because: A sorted set finds the nearest value, not the first position.
+glossary_added:
+- segment tree
+- lazy propagation
+- lazy tag

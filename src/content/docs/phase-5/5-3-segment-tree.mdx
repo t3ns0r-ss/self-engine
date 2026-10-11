@@ -1,0 +1,495 @@
+---
+title: "5.3 Segment tree, lazy propagation"
+sidebar:
+  order: 35
+topic: "5.3"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="5.3" />
+
+## 1. Why this topic exists
+
+A shop keeps its prices in an array of $n = 2 \cdot 10^5$ numbers. Two kinds of operations arrive, $q = 2 \cdot 10^5$ of them in any order: "the price in position $k$ is now $x$", and "what is the cheapest price among positions $a$ to $b$?"
+
+The sparse table of [topic 5.1](../5-1-sparse-table/) answers the second operation in $O(1)$ steps, but one change breaks all the blocks that contain it, and rebuilding costs about $n \log n$ steps. Scanning the range for each question costs up to $2 \cdot 10^5$ steps, so $q$ of them cost $4 \cdot 10^{10}$ steps, about 400 seconds at $10^8$ steps per second. The Fenwick tree of [topic 5.2](../5-2-fenwick/) works because a sum can be undone by subtracting; a minimum cannot.
+
+The key idea: split the positions in halves, then halves of halves, down to single positions, and keep the answer (here the minimum) for every piece. A change touches only the pieces that contain the position, one per level, about $\log_2 n \approx 18$ of them. A range is the union of at most about $2 \log_2 n$ whole pieces, and the answers of those pieces are combined. This is the **segment tree**. It works for any operation that can be combined from the two halves, not only for sums.
+
+The second half of the topic adds one more idea. Suppose an operation changes *every* value in a range, for example "add 5 to positions $a$ to $b$", and then the questions ask for sums or minimums of ranges. Changing the $b - a + 1$ values one by one is slow again. **Lazy propagation** puts a note on a whole piece ("add 5 to everything below") and passes the note down only when a later operation needs to look inside. Each operation still costs $O(\log n)$.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="5.3" />
+
+### What this topic does not cover
+
+- Operations on a *sum* with single changes only: the Fenwick tree of topic 5.2 is shorter and faster. The segment tree is the choice when the combination cannot be undone (minimum, maximum, GCD) or when the node needs more than one number.
+- Arrays that never change: the sparse table of topic 5.1 answers in $O(1)$ and the prefix sums of [topic 1.2](../../phase-1/1-2-prefix-sums/) answer sums.
+- Splitting the array into blocks of about $\sqrt n$ elements, and answering questions in a special order: topic 5.4.
+- Structures with a very large number of nodes created on demand (positions up to $10^9$), trees that remember old versions, and trees of trees: not in this course. Compress the positions first ([topic 1.1](../../phase-1/1-1-sorting/)).
+
+## 3. Definitions
+
+- A **segment tree** over an array $a_0, \dots, a_{n-1}$ is a binary tree of **nodes**. The root covers the positions $0, \dots, n - 1$. A node that covers $lo, \dots, hi$ with $lo < hi$ has two children: the left one covers $lo, \dots, mid$ and the right one covers $mid + 1, \dots, hi$, where $mid = \lfloor (lo + hi) / 2 \rfloor$. A node with $lo = hi$ is a **leaf**. Example: for $n = 8$ the root covers $0..7$, its children $0..3$ and $4..7$, and the leaves cover one position each.
+- A node stores a value for its range: here the **sum** (later the minimum, or several numbers). Example: for $a = [3, 1, 4, 1, 5, 9, 2, 6]$ the node $0..3$ stores $9$ and the root stores $31$.
+- Nodes are numbered so that the children of $v$ are $2v$ and $2v + 1$, with the root as $v = 1$. The array that holds them has $4n$ entries, which is always enough (Theorem 5.3.1).
+- A **range query** asks for the value of the combination of $a_l, \dots, a_r$. A node is **inside** the query if its range lies within $l..r$, **disjoint** if it shares no position with it, and otherwise it **partly overlaps**.
+- A **point update** sets one $a_i$ to a new value. A **range update** changes every $a_i$ with $l \le i \le r$ in the same way, for example adds the same number.
+- A **lazy tag** at a node is a pending range update that has been counted in the node's own value but not yet passed to its children. **Pushing** a tag hands it to the two children.
+- The **depth** of a node is the number of steps from the root: the root has depth 0.
+
+## 4. Theory and proofs
+
+### 4.1 The tree and the range query
+
+**Theorem 5.3.1 (shape and range query).** Build the tree of an array of $n \ge 1$ numbers as defined above. Then (a) it has $2n - 1$ nodes, its depth is at most $\lceil \log_2 n \rceil$, and every node number is below $4n$; (b) for a range $[l, r]$ the query function that returns the stored value at a node inside, nothing at a disjoint node, and otherwise combines the answers of both children, visits at most 4 nodes at each depth, so $O(\log n)$ in all; (c) the nodes it returns are disjoint, lie inside $l..r$, and together cover every position of $l..r$ exactly once, so the sum of their stored values is $a_l + \dots + a_r$.
+
+:::tip[In plain words]
+Cut the range into halves again and again until the pieces are single positions. A question about $l..r$ goes down from the root: a piece fully inside the question is taken whole, a piece outside is ignored, and a piece that sticks out is opened. Only the pieces at the two edges of the question can stick out, so about two pieces per level are opened and the question touches about $4 \log_2 n$ pieces.
+:::
+
+**A tiny instance.** $a = [3, 1, 4, 1, 5, 9, 2, 6]$. The query $[2, 6]$: the root $0..7$ and its children $0..3$, $4..7$ stick out and are opened. In $0..3$ the child $0..1$ is disjoint and $2..3$ is inside (it is taken whole: $4 + 1 = 5$). In $4..7$ the child $4..5$ is inside ($5 + 9 = 14$) and $6..7$ sticks out: its children are $6..6$ (inside, 2) and $7..7$ (disjoint). The sum is $5 + 14 + 2 = 21$.
+
+**Proof.**
+1. Every internal node has exactly two children and every leaf holds one position, so a tree with $n$ leaves has $n - 1$ internal nodes: $2n - 1$ in total.
+2. A node at depth $d$ covers at most $\lceil n / 2^d \rceil$ positions, by induction: the larger child of a range of length $m$ has length $\lceil m / 2 \rceil$, and $\lceil \lceil n / 2^d \rceil / 2 \rceil = \lceil n / 2^{d+1} \rceil$. At $d = \lceil \log_2 n \rceil$ this is 1, so every node there is a leaf. A node at depth $d$ has a number below $2^{d+1}$, so below $2^{\lceil \log_2 n \rceil + 1} < 4n$.
+3. A node that partly overlaps the query contains a position inside and a position outside $l..r$, so it contains both of some adjacent pair $(l - 1, l)$ or $(r, r + 1)$. The nodes at one depth are disjoint, so each pair is in at most one of them: at most 2 nodes per depth partly overlap.
+4. The function opens only partly overlapping nodes, and it visits only the root and the children of opened nodes. So at depth $d + 1$ it visits at most $2 \cdot 2 = 4$ nodes, and the total is at most $4 (\lceil \log_2 n \rceil + 1)$.
+5. A node that is returned whole is inside the query, and it was reached from a partly overlapping parent (or it is the root), so its parent was not already inside. Two returned nodes are therefore never one inside the other, so they are disjoint (nodes of one tree are either nested or disjoint).
+6. A position $p$ in $l..r$: follow the path of nodes from the root to the leaf $p$. The first node on this path that is inside the query is returned (all before it partly overlap and were opened, and a leaf is either inside or disjoint). So $p$ is covered, and by step 5 exactly once. Hence the combination of the returned nodes is the sum of $a_l, \dots, a_r$. $\square$
+
+:::note[This proof needs]
+1. The combination is *associative* and the stored value of a node is the combination of its two children (here: addition). The proof of step 6 needs only that.
+2. The order of the combination matters if the operation is not commutative (Theorem 5.3.6).
+3. The array of $4n$ numbers may leave unused entries; do not read them.
+:::
+
+<TheoremCode unit="5.3/thm-1" />
+
+The first example is the tiny instance with the pieces it takes, the second takes the root whole, and the third is a single position. The check compares the answer with the plain sum for every range for every $n$ up to 40, and checks that no depth has more than 4 visited nodes.
+
+### 4.2 A change touches one path
+
+**Theorem 5.3.2 (point update).** To set $a_i = x$, change the leaf of $i$ and recompute $t[v]$ from its two children for every node $v$ on the path from that leaf to the root, going upward. The other nodes keep their values. This takes $O(\log n)$ steps.
+
+:::tip[In plain words]
+A node's value depends only on the positions in its range. A change at position $i$ therefore affects only the nodes whose range contains $i$, and these form one line from the root down to the leaf of $i$. Fix that line from the bottom to the top.
+:::
+
+**A tiny instance.** $n = 8$, set $a_2 = 10$ in $[3, 1, 4, 1, 5, 9, 2, 6]$. The nodes on the path are $0..7$, $0..3$, $2..3$ and $2..2$ (numbers 1, 2, 5, 10). The leaf becomes 10, the node $2..3$ becomes $10 + 1 = 11$, the node $0..3$ becomes $3 + 1 + 11 = 15$, and the root $15 + 22 = 37$.
+
+**Proof.**
+1. The stored value of a node is a function of $a$ over its range only (by the definition, and by induction from the leaves).
+2. If $i$ is not in the range of $v$, no value in that range changed, so $t[v]$ is still right.
+3. The nodes whose range contains $i$ are the root, and exactly one child of each of them contains $i$; they form a path of at most $\lceil \log_2 n \rceil + 1$ nodes down to the leaf of $i$.
+4. Going up, when $t[v]$ is recomputed both children are already right (the child on the path was fixed one step before; the other is unchanged by step 2), so $t[v]$ becomes the correct value. $\square$
+
+:::note[This proof needs]
+1. The value of a node is computed from its two children alone. A value that also depends on something outside its range does not fit.
+2. In the code the recursion returns along the same path and recomputes on the way back.
+3. A point update that *adds* a number is the same: recompute from the children, or add the number along the path.
+:::
+
+<TheoremCode unit="5.3/thm-2" />
+
+The first example is the tiny instance: the changed nodes are 1, 2, 5, 10 and the new root is 37. The check rebuilds the tree from the changed array and compares every node, for every $n$ up to 33 and every position.
+
+### 4.3 Adding to a range with lazy tags
+
+**Theorem 5.3.3 (lazy addition).** Keep for each node the sum $t[v]$ and a tag $\text{tag}[v]$. The function `apply(v, x)` adds $x \cdot len(v)$ to $t[v]$ and $x$ to $\text{tag}[v]$; the function `push(v)` applies $\text{tag}[v]$ to both children and sets $\text{tag}[v] = 0$. An update of $[l, r]$ by $x$ goes down as a query does: a node inside gets `apply`; before opening a partly overlapping node it does `push`, and after both children are done it sets $t[v] = t[2v] + t[2v+1]$. A query does the same `push` before opening a node. Then every update and every query takes $O(\log n)$ steps and every query returns the true sum.
+
+:::tip[In plain words]
+A piece that is entirely inside an update does not pass the update down. It just updates its own sum, as if it had added $x$ to each of its positions, and writes a note "$x$ for everything below". Any later visit that wants to look *inside* this piece first gives the note to the two halves. So a note travels down only when it is needed.
+:::
+
+**A tiny instance.** $a = [3, 1, 4, 1, 5, 9, 2, 6]$, add 10 to $[2, 5]$. The pieces taken whole are $2..3$ and $4..5$: their sums become $5 + 20 = 25$ and $14 + 20 = 34$, and each gets the tag 10. The node $0..3$ becomes $4 + 25 = 29$, $4..7$ becomes $34 + 8 = 42$, the root $71$. A later query of $[3, 4]$ opens $0..3$ and $4..7$ and pushes: the tag of $2..3$ goes to the leaves 2 and 3, the tag of $4..5$ to the leaves 4 and 5. Then $a_3 + a_4 = 11 + 15 = 26$.
+
+**Proof.**
+1. Let $S(v)$ be the true sum of the current values in the range of $v$. The *invariant*: $S(v) = t[v] + len(v) \cdot \sum \text{tag}[u]$ over the strict ancestors $u$ of $v$. It holds after the build (all tags 0).
+2. `apply(v, x)` (the update: every position of $v$ is raised by $x$): $S(v)$ grows by $x \cdot len(v)$ and so does $t[v]$. For a descendant $w$ of $v$, $S(w)$ grows by $x \cdot len(w)$, and the sum of the ancestors' tags grows by $x$ because of $\text{tag}[v]$: the invariant holds.
+3. `push(v)`: for a child $w$, $t[w]$ grows by $\text{tag}[v] \cdot len(w)$ and $\text{tag}[v]$ becomes 0. In the invariant for $w$ the term $len(w) \cdot \text{tag}[v]$ moves from the ancestor part to $t[w]$. For a descendant of $w$ the ancestor part loses $\text{tag}[v]$ and gains the same through $\text{tag}[w]$. Nothing changes in the true sums.
+4. Whenever a function opens a node it first pushes, so at that moment $\text{tag}[v] = 0$, and the tags of all its ancestors are 0 as well (each was pushed when the path went through it). So $t[v] = S(v)$ for every node reached on the path.
+5. Recomputing $t[v] = t[2v] + t[2v+1]$ after the children are done gives $S(v)$ in the same way, because $\text{tag}[v] = 0$ and the ancestors' tags are 0.
+6. A node returned whole by a query has all ancestor tags 0 (step 4), so $t[v] = S(v)$. The query then adds up the returned nodes as in Theorem 5.3.1. The number of visited nodes is the same as in that theorem, and each visit does $O(1)$ work, so each operation is $O(\log n)$. $\square$
+
+:::note[This proof needs]
+1. A tag applied to a node must be applicable to the stored sum *knowing only* the length: here $x \cdot len$. For a stored minimum the same tag works with $t[v] += x$ and no length.
+2. Pushing before every opening is essential. A function that forgets one push reads a child that is behind its parent.
+3. The additions and sums can be large: use 64 bits.
+:::
+
+<TheoremCode unit="5.3/thm-3" />
+
+The first example is the tiny instance: root 71 and the later sums 26, 21 and 4. The third subtracts 1 from everything: $71 - 8 = 63$. The check compares with a plain array on random mixed operations for every $n$ up to 20.
+
+### 4.4 Tags that combine: add, assign, multiply
+
+**Theorem 5.3.4 (tags as maps).** Let every range update replace each value $x$ in a range by $m \cdot x + c$, with a pair $(m, c)$ chosen for the update. Then (a) a node of length $len$ with sum $s$ has the sum $m \cdot s + c \cdot len$ after the update; (b) applying $(m_2, c_2)$ after $(m_1, c_1)$ equals applying the single pair $(m_2 m_1,\ m_2 c_1 + c_2)$. So the scheme of Theorem 5.3.3 works with tag pairs: `apply(v, g)` sets $t[v] = m t[v] + c\, len$ and replaces $\text{tag}[v]$ by the composition of $g$ after it. Addition of $c$ is $(1, c)$, assignment of $c$ is $(0, c)$, multiplication by $m$ is $(m, 0)$. Updates of different kinds can be mixed and take $O(\log n)$ each.
+
+:::tip[In plain words]
+A note can be "add 5" or "set to 7" or "multiply by 3". Two notes in a row are the same as one note of the same kind, so a node only ever needs to keep one note. The order is important: "add 2, then multiply by 3" is not "multiply by 3, then add 2".
+:::
+
+**A tiny instance.** $a = [3, 1, 4, 1]$, sum 9, $len = 4$. "Add 2, then multiply by 3": the pairs are $(1, 2)$ then $(3, 0)$, which compose to $(3 \cdot 1,\ 3 \cdot 2 + 0) = (3, 6)$: the sum becomes $3 \cdot 9 + 6 \cdot 4 = 51$. In the other order, $(3, 0)$ then $(1, 2)$ compose to $(1 \cdot 3,\ 1 \cdot 0 + 2) = (3, 2)$ and give $3 \cdot 9 + 2 \cdot 4 = 35$.
+
+**Proof.**
+1. (a) The sum of $m x_i + c$ over $len$ values is $m \sum x_i + c \cdot len$.
+2. (b) The first map gives $m_1 x + c_1$; the second applied to that gives $m_2 (m_1 x + c_1) + c_2 = m_2 m_1 x + (m_2 c_1 + c_2)$.
+3. The proof of Theorem 5.3.3 used the tag only in three ways: applying it to a node's stored value, merging a new tag into an existing one, and passing it down. Step 1 gives the first, step 2 the second, and the third is the same code. So the invariant of that proof holds with "tag" replaced by "map": $S(v)$ equals the stored value $t[v]$ after applying the maps of the ancestors, newest last.
+4. The order of the maps in a node is the order in time: when an update reaches a child through a partly overlapping parent, the parent has pushed first, so the parent's tag is older than every update that comes later to the child. Hence merging the parent's tag into the child's tag as "after the child's own" is right.
+5. Everything per operation is still $O(1)$ per visited node, so $O(\log n)$ in all. $\square$
+
+:::note[This proof needs]
+1. The maps are closed under composition and the stored value can be updated from the map and the length. Add, assign and multiply on sums satisfy this. A pair "assign and add" on a *minimum* also does (assign $c$ makes the minimum $c$; add $c$ adds $c$), with a small variation of the pair.
+2. Products can overflow: if the multiplier is large, keep everything modulo a prime.
+3. A tag value meaning "no tag" is $(1, 0)$.
+:::
+
+<TheoremCode unit="5.3/thm-4" />
+
+The first two examples are the tiny instance in both orders (51 and 35); the third assigns 7 to two positions. The check compares with a plain array on random assign, add and multiply operations for every $n$ up to 12.
+
+### 4.5 Walking down the tree to find a position
+
+**Theorem 5.3.5 (descent).** Let the node values be the maximum of the range. The leftmost position $p$ with $a_p \ge x$ exists exactly when the root holds a value $\ge x$, and it can be found by the walk: at a node, go to the left child if its maximum is $\ge x$, otherwise to the right child. The walk takes at most $\lceil \log_2 n \rceil$ steps.
+
+:::tip[In plain words]
+The root knows the biggest number in the whole array. If the left half contains a big enough number, the first big enough number is in the left half, because everything in the left half comes before everything in the right half. If it does not, look in the right half. One step down per level, and no search through the positions.
+:::
+
+**A tiny instance.** $a = [3, 1, 4, 1, 5, 9, 2, 6]$, $x = 5$. The root maximum is 9 $\ge 5$. The left child $0..3$ has maximum 4, which is less than 5, so go right to $4..7$. Its left child $4..5$ has maximum 9 $\ge 5$, so go left. Its left child $4..4$ has maximum 5 $\ge 5$, so the answer is position 4.
+
+**Proof.**
+1. If the root maximum is less than $x$, no position qualifies. Otherwise some position qualifies, and we keep the invariant: the current node contains a position $\ge x$ and no position before the node's range qualifies.
+2. It holds at the root.
+3. At an internal node, if the left child's maximum is $\ge x$, a qualifying position is in the left child and the positions before its range are the same as before: the invariant holds. If not, no position of the left child qualifies, so every qualifying position of the node is in the right child, and the positions before the right child's range (those before the node, and the whole left child) do not qualify: the invariant holds.
+4. At a leaf the invariant says that its position qualifies and no earlier position does, so it is the leftmost. A step goes one depth down, so there are at most $\lceil \log_2 n \rceil$ of them. $\square$
+
+:::note[This proof needs]
+1. Node values that tell whether a qualifying position exists inside (the maximum for "$\ge x$", the minimum for "$\le x$"; for a count of ones, the count is positive).
+2. To search from a position $l$ on, or after a lazy update, the walk is a recursive function that skips nodes before $l$ and pushes tags; the cost is $O(\log n)$ as in Theorem 5.3.1.
+3. After the position is found, a point update on it keeps the tree right (Theorem 5.3.2).
+:::
+
+<TheoremCode unit="5.3/thm-5" />
+
+The first example is the tiny instance with several thresholds, including 10, which gives $-1$. The second changes $a_2$ to 0 and finds the first value $\ge 4$ to be at position 4. The check compares with a scan after each of many random changes, for every $n$ up to 25.
+
+### 4.6 A node with more than one number
+
+**Theorem 5.3.6 (combining nodes).** Let a node of the range $R$ store the four numbers: the sum of $R$, the best sum of a non-empty prefix of $R$, the best sum of a non-empty suffix, and the best sum of a non-empty subarray inside $R$. Let $A$ and $B$ be the nodes of two adjacent ranges, $A$ on the left. Then the node of the joined range is: sum $= A.\text{sum} + B.\text{sum}$; prefix $= \max(A.\text{pref},\ A.\text{sum} + B.\text{pref})$; suffix $= \max(B.\text{suf},\ B.\text{sum} + A.\text{suf})$; best $= \max(A.\text{best},\ B.\text{best},\ A.\text{suf} + B.\text{pref})$. This combination is associative, so a range query combines the nodes of Theorem 5.3.1 *from left to right* and returns the best subarray sum of the range.
+
+:::tip[In plain words]
+To know the best stretch of a joined range, a node must remember more than its own best. The best stretch of two parts is either inside the left part, inside the right part, or crosses the border, in which case it is the best ending of the left part glued to the best beginning of the right part. And to be able to say these things about the next join, the new node must also know its own best beginning and ending.
+:::
+
+**A tiny instance.** $a = [-1, 2, 3, -4, 5, -2]$. The halves $[-1, 2, 3]$ and $[-4, 5, -2]$ have (sum, pref, suf, best) $= (4, 4, 5, 5)$ and $(-1, 1, 3, 5)$: for the second, the prefixes are $-4, 1, -1$, the suffixes $-2, 3, -1$, and the best stretch is $5$. The join: sum $4 - 1 = 3$; pref $= \max(4,\ 4 + 1) = 5$; suf $= \max(3,\ -1 + 5) = 4$; best $= \max(5,\ 5,\ 5 + 1) = 6$ (the stretch $2, 3, -4, 5$).
+
+**Proof.**
+1. The sum of a joined range is the sum of the parts.
+2. A non-empty prefix of the joined range either ends inside $A$ (then it is a prefix of $A$) or goes through all of $A$ and a non-empty prefix of $B$ (value $A.\text{sum} + $ a prefix sum of $B$). The best of the two cases is the formula. The suffix is symmetric.
+3. A non-empty subarray of the joined range lies inside $A$, or inside $B$, or contains the border: then it is a non-empty suffix of $A$ followed by a non-empty prefix of $B$, and its best value is $A.\text{suf} + B.\text{pref}$ (the two parts are chosen independently).
+4. Associativity: the four numbers of a range are functions of the range's values only, so joining three adjacent ranges gives the node of the whole range in either grouping.
+5. By Theorem 5.3.1 (c) the returned nodes cover $l..r$ exactly once and left to right (the function visits the left child first), so combining them in this order gives the node of $l..r$. $\square$
+
+:::note[This proof needs]
+1. Non-empty is a choice: with empty parts allowed the formulas change (add $0$ in the maxima). The task decides.
+2. The order of combination: `combine(left, right)` is not commutative. A query that combines the right part first returns a wrong answer.
+3. The leaf must be set to $(a, a, a, a)$, not to 0.
+:::
+
+<TheoremCode unit="5.3/thm-6" />
+
+The first example is the tiny instance (whole range: sum 3, prefix 5, suffix 4, best 6) and the second queries two ranges (best 5 each). The check compares with trying every subarray, for every range of random arrays up to $n = 14$.
+
+## 5. Recognition Cards
+
+<Cards topic="5.3" />
+
+## 6. Templates
+
+Six templates. Each shows only the structure that matters; the program around it reads the input. All use the recursive form: node `v` covers the positions `lo..hi` of a 0-based array, its children are `2v` and `2v + 1`, and the array of nodes has $4n$ entries. Each is checked against a brute force that follows the statement directly (scan the range, redo the operation value by value), on thousands of random small inputs and on fixed tests with a single element, equal values and the largest numbers.
+
+### Cheapest product in a range with price changes (Theorems 5.3.1 and 5.3.2)
+
+<CodeSnippet unit="5.3/min-update-query" />
+
+**How it works.** `t[v]` is the minimum of the positions `lo..hi` of the node. `build` fills the leaves and then each node from its two children. `set` walks to the leaf of position `i`, changes it, and recomputes `t[v]` for every node on the way back (Theorem 5.3.2). `query` returns the stored value for a node fully inside the range, `LLONG_MAX` for a node outside it (the neutral element of the minimum, so it never wins), and the minimum of the answers of both children otherwise (Theorem 5.3.1). The program reads 1-based positions and subtracts 1.
+
+**Alternative formulation.** Replace `min` by `max`, by `__gcd` with neutral element 0, or by `+` with neutral element 0: nothing else changes. For sums, the Fenwick tree of topic 5.2 is shorter. A bottom-up version with the leaves at `n + i` is faster and shorter still, but it is harder to extend to tags.
+
+### The smallest value in a range and how often it occurs (Theorem 5.3.6)
+
+<CodeSnippet unit="5.3/min-with-count" />
+
+**How it works.** A node keeps two numbers, the minimum and its count. `join` takes the part with the smaller minimum; if the minimums are equal it adds the counts (Theorem 5.3.6: the node of a joined range comes from the nodes of the parts). A node outside the query returns `{LLONG_MAX, 0}`: no value, no count, so joining with it changes nothing. The order does not matter for this join, but the structure is the same as for the best subarray.
+
+**Alternative formulation.** For the second smallest value keep three numbers (the smallest, its count, and the second smallest). For a count of the *maximum* swap the comparison.
+
+### Add to a range, sum of a range (Theorem 5.3.3)
+
+<CodeSnippet unit="5.3/lazy-add-sum" />
+
+**How it works.** `t[v]` is the sum of the node's range with all additions aimed at the node or above it already counted at the node; `tag[v]` is the addition that the children have not yet received. `apply` adds `d * length` to the sum and `d` to the tag. `push` gives the tag to both children and clears it; both `add` and `sum` call it before looking at the children, so no node is read while its parent still holds a note for it (Theorem 5.3.3, step 4). After the children are updated, `t[v]` is recomputed from them. The values can be large, so sums, tags and the multiplication by the length are `long long`.
+
+**Alternative formulation.** The tags can be left in place, without pushing: a query adds the tags of the nodes on its way down. The code is shorter for minimums, where `t[v] = min(children) + tag[v]`. For range additions with only point reads, a Fenwick tree over the differences (topic 5.2) is much shorter.
+
+### Set a range to one value, sum of a range (Theorem 5.3.4)
+
+<CodeSnippet unit="5.3/lazy-assign-sum" />
+
+**How it works.** An assignment tag does not add up: a new assignment simply replaces the older one, which is the composition (0, c) of Theorem 5.3.4. `has[v]` says that a tag exists; it is a separate flag because the assigned value may itself be 0, and "no tag" cannot be written as a value. `apply` sets the sum to `x * length`, stores `x` and the flag. `push` hands the assignment down and clears the flag. Everything else is as for the additions.
+
+**Alternative formulation.** To mix additions and assignments, keep the pair of Theorem 5.3.4 for each node (a multiplier and an addend, with the assignment written as multiplier 0) and compose it on every `apply`. For a time-stamped version, store the time of the last assignment of each node instead of a flag.
+
+### The first room that fits, with rooms used up (Theorem 5.3.5)
+
+<CodeSnippet unit="5.3/first-fit" />
+
+**How it works.** The tree holds the maximum number of free beds of each range. If the maximum of the root is smaller than `g`, no room fits and the answer is 0. Otherwise `take` walks down: it goes into the left child when that child has a maximum of at least `g`, because every room there comes before every room in the right child; if not, the room is in the right child (Theorem 5.3.5). At the leaf it removes `g` beds and recomputes the maximum of every node above the leaf. The walk is one pass down and one pass up, $O(\log n)$ in all.
+
+**Alternative formulation.** With a tag-based tree the same walk works if `push` is called before the maximums of the children are read. For a search that starts at a given position `l`, use the recursive form: skip the nodes that end before `l`, and return the first leaf found.
+
+### The best subarray after each change (Theorem 5.3.6)
+
+<CodeSnippet unit="5.3/max-subarray" />
+
+**How it works.** A node keeps four numbers for its range: the sum, the best prefix, the best suffix and the best subarray. The empty subarray is allowed here, so each of the last three is at least 0; a leaf with the value `x` has sum `x` and the other three `max(0, x)`. `join(a, b)` takes `a` as the left part: the prefix of the joined range is the prefix of `a`, or all of `a` and the prefix of `b`; the suffix is symmetric; the best subarray is inside `a`, inside `b`, or the suffix of `a` and the prefix of `b` (Theorem 5.3.6). After each change the root holds the answer. The sums are `long long`.
+
+**Alternative formulation.** If the empty subarray is not allowed, a leaf is `{x, x, x, x}` and the answer for a range query is the best of the joined nodes (Theorem 5.3.6 as stated). For a fixed array without changes, one pass of Kadane gives the answer in $O(n)$.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found.
+
+### Bug: a node that ends where the range starts is called disjoint
+
+Template: cheapest product in a range.
+
+```cpp
+if (r <= lo || hi <= l) return LLONG_MAX;               // instead of r < lo || hi < l
+```
+
+Input: `1 1`, then `2`, then the question `2 1 1`.
+
+Wrong output `9223372036854775807`, correct output `2`. The node covers position 0 only, and the question is also position 0 (after the shift). A node and a range are disjoint only if one lies *strictly* before the other; here `hi <= l` holds with equality, so the leaf is thrown away and the neutral element comes back (Theorem 5.3.1: the ranges are closed on both ends).
+
+**Fix:** use `r < lo || hi < l`.
+
+### Bug: the nodes above a change are not recomputed
+
+Template: cheapest product in a range.
+
+```cpp
+// the line  t[v] = min(t[2 * v], t[2 * v + 1]);  is missing at the end of set
+```
+
+Input: `2 3`, then `2 18`, then `2 2 2`, `1 1 12` and `2 1 2`.
+
+Wrong output `18` and `2`, correct output `18` and `12`. The change reaches the leaf, but the root still holds the old minimum 2. Every node whose range contains the position must be recomputed on the way back (Theorem 5.3.2); the leaf alone is not enough.
+
+**Fix:** recompute `t[v]` after the recursive call.
+
+### Bug: the note is not passed down before a partial update
+
+Template: add to a range, sum of a range.
+
+```cpp
+// in add: the call  push(v, lo, hi);  before the two recursive calls is missing
+```
+
+Input: `2 3`, then `0 0`, then `1 1 2 5`, `1 1 1 1` and `2 1 2`.
+
+Wrong output `1`, correct output `11`. The first operation adds 5 to the whole root and leaves the tag 5 at the root. The second operation reaches only the left leaf; without the push the leaves do not know about the 5, and the root is then recomputed from the leaves, which loses it (Theorem 5.3.3, step 4: a node is opened only after its note is pushed).
+
+**Fix:** call `push` before looking at the children, in `add` as well as in `sum`.
+
+### Bug: the added amount is not multiplied by the length
+
+Template: add to a range, sum of a range.
+
+```cpp
+t[v] += d;                                              // instead of d * (hi - lo + 1)
+```
+
+Input: `2 2`, then `0 0`, then `1 1 2 3` and `2 1 2`.
+
+Wrong output `3`, correct output `6`. Adding 3 to both positions adds 3 to each of two values, so the node sum rises by 6. The tag is added per value, and the sum of a node of length $len$ rises by $len$ times as much (Theorem 5.3.3, step 2).
+
+**Fix:** multiply by `hi - lo + 1`.
+
+### Bug: assigning zero looks like no assignment
+
+Template: set a range to one value.
+
+```cpp
+has[v] = x != 0;                                        // instead of 1
+```
+
+Input: `2 3`, then `5 5`, then `1 1 2 0`, `1 1 1 7` and `2 1 2`.
+
+Wrong output `12`, correct output `7`. The first operation assigns 0 to the whole root, but the flag says "no assignment" because the value is 0. The second operation then opens the root, finds no note, and the leaf of position 2 keeps its old 5. The flag must say that an assignment exists, whatever its value (Theorem 5.3.4: "no tag" is a separate state).
+
+**Fix:** set the flag to 1 in every case.
+
+### Bug: the walk goes right when the left child is exactly big enough
+
+Template: the first room that fits.
+
+```cpp
+if (t[2 * v] > g) v = 2 * v, hi = mid;                  // instead of >=
+```
+
+Input: `3 1`, then `7 9 9`, then the group `7`.
+
+Wrong output `2`, correct output `1`. The first room has exactly 7 beds, which is enough. With `>` the left child (its maximum is 7, not more than 7) is rejected and the walk goes right, so the group is put in a later room (Theorem 5.3.5: the left child is chosen when its maximum is *at least* the bound).
+
+**Fix:** use `>=`.
+
+### Bug: the best subarray forgets the one that crosses the border
+
+Template: the best subarray after each change.
+
+```cpp
+max(a.best, b.best)                                     // instead of max({a.best, b.best, a.suf + b.pref})
+```
+
+Input: `2 1`, then `6 4`, then the change `1 6`.
+
+Wrong output `6`, correct output `10`. The best stretch uses both positions, so it lies inside neither half. It is the suffix of the left half glued to the prefix of the right half (Theorem 5.3.6, step 3).
+
+**Fix:** add the third term `a.suf + b.pref`.
+
+## 8. Worked examples
+
+### Example 1: Dynamic Range Minimum Queries
+
+[CSES 1649: Dynamic Range Minimum Queries](https://cses.fi/problemset/task/1649). In short: an array of $n \le 2 \cdot 10^5$ numbers and $q \le 2 \cdot 10^5$ operations: "set $a_k$ to $u$", or "print the smallest number in positions $a$ to $b$" (1-based).
+
+#### Step 1: Constraints → budget
+
+$n = q = 2 \cdot 10^5$. Scanning the range for each question is up to $4 \cdot 10^{10}$ steps, about 400 seconds. A segment tree makes each operation about $4 \cdot 18 = 72$ node visits, so about $1.4 \cdot 10^7$ in all.
+
+#### Step 2: Question form → candidate tools
+
+- Scan the range ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(nq)$.
+- A sparse table ([topic 5.1](../5-1-sparse-table/)): needs a fixed array, and the operations change it.
+- A Fenwick tree ([topic 5.2](../5-2-fenwick/)): the minimum cannot be taken back.
+- A segment tree: the card "Changing values and asking range minimum, maximum or GCD".
+
+#### Step 3: Property check → decision
+
+There are changes between the questions. The minimum of a range is the minimum of the minimums of its two halves, and it cannot be undone by subtraction. Decision: a segment tree of minimums.
+
+#### Step 4: Proof for this problem
+
+By Theorem 5.3.1 the minimum of $a_l, \dots, a_r$ is the minimum of the stored values of at most about $2 \log_2 n$ whole nodes that cover the range exactly once, found by visiting at most 4 nodes per depth. By Theorem 5.3.2 a change of $a_k$ affects only the nodes on the path from the root to the leaf of $k$, and recomputing them bottom-up restores the tree. The positions are shifted from 1-based to 0-based before the calls.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.3/example-1" />
+
+#### Step 6: Alternative approach
+
+Processing the operations in blocks: rebuild a sparse table every $\sqrt q$ operations and scan the changed positions for each question, $O(q \sqrt{n})$ in all. It is slower and longer. A segment tree built bottom-up in the array $t[n..2n-1]$ is shorter and about twice as fast for this problem, but cannot carry tags.
+
+### Example 2: Circular RMQ
+
+[Codeforces 52C: Circular RMQ](https://codeforces.com/problemset/problem/52/C). In short: a circle of $n \le 2 \cdot 10^5$ numbers (places $0, \dots, n - 1$) and $m \le 2 \cdot 10^5$ operations of two kinds: `lf rg` asks for the smallest number on the circular range from `lf` to `rg`, and `lf rg v` adds $v$ to every number on it. If `lf > rg` the range runs from `lf` to $n - 1$ and then from $0$ to `rg`.
+
+#### Step 1: Constraints → budget
+
+$n = m = 2 \cdot 10^5$. Adding $v$ to each number of the range is up to $4 \cdot 10^{10}$ steps. With lazy tags each operation is two range operations of about 72 visits each, so about $3 \cdot 10^7$ steps in all.
+
+#### Step 2: Question form → candidate tools
+
+- Update each value of the range ([topic 0.5](../../phase-0/0-5-brute-force/)): $O(nm)$.
+- A segment tree with point updates: a range addition would touch every leaf in it.
+- A Fenwick tree ([topic 5.2](../5-2-fenwick/)): it gives single values after range additions, but not the minimum of a range.
+- A segment tree with lazy tags: the card "Adding to or setting a whole range, then asking range sums or minimums".
+
+#### Step 3: Property check → decision
+
+An addition of $v$ to a node raises its minimum by $v$ and needs only $v$ (not the length), and two additions merge by adding the numbers. So a tag is a pending addition. The circle is handled by splitting a range that wraps into two ordinary ranges. Decision: a lazy tree of minimums.
+
+#### Step 4: Proof for this problem
+
+Apply Theorem 5.3.3 with the stored value replaced by the minimum: `apply(v, d)` adds $d$ to $t[v]$ and to $\text{tag}[v]$ (the minimum of a range rises by $d$ when every value does). The invariant of the proof reads: the true minimum of $v$ equals $t[v]$ plus the tags of the strict ancestors. Pushing before opening a node makes the ancestors' tags zero on the path, so a query that takes a whole node reads the true minimum. A wrapped range `lf > rg` is the union of the disjoint ranges $[lf, n-1]$ and $[0, rg]$, so the answer is the smaller of the two answers, and an addition is done on both.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.3/example-2" />
+
+The function above works on ordinary ranges; the program around it splits a range with `lf > rg` into two calls and reads the lines with two or three numbers.
+
+#### Step 6: Alternative approach
+
+The same tree can be written without pushing: keep the tags in the nodes and let the query add the tags of the nodes on its path (`t[v] = min(children) + tag[v]`). The code has no `push`, but the queries must carry the sum of the tags downward. Both are $O(\log n)$.
+
+### Example 3: Subarray Sum Queries
+
+[CSES 1190: Subarray Sum Queries](https://cses.fi/problemset/task/1190). In short: $n \le 2 \cdot 10^5$ numbers and $m \le 2 \cdot 10^5$ changes "set $a_k$ to $x$"; after each change print the largest sum of a subarray, where the empty subarray (sum 0) is allowed.
+
+#### Step 1: Constraints → budget
+
+$n = m = 2 \cdot 10^5$. Kadane's pass after each change is $4 \cdot 10^{10}$ steps. A path recomputation is 18 joins of four numbers, so $3.6 \cdot 10^6$ joins.
+
+#### Step 2: Question form → candidate tools
+
+- Kadane's algorithm after each change ([topic 3.2](../../phase-3/3-2-dp-foundations/)): $O(n)$ per change.
+- A segment tree of sums: the sum of a node does not say where the best stretch is.
+- A segment tree whose nodes keep four numbers: the card "A node that stores several numbers".
+
+#### Step 3: Property check → decision
+
+The best stretch of a joined range lies in the left part, in the right part, or crosses the border. The first two are the "best" of the parts; the third is the best suffix of the left part plus the best prefix of the right part. All of these are numbers of the parts, and the four numbers of the joined range are computed from the four numbers of the parts. Decision: the node of Theorem 5.3.6.
+
+#### Step 4: Proof for this problem
+
+Theorem 5.3.6 gives the join and proves it for non-empty parts. With the empty subarray allowed, every part's prefix, suffix and best are at least 0, and the same case split holds with the empty option added to each maximum: a leaf with value $x$ has prefix, suffix and best equal to $\max(0, x)$. The root holds the answer for the whole array, and a change recomputes only the path above its leaf (Theorem 5.3.2). No query function is needed, because the question is always about the whole array.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.3/example-3" />
+
+#### Step 6: Alternative approach
+
+Only the root is read, so the tree can be stored bottom-up in two arrays of $2n$ nodes and the path recomputed by `i /= 2`. Divide and conquer over the changes (offline) is possible but longer.
+
+## 9. Problem ladder
+
+<Ladder topic="5.3" />
+
+## 10. Identification drill
+
+<Drill topic="5.3" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="5.3" />
+
+## 12. Self-test questions
+
+<SelfTest topic="5.3" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="5.3" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="5.3" />

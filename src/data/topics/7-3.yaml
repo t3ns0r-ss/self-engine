@@ -1,0 +1,995 @@
+# Topic 7.3 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
+id: '7.3'
+uses:
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check, and the search over subsets'
+- topic: '0.6'
+  what: 'Standard containers: a map of counts, for the problems that need no tree'
+- topic: '1.1'
+  what: 'Sorting: the ranks of the keys (coordinate compression) and the order of intervals'
+- topic: '1.2'
+  what: 'Prefix sums: sums over a window, difference arrays, tables of prefix counts'
+- topic: '1.3'
+  what: 'Two pointers: the left end of a window that only moves right'
+- topic: '1.4'
+  what: 'Binary search: a search on the answer around a DP, and the last job that ends in time'
+- topic: '1.6'
+  what: 'Monotonic stack and deque: the window maximum that the DP feeds'
+- topic: '2.1'
+  what: 'Number theory: divisors, multiples and the gcd'
+- topic: '3.2'
+  what: 'Dynamic programming: states, transitions and the O(n²) tables that get faster'
+- topic: '3.4'
+  what: 'Sequence DP: the increasing subsequence DP and its table of tails'
+- topic: '5.1'
+  what: 'Sparse table: range minimum and maximum of a fixed array'
+- topic: '5.2'
+  what: 'Fenwick tree: prefix maxima and prefix sums over the ranks'
+- topic: '5.3'
+  what: 'Segment tree: range maximum and range addition'
+theorems:
+- id: 7.3.1
+  title: The prefix-maximum transition
+  plain_words: 'The line "best over the earlier elements with a smaller key" is a question about a prefix
+    of the ranks, and a Fenwick tree answers prefix questions about maxima when values are only ever added,
+    never removed. The rule "at least $g$ apart" only changes *when* an element is put into the tree:
+    put it in when it has become allowed, and the tree contains exactly the allowed ones. Asking for ranks
+    below $r_i$ and not up to $r_i$ is what makes the increase strict.'
+  code: 7.3/thm-1
+- id: 7.3.2
+  title: The window transition
+  plain_words: 'An earlier state that is both older and not better than a newer state can never be the
+    best again: it leaves the window first, and while both are in the window the newer one is at least
+    as good. So the deque keeps only states that are better than everything newer; its values fall from
+    front to back, and the best is at the front. Each state enters once and leaves once.'
+  code: 7.3/thm-2
+- id: 7.3.3
+  title: Counting with prefix sums
+  plain_words: 'Sort the subsequences by their last element: those ending at $i$ are either just $i$,
+    or a subsequence ending at an earlier, smaller element followed by $i$. That is the same prefix question
+    as before, with a sum in place of a maximum. When equal value sequences must be counted once, the
+    new count for the value $v$ already contains every sequence that ended at an earlier copy of $v$ (it
+    can end at this copy instead), so it replaces the old count.'
+  code: 7.3/thm-3
+- id: 7.3.4
+  title: Range updates on the states
+  plain_words: 'Sometimes a new element does not look at the earlier states but changes many of them by
+    the same amount: it adds a reward to every state whose last choice lies in a range. Then the states
+    are kept in a tree that can add one number to a whole range and report the largest value in a range,
+    without touching the states one by one. The adds are left in the tree''s nodes and counted when needed.'
+  code: 7.3/thm-4
+cards:
+- id: prefix-max-transition
+  name: Best over the earlier elements with a smaller key (a prefix of the ranks), by a Fenwick tree
+  from_theorem: 7.3.1
+  decisive_property: The state of an element is the best value of a choice that ends there, its transition
+    takes the best over the earlier elements whose key is below (or not above) its own, so that the allowed
+    earlier states are a prefix of the sorted keys, and states are only ever added.
+  how_to_test: Write the transition as dp_i = (a term of i) + the best of dp_j over the earlier j that
+    satisfy a condition. Check that the condition is key_j < key_i (or ≤) for one number per element,
+    possibly together with j ≤ i − g. Replace the keys by ranks and ask a prefix-maximum tree before inserting
+    the element. If the condition has also an upper bound on the key, or earlier states must be removed
+    again, the property fails.
+  constraint_shapes:
+  - 'N = 2·10^5 elements and the heaviest increasing subsequence: the DP over pairs is 2·10^10 steps,
+    against N log N ≈ 3.6·10^6 with a tree'
+  - 'n = 2·10^5 prefix sums and the largest total length of disjoint segments of non-negative sum: dp_i
+    = i + the best of dp_j − j over the earlier j with p_j ≤ p_i, a prefix maximum over the compressed
+    prefix sums'
+  weak_signals:
+  - form: Asks for the largest total weight of an increasing subsequence, or of a chain in which each
+      next element has a larger key
+    shape: N up to 2·10^5, weights up to 10^9, values that need compression
+  - form: Asks for the best value of a choice in which each next element must be larger than the previous
+      one in some derived key, with a bonus for each element
+    shape: n up to 5·10^5, the key may be a height, a prefix sum or a value minus the index
+  - form: Asks for a chain with an extra rule, such as chosen indices at least k apart or the next step
+      going up and then down
+    shape: n up to 10^5, the condition on a pair (j, i) is key_j < key_i plus a rule on the positions
+  kill_signals:
+  - 'The earlier states allowed form a range of keys, not a prefix: with the values 3 2 1 and the rule
+    "consecutive chosen values differ by at most 1" the prefix tree finds a chain of 1 where the true
+    chain has 3 (use a segment tree with range maximum, topic 5.3)'
+  - 'Only the length of an increasing subsequence is asked: the table of tails with a binary search (topic
+    3.4) is shorter and faster'
+  in_action:
+    statement: N flowers in a row have heights (a permutation of 1..N) and beauties. Remove some flowers
+      so that the remaining heights increase from left to right. Print the largest total beauty of the
+      remaining flowers.
+    constraints: N ≤ 2·10^5, beauties up to 10^9.
+    budget: The DP over pairs is N²/2 = 2·10^10 steps. Need about N log N.
+    candidates:
+    - tool: Try all subsets (topic 0.5)
+      verdict: rejected
+      because: 2^N subsets.
+    - tool: The DP over pairs of flowers (topic 3.4)
+      verdict: rejected
+      because: 'N²/2 steps: too slow.'
+    - tool: The same DP with a Fenwick tree for prefix maxima (this topic)
+      verdict: chosen
+      because: The earlier flowers allowed are those of smaller height, a prefix of the heights, and the
+        tree takes the new values as they come (Theorem 7.3.1).
+    property_check: Each state is the best total of a choice ending at a flower; the allowed earlier states
+      are a prefix of the heights; states are only added. The property holds.
+    decision: 'A tree over the heights; dp = a + query(h − 1); update(h, dp); print the largest dp: O(N
+      log N).'
+  examples:
+    positive:
+    - inline:
+        input: The values 3 1 4 1 5 have the weights 2 3 1 4 5. What is the largest total weight of a
+          subsequence whose values strictly increase?
+        answer: '9'
+        why: 'dp = 2, 3, 4, 4, 9 (Theorem 7.3.1): the value 5 follows the best of the smaller ones, 4
+          (the chain 1, 4 with weights 3 + 1), and gets 5 + 4.'
+    - inline:
+        input: The values 1 2 3 4 have the weights 1 1 1 1. The chosen indices must be at least 2 apart.
+          What is the largest total weight of a strictly increasing choice?
+        answer: '2'
+        why: The state of the index i − 2 is inserted just before i is handled, so only indices up to
+          i − 2 are seen. Two elements fit (indices 0 and 2, 0 and 3, or 1 and 3); three would need indices
+          0, 2, 4.
+    - worked_example: ac-dp_q
+      why: 'The heaviest increasing subsequence of flowers by height with N up to 2·10^5: the tree gives
+        each prefix maximum in O(log N).'
+    negative:
+    - inline:
+        input: The values 3 2 1 each have the weight 1. Consecutive chosen values may differ by at most
+          1 (in any order). What is the largest number of elements in a choice?
+        answer: '3'
+        method_gives: '1'
+        why: The chain 3, 2, 1 is allowed, but the prefix tree asks only for smaller keys before the element,
+          so it finds nothing to build on and gives 1. The allowed earlier values are the range a − 1..a
+          + 1, not a prefix.
+      correct_tool:
+        topic: '5.3'
+        card: point-update-range-query
+    - problem: lc-longest-increasing-subsequence
+      why: 'Asks only for the length (all weights 1): the table of tails with a binary search is shorter
+        and faster than a tree.'
+      correct_tool:
+        topic: '3.4'
+        card: lis
+  lookalikes:
+  - description: The longest increasing subsequence without weights
+    tool:
+      topic: '3.4'
+      card: lis
+    flipping_difference: If only the length is asked, the table of tails with a binary search is enough.
+      Weights, counts or a rule on the previous element need the tree.
+  - description: An earlier-element rule that is a range of keys (|a_i − a_j| ≤ d)
+    tool:
+      topic: '5.3'
+      card: point-update-range-query
+    flipping_difference: A lower and an upper bound make the allowed earlier states a range of ranks.
+      The Fenwick tree answers prefixes only; a segment tree with range maximum takes the same recurrence.
+  complexity: O(n log m) time for n elements with m different keys; memory O(n + m).
+- id: window-transition
+  name: Best over a window of earlier states that moves to the right, by a monotonic deque
+  from_theorem: 7.3.2
+  decisive_property: The transition takes the best over the earlier states j in a range L_i ≤ j ≤ i −
+    1 whose left end never decreases as i grows (a fixed length k, or a left end found by two pointers),
+    and the states are produced by the DP itself.
+  how_to_test: Write the allowed predecessors of i as a range of positions and check that both ends only
+    move right. If so, a deque of candidates with falling values gives the best in O(1) amortised. For
+    a count of ways, prefix sums of the dp are enough. If the left end can jump back (an arbitrary range
+    for each i), the property fails and a segment tree is needed.
+  constraint_shapes:
+  - 'n = 10^5 cells and jumps of at most k = 10^5 cells: the loop over the last k states is 10^10 steps,
+    against n steps with a deque'
+  - 'n = 10^5 numbers cut into pieces with max − min at most s and the fewest pieces: for each end the
+    allowed starts are a range whose left end moves right, against a scan of all starts'
+  weak_signals:
+  - form: Asks for the best total of a path or a subsequence in which two consecutive chosen positions
+      are at most k apart
+    shape: n up to 10^5, k up to n, values that may be negative
+  - form: Asks to cut a sequence into pieces whose length is in a range or whose max − min is at most
+      s, with the best total or the fewest pieces
+    shape: n up to 10^5, the allowed piece lengths form a range
+  - form: Asks for the best score of a path in which each step goes forward by 1 to k positions
+    shape: n up to 10^5 cells with numbers, k up to n
+  kill_signals:
+  - 'The allowed range of each i is arbitrary and may jump back: an index removed once may be needed again.
+    With the ranges starting at 0, 0, 1, 0 the deque has lost the index 0 at the third step and cannot
+    use it at the fourth (use a segment tree with range maximum, topic 5.3)'
+  - 'Only the window extreme of a fixed array is asked, with no DP on top: the sliding window deque of
+    topic 1.6 is the whole solution'
+  in_action:
+    statement: A row of n cells has integers (possibly negative). Start in the cell 0 and finish in the
+      cell n − 1; each jump goes forward by 1 to k cells; the score is the sum of the numbers of the cells
+      visited. Print the largest score.
+    constraints: n ≤ 10^5, k ≤ n.
+    budget: The loop over the last k cells is nk = 10^10 steps. Need about n or n log n.
+    candidates:
+    - tool: The DP with a loop over the last k states (topic 3.2)
+      verdict: rejected
+      because: nk steps.
+    - tool: A segment tree with range maximum (topic 5.3)
+      verdict: rejected
+      because: Correct in O(n log n), but the window only moves right, so a deque does it in O(n) with
+        less code.
+    - tool: The DP with a deque for the window maximum (this topic)
+      verdict: chosen
+      because: The predecessors of i are the cells i − k..i − 1 and the left end only grows (Theorem 7.3.2).
+    property_check: The predecessors of a cell are a range of the last k cells, and the left end i − k
+      never decreases. The property holds.
+    decision: 'dp[i] = a[i] + the maximum of dp over the window, kept in a deque of falling values: O(n).'
+  examples:
+    positive:
+    - inline:
+        input: The numbers 10 2 −10 5 20 and k = 2. What is the largest sum of a non-empty subsequence
+          in which consecutive chosen positions are at most 2 apart?
+        answer: '37'
+        why: dp = 10, 12, 2, 17, 37 (Theorem 7.3.2); the best is 10 + 2 + 5 + 20 = 37, skipping the −10
+          with a step of 2.
+    - inline:
+        input: The numbers 10 −5 −2 4 0 and k = 3. A path goes from the cell 0 to the cell 4 with jumps
+          of 1 to 3 cells. What is the largest sum of the visited cells?
+        answer: '14'
+        why: The path 0 → 3 → 4 visits 10, 4, 0 and has the sum 14; the jump from 0 to 3 has length 3
+          and skips both negative cells.
+    - worked_example: lc-constrained-subsequence-sum
+      why: 'The best subsequence sum with consecutive positions at most k apart, n up to 10^5: the window
+        maximum in a deque.'
+    negative:
+    - inline:
+        input: Four cells with the numbers 5, −10, 1, 1. The cell 1 can be reached from the cell 0, the
+          cell 2 only from the cell 1, and the cell 3 from any of the cells 0 to 2. A path goes from the
+          cell 0 to the cell 3. What is the largest sum?
+        answer: '6'
+        method_gives: '-3'
+        why: The allowed range of the cell 3 goes back to the cell 0 after the range of the cell 2 had
+          moved past it. A deque that removed the cell 0 at the cell 2 cannot bring it back, and finds
+          only the path 0 → 1 → 2 → 3 with −3, while 0 → 3 has 5 + 1 = 6.
+      correct_tool:
+        topic: '5.3'
+        card: point-update-range-query
+    - problem: cses-3221
+      why: 'Asks for the minimum of every window of a fixed array, with no DP over the results: the sliding
+        window deque alone is the solution.'
+      correct_tool:
+        topic: '1.6'
+        card: window-deque
+  lookalikes:
+  - description: A count of ways with a window (the sum over the last k states)
+    tool:
+      topic: '1.2'
+      card: range-sum
+    flipping_difference: 'For a sum no deque is needed: prefix sums of the dp give the window sum. The
+      deque is for a maximum or a minimum.'
+  - description: A range of predecessors with arbitrary ends
+    tool:
+      topic: '5.3'
+      card: point-update-range-query
+    flipping_difference: If the left end can move back, the deque loses information for good; a segment
+      tree with range maximum answers each range in O(log n).
+  complexity: O(n) time with a deque, O(n log n) with a segment tree; memory O(n).
+- id: counting-with-tree
+  name: Number of increasing subsequences (or of ways) as a prefix sum over the ranks, by a Fenwick tree
+    of sums
+  from_theorem: 7.3.3
+  decisive_property: The answer counts choices, each choice is described by its last element, and the
+    number of choices ending at i is one (just i) plus the sum of the numbers ending at earlier elements
+    with a smaller key, so that the sum runs over a prefix of the ranks.
+  how_to_test: Count the choices by their last element and write the count as a sum over the earlier elements
+    allowed before it. Check that the allowed ones form a prefix of the keys, possibly with one layer
+    for each length. If equal sequences of values must be counted once, check that the new count contains
+    the old one and use a replacement. If the question is only about pairs, it is an inversion count.
+  constraint_shapes:
+  - 'n = 2·10^5 numbers and the number of strictly increasing subsequences modulo 10^9 + 7: the number
+    of subsequences is exponential and the DP over pairs is 2·10^10 steps, against n log n with a tree
+    of sums'
+  - 'n = 10^5 numbers and the number of increasing subsequences of exactly 11 elements: one tree for each
+    length, 11 · n log n steps'
+  weak_signals:
+  - form: Asks for the number of increasing (or non-decreasing) subsequences, modulo a prime
+    shape: n up to 2·10^5, values up to 10^9 that need compression
+  - form: Asks for the number of increasing subsequences of a given small length k
+    shape: n up to 10^5, k up to about 10
+  - form: Asks for the sum, over all distinct subsequences with a property, of a product or a count
+    shape: n up to 10^5, values up to 10^6, the answer modulo a prime
+  kill_signals:
+  - 'The question is about pairs only, with no chains of any length: that is an inversion count. For the
+    array 3 1 2 the chain DP gives 4 where the number of pairs i < j with a_i > a_j is 2 (topic 5.2)'
+  - 'The length k of the chains is large: one tree for each length costs k n log n, which for k near n
+    is far too slow; the count over lengths needs another idea'
+  in_action:
+    statement: An array of n numbers. Count the strictly increasing subsequences (different sets of positions
+      are different), modulo 10^9 + 7.
+    constraints: n ≤ 2·10^5, values up to 10^9.
+    budget: The number of subsequences is exponential and the DP over pairs is n² = 4·10^10. Need about
+      n log n.
+    candidates:
+    - tool: Enumerate all subsequences (topic 0.5)
+      verdict: rejected
+      because: Exponentially many.
+    - tool: The DP over pairs of positions (topic 3.4)
+      verdict: rejected
+      because: n²/2 = 2·10^10 steps.
+    - tool: The DP with a Fenwick tree of sums (this topic)
+      verdict: chosen
+      because: The subsequences ending at i are i alone or an earlier smaller-valued subsequence followed
+        by i; the smaller ones are a prefix of the ranks (Theorem 7.3.3).
+    property_check: Every subsequence is described by its last element, and the earlier last elements
+      allowed form a prefix of the ranks. The property holds.
+    decision: 'Compress the values; cnt = 1 + the prefix sum below the rank; add cnt at its rank; the
+      answer is the sum of all cnt: O(n log n).'
+  examples:
+    positive:
+    - inline:
+        input: How many strictly increasing subsequences (by positions) does the array 3 1 2 4 have?
+        answer: '9'
+        why: 'cnt = 1, 1, 2, 5 (Theorem 7.3.3): the 4 ends 1 + 1 + 1 + 2 = 5 subsequences. The total is
+          9.'
+    - inline:
+        input: In the array 3 1 2 4, how many strictly increasing subsequences have exactly 2 elements?
+        answer: '4'
+        why: 'With one tree for each length: the pairs are (3, 4), (1, 2), (1, 4) and (2, 4).'
+    negative:
+    - inline:
+        input: How many pairs of positions i < j with a_i > a_j has the array 3 1 2?
+        answer: '2'
+        method_gives: '4'
+        why: 'The pairs are (3, 1) and (3, 2). The count of increasing chains counts something else and
+          gives 4: the subsequences (3), (1), (2) and (1, 2). Pairs only are an inversion count.'
+      correct_tool:
+        topic: '5.2'
+        card: inversion-count
+    - problem: cf-1676H2
+      why: 'Asks for the number of crossing pairs (chains of length 2): one pass with a Fenwick tree counts
+        the earlier elements that are larger.'
+      correct_tool:
+        topic: '5.2'
+        card: inversion-count
+  lookalikes:
+  - description: Counting increasing subsequences for small n (n ≤ 2000)
+    tool:
+      topic: '3.4'
+      card: lis
+    flipping_difference: With n up to 2000 the sum over the earlier j costs n²/2 = 2·10^6 steps and a
+      tree is not needed.
+  - description: Counting pairs i < j with a_i > a_j (inversions)
+    tool:
+      topic: '5.2'
+      card: inversion-count
+    flipping_difference: 'Only chains of length 2 are asked, so there is no recurrence to build: one tree
+      and one pass count the earlier larger elements.'
+  complexity: O(n log m) time for one length, O(t n log m) for exactly t elements; memory O(t m).
+- id: range-update-transition
+  name: A new element adds the same amount to a range of earlier states (a tree with range addition and
+    range maximum)
+  from_theorem: 7.3.4
+  decisive_property: The states can be numbered so that processing one element changes a contiguous range
+    of states by the same amount, a new state takes the best of the earlier ones, and the answer is the
+    best state at the end.
+  how_to_test: Choose a state that makes the effect of each element a contiguous range; for a reward paid
+    when a chosen set meets an interval, the state is the position of the last choice. Write the effect
+    of each element on every state and check that it is the same amount over one range. If the amount
+    differs from state to state, the property fails. Then keep the states in a tree with range addition
+    and range maximum.
+  constraint_shapes:
+  - 'N = 2·10^5 positions and M = 2·10^5 intervals with rewards: changing every affected state one by
+    one is N·M = 4·10^10 steps, against (N + M) log N with range additions'
+  - 'n = 3.5·10^4 numbers cut into k = 50 parts valued by their number of different numbers: the O(k n²)
+    DP is 6·10^10 steps, against k n log n with one range addition for each number'
+  weak_signals:
+  - form: Asks for the best total reward when a reward is given if a chosen set meets an interval, over
+      a line of positions
+    shape: N and M up to 2·10^5, rewards that may be negative
+  - form: Asks to split a sequence into k parts and maximise a sum of values of the parts, where the value
+      of a part is its number of different elements
+    shape: n up to 3.5·10^4 or 10^5, k up to 50
+  - form: Asks for the best choice of disjoint segments or rows in which each new element raises the values
+      of all earlier starts in a range
+    shape: n up to 3·10^5, a range of earlier states changes at each step
+  kill_signals:
+  - The effect of an element is not the same amount for the states in a range. If an interval pays only
+    when it contains exactly one 1, the number of ones inside matters; with the intervals (2, 2, 9), (1,
+    2, 4), (1, 1, 2) the range-addition DP gives 15 where the true best is 13
+  - 'The sizes are tiny (n up to 20): a search over all 2^n choices (topic 0.5) is shorter and enough'
+  in_action:
+    statement: A string of n bits is chosen. Each of m intervals (l, r, a) pays a if the string has a
+      1 inside it (a may be negative). Print the largest total.
+    constraints: n, m ≤ 2·10^5.
+    budget: There are 2^n strings; a DP with a state for each last 1 and every affected state changed
+      one by one costs n·m = 4·10^10. Need about (n + m) log n.
+    candidates:
+    - tool: Try all strings (topic 0.5)
+      verdict: rejected
+      because: Exponentially many.
+    - tool: The DP over the last 1 with every affected state changed by hand
+      verdict: rejected
+      because: 'An interval touches up to n states: n·m steps.'
+    - tool: The same DP with range additions in a tree (this topic)
+      verdict: chosen
+      because: An interval ending at i adds its reward to exactly the states whose last 1 is in l..i,
+        one contiguous range (Theorem 7.3.4).
+    property_check: The reward of an interval depends only on the position of the last 1 at its right
+      end, and it is the same amount for a contiguous range of states. The property holds.
+    decision: 'Sort the intervals by the right end; for each position start the new state from the best
+      earlier state, then add the rewards of the intervals ending there to the states l..i: O((n + m)
+      log n).'
+  examples:
+    positive:
+    - inline:
+        input: n = 3 and the intervals (1, 2, 10), (2, 3, −5), (3, 3, 20). A string earns the reward of
+          an interval if it has a 1 inside it. What is the largest total?
+        answer: '25'
+        why: The states after the position 3 are 0, 10, 5, 25 (Theorem 7.3.4); the strings 011 and 101
+          earn 10 − 5 + 20 = 25.
+    - inline:
+        input: The numbers 1 2 1 3 3 2 are cut into exactly 2 consecutive parts; the value of a part is
+          its number of different numbers. What is the largest total value?
+        answer: '5'
+        why: 'The best cut is after the fourth number: [1, 2, 1, 3] has 3 different numbers and [3, 2]
+          has 2. In the tree, each new number adds 1 to the starts since its previous occurrence (Theorem
+          7.3.4).'
+    - worked_example: ac-dp_w
+      why: 'The reward of an interval added to a range of states, N and M up to 2·10^5: a tree with range
+        addition and range maximum.'
+    negative:
+    - inline:
+        input: n = 2 and the intervals (2, 2, 9), (1, 2, 4), (1, 1, 2). Now an interval pays only if it
+          contains exactly one 1. What is the largest total?
+        answer: '13'
+        method_gives: '15'
+        why: The string 01 earns 9 + 4 = 13; the string 11 earns only 9 + 2 = 11, because the interval
+          (1, 2) has two ones. The range-addition DP pays for "at least one" and finds 15 for 11. Whether
+          an interval has exactly one 1 depends on the number of ones inside it, not on the last 1 alone.
+      correct_tool:
+        topic: '0.5'
+        card: subset-bitmask
+    - problem: cf-1661D
+      why: 'Range additions are applied in a fixed order from the right and only read at the end: a difference
+        array does it, with no tree.'
+      correct_tool:
+        topic: '1.2'
+        card: difference-array
+  lookalikes:
+  - description: Range additions with queries about single cells or sums, and no DP on top
+    tool:
+      topic: '5.2'
+      card: updates-and-range-sums
+    flipping_difference: When updates only add and queries ask a cell or a sum, a Fenwick tree is enough.
+      A maximum over a range of changing values needs the tree with range maximum.
+  - description: Updates that assign a value to a range, or sums over ranges
+    tool:
+      topic: '5.3'
+      card: lazy-range-update
+    flipping_difference: Assignment and sums need the push-down of topic 5.3; the tree that leaves the
+      adds in place is for addition with maximum.
+  complexity: O((n + M) log n) time for n positions and M updates; memory O(n); O(k n log n) for k layers.
+problems:
+- id: ac-dp_q
+  role: worked_example
+  summary: N ≤ 2·10^5 flowers in a row, with heights that are a permutation of 1..N and beauties up to
+    10^9; remove some so that the remaining heights increase from left to right; the largest total beauty
+    of the rest.
+- id: lc-constrained-subsequence-sum
+  role: worked_example
+  summary: An array of up to 10^5 integers (some negative) and an integer k; the largest sum of a non-empty
+    subsequence in which two consecutive chosen elements are at most k positions apart.
+- id: ac-dp_w
+  role: worked_example
+  summary: A string of N ≤ 2·10^5 bits is chosen; each of M ≤ 2·10^5 intervals (l, r, a), with a possibly
+    negative, adds a if the string has at least one 1 inside it; the largest total reward.
+- id: cf-629D
+  role: ladder
+  card: prefix-max-transition
+  rung: 2
+  twist: A weighted increasing subsequence where the weight is the volume of a cake.
+  summary: n ≤ 10^5 cakes, the i-th a cylinder of radius r_i and height h_i; a cake may be put on a cake
+    that comes earlier in the input only if its volume is strictly larger; the largest total volume of
+    a stack. †
+  hints:
+  - Two stacked cakes need the later one to have a strictly larger volume and a later place in the input.
+    What does that look like?
+  - It is the heaviest strictly increasing subsequence of the volumes, where the weight of a cake is its
+    volume. dp_i = v_i + the best dp among the earlier cakes with a smaller volume.
+  - Use r²·h as the volume (the factor π is common), compress the volumes, and keep a Fenwick tree of
+    prefix maxima that is asked for the ranks below the cake, before the cake is inserted. 64 bits.
+- id: cf-930C
+  role: ladder
+  card: prefix-max-transition
+  rung: 1
+  twist: 'Base case of the card, used twice: a pass from each end, on counts made with a difference array.'
+  summary: n ≤ 10^5 segments on the positions 1..m (m ≤ 10^5); c[x] is the number of segments that cover
+    x; the longest subsequence of positions whose counts are non-decreasing and then non-increasing. †
+  hints:
+  - What does "non-decreasing, then non-increasing" mean for a subsequence at its highest point?
+  - For each position p let up[p] be the length of the longest non-decreasing subsequence of counts that
+    ends at p, and down[p] the longest non-increasing one that begins at p. A peak at p gives up[p] +
+    down[p] − 1.
+  - Make c with a difference array (topic 1.2). Then up with a Fenwick tree of prefix maxima over the
+    count values, asked up to the count (not strictly below), and down the same from the right. The answer
+    is the largest up[p] + down[p] − 1.
+- id: cf-1667B
+  role: ladder
+  card: prefix-max-transition
+  rung: 3
+  twist: The earlier states are split in three groups by the sign of a comparison, one tree for each.
+  summary: An array of n ≤ 5·10^5 integers; cut it into consecutive pieces; a piece scores +length if
+    its sum is positive, 0 if zero and −length if negative; the largest total score. †
+  hints:
+  - With prefix sums p, the piece (j, i] has the sum p_i − p_j. What does it score?
+  - dp_i = the best over j < i of dp_j + sign(p_i − p_j)·(i − j). The three cases p_j < p_i, p_j = p_i,
+    p_j > p_i are three expressions in j.
+  - 'Keep three structures over the compressed prefix sums: for p_j < p_i the maximum of dp_j − j (a prefix),
+    for equal the maximum of dp_j, for greater the maximum of dp_j + j (a suffix). The answer is dp_n.'
+- id: lc-maximum-sum-of-alternating-subsequence-with-distance-at-least-k
+  role: ladder
+  card: prefix-max-transition
+  rung: 4
+  twist: Two trees (after a step up, after a step down) and a delayed insertion for the distance.
+  summary: An array of n ≤ 10^5 integers (up to 10^5) and a number k; a subsequence whose consecutive
+    indices differ by at least k and whose values strictly alternate (up, down, up, … or down, up, …);
+    the largest sum of its values.
+  hints:
+  - What may the next step be after a step up? And after a step down?
+  - Let U[i] be the best sum of a valid choice that ends at i with a step up (or is a single element),
+    D[i] the same with a step down. U[i] = nums_i + max(0, the best D[j] for j ≤ i − k with nums_j < nums_i),
+    and D[i] = nums_i + max(0, the best U[j] for j ≤ i − k with nums_j > nums_i).
+  - 'Two trees over the values: a prefix-maximum tree for D (asked below nums_i) and a suffix-maximum
+    tree for U (asked above nums_i). The index i − k is inserted into both just before i is handled. The
+    answer is the largest of all U and D.'
+- id: lc-jump-game-vi
+  role: ladder
+  card: window-transition
+  rung: 1
+  twist: 'Base case of the card: the best score of jumps of at most k cells from the first to the last
+    cell.'
+  summary: An array nums of up to 10^5 integers (some negative) and k; start at the index 0, jump to any
+    index at most k ahead, finish at the last index; the largest sum of the visited numbers.
+  hints:
+  - dp_i is the best score at i. Which indices can come before i?
+  - The window i − k .. i − 1, and its left end only grows. A segment tree would work; a deque is simpler
+    and faster.
+  - Keep a deque of indices with decreasing dp. At each i pop the expired indices from the front, set
+    dp_i = nums_i + dp of the front, pop from the back while dp ≤ dp_i, push i. O(n); the sums fit in
+    64 bits.
+- id: cf-487B
+  role: ladder
+  card: window-transition
+  rung: 2
+  twist: The window of starts is bounded on the right by a length and on the left by a spread condition,
+    found with two more deques.
+  summary: A sequence of n ≤ 10^5 numbers and numbers s and l; cut it into consecutive pieces, each with
+    at least l numbers and with max − min ≤ s; the fewest pieces, or −1. †
+  hints:
+  - If the last piece is (j, i], which j are allowed, and how does the set change from i to i + 1?
+  - The left bound is the smallest j with max − min ≤ s on (j, i]; it never decreases (two pointers with
+    two deques for the extremes). The right bound is i − l.
+  - 'dp_i = 1 + the minimum of dp_j over j from that left bound to i − l: a third deque holds the window
+    minimum of dp. The answer is −1 if dp_n is infinite.'
+- id: lc-count-partitions-with-max-min-difference-at-most-k
+  role: ladder
+  card: window-transition
+  rung: 3
+  twist: The same moving window, with a sum of counts, so prefix sums take the place of the third deque.
+  summary: An array of n ≤ 5·10^4 integers and a number k; the number of ways to cut it into consecutive
+    segments, in each of which max − min ≤ k, modulo 10^9 + 7.
+  hints:
+  - Count the ways by the last segment. Which starts are allowed for a segment that ends at i?
+  - The allowed starts are a range whose left end only grows (two deques give it, as in the previous problem);
+    the number of ways is the sum of dp over that range, with dp_0 = 1.
+  - 'Keep prefix sums S of dp: dp_i = S over the allowed range, taken as a difference of prefix sums modulo
+    10^9 + 7 (add the modulus before the remainder).'
+- id: ac-abc339_e
+  role: ladder
+  card: window-transition
+  rung: 4
+  twist: 'The window is over values, not positions: a segment tree with range maximum.'
+  summary: A sequence of N ≤ 5·10^5 integers and a number D; the longest subsequence in which any two
+    consecutive elements differ by at most D.
+  hints:
+  - Which earlier elements can come right before an element with the value x?
+  - 'Those with a value in [x − D, x + D]: a range of values, so a prefix tree is not enough.'
+  - 'A segment tree over the values with a point update (keep the larger) and a range maximum: best[x]
+    = 1 + the maximum over [x − D, x + D]; store it at x. O(N log N).'
+- id: cses-1748
+  role: ladder
+  card: counting-with-tree
+  rung: 1
+  twist: 'Base case of the card: the number of strictly increasing subsequences modulo 10^9 + 7.'
+  summary: An array of n ≤ 2·10^5 integers; the number of strictly increasing subsequences (different
+    sets of positions are different), modulo 10^9 + 7.
+  hints:
+  - 'Count by the last element: how many subsequences end at i?'
+  - One (just i) plus the number that end at each earlier j with a smaller value.
+  - 'Compress the values and keep a Fenwick tree of sums modulo 10^9 + 7: cnt_i = 1 + the prefix sum below
+    the rank of a_i, then add cnt_i at the rank. The answer is the sum of all cnt.'
+- id: cf-597C
+  role: ladder
+  card: counting-with-tree
+  rung: 2
+  twist: The length is fixed, so there is one tree for each length.
+  summary: A permutation of n ≤ 10^5 numbers and a number k ≤ 10; the number of increasing subsequences
+    of exactly k + 1 elements. †
+  hints:
+  - A subsequence of k + 1 elements that ends at i is a subsequence of k elements ending at a smaller
+    earlier element, followed by i.
+  - 'Let c[len][i] be the number of increasing subsequences of len elements that end at i: a sum over
+    the smaller earlier elements, for each len.'
+  - Use k + 1 Fenwick trees of sums, one for each length, with c[1][i] = 1; handle the lengths from the
+    longest to the shortest for each element. The answer is the sum of c[k + 1][i]; it fits in 64 bits.
+- id: cf-314C
+  role: ladder
+  card: counting-with-tree
+  rung: 3
+  twist: Equal sequences are counted once, so the old value of a rank is replaced.
+  summary: An array of n ≤ 10^5 integers (up to 10^6); write down every distinct non-empty non-decreasing
+    subsequence; for each one count the sequences of positive integers that do not exceed it element by
+    element; the total, modulo 10^9 + 7. †
+  hints:
+  - The number of sequences below a written sequence is the product of its elements. So the answer is
+    a sum of products over the distinct non-decreasing sequences of values.
+  - 'Let f[v] be the sum of the products of the distinct sequences that end with the value v. For a_i
+    = v: the new f[v] = v · (1 + the sum of f[x] over x ≤ v).'
+  - 'The new f[v] contains the old one, so it replaces it: add the difference to a Fenwick tree of sums
+    over the compressed values. The answer is the sum of all f.'
+- id: cf-833B
+  role: ladder
+  card: range-update-transition
+  rung: 1
+  twist: 'Base case of the card in layers: the value of a part is its number of different elements.'
+  summary: A row of n ≤ 35000 boxes with cake types and k ≤ 50; split it into exactly k consecutive segments;
+    the value of a segment is its number of different types; the largest total. †
+  hints:
+  - With dp[c][i] = the best total for the first i boxes in c segments, what is the value of the last
+    segment (j, i]?
+  - dp[c][i] = the maximum over j of dp[c − 1][j] + distinct(j + 1..i). When i grows by one, which values
+    of distinct(j + 1..i) change?
+  - 'Those with j at or after the previous occurrence of the new type: a range of +1. For each round c
+    keep a tree with range addition and range maximum over j, built from dp[c − 1]; O(k n log n).'
+- id: ac-abc397_f
+  role: ladder
+  card: range-update-transition
+  rung: 2
+  twist: Three parts; the sweep keeps the best first cuts under range additions.
+  summary: A sequence of N ≤ 3·10^5 integers; split it into three non-empty consecutive parts; the value
+    is the sum of the numbers of different values in the three parts; the largest value.
+  hints:
+  - If the cuts are i < j, the value is distinct(1..i) + distinct(i + 1..j) + distinct(j + 1..N). Sweep
+    j.
+  - For a fixed j let f(i) = distinct(1..i) + distinct(i + 1..j). When j grows by one, with x = A_j, f(i)
+    rises by 1 for every i from the previous occurrence of x up to j − 1.
+  - Keep f in a tree with range addition and range maximum; at j add 1 on [last(A_j), j − 1], take the
+    maximum of f over the first cuts i < j, and add distinct(j + 1..N) from a table made by a suffix pass.
+    The answer is the best over j.
+- id: cf-115E
+  role: ladder
+  card: range-update-transition
+  rung: 3
+  twist: Each new road subtracts its cost from all earlier states, and each race adds a profit to a range
+    of states.
+  summary: A line of n ≤ 2·10^5 roads, each with a repair cost, and m ≤ 2·10^5 races, each on a segment
+    l..r of roads with a profit; a race is held only if all roads of its segment are repaired; the largest
+    total profit minus total repair cost. †
+  hints:
+  - Let the state be the last road that is not repaired. When is a race l..r held?
+  - It is held exactly when the last unrepaired road before r + 1 is before l. Moving to road i with i
+    repaired makes every state j < i pay c_i, and a race ending at i adds its profit to every state j
+    < l.
+  - Keep the states in a tree with range addition and range maximum; the state i (road i unrepaired) takes
+    the best earlier state. Two kinds of range additions per step; the answer is the best state at the
+    end.
+- id: lc-maximum-balanced-subsequence-sum
+  role: checkpoint
+  card: prefix-max-transition
+  summary: An array of n ≤ 10^5 integers; a subsequence is balanced if for consecutive chosen indices
+    i < j, nums[j] − nums[i] ≥ j − i; the largest sum of a balanced subsequence (a single element is balanced).
+- id: lc-delivering-boxes-from-storage-to-ports
+  role: checkpoint
+  card: window-transition
+  summary: Up to 10^5 boxes, each with a port and a weight, to be delivered in order by a ship that carries
+    at most maxBoxes boxes and maxWeight in one trip; a trip costs 1 per stop at a new port plus 1 to
+    return; the fewest trips.
+- id: cf-1557D
+  role: checkpoint
+  card: range-update-transition
+  summary: A grid with n ≤ 3·10^5 rows and columns up to 10^9; each row has m ≤ 3·10^5 segments of cells
+    that are kept; remove the fewest rows so that the rest can be ordered in a chain where each next row
+    shares a kept column with the one before; print the rows to remove. †
+- id: lc-maximum-profit-in-job-scheduling
+  role: review
+  card: prefix-max-transition
+  review_set: 1
+  summary: Up to 5·10^4 jobs with a start, an end and a profit; choose jobs that do not overlap (a job
+    may start at the end of another) to get the largest total profit.
+- id: cf-1077F2
+  role: review
+  card: window-transition
+  review_set: 1
+  summary: n ≤ 5000 pictures with beauties; reposted pictures must include at least x pictures and every
+    segment of at least k consecutive pictures has a repost; the largest total beauty, or −1. †
+- id: lc-sum-of-beautiful-subsequences
+  role: review
+  card: counting-with-tree
+  review_set: 1
+  summary: An array of n ≤ 10^4 integers (up to 7·10^4); the sum, over all strictly increasing subsequences,
+    of their gcd, modulo 10^9 + 7.
+- id: lc-longest-increasing-subsequence-ii
+  role: review
+  card: prefix-max-transition
+  review_set: 2
+  summary: An array of up to 10^5 integers (up to 10^5) and k; the longest strictly increasing subsequence
+    in which two consecutive elements differ by at most k.
+- id: cf-1197E
+  role: review
+  card: prefix-max-transition
+  review_set: 2
+  summary: n ≤ 2·10^5 nested dolls with an outer size and an inner size; a doll fits into another if its
+    outer size is at most the inner size of the other; choose a set that can be nested one in another
+    so that no further doll can be added and the extra space (sum of inner minus outer sizes with the
+    last outer) is least; the number of such sets. †
+- id: lc-find-maximum-non-decreasing-array-length
+  role: review
+  card: window-transition
+  review_set: 2
+  summary: An array of up to 10^5 integers; an operation replaces a chosen subarray by its sum; the largest
+    length of a non-decreasing array that can be obtained.
+- id: cf-1788E
+  role: review
+  card: prefix-max-transition
+  review_set: 3
+  summary: An array of n ≤ 2·10^5 integers; choose disjoint segments, each with a non-negative sum, to
+    maximise the total length of the segments. †
+- id: lc-length-of-the-longest-increasing-path
+  role: review
+  card: prefix-max-transition
+  review_set: 3
+  summary: n ≤ 10^5 points (x, y); a point is called through the point number k; the length of the longest
+    increasing path (both coordinates strictly increase) that contains the point number k.
+- id: lc-minimum-sum-of-values-by-dividing-array
+  role: review
+  card: window-transition
+  review_set: 3
+  summary: Arrays nums (n ≤ 10^4) and andValues (m ≤ 10); divide nums into m consecutive subarrays so
+    that the AND of the i-th is andValues[i]; the value of a subarray is its last element; the least total
+    value, or −1.
+- id: cf-1799D2
+  role: lookalike
+  card: range-update-transition
+  summary: Two processors and n programs of k kinds; a program run right after the same kind on the same
+    processor takes the hot time, otherwise the cold time; the least total time (n, k up to 3·10^5 in
+    total). †
+- id: cf-1799D1
+  role: lookalike
+  card: range-update-transition
+  summary: The same question with n, k ≤ 5000. †
+- id: cf-1304F2
+  role: lookalike
+  card: window-transition
+  summary: An n × m grid (n ≤ 50, m ≤ 20000) of animal counts per day; each day place a camera that sees
+    k consecutive cells on that day and the next; each animal counted once; the largest total, with k
+    up to m. †
+- id: cf-1304F1
+  role: lookalike
+  card: window-transition
+  summary: The same question with k ≤ 20. †
+- id: lc-count-increasing-quadruplets
+  role: drill
+  summary: A permutation of up to 4000 numbers; the number of index quadruples i < j < k < l with nums[i]
+    < nums[k] < nums[j] < nums[l].
+- id: lc-minimum-cost-to-split-an-array
+  role: drill
+  summary: An array of up to 1000 integers and a number k; split it into consecutive subarrays; the cost
+    of a subarray is k plus the number of its elements that occur more than once; the least total cost.
+- id: lc-minimum-number-of-coins-for-fruits
+  role: drill
+  summary: Prices of up to 1000 fruits in a row; buying the i-th fruit gives the next i fruits for free
+    (they can still be bought); the least cost to get all the fruits.
+- id: lc-distinct-subsequences-ii
+  role: drill
+  summary: A string of up to 2000 lowercase letters; the number of distinct non-empty subsequences, modulo
+    10^9 + 7.
+- id: lc-maximum-earnings-from-taxi
+  role: drill
+  summary: Points 1..n (n ≤ 10^5) on a road and up to 3·10^4 passengers (start, end, tip); a passenger
+    pays end − start + tip; one passenger at a time, no turning back; the largest total.
+- id: cf-519D
+  role: drill
+  summary: n ≤ 10^5 lowercase letters with given values, and the string; the number of substrings of length
+    at least 2 that start and end with the same letter and have a zero sum of the values of the letters
+    except the first and the last (recalled). †
+- id: cf-1335E2
+  role: drill
+  summary: n ≤ 2·10^5 numbers from 1 to 200; the longest subsequence of the form x…x y…y x…x (three blocks,
+    each with equal numbers; the outer blocks have the same length, the middle one is not empty and may
+    use any value). †
+- id: cf-1313C2
+  role: drill
+  summary: n ≤ 5·10^5 skyscrapers with limits a_i; choose heights m_i ≤ a_i so that no skyscraper has
+    a higher one on both sides; the largest total height, and any such plan. †
+drill:
+- problem: lc-count-increasing-quadruplets
+  answer:
+    topic: '1.2'
+    card: prefix-2d
+  property: For each pair (j, k) with nums[j] > nums[k], the number of i < j with nums[i] < nums[k] times
+    the number of l > k with nums[l] > nums[j]; both come from a table of dominance counts (a 2D prefix
+    sum over position and value).
+  why_others_fail: With n ≤ 4000 an O(n²) table is fast and short; a Fenwick tree for each pair would
+    be a log factor of waste.
+- problem: lc-minimum-cost-to-split-an-array
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: dp[i] = the least cost of the first i numbers; try every last subarray (j, i] while a count
+    array keeps its trimmed length. O(n²).
+  why_others_fail: 'n ≤ 1000: the O(n²) DP is enough, and the trimmed length is not a prefix or a window
+    quantity.'
+- problem: lc-minimum-number-of-coins-for-fruits
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: 'dp[i] = the least cost to get the fruits from i on, given that fruit i is bought: dp[i] =
+    prices[i] + the minimum of dp[j] over j in i + 1 .. 2i + 1. O(n²).'
+  why_others_fail: 'n ≤ 1000: the loop over the free range is fast enough; the deque would be correct
+    but unnecessary.'
+- problem: lc-distinct-subsequences-ii
+  answer:
+    topic: '3.2'
+    card: extra-small-state
+  property: Keep end[c], the number of distinct subsequences ending with the letter c; a new letter c
+    makes end[c] = 1 + the sum of all end[x], replacing the old value. 26 values.
+  why_others_fail: 'Only 26 letters: a loop over them replaces a tree, though the replacement is the same
+    idea as in the counting card.'
+- problem: lc-maximum-earnings-from-taxi
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: 'dp[x] = the most money on reaching the point x: dp[x] = max(dp[x − 1], max over the passengers
+    ending at x of dp[start] + gain). The passengers are grouped by the end point.'
+  why_others_fail: dp[x − 1] already carries the maximum of everything earlier; no prefix-maximum structure
+    is needed.
+- problem: cf-519D
+  answer:
+    topic: '0.6'
+    card: map-counting
+  property: With prefix sums p of the values, for each letter keep a map from p to the number of positions
+    seen; at a position add the count of (letter, p of the position before) of the earlier positions with
+    the same letter.
+  why_others_fail: Counting equal values needs a map of counts, not an ordered structure over ranks.
+- problem: cf-1335E2
+  answer:
+    topic: '1.2'
+    card: range-sum
+  property: For every value x keep the positions of x; the outer blocks take the first t and the last
+    t copies; the best middle value in between is read from 200 prefix-count tables.
+  why_others_fail: The values are at most 200, so tables of prefix counts answer each range count in O(1);
+    no DP with a tree.
+- problem: cf-1313C2
+  answer:
+    topic: '1.6'
+    card: nearest-greater
+  property: 'For each peak the best total on the left comes from a monotonic stack: left[i] = a_i · (i
+    − j) + left[j] with j the nearest smaller element to the left; the same on the right; the best peak
+    wins.'
+  why_others_fail: The transition comes from the nearest smaller element, a single predecessor, not a
+    best over a prefix of keys; a stack does it in O(n).
+lookalike_pairs:
+- a: cf-1799D2
+  b: cf-1799D1
+  a_tool:
+    topic: '7.3'
+    card: range-update-transition
+  b_tool:
+    topic: '3.2'
+    card: two-index
+  shared_surface: Both give n programs of k kinds to run on two processors; a program run right after
+    a program of the same kind on the same processor takes the hot time, any other run takes the cold
+    time; the task is the least total time.
+  flipping_difference: 'In the easy version n and k are at most 5000, so the table dp[i][j] (j = the last
+    program on the other processor) is built entry by entry in O(nk). In the hard version they are up
+    to 3·10^5: running the next program on the processor that ran the previous one changes every state
+    by the same amount, so that amount is kept as one offset and only one state is changed (a tree or
+    a minimum over the states), not the whole table.'
+  flipping_input: 'n = k = 3·10^5: the table has 9·10^10 entries, against a tree of 3·10^5 states with
+    O(log n) work per program.'
+- a: cf-1304F2
+  b: cf-1304F1
+  a_tool:
+    topic: '7.3'
+    card: window-transition
+  b_tool:
+    topic: '3.2'
+    card: two-index
+  shared_surface: Both give an n × m grid of animal counts for n days; each day a camera that sees k consecutive
+    cells on that day and the next day is placed, each animal is counted once, and the task is the largest
+    total.
+  flipping_difference: 'In the easy version k is at most 20, so the previous day''s camera positions that
+    overlap (fewer than 2k) are tried one by one. In the hard version k can be as large as m: the overlapping
+    positions form a window whose maximum comes from a deque (or a segment tree), and the non-overlapping
+    ones are a prefix maximum and a suffix maximum.'
+  flipping_input: 'm = 20000, k = 10000: trying the overlapping positions costs about 2·10^4 · 2·10^4
+    per day, against m per day with the deque.'
+self_test:
+- q: Use Theorem 7.3.1 on the keys 2 1 3 with the weights 4 5 6. Give dp and the answer.
+  a: The ranks are 2, 1, 3. dp_1 = 4 (nothing is below 2 yet), dp_2 = 5 (nothing is below 1), dp_3 = 6
+    + max(4, 5) = 11. The answer is 11 (the elements 1 and 3, with weights 5 + 6).
+- q: Why is the tree asked before the element is inserted, and for the ranks below the element's own?
+  a: 'If the element were inserted first, a query that reaches its own rank could return its own dp: the
+    element would follow itself, or an equal value. Asking for the smaller ranks before the insertion
+    leaves out the element and the values equal to it.'
+- q: Run the deque of Theorem 7.3.2 on the weights 3, −1, 4 with k = 2 (a choice may start anywhere).
+    Give dp and the deque after each step.
+  a: 'Step 1: dp = 3, deque {1}. Step 2: the front is 1, dp = −1 + 3 = 2, and since 3 > 2 the deque is
+    {1, 2}. Step 3: the window is 1..2, the front is 1, dp = 4 + 3 = 7, and both older entries are not
+    larger than 7, so the deque is {3}. The answer is 7.'
+- q: The allowed predecessors for i = 2, 3, 4, 5 are the ranges [1, 1], [1, 2], [2, 3], [1, 4]. Why does
+    the deque not apply?
+  a: 'The left end goes 1, 1, 2, 1: it moves right and then back. When the left end is 2 the deque drops
+    the index 1, and at i = 5 the index 1 is allowed again but is gone. A segment tree with range maximum
+    answers each range directly.'
+- q: Count the increasing subsequences of 2 1 3 by length, with the layers of Theorem 7.3.3.
+  a: 'Length 1: 3 (each element). Length 2: (2, 3) and (1, 3), so 2. Length 3: none, because 2 comes before
+    1. The counts are 3, 2, 0.'
+- q: For the array 1 1 2, why does counting distinct value sequences replace the old count of the value
+    1 and not add to it?
+  a: 'The second 1 starts the same sequences as the first: its new count is 1 + (nothing below) = 1, the
+    same as before. Adding would give 2 and the later 2 would count the sequence (1, 2) twice. The new
+    count already contains what the old one counted.'
+- q: In Theorem 7.3.4, why does the state i take the best earlier state when the bit i is 1, and what
+    do the earlier states do when the bit is 0?
+  a: 'A 1 at the position i makes the last 1 equal to i, and the string before it may be any string of
+    length i − 1, so the new state is the best earlier state. A 0 changes nothing: every state keeps its
+    value and its last 1; only the intervals ending at i add their rewards.'
+- q: Compute the states for n = 2 and the intervals (1, 2, 3) and (2, 2, −1).
+  a: 'The states start at 0, 0, 0. Position 1: the state 1 takes the best of the state 0, 0. Position
+    2: the state 2 takes the best of the states 0 and 1, 0; the interval (1, 2, 3) adds 3 to the states
+    1..2: 0, 3, 3; the interval (2, 2, −1) adds −1 to the state 2: 0, 3, 2. The answer is 3 (the string
+    10).'
+checkpoint:
+  time_limit_minutes: 150
+  problems:
+  - lc-maximum-balanced-subsequence-sum
+  - lc-delivering-boxes-from-storage-to-ports
+  - cf-1557D
+decision_map:
+- weak_signal: The largest total weight (or a count with weights) of a chain in which each next element
+    has a larger key, with n up to 2·10^5
+  choose: prefix-max-transition
+  when: The allowed earlier states are those with a smaller key, a prefix of the ranks, and states are
+    only added (Theorem 7.3.1).
+  over:
+  - card: lis
+    topic: '3.4'
+    because: 'Only the length is asked: the table of tails with a binary search.'
+  - card: point-update-range-query
+    topic: '5.3'
+    because: The allowed keys form a range, not a prefix.
+- weak_signal: The best total of a path or a cut in which the previous state is at most k positions back,
+    or in a range whose ends move right
+  choose: window-transition
+  when: Both ends of the range of predecessors only move to the right, and the values come from the DP
+    itself (Theorem 7.3.2).
+  over:
+  - card: window-deque
+    topic: '1.6'
+    because: 'A fixed array with no DP on top: only the window extreme.'
+  - card: point-update-range-query
+    topic: '5.3'
+    because: The range ends are arbitrary and may jump back.
+- weak_signal: The number of increasing (or valid) subsequences modulo a prime, or of a given small length
+  choose: counting-with-tree
+  when: The choices are counted by their last element and the earlier ones allowed are a prefix of the
+    ranks (Theorem 7.3.3).
+  over:
+  - card: inversion-count
+    topic: '5.2'
+    because: 'Only pairs are counted: no chain recurrence.'
+  - card: linear-state
+    topic: '3.2'
+    because: 'Small n: the sum over the earlier elements is enough.'
+- weak_signal: Rewards paid for intervals, or parts valued by distinct counts, with a DP over the last
+    choice
+  choose: range-update-transition
+  when: One element adds the same amount to a contiguous range of states (Theorem 7.3.4).
+  over:
+  - card: lazy-range-update
+    topic: '5.3'
+    because: Assignments or sums over ranges, with no DP on top.
+  - card: difference-array
+    topic: '1.2'
+    because: Many range updates and one final read.
+glossary_added: []

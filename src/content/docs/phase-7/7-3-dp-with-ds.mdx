@@ -1,0 +1,478 @@
+---
+title: "7.3 DP sped up with Fenwick or segment trees"
+sidebar:
+  order: 43
+topic: "7.3"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.3" />
+
+This topic combines [sequence DP](../../phase-3/3-4-sequence-dp/) (a table over the positions of a sequence, each value built from earlier ones) and [the Fenwick tree](../../phase-5/5-2-fenwick/) with [the segment tree](../../phase-5/5-3-segment-tree/) (structures that answer "the best value over a range" and take updates, each in $O(\log n)$ time). A DP that is correct but too slow often has one slow line: a maximum, a minimum or a sum taken over many earlier states. That line is a question to a data structure that holds the earlier states.
+
+## 1. Why this topic exists
+
+Here is a small problem. $N = 2 \cdot 10^5$ flowers stand in a row. Flower $i$ has a height $h_i$ (the heights are $1, \dots, N$ in some order) and a beauty $a_i$. We remove some flowers so that the heights of the rest increase from left to right, and we want the largest total beauty. The DP is easy to write: let $\text{dp}_i$ be the best total of a choice that ends with flower $i$; then $\text{dp}_i = a_i + \max \text{dp}_j$ over the earlier flowers $j$ with $h_j < h_i$. But the maximum runs over up to $N$ flowers for each $i$: about $N^2 / 2 = 2 \cdot 10^{10}$ steps, far too many.
+
+Look at which flowers the maximum runs over: those whose *height* is below $h_i$, a prefix of the heights $1, \dots, h_i - 1$. A Fenwick tree indexed by height, holding at each height the best $\text{dp}$ found so far, answers "the largest value among heights below $h_i$" in $O(\log N)$ time, and takes the new value in $O(\log N)$ time. The whole DP costs $N \log N \approx 3.6 \cdot 10^6$ steps.
+
+The lesson has four ideas, each a different shape of the set of earlier states that a transition looks at.
+- A **prefix of a value order**: the earlier states whose key is below the key of the current one. A Fenwick tree for prefix maxima.
+- A **window of positions** that slides to the right: the last $k$ states, or the states between two ends that only move right. A monotonic deque.
+- A **sum** instead of a maximum, counting the ways: a Fenwick tree of sums, with one tree for each length when the length matters, and a replacement when equal sequences must be counted once.
+- A **range of states changed at once**: a new element adds the same amount to many earlier states. A segment tree with range addition and range maximum.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.3" />
+
+### What this topic does not cover
+
+- How the Fenwick tree and the segment tree work inside, and their other uses (counting inversions, tree descent, many kinds of lazy updates): topics 5.2 and 5.3.
+- The longest increasing subsequence in $O(n \log n)$ with a table of tails and binary search, the longest common subsequence and the edit distance: topic 3.4. The weighted version here needs a tree because the tails trick works only for lengths.
+- The monotonic stack and the sliding window maximum on a fixed array: topic 1.6. Here the window maximum is of values that the DP itself produces.
+- Speeding up a DP by the shape of its cost function (the convex hull trick, divide and conquer, Knuth's optimisation) is a different family and is not in this course.
+- DP over a tree or a DAG: topics 7.1 and 7.2.
+
+## 3. Definitions
+
+- A **state** is one entry of a DP table, here usually "the best value of a choice that ends with element $i$". A **transition** computes a state from earlier ones. In this lesson the transition is a **best over a set of earlier states** (a maximum, a minimum or a sum) added to a term of the current element.
+- A **key** of an element is the number by which the allowed earlier states are described (a height, a value, a prefix sum). The **rank** of a key is its place among the different keys sorted in increasing order, starting from 1; equal keys have equal ranks. Example: the keys $30, 10, 30, 20$ have the ranks $3, 1, 3, 2$. Computing ranks is called **coordinate compression** (topic 1.1).
+- A **subsequence** is what is left of a sequence after deleting some elements, with the order kept. It is **strictly increasing** if every element is larger than the one before it. Two subsequences with different sets of positions are different, even when their values are equal, unless the statement says that equal sequences count once.
+- A **Fenwick tree** (topic 5.2) over $m$ ranks keeps, for each rank $p$, a value for the block of ranks $(p - \text{lowbit}(p), p]$, where $\text{lowbit}(p)$ is the largest power of 2 that divides $p$. It supports a point update and a prefix query in $O(\log m)$ time. Here it holds the **maximum** (or the sum) of the values stored at the ranks of a block.
+- A **window** is a range of positions $L_i \le j \le i - 1$ of the earlier elements. A **deque** (double-ended queue) allows adding and removing at both ends in constant time.
+- A **segment tree** (topic 5.3) stores the maximum of every block of a halving decomposition of the positions; **lazy** means that an addition to a whole block is stored at the block and applied later.
+- In the code, `deque<int> window;` is a deque with `front()`, `back()`, `pop_front()`, `pop_back()` and `push_back(x)`; `array<long long, 3>` is three numbers in a row, and `auto [l, a] = pair` takes a pair apart; `[](auto& x, auto& y) { return x[1] < y[1]; }` is a short function written in place, here the order of the sort; `LLONG_MIN / 2` is a very small number that survives an addition.
+
+## 4. Theory and proofs
+
+### 4.1 The prefix-maximum transition
+
+**Theorem 7.3.1 (prefix-maximum transition).** Let there be elements $1, \dots, n$ with keys $k_i$ and weights $w_i$ (weights may be negative), with ranks $r_i \in \{1, \dots, m\}$ of the keys, and let $g \ge 1$. Define
+$$\text{dp}_i = w_i + \max\bigl(0,\ \max\{\text{dp}_j : j \le i - g,\ k_j < k_i\}\bigr).$$
+Keep a Fenwick tree $T$ over the ranks $1, \dots, m$ for prefix maxima, with every entry $0$ at the start. Before $\text{dp}_i$ is computed, insert $\text{dp}_j$ at the rank $r_j$ for every $j \le i - g$ that is not yet inserted (for $g = 1$: only $j = i - 1$, that is, insert each state right after computing it). Then $\text{dp}_i = w_i + T.\text{query}(r_i - 1)$, the whole DP takes $O(n \log m)$ time, and the answer to "the heaviest strictly increasing subsequence" is $\max_i \text{dp}_i$.
+
+:::tip[In plain words]
+The line "best over the earlier elements with a smaller key" is a question about a prefix of the ranks, and a Fenwick tree answers prefix questions about maxima when values are only ever added, never removed. The rule "at least $g$ apart" only changes *when* an element is put into the tree: put it in when it has become allowed, and the tree contains exactly the allowed ones. Asking for ranks below $r_i$ and not up to $r_i$ is what makes the increase strict.
+:::
+
+**A tiny instance.** Keys $3, 1, 4, 1, 5$ with weights $2, 3, 1, 4, 5$ and $g = 1$ (the ranks are $2, 1, 3, 1, 4$). $\text{dp}_1 = 2$. $\text{dp}_2 = 3$ (nothing is below the key 1). For the key 4: the keys below it are 3 and 1 with $\text{dp}$ 2 and 3, so $\text{dp}_3 = 1 + 3 = 4$. For the second key 1: nothing is below, $\text{dp}_4 = 4$. For the key 5: the earlier $\text{dp}$ are $2, 3, 4, 4$, so $\text{dp}_5 = 5 + 4 = 9$. The answer is 9 (for example $1, 4, 5$ with weights $3 + 1 + 5$). Equal keys $2, 2$ with weights $5, 5$ give $\text{dp} = 5, 5$: the second 2 does not see the first, because only ranks *below* its own are asked for.
+
+**Proof.**
+1. *The tree.* The entry for the rank $p$ holds the maximum of the values stored at the ranks in $(p - \text{lowbit}(p), p]$ (and $0$ if none). The entries whose block contains a rank $r$ are $p = r$, then $p + \text{lowbit}(p)$, and so on up to $m$ (each step moves to the smallest block that strictly contains the previous one). So `update(r, v)`, which sets each of these entries to the larger of its value and $v$, keeps the invariant: the maximum of a set of numbers that only grows changes only by taking the maximum with the new number.
+2. *The query.* The blocks of $p = r$, $p - \text{lowbit}(p)$, $\ldots$ down to $0$ are $(p - \text{lowbit}(p), p]$ for those $p$, and they cut $[1, r]$ into pieces with no gaps and no overlap. So the largest of their entries is the maximum over the ranks $1..r$. Both walks have at most $\lfloor \log_2 m \rfloor + 1$ steps.
+3. *Correctness.* By induction on $i$: when $\text{dp}_i$ is computed, the tree holds exactly the states $\text{dp}_j$ with $j \le i - g$ (inserted in time), at their ranks. The elements with $k_j < k_i$ are exactly those with rank below $r_i$, because equal keys have equal ranks and a smaller key has a smaller rank. So `query(r_i - 1)` is $\max\{\text{dp}_j : j \le i - g,\ k_j < k_i\}$, or $0$ when there is none, which is the $\max(0, \cdot)$ of the definition.
+4. *The answer.* A strictly increasing subsequence ends at some $i$; its best weight among those ending at $i$ is $\text{dp}_i$ (split off the last element; the rest is a subsequence ending at a $j$ with $k_j < k_i$, and the best rest is $\text{dp}_j$, or nothing, which is $0$). So the answer is the largest $\text{dp}_i$. The time is $n$ updates and $n$ queries. $\square$
+
+:::note[This proof needs]
+1. Values are only inserted, and only a value that can raise an entry matters. A prefix-maximum Fenwick tree cannot remove or lower a value. When states must disappear (a window), use the deque of the next theorem or a segment tree.
+2. Strictness is in the query: $\text{query}(r_i - 1)$ for strictly smaller keys, $\text{query}(r_i)$ for smaller or equal keys. The query must come before the element's own insertion, or the element sees itself.
+3. The entry $0$ means "start a new choice here". It is right only if starting here is allowed and the answer is the maximum over all $\text{dp}_i$. If the choice must begin at a given element, use a very small number as the empty value.
+4. For a minimum, use a very large empty value and `min`, or negate the weights. For a key that is a pair or an interval endpoint, the rank is still one number; if two conditions limit the earlier elements (a lower and an upper key), a prefix is not enough and a segment tree with a range query is needed.
+:::
+
+<TheoremCode unit="7.3/thm-1" />
+
+The first two lines are the tiny instance (the table of $\text{dp}$ and its maximum), and the third line shows that equal keys do not chain. The check compares the tree with the $O(n^2)$ definition on 3000 random arrays of up to 9 numbers with weights from $-5$ to $10$.
+
+### 4.2 The window transition
+
+**Theorem 7.3.2 (window transition).** Let $\text{dp}_i = w_i + \max(0, \max\{\text{dp}_j : L_i \le j \le i - 1\})$, where the left ends do not decrease: $L_1 \le L_2 \le \cdots$ (for a fixed length $k$, $L_i = i - k$). Keep a deque of indices, and for each $i$ do: (1) remove from the front the indices smaller than $L_i$; (2) compute $\text{dp}_i$ from the front of the deque (or $\text{dp}_i = w_i$ if the deque is empty); (3) remove from the back all indices $j$ with $\text{dp}_j \le \text{dp}_i$; (4) push $i$ at the back. Then the front of the deque, at step (2), is an index that attains the maximum of $\text{dp}$ over the window, and the whole DP takes $O(n)$ time.
+
+:::tip[In plain words]
+An earlier state that is both older and not better than a newer state can never be the best again: it leaves the window first, and while both are in the window the newer one is at least as good. So the deque keeps only states that are better than everything newer; its values fall from front to back, and the best is at the front. Each state enters once and leaves once.
+:::
+
+**A tiny instance.** $w = 10, 2, -10, 5, 20$ and $k = 2$. $\text{dp}_1 = 10$; the deque is $\{1\}$. For $i = 2$: the window is $1..1$, the front is $1$, $\text{dp}_2 = 2 + 10 = 12$; remove the back (10 ≤ 12): the deque is $\{2\}$. For $i = 3$ the window is $1..2$: the front is 2, $\text{dp}_3 = -10 + 12 = 2$; the deque is $\{2, 3\}$ (12 > 2). For $i = 4$ the window is $2..3$: $\text{dp}_4 = 5 + 12 = 17$; the deque is $\{4\}$. For $i = 5$ the window is $3..4$: $\text{dp}_5 = 20 + 17 = 37$. The values are $10, 12, 2, 17, 37$ and the answer is 37. For $w = -1, -2, -3$ and $k = 1$ every state is better started fresh: $-1, -2, -3$, the answer is $-1$.
+
+**Proof.**
+1. *The invariant.* After step (4) for $i$, the deque contains exactly the indices $j \le i$ for which no later index $j' \in (j, i]$ has $\text{dp}_{j'} \ge \text{dp}_j$, in increasing order of index, and so with strictly decreasing $\text{dp}$ from front to back. Steps (3) and (4) maintain this: an index is removed from the back exactly when the new one is not smaller; the new one is appended.
+2. *The front is the maximum of the window.* Let $j^\*$ be the rightmost index in the window $[L_i, i - 1]$ that attains the maximum $\text{dp}$ there. No later index in the window has a $\text{dp}$ at least as large, so $j^\*$ is in the deque (invariant). Step (1) removed from the front all indices below $L_i$, and the deque is in increasing order of index, so the front is now the earliest deque index inside the window. The values in the deque fall from front to back, so the front's value is at least $\text{dp}_{j^\*}$, and it is at most the maximum of the window: it equals the maximum.
+3. *Removing is safe.* If $j < j'$ and $\text{dp}_j \le \text{dp}_{j'}$, then since the left ends do not decrease, $j$ leaves every window no later than $j'$ does, and while both are inside, $j'$ is at least as good. So $j$ is never needed again as the unique best.
+4. Each index is pushed once and removed once, so the total work is $O(n)$. $\square$
+
+:::note[This proof needs]
+1. The left ends must not decrease. If the allowed range of each $i$ is arbitrary (it may jump back), an index removed once may be needed again, and the right tool is a segment tree with range maximum, $O(\log n)$ per step.
+2. The window must contain only earlier states; the current element is pushed after its value is computed.
+3. For a minimum, flip the comparisons in step (3). For a count of ways (a sum over the window) no deque is needed: use prefix sums of $\text{dp}$ (topic 1.2).
+4. If the left end is itself found by another condition (the smallest start where $\max - \min \le s$), it still never decreases, and two more deques find it, as in the template for the strip problem.
+:::
+
+<TheoremCode unit="7.3/thm-2" />
+
+The two blocks are the two instances (the table and its maximum). The check compares the deque with the $O(nk)$ definition on 3000 random arrays of up to 10 numbers and every window size from 1 to the length.
+
+### 4.3 Counting with prefix sums
+
+**Theorem 7.3.3 (counting with prefix sums).** Let the elements have ranks $r_1, \dots, r_n$. (a) The number of strictly increasing subsequences that end at $i$ (counting by sets of positions, a single element included) is $\text{cnt}_i = 1 + \sum_{j < i,\ r_j < r_i} \text{cnt}_j$, and a Fenwick tree of sums over the ranks, with the new $\text{cnt}_i$ added at the rank $r_i$, gives each term in $O(\log m)$ time; the total number is $\sum_i \text{cnt}_i$. (b) The number of such subsequences of *exactly* $t$ elements is $\text{cnt}^{(t)}_i = \sum_{j<i,\ r_j<r_i} \text{cnt}^{(t-1)}_j$ with $\text{cnt}^{(1)}_i = 1$: one tree for each length. (c) If equal *sequences of values* must be counted once, let $F_v$ be the number of distinct value sequences ending with the value $v$; processing $a_i = v$ sets $F_v$ to $1 + \sum_{x < v} F_x$ (a *replacement*, not an addition), and the total is $\sum_v F_v$.
+
+:::tip[In plain words]
+Sort the subsequences by their last element: those ending at $i$ are either just $i$, or a subsequence ending at an earlier, smaller element followed by $i$. That is the same prefix question as before, with a sum in place of a maximum. When equal value sequences must be counted once, the new count for the value $v$ already contains every sequence that ended at an earlier copy of $v$ (it can end at this copy instead), so it replaces the old count.
+:::
+
+**A tiny instance.** The array $3, 1, 2, 4$: $\text{cnt} = 1, 1, 2, 5$ (for the 2: itself and $1, 2$; for the 4: itself, $3,4$; $1,4$; $2,4$; $1,2,4$), total 9. The array $1, 1, 2$ by positions: $\text{cnt} = 1, 1, 3$, total 5; counting equal sequences once: $F_1 = 1$ after the first 1, again $1$ after the second, then $F_2 = 1 + F_1 = 2$, total $1 + 2 = 3$ (the sequences $1$, $2$, $1,2$).
+
+**Proof.**
+1. *Part (a).* Take a strictly increasing subsequence that ends at $i$. If it has one element it is just $i$. Otherwise remove the last element: the rest is a strictly increasing subsequence ending at some $j < i$ with $r_j < r_i$ (equal ranks mean equal values, so smaller rank means smaller value). Conversely a subsequence ending at such a $j$, extended by $i$, is a strictly increasing subsequence ending at $i$. The two cases are disjoint and each subsequence arises once, so the count is $1 + \sum \text{cnt}_j$. The Fenwick tree of sums holds $\text{cnt}_j$ at the rank $r_j$; its prefix over the ranks below $r_i$ is the sum.
+2. *Part (b).* The same argument with the length counted: a subsequence of $t$ elements ending at $i$ is a subsequence of $t - 1$ elements ending at a smaller earlier $j$ followed by $i$. Processing $i$ with the lengths from $t$ down to $2$ and then $1$ makes sure that the layer $t - 1$ does not yet contain $i$ when layer $t$ is computed (for strict increase this would not matter, as the query is for ranks below $r_i$; the order is a habit that matters for non-strict conditions).
+3. *Part (c).* Let $F_v(i)$ be the number of distinct value sequences ending with $v$ among the first $i$ elements. When element $i$ with $a_i = v$ arrives, the distinct sequences that end with $v$ and can end at this very element are $[v]$ together with every distinct sequence from the first $i - 1$ elements that ends with a value $x < v$, followed by $v$. This set contains every sequence that ended with $v$ earlier (an earlier sequence $s + [v]$ with $s$ from the earlier prefix also works with this copy of $v$ as its last element). So $F_v(i) = 1 + \sum_{x<v} F_x(i-1)$, a replacement, and the other $F_x$ do not change. In the tree, the replacement is an addition of the difference $F_v^{\text{new}} - F_v^{\text{old}}$. The total number is $\sum_v F_v$. $\square$
+
+:::note[This proof needs]
+1. The counts are taken modulo a number, after every addition. A difference may be negative, so add the modulus before taking the remainder.
+2. For a non-strict condition ($\le$), the query is up to the rank $r_i$ and the order of insertion matters for equal elements; for equal elements processed one after another, the later one sees the earlier one.
+3. A layer is needed only when the length is part of the question or of the constraint (the number of elements is small, such as $t \le 10$). With a large number of layers a tree for each is too slow.
+4. If the statement counts equal *sequences* once, plain positions give too many. If it counts subsequences with different positions as different, the replacement is a bug.
+:::
+
+<TheoremCode unit="7.3/thm-3" />
+
+The three lines are the instances: nine increasing subsequences of $3, 1, 2, 4$, five of $1, 1, 2$ by positions, and three when equal sequences count once. The check compares both modes with the enumeration of all subsequences (with a set of sequences for the distinct mode) on 3000 random arrays of up to 10 numbers.
+
+### 4.4 Range updates on the states
+
+**Theorem 7.3.4 (range updates on the states).** Let a DP have states numbered $0, \dots, n$, all starting at $0$, and let processing the position $i = 1, \dots, n$ do the following: (1) the state $i$ takes the value of the best state among $0..i-1$ (its current maximum), and (2) a number of updates "add $x$ to every state in $l..r$" are made. A tree with range addition and range maximum does each update and each query in $O(\log n)$ time, so the whole DP with $M$ updates takes $O((n + M) \log n)$ time. In particular for the problem "choose a string of $n$ bits; the interval $(l, r, a)$ pays $a$ if it contains a 1", with $f_j$ the best total when the last 1 so far is at the position $j$ ($j = 0$: none) and the intervals handled at their right end $r$, the answer is the maximum over all states after the position $n$.
+
+:::tip[In plain words]
+Sometimes a new element does not look at the earlier states but changes many of them by the same amount: it adds a reward to every state whose last choice lies in a range. Then the states are kept in a tree that can add one number to a whole range and report the largest value in a range, without touching the states one by one. The adds are left in the tree's nodes and counted when needed.
+:::
+
+**A tiny instance.** $n = 3$, intervals $(1, 2, 10)$, $(2, 3, -5)$, $(3, 3, 20)$. The states $0..3$ start at $0$. Position 1: the state 1 takes the best of the state 0 (value 0): states $0, 0, 0, 0$; no interval ends at 1. Position 2: the state 2 takes the best of $0..1$, which is 0; the interval $(1,2,10)$ adds 10 to the states $1..2$: states $0, 10, 10, 0$. Position 3: the state 3 takes the best of $0..2$, which is 10: states $0, 10, 10, 10$; the interval $(2,3,-5)$ adds $-5$ to the states $2..3$, and $(3,3,20)$ adds $20$ to the state 3: $0, 10, 5, 25$. The answer is 25, the string 011 (or 101).
+
+**Proof.**
+1. *The tree.* A node stands for a range of states; it holds $\text{mx}$, the maximum over its range of the values *counting only the adds stored in the node and below it*, and $\text{add}$, the total of the adds applied to its whole range. The true value of a state is the base value plus the $\text{add}$ of every node on its path from the root. For an update $[l, r]$ with $x$: a node whose range lies inside $[l, r]$ gets $\text{mx} \mathrel{+}= x$ and $\text{add} \mathrel{+}= x$; a node that only overlaps passes the update to its two children and then sets $\text{mx} = \max(\text{mx}_{\text{left}}, \text{mx}_{\text{right}}) + \text{add}$; a node outside does nothing. For a query, a node inside returns $\text{mx}$; a node that overlaps returns the larger of its children's answers plus its own $\text{add}$ (the children do not know about it).
+2. *Cost.* Each of the two operations visits at most about $4 \log_2 n$ nodes, because the ranges that are cut off are only along the two paths to the ends of $[l, r]$.
+3. *The model of the bit string.* The reward of an interval $(l, r, a)$ is paid exactly when the last 1 at or before $r$ lies at a position $\ge l$. Let $f_j$ after the position $i$ be the best total of the intervals with right end $\le i$ over the strings of length $i$ whose last 1 is at $j$ ($j = 0$: no 1). Choosing the bit $i$ to be 1 starts a string whose last 1 is $i$ and whose total so far is that of the best string of length $i - 1$ (any last 1, including none), so $f_i = \max_{j<i} f_j$ at that moment. Choosing the bit to be 0 leaves each $f_j$, $j<i$, unchanged. Then each interval $(l, i, a)$ pays when the last 1 is in $l..i$, that is, it adds $a$ to $f_l, \dots, f_i$. So the steps of the DP are exactly the operations of the theorem, and the answer is the best state after the position $n$. $\square$
+
+:::note[This proof needs]
+1. The change must be the *same amount* for every state in a contiguous range. If the amount depends on the state (a different slope), a lazy tree with a maximum is not enough.
+2. The states must be numbered so that the affected states form a range. Choosing the right meaning of the state (here the position of the last 1) is the whole difficulty.
+3. Not pushing the adds down is shorter and enough for range add with range maximum; for other operations (assign, sum) the tree of topic 5.3 with push-down is used.
+4. For a layered DP (the number of parts $k$), build the tree again for each layer from the previous layer's table, as in the template for the split problem: $O(k n \log n)$.
+:::
+
+<TheoremCode unit="7.3/thm-4" />
+
+The first line lists the states $f_0..f_3$ of the tiny instance and the second the answer. The check compares the answer with the enumeration of all bit strings on 3000 random cases of up to 9 positions and 9 intervals with rewards from $-5$ to $10$.
+
+## 5. Recognition Cards
+
+<Cards topic="7.3" />
+
+## 6. Templates
+
+Seven templates. Each shows only the function that matters; the program around it reads the input. The Fenwick tree for maxima (Theorem 7.3.1), the Fenwick tree for sums modulo $10^9 + 7$ (Theorem 7.3.3), the range-add range-maximum tree (Theorem 7.3.4) and the computation of ranks stay in the file outside the shown code, as the theorems show the first three. Each template is checked against a brute force on thousands of random small inputs (up to 8 or 9 elements, small values so that there are many equal keys, negative weights where they make sense) and on fixed tests with one element, equal values and an impossible case.
+
+### The heaviest strictly increasing subsequence (Theorem 7.3.1)
+
+<CodeSnippet unit="7.3/weighted-lis" />
+
+**How it works.** `compress` gives each value its rank, equal values the same rank. For each element the tree is asked for the best `dp` among the strictly smaller ranks, `dp` is the weight plus that (the tree returns 0 if nothing is there), and the result is inserted at the element's rank. `best` is the largest `dp`; with negative weights the answer can be negative, so it starts from the smallest number. The query comes before the insertion, so an element never sees itself or an equal value.
+
+**Alternative formulation.** A segment tree for the maximum (topic 5.3) does the same with more code; for a non-weighted question (the length) the table of tails with binary search is shorter and faster (topic 3.4).
+
+### The same with a distance rule (Theorem 7.3.1)
+
+<CodeSnippet unit="7.3/gap-lis" />
+
+**How it works.** Two chosen indices must be at least $k$ apart, so the element $i$ may use only the states up to $i - k$. The state of the index $i - k$ goes into the tree just before the element $i$ is handled, so the tree holds exactly the allowed states. Nothing changes in the query.
+
+**Alternative formulation.** One tree is needed in either case; the delayed insertion replaces a range query over the indices. A segment tree indexed by (rank, position) would be more general and slower.
+
+### The best score of jumps of at most $k$ cells (Theorem 7.3.2)
+
+<CodeSnippet unit="7.3/jump-score" />
+
+**How it works.** `dp[i]` is the best score of a path from the cell 0 that ends at the cell $i$. The deque holds indices of the last $k$ cells with decreasing `dp`, so the front is the best predecessor. At each step indices smaller than $i - k$ leave from the front; the cell $i - 1$ is always inside, so the deque is never empty. After `dp[i]` is computed, cells with a not larger `dp` leave from the back, and $i$ enters.
+
+**Alternative formulation.** A segment tree with range maximum over the cells, $O(n \log n)$; or a priority queue with lazy deletion (pop the top while its index is too old), also $O(n \log n)$.
+
+### The fewest pieces with a limited spread (Theorem 7.3.2, two moving ends)
+
+<CodeSnippet unit="7.3/strip" />
+
+**How it works.** The piece $[j, i)$ may be the last one if it has at least `l` numbers and `max - min <= s`. The starts that satisfy the spread form a range beginning at `first`, which only grows: two deques give the maximum and the minimum of `a[first..i)`, and `first` is moved right until the spread is at most `s`. The starts that satisfy the length are $j \le i - l$; when $i - l$ becomes allowed it joins a third deque (of starts with increasing `dp`, so the front is the smallest). `INF` marks the impossible; the answer is `-1` if the end cannot be reached.
+
+**Alternative formulation.** A sparse table (topic 5.1) for the maximum and the minimum, a binary search for `first`, and a segment tree for the range minimum of `dp`: $O(n \log n)$, more code.
+
+### The number of increasing subsequences of a given length (Theorem 7.3.3)
+
+<CodeSnippet unit="7.3/count-length" />
+
+**How it works.** `layer[len]` is a tree of sums: at the rank of an element it holds the number of increasing subsequences of `len` elements that end with that element. For each element, the count for `len` is the prefix sum of the layer `len - 1` over the smaller ranks (for `len = 1`, one), and it is added to the layer `len`. The total of the longest layer is the answer. The cost is $O(n t \log m)$.
+
+**Alternative formulation.** A table `cnt[len][i]` with the sum over earlier $j$ is $O(n^2 t)$, enough for $n \le 2000$.
+
+### The sum of products of distinct sequences (Theorem 7.3.3, replacement)
+
+<CodeSnippet unit="7.3/distinct-product" />
+
+**How it works.** `f[r]` is the sum of the products of the distinct non-decreasing sequences that end with the value of rank `r`. For an element, the new `f` is the element times one plus the sum of `f` over the ranks up to its own (non-decreasing, so equal values count). It replaces the old `f` at that rank: the tree gets the difference. `tree.prefix(m)` at the end is the sum of all.
+
+**Alternative formulation.** Counting by positions and dividing by the repeats is wrong; the replacement is the way to count distinct sequences.
+
+### The best split into parts by distinct values (Theorem 7.3.4, one tree for each part)
+
+<CodeSnippet unit="7.3/distinct-split" />
+
+**How it works.** In the round `c`, `f[j]` is `prev[j]` (the best value of the first `j` numbers in `c - 1` parts) plus the number of different values in `a[j..i)`. When `i` grows by one, the new number `a[i-1]` adds one to every start `j` at or after its previous occurrence (the part `(j, i]` now has it as a new value): a range addition on `last..i-1`. The value for `i` is then the largest `f[j]` over `j < i`. After the round `prev` is replaced by the new values. The cost is $O(k n \log n)$.
+
+**Alternative formulation.** The divide-and-conquer optimisation (not in this course) or the table `dp[c][i]` with the loop over `j` and a distinct count in $O(1)$ per step by moving a window: $O(k n^2)$, enough for $n \le 3000$.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template or of a worked example and running the random stress test against the brute force; the input shown is a small one that fails (the smallest found among thousands of random cases, or a still simpler one that was checked by running it).
+
+### Bug: equal values are allowed to chain
+
+Template: the heaviest strictly increasing subsequence.
+
+```cpp
+long long dp = w[i] + tree.query(rank[i]);                          // instead of tree.query(rank[i] - 1)
+```
+
+Input: `2`, then the values `2 2`, then the weights `1 1`.
+
+Wrong output `2`, correct output `1`. The query up to the rank of the element includes the earlier element with the same value, so two equal values count as an increasing pair. A strict increase needs the ranks *below* (Theorem 7.3.1, note 2).
+
+**Fix:** ask for the ranks below the element's own, `query(rank[i] - 1)`; use `query(rank[i])` only when equal values are allowed.
+
+### Bug: the weight is inserted instead of the total
+
+Template: the heaviest strictly increasing subsequence.
+
+```cpp
+tree.update(rank[i], w[i]);                                         // instead of tree.update(rank[i], dp)
+```
+
+Input: `3`, then the values `1 2 3`, then the weights `1 1 1`.
+
+Wrong output `2`, correct output `3`. The tree then holds the weights of single elements, so a chain of three never builds on the chain of two: the state of an element is the best total of a choice that *ends* there, not its own weight (Theorem 7.3.1).
+
+**Fix:** insert `dp`, the best total ending at the element.
+
+### Bug: the answer is the last state
+
+Template: the heaviest strictly increasing subsequence.
+
+```cpp
+best = dp;                                                          // instead of best = max(best, dp)
+```
+
+Input: `2`, then the values `2 1`, then the weights `5 1`.
+
+Wrong output `1`, correct output `5`. The best choice need not end at the last element; here the best is the single first element. The answer is the largest state over all the elements (Theorem 7.3.1 (4)).
+
+**Fix:** take the maximum of all the states.
+
+### Bug: the window is one cell too long
+
+Template: the best score of jumps of at most $k$ cells.
+
+```cpp
+while (window.front() < i - k - 1) window.pop_front();              // instead of i - k
+```
+
+Input: `3 1`, then the numbers `4 -4 7`.
+
+Wrong output `11`, correct output `7`. With $k = 1$ the only jumps go one cell forward, so the only path is $4, -4, 7$. The window kept the cell $i - 2$ as well, which allowed a jump of 2 and the score $4 + 7$. The expiry test must remove every index below $i - k$ (Theorem 7.3.2, step (1)).
+
+**Fix:** `while (window.front() < i - k) window.pop_front();`.
+
+### Bug: the old count is added to, not replaced
+
+Template: the sum of products of distinct sequences.
+
+```cpp
+tree.add(rank[i], now);                                             // instead of tree.add(rank[i], now - f[rank[i]])
+```
+
+Input: `2`, then the numbers `4 4`.
+
+Wrong output `24`, correct output `20`. The distinct sequences are $(4)$ and $(4, 4)$, with products $4 + 16 = 20$. After the second 4, the new value of $f_4$ is $4 \cdot (1 + 4) = 20$ and it already contains the sequence $(4)$ found before; adding it to the old $4$ counts that sequence twice (Theorem 7.3.3 (c)).
+
+**Fix:** add the difference between the new value and the old one.
+
+### Bug: the reward of an interval stops one state early
+
+Worked example: Intervals.
+
+```cpp
+f.update(1, 0, n, intervals[p][0], i - 1, intervals[p][2]);         // instead of ..., i, ...
+```
+
+Input: `1 1`, then the interval `1 1 3`.
+
+Wrong output `0`, correct output `3`. An interval ending at $i$ pays when the last 1 lies in $l..i$, and the state $i$ itself (a 1 at the position $i$) is in that range. With the range cut at $i - 1$ the string `1` gets no reward (Theorem 7.3.4 (3)).
+
+**Fix:** add the reward to the states `l..i`.
+
+### Bug: a negative best predecessor is taken
+
+Worked example: Constrained Subsequence Sum.
+
+```cpp
+dp[i] = nums[i] + (window.empty() ? 0 : dp[window.front()]);        // instead of max(0LL, dp[window.front()])
+```
+
+Input: `2 2`, then the numbers `-2 5`.
+
+Wrong output `3`, correct output `5`. The element 5 does better on its own than after the $-2$, but the code adds the best predecessor even when it is negative. The empty choice (start here) is a candidate in every state (Theorem 7.3.2 and the definition with $\max(0, \cdot)$).
+
+**Fix:** take `max(0LL, dp[window.front()])`.
+
+### Bug: an element is allowed too early
+
+Template: the same with a distance rule.
+
+```cpp
+if (i - k + 1 >= 0) tree.update(rank[i - k + 1], dp[i - k + 1]);    // instead of the index i - k
+```
+
+Input: `2 2`, then the values `1 2`, then the weights `1 1`.
+
+Wrong output `2`, correct output `1`. The two chosen indices must be at least 2 apart, but the state of the index $i - 1$ is inserted before the element $i$ is handled, so the pair $(0, 1)$ is allowed (Theorem 7.3.1 (b), insertion of exactly the indices up to $i - g$).
+
+**Fix:** insert the index `i - k`, no later one.
+
+### Bug: the first start is never allowed
+
+Template: the fewest pieces with a limited spread.
+
+```cpp
+if (i - l > 0) {                                                    // instead of i - l >= 0
+```
+
+Input: `1 0 1`, then the number `1`.
+
+Wrong output `-1`, correct output `1`. The start $j = 0$ (the piece begins at the first number) joins the deque only when $i - l = 0$, and with `>` it never does, so no cut that begins at the very first number exists (Theorem 7.3.2, with the start $0$ among the allowed ones).
+
+**Fix:** `if (i - l >= 0)`.
+
+## 8. Worked examples
+
+### Example 1: Flowers
+
+[AtCoder Educational DP Contest, task Q: Flowers](https://atcoder.jp/contests/dp/tasks/dp_q). In short: $N \le 2 \cdot 10^5$ flowers stand in a row, with heights that are a permutation of $1..N$ and beauties $a_i \le 10^9$; remove some flowers so that the heights of the rest increase from left to right; find the largest total beauty of the rest.
+
+#### Step 1: Constraints → budget
+
+The number of subsets is $2^N$, and even the DP over pairs of flowers costs $N^2 / 2 = 2 \cdot 10^{10}$ steps. We need about $N \log N$ steps. The total is up to $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$, so 64 bits.
+
+#### Step 2: Question form → candidate tools
+
+- A search over subsets ([topic 0.5](../../phase-0/0-5-brute-force/)): $2^N$.
+- The O(N²) DP over pairs ([topic 3.4](../../phase-3/3-4-sequence-dp/)): too slow for $N = 2 \cdot 10^5$; the table of tails of the length version does not carry weights.
+- The same DP with the maximum taken by a tree: the card "A best over the earlier elements with a smaller key (a prefix of the ranks)".
+
+#### Step 3: Property check → decision
+
+The best total of a choice ending at flower $i$ is its beauty plus the best total among the earlier flowers that are lower; the flowers allowed before $i$ are exactly those with a height in the prefix $1..h_i - 1$. Decision: a Fenwick tree for prefix maxima indexed by height. The heights are already a permutation of $1..N$, so they are their own ranks and no compression is needed.
+
+#### Step 4: Proof for this problem
+
+Let $\text{dp}_i$ be the largest total beauty of a choice of flowers whose last flower is $i$, with heights increasing. Removing the last flower, the rest is empty or ends at an earlier flower of smaller height, so $\text{dp}_i = a_i + \max(0, \max\{\text{dp}_j : j < i, h_j < h_i\})$. By Theorem 7.3.1, with the ranks equal to the heights and $g = 1$, the tree gives this maximum with a query on the heights below $h_i$, asked before the insertion. The answer is the largest $\text{dp}_i$ (it is at least one flower, and the beauties are positive).
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.3/example-1" />
+
+#### Step 6: Alternative approach
+
+A segment tree for the maximum over the heights ([topic 5.3](../../phase-5/5-3-segment-tree/)), the same $O(N \log N)$; or offline divide and conquer, which is not in this course.
+
+### Example 2: Constrained Subsequence Sum
+
+[LeetCode 1425: Constrained Subsequence Sum](https://leetcode.com/problems/constrained-subsequence-sum/). In short: an array of up to $10^5$ integers (some negative) and an integer $k$; find the largest sum of a non-empty subsequence in which two consecutive chosen elements are at most $k$ positions apart.
+
+#### Step 1: Constraints → budget
+
+The DP over pairs costs $n k$, which is $10^{10}$ for $k = n = 10^5$. We need about $n \log n$ or $n$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- The DP with a loop over the last $k$ states ([topic 3.4](../../phase-3/3-4-sequence-dp/)): $nk$ steps.
+- A segment tree with range maximum over the positions ([topic 5.3](../../phase-5/5-3-segment-tree/)): $O(n \log n)$, correct.
+- The same DP with the window maximum in a deque: the card "A best over a window of earlier states that moves to the right".
+
+#### Step 3: Property check → decision
+
+The allowed predecessors of $i$ are the positions $i - k..i - 1$, and the left end $i - k$ never decreases. Decision: the monotonic deque of Theorem 7.3.2, $O(n)$.
+
+#### Step 4: Proof for this problem
+
+Let $\text{dp}_i$ be the largest sum of a valid subsequence whose last element is $i$. The subsequence is either just $i$ or ends with a pair $(j, i)$ with $i - k \le j < i$ and a valid subsequence ending at $j$, so $\text{dp}_i = \text{nums}_i + \max(0, \max_{i-k \le j<i} \text{dp}_j)$. The `max(0, ...)` is the choice "start here": it matters when all the predecessors are negative. By Theorem 7.3.2 the front of the deque is the maximum of the window. The answer is the largest $\text{dp}_i$, over all $i$, since the subsequence may end anywhere and must be non-empty (if all numbers are negative it is the largest number).
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.3/example-2" />
+
+#### Step 6: Alternative approach
+
+A segment tree over the positions (point update with $\text{dp}_i$, range maximum over $i-k..i-1$), $O(n \log n)$; or a priority queue of $(\text{dp}_j, j)$ where entries with $j < i - k$ are discarded when they reach the top.
+
+### Example 3: Intervals
+
+[AtCoder Educational DP Contest, task W: Intervals](https://atcoder.jp/contests/dp/tasks/dp_w). In short: choose a string of $N \le 2 \cdot 10^5$ bits; for each of $M \le 2 \cdot 10^5$ intervals $(l_i, r_i, a_i)$, with $|a_i| \le 10^9$, the reward $a_i$ is added if the string has at least one 1 inside the interval; find the largest total reward.
+
+#### Step 1: Constraints → budget
+
+There are $2^N$ strings. A DP over the position and the last 1 has $N^2 / 2$ states and the intervals change many of them. We need about $(N + M) \log N$ steps, with 64 bits for the sums.
+
+#### Step 2: Question form → candidate tools
+
+- A search over strings ([topic 0.5](../../phase-0/0-5-brute-force/)): $2^N$.
+- A DP with a state for the last 1 and every state changed by hand: $O(N M)$ in the worst case.
+- The same DP with the changes as range additions in a tree: the card "A new element adds the same amount to a range of earlier states".
+
+#### Step 3: Property check → decision
+
+An interval pays exactly when the last 1 at or before its right end lies inside it. So with the state "position of the last 1", an interval ending at $i$ adds its reward to the contiguous range of states $l..i$: the same amount for every state of a range. Decision: Theorem 7.3.4, a tree with range addition and range maximum.
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.3.4: $f_i$ starts as the best state before it (bit $i$ is 1) and each interval $(l, i, a)$ adds $a$ to $f_l..f_i$. After the position $N$ the answer is the largest state, the state 0 (no 1 at all) included. The sums fit into 64 bits: at most $2 \cdot 10^5$ rewards of $10^9$ in absolute value.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.3/example-3" />
+
+#### Step 6: Alternative approach
+
+The mirror image: go from the right to the left with the state "position of the first 1 so far" and handle the intervals at their left ends. It is the same DP reflected, with the same cost.
+
+## 9. Problem ladder
+
+<Ladder topic="7.3" />
+
+## 10. Identification drill
+
+<Drill topic="7.3" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.3" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.3" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.3" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.3" />

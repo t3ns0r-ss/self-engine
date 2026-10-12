@@ -124,10 +124,11 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
       }
       if (t.phase === 7 && !is78 && (p.role === 'ladder' || p.role === 'worked_example'))
         for (const r of t.requires) if (!b.techniques.includes(r)) err(F, `${p.id}: Phase 7 problems must use the combined topics; missing ${r}`);
-      if (p.card && (p.role === 'ladder' || p.role === 'checkpoint' || p.role === 'review') && !own.has(p.card))
+      // Topic 7.8 has no cards of its own: its checkpoint and review problems name a card of the earlier topic they test.
+      if (p.card && (p.role === 'ladder' || p.role === 'checkpoint' || p.role === 'review') && !(is78 ? [...byId.values()].some((x) => x.order < t.order && cardsOf(x.id).has(p.card)) : own.has(p.card)))
         err(F, `${p.id}: card ${p.card} is not a card of topic ${tid}`);
       // Exam problems test earlier topics of the phase: their card belongs to the topic of their bank.
-      if (p.role === 'exam' && (!p.card || !cardsOf(b.bankTopic).has(p.card)))
+      if (p.role === 'exam' && (!p.card || !(b.bankTopic === '7.8' ? [...byId.values()].some((x) => x.order < t.order && cardsOf(x.id).has(p.card)) : cardsOf(b.bankTopic).has(p.card))))
         err(F, `${p.id}: exam problems need the card of topic ${b.bankTopic} they test (found ${p.card})`);
     }
     const ofRole = (r) => tf.problems.filter((p) => p.role === r);

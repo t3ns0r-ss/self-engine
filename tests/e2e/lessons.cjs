@@ -33,7 +33,9 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((
     p.on('pageerror', (e) => errs.push(e.message));
     p.on('console', (m) => m.type() === 'error' && errs.push(m.text()));
     await p.goto(lesson);
-    await p.waitForSelector('.ladder');
+    // Topic 7.8 teaches no new tool: it has no cards and no ladder (PLAN.md Section 4 notes).
+    const hasLadder = tf.problems.some((x) => x.role === 'ladder');
+    await p.waitForSelector(hasLadder ? '.ladder' : '.drill');
     const T = `[${tf.id}]`;
     check(await p.locator('.katex-error').count() === 0, `${T} no KaTeX errors`);
     check(await p.locator('.draft-note').count() === (tf.draft ? 1 : 0), `${T} draft notice matches the data file`);
@@ -42,22 +44,25 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((
     check(await p.locator('.ladder-group').count() === ladderCards.size, `${T} ${ladderCards.size} ladder groups`);
     check(await p.locator('.drill li').count() === tf.drill.length, `${T} ${tf.drill.length} drill items`);
 
-    // First ladder problem: hint 1 behind the struggle-budget reminder.
-    // The ladder is shown in card order, so the first item is rung 1 of the first card that has rungs.
-    const firstCard = tf.cards.find((c) => tf.problems.some((x) => x.role === 'ladder' && x.card === c.id));
-    const first = tf.problems.find((x) => x.role === 'ladder' && x.card === firstCard.id && x.rung === 1);
-    const item = p.locator('.ladder-item').first();
-    await item.locator('button:has-text("Hint 1")').click();
-    check(await item.locator('text=Struggle budget').isVisible(), `${T} hint 1 shows the reminder`);
-    await item.locator('button:has-text("Show hint 1")').click();
-    check(await item.locator(`text=${first.hints[0].slice(0, 40)}`).isVisible(), `${T} hint 1 text revealed`);
+    if (hasLadder) {
+      // First ladder problem: hint 1 behind the struggle-budget reminder.
+      // The ladder is shown in card order, so the first item is rung 1 of the first card that has rungs.
+      const firstCard = tf.cards.find((c) => tf.problems.some((x) => x.role === 'ladder' && x.card === c.id));
+      const first = tf.problems.find((x) => x.role === 'ladder' && x.card === firstCard.id && x.rung === 1);
+      const item = p.locator('.ladder-item').first();
+      await item.locator('button:has-text("Hint 1")').click();
+      check(await item.locator('text=Struggle budget').isVisible(), `${T} hint 1 shows the reminder`);
+      await item.locator('button:has-text("Show hint 1")').click();
+      check(await item.locator(`text=${first.hints[0].slice(0, 40)}`).isVisible(), `${T} hint 1 text revealed`);
 
-    // Log a solve.
-    await item.locator('button:has-text("Log")').click();
-    await item.locator('select[id$=status]').selectOption('solved');
-    await item.locator('button:has-text("Save")').click();
-    await p.waitForTimeout(200);
-    check(await p.locator('.ladder-group').first().locator('text=/1 \\/ \\d+ solved/').isVisible(), `${T} progress bar counts the solve`);
+      // Log a solve.
+      await item.locator('button:has-text("Log")').click();
+      await item.locator('select[id$=status]').selectOption('solved');
+      await item.locator('button:has-text("Save")').click();
+      await p.waitForTimeout(200);
+      check(await p.locator('.ladder-group').first().locator('text=/1 \\/ \\d+ solved/').isVisible(), `${T} progress bar counts the solve`);
+
+    }
 
     // Drill: answer every item with its correct card, then check the score.
     const items = p.locator('.drill li');
@@ -100,7 +105,7 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((
     // Narrow mobile width, dark theme.
     const m = await b.newPage({ viewport: { width: 375, height: 800 }, colorScheme: 'dark' });
     await m.goto(lesson);
-    await m.waitForSelector('.ladder');
+    await m.waitForSelector(hasLadder ? '.ladder' : '.drill');
     check(!(await m.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)), `${T} no horizontal page scroll at 375px`);
     await m.screenshot({ path: `${OUT}/lesson-${slug}-mobile.png` });
     await m.close();

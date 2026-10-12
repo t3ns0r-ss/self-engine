@@ -1,0 +1,464 @@
+---
+title: "7.6 Matrix exponentiation for linear recurrences"
+sidebar:
+  order: 46
+topic: "7.6"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.6" />
+
+This topic combines [fast exponentiation and modular arithmetic](../../phase-2/2-2-modular-arithmetic/) (a power computed in $O(\log n)$ steps by repeated squaring, with every number reduced modulo $m$) and [dynamic programming](../../phase-3/3-2-dp-foundations/) (a value at each step built from earlier values by the same rule). A DP that does the same thing at every step is a fixed linear map applied again and again; the $n$-th step is the $n$-th power of a matrix, and the power is found by repeated squaring.
+
+## 1. Why this topic exists
+
+Here is a small problem. The Fibonacci numbers are $F_0 = 0$, $F_1 = 1$, $F_n = F_{n-1} + F_{n-2}$. Print $F_n \bmod (10^9 + 7)$ for $n$ up to $10^{18}$. A loop that computes the terms one by one takes $n$ steps: $10^{18}$ steps at $10^8$ per second are $10^{10}$ seconds, about 300 years. The sequence has no closed formula that works modulo a prime. But one step of the loop is always the same operation on the pair $(F_{k+1}, F_k)$, and the same operation applied $n$ times is the $n$-th power of a $2 \times 2$ matrix. A matrix power by repeated squaring costs about $2 \log_2 n \approx 120$ products of $2 \times 2$ matrices.
+
+The lesson has four ideas.
+- **The companion matrix.** A recurrence $x_n = c_1 x_{n-1} + \dots + c_k x_{n-k}$ with fixed coefficients is one multiplication by a $k \times k$ matrix per step. The $n$-th term costs $O(k^3 \log n)$.
+- **Counting walks.** The entry $(i, j)$ of the $L$-th power of the adjacency matrix is the number of walks with exactly $L$ edges from $i$ to $j$. Any DP over a small set of states whose transitions never change is such a count.
+- **Extra coordinates.** A constant, the index $n$, or a running sum can be added to the state vector, because their next values are again linear in the current ones.
+- **Other arithmetics.** The power trick needs only associativity. With $\min$ in place of the sum and $+$ in place of the product, the matrix power gives the cheapest walk with exactly $L$ edges.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.6" />
+
+### What this topic does not cover
+
+- Faster methods for one very long recurrence (a polynomial method with $O(k^2 \log n)$ or $O(k \log k \log n)$ steps), and finding the recurrence from the first terms of a sequence. They are not part of this course; here $k$ is at most about 100.
+- Matrix inverses, Gaussian elimination and the determinant. A matrix here is only a way to apply a step many times.
+- Closed formulas with irrational numbers (Binet's formula) and the period of a sequence modulo $m$. A closed formula does not exist modulo a prime in general, and the matrix power does not depend on a period.
+- Counting paths that do not repeat a vertex (a bitmask DP, topic 3.7). A matrix power counts walks, which may repeat vertices.
+
+## 3. Definitions
+
+- A **matrix** $A$ of size $n \times n$ is a table of numbers with the entries $A[i][j]$; rows and columns are numbered from 0. A **vector** is a column of numbers.
+- The **product** of $n \times n$ matrices is $(AB)[i][j] = \sum_k A[i][k] \cdot B[k][j]$. The product of a matrix and a vector $v$ is $(Av)[i] = \sum_j A[i][j] \cdot v[j]$. Example: $\begin{pmatrix}1&1\\1&0\end{pmatrix}\begin{pmatrix}5\\3\end{pmatrix} = \begin{pmatrix}8\\5\end{pmatrix}$.
+- The **identity matrix** $E$ has 1 on the diagonal and 0 elsewhere, and $EA = AE = A$. The **power** $A^L$ is the product of $L$ copies of $A$, with $A^0 = E$.
+- A **linear recurrence of order $k$** with constant coefficients is a sequence with $x_n = c_1 x_{n-1} + c_2 x_{n-2} + \dots + c_k x_{n-k}$ for $n \ge k$, and given starting values $x_0, \dots, x_{k-1}$. Example: $x_n = x_{n-1} + x_{n-2}$ is order 2 (Fibonacci), $x_n = x_{n-1} + x_{n-3}$ is order 3.
+- The **companion matrix** of this recurrence is the $k \times k$ matrix $C$ with the first row $(c_1, \dots, c_k)$, the entries $C[i][i-1] = 1$ for $i = 1, \dots, k-1$, and 0 elsewhere. Example: for Fibonacci, $C = \begin{pmatrix}1&1\\1&0\end{pmatrix}$.
+- A **walk** with $L$ edges in a directed graph is a sequence of vertices $v_0, v_1, \dots, v_L$ with an edge from $v_{t-1}$ to $v_t$ for each $t$; vertices may repeat. The **adjacency matrix** has $A[i][j]$ equal to the number of edges from $i$ to $j$. Example: for the edges $0 \to 1$, $1 \to 2$, $2 \to 0$, the walks $0, 1, 2, 0$ and $0, 1, 2, 0, 1$ both exist.
+- A **semiring** is a set with two operations $\oplus$ ("sum") and $\otimes$ ("product") with the rules listed in Theorem 7.6.4. Examples: the ordinary numbers $(+, \times)$; the numbers with $\infty$ and $(\min, +)$; the values true/false with $(\text{or}, \text{and})$.
+- In the code, `vector<vector<long long>>` is a matrix, `(x + y * z) % mod` keeps every number below the modulus, `1ULL << i` is a 64-bit number with only bit $i$ set, and a **lambda** like `[&](long long limit) { ... }` is a small function written inside another function.
+
+## 4. Theory and proofs
+
+### 4.1 Linear recurrences
+
+**Theorem 7.6.1 (the companion matrix).** Let $x_0, \dots, x_{k-1}$ be given and $x_n = c_1 x_{n-1} + \dots + c_k x_{n-k}$ for $n \ge k$, with all arithmetic modulo $m$. Let $v_n$ be the vector $(x_{n+k-1}, x_{n+k-2}, \dots, x_n)$ and $C$ the companion matrix. (a) $v_{n+1} = C v_n$, so $v_n = C^n v_0$, and $x_n$ is the last entry of $C^n v_0$. (b) The power $C^n$ can be computed with at most $2 \lfloor \log_2 n \rfloor + 1$ products of $k \times k$ matrices, so $x_n$ costs $O(k^3 \log n)$ operations.
+
+:::tip[In plain words]
+One step of the recurrence is the same multiplication every time: the new term is a fixed mix of the last $k$ terms, and the other terms just move one place. Doing $n$ steps is doing the same multiplication $n$ times, which is a power of the matrix. A power can be built by squaring, so $n$ steps cost only about $\log_2 n$ squarings.
+:::
+
+**A tiny instance.** Fibonacci: $C = \begin{pmatrix}1&1\\1&0\end{pmatrix}$ and $v_0 = (x_1, x_0) = (1, 0)$. Then $C^2 = \begin{pmatrix}2&1\\1&1\end{pmatrix}$, $C^4 = (C^2)^2 = \begin{pmatrix}5&3\\3&2\end{pmatrix}$, and $C^4 v_0 = (5, 3)$: that is $v_4 = (x_5, x_4) = (5, 3)$, so $x_4 = 3$. Check by the loop: $0, 1, 1, 2, 3, 5$.
+
+**Proof.**
+1. *The new term.* $v_{n+1}$ starts with $x_{n+k} = c_1 x_{n+k-1} + \dots + c_k x_n$. The entry $j - 1$ of $v_n$ is $x_{n+k-j}$, so this is $\sum_j c_j \cdot v_n[j-1]$, which is the first row of $C$ times $v_n$.
+2. *The other terms.* For $i \ge 1$, $v_{n+1}[i] = x_{n+k-i} = v_n[i-1]$. The row $i$ of $C$ has a single 1 in the column $i - 1$, so $(Cv_n)[i] = v_n[i-1]$ too. With step 1, $v_{n+1} = C v_n$.
+3. *The power.* By induction on $n$: $v_0 = E v_0 = C^0 v_0$; and if $v_n = C^n v_0$ then $v_{n+1} = C v_n = C (C^n v_0) = C^{n+1} v_0$ (the product of matrices is associative: both $(AB)v$ and $A(Bv)$ equal $\sum_{j,l} A[i][j] B[j][l] v[l]$). The last entry of $v_n$ is $x_n$. This is part (a).
+4. *Working modulo $m$.* The sum and the product of two numbers modulo $m$ depend only on their remainders, so reducing every entry modulo $m$ after each sum and product gives the right remainders.
+5. *Regrouping.* Matrix products are associative, and $C^a C^b = C^{a+b}$, so the $n$ factors can be grouped in any way.
+6. *Repeated squaring.* Write $n$ in binary as a sum of powers of two $2^{t_1} + \dots + 2^{t_s}$. The matrix $C^{2^t}$ is the square of $C^{2^{t-1}}$, so all of $C^{2^0}, \dots, C^{2^{\lfloor \log_2 n \rfloor}}$ take $\lfloor \log_2 n \rfloor$ squarings. Then $C^n = C^{2^{t_1}} \cdots C^{2^{t_s}}$ takes at most $\lfloor \log_2 n \rfloor$ more products.
+7. *Cost.* One product of $k \times k$ matrices takes $k^3$ multiplications, so the total is $O(k^3 \log n)$. This is part (b). $\square$
+
+:::note[This proof needs]
+1. The coefficients $c_j$ are constants. If a coefficient depends on $n$ (as in $D_n = (n-1)(D_{n-1} + D_{n-2})$), the matrix changes at every step and the power does not exist.
+2. A fixed finite order $k$ and known starting values. A sequence defined by a rule that looks at all earlier terms has no fixed matrix.
+3. Arithmetic modulo a number $m$ whose square fits in 64 bits ($m < 3 \cdot 10^9$ for `long long`); for larger moduli use a 128-bit product.
+4. The size $k$ is small: $k^3 \log n$ with $k = 100$ and $n = 10^{18}$ is about $1.2 \cdot 10^8$ operations; with $k = 1000$ it is too slow.
+5. If $n$ is small (up to $10^7$ and $k$ small), a plain loop with $nk$ steps is simpler and as good.
+:::
+
+<TheoremCode unit="7.6/thm-1" />
+
+The first two lines are the tiny instance and a three-term recurrence (checked by hand with the loop $0, 0, 1, 1, 2, 4, 7, 13, 24, 44, 81, 149$); the third is the case that the loop cannot do. The check compares the result with a loop for every recurrence of order 1 to 3 with coefficients and starting values 0, 1, 2 and $n$ up to 40.
+
+### 4.2 Counting walks
+
+**Theorem 7.6.2 (walks and the adjacency matrix).** Let $A$ be the adjacency matrix of a directed graph with $n$ vertices (parallel edges counted separately). For every $L \ge 0$ the entry $(A^L)[i][j]$ is the number of walks with exactly $L$ edges from $i$ to $j$.
+
+:::tip[In plain words]
+A walk of $L + 1$ edges is a walk of $L$ edges followed by one more edge. Counting by where the first $L$ edges end is exactly what the product of matrices does. So the power of the adjacency matrix counts walks, and a long walk count is a fast power.
+:::
+
+**A tiny instance.** The triangle with the vertices 0, 1, 2 and every pair joined: $A = \begin{pmatrix}0&1&1\\1&0&1\\1&1&0\end{pmatrix}$, $A^2 = \begin{pmatrix}2&1&1\\1&2&1\\1&1&2\end{pmatrix}$, $A^3 = \begin{pmatrix}2&3&3\\3&2&3\\3&3&2\end{pmatrix}$. There are 2 walks of length 3 from 0 to 0 ($0,1,2,0$ and $0,2,1,0$) and 3 from 0 to 1 ($0,1,0,1$ and $0,1,2,1$ and $0,2,0,1$).
+
+**Proof.**
+1. *Length 0.* $A^0 = E$: the empty walk is the only walk with no edges, and it goes from $i$ to $i$.
+2. *The step.* A walk with $L + 1$ edges from $i$ to $j$ is cut uniquely at its last edge: the first $L$ edges form a walk from $i$ to some vertex $k$, and the last edge goes from $k$ to $j$. For a fixed $k$ there are $(A^L)[i][k]$ choices for the first part (induction) and $A[k][j]$ choices for the last edge.
+3. *Summing over $k$,* the count is $\sum_k (A^L)[i][k] A[k][j] = (A^{L+1})[i][j]$ by the definition of the product. This proves the statement for $L + 1$.
+4. *Cutting anywhere.* In the same way a walk of $a + b$ edges is cut after $a$ edges, which gives $A^{a+b} = A^a A^b$; this is the identity used in the squaring of Theorem 7.6.1. $\square$
+
+:::note[This proof needs]
+1. Walks, not paths: a vertex may repeat. A question about paths that do not repeat a vertex is not answered by the power.
+2. The same transitions at every step. If the graph changes at known moments (the edges open on given days), take one power for each stretch with a fixed graph and multiply the vectors in the order of time.
+3. A small number of states $n$ (at most about 100 to 150), since the power costs $n^3 \log L$.
+4. The question is about the number of walks with *exactly* $L$ edges; "at most $L$" is a sum, handled with an extra coordinate (Theorem 7.6.3) or with a loop at the end vertex.
+5. A finite-state machine (an automaton) fits: a string is accepted by a walk from the start state, so the number of strings of length $L$ is a sum of entries of $A^L$.
+:::
+
+<TheoremCode unit="7.6/thm-2" />
+
+The first two lines are the triangle ($A^3[0][0] = 2$ and $A^3[0][1] = 3$, step 2 of the proof); the third has a loop, which is a walk edge like any other. The check compares the power with a recursive count of walks on 300 random graphs with parallel edges.
+
+### 4.3 Extra coordinates
+
+**Theorem 7.6.3 (constants, indices and sums as coordinates).** (a) Let $u_{n+1} = M u_n + w$ where $M$ is a $k \times k$ matrix and $w$ a constant vector. Then the vector $u'_n = (u_n, 1)$ of length $k + 1$ satisfies $u'_{n+1} = M' u'_n$, where $M'$ has $M$ in the upper left corner, $w$ as the last column, and the last row $(0, \dots, 0, 1)$. In particular the index $n$ is a coordinate: $(n, 1) \to (n + 1, 1)$. (b) Let $u_{n+1} = M u_n$ and $S_n = \sum_{i < n} e \cdot u_i$ for a fixed row vector $e$. Then $(S_n, u_n)$ satisfies $(S_{n+1}, u_{n+1}) = M'' (S_n, u_n)$ where the first row of $M''$ is $(1, e)$ and the other rows are $(0, M)$.
+
+:::tip[In plain words]
+If a quantity changes by a rule that is linear in the quantities we already follow, add it to the list of coordinates. A constant that is added at each step is a coordinate that is always 1. The index $n$ is a coordinate that grows by 1. A running sum is a coordinate that adds one of the others at each step. Then the whole thing is again one fixed matrix.
+:::
+
+**A tiny instance.** $x_{n+1} = 2 x_n + 3$ with $x_0 = 1$: the values are $1, 5, 13, 29, 61$. With $M' = \begin{pmatrix}2&3\\0&1\end{pmatrix}$, $M'^2 = \begin{pmatrix}4&9\\0&1\end{pmatrix}$, $M'^4 = \begin{pmatrix}16&45\\0&1\end{pmatrix}$, and $M'^4 (1, 1) = (61, 1)$. A running sum: $S_n = F_0 + \dots + F_{n-1}$ has $S_{10} = 0 + 1 + 1 + 2 + 3 + 5 + 8 + 13 + 21 + 34 = 88$; the coordinates $(S_n, F_{n+1}, F_n)$ start at $(0, 1, 0)$ and the matrix has the rows $(1, 0, 1)$, $(0, 1, 1)$, $(0, 1, 0)$.
+
+**Proof.**
+1. *Part (a).* The last row of $M'$ gives the last coordinate of $u'_{n+1}$ as $0 \cdot u_n + 1 \cdot 1 = 1$. The first $k$ rows give $M u_n + w \cdot 1 = u_{n+1}$.
+2. *The index.* Take the vector $(n, 1)$ with the matrix $\begin{pmatrix}1&1\\0&1\end{pmatrix}$: the first row gives $n + 1$, the second keeps the 1. If another coordinate has an update that adds a multiple of $n$, put $n$ into the vector and use part (a).
+3. *Part (b).* The first row $(1, e)$ gives $S_n + e \cdot u_n = S_{n+1}$. The other rows $(0, M)$ give $M u_n = u_{n+1}$ and do not look at $S_n$.
+4. *The power.* In both parts the vector evolves by a fixed matrix, so by the argument of Theorem 7.6.1 (steps 3 to 7) the vector at the step $n$ is the $n$-th power of the matrix applied to the starting vector, and it costs $O((k+1)^3 \log n)$. $\square$
+
+:::note[This proof needs]
+1. Every added coordinate is linear in the coordinates already in the vector, plus constants. A term like $n^2$ is allowed if $n^2$ itself is a coordinate (its update is $(n+1)^2 = n^2 + 2n + 1$, linear in $n^2$, $n$, 1). A term like $n \bmod 3$ or the number of divisors of $n$ is not a polynomial in $n$ and cannot be added.
+2. The extra coordinates enlarge the matrix: a recurrence of order 100 with a sum needs a $101 \times 101$ matrix.
+3. The starting vector must contain the right starting values of the new coordinates (for a sum, $S_0 = 0$; for the constant, 1; for the index, $n = 0$).
+4. For a product of earlier terms (not a sum), take logarithms of the exponents instead: the exponents form a linear recurrence (see the template for products).
+:::
+
+<TheoremCode unit="7.6/thm-3" />
+
+The first line is the affine example ($x_4 = 61$), the second the running sum of Fibonacci numbers, the third the empty sum $S_0$. The check compares both functions with loops for all small affine maps and for every recurrence of order 1 to 3 with coefficients and starting values 0, 1, 2.
+
+### 4.4 Other arithmetics
+
+**Theorem 7.6.4 (matrices over a semiring).** Let $S$ be a set with two operations $\oplus$ and $\otimes$ such that $\oplus$ is associative and commutative with an identity $\bar 0$; $\otimes$ is associative with an identity $\bar 1$; $\otimes$ distributes over $\oplus$ on both sides; and $\bar 0 \otimes x = x \otimes \bar 0 = \bar 0$. For $n \times n$ matrices over $S$ put $(A \otimes B)[i][j] = \bigoplus_k A[i][k] \otimes B[k][j]$ and let $E$ have $\bar 1$ on the diagonal and $\bar 0$ elsewhere. (a) The matrix product is associative and $E$ is its identity, so $A^L$ is found by repeated squaring in $O(n^3 \log L)$ operations of $S$. (b) For $(\min, +)$ (with $\bar 0 = \infty$ and $\bar 1 = 0$) and $A[i][j]$ the weight of the edge $i \to j$ ($\infty$ if there is none), the entry $A^L[i][j]$ is the least total weight of a walk with exactly $L$ edges from $i$ to $j$, and $\infty$ if there is none. The same holds for $(\max, +)$ with the greatest weight, and for $(\text{or}, \text{and})$ with "a walk with exactly $L$ edges exists".
+
+:::tip[In plain words]
+The squaring trick never uses subtraction or division, only the facts that grouping does not matter and that the product spreads over the sum. These facts also hold when "sum" means "smaller of two" and "product" means "plus". So the same power gives the cheapest walk with exactly $L$ edges, the most valuable one, or just whether one exists.
+:::
+
+**A tiny instance.** The graph with the edges $0 \to 1$ (weight 4), $0 \to 2$ (1), $2 \to 1$ (1), $1 \to 3$ (2), $2 \to 3$ (6). The walks with exactly 2 edges from 0 to 3 are $0, 1, 3$ with weight 6 and $0, 2, 3$ with weight 7, so the least is 6. With exactly 3 edges there is one walk, $0, 2, 1, 3$ with weight $1 + 1 + 2 = 4$. With 1 edge there is none, so the entry is $\infty$.
+
+**Proof.**
+1. *Associativity.* $((A \otimes B) \otimes C)[i][l] = \bigoplus_j \big(\bigoplus_k A[i][k] \otimes B[k][j]\big) \otimes C[j][l] = \bigoplus_j \bigoplus_k A[i][k] \otimes B[k][j] \otimes C[j][l]$ by distributivity. In the same way $(A \otimes (B \otimes C))[i][l] = \bigoplus_k \bigoplus_j A[i][k] \otimes B[k][j] \otimes C[j][l]$. The two double sums have the same terms; since $\oplus$ is associative and commutative, they are equal.
+2. *Identity.* $(E \otimes A)[i][j] = \bigoplus_k E[i][k] \otimes A[k][j]$. For $k = i$ the term is $\bar 1 \otimes A[i][j] = A[i][j]$; for $k \ne i$ it is $\bar 0 \otimes A[k][j] = \bar 0$, which does not change a $\oplus$. So $E \otimes A = A$, and in the same way $A \otimes E = A$.
+3. *Squaring.* The proof of Theorem 7.6.1, steps 5 to 7, used only associativity, the identity and the exponent law $A^a \otimes A^b = A^{a+b}$ (which follows from associativity). It therefore holds in $S$. This is part (a).
+4. *Part (b) by induction on $L$.* For $L = 0$ the matrix $E$ has $0$ on the diagonal (the empty walk) and $\infty$ elsewhere. A walk with $L + 1$ edges from $i$ to $j$ is a walk with $L$ edges from $i$ to some $k$ followed by an edge $k \to j$. Its least weight is the minimum over $k$ of (the least weight of the first part) + $A[k][j]$, which is $\bigoplus_k A^L[i][k] \otimes A[k][j]$ for $(\min, +)$.
+5. *The other semirings.* For $(\max, +)$ replace the least by the greatest. For $(\text{or}, \text{and})$ the entry is true exactly when some $k$ has a walk of $L$ edges from $i$ to $k$ and an edge $k \to j$. The rules of a semiring hold for all three. $\square$
+
+:::note[This proof needs]
+1. Distributivity of $\otimes$ over $\oplus$: $+$ over $\min$ holds ($a + \min(b, c) = \min(a + b, a + c)$). The pair $(\min, \times)$ with negative numbers does not satisfy it, and the power may then be wrong.
+2. The walk has exactly $L$ edges. "At most $L$ edges" needs a loop of weight 0 at the end vertex, or the minimum over several powers.
+3. The weights may be negative; there is no problem with negative cycles, since the walk length is fixed.
+4. The infinity must be large enough that no real walk reaches it, and small enough that infinity plus a weight does not overflow: with weights up to $10^9$ and $L$ up to $10^9$ a walk weighs at most $10^{18}$, and $2 \cdot 10^{18}$ works as infinity in `long long`.
+:::
+
+<TheoremCode unit="7.6/thm-4" />
+
+The three lines are the tiny instance: the walks with 2, 3 and 1 edges from 0 to 3. The check compares the power with a layer by layer computation on 500 random graphs of 5 vertices, for lengths 0 to 7.
+
+## 5. Recognition Cards
+
+<Cards topic="7.6" />
+
+## 6. Templates
+
+Seven templates. Each shows only the function that matters; the program around it reads the input. The functions `multiply`, `power` and `nthTerm` of Theorem 7.6.1 and `prefixSum` of Theorem 7.6.3 stay in the files outside the shown code. Each template is checked against a brute force (a loop over the steps, or a direct count) on thousands of random small inputs and on fixed tests with the smallest cases and the largest exponents.
+
+### A recurrence with two non-zero coefficients (Theorem 7.6.1)
+
+<CodeSnippet unit="7.6/magic-gems" />
+
+**How it works.** The recurrence $f(n) = f(n-1) + f(n-m)$ has order $m$, so the companion matrix is $m \times m$ with only two non-zero numbers in its first row: `coef[0]` for $f(n-1)$ and `coef[m - 1]` for $f(n-m)$. All $m$ starting values are 1. The function `nthTerm` builds the matrix, raises it to the power $n$ and reads the last entry. With $m = 100$ the matrix is $100 \times 100$ and the power costs about $10^8$ operations; a sparse recurrence is not cheaper in the power (the powers of a sparse matrix are not sparse).
+
+**Alternative formulation.** For the Fibonacci numbers there is the method of *fast doubling*, which needs no matrix: $F_{2k} = F_k (2 F_{k+1} - F_k)$ and $F_{2k+1} = F_k^2 + F_{k+1}^2$. Both follow from $C^{2k} = (C^k)^2$ with $C^k = \begin{pmatrix}F_{k+1}&F_k\\F_k&F_{k-1}\end{pmatrix}$: the entry $(0, 1)$ of the square is $F_{k+1} F_k + F_k F_{k-1} = F_k (F_{k+1} + F_{k-1}) = F_k (2 F_{k+1} - F_k)$, and the entry $(0, 0)$ is $F_{k+1}^2 + F_k^2 = F_{2k+1}$. It does about a quarter of the work of the $2 \times 2$ matrix power, and it exists only for Fibonacci-like recurrences.
+
+### A transformation of counts by a fixed map (Theorem 7.6.2)
+
+<CodeSnippet unit="7.6/letter-transform" />
+
+**How it works.** A string is summarised by the counts of the 26 letters. One transformation sends every letter $i$ to the next `nums[i]` letters, so the new count of a letter is a sum of old counts: $\text{step}[i][j] = 1$ if the letter $i$ turns into the letter $j$. The count of letters after $t$ steps is the vector of old counts times $\text{step}^t$, and the total length is the sum of the entries of the rows of the letters in $s$. The matrix is $26 \times 26$ and $t$ up to $10^9$ takes 30 squarings.
+
+**Alternative formulation.** For small $t$ (up to $10^5$) simulate the counts step by step in $26 \cdot 25$ operations per step. The matrix is needed when $t$ is huge, and the answer is the same, since one step of the simulation is one multiplication by $\text{step}$.
+
+### Is there a walk with exactly $L$ edges? (Theorem 7.6.4, or/and)
+
+<CodeSnippet unit="7.6/walk-exists" />
+
+**How it works.** A row of the matrix is a 64-bit number whose bit $j$ says that the entry $(i, j)$ is true, so $n \le 64$ vertices fit. The product of $a$ and $b$ has the row $i$ equal to the OR of the rows $k$ of $b$ over the bits $k$ set in the row $i$ of $a$: a walk goes $i \to k$ in $a$ and then from $k$ to anywhere in $b$. One product costs $n^2$ simple steps. The identity has the bit $i$ in the row $i$. The loop is the same repeated squaring as in Theorem 7.6.1.
+
+**Alternative formulation.** Propagate the set of reachable vertices step by step for $L$ steps. It takes $L$ rounds and is the brute force of the test; the power is used when $L$ is huge. If the graph changes at given moments, apply one power for each stretch to the set of reachable vertices.
+
+### A running sum of a recurrence (Theorem 7.6.3 (b))
+
+<CodeSnippet unit="7.6/level-sums" />
+
+**How it works.** Let $f(i)$ be the number of vertices at the distance exactly $i$ from the root; it satisfies $f(i) = \sum_d \text{cnt}[d] \, f(i-d)$ with $f(0) = 1$, a recurrence of order $D = 100$ (the largest edge length). The answer is the number of vertices at the distance at most $x$, which is $f(0) + \dots + f(x)$, the prefix sum $S_{x+1}$. The starting values $f(0), \dots, f(D-1)$ come from the recurrence itself, and `prefixSum` of Theorem 7.6.3 adds one coordinate. The matrix is $101 \times 101$.
+
+**Alternative formulation.** Keep the sum as an ordinary extra term of the recurrence: the vector $(f(n), \dots, f(n-D+1))$ together with the sum $S_n$ is exactly the coordinates of Theorem 7.6.3 (b), so the matrix has the same size $D + 1$ whichever way it is described.
+
+### A product of earlier terms: the exponents form a recurrence (Theorem 7.6.1 and Fermat's little theorem)
+
+<CodeSnippet unit="7.6/product-exponents" />
+
+**How it works.** The recurrence $f_n = c^{2n-6} f_{n-1} f_{n-2} f_{n-3}$ multiplies earlier terms, so there is no linear map on the terms themselves. Put $g_n = c^n f_n$; then $g_n = c^n \cdot c^{2n-6} f_{n-1} f_{n-2} f_{n-3} = (c^{n-1} f_{n-1})(c^{n-2} f_{n-2})(c^{n-3} f_{n-3}) = g_{n-1} g_{n-2} g_{n-3}$, because the exponents add up to $3n - 6$ on both sides. So $g_n = g_1^{a} \, g_2^{b} \, g_3^{d}$, where the exponents $a, b, d$ follow the tribonacci recurrence (each with its own starting values $1,0,0$, then $0,1,0$, then $0,0,1$). These exponents are huge, so they are taken modulo $P - 1$, where $P = 10^9 + 7$ is a prime (Fermat's little theorem, topic 2.2, valid because no $g_i$ is divisible by $P$). Finally $f_n = g_n \cdot (c^n)^{-1}$, with the inverse of $c^n$ by Fermat as well.
+
+### Blocks with different step matrices (Theorem 7.6.3 (a))
+
+<CodeSnippet unit="7.6/concat-progression" />
+
+**How it works.** Appending a term $s$ of $d$ digits to the number $X$ gives $X \cdot 10^d + s$, and the next term is $s + B$. On the vector $(X, s, 1)$ this is the matrix with the rows $(10^d, 1, 0)$, $(0, 1, B)$, $(0, 0, 1)$ (the last coordinate makes the added $B$ a constant). Terms with the same number of digits $d$ are consecutive, so for $d = 1, \dots, 18$ count them with `countBelow` and apply the step matrix of that $d$ that many times (a power). The matrices of different blocks do not commute, so they are applied in the order of the blocks, each to the vector found so far. The modulus $M$ is not a prime, which does not matter: nothing is divided.
+
+**Alternative formulation.** Walk through the digits of the numbers one at a time: it is correct and takes the sum of all digit counts, up to $10^{19}$ for the largest input; the blocks bring it to 18 powers.
+
+### The longest chain through a repeated array (Theorem 7.6.4, max/+)
+
+<CodeSnippet unit="7.6/repeat-lis" />
+
+**How it works.** The state is the last chosen value (compressed to the numbers $0, \dots, V-1$). For each state $u$ one pass over the array computes `best[v]`, the most elements that can be added to a non-decreasing subsequence ending with the value $u$, so that the new subsequence ends with the value $v \ge u$ (only elements with a value at least $u$ can be used, and `best[u] = 0` means that nothing is added). This is the matrix `one`. Taking $T$ copies of the array is composing $T$ passes, the power of `one` in the $(\max, +)$ semiring. The start is the smallest value with length 0, so the answer is the largest entry in its row. The matrix is $V \times V$ with $V \le n \le 100$.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template or of a worked example and running the random stress test against the brute force; the input shown is a small one that fails (the smallest found among thousands of random cases, or, for the exponents, a case checked against a plain loop).
+
+### Bug: the identity matrix is missing
+
+Worked example: Throwing Dice (the function `power` of Theorem 7.6.1).
+
+```cpp
+for (int i = 0; i < n; i++) result[i][i] = 1 % mod;                 // the line is deleted
+```
+
+Input: `1`.
+
+Wrong output `0`, correct output `1`. The result of the loop is a product of matrices, so it must start from the identity (the power $A^0$); starting from the zero matrix keeps every product zero, and every power is the zero matrix (Theorem 7.6.1, step 6).
+
+**Fix:** put 1 on the diagonal of `result` before the loop.
+
+### Bug: the starting values are read in the wrong order
+
+Worked example: Throwing Dice.
+
+```cpp
+result = (result + p[k - 1][j] * (init[j] % mod)) % mod;            // instead of init[k - 1 - j]
+```
+
+Input: `1`.
+
+Wrong output `8`, correct output `1`. The vector $v_0$ holds the newest term first: $(x_{k-1}, \dots, x_0)$. The starting values $1, 1, 2, 4, 8, 16$ are given from $x_0$, so the entry $j$ of $v_0$ is `init[k - 1 - j]`. With the wrong order the answer for $n = 1$ is the starting value $x_4 = 8$ instead of $x_1 = 1$ (Theorem 7.6.1, the definition of $v_n$).
+
+**Fix:** read `init[k - 1 - j]`.
+
+### Bug: the sum is one term short
+
+Template: a running sum of a recurrence.
+
+```cpp
+return prefixSum(coef, init, x, MOD);                               // instead of x + 1
+```
+
+Input: `1 7`, then the length `1` (every vertex has one child, at the distance 1; count the vertices at the distance at most 7).
+
+Wrong output `7`, correct output `8`. The vertices are at the distances $0, 1, \dots, 7$, which are 8 terms $f(0) + \dots + f(7)$, and $S_n$ is the sum of the first $n$ terms (Theorem 7.6.3 (b)), so the answer is $S_8$, not $S_7$.
+
+**Fix:** use $S_{x+1}$.
+
+### Bug: the product of the boolean rows is transposed
+
+Template: is there a walk with exactly $L$ edges?
+
+```cpp
+if (a[k] >> i & 1) c[i] |= b[k];                                    // instead of a[i] >> k & 1
+```
+
+Input: `3 1 8`, the edge `1 2`, the query `2 2` (a walk with 8 edges from vertex 2 to vertex 2).
+
+Wrong output `yes`, correct output `no`. The row $i$ of the product takes the row $k$ of $b$ when the entry $(i, k)$ of $a$ is true, that is, when the bit $k$ of `a[i]` is set. Testing the bit $i$ of `a[k]` asks about the entry $(k, i)$, the reversed edge, so the code finds a walk along the edge from vertex 2 back to vertex 1 that does not exist.
+
+**Fix:** test `a[i] >> k & 1`.
+
+### Bug: the identity of the cheapest walk is 1
+
+Worked example: Graph Paths II.
+
+```cpp
+for (int i = 0; i < n; i++) result[i][i] = 1;                       // instead of 0
+```
+
+Input: `1 1 1`, then the edge `1 1 3` (one node, one loop of weight 3, one edge).
+
+Wrong output `4`, correct output `3`. In the $(\min, +)$ semiring the "product" is $+$, so its identity is the number 0, not 1: the diagonal of the identity matrix holds the weight of the empty walk, which is 0 (Theorem 7.6.4, step 2). With 1 on the diagonal every odd power gets an extra 1 added.
+
+**Fix:** set the diagonal to 0 (and everything else to infinity).
+
+### Bug: the exponents are reduced modulo $P$
+
+Template: a product of earlier terms.
+
+```cpp
+long long a = nthTerm({1, 1, 1}, {1, 0, 0}, n - 1, P);             // instead of P - 1  (likewise for b and d)
+```
+
+Input: `38 2 3 4 5`.
+
+Wrong output `347723741`, correct output `861869289` (checked against a loop with the definition of $f_n$). For $n$ up to 37 the exponents are below $10^9$ and nothing goes wrong, which is why the random tests (with $n \le 30$) cannot see the bug. By Fermat's little theorem $g^{P-1} \equiv 1 \pmod P$, so exponents are reduced modulo $P - 1$, not modulo $P$.
+
+**Fix:** reduce the exponents modulo $P - 1$.
+
+### Bug: a term that equals the limit is counted in the smaller block
+
+Template: the concatenation of an arithmetic progression.
+
+```cpp
+return limit <= A ? 0 : min(L, (limit - A) / B + 1);                // instead of (limit - A - 1) / B + 1
+```
+
+Input: `7 80 4 7` (the terms 80, 84, …, 104 and the modulus 7).
+
+Wrong output `2`, correct output `5`. The number of terms smaller than `limit` is the number of $i$ with $A + B i \le \text{limit} - 1$, which is $\lfloor (\text{limit} - 1 - A) / B \rfloor + 1$. Without the $-1$, the term 100 (equal to the limit) is counted as having fewer digits, so the block of the 2-digit terms and the block of the 3-digit terms are cut at the wrong place.
+
+**Fix:** use $(\text{limit} - A - 1) / B + 1$.
+
+### Bug: equal values are not allowed in the chain
+
+Template: the longest chain through a repeated array.
+
+```cpp
+if (v <= u) continue;                                               // instead of v < u
+```
+
+Input: `1 6`, then the array `1` (the single number 1 written 6 times).
+
+Wrong output `0`, correct output `6`. A non-decreasing subsequence may take the same value again, so a step from the state $u$ to the same value $u$ must be allowed. Skipping the elements with $v = u$ turns the chain into a strictly increasing one.
+
+**Fix:** skip only the elements with `v < u`.
+
+## 8. Worked examples
+
+### Example 1: Throwing Dice
+
+[CSES 1096: Throwing Dice](https://cses.fi/problemset/task/1096). In short: count the ways to get the sum $n$ by throwing a die (1 to 6) any number of times, where the order of the throws matters, modulo $10^9 + 7$; $n$ is up to $10^{18}$.
+
+#### Step 1: Constraints → budget
+
+A loop over $1, 2, \dots, n$ takes $10^{18}$ steps (with 6 additions each), about $10^{10}$ seconds. We need about $\log_2 n \approx 60$ steps times a small constant.
+
+#### Step 2: Question form → candidate tools
+
+- A DP over the sums, $f(s) = f(s-1) + \dots + f(s-6)$ ([topic 3.2](../../phase-3/3-2-dp-foundations/)): correct, but it takes $n$ steps.
+- A closed formula by combinatorics ([topic 2.3](../../phase-2/2-3-combinatorics/)): the number of sequences with a given sum and a given number of throws is a sum of binomial terms over the throws; there are up to $n$ different numbers of throws.
+- The matrix power of the recurrence: the card "A recurrence with fixed coefficients and a huge index".
+
+#### Step 3: Property check → decision
+
+The last throw is one of the six values, so $f(n)$ is the sum of the six values before it. The coefficients are the constants 1 and the order is 6. Decision: Theorem 7.6.1 with $k = 6$.
+
+#### Step 4: Proof for this problem
+
+Let $f(n)$ be the number of sequences of throws with the sum $n$, with $f(0) = 1$ (the empty sequence). Cut a sequence by its last throw $d \in \{1, \dots, 6\}$: the rest is a sequence with the sum $n - d$, so $f(n) = \sum_{d=1}^{\min(6, n)} f(n - d)$. For $n \le 5$ the sum has $n$ terms: $f(1) = 1$, $f(2) = 2$, $f(3) = 4$, $f(4) = 8$, $f(5) = 16$. From $n = 6$ on there are six terms and the recurrence of order 6 with all coefficients 1 holds, with these six starting values $f(0..5)$. By Theorem 7.6.1, $f(n)$ is the last entry of $C^n v_0$. Check: $f(6) = 32$, $f(7) = 63$, $f(8) = 125$, which is the sample.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.6/example-1" />
+
+#### Step 6: Alternative approach
+
+For $n$ up to $10^7$ the loop over the sums is enough and needs no matrix. For $n = 10^{18}$ there is no natural alternative: the closed form has too many terms.
+
+### Example 2: Graph Paths I
+
+[CSES 1723: Graph Paths I](https://cses.fi/problemset/task/1723). In short: a directed graph with $n \le 100$ nodes; count the paths with exactly $k$ edges from node 1 to node $n$ (nodes may repeat), modulo $10^9 + 7$; $k$ is up to $10^9$.
+
+#### Step 1: Constraints → budget
+
+The DP "walks that reach each node after $t$ edges" costs $k \cdot m$ steps: $10^9 \cdot 10^4 = 10^{13}$. The power of a $100 \times 100$ matrix costs $100^3 \cdot 2 \cdot 30 = 6 \cdot 10^7$.
+
+#### Step 2: Question form → candidate tools
+
+- A DP over (number of edges, node) ([topic 3.2](../../phase-3/3-2-dp-foundations/)): the right idea, but $k$ steps are too many.
+- A search for paths ([topic 4.1](../../phase-4/4-1-graph-traversal/)): the number of walks is exponential, and the walks may repeat nodes.
+- The power of the adjacency matrix: the card "Walks counted by a transition matrix".
+
+#### Step 3: Property check → decision
+
+The transitions are the same at every step, there are at most 100 states, and the question asks for the number of walks with exactly $k$ edges. The sample explains that nodes repeat ("path" here means walk). Decision: Theorem 7.6.2.
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.6.2 the number of walks with $k$ edges from node 1 to node $n$ is the entry $(1, n)$ of $A^k$, modulo $10^9 + 7$, where $A[a][b]$ counts the edges from $a$ to $b$ (parallel edges, if the input has any, add up). The sample has the edges $1 \to 2$, $2 \to 3$, $3 \to 1$, $3 \to 2$ and $k = 8$; the two walks are $1,2,3,1,2,3,1,2,3$ and $1,2,3,2,3,2,3,2,3$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.6/example-2" />
+
+#### Step 6: Alternative approach
+
+For $k$ up to about $10^5$, keep a vector of counts per node and update it with all edges $k$ times: $O(km)$. That is the brute force of the test and is the multiplication of the vector by $A$, one step at a time.
+
+### Example 3: Graph Paths II
+
+[CSES 1724: Graph Paths II](https://cses.fi/problemset/task/1724). In short: a directed weighted graph with $n \le 100$ nodes, weights up to $10^9$; the least total weight of a walk with exactly $k$ edges from node 1 to node $n$ (or $-1$), $k$ up to $10^9$.
+
+#### Step 1: Constraints → budget
+
+Again $k$ up to $10^9$ layers of $m$ edges is too slow; the power of a $100 \times 100$ matrix costs $6 \cdot 10^7$ operations.
+
+#### Step 2: Question form → candidate tools
+
+- A DP by layers (the best weight after $t$ edges): correct, $O(km)$, too slow.
+- Dijkstra or Bellman–Ford ([topic 4.3](../../phase-4/4-3-shortest-paths/)): they find the cheapest walk with *any* number of edges; the number of edges is fixed here.
+- The matrix power in the $(\min, +)$ semiring: the card "Best walk with exactly $L$ edges".
+
+#### Step 3: Property check → decision
+
+The cost of a walk is a sum of edge weights and we take the minimum: $+$ distributes over $\min$. The transitions are the same at every step. Decision: Theorem 7.6.4 (b).
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.6.4 (b) the entry $(1, n)$ of the $k$-th $(\min, +)$ power of the weight matrix is the least weight of a walk with exactly $k$ edges, or $\infty$ if there is none; print $-1$ in that case. A parallel edge keeps the smaller weight. The answer is at most $10^9 \cdot 10^9 = 10^{18}$, so the value $2 \cdot 10^{18}$ cannot be a real answer, and the sum of two such values still fits in 64 bits. The sample gives 27 for $k = 8$: the walk $1,2,3,1,2,3,1,2,3$ costs $5 + 4 + 1 + 5 + 4 + 1 + 5 + 4 = 29$, and the walk $1,2,3,2,3,2,3,2,3$ costs $5 + 4 + 2 + 4 + 2 + 4 + 2 + 4 = 27$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.6/example-3" />
+
+#### Step 6: Alternative approach
+
+For $k$ up to $10^5$ the layer DP is $O(km)$. There is no natural alternative at $k = 10^9$; fast methods for repeated $(\min, +)$ products exist only in special graphs.
+
+## 9. Problem ladder
+
+<Ladder topic="7.6" />
+
+## 10. Identification drill
+
+<Drill topic="7.6" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.6" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.6" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.6" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.6" />

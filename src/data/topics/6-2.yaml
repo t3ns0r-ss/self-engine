@@ -1,0 +1,377 @@
+# Topic 6.2 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
+id: '6.2'
+draft: true
+uses:
+- topic: '6.1'
+  what: 'Polynomial hashing: the probable alternative, and the tool for comparing arbitrary blocks'
+- topic: '0.1'
+  what: 'Types and loops: the arrays and strings of the code'
+- topic: '0.2'
+  what: 'Complexity budgets: the n·m estimates that rule out comparing at every start'
+- topic: '0.3'
+  what: 'String processing: scanning a string once'
+- topic: '0.4'
+  what: 'Euclid''s algorithm: the subtractive argument of Theorem 6.2.2'
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check'
+- topic: '0.6'
+  what: 'Standard containers: the strings and arrays used throughout'
+- topic: '1.3'
+  what: 'Two pointers: the contrast for subsequences, and the pass over occurrence lists'
+- topic: '3.4'
+  what: 'Sequence DP: the common subsequence, which is not a pair of equal blocks'
+theorems:
+- id: 6.2.1
+  title: Borders and periods
+  plain_words: If a string ends with the same piece that it begins with, the longest such piece is $L$.
+    A shorter piece that is also an ending is already an ending of that long piece, so the shorter pieces
+    can be read off from the long piece's own list. A string repeats itself with shift $p$ exactly when
+    its first $m - p$ letters equal its last $m - p$ letters.
+  code: 6.2/thm-1
+- id: 6.2.2
+  title: When is a string a repetition
+  plain_words: 'A string is made of copies of a shorter block only if the smallest shift under which it
+    repeats itself divides its length. You do not need to try all block lengths: check one number, $m
+    - \pi[m-1]$.'
+  code: 6.2/thm-2
+- id: 6.2.3
+  title: The prefix function in linear time
+  plain_words: To extend the longest border of the string one letter, look at the letter that would come
+    next in the border and compare it with the new letter. If they differ, try the next shorter border
+    from the chain of Theorem 6.2.1, and so on. This looks like it could take long, but every fall-back
+    to a shorter border uses up some of the length that the last step built, and each step builds only
+    one letter.
+  code: 6.2/thm-3
+- id: 6.2.4
+  title: Occurrences and the matching automaton
+  plain_words: 'Glue the pattern, a separator, and the text into one string. Because the separator is
+    nowhere else, no border can reach across it, so a border never gets longer than the pattern. A border
+    exactly as long as the pattern means that the last letters of the text, up to that place, are the
+    pattern. The automaton is the same idea as a table: after each text letter, it says how much of the
+    pattern is currently matched.'
+  code: 6.2/thm-4
+- id: 6.2.5
+  title: The Z-function in linear time
+  plain_words: If you already know that the part of the string between $l$ and $r$ is a copy of the beginning
+    of the string, then for a place $i$ inside it, the answer is the answer at the matching place $i -
+    l$ in the beginning, unless that answer reaches beyond $r$, where you have to look at new letters.
+    New letters are only compared when $r$ moves forward, and $r$ can move forward at most $n$ times in
+    total.
+  code: 6.2/thm-5
+- id: 6.2.6
+  title: How often does each beginning occur
+  plain_words: Every place where a long prefix ends is also a place where its longest border ends, since
+    that border is also its beginning. Counting from the longest prefix to the shortest, push each count
+    down to the longest border, and every prefix ends up with the number of prefixes of $s$ that have
+    it in their border chain, plus itself.
+  code: 6.2/thm-6
+cards:
+- id: pattern-occurrences
+  name: All occurrences of a pattern in a text (prefix function, matching automaton)
+  from_theorem: 6.2.4
+  decisive_property: The question asks where, how many times, or whether a given string occurs in another,
+    with exact equality letter by letter, and the number of start places times the pattern length is too
+    large to compare at every start.
+  how_to_test: 'Two checks. (1) Is every match an exact equality of the pattern with a block of the text?
+    A wildcard, a spelling difference allowed, or a subsequence fails it. (2) Compute (text length) ×
+    (pattern length): below about 10^8 a plain comparison at every start is fast enough; above it, join
+    pattern, separator and text and compute the prefix function.'
+  constraint_shapes:
+  - 'text 10^6 and pattern 5·10^5: comparing at every start costs up to 5·10^5 · 5·10^5 = 2.5·10^11 steps
+    on a text like aaa…a against aaa…ab, while the prefix function of the joined string costs 1.5·10^6
+    steps'
+  - 'a DP over a text of length 1000 where the state must say how much of a pattern of length 100 is matched:
+    1000 · 100 = 10^5 states, each moving to the next state in O(1) with the matching automaton'
+  weak_signals:
+  - form: Asks how many times a string occurs in another, where, or the first place
+    shape: Text and pattern of length 10^5 to 10^6
+  - form: Asks whether one string is a rotation of another, or a part of the doubled string
+    shape: Length 10^4 to 10^6; the doubled string has 2·10^6 letters
+  - form: Counts strings of a given length that avoid (or must contain) a pattern, or fills a DP in which
+      a pattern must not appear
+    shape: Length up to 1000 and a pattern of up to 50 to 1000 letters
+  kill_signals:
+  - 'A wildcard in the pattern: with ? matching any letter, the pattern a?b matches acb and aab, but the
+    prefix function treats ? as an ordinary letter and finds neither'
+  - 'The text and the pattern are tiny (both below about 3000 letters): n · m < 10^7, and a plain scan
+    is simpler and exact'
+  in_action:
+    statement: Strings a and b have the same length n. Can b be obtained from a by rotating it (moving
+      some number of letters from the front to the end)?
+    constraints: n ≤ 10^6, lower-case letters.
+    budget: 'Trying all n rotations and comparing each letter by letter: n · n = 10^12 steps. Need about
+      O(n).'
+    candidates:
+    - tool: Try every rotation (topic 0.5)
+      verdict: rejected
+      because: 10^12 steps.
+    - tool: Hash every rotation (topic 6.1)
+      verdict: rejected
+      because: Works, but with a small chance of a wrong answer; an exact test of linear length is available.
+    - tool: Pattern b in the doubled text a + a (this topic)
+      verdict: chosen
+      because: b is a rotation of a exactly when b occurs in a + a, and the occurrence is an exact equality
+        (Theorem 6.2.4).
+    property_check: 'Every rotation of a is a block of length n of a + a, and the question asks whether
+      b equals one of them: exact equality of the pattern with a block of the text. The text a + a has
+      2·10^6 letters, so a quadratic scan is out. The property holds.'
+    decision: 'Compute the prefix function of b + ''#'' + a + a and look for the value n: O(n).'
+  examples:
+    positive:
+    - inline:
+        input: t = aba, s = ababa. How many times does t occur in s?
+        answer: '2'
+        why: Every match is an exact equality of t with a block of s (at the places 0 and 2, overlapping
+          at the letter a). The prefix function of aba#ababa reaches the value 3 twice, which gives the
+          same 2 as a scan.
+    - inline:
+        input: t = aa, s = aaaa. How many times does t occur in s?
+        answer: '3'
+        why: The occurrences overlap, at the places 0, 1 and 2; the method counts all of them (Theorem
+          6.2.4 (a) makes no assumption against overlap).
+    - worked_example: cses-1753
+      why: 'Count the occurrences of a pattern in a text of up to 10^6 letters: the prefix function of
+        the pattern, a separator and the text.'
+    negative:
+    - inline:
+        input: t = a?b where ? may be any letter, s = acbaab. At how many places does t match?
+        answer: 2 (acb at 0 and aab at 3)
+        method_gives: '0'
+        why: 'With a wildcard the property fails: matching is not exact equality. The prefix function
+          treats ? as a letter, so it finds no block ending in ?b. A scan that accepts ? at once finds
+          both.'
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - problem: lc-is-subsequence
+      why: 'The letters of the pattern may be separated by other letters of the text: a subsequence is
+        not a block, so there is no border or prefix function to use. Two pointers walk both strings once.'
+      correct_tool:
+        topic: '1.3'
+        card: merge-walk
+  lookalikes:
+  - description: Are two given blocks of a string equal? (many arbitrary pairs)
+    tool:
+      topic: '6.1'
+      card: substring-compare
+    flipping_difference: The pairs of blocks are arbitrary, so no single pattern or beginning is shared;
+      hashing answers each pair in O(1), with a small probability of error.
+  - description: One search in a short text, or a pattern of a few letters
+    tool:
+      topic: '0.3'
+      card: string-processing
+    flipping_difference: When the text and the pattern are short, a scan with a direct comparison is exact
+      and fast enough; the prefix function pays off from about 10^7 comparisons.
+  complexity: O(n + m) for the prefix function of the joined string; O(26 m) more for the automaton table.
+- id: period-border
+  name: Borders, periods and repetitions of a string (the prefix function)
+  from_theorem: 6.2.1
+  decisive_property: The question is about a prefix of the string that equals a suffix of the same string
+    (a border), about a shift under which the string repeats itself (a period), or about the string being
+    a block repeated several times; all of these are read from the prefix function of that one string.
+  how_to_test: 'Write the property as "the first k letters equal the last k letters" or as "u_i = u_{i+p}
+    for every i". If it fits, the answer comes from the last value of the prefix function: the longest
+    border is π[m−1], the smallest period is m − π[m−1], and the border lengths are the chain π[m−1],
+    π[π[m−1]−1], …'
+  constraint_shapes:
+  - 'a string of 10^6 letters and the question for all borders: testing each length k by comparing costs
+    up to 1 + 2 + … + 10^6 = 5·10^11 steps, while the prefix function costs 10^6 and the chain has at
+    most 10^6 entries'
+  - 'a string of 8000 letters and the best period of every substring that starts at each place: 8000 prefix
+    functions of average length 4000 cost 3.2·10^7 steps'
+  weak_signals:
+  - form: Asks for the longest prefix that is also a suffix, for all such lengths, or for the periods
+      of a string
+    shape: Length 10^5 to 10^6
+  - form: Asks whether a string is a shorter block repeated, or for the shortest block whose repetition
+      builds it
+    shape: Length up to 10^4 to 10^6, often many tests
+  - form: Asks to glue copies of a pattern so that they overlap as much as possible, or for how many times
+      each prefix occurs
+    shape: Length 10^5 to 5·10^5
+  kill_signals:
+  - 'The prefix must equal the REVERSE of the suffix (a palindrome-like condition): for abcba the whole
+    string equals the reverse of itself (length 5), but the longest border is only a (length 1)'
+  - 'The blocks that must be equal are not a prefix and a suffix of the same string, or a mismatch is
+    allowed: a border cannot help'
+  in_action:
+    statement: A string s is given. Print the length of the shortest block v such that s is v written
+      one or more times, or the length of s if there is none.
+    constraints: '|s| ≤ 10^6.'
+    budget: 'For each divisor d of |s| compare s with its shift by d: up to 240 divisors for numbers below
+      10^6, each O(n): 2.4·10^8 steps. Need about O(n).'
+    candidates:
+    - tool: Try every divisor and compare (topic 0.5)
+      verdict: rejected
+      because: About 2.4·10^8 steps, and the divisor loop needs care.
+    - tool: Hash the shifts (topic 6.1)
+      verdict: rejected
+      because: Works with a small chance of error; the exact test below is just as short.
+    - tool: The last value of the prefix function (this topic)
+      verdict: chosen
+      because: The smallest period is q = n − π[n−1], and s is a repetition exactly when q divides n and
+        q < n (Theorem 6.2.2).
+    property_check: The question is about a block repeated, which is the period structure of one string.
+      The prefix function of s gives q in O(n), and Theorem 6.2.2 says the shortest block has length q
+      when q divides n, and n otherwise. The property holds.
+    decision: Compute the prefix function, q = n − π[n−1]; print q if q < n and n mod q = 0, otherwise
+      n.
+  examples:
+    positive:
+    - inline:
+        input: u = abcabcab. What is the smallest period of u?
+        answer: '3'
+        why: The longest border is abcab (length 5), so the smallest period is 8 − 5 = 3 (Theorem 6.2.1
+          (b)); a scan over the shifts finds the same 3.
+    - inline:
+        input: u = abababab. How many times is the shortest block repeated? (0 if u is not a repetition)
+        answer: '4'
+        why: The longest border has length 6, so q = 2 divides 8 and the block ab is repeated 8 / 2 =
+          4 times (Theorem 6.2.2).
+    - worked_example: cses-1732
+      why: 'Print all borders of a string of up to 10^6 letters: the chain π[n−1], π[π[n−1]−1], …'
+    negative:
+    - inline:
+        input: u = abcba. What is the length of the longest prefix of u equal to the reverse of the suffix
+          of the same length (the whole string allowed)?
+        answer: '5'
+        method_gives: '1'
+        why: The whole string equals its own reverse, so the answer is 5. The longest border of abcba
+          is only a (length 1), because a border compares the prefix with the suffix itself, not with
+          its reverse.
+      correct_tool:
+        topic: '6.1'
+        card: palindrome-hash
+    - problem: lc-robot-bounded-in-circle
+      why: The command string is repeated, but the question is where the robot stands after repeating
+        it; running the string four times shows it. The border and period of the string itself play no
+        role.
+      correct_tool:
+        topic: '0.3'
+        card: direct-simulation
+  lookalikes:
+  - description: Are two arbitrary blocks of a string equal?
+    tool:
+      topic: '6.1'
+      card: substring-compare
+    flipping_difference: A border compares a prefix with a suffix of the same string; arbitrary blocks
+      need hashes.
+  - description: A repeated array, with sums over the repeated copies
+    tool:
+      topic: '1.2'
+      card: range-sum
+    flipping_difference: The question is about sums of the repeated copies (one period of prefix sums),
+      not about letters equal under a shift.
+  complexity: O(n) for the prefix function; the chain of borders has at most n entries.
+- id: z-compare
+  name: How far every suffix agrees with the beginning (the Z-function)
+  from_theorem: 6.2.5
+  decisive_property: For many or all places i the question is the length of the longest common beginning
+    of the suffix s[i..] and the whole string (or a fixed pattern), or whether this length is at least
+    a given number.
+  how_to_test: Write the quantity for one place i as "how many letters of s[i..] agree with s from the
+    beginning?". If it is needed for all i, or for the places that form a chain (every k-th place, every
+    start of a block), build the Z-function of s, or of pattern + separator + text, in O(n).
+  constraint_shapes:
+  - 'a string of 10^5 letters and the common beginning of every suffix with the whole string: by comparing
+    letters it costs up to 1 + 2 + … + 10^5 = 5·10^9 steps, while the Z-function costs 10^5'
+  - '100 words and a target of 5·10^4 letters, with the longest prefix of each word at every place of
+    the target: 100 Z-functions of words joined with the target cost 100 · (5·10^4 + 5·10^3) = 5.5·10^6
+    steps'
+  weak_signals:
+  - form: Asks for the sum, the count or the maximum over all suffixes of their common beginning with
+      the whole string
+    shape: Length 10^5 to 10^6
+  - form: Asks whether the string after removing k letters at a time can match the beginning, or whether
+      two overlapping occurrences of a pattern are consistent
+    shape: Length up to 10^6 and a loop over multiples of k or over the occurrences
+  - form: Needs at every place the longest prefix of a pattern that matches there, for a greedy jump or
+      for a match with one mismatch from both ends
+    shape: Text up to 10^5, one or a few patterns
+  kill_signals:
+  - 'Two arbitrary blocks must be compared, and neither is a prefix of the string: for cabab the blocks
+    ab at the places 1 and 3 are equal, but z[1] = z[2] = z[3] = z[4] = 0, so the Z-function sees nothing'
+  - 'The comparison is with many different patterns at once: one Z-function per pattern costs (number
+    of patterns) × (text length)'
+  in_action:
+    statement: The score of a string s is the sum, over all its suffixes, of the length of the longest
+      common beginning of the suffix and s (the whole string scores its length). Print the score.
+    constraints: '|s| ≤ 10^5.'
+    budget: 'Comparing every suffix with s letter by letter: up to n²/2 = 5·10^9 steps. Need about O(n).'
+    candidates:
+    - tool: Compare each suffix with s (topic 0.5)
+      verdict: rejected
+      because: Up to 5·10^9 steps.
+    - tool: Prefix function (this topic)
+      verdict: rejected
+      because: It gives borders (a suffix that is a whole prefix), not the common beginning of every suffix.
+    - tool: Z-function (this topic)
+      verdict: chosen
+      because: z[i] is exactly the length of the common beginning of s[i..] and s (Theorem 6.2.5).
+    property_check: The quantity is the common beginning of each suffix with the whole string, for every
+      place. The Z-function gives all of them in O(n), and the sum is at most n²/2 = 5·10^9, which needs
+      a 64-bit integer. The property holds.
+    decision: 'Compute z, add up all its values with z[0] = n, print as a long long: O(n).'
+  examples:
+    positive:
+    - inline:
+        input: s = aabxaab. What is the sum of z[0..6] (the score of s)?
+        answer: '12'
+        why: The common beginnings are 7, 1, 0, 0, 3, 1, 0, whose sum is 12; the Z-function computes all
+          seven in one pass (Theorem 6.2.5).
+    - inline:
+        input: s = abcabcab. For how many places i ≥ 1 is the whole suffix s[i..] equal to a prefix of
+          s (z[i] = n − i)?
+        answer: '2'
+        why: The suffixes abcab (i = 3) and ab (i = 6) are prefixes, so z[3] = 5 and z[6] = 2. These are
+          exactly the borders 5 and 2 of Theorem 6.2.1.
+    - worked_example: cses-2107
+      why: Print the Z-function and the prefix function of a string of up to 10^6 letters, both in linear
+        time.
+    negative:
+    - inline:
+        input: s = cabab. For how many pairs of places i < j are the blocks of length 2 at i and at j
+          equal?
+        answer: 1 (ab at 1 and 3)
+        method_gives: '0'
+        why: The Z-function compares a suffix only with the beginning of s. The blocks ab at the places
+          1 and 3 are equal, but neither is at the beginning, and every z[i] with i ≥ 1 is 0 here, so
+          counting z[i] ≥ 2 gives 0.
+      correct_tool:
+        topic: '6.1'
+        card: substring-compare
+    - problem: lc-maximum-length-of-repeated-subarray
+      why: 'Two different arrays are compared at every pair of alignments: each shift of one against the
+        other has its own common blocks. A table over pairs of places answers it for lengths up to 1000.'
+      correct_tool:
+        topic: '3.4'
+        card: lcs
+  lookalikes:
+  - description: The longest block that occurs twice anywhere in a string
+    tool:
+      topic: '6.1'
+      card: hash-length-search
+    flipping_difference: The two copies are at arbitrary places, not one at the beginning; the length
+      is searched with hash tests.
+  - description: 'Pattern occurrences: where does a pattern occur?'
+    tool:
+      topic: '6.2'
+      card: pattern-occurrences
+    flipping_difference: Only the places where the whole pattern matches are needed there; the Z-function
+      gives the length of the partial match at every place, which is what greedy jumps and one-mismatch
+      matches use.
+  complexity: O(n) for the Z-function; O(n + m) for a pattern joined with a text.
+problems: []
+drill: []
+lookalike_pairs: []
+self_test: []
+checkpoint:
+  time_limit_minutes: 150
+  problems: []
+decision_map: []
+glossary_added:
+- border
+- period
+- prefix function
+- Z-function
+- matching automaton

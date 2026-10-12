@@ -1,0 +1,260 @@
+---
+title: "6.2 Prefix function and Z-function"
+sidebar:
+  order: 38
+topic: "6.2"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="6.2" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A text $s$ has $n = 10^6$ letters and a pattern $t$ has $m = 5 \cdot 10^5$ letters. How many times does $t$ occur in $s$, as a block of consecutive letters?
+
+The direct way tries every start place of $s$ and compares letter by letter. A bad case is the text $\text{aaaa}\dots\text{a}$ and the pattern $\text{aaa}\dots\text{ab}$: at every start the comparison runs to the last letter of the pattern before it fails. That is about $(n - m + 1) \cdot m \approx 2.5 \cdot 10^{11}$ comparisons, about 2500 seconds at $10^8$ per second. Hashing ([topic 6.1](../../phase-6/6-1-string-hashing/)) gives a fast answer, but a probable one. This topic gives an exact one that takes about $n + m$ steps.
+
+The key idea: when a comparison at some start fails after $k$ letters matched, those $k$ letters of the text are known to be the first $k$ letters of the pattern. The next start worth trying is not the very next place, and it is not necessary to compare the text again from the start: it is the next place where a **border** of the matched part fits, that is, a beginning of the pattern that is also an ending of what was just matched. The list of borders of every beginning of the pattern is the **prefix function**. A second array, the **Z-function**, records for every place how far the text from there agrees with the pattern's beginning, and answers many questions about suffixes and prefixes at once.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="6.2" />
+
+### What this topic does not cover
+
+- Comparing two arbitrary blocks of a string, with a small chance of error, and searching along the length of a block: the polynomial hash of [topic 6.1](../../phase-6/6-1-string-hashing/) (an earlier topic, used here only for comparison).
+- Storing many strings in a tree that shares common beginnings, and finding the best match of a word in a dictionary: the trie of topic 6.3. Matching many patterns in one pass (the Aho–Corasick automaton) is not part of this course.
+- Sorting all suffixes of a string and comparing any two suffixes exactly: the suffix array and LCP array of topic 6.4.
+- The linear algorithm for the longest palindrome around every centre (Manacher's algorithm) is not taught in this course.
+
+## 3. Definitions
+
+- This page uses 0-based places and the block notation of [topic 6.1](../../phase-6/6-1-string-hashing/): $s[l..r)$ is the substring $s_l \dots s_{r-1}$, and $s[0..k)$ is the **prefix** of length $k$. A **suffix** is a block $s[i..n)$ that ends at the end of $s$.
+- A **border** of a string $u$ of length $m$ is a number $k$ with $1 \le k \le m - 1$ such that the prefix $u[0..k)$ equals the suffix $u[m-k..m)$. Example: abcab has the border 2 (ab = ab); aaaa has the borders 1, 2, 3. For convenience we also call $0$ a border length ("the empty border") when we list lengths. A string with no border of length 1 or more, like abcd, has only 0.
+- A **period** of $u$ is a number $p$ with $1 \le p \le m$ such that $u_i = u_{i+p}$ for every $i$ with $i + p < m$. Example: abcabca has the periods 3, 6 and 7. The length $m$ is always a period (the condition is empty).
+- The **prefix function** of $s$ is the array $\pi$ with $\pi[i]$ equal to the longest border of the prefix $s[0..i]$ (its length $i + 1$), and $0$ if there is none. Example: for $s = \text{aabaaab}$, $\pi = 0, 1, 0, 1, 2, 2, 3$. (The Greek letter $\pi$ is only the name of the array.)
+- The **Z-function** of $s$ is the array $z$ with $z[i]$ equal to the length of the longest common beginning of $s$ and the suffix $s[i..n)$, for $i \ge 1$, and $z[0] = n$. Example: for $s = \text{aabxaab}$, $z = 7, 1, 0, 0, 3, 1, 0$.
+- An **occurrence** of a pattern $t$ (length $m$) in a text $s$ is a place $j$ with $s[j..j+m) = t$. Occurrences may overlap: aa occurs in aaaa at the places 0, 1 and 2.
+- A **matching automaton** of $t$ is a table $\text{next}[k][c]$ with $0 \le k \le m$ and $c$ a letter, that says how many letters of $t$ are matched after the letter $c$ is read when $k$ letters were matched before (Theorem 6.2.4 gives the exact rule).
+- Throughout, the separator '#' is a letter that does not occur in the strings being joined (all strings here use lower-case letters).
+
+## 4. Theory and proofs
+
+### 4.1 Borders and periods
+
+**Theorem 6.2.1 (the chain of borders; periods).** Let $u$ be a string of length $m \ge 1$ and let $L = \pi[m-1]$ be the length of its longest border. (a) The border lengths of $u$ that are smaller than $L$ are exactly the border lengths of the prefix $u[0..L)$. Consequently the border lengths of $u$, from the longest to the shortest, are $L,\ \pi[L-1],\ \pi[\pi[L-1]-1],\ \dots$, down to $0$. (b) A number $p$ with $1 \le p \le m$ is a period of $u$ exactly when $m - p$ is a border length (counting $0$). So the smallest period of $u$ is $m - \pi[m-1]$.
+
+:::tip[In plain words]
+If a string ends with the same piece that it begins with, the longest such piece is $L$. A shorter piece that is also an ending is already an ending of that long piece, so the shorter pieces can be read off from the long piece's own list. A string repeats itself with shift $p$ exactly when its first $m - p$ letters equal its last $m - p$ letters.
+:::
+
+**A tiny instance.** $u = \text{abcabcab}$ ($m = 8$): $\pi = 0, 0, 0, 1, 2, 3, 4, 5$, so $L = 5$ (abcab). The chain is $5$, then $\pi[4] = 2$ (ab), then $\pi[1] = 0$. The border lengths are $5, 2$. The periods are $8 - 5 = 3$, $8 - 2 = 6$ and $8$. Check the period 3: $u_0 = u_3 = a$, $u_1 = u_4 = b$, $u_2 = u_5 = c$, $u_3 = u_6$, $u_4 = u_7$.
+
+**Proof.**
+1. *Part (a), the inclusion "border of $u$ is a border of $u[0..L)$".* Let $b < L$ be a border length of $u$. Since $L$ is a border length, $u[0..L) = u[m-L..m)$. The suffix of $u$ of length $b$ lies inside this suffix of length $L$, so it equals the suffix of length $b$ of $u[m-L..m)$, which equals the suffix of length $b$ of $u[0..L)$.
+2. The prefix of length $b$ of $u$ equals the suffix of length $b$ of $u$ (it is a border), so it equals the suffix of length $b$ of $u[0..L)$. It is also a prefix of $u[0..L)$. So $b$ is a border length of $u[0..L)$.
+3. *The reverse inclusion.* Let $b$ be a border length of $u[0..L)$: $u[0..b) = u[L-b..L)$. By $u[0..L) = u[m-L..m)$ we get $u[L-b..L) = u[m-b..m)$, so $u[0..b)$ equals the suffix of $u$ of length $b$. So $b$ is a border length of $u$.
+4. The longest border of $u[0..L)$ has length $\pi[L-1]$, and applying steps 1 to 3 again to this prefix gives the chain in (a), ending at $0$ because the lengths decrease.
+5. *Part (b).* For $p < m$: $u_i = u_{i+p}$ for all $0 \le i < m - p$ says that the blocks $u[0..m-p)$ and $u[p..m)$ are equal letter by letter, that is, the prefix of length $m - p$ equals the suffix of length $m - p$. That is the definition of a border of length $m - p$. For $p = m$ the length $m - p = 0$ is the empty border and the period condition is empty.
+6. The smallest period corresponds to the largest border length: $m - L = m - \pi[m-1]$. $\square$
+
+:::note[This proof needs]
+1. The border lengths are counted with $0$ included, and a border is a *proper* prefix (length below $m$).
+2. The string $u$ is one fixed string; borders of different strings are not mixed. (To compare a prefix with a block of another string, join the strings with a separator, Theorem 6.2.4.)
+3. The chain uses $\pi$ of the prefix $u[0..L)$, which is the entry $\pi[L-1]$ of the same array, because the prefix function of a prefix is the beginning of the prefix function of the string.
+:::
+
+<TheoremCode unit="6.2/thm-1" />
+
+The first example is the tiny instance (steps 5 and 6: the chain $5, 2$ and the period 3). The second, abababab, has the chain $6, 4, 2$ and period 2, and 2 divides 8. The third has the periods of a string of equal letters: period 1. The last has no border and the period equals the length. The code writes the prefix function by its definition (slow, for reading only); the check compares the chain and the smallest period with direct enumeration on every string of length 1 to 8 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$.
+
+### 4.2 When is a string a repetition?
+
+**Theorem 6.2.2 (repetition test).** Let $u$ have length $m$ and smallest period $q$. Then $u$ is a block repeated at least twice (that is, $u = v^c$ for some string $v$ and some $c \ge 2$) exactly when $q < m$ and $q$ divides $m$. In that case $u$ is the block $u[0..q)$ repeated $m/q$ times.
+
+:::tip[In plain words]
+A string is made of copies of a shorter block only if the smallest shift under which it repeats itself divides its length. You do not need to try all block lengths: check one number, $m - \pi[m-1]$.
+:::
+
+**A tiny instance.** abcabc: $\pi[5] = 3$, $q = 3$ divides 6: the block abc, twice. abcab: $\pi[4] = 2$, $q = 3$ does not divide 5: not a repetition (indeed, no block of length 1 or 5 gives it). aaaa: $q = 1$, block a, 4 times.
+
+**Proof.**
+1. *If $q < m$ and $q \mid m$.* Since $q$ is a period, $u_i = u_{i-q}$ for $i \ge q$, so by induction $u_i = u_{i \bmod q}$. The string is the block $u[0..q)$ repeated $m/q \ge 2$ times.
+2. *Only if.* Let $u = v^c$ with $c \ge 2$ and $|v| = p$. Then $p$ is a period of $u$, $p \le m/2$, and $q \le p$ because $q$ is the smallest period. Also $q + p \le m$.
+3. *Lemma: if $q < p$ are periods of $u$ with $q + p \le m$, then $p - q$ is a period.* Take $i$ with $i + (p - q) < m$. Case A: $i + p < m$. Then $u_{i + p - q} = u_{i + p}$ (period $q$, applied at the place $i + p - q$, valid because $i + p < m$), and $u_{i+p} = u_i$ (period $p$). So $u_{i + (p-q)} = u_i$.
+4. Case B: $i + p \ge m$. Then $i - q \ge m - p - q \ge 0$. By period $q$, $u_i = u_{i-q}$ (valid, as $i < m$). By period $p$ at the place $i - q$, $u_{i-q} = u_{i-q+p}$ (valid, as $i - q + p < m$). So $u_i = u_{i + (p-q)}$. In both cases $p - q$ is a period, which proves the lemma.
+5. Apply the lemma again and again, as in the subtractive Euclidean algorithm ([topic 0.4](../../phase-0/0-4-elementary-math/)): replace the larger of two periods by the difference. The sum of the two numbers never goes above its first value $q + p \le m$, so the lemma keeps applying, and we reach $\gcd(p, q)$ as a period.
+6. The smallest period is $q$, so $\gcd(p, q) \ge q$, which forces $\gcd(p, q) = q$, that is, $q \mid p$. Since $p \mid m$ ($u = v^c$), $q \mid m$, and $q \le p \le m/2 < m$. $\square$
+
+:::note[This proof needs]
+1. $q$ is the smallest period of the whole string; a smaller block that is not a period of the whole string does not count.
+2. The lemma needs $q + p \le m$. Without it the difference can fail to be a period: abcab has the periods 3 and 5 (length 5), and $5 - 3 = 2$ is not a period. That is why the test looks only at the smallest period and its divisibility.
+3. $c \ge 2$: a string is always the block of its own length once, which is not called a repetition.
+:::
+
+<TheoremCode unit="6.2/thm-2" />
+
+The first example is the tiny instance (step 1). The second, aaaa, has the block a four times. The third, abcab, has the smallest period 3, which does not divide 5. The fourth, ababab, has the block ab three times. The last two examples have $q = m$: the single letter a (a string of length 1 cannot be a repetition) and abcd. The check compares the test with trying every block length on every string of length 1 to 10 over $\{a, b\}$ and 1 to 7 over $\{a, b, c\}$.
+
+### 4.3 Computing the prefix function in linear time
+
+**Theorem 6.2.3 (the prefix function in $O(n)$).** Put $\pi[0] = 0$ and, for $i \ge 1$, run this: set $k = \pi[i-1]$; while $k > 0$ and $s_i \ne s_k$, set $k = \pi[k-1]$; if $s_i = s_k$, add 1 to $k$; set $\pi[i] = k$. Then $\pi[i]$ is the length of the longest border of $s[0..i]$, and the whole array is computed in $O(n)$ time.
+
+:::tip[In plain words]
+To extend the longest border of the string one letter, look at the letter that would come next in the border and compare it with the new letter. If they differ, try the next shorter border from the chain of Theorem 6.2.1, and so on. This looks like it could take long, but every fall-back to a shorter border uses up some of the length that the last step built, and each step builds only one letter.
+:::
+
+**A tiny instance.** $s = \text{aabaaab}$. $\pi[0] = 0$. $i = 1$: $k = 0$, $s_1 = s_0$, so $\pi[1] = 1$. $i = 2$: $k = 1$, $s_2 = b \ne s_1 = a$, fall back to $k = \pi[0] = 0$; $s_2 \ne s_0$, so $\pi[2] = 0$. $i = 3$: $k = 0$, $s_3 = a = s_0$: 1. $i = 4$: $k = 1$, $s_4 = a = s_1$: 2. $i = 5$: $k = 2$, $s_5 = a \ne s_2 = b$, fall back to $k = \pi[1] = 1$, $s_5 = a = s_1$: $\pi[5] = 2$. $i = 6$: $k = 2$, $s_6 = b = s_2$: 3. So $\pi = 0, 1, 0, 1, 2, 2, 3$.
+
+**Proof.**
+1. *The key relation.* For $i \ge 1$ and $k \ge 1$: $k$ is a border length of $s[0..i]$ exactly when $k - 1$ is a border length of $s[0..i-1]$ (counting $0$) and $s_{k-1} = s_i$. Reason: $s[0..k) = s[i-k+1..i]$ means that the first $k - 1$ letters equal $s[i-k+1..i-1]$ (a border of length $k-1$ of $s[0..i-1]$, or an empty one when $k = 1$) and the last letters $s_{k-1}$ and $s_i$ agree. The border must be proper, $k \le i$, which gives $k - 1 < i$, a proper border of $s[0..i-1]$ or the empty one.
+2. So the longest border of $s[0..i]$ is $1 + j$, where $j$ is the largest border length of $s[0..i-1]$ (counting $0$) with $s_j = s_i$; if there is no such $j$ the answer is $0$.
+3. By Theorem 6.2.1(a) the border lengths of $s[0..i-1]$ in decreasing order are $\pi[i-1], \pi[\pi[i-1]-1], \dots, 0$. The loop tries them in this order and stops at the first with $s_j = s_i$: that is exactly step 2. This proves correctness (by induction on $i$, using the values $\pi[0..i-1]$ already computed).
+4. *Time.* By step 1, $\pi[i] \le \pi[i-1] + 1$: a border of length $k$ of $s[0..i]$ gives a border of length $k - 1$ of $s[0..i-1]$.
+5. Let $f_i$ be the number of fall-backs in step $i$. Each fall-back strictly decreases $k$ (because $\pi[k-1] < k$) and the step adds at most 1 at the end, so $\pi[i] \le \pi[i-1] - f_i + 1$, that is, $f_i \le \pi[i-1] - \pi[i] + 1$. Summing over $i$, the total number of fall-backs is at most $\pi[0] - \pi[n-1] + (n-1) \le n - 1$. Together with the $n$ comparisons that end the loops, the total time is $O(n)$. $\square$
+
+:::note[This proof needs]
+1. The chain of Theorem 6.2.1 (a): the loop moves along it from the longest to the shorter border.
+2. The array entries $\pi[0..i-1]$ are already final when step $i$ runs.
+3. The time bound is amortised: one step can take many fall-backs (for $s = \text{aaaa}\dots\text{ab}$ the last step takes $n - 1$), but the total is at most $n$.
+:::
+
+<TheoremCode unit="6.2/thm-3" />
+
+The first example is the tiny instance. The second shows a string of equal letters (no fall-backs). The third, abcabcab, is the example of Theorem 6.2.1. The fourth has only zeros. The check compares the array with the definition on every string of length 1 to 9 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$, and counts the fall-backs: never more than the length (step 5).
+
+### 4.4 Finding a pattern in a text
+
+**Theorem 6.2.4 (occurrences and the automaton).** (a) Let $t$ have length $m \ge 1$, let $s$ be a text of length $n$, let $c$ be a letter that occurs in neither, and let $\pi$ be the prefix function of $w = t\,c\,s$. For $0 \le j < n$: the pattern $t$ occurs in $s$ ending at the place $j$ (that is, $s[j-m+1..j] = t$) exactly when $\pi[m + 1 + j] = m$. The occurrences are found in $O(n + m)$ time. (b) Define, for $0 \le k \le m$ and a letter $c'$, $\delta(k, c')$ as the largest $k' \le m$ such that $t[0..k')$ is a suffix of $t[0..k)\,c'$. Then $\delta(k, c') = k + 1$ if $k < m$ and $t_k = c'$; otherwise $\delta(0, c') = 0$ and $\delta(k, c') = \delta(\pi_t[k-1], c')$ for $k \ge 1$, where $\pi_t$ is the prefix function of $t$. The table is computed in $O(m \cdot 26)$ time, and if $k_j$ is the largest number of letters of $t$ that form a suffix of $s[0..j]$, then $k_j = \delta(k_{j-1}, s_j)$.
+
+:::tip[In plain words]
+Glue the pattern, a separator, and the text into one string. Because the separator is nowhere else, no border can reach across it, so a border never gets longer than the pattern. A border exactly as long as the pattern means that the last letters of the text, up to that place, are the pattern. The automaton is the same idea as a table: after each text letter, it says how much of the pattern is currently matched.
+:::
+
+**A tiny instance.** $t = \text{aba}$, $s = \text{ababa}$, $w = \text{aba\#ababa}$. $\pi = 0, 0, 1, 0, 1, 2, 3, 2, 3$. The value $3 = m$ appears at the places 6 and 8 of $w$, which are the places $j = 2$ and $j = 4$ of $s$, so the occurrences start at $j - m + 1 = 0$ and $2$. The automaton of aba read over ababa goes through the states $1, 2, 3, 2, 3$.
+
+**Proof.**
+1. *(a), $\pi \le m$.* Let $i$ be a place of $w$ and suppose $w[0..i]$ has a border of length $k > m$. Then the prefix of length $k$ contains the place $m$, where $w$ has the letter $c$. The equal suffix of length $k$ then has the letter $c$ at the matching place $i - k + 1 + m$. But $c$ occurs only at the place $m$ of $w$, so $i - k + 1 + m = m$, which gives $k = i + 1$, not a proper border. So every $\pi$ value is at most $m$.
+2. If $t$ occurs ending at the place $j$ of $s$, the last $m$ letters of $w[0..m+1+j]$ are $t$, which is also its prefix of length $m$, so $m$ is a border length. By step 1 it is the longest: $\pi[m+1+j] = m$.
+3. If $\pi[m+1+j] = m$, the prefix of length $m$ (which is $t$) equals the suffix of length $m$ of $w[0..m+1+j]$, which is $s[j-m+1..j]$. So $t$ occurs there. The time is that of Theorem 6.2.3 for a string of length $n + m + 1$.
+4. *(b), the recurrence.* A number $k' \ge 1$ is such that $t[0..k')$ is a suffix of $t[0..k)\,c'$ exactly when $t_{k'-1} = c'$ and $t[0..k'-1)$ is a suffix of $t[0..k)$. A prefix of $t$ that is a suffix of $t[0..k)$ is either $t[0..k)$ itself ($k' - 1 = k$, which needs $k < m$) or a border of $t[0..k)$.
+5. So the candidates for $k' - 1$ are: $k$ itself, then the border lengths of $t[0..k)$, which by Theorem 6.2.1(a) are $\pi_t[k-1]$ and the border lengths of the prefix of that length. If $k < m$ and $t_k = c'$, the first candidate gives the largest answer, $k + 1$. Otherwise the answer is the largest candidate among the borders, and these are exactly the candidates for $\delta(\pi_t[k-1], c')$ (itself and its borders). For $k = 0$ there are no candidates other than $0$ itself, so the answer is $0$ unless $t_0 = c'$.
+6. *The reading rule.* Let $k_{j-1}$ be the longest prefix of $t$ that is a suffix of $s[0..j)$. A prefix of $t$ that is a suffix of $s[0..j]$ and has length $k' \ge 1$ has $t[0..k'-1)$ as a suffix of $s[0..j)$, hence as a suffix of $t[0..k_{j-1})$ (the longest such). So $k_j$ is the largest $k'$ with $t[0..k')$ a suffix of $t[0..k_{j-1})\,s_j$, which is $\delta(k_{j-1}, s_j)$. $\square$
+
+:::note[This proof needs]
+1. The separator is a letter that occurs in neither string. Without it a border can run through the join (for $t = \text{aa}$ and $s = \text{aaa}$, the string $\text{aaaaa}$ has borders longer than $m$).
+2. For the automaton the states are $0, \dots, m$; from the state $m$ (a full match) the next state is computed by the fall-back rule like any other, which allows overlapping occurrences.
+3. The table has $26 (m + 1)$ entries; for a large alphabet the table is too big and the fall-back loop of Theorem 6.2.3 is used directly instead.
+:::
+
+<TheoremCode unit="6.2/thm-4" />
+
+The first example is the tiny instance: aba occurs in ababa at 0 and 2 (steps 2 and 3). The second has overlapping occurrences of aa in aaaa. The third has no occurrence. The fourth line runs the automaton over ababa, giving the states $1, 2, 3, 2, 3$ (steps 4 to 6; from the full state 3 the letter b leads to state 2 because the border of aba is a). The check compares the occurrences with a scan of every start, and the automaton state with the longest matching prefix, on all pairs with $|t| \le 4$ and $|s| \le 8$ over $\{a, b\}$.
+
+### 4.5 The Z-function
+
+**Theorem 6.2.5 (the Z-function in $O(n)$).** Let $s$ have length $n$. Keep $l$ and $r$ with $s[l..r) = s[0..r-l)$ and $r$ as large as possible among the places seen so far (start with $l = r = 0$). For $i = 1, \dots, n-1$: if $i < r$ start with $z[i] = \min(r - i,\ z[i-l])$, otherwise with $z[i] = 0$; then, while $i + z[i] < n$ and $s_{z[i]} = s_{i + z[i]}$, add 1 to $z[i]$; finally, if $i + z[i] > r$, set $l = i$ and $r = i + z[i]$. Then $z[i]$ is the length of the longest common beginning of $s$ and $s[i..n)$, and the whole array is computed in $O(n)$ time. Also (b): with $w = t\,c\,s$ as in Theorem 6.2.4, the pattern $t$ occurs in $s$ starting at the place $j$ exactly when $z_w[m + 1 + j] = m$.
+
+:::tip[In plain words]
+If you already know that the part of the string between $l$ and $r$ is a copy of the beginning of the string, then for a place $i$ inside it, the answer is the answer at the matching place $i - l$ in the beginning, unless that answer reaches beyond $r$, where you have to look at new letters. New letters are only compared when $r$ moves forward, and $r$ can move forward at most $n$ times in total.
+:::
+
+**A tiny instance.** $s = \text{aabxaab}$. $z[1]$: $s[1..] = \text{abxaab}$ against aabxaab: a = a, then b ≠ a: 1. $z[2] = 0$ (b ≠ a), $z[3] = 0$. $z[4]$: aab = aab, then the end: 3, so now $l = 4$, $r = 7$. $z[5]$: $5 < 7$, so start with $\min(7 - 5, z[1]) = \min(2, 1) = 1$ and the next letters differ: $z[5] = 1$ (copied from $z[1]$). $z[6]$: $\min(1, z[2]) = 0$. So $z = 7, 1, 0, 0, 3, 1, 0$.
+
+**Proof.**
+1. *Correctness.* The invariant: $s[l..r) = s[0..r-l)$ and no earlier place $i'$ has $i' + z[i'] > r$. It holds at the start ($l = r = 0$) and is kept by the last line of the loop.
+2. Let $i < r$. Since $s[l..r) = s[0..r-l)$, the block $s[i..r)$ equals $s[i-l..r-l)$. So the common beginning of $s[i..]$ and $s$ is at least $\min(r - i, z[i-l])$ and starts with this many agreeing letters.
+3. If $z[i-l] < r - i$, then the letter $s_{i + z[i-l]}$ equals $s_{i - l + z[i-l]}$ (both inside the copy), which differs from $s_{z[i-l]}$ by the definition of $z[i-l]$. So the common beginning is exactly $z[i-l]$, and the while loop stops at once.
+4. If $z[i-l] \ge r - i$, the agreement is known up to $r$ and the loop continues to compare the letters from the place $r$ on. If $i \ge r$ nothing is known and the loop starts from $0$. In both cases the loop compares and extends until the first difference, so $z[i]$ is exact.
+5. *Time.* The loop compares from the place $i + z[i]$ at its start. In case 3 the first comparison fails. In the other cases the starting place is $\ge r$ (equal to $\max(i, r)$), and every successful comparison puts $i + z[i]$ one place further, after which the update of $r$ makes $r$ at least that big. Since $r$ never decreases and $r \le n$, there are at most $n$ successful comparisons in all, plus one failed comparison per $i$: $O(n)$.
+6. *Part (b).* $z_w[m + 1 + j] \ge m$ means that $w[m+1+j..]$ begins with $w[0..m) = t$. It cannot be more than $m$, because $w_m = c$ is not in $s$. So $z_w[m+1+j] = m$ exactly when $s[j..j+m) = t$. $\square$
+
+:::note[This proof needs]
+1. The copy $s[l..r)$ is a copy of the *beginning* of $s$. The Z-function compares every suffix only with the whole string, never two arbitrary blocks.
+2. $z[0]$ is set to $n$ by convention and not used by the loop.
+3. As for the prefix function, the bound is amortised over the whole run; a single $i$ may do many comparisons.
+:::
+
+<TheoremCode unit="6.2/thm-5" />
+
+The examples are the tiny instance, then aaaa (every place copies the one before: $4, 3, 2, 1$), abab ($4, 0, 2, 0$) and abcd ($4, 0, 0, 0$). The check compares the array with the definition on every string of length 1 to 9 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$.
+
+### 4.6 How often does each beginning occur?
+
+**Theorem 6.2.6 (occurrences of every prefix).** For $1 \le k \le n$ let $\text{occ}[k]$ be the number of places $i$ with $s[i..i+k) = s[0..k)$. Put $\text{cnt}[x]$ equal to the number of places $i$ with $\pi[i] = x$, then for $k = n, n-1, \dots, 1$ add $\text{cnt}[k]$ to $\text{cnt}[\pi[k-1]]$. Then $\text{occ}[k] = \text{cnt}[k] + 1$ for every $k \ge 1$. The whole table takes $O(n)$ time.
+
+:::tip[In plain words]
+Every place where a long prefix ends is also a place where its longest border ends, since that border is also its beginning. Counting from the longest prefix to the shortest, push each count down to the longest border, and every prefix ends up with the number of prefixes of $s$ that have it in their border chain, plus itself.
+:::
+
+**A tiny instance.** $s = \text{abab}$, $\pi = 0, 0, 1, 2$. The counts $\text{cnt}[0] = 2$, $\text{cnt}[1] = 1$, $\text{cnt}[2] = 1$. Pushing down from $k = 4$: $\text{cnt}[4] = 0$ is added to $\text{cnt}[2]$; $\text{cnt}[3] = 0$ to $\text{cnt}[1]$; $\text{cnt}[2] = 1$ to $\text{cnt}[0]$; nothing changes the others. So $\text{occ}[1] = 2$ (a at 0 and 2), $\text{occ}[2] = 2$ (ab at 0 and 2), $\text{occ}[3] = \text{occ}[4] = 1$.
+
+**Proof.**
+1. The prefix of length $k$ occurs at the place $i$ exactly when it ends at the place $e = i + k - 1$, that is, when $k$ is a border length of $s[0..e]$ or $k = e + 1$ (the prefix itself, at the place $0$).
+2. By Theorem 6.2.1(a), $k$ is a border length of $s[0..e]$ exactly when $k$ is in the chain $\pi[e], \pi[\pi[e]-1], \dots$.
+3. Define a parent of the number $x \ge 1$ as $\pi[x-1]$. The chain of $e$ is: start at $\pi[e]$, then go to parents. So $k$ is in the chain of $e$ exactly when the number $\pi[e]$ is $k$ or has $k$ as an ancestor.
+4. The loop from the largest $k$ down to $1$ adds to $\text{cnt}[x]$ the count of the numbers that have the parent $x$, after those numbers have been completed (parents are smaller than children, so they are processed later). So at the end $\text{cnt}[k]$ is the number of places $e$ whose chain contains $k$.
+5. Adding the occurrence at the place $0$ gives $\text{occ}[k] = \text{cnt}[k] + 1$. The loops cost $O(n)$. $\square$
+
+:::note[This proof needs]
+1. $\pi[x-1] < x$, so the parent is smaller than the child and the descending loop finishes each child before its parent.
+2. The prefix of length $k$ is counted once for itself even if no border ends in the same place.
+3. Occurrences may overlap, and they are all counted.
+:::
+
+<TheoremCode unit="6.2/thm-6" />
+
+The first example is a string of equal letters: aaa has the prefixes a, aa, aaa occurring 3, 2 and 1 times. The second is the tiny instance. The third, abcabcab, has the prefixes a, ab, abc, abca, abcab occurring $3, 3, 2, 2, 2$ times and abcabc, abcabca, abcabcab once each. The check counts the starts directly for every prefix of every string of length 1 to 10 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$.
+
+## 5. Recognition Cards
+
+<Cards topic="6.2" />
+
+## 6. Templates
+
+Templates come in the next step.
+
+## 7. Bug catalogue
+
+Bugs come in the next step.
+
+## 8. Worked examples
+
+Worked examples come in the next step.
+
+## 9. Problem ladder
+
+<Ladder topic="6.2" />
+
+## 10. Identification drill
+
+<Drill topic="6.2" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="6.2" />
+
+## 12. Self-test questions
+
+<SelfTest topic="6.2" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="6.2" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="6.2" />

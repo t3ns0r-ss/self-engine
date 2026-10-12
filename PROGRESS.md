@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M8 (Phase 6), started on Saurabh's "Continue" after the M7 fix report (M5, M6, M7 and R1 gates are still `waiting`).
-- Topic: 6.2 prefix function and Z-function (next)
+- Topic: 6.3 trie and binary trie (next)
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 6.1 polynomial hashing, all 10 steps (validate, build, unit tests pass).
-Next action: scope and bank additions for 6.2.
+Last completed step: topics 6.1 and 6.2 done, all 10 steps each (validate, build, unit tests pass).
+Next action: scope and bank additions for 6.3.
 
 ## Gates
 | Gate | Status | Date |
@@ -73,6 +73,7 @@ Next action: scope and bank additions for 6.2.
 | 5.3 | done (on this session's branch; † Codeforces links confirmed to open by the owner on 2026-10-11, ideas are still from recalled statements) | — |
 | 5.4 | done (on this session's branch; † Codeforces links confirmed to open by the owner on 2026-10-11, ideas are still from recalled statements) | — |
 | 6.1 | done (on this session's branch) | — |
+| 6.2 | done (on this session's branch) | — |
 | Phase 5 intro and exam | done (on this session's branch) | — |
 
 ## Bank
@@ -256,4 +257,5 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - **Phase 5 lessons (M7), things to look at.** (1) FIXED 2026-10-11: three tier-5 blocks problems were added to the 5.4 bank (cf-551E, cf-444C, cf-911G); the blocks ladder now has five, and cf-551E is a fourth worked example (code/5.4/example-4) for the blocks card. (2) The 5.4 drill has one 5.4 answer (cf-425D); the other seven are solved by 5.2 or 5.3. (3) Several templates are restatements of ladder problems: mo-power is cf-86D and step-sums is cf-103D, kept as base rungs. (4) The 5.4 review sets contain no Mo problem. (5) The owner opened the † Codeforces problems on 2026-10-11 and they open fine; the hints and notes for them are still from recalled statements, so check an idea against the page when a problem is first solved. (6) A segment tree in 5.3 is written recursively with 4n nodes; I did not teach the bottom-up form (mentioned only as an alternative).
 - **e2e script, placeholder stage.** FIXED 2026-10-11: `tests/placeholder/make.mjs` now has the real 1.3 cards `opposite-ends` and `merge-walk` (3 ladder rungs each), so the placeholder stage validates again.
 - **Phase 6 bank additions and choices (M8, topic 6.1).** The 6.1 bank was short of reserved problems, so 15 reserved problems and 1 practice problem were added (statements read for AtCoder, CSES and LeetCode; Codeforces recalled and marked †): checkpoint cf-985F, cf-113B (with lc-shortest-palindrome); review cf-611D, cf-757C, cf-633C, ac-abc343_g, lc-maximum-product-of-the-length-of-two-palindromic-substrings (with four existing ones); look-alike pair cf-1948D / lc-distinct-echo-substrings (lc-distinct-echo-substrings moved from review to look-alike); drill ac-abc250_e, ac-abc158_e, cf-1731C, cf-778A, cf-1290B, cf-1426F, cf-682D (with cses-3138; six of the eight are solved by earlier tools); practice lc-smallest-unique-subarray. Several well-known problems were already used by other topics, so the ids were changed to unused ones. Weak points: hashing for the three palindrome and substring ladder rungs with a natural exact alternative (the lesson says so in Step 6 of the examples); the Codeforces hints are from recalled statements. The lesson uses one prime, 2^61 − 1, with `__int128`, a random base from the clock, and states the collision bound (Theorem 6.1.2) with its proof, including the "polynomial of degree d has at most d roots modulo a prime" step.
+- **Phase 6 bank additions and choices (M8, topic 6.2).** 15 reserved problems were added (Codeforces recalled and marked †): checkpoint cf-631D, cf-1984D (with cses-1733); review cf-494B, cf-1120C, cf-1537E2, cf-825F, lc-find-all-good-strings, lc-find-the-occurrence-of-first-almost-equal-substring, lc-repeated-string-match (with cses-1112 and lc-minimum-number-of-valid-strings-to-form-target-ii); drill cf-471D, cf-2010C2, cf-1295B, cf-1360F, cf-1660F2, cf-1182C (with lc-longest-happy-prefix and lc-minimum-number-of-valid-strings-to-form-target-i; four of the eight drill problems are solved by earlier tools). The lesson has 3 cards instead of 4: the pattern `prefix-counts` (one practice problem, cf-432D) is a rung of the border card, and its theorem (6.2.6) has a template. Weak points: cf-1537E2, lc-repeated-string-match and cf-1295B have a natural simpler solution (the notes say so); the lesson teaches the matching automaton (Theorem 6.2.4 (b)) because cses-1112, cf-808G and lc-find-all-good-strings need it.
 

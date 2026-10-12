@@ -225,15 +225,262 @@ The first example is a string of equal letters: aaa has the prefixes a, aa, aaa 
 
 ## 6. Templates
 
-Templates come in the next step.
+Six templates. Each shows only the function that matters; the program around it reads the input. The templates use the prefix function of Theorem 6.2.3 or the Z-function of Theorem 6.2.5, which stay in the file outside the shown code and are said to be used. Each template is checked against a brute force that compares letters directly, on thousands of random small inputs (strings over one to three letters, so that borders and repeats are common) and on fixed tests with a single letter, all letters equal and the largest sizes.
+
+### Count the occurrences of a pattern, reading the text once (Theorem 6.2.4)
+
+<CodeSnippet unit="6.2/count-occurrences" />
+
+**How it works.** `k` is the number of letters of `t` that are matched at the end of the text read so far, which is the state of the automaton of Theorem 6.2.4. For each text letter `c`, the `while` loop falls back to a shorter border (`k = pi[k - 1]`) while the next pattern letter `t[k]` is not `c`; it also falls back after a full match (`k == m`), because there is no letter `t[m]` to compare with. If `t[k] == c` the match grows by one. When `k` reaches `m`, one more occurrence has ended. The count can reach $10^6$, so it is a `long long` only for safety. Reading the text once uses no memory beyond the prefix function of `t`.
+
+**Alternative formulation.** Compute the prefix function of `t + '#' + s` and count the values equal to `|t|` (Theorem 6.2.4 (a), Example 1 below). It needs a string of length $|s| + |t| + 1$ and is the same in speed.
+
+### All borders and all periods (Theorem 6.2.1)
+
+<CodeSnippet unit="6.2/all-borders-periods" />
+
+**How it works.** The loop follows the chain of Theorem 6.2.1(a) from `pi[n-1]` down to the border of length 1, so it lists all borders from the longest to the shortest; the function reverses them. A number `p` is a period exactly when `n - p` is a border length or `p = n` (Theorem 6.2.1(b)), so the periods are the numbers `n - b` for the borders `b`, together with `n`. Walking the borders from the longest to the shortest gives the periods from the smallest to the largest, and `n` comes last.
+
+**Alternative formulation.** With the Z-function, the border lengths are the values `n - i` at the places `i` where `z[i] == n - i` (Example 2 below).
+
+### The sum of the Z-function (Theorem 6.2.5)
+
+<CodeSnippet unit="6.2/score-sum" />
+
+**How it works.** The function uses `zFunction`. The common beginning of the whole string with itself is `z[0] = n`. The sum of $n$ values, each up to $n$, can reach $n(n+1)/2 = 5 \cdot 10^9$ for $n = 10^5$, so it is a `long long` (this is the main reason this is a template: with `int` the sum overflows). The Z-function is a general tool: any sum, count or maximum over $z$ is one pass over the array.
+
+**Alternative formulation.** The same sum can be written with the prefix function of the reversed process (the "built strings" of the ladder problem), but the Z-function is the direct form.
+
+### The longest match of the pattern at every place of the text (Theorem 6.2.5 (b))
+
+<CodeSnippet unit="6.2/prefix-match-lengths" />
+
+**How it works.** The function uses `zFunction` on `t + '#' + s`. For a place `i` of the text the common beginning of the joined suffix and the joined string is `z[|t| + 1 + i]`; the separator keeps it at most `|t|`. The array `match` says, for every start, how many letters of the pattern agree there: a full occurrence is a value equal to `|t|`, and a value `|t| - 1` followed by a different letter is a match with one mistake (used in the review problem about almost equal substrings).
+
+**Alternative formulation.** Hash the pattern's prefixes and binary search the longest match at each place ([topic 6.1](../../phase-6/6-1-string-hashing/)): $O(n \log n)$ with a small probability of error.
+
+### How often does each border occur? (Theorems 6.2.1 and 6.2.6)
+
+<CodeSnippet unit="6.2/border-counts" />
+
+**How it works.** `occ[x]` first counts the places `i` with `pi[i] == x`; then the descending loop adds the count of each prefix to the count of its longest border, so that every prefix collects the counts of all longer prefixes whose border chain contains it (Theorem 6.2.6, step 4). The `+ 1` is the occurrence of the prefix at the place 0. The loop at the end follows the chain from `n` down, so it visits exactly the prefixes that are also suffixes, plus `n` itself; the result is reversed to increasing order.
+
+**Alternative formulation.** For one given prefix length, a plain count of its occurrences (the template for occurrences) costs $O(n)$; the table above gives all of them at once.
+
+### Strings that contain a pattern, counted with the automaton (Theorem 6.2.4 (b))
+
+<CodeSnippet unit="6.2/avoid-pattern" />
+
+**How it works.** `next[k][c]` is the matching automaton of `t` (Theorem 6.2.4 (b)): after `k` letters of `t` are matched and the letter `c` is read, `k + 1` letters are matched if `t[k] == c`, and otherwise the state of the longest border is used (`next[pi[k - 1]][c]`, already computed because $\pi[k-1] < k$). `ways[k]` is the number of strings read so far that end in the state `k`. The state `m` means the pattern has occurred, so those strings are dropped; the sum of the rest after `n` letters is the number of strings that avoid the pattern. The answer to the problem is $26^n$ minus this number, taken modulo $10^9 + 7$ ([topic 2.2](../../phase-2/2-2-modular-arithmetic/)). The cost is $n \cdot m \cdot 26$.
+
+**Alternative formulation.** Inclusion–exclusion on the positions of occurrences needs the overlaps of the pattern with itself (its borders), and is much harder to get right.
 
 ## 7. Bug catalogue
 
-Bugs come in the next step.
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: falling back by one instead of to the border
+
+Template: count the occurrences of a pattern.
+
+```cpp
+while (k > 0 && (k == m || t[k] != c)) k--;      // instead of k = pi[k - 1]
+```
+
+Input: `abaa`, then `ba`.
+
+Wrong output `2`, correct output `1`. The pattern `ba` occurs once, at the place 1. After it is matched (`k == m == 2`) the next letter `a` must start from the longest border of `ba`, which is empty ($\pi[1] = 0$), where `t[0] = b` does not match `a`. Falling back by one letter leaves `k = 1`, where `t[1] = a` does match, and a second occurrence is counted (Theorem 6.2.1(a): the next shorter border is $\pi[k-1]$, not $k - 1$).
+
+**Fix:** `k = pi[k - 1]`.
+
+### Bug: the shortest border is lost
+
+Template: all borders and all periods.
+
+```cpp
+for (int k = pi.back(); k > 1; k = pi[k - 1])       // instead of k > 0
+```
+
+Input: `aa`.
+
+Wrong output `0` borders and the periods `1 2`; correct output `1 1` and `2 1 2`. The only border of aa has length 1, and the loop stops before it. A border of length 1 is a real border; the chain ends at 0 (Theorem 6.2.1(a)).
+
+**Fix:** loop while `k > 0`.
+
+### Bug: the period n is forgotten
+
+Template: all borders and all periods.
+
+```cpp
+    // periods.push_back(n);                         // this line is missing
+```
+
+Input: `b`.
+
+Wrong output `0` and `0`, correct output `0` and `1 1`. The length of a string is always a period (Theorem 6.2.1(b), the case $p = m$), even when the string has no border. The periods $n - b$ cover only the borders.
+
+**Fix:** add `n` after the loop.
+
+### Bug: copying a Z-value past the known match
+
+Template: the sum of the Z-function.
+
+```cpp
+if (i < r) z[i] = z[i - l];                         // instead of min(r - i, z[i - l])
+```
+
+Input: `aaa`.
+
+Wrong output `7`, correct output `6`. At $i = 1$ the match is $s[1..3) = \text{aa}$, so $l = 1$ and $r = 3$. At $i = 2$ the copied value is $z[1] = 2$, but only $r - i = 1$ letters are known to agree; the letter at the place 3 does not exist. The true value is 1 (Theorem 6.2.5, step 4: copy at most $r - i$).
+
+**Fix:** use `min(r - i, z[i - l])`.
+
+### Bug: the first value of the Z-function is 0
+
+Template: the sum of the Z-function.
+
+```cpp
+    z[0] = n;                                       // this line is missing
+```
+
+Input: `b`.
+
+Wrong output `0`, correct output `1`. The score of the whole string is its own length. Without the line, $z[0]$ stays 0 and the sum is short by $n$.
+
+**Fix:** set `z[0] = n` (or add `n` in the sum).
+
+### Bug: no separator between the pattern and the text
+
+Template: the longest match of the pattern at every place.
+
+```cpp
+vector<int> z = zFunction(t + s)                    // instead of t + '#' + s
+```
+
+Input: `aa`, then `a`.
+
+Wrong output `2 1`, correct output `1 1`. Without the separator the match at the place 0 of the text runs on past the end of the pattern into the text: the joined string is `aaa`, whose value at the place 1 is 2, longer than the pattern (Theorem 6.2.4 (a), step 1, and Theorem 6.2.5 (b)).
+
+**Fix:** put a letter that occurs in neither string between them.
+
+### Bug: pushing the counts down in the wrong order
+
+Template: how often does each border occur?
+
+```cpp
+for (int k = 1; k <= n; k++) occ[pi[k - 1]] += occ[k];     // instead of k from n down to 1
+```
+
+Input: `aaaa`.
+
+Wrong output: the line `1 3` for the prefix `a`, correct output `1 4`. Going upwards, the count of the prefix of length 1 receives the count of the prefix of length 2 *before* that count has received the count of the prefix of length 3, so the longer counts are lost (Theorem 6.2.6, step 4: parents must be processed after their children).
+
+**Fix:** loop from $n$ down to 1.
+
+### Bug: the full-match state is kept
+
+Template: strings that contain a pattern, counted with the automaton.
+
+```cpp
+if (to <= m) after[to] = (after[to] + ways[k]) % MOD;     // instead of to < m (and the loop over k runs to m)
+```
+
+Input: `2`, then `b`.
+
+Wrong output `26`, correct output `51`. Strings that have already matched the pattern must be removed, but with the state $m$ kept they continue, and the next letter can bring them back to a state below $m$, where the last step counts them as avoiding the pattern. For $t = b$ the string `bc` reaches the state 1 = $m$ after `b`, then `c` brings it back to the state 0, and it is counted as a string without `b`. The program counts $26 \cdot 25 = 650$ strings as avoiding (all strings that do not end with `b`) instead of $25 \cdot 25 = 625$, and prints $676 - 650 = 26$ instead of $676 - 625 = 51$.
+
+**Fix:** drop every string that reaches the state $m$.
 
 ## 8. Worked examples
 
-Worked examples come in the next step.
+### Example 1: String Matching
+
+[CSES 1753: String Matching](https://cses.fi/problemset/task/1753). In short: given a text and a pattern (both up to $10^6$ letters), count the places where the pattern occurs in the text.
+
+#### Step 1: Constraints → budget
+
+$n = m = 10^6$. Comparing the pattern with the text at every start is up to $(n - m + 1) \cdot m$; for the text $10^6$ and a pattern of $5 \cdot 10^5$ letters that is $2.5 \cdot 10^{11}$ steps in the worst case. The prefix function of the joined string costs $2 \cdot 10^6$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- Compare at every start ([topic 0.5](../../phase-0/0-5-brute-force/)): $2.5 \cdot 10^{11}$ steps.
+- Hash every block of the text ([topic 6.1](../../phase-6/6-1-string-hashing/)): $O(n)$, but only probable; the question asks for an exact count.
+- The prefix function of pattern, separator and text: the card "All occurrences of a pattern in a text (prefix function, matching automaton)".
+
+#### Step 3: Property check → decision
+
+Every match is an exact equality of the pattern with a block of the text. The text and pattern use lower-case letters, so '#' is a safe separator. Decision: the prefix function of `pattern + '#' + text`.
+
+#### Step 4: Proof for this problem
+
+By Theorem 6.2.4 (a), the pattern occurs ending at the place $j$ of the text exactly when the prefix function of the joined string has the value $m$ at the place $m + 1 + j$. Each occurrence ends at exactly one place, so the number of places with the value $m$ is the number of occurrences (overlapping ones included). The time is linear by Theorem 6.2.3.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.2/example-1" />
+
+#### Step 6: Alternative approach
+
+The template that reads the text once, with the state `k`, needs no joined string and uses less memory; the count is the same. A second alternative is the Z-function of the joined string (Theorem 6.2.5 (b)).
+
+### Example 2: Finding Borders
+
+[CSES 1732: Finding Borders](https://cses.fi/problemset/task/1732). In short: a border of a string is a prefix that is also a suffix and is not the whole string; print all border lengths of a string of up to $10^6$ letters in increasing order. In abcababcab they are 2 and 5.
+
+#### Step 1: Constraints → budget
+
+$n = 10^6$. Testing each length $k$ from 1 to $n - 1$ by comparing the prefix with the suffix is $1 + 2 + \dots + (n - 1) \approx 5 \cdot 10^{11}$ letter comparisons. A linear method is needed: about $10^6$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- Compare for every length ([topic 0.5](../../phase-0/0-5-brute-force/)): $5 \cdot 10^{11}$ steps.
+- The chain of borders from the prefix function (Theorem 6.2.1), the card "Borders, periods and repetitions of a string (the prefix function)".
+- The Z-function: the suffix from the place $i$ is a prefix exactly when $z[i] = n - i$, the card "How far every suffix agrees with the beginning (the Z-function)".
+
+#### Step 3: Property check → decision
+
+A border is a prefix equal to a suffix of the same string, so both cards fit. Decision: use the Z-function here, to show the second route (the first route is Step 6): the borders are the numbers $n - i$ for the places $i$ with $z[i] = n - i$.
+
+#### Step 4: Proof for this problem
+
+A border of length $k$ is a prefix that equals the suffix $s[n-k..n)$. That suffix begins at the place $i = n - k$ and has length $n - i$. It equals the prefix of that length exactly when the common beginning of $s[i..]$ and $s$ is the whole suffix, that is, $z[i] = n - i$ (Theorem 6.2.5). The places $i = 1, \dots, n - 1$ give the lengths $k = n - i$ from $n - 1$ down to 1; going from the right end to the left gives them in increasing order.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.2/example-2" />
+
+#### Step 6: Alternative approach
+
+Follow the chain of borders of Theorem 6.2.1: the longest border is $\pi[n-1]$, the next is $\pi[\pi[n-1]-1]$, and so on; collect them and reverse (the template "All borders and all periods"). It uses the prefix function and avoids the loop over all places.
+
+### Example 3: String Functions
+
+[CSES 2107: String Functions](https://cses.fi/problemset/task/2107). In short: for a string of up to $10^6$ letters print $z(i)$ for all places (the length of the longest substring that begins at $i$ and is a prefix, with $z(1) = 0$) and then $\pi(i)$ for all places (the length of the longest substring that ends at $i$, is a prefix, and has length at most $i - 1$).
+
+#### Step 1: Constraints → budget
+
+$n = 10^6$. Computing each value by comparing letters costs up to $n^2/2 = 5 \cdot 10^{11}$ steps for each function. Two linear algorithms cost about $2 \cdot 10^6$ steps together.
+
+#### Step 2: Question form → candidate tools
+
+- Compare letters for every place ([topic 0.5](../../phase-0/0-5-brute-force/)): $10^{12}$ steps in all.
+- The Z-function (Theorem 6.2.5) and the prefix function (Theorem 6.2.3): the cards "How far every suffix agrees with the beginning (the Z-function)" and "Borders, periods and repetitions of a string (the prefix function)".
+
+#### Step 3: Property check → decision
+
+The first function is by definition the Z-function with the convention $z(1) = 0$. The second is by definition the prefix function: a substring that ends at $i$, is a prefix and is shorter than $i$ is a proper border of the first $i$ letters. Decision: compute both.
+
+#### Step 4: Proof for this problem
+
+The definitions of the problem match Theorems 6.2.3 and 6.2.5, except that the problem sets $z(1) = 0$ while the Z-function of Theorem 6.2.5 has $z[0] = n$ by convention. The code sets that entry to 0 after the computation, which changes no other entry, because the loop for $i \ge 1$ never reads $z[0]$ through the copy rule (it reads $z[i - l]$ with $l \ge 1$ and $i - l \ge 1$).
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.2/example-3" />
+
+#### Step 6: Alternative approach
+
+Each function can be computed from the other in $O(n)$, but the two direct algorithms are each shorter than a conversion.
 
 ## 9. Problem ladder
 

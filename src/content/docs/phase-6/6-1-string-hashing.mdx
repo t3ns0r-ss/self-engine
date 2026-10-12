@@ -1,0 +1,265 @@
+---
+title: "6.1 Polynomial hashing"
+sidebar:
+  order: 37
+topic: "6.1"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="6.1" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A string $s$ has $n = 2 \cdot 10^5$ letters. You get $q = 2 \cdot 10^5$ questions, and each gives two pieces of $s$ of the same length, $s[l_1..r_1)$ and $s[l_2..r_2)$, and asks: "are the two pieces equal?"
+
+The direct way compares the pieces letter by letter. Two pieces of length $10^5$ cost up to $10^5$ comparisons, and $q$ such questions cost up to $2 \cdot 10^5 \cdot 10^5 = 2 \cdot 10^{10}$ comparisons. At about $10^8$ simple steps per second that is about 200 seconds, far over a typical limit of 1 to 2 seconds. Sorting ([topic 1.1](../../phase-1/1-1-sorting/)) and prefix sums ([topic 1.2](../../phase-1/1-2-prefix-sums/)) do not help: a piece of a string has no sum, and "equal" is a question about all letters at once. A table of the answers for every pair of pieces would need about $n^4$ entries.
+
+The key idea: give every piece a **number** that depends only on its letters, so that equal pieces always get the same number, and compute all these numbers from one array of $n + 1$ prefix numbers. Then every question is two lookups and a few multiplications, and the answer "the numbers are different" is always right. The answer "the numbers are the same" is right except for a small chance of error, which we make as small as we like (about one in $10^{13}$ for the whole input) by choosing a large prime and a random base. This number is the **polynomial hash**. With the same tool you can count distinct pieces, search for the longest repeated piece by binary search on its length, and test palindromes in $O(1)$.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="6.1" />
+
+### What this topic does not cover
+
+- Finding every occurrence of a pattern in a text without any randomness, and testing whether a string has a period: the prefix function (the Knuth–Morris–Pratt method) and the Z-function of topic 6.2. A hash can do the same jobs but is a little slower and can be wrong with tiny probability; those methods are exact.
+- Storing many strings in a tree that shares their common beginnings, and the binary version of it for maximum XOR: the trie of topic 6.3.
+- Sorting all suffixes of a string and computing the longest common prefix of neighbours exactly: the suffix array and LCP array of topic 6.4. Here we compare two pieces by a hash and a binary search on their common length.
+
+## 3. Definitions
+
+- A **string** $s$ has letters $s_0, s_1, \dots, s_{n-1}$ and length $n = |s|$. This page uses the lower-case letters and gives them the numbers $a = 1, b = 2, \dots, z = 26$. A **substring** $s[l..r)$ is the block $s_l, s_{l+1}, \dots, s_{r-1}$ of consecutive letters: it includes the place $l$ but not the place $r$, so its length is $r - l$, and $s[l..l)$ is the empty string. Example: for $s = \text{abcde}$, $s[1..4) = \text{bcd}$.
+- The **reverse** of $s$ is $s_{n-1}, \dots, s_1, s_0$. A **palindrome** is a string equal to its reverse, such as abcba and abba. Example: $s[0..4) = \text{abab}$ is not a palindrome, and $s[0..3) = \text{aba}$ is.
+- Fix a prime $p$ and an integer $B$ with $0 \le B < p$ (the **hash base**). The **polynomial hash** of a string $u$ of length $m$ is
+$$H(u) = \bigl(u_0 B^{m-1} + u_1 B^{m-2} + \dots + u_{m-2} B + u_{m-1}\bigr) \bmod p.$$
+It reads the letters as digits of a number in base $B$ (the first letter is the highest digit), but keeps only the remainder modulo $p$ ([topic 2.2](../../phase-2/2-2-modular-arithmetic/)). Example with $B = 10$: $H(\text{abc}) = 1 \cdot 100 + 2 \cdot 10 + 3 = 123$, as long as the value stays below $p$.
+- The **prefix hashes** of $s$ are the numbers $h[0] = 0$ and $h[i+1] = (h[i] \cdot B + s_i) \bmod p$. We will see that $h[i]$ is the hash of the first $i$ letters. The code also keeps the powers $pw[i] = B^i \bmod p$.
+- A **hash collision** is a pair of different strings with the same hash. Equal strings never collide with each other (they have the same letters in the same order, so the same sum), so a collision is the only way a hash comparison can say "equal" wrongly.
+- In the code the prime is $p = 2^{61} - 1$ (a prime; the product of two residues below it is below $2^{122}$). Such a product does not fit in a `long long`, so the code uses `__int128`: a 128-bit integer type of the GCC compiler (the compiler that most judges use). The expression `(__int128)a * b % P` multiplies in 128 bits and reduces modulo $P$, then the result fits in 64 bits again ([topic 0.1](../../phase-0/0-1-cpp-for-cp/) explained why products overflow).
+- The base is chosen at random when the program starts. The reason is Theorem 6.1.2 below: the guarantee holds for a base that the input could not have been designed against.
+
+## 4. Theory and proofs
+
+### 4.1 Hashes of all substrings from one array
+
+**Theorem 6.1.1 (prefix hashes).** Let $s$ be a string with letters numbered $1, \dots, 26$, let $p$ be a prime, $0 \le B < p$, and define $h$ and $pw$ as above. Then (a) $h[i] = H(s[0..i))$ for every $i$; (b) for $0 \le l \le r \le n$,
+$$H(s[l..r)) = \bigl(h[r] - h[l] \cdot pw[r-l]\bigr) \bmod p;$$
+(c) all values $h[i]$ and $pw[i]$ are computed in $O(n)$ time, after which the hash of any substring takes $O(1)$ time; (d) two equal substrings have equal hashes.
+
+:::tip[In plain words]
+The numbers $h[i]$ are what you get by reading the string from the left like the digits of a number. To get the number of the block from $l$ to $r$, cut off the front part: it is $h[l]$, pushed left by $r - l$ places, which means multiplied by $B^{r-l}$. Subtract it and what remains is the number of the block.
+:::
+
+**A tiny instance.** $s = \text{abcde}$ and $B = 10$ (no reduction is needed, the numbers are small): $h = 0, 1, 12, 123, 1234, 12345$. The block $s[1..4) = \text{bcd}$ has hash $h[4] - h[1] \cdot 10^3 = 1234 - 1000 = 234$, which is $2 \cdot 100 + 3 \cdot 10 + 4$. For $s = \text{abab}$ the blocks $s[0..2)$ and $s[2..4)$ are both ab: $h = 0, 1, 12, 121, 1212$ gives $12$ and $1212 - 12 \cdot 100 = 12$.
+
+**Proof.** (All values are taken modulo $p$.)
+1. *Claim (a) by induction on $i$.* For $i = 0$, $h[0] = 0$, the hash of the empty string.
+2. Assume $h[i] = H(s[0..i)) = \sum_{k<i} s_k B^{i-1-k}$. Then $h[i+1] = h[i] \cdot B + s_i = \sum_{k<i} s_k B^{i-k} + s_i B^0 = \sum_{k<i+1} s_k B^{(i+1)-1-k} = H(s[0..i+1))$. This proves (a).
+3. *Claim (b).* By (a), $h[r] = \sum_{k<r} s_k B^{r-1-k}$. Split the sum into the places $k < l$ and the places $l \le k < r$.
+4. The first part is $B^{r-l} \cdot \sum_{k<l} s_k B^{l-1-k}$ (take out the factor $B^{r-l}$), which is $pw[r-l] \cdot h[l]$ by (a).
+5. In the second part put $j = k - l$: it is $\sum_{j=0}^{r-l-1} s_{l+j} B^{(r-l)-1-j}$, which is exactly the definition of $H(s[l..r))$.
+6. So $h[r] = pw[r-l] \cdot h[l] + H(s[l..r))$. Moving the first term to the left gives (b).
+7. *Claim (c).* Each $h[i+1]$ and $pw[i+1]$ costs one multiplication, one addition and one reduction, so $O(n)$ in all; (b) uses one product and one subtraction, so $O(1)$.
+8. *Claim (d).* $H(u)$ is computed from the letters and their places only, so two equal strings give the same sum. $\square$
+
+:::note[This proof needs]
+1. All arithmetic is modulo $p$. In (b) the integer $h[r] - h[l] \cdot pw[r-l]$ can be negative, and the code adds $p$ before reducing.
+2. The letters are numbers in $1, \dots, 26$, below $p$. (Part (b) does not care, but Theorem 6.1.2 does; see the bug catalogue for what a letter value 0 does when strings of different lengths are compared.)
+3. A product of two residues below $2^{61}$ has up to 122 bits, so the multiplication needs 128 bits before the remainder is taken.
+:::
+
+<TheoremCode unit="6.1/thm-1" />
+
+The first example is the tiny instance (step 6 of the proof: $h[4] - h[1] \cdot 10^3$ leaves $234$). The second shows that two equal blocks of abab get the same number, which is claim (d). The third is a one-letter block. The check compares $\text{get}(l, r)$ with the sum of the definition for every substring of every string of length 1 to 7 over $\{a, b, c\}$, for three bases, and tests that $2^{61} - 1$ is prime.
+
+### 4.2 How likely is a wrong "equal"?
+
+**Theorem 6.1.2 (collisions).** Let $p$ be a prime, and let $u \ne v$ be two strings of the same length $m$ with letters in $0, \dots, p-1$. If the base $B$ is chosen uniformly at random from $0, \dots, p-1$ (independently of $u$ and $v$), then
+$$\Pr\bigl[H_B(u) = H_B(v)\bigr] \le \frac{m-1}{p}.$$
+Consequently, if a program makes $c$ comparisons of strings of length at most $L$, the probability that at least one of them says "equal" for different strings is at most $c(L-1)/p$.
+
+:::tip[In plain words]
+Two different strings collide only for a few special bases: at most one base for each letter place beyond the first. Out of the $p$ possible bases that is a tiny share when $p$ is huge. For $p \approx 2.3 \cdot 10^{18}$, $2 \cdot 10^5$ comparisons of strings up to $2 \cdot 10^5$ long fail together with probability at most $2 \cdot 10^5 \cdot 2 \cdot 10^5 / 2.3 \cdot 10^{18} \approx 2 \cdot 10^{-8}$.
+:::
+
+**A tiny instance.** Take $p = 11$ and the two-letter strings $u = (1, 2)$ and $v = (2, 1)$. Then $H_B(u) = B + 2$ and $H_B(v) = 2B + 1$, and they are equal when $B + 2 \equiv 2B + 1$, that is $B \equiv 1$: one bad base out of 11, and $m - 1 = 1$. With $p = 7$ and $u = (1, 0, 0, 0)$, $v = (0, 0, 0, 1)$: $B^3 \equiv 1 \pmod 7$ has three solutions $B = 1, 2, 4$, and $m - 1 = 3$: the bound can be reached.
+
+**Proof.**
+1. Let $D(x) = \sum_{k=0}^{m-1} (u_k - v_k) x^{m-1-k}$. Then $H_B(u) - H_B(v) \equiv D(B) \pmod p$, so a collision happens exactly when $D(B) \equiv 0$, that is, when $B$ is a root of $D$ modulo $p$.
+2. $D$ is not the zero polynomial: since $u \ne v$ there is a place $k$ with $u_k \ne v_k$, and because both letters are in $0, \dots, p-1$, the difference $u_k - v_k$ is not divisible by $p$. So $D$ has a coefficient that is not $0$ modulo $p$, and its degree $d$ is at most $m - 1$.
+3. *Claim: a polynomial of degree $d$ with coefficients modulo a prime $p$, not all zero, has at most $d$ roots among $0, \dots, p-1$.* Induction on $d$. For $d = 0$ it is a non-zero constant and has no root.
+4. Let $d \ge 1$. If there is no root, we are done. Otherwise let $r$ be a root. Dividing $D(x)$ by $x - r$ leaves the remainder $D(r) \equiv 0$, so $D(x) = (x - r) Q(x)$ for a polynomial $Q$ of degree $d - 1$ that is not the zero polynomial.
+5. Let $r' \ne r$ be another root. Then $(r' - r) Q(r') \equiv 0$. The number $r' - r$ is not divisible by $p$, so it has an inverse modulo $p$ (Theorem 2.2.3), and multiplying by that inverse gives $Q(r') \equiv 0$. So every other root is a root of $Q$, and by the induction hypothesis there are at most $d - 1$ of them. In all, at most $d$ roots.
+6. So $D$ has at most $m - 1$ roots among the $p$ equally likely values of $B$, and the probability of a collision is at most $(m-1)/p$. For $c$ comparisons, the probability that at least one fails is at most the sum of the $c$ separate probabilities (an event that happens in at least one case happens in some case), which is at most $c(L-1)/p$. $\square$
+
+:::note[This proof needs]
+1. $p$ is prime. Modulo $8$ the polynomial $x^2 - 1$ has four roots $1, 3, 5, 7$, more than its degree, because step 5 needs the inverse of $r' - r$.
+2. $B$ is random and independent of the strings. If the input is built after the base is known (a fixed base in the code, found by an opponent), the bound says nothing: that is why the base comes from the clock.
+3. The strings have the same length. Comparing strings of different lengths needs a letter value $0$ to be avoided, or the length to be compared first.
+:::
+
+<TheoremCode unit="6.1/thm-2" />
+
+The first two examples are the tiny instance (step 5 of the proof: the roots are the bad bases). The third has a difference polynomial without roots: $u = (1, 2)$ and $v = (1, 3)$ differ by the constant $-1$ and never collide. The fourth reaches the bound with equality. The check counts the bad bases of every pair of different strings of length 1 to 4 over the residues, for the primes $2, 3, 5, 7$, and never finds more than $m - 1$.
+
+Numbers to remember. With $p = 10^9 + 7$ the bound for $c = 2 \cdot 10^5$ comparisons of strings of length $L = 2 \cdot 10^5$ is $4 \cdot 10^{10} / 10^9 = 40$, which is no guarantee at all; with $p = 2^{61} - 1$ it is about $2 \cdot 10^{-8}$. To compare *every pair* among $N$ strings (counting distinct strings) there are $N^2 / 2$ comparisons: for $N = 2 \cdot 10^5$ strings of length at most $10$ that is $2 \cdot 10^{10} \cdot 9 / 2.3 \cdot 10^{18} \approx 8 \cdot 10^{-8}$; for lengths up to $10^5$ it is about $10^{-3}$, which is still acceptable, and two independent bases (a **double hash**) square it.
+
+### 4.3 Moving a window and changing one letter
+
+**Theorem 6.1.3 (update rules).** Let $w$ be a string of length $m$ with hash $h = H(w)$, and let $B^{m-1}$ be known. (a) If the first letter $w_0$ is removed and a letter $c$ is added at the end, the new hash is $\bigl((h - w_0 B^{m-1}) B + c\bigr) \bmod p$. (b) If the letter at place $i$ (counting from $0$) is replaced by $c$, the new hash is $\bigl(h + (c - w_i) B^{m-1-i}\bigr) \bmod p$. Both take $O(1)$ time.
+
+:::tip[In plain words]
+When a window slides one step, take the highest digit off the front, shift the rest left by one place, and add the new digit at the bottom. When one digit is replaced, only that digit's share of the number changes, by the difference of the digits times its place value.
+:::
+
+**A tiny instance.** $B = 10$, $m = 3$, $w = \text{abc}$ with $h = 123$. Sliding to bcd: $(123 - 1 \cdot 100) \cdot 10 + 4 = 234$. Replacing the middle letter of bcd (place 1, value 3) by i (value 9): $234 + (9 - 3) \cdot 10 = 294$, which is the hash of bid.
+
+**Proof.**
+1. By definition, $h = w_0 B^{m-1} + w_1 B^{m-2} + \dots + w_{m-1}$.
+2. *(a)* Subtracting $w_0 B^{m-1}$ leaves $w_1 B^{m-2} + \dots + w_{m-1}$.
+3. Multiplying by $B$ raises every remaining power by one: $w_1 B^{m-1} + \dots + w_{m-1} B$. These are the weights the letters $w_1, \dots, w_{m-1}$ have in the new window of length $m$, where they occupy the places $0, \dots, m-2$.
+4. Adding $c$ gives the new last letter the weight $B^0$. So the result is the hash of $w_1 \dots w_{m-1} c$.
+5. *(b)* Only the term of the place $i$ contains the letter that changes, and it has the weight $B^{m-1-i}$. Replacing $w_i$ by $c$ changes that term by $(c - w_i) B^{m-1-i}$ and no other term. $\square$
+
+:::note[This proof needs]
+1. The weight $B^{m-1}$ (or $B^{m-1-i}$) is known in advance, from the array $pw$ of Theorem 6.1.1; computing it for each step would cost $O(\log m)$.
+2. All additions and subtractions are modulo $p$, with $p$ added before the reduction when a difference is negative.
+3. The letters are the same numbers that were used when the hash was computed.
+:::
+
+<TheoremCode unit="6.1/thm-3" />
+
+The first two examples are the two slides of step 4: abc to bcd to cde, with the numbers $234$ and $345$. The last two examples are step 5: the middle letter of bcd changes by $+6 \cdot 10$, and the first letter changes by $-1 \cdot 100$. The check compares both rules with the hash computed from scratch on twenty thousand random strings and bases.
+
+### 4.4 The length is monotone
+
+**Theorem 6.1.4 (searching along the length).** Let $s$ be a string of length $n$. For $L \ge 1$ let $Q(L)$ be the statement "two different places $i < j$ exist with $s[i..i+L) = s[j..j+L)$" (the two blocks may overlap). If $Q(L)$ holds and $L \ge 2$, then $Q(L-1)$ holds. Consequently $Q$ is true for $L = 1, \dots, D$ and false for larger $L$, where $D$ is the length of the longest repeated block ($D = 0$ if none), and $D$ can be found with $O(\log n)$ evaluations of $Q$, each of which takes $O(n \log n)$ time with prefix hashes (or $O(n)$ with a hash set).
+
+:::tip[In plain words]
+If a block of length 5 appears twice, then its first four letters are a block of length 4 that appears twice. So "is there a repeat of length $L$?" is yes for small $L$ and no for large $L$, and binary search finds the border.
+:::
+
+**A tiny instance.** $s = \text{banana}$: the block ana appears at the places 1 and 3, so $Q(3)$ is true; and so are $Q(2)$ (an at 1 and 3) and $Q(1)$. $Q(4)$ is false: the blocks of length 4 are bana, anan, nana, all different. So $D = 3$. For $s = \text{aaaa}$: $Q(3)$ is true (aaa at places 0 and 1), $Q(4)$ false.
+
+**Proof.**
+1. Let $Q(L)$ hold with $i < j$ and $s[i..i+L) = s[j..j+L)$, and let $L \ge 2$.
+2. Two blocks are equal letter by letter. Equal blocks of length $L$ agree in their first $L - 1$ letters, so $s[i..i+L-1) = s[j..j+L-1)$ with the same $i < j$. That is $Q(L-1)$.
+3. So the set of $L$ with $Q(L)$ is closed downwards: it is $\{1, \dots, D\}$ for some $D \ge 0$.
+4. Binary search keeps the invariant "$D$ is in $[\text{lo}, \text{hi}]$". With $\text{mid} = \lceil (\text{lo} + \text{hi}) / 2 \rceil > \text{lo}$: if $Q(\text{mid})$ is true then $D \ge \text{mid}$, so set $\text{lo} = \text{mid}$; otherwise $D < \text{mid}$ (step 3), so set $\text{hi} = \text{mid} - 1$. The interval is at least halved each time, giving at most $\lceil \log_2 n \rceil$ rounds.
+5. To evaluate $Q(L)$, compute the hash of all $n - L + 1$ blocks by Theorem 6.1.1 and look for two equal values: sort them ($O(n \log n)$) and compare neighbours. Equal blocks give equal hashes (Theorem 6.1.1 (d)), so no repeat is missed; two different blocks with equal hashes are a collision, bounded by Theorem 6.1.2. $\square$
+
+:::note[This proof needs]
+1. The statement must be closed under shortening. "Some block of length $L$ occurs *exactly* twice" is not: in aaaa the block of length 3 occurs exactly twice, but the block of length 2 occurs three times, so the statement is true at $3$ and false at $2$ and the search can go wrong.
+2. The same holds for variants that survive cutting a letter off both copies: copies that must not overlap ($j - i \ge L$) remain non-overlapping when both are shortened. Variants that are lost when a block is shortened (a block that must be *unique*) are monotone in the other direction.
+3. A hash check, not a letter-by-letter check, is what keeps one evaluation near $O(n \log n)$.
+:::
+
+<TheoremCode unit="6.1/thm-4" />
+
+The first example is the tiny instance (steps 3 and 5): banana has $D = 3$. The second has no repeated letter, so $D = 0$. The third, aaaa, shows overlapping copies. The fourth, abab, has $D = 2$: ab appears at the places 0 and 2, and no block of length 3 appears twice. The check compares the search with a triple loop on every string of length 1 to 9 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$.
+
+### 4.5 Palindromes by hash
+
+**Theorem 6.1.5 (palindrome test).** Let $s$ have length $n$ and let $t$ be its reverse. For $0 \le l \le r \le n$, the substring $s[l..r)$ is a palindrome exactly when $s[l..r) = t[n-r..n-l)$. Hence, with the prefix hashes of $s$ and of $t$, the test "is $s[l..r)$ a palindrome?" takes $O(1)$ time, and it is wrong only when the two different blocks collide. Moreover, if $s[c-k..c+k]$ is a palindrome (odd length, centre $c$), then so is $s[c-k+1..c+k-1]$, so the largest radius $k$ around a centre $c$ is found by binary search.
+
+:::tip[In plain words]
+A block is a palindrome when it is the same as its own mirror image. The mirror image of a block of $s$ is a block of the reversed string, in the mirrored place. So compare the hash of the block in $s$ with the hash of the mirrored block in the reversed string. If a palindrome has its two outer letters removed, what is left is still a palindrome.
+:::
+
+**A tiny instance.** $s = \text{abacaba}$ ($n = 7$), $t = \text{abacaba}$ (it is its own reverse). The block $s[1..4) = \text{bac}$: the mirrored block is $t[3..6) = \text{cab}$, not equal, so it is not a palindrome. The whole string: $s[0..7) = t[0..7)$, so it is. For $s = \text{abca}$, $t = \text{acba}$: $s[0..4) \ne t[0..4)$.
+
+**Proof.**
+1. The reverse of the block $u = s[l..r)$ is $u_{r-l-1}, \dots, u_0$, that is, $s_{r-1}, s_{r-2}, \dots, s_l$.
+2. In $t$ the letter at place $k$ is $s_{n-1-k}$. So $s_{r-1}, \dots, s_l$ are the letters of $t$ at the places $n-r, n-r+1, \dots, n-1-l$, which is the block $t[n-r..n-l)$.
+3. So the reverse of $s[l..r)$ is $t[n-r..n-l)$, and $s[l..r)$ is a palindrome exactly when it equals this block.
+4. Both blocks have their hashes in $O(1)$ by Theorem 6.1.1. Equal blocks give equal hashes; different blocks give equal hashes only with a collision (Theorem 6.1.2).
+5. If $s[c-k..c+k]$ is a palindrome, then $s_{c-j} = s_{c+j}$ for all $0 \le j \le k$. In particular this holds for all $j \le k - 1$, which is the palindrome condition for the block of radius $k - 1$. So the set of radii for which the block is a palindrome is closed downwards, and the binary search of the proof of Theorem 6.1.4 (step 4) applies. $\square$
+
+:::note[This proof needs]
+1. The reversed string's prefix hashes use the same base and modulus as those of $s$. (With different bases the two hashes of equal strings differ.)
+2. Palindromes of even length have a centre between two letters; they need a second binary search over the blocks $s[c-k..c+k)$. The proof of closure is the same.
+3. Palindromic *subsequences* are another matter: removing letters from the middle is allowed there, so no block of $t$ is the mirror image (see the negative example of the card).
+:::
+
+<TheoremCode unit="6.1/thm-5" />
+
+The first example is the whole string abacaba (steps 2 and 3: it equals its mirror). The second is bac inside it, which fails. The third, abba, is an even palindrome. The fourth, abca, fails. The last two lines are the radius search: in xabax the radius around the centre 2 is 2, and in abacaba it is 3. The check compares the test with a direct comparison, and the radius with a direct expansion, on every string of length 1 to 10 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$, for every block and every centre.
+
+### 4.6 Hashing sets
+
+**Theorem 6.1.6 (set hash).** Let $p$ be a prime, let the possible values be $0, \dots, V-1$, and give every value $v$ a weight $w_v$ chosen independently and uniformly from $0, \dots, p-1$. For a multiset $S$ (a collection in which a value may repeat) let $\text{cnt}_S(v)$ be the number of times $v$ occurs and $G(S) = \sum_v \text{cnt}_S(v) \, w_v \bmod p$. Two multisets with the same counts have the same $G$. If $S$ and $S'$ have different counts and some $\text{cnt}_S(v) - \text{cnt}_{S'}(v)$ is not divisible by $p$, then $\Pr[G(S) = G(S')] = 1/p$.
+
+:::tip[In plain words]
+Give every kind of element a random number and add up the numbers of the elements you have. The order does not matter, so the same collection always gets the same total. Two different collections get the same total only if the random numbers happen to line up, which has probability one in $p$.
+:::
+
+**A tiny instance.** Values $0, 1, 2$ and $p = 5$. The sets $\{0, 1\}$ and $\{1, 0\}$ are the same set, so all $125$ weight triples give equal sums. The sets $\{0, 1\}$ and $\{0, 2\}$ have sums $w_0 + w_1$ and $w_0 + w_2$, which are equal exactly when $w_1 = w_2$: $25$ of the $125$ triples, that is $1/5$.
+
+**Proof.**
+1. $G(S)$ depends only on the counts, so equal counts give equal sums, in any order.
+2. Let the counts differ and pick a value $v$ with $d = \text{cnt}_S(v) - \text{cnt}_{S'}(v)$ not divisible by $p$. Then $G(S) - G(S') = d \, w_v + R$, where $R$ is the contribution of the other values, which does not involve $w_v$.
+3. Fix all weights except $w_v$. The equation $d \, w_v + R \equiv 0 \pmod p$ has exactly one solution $w_v$ among $0, \dots, p-1$, because $d$ has an inverse modulo $p$ (Theorem 2.2.3).
+4. So exactly a share $1/p$ of all weight tables gives a collision. $\square$
+
+:::note[This proof needs]
+1. The weights are random and independent of the input; a fixed table can be defeated.
+2. A count difference that is a multiple of $p$ is invisible: with $p = 5$ the multisets $\{0, 0, 0, 0, 0\}$ and $\{\}$ would always collide. For $p = 2^{61} - 1$ and counts below $10^6$ this cannot happen.
+3. The hash tells apart multisets, not orders. To tell strings apart, use the polynomial hash.
+:::
+
+<TheoremCode unit="6.1/thm-6" />
+
+The examples are the tiny instance and two more: $\{0, 0\}$ against $\{1, 1\}$ has $2 w_0 = 2 w_1$, that is $w_0 = w_1$ (the inverse of 2 modulo 5 exists), so $25$ triples; and $\{0, 1, 2\}$ against $\{0, 0, 0\}$ needs $w_1 + w_2 = 2 w_0$, again $25$ (step 3 of the proof). The check counts the bad tables for $p = 3, 5, 7$ and all pairs of multisets of size at most 3 over three values, and finds exactly $1/p$ of them whenever some count difference is not a multiple of $p$.
+
+## 5. Recognition Cards
+
+<Cards topic="6.1" />
+
+## 6. Templates
+
+Templates come in the next step.
+
+## 7. Bug catalogue
+
+Bugs come in the next step.
+
+## 8. Worked examples
+
+Worked examples come in the next step.
+
+## 9. Problem ladder
+
+<Ladder topic="6.1" />
+
+## 10. Identification drill
+
+<Drill topic="6.1" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="6.1" />
+
+## 12. Self-test questions
+
+<SelfTest topic="6.1" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="6.1" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="6.1" />

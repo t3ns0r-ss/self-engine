@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M7 (Phase 5) done; report sent, waiting for Saurabh's review (M5, M6, M7 and R1 gates are `waiting`). Phase 6 is not started.
-- Topic: none
+- Milestone: M8 (Phase 6) started on Saurabh's "Continue" after the M7 fix report (M5, M6, M7 and R1 gates are still `waiting`).
+- Topic: 6.1 polynomial hashing (draft)
 - Branch: claude/problemset-implementation-yja039
-Last completed step: Phase 5 intro and exam (validate, build, link check, unit tests and `npm test` pass).
-Next action: wait for Saurabh's review of M7; do not start Phase 6 without a go-ahead.
+Last completed step: steps 1–2 (scope, lesson Sections 1–4, six theorem units, glossary). Bank for 6.1 extended by 16 problems (15 reserved, 1 practice).
+Next action: step 3 (recognition cards and card example units), then templates, bug catalogue, problems, worked examples.
 
 ## Gates
 | Gate | Status | Date |

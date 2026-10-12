@@ -254,7 +254,7 @@ Six templates. Each shows only the function that matters; the program around it 
 
 **How it works.** For a length `L` the function hashes every window and sorts the pairs (hash, start). Windows with equal hashes are next to each other, and inside a group the starts are increasing, so the first start of the group is the earliest and the last is the latest. Two copies that do not overlap exist exactly when the latest and the earliest starts are at least `L` apart (if some pair is, the earliest and the latest are). Cutting a letter off both copies keeps them apart, so "a repeat with a gap exists" is true for small `L` and false for large `L` (the note after Theorem 6.1.4), and binary search finds the border. The upper end is `n / 2` because two non-overlapping copies need `2L <= n`.
 
-**Alternative formulation.** For $n$ up to a few thousand, a table of the longest common beginning of every pair of suffixes (filled from the end with $lcp[i][j] = lcp[i+1][j+1] + 1$) gives the answer in $O(n^2)$ with no randomness.
+**Alternative formulation.** For $n$ up to a few thousand, a table of the longest common beginning of every pair of suffixes (filled from the end with $\text{common}[i][j] = \text{common}[i+1][j+1] + 1$ when the letters at $i$ and $j$ are equal) gives the answer in $O(n^2)$ with no randomness.
 
 ### The longest palindromic substring (Theorem 6.1.5)
 
@@ -399,7 +399,95 @@ Wrong output `No`, correct output `Yes`. The sets of the first term of `A` and t
 
 ## 8. Worked examples
 
-Worked examples come in the next step.
+### Example 1: Minimal Rotation
+
+[CSES 1110: Minimal Rotation](https://cses.fi/problemset/task/1110). In short: a rotation of a string moves letters one by one from the beginning to the end; print the lexicographically smallest rotation of a string of up to $10^6$ letters.
+
+#### Step 1: Constraints → budget
+
+$n = 10^6$. There are $n$ rotations. Comparing two rotations letter by letter costs up to $n$, and a scan that compares each new rotation with the best so far makes $n - 1$ comparisons: up to $10^{12}$ steps. With prefix hashes a comparison is a binary search on the length of the equal beginning, about 20 hash tests of $O(1)$ each: $20 \cdot 10^6 = 2 \cdot 10^7$ tests.
+
+#### Step 2: Question form → candidate tools
+
+- Build all rotations as strings and sort them ([topic 1.1](../../phase-1/1-1-sorting/)): $n^2 = 10^{12}$ letters of memory.
+- Compare two rotations letter by letter ([topic 0.5](../../phase-0/0-5-brute-force/)): $10^{12}$ steps in the worst case (a string of equal letters).
+- Compare two rotations by hashes: the card "Equal blocks of a string in O(1) (prefix hashes)", third signal (which of two substrings is smaller).
+
+#### Step 3: Property check → decision
+
+Every rotation is a block of length $n$ of the doubled string $t = s + s$: the rotation that starts at $i$ is $t[i..i+n)$. Comparing two blocks of equal length needs only the equality of their beginnings: "the first $k$ letters are equal" is true for small $k$ and false for large $k$ (cutting a letter off keeps equal blocks equal). The number of hash tests is $20 \cdot 10^6$ on blocks of length at most $10^6$, so Theorem 6.1.2 gives an error bound of about $2 \cdot 10^7 \cdot 10^6 / 2.3 \cdot 10^{18} \approx 10^{-5}$. Decision: hash $t$ and compare each rotation with the best so far.
+
+#### Step 4: Proof for this problem
+
+The rotations of $s$ are exactly the blocks $t[i..i+n)$ for $0 \le i < n$ (the rotation by $i$ moves the first $i$ letters to the end). Two blocks of equal length are ordered by the first place where they differ. The largest $k$ with equal first $k$ letters is found by binary search because equality of the first $k$ letters is closed under shortening, and each test is an equality of two blocks of $t$, answered by Theorem 6.1.1. If $k = n$ the rotations are equal; otherwise the letters at place $k$ decide. The scan keeps the smallest rotation seen, so after the last start it holds the smallest of all.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.1/example-1" />
+
+#### Step 6: Alternative approach
+
+There is an exact $O(n)$ method with no hashing: keep two candidate starts and compare their rotations letter by letter; when they differ after $k$ letters, the loser and the next $k$ starts after it can never be the smallest, so both candidates jump ahead. It is shorter and never wrong, but it is a separate idea that is easy to get wrong in the details; the hash version reuses the comparison template unchanged.
+
+### Example 2: Repeating Substring
+
+[CSES 2106: Repeating Substring](https://cses.fi/problemset/task/2106). In short: print the longest substring that occurs in two (or more) places of a string of up to $10^5$ letters, or $-1$ if there is none. The places may overlap (in cabababc the answer abab occurs at the places 1 and 3).
+
+#### Step 1: Constraints → budget
+
+$n = 10^5$. Comparing every pair of starts with a scan for the common length is $n^2/2 = 5 \cdot 10^9$ pairs, each up to $n$ letters. A binary search on the length needs $\lceil \log_2 n \rceil = 17$ tests, and a test hashes $n$ windows and sorts them: $10^5 \cdot 17 \approx 1.7 \cdot 10^6$ steps, so about $3 \cdot 10^7$ in all.
+
+#### Step 2: Question form → candidate tools
+
+- Compare every pair of starts ([topic 0.5](../../phase-0/0-5-brute-force/)): $5 \cdot 10^9$ pairs.
+- Binary search on the answer ([topic 1.4](../../phase-1/1-4-binary-search/)) with a letter-by-letter test: one test still compares blocks of length $L$ and costs far too much.
+- Binary search on the length with window hashes: the card "Longest block with a repeat property (binary search on the length with hashes)".
+
+#### Step 3: Property check → decision
+
+If a block of length $L$ occurs at two places, its first $L - 1$ letters occur at the same two places, so "a repeat of length $L$ exists" is closed under shortening (Theorem 6.1.4), and one test is a sort of $n$ window hashes. The error bound over all pairs of windows is $n^2/2 \cdot L / p \le 5 \cdot 10^9 \cdot 10^5 / 2.3 \cdot 10^{18} \approx 2 \cdot 10^{-4}$ for one test, and a false "repeat" can only make the search answer too long, not too short; accepted, with one random base. Decision: binary search on the length.
+
+#### Step 4: Proof for this problem
+
+By Theorem 6.1.4 the lengths $L$ with a repeat are $1, \dots, D$, and binary search over $[0, n - 1]$ finds $D$ ($L = 0$ always counts, so $D = 0$ means no repeat). For $D \ge 1$ the answer is any block of length $D$ whose hash occurs at least twice; the code takes the first such block from the left. A block whose hash occurs twice equals the other copy unless the two collided (Theorem 6.1.2).
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.1/example-2" />
+
+#### Step 6: Alternative approach
+
+There is no simple exact alternative with the tools of this course: a table of the longest common beginning of every pair of suffixes would have $n^2 = 10^{10}$ entries. With a second independent base the error bound is squared.
+
+### Example 3: Longest Palindrome
+
+[CSES 1111: Longest Palindrome](https://cses.fi/problemset/task/1111). In short: print the longest palindromic substring of a string of up to $10^6$ letters.
+
+#### Step 1: Constraints → budget
+
+$n = 10^6$. Expanding around each of the $2n - 1$ centres letter by letter is $O(n^2)$: for a string of equal letters it is about $n^2 / 4 = 2.5 \cdot 10^{11}$ steps. A table of which blocks are palindromes has $n^2/2 = 5 \cdot 10^{11}$ entries. A binary search on the radius needs 20 hash tests per centre: $2 \cdot 10^6$ centres $\cdot$ 20 $= 4 \cdot 10^7$ tests.
+
+#### Step 2: Question form → candidate tools
+
+- Expand around every centre ([topic 0.5](../../phase-0/0-5-brute-force/)): $2.5 \cdot 10^{11}$ steps.
+- The table of palindromic blocks ([topic 3.6](../../phase-3/3-6-interval-dp/)): $5 \cdot 10^{11}$ entries, too large.
+- Forward and reverse hashes with a binary search on the radius: the card "Palindrome tests in O(1) (forward and reverse hashes)".
+
+#### Step 3: Property check → decision
+
+The objects are blocks of one string, and a block is a palindrome exactly when it equals its mirror block of the reversed string (Theorem 6.1.5). For a fixed centre the set of palindromic radii is closed downwards, so the largest radius is found by binary search. Error bound: $4 \cdot 10^7$ tests of blocks up to $10^6$ long, $4 \cdot 10^7 \cdot 10^6 / 2.3 \cdot 10^{18} \approx 2 \cdot 10^{-5}$. Decision: hash the string and its reverse.
+
+#### Step 4: Proof for this problem
+
+Every palindromic substring has a centre (a letter for odd lengths, a gap between two letters for even lengths) and a radius. For a fixed centre the radii that give a palindrome are $0, 1, \dots, r_c$ (removing the two outer letters of a palindrome leaves a palindrome), and binary search over $[0, \min(c, n - 1 - c)]$ finds $r_c$ using the test of Theorem 6.1.5. The longest palindromic substring has some centre, where it is at most as long as the longest palindrome of that centre; so the maximum over all centres and both parities is the answer. Ties go to the leftmost start, which the judge accepts.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.1/example-3" />
+
+#### Step 6: Alternative approach
+
+An exact linear method, Manacher's algorithm, computes all radii in $O(n)$ with no hashing; it is not taught in this course. Hashing replaces it with about $4 \cdot 10^7$ tests and a small probability of error.
 
 ## 9. Problem ladder
 

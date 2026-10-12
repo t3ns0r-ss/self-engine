@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M8 (Phase 6) started on Saurabh's "Continue" after the M7 fix report (M5, M6, M7 and R1 gates are still `waiting`).
-- Topic: 6.1 polynomial hashing (draft)
+- Milestone: M8 (Phase 6), started on Saurabh's "Continue" after the M7 fix report (M5, M6, M7 and R1 gates are still `waiting`).
+- Topic: 6.2 prefix function and Z-function (next)
 - Branch: claude/problemset-implementation-yja039
-Last completed step: steps 1–2 (scope, lesson Sections 1–4, six theorem units, glossary). Bank for 6.1 extended by 16 problems (15 reserved, 1 practice).
-Next action: step 3 (recognition cards and card example units), then templates, bug catalogue, problems, worked examples.
+Last completed step: topic 6.1 polynomial hashing, all 10 steps (validate, build, unit tests pass).
+Next action: scope and bank additions for 6.2.
 
 ## Gates
 | Gate | Status | Date |
@@ -72,6 +72,7 @@ Next action: step 3 (recognition cards and card example units), then templates, 
 | 5.2 | done (on this session's branch; † Codeforces links confirmed to open by the owner on 2026-10-11, ideas are still from recalled statements) | — |
 | 5.3 | done (on this session's branch; † Codeforces links confirmed to open by the owner on 2026-10-11, ideas are still from recalled statements) | — |
 | 5.4 | done (on this session's branch; † Codeforces links confirmed to open by the owner on 2026-10-11, ideas are still from recalled statements) | — |
+| 6.1 | done (on this session's branch) | — |
 | Phase 5 intro and exam | done (on this session's branch) | — |
 
 ## Bank
@@ -254,3 +255,5 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - **Phase 5 bank additions (M7).** Research agents added reserved problems (notes in `notes/bank/5.x.md`; AtCoder statements fetched, LeetCode through its GraphQL endpoint, Codeforces recalled and marked †, titles and ratings checked through the API). 5.1: 22 problems (checkpoint cf-1706E, lc-minimum-stability-factor-of-array; review cf-675E, cf-1454F, lc-find-subarray-with-bitwise-or-closest-to-k, cf-6E, cf-1208E, cf-5C; look-alike pairs lc-maximum-total-subarray-value-ii/i and cf-1611F/cf-1486D; 8 drill problems of which 7 are solved by earlier tools; practice cf-1237D, lc-shortest-subarray-with-or-at-least-k-ii). 5.2: ac-abc402_d/ac-abc405_f (look-alike pair), review cf-1076E and cf-540E. 5.4: 25 problems (checkpoint cf-438D, cf-830C; exam cf-1654E; 8 review; 8 drill, only cf-425D solved by 5.4; look-alike pairs cf-522D/ac-abc242_g and cf-301D/ac-abc293_g; practice ac-abc384_g, ac-abc405_g). Weak points: 5.1 has only one sparse-table drill problem; cf-5C, cf-1208E, cf-6E and lc-shortest-subarray-with-or-at-least-k-ii have a natural earlier-tool solution; 5.4 supply of real sqrt/Mo problems in tiers 3–4 is thin (cf-463E and several others also fit a Fenwick or segment tree); the 5.4 review set has no Mo problem. Please spot-check the Codeforces notes. In 5.1 I moved cf-675E's technique from 3.1 to 3.2 (it is a DP).
 - **Phase 5 lessons (M7), things to look at.** (1) FIXED 2026-10-11: three tier-5 blocks problems were added to the 5.4 bank (cf-551E, cf-444C, cf-911G); the blocks ladder now has five, and cf-551E is a fourth worked example (code/5.4/example-4) for the blocks card. (2) The 5.4 drill has one 5.4 answer (cf-425D); the other seven are solved by 5.2 or 5.3. (3) Several templates are restatements of ladder problems: mo-power is cf-86D and step-sums is cf-103D, kept as base rungs. (4) The 5.4 review sets contain no Mo problem. (5) The owner opened the † Codeforces problems on 2026-10-11 and they open fine; the hints and notes for them are still from recalled statements, so check an idea against the page when a problem is first solved. (6) A segment tree in 5.3 is written recursively with 4n nodes; I did not teach the bottom-up form (mentioned only as an alternative).
 - **e2e script, placeholder stage.** FIXED 2026-10-11: `tests/placeholder/make.mjs` now has the real 1.3 cards `opposite-ends` and `merge-walk` (3 ladder rungs each), so the placeholder stage validates again.
+- **Phase 6 bank additions and choices (M8, topic 6.1).** The 6.1 bank was short of reserved problems, so 15 reserved problems and 1 practice problem were added (statements read for AtCoder, CSES and LeetCode; Codeforces recalled and marked †): checkpoint cf-985F, cf-113B (with lc-shortest-palindrome); review cf-611D, cf-757C, cf-633C, ac-abc343_g, lc-maximum-product-of-the-length-of-two-palindromic-substrings (with four existing ones); look-alike pair cf-1948D / lc-distinct-echo-substrings (lc-distinct-echo-substrings moved from review to look-alike); drill ac-abc250_e, ac-abc158_e, cf-1731C, cf-778A, cf-1290B, cf-1426F, cf-682D (with cses-3138; six of the eight are solved by earlier tools); practice lc-smallest-unique-subarray. Several well-known problems were already used by other topics, so the ids were changed to unused ones. Weak points: hashing for the three palindrome and substring ladder rungs with a natural exact alternative (the lesson says so in Step 6 of the examples); the Codeforces hints are from recalled statements. The lesson uses one prime, 2^61 − 1, with `__int128`, a random base from the clock, and states the collision bound (Theorem 6.1.2) with its proof, including the "polynomial of degree d has at most d roots modulo a prime" step.
+

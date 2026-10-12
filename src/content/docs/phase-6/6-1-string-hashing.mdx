@@ -230,11 +230,172 @@ The examples are the tiny instance and two more: $\{0, 0\}$ against $\{1, 1\}$ h
 
 ## 6. Templates
 
-Templates come in the next step.
+Six templates. Each shows only the function that matters; the program around it reads the input. The first template is the hasher of Theorems 6.1.1 and 6.1.2; the other five use it, and say so. Each template is checked against a brute force that compares strings letter by letter, on thousands of random small inputs (strings over one to three letters, so that equal blocks are common) and on fixed tests with a single letter, all letters equal and the largest sizes.
+
+### Are two blocks equal? (Theorems 6.1.1 and 6.1.2)
+
+<CodeSnippet unit="6.1/equal-blocks" />
+
+**How it works.** `h[i]` is the hash of the first `i` letters and `pw[i]` is $B^i$, both modulo `P` $= 2^{61} - 1$. `hash(l, r)` is the hash of `s[l..r)`: it subtracts the front part `h[l]` pushed left by `r - l` places (Theorem 6.1.1). A comparison of two blocks is `hs.hash(a, a + len) == hs.hash(b, b + len)`. The letters are the numbers 1 to 26, never 0. Four C++ details matter. `(__int128)a * b % P` multiplies in 128 bits, because a product of two numbers below $2^{61}$ does not fit in 64 bits. `chrono::steady_clock::now().time_since_epoch().count()` is the number of clock ticks since some fixed moment, a number that is different in every run; it seeds the random generator `mt19937_64` (the 64-bit version of the generator used in the generators of this course). `static` inside the constructor means the base `B` is drawn once, the first time, and then every `Hasher` in the program uses the same one; the palindrome template needs that for the string and its reverse. The base is in $[500, P - 500)$, so it is far from 0, 1 and $P - 1$.
+
+**Alternative formulation.** Two independent bases (a double hash) square the probability of error and cost twice the time. When the modulus must be below $2^{31}$ (an old judge without 128-bit integers), use two such moduli: each alone gives a bound of $c(L-1)/p$, which is useless for $c \cdot L$ near $10^9$ (see the numbers after Theorem 6.1.2).
+
+### Counting different substrings with a rule (Theorems 6.1.1, 6.1.2)
+
+<CodeSnippet unit="6.1/distinct-good" />
+
+**How it works.** The function uses the `Hasher` of the first template. For every start `l` it extends the end `r` one letter at a time and keeps the number of bad letters in `s[l..r]`. A longer substring from the same start has at least as many bad letters, so the inner loop stops at the first one over the limit. Every substring that passes is stored as its hash; sorting puts equal hashes next to each other, and `unique` moves the first of each run to the front and returns the end of the distinct part, so the difference with `begin()` is the number of different values. There are up to $n(n+1)/2 \approx 1.1 \cdot 10^6$ hashes for $n = 1500$. Substrings of different lengths are in one list; since every letter value is at least 1, a longer string never has the polynomial of a shorter one (the proof of Theorem 6.1.2 with the shorter string padded by zeros in front: the leading coefficient of the difference is not zero).
+
+**Alternative formulation.** For substrings of one fixed length $k$ only, replace the double loop by a window that slides with Theorem 6.1.3: the hash of the next window costs one multiplication, and a change of one letter costs one multiplication too (the dictionary problem with one letter changed).
+
+### The longest block that appears twice without overlap (Theorem 6.1.4)
+
+<CodeSnippet unit="6.1/longest-repeat-apart" />
+
+**How it works.** For a length `L` the function hashes every window and sorts the pairs (hash, start). Windows with equal hashes are next to each other, and inside a group the starts are increasing, so the first start of the group is the earliest and the last is the latest. Two copies that do not overlap exist exactly when the latest and the earliest starts are at least `L` apart (if some pair is, the earliest and the latest are). Cutting a letter off both copies keeps them apart, so "a repeat with a gap exists" is true for small `L` and false for large `L` (the note after Theorem 6.1.4), and binary search finds the border. The upper end is `n / 2` because two non-overlapping copies need `2L <= n`.
+
+**Alternative formulation.** For $n$ up to a few thousand, a table of the longest common beginning of every pair of suffixes (filled from the end with $lcp[i][j] = lcp[i+1][j+1] + 1$) gives the answer in $O(n^2)$ with no randomness.
+
+### The longest palindromic substring (Theorem 6.1.5)
+
+<CodeSnippet unit="6.1/longest-palindrome" />
+
+**How it works.** `fwd` and `rev` are the hashers of `s` and of its reverse `t`, with the same base. `isPal(l, r)` compares the hash of `s[l..r)` with the hash of the mirrored block `t[n-r..n-l)` (Theorem 6.1.5). For every centre `c` there are two searches: the odd palindromes `s[c-k..c+k]` and the even palindromes `s[c-k+1..c+k]`. In both, the set of radii that work is closed downwards, so the binary search keeps the largest radius `lo` that works. The lengths are `2*lo+1` and `2*lo`. The lambda `[&]` can read the variables around it (`n`, `fwd`, `rev`) without copying them.
+
+**Alternative formulation.** Manacher's algorithm computes all radii in $O(n)$ time with no hashing and no randomness; it is not taught in this course. For $n$ up to 5000, the table of topic 3.6 is exact.
+
+### Which block is smaller? (Theorem 6.1.4 on the beginning of a block)
+
+<CodeSnippet unit="6.1/compare-blocks" />
+
+**How it works.** Two blocks of the same length are compared like words in a dictionary: find the longest equal beginning, then look at the next letters. "The first `k` letters are equal" is true for small `k` and false for large `k` (cutting a letter off both blocks keeps them equal), so binary search on `k` with two hashes per step finds the largest equal beginning `lo`. If `lo == len` the blocks are equal; otherwise the letters at `a + lo` and `b + lo` decide.
+
+**Alternative formulation.** Compare the two blocks letter by letter: $O(\text{len})$ per question, exact, and fine when the blocks are short or the questions few.
+
+### Do two prefixes hold the same set of values? (Theorem 6.1.6)
+
+<CodeSnippet unit="6.1/prefix-set-hash" />
+
+**How it works.** Every new value gets a random weight modulo `P`; the map `weight` is shared by both sequences, so equal values get equal weights. The hash of the set of a prefix is the sum of the weights of its different values, so the loop adds the weight only for the first copy of a value (`seen.insert(x).second` is true exactly when `x` was not there before). `result[i]` is the hash of the set of the first `i` terms. Two prefixes hold the same set exactly when their hashes are equal, up to the probability $1/P$ per pair of Theorem 6.1.6. The weights come from `rng() % P`, so they are random modulo `P`.
+
+**Alternative formulation.** Without hashing: for every prefix of `A` find the smallest prefix of `B` that contains all its values (two pointers over the first occurrences), and compare the sizes of the sets; it needs more thinking and is exact.
 
 ## 7. Bug catalogue
 
-Bugs come in the next step.
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: the front part is not pushed left
+
+Template: are two blocks equal?
+
+```cpp
+long long hash(int l, int r) const { return (h[r] + P - h[l]) % P; }   // instead of ... - mulmod(h[l], pw[r - l])
+```
+
+Input: `aa`, then `1`, then the question `1 2 1`.
+
+Wrong output `NO`, correct output `YES`. The two blocks are the single letters at the places 1 and 2, both `a`. The first has hash $h[1] - h[0] = 1$, the second $h[2] - h[1] = (B + 1) - 1 = B$. The part before the block must be multiplied by $B^{r-l}$ (Theorem 6.1.1, steps 3 to 6).
+
+**Fix:** subtract `mulmod(h[l], pw[r - l])`.
+
+### Bug: a negative remainder
+
+Template: are two blocks equal?
+
+```cpp
+long long hash(int l, int r) const { return (h[r] - mulmod(h[l], pw[r - l])) % P; }   // instead of (h[r] + P - ...)
+```
+
+Input: `aaa`, then `1`, then the question `2 1 2`.
+
+Wrong output `NO`, correct output `YES`. For the blocks `aa` at the places 2 and 1 the difference $h[r] - h[l] \cdot pw$ is positive for one and negative for the other (about half of all blocks are negative), and `%` of a negative number is negative in C++. The same value modulo $P$ then appears as $v$ and as $v - P$, and the comparison fails (Theorem 6.1.1, the note about subtraction).
+
+**Fix:** add `P` before the `%`, so the left side is never negative.
+
+### Bug: the product overflows
+
+Template: are two blocks equal?
+
+```cpp
+long long mulmod(long long a, long long b) { return a * b % P; }   // instead of (__int128)a * b % P
+```
+
+Input: `aaaa`, then `1`, then the question `1 2 3`.
+
+Wrong output `NO`, correct output `YES`. Two numbers below $2^{61}$ have a product of up to 122 bits; in a `long long` it wraps around at $2^{63}$, so the value modulo $P$ is wrong, and wrong in a different way for the two blocks. The failure needs a base large enough for the product to overflow; with a small base it would pass, which is why a random large base finds it quickly.
+
+**Fix:** multiply in 128 bits.
+
+### Bug: the letter is the number 0
+
+Template: counting different substrings with a rule.
+
+```cpp
+h[i + 1] = (mulmod(h[i], B) + (s[i] - 'a')) % P;   // instead of (s[i] - 'a' + 1)
+```
+
+Input: `aa`, then twenty-six zeros (no bad letter), then `0`.
+
+Wrong output `1`, correct output `2`. The substrings are `a` and `aa`. With the value 0 for `a`, both have the hash 0: strings of different lengths whose letters are all 0 are equal as polynomials. In this template different lengths are in one list. (Comparing only blocks of the same length would hide the bug.) Values 1 to 26 make the leading coefficient non-zero.
+
+**Fix:** use the letter values 1 to 26.
+
+### Bug: the two copies are allowed to overlap
+
+Template: the longest block that appears twice without overlap.
+
+```cpp
+if (b - a >= 2) return true;      // instead of: if (windows[b - 1].second - windows[a].second >= L) return true;
+```
+
+Input: `4`, then `abbb`.
+
+Wrong output `2`, correct output `1`. The block `bb` occurs at the places 1 and 2, but the copies share the letter at place 2. Only `b` has two copies that do not overlap. The test "some hash occurs twice" is the version of Theorem 6.1.4 that allows overlap; here the starts must be at least `L` apart.
+
+**Fix:** compare the earliest and the latest start of the group with `L`.
+
+### Bug: the mirrored block is read at the wrong place
+
+Template: the longest palindromic substring.
+
+```cpp
+auto isPal = [&](int l, int r) { return fwd.hash(l, r) == rev.hash(l, r); };   // instead of rev.hash(n - r, n - l)
+```
+
+Input: `baa`.
+
+Wrong output `1`, correct output `2`. For the block `aa` at $[1, 3)$ the code compares it with the block $[1, 3)$ of the reversed string `aab`, which is `ab`. The mirror image of $[l, r)$ is the block $[n - r, n - l)$ of the reversed string (Theorem 6.1.5, steps 1 to 3).
+
+**Fix:** use `rev.hash(n - r, n - l)`.
+
+### Bug: a modulus that is too small
+
+Template: are two blocks equal? Two lines are changed: the prime is $1009$ and the base is fixed at $31$.
+
+```cpp
+const long long P = 1009;                                 // instead of (1LL << 61) - 1
+static const long long B = 31;                            // instead of a random base
+```
+
+Input: `aaabbr`, then `1`, then the question `1 4 3`.
+
+Wrong output `YES`, correct output `NO`. The blocks `aaa` and `bbr` are different, but $1 \cdot 31^2 + 1 \cdot 31 + 1 = 993$ and $2 \cdot 31^2 + 2 \cdot 31 + 18 = 2002 = 993 + 1009$ are the same modulo 1009. With a prime this small there are about a thousand classes for all strings, and a collision in a few thousand random comparisons is certain (Theorem 6.1.2: the bound $(m-1)/p$ is not small). The stress test finds it only because the generator makes many comparisons; the real danger is a modulus near $10^9$ with $10^5$ comparisons, where nothing in a small test warns you.
+
+**Fix:** use $2^{61} - 1$ and a random base.
+
+### Bug: counting every copy of a value
+
+Template: do two prefixes hold the same set of values?
+
+```cpp
+h = (h + weight[x]) % P;          // instead of: if (seen.insert(x).second) h = (h + weight[x]) % P;
+```
+
+Input: `2`, then `1 1`, then `1 1`, then `1`, then the question `1 2`.
+
+Wrong output `No`, correct output `Yes`. The sets of the first term of `A` and the first two terms of `B` are both $\{1\}$. Adding the weight for every copy computes the hash of the multiset: $w_1$ against $2 w_1$. Theorem 6.1.6 hashes the counts; to hash a set, each value counts once.
+
+**Fix:** add the weight only for the first copy of a value.
 
 ## 8. Worked examples
 

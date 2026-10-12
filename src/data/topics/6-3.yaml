@@ -1,0 +1,356 @@
+# Topic 6.3 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
+id: '6.3'
+uses:
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check, and the plain loops the trie replaces'
+- topic: '0.6'
+  what: 'Standard containers: maps and sets of whole strings, the contrast with a trie'
+- topic: '1.1'
+  what: 'Sorting: the sorted array that also answers prefix counts, and the offline order of queries'
+- topic: '1.4'
+  what: 'Binary search: the counting of words with a prefix in a sorted array'
+- topic: '1.7'
+  what: 'Bit operations: XOR, binary digits, and the high-bit-first method'
+theorems:
+- id: 6.3.1
+  title: The trie
+  plain_words: Words that begin the same way walk down the same path, so the tree has no more nodes than
+    the words have letters, and often far fewer. A string $u$ is a prefix of some stored word exactly
+    when its walk from the root does not fall off the tree, and the counter on the node where it ends
+    says how many words pass through.
+  code: 6.3/thm-1
+- id: 6.3.2
+  title: Common beginnings from the counts
+  plain_words: Two words walk down together as long as they have the same letters, and then they part.
+    The number of steps they walk together is the number of nodes they share. So to add up the common
+    beginnings of all pairs, count for every node how many pairs of words pass through it, and add.
+  code: 6.3/thm-2
+- id: 6.3.3
+  title: A walk inside a text
+  plain_words: Reading the text from a place, you walk along the one path that the text spells in the
+    tree. Every time the walk passes a node where a word ends, that word is a beginning of the rest of
+    the text. You never have to try the words one by one, and you stop at the first missing edge.
+  code: 6.3/thm-3
+- id: 6.3.4
+  title: The largest XOR
+  plain_words: 'The XOR of two numbers is decided by the highest digit where they differ: if it is 1 there,
+    the XOR is bigger than any XOR that has 0 there, whatever the lower digits are. So from the top, always
+    try to find a stored number with the opposite digit. If there is one, taking it is never worse; if
+    there is none, no stored number in this branch can do better.'
+  code: 6.3/thm-4
+- id: 6.3.5
+  title: Counting by a bound
+  plain_words: Compare $x \oplus y$ with $k$ from the top digit. At a place where $k$ has a 1, a number
+    $y$ that makes the XOR digit 0 is already smaller than $k$, whatever follows, so the whole branch
+    counts at once. The numbers that make the XOR digit 1 stay equal to $k$ so far, and the walk goes
+    on with them. Where $k$ has a 0, the XOR digit must be 0 to stay equal.
+  code: 6.3/thm-5
+cards:
+- id: prefix-tree
+  name: 'Words that share beginnings: counts, longest common prefixes, per-node data (trie)'
+  from_theorem: 6.3.1
+  decisive_property: The questions are about the beginnings of strings in a set (how many strings begin
+    with u, how long a beginning two strings share, which stored string is best among those with a given
+    beginning), and the answer for a beginning can be kept as a number on a node of one shared tree.
+  how_to_test: 'Write the question for one string u as "among the stored strings that begin with u: how
+    many, which is best, how long do two of them agree". If it is about beginnings, count the total length
+    S of all strings: a trie has at most S + 1 nodes and each string costs its length. If the set never
+    changes and only counts are asked, a sorted array with binary search is an alternative; if the questions
+    walk along a string or keep data on prefixes, use the trie.'
+  constraint_shapes:
+  - 'n = 2·10^5 strings of total length 10^6 and the sum of the longest common prefixes of all pairs:
+    n²/2 = 2·10^10 pairs, each compared in up to 10^3 letters, while the trie has at most 10^6 + 1 nodes
+    and the sum is one pass over the nodes'
+  - 'q = 2·10^5 queries "how many stored strings begin with u" with |u| up to 10^3 and 10^6 stored letters:
+    scanning costs 10^6 per query, 2·10^11 in all; the trie answers each in |u| steps, 2·10^8 at most'
+  weak_signals:
+  - form: Asks for the number of strings with a given prefix, or the best one among them (shortest, smallest
+      index, largest value)
+    shape: Total length 10^5 to 10^6 and many queries, possibly with insertions
+  - form: Asks for the longest common prefix of a string with all the others, or the sum of common prefixes
+      over all pairs
+    shape: n up to 3·10^5 strings, total length up to 5·10^5, so n² pairs are far too many
+  - form: Asks to combine two conditions on a string into one prefix query (starts with p and ends with
+      q)
+    shape: Words of length up to 7 to 10 and about 10^4 calls, or a key that glues the two conditions
+  kill_signals:
+  - 'The question is about a substring that may start anywhere, not about the beginning: for the words
+    abc, xbc, ybc, three words contain bc but none begins with bc, so the trie of the words counts 0'
+  - 'The strings are compared as whole objects (equal after sorting letters, or equal as sets): put them
+    in a map; there are no beginnings to share'
+  in_action:
+    statement: A class has n students with names. Print, for every student, the length of the longest
+      beginning that their name shares with the name of some other student.
+    constraints: n ≤ 3·10^5, total length of the names ≤ 5·10^5.
+    budget: 'Comparing every pair of names: n²/2 = 4.5·10^10 pairs. Need about O(total length).'
+    candidates:
+    - tool: Compare every pair of names (topic 0.5)
+      verdict: rejected
+      because: 4.5·10^10 pairs.
+    - tool: Sort the names and compare neighbours (topic 1.1)
+      verdict: rejected
+      because: Correct for the best partner (it is a neighbour in sorted order) but it needs a comparison
+        of every neighbour pair and does not give counts along a path; with the trie both come for free.
+    - tool: A trie with pass counts (this topic)
+      verdict: chosen
+      because: The longest common prefix with another name is the depth of the deepest node on the name's
+        path with pass ≥ 2 (Theorem 6.3.2 (c)).
+    property_check: The question asks, for each name, about its beginning and the other names' beginnings.
+      The trie has at most 5·10^5 + 1 nodes, and each name is one walk. The property holds.
+    decision: 'Insert all names with pass counts; for each name walk its path and keep the deepest depth
+      with pass ≥ 2: O(total length).'
+  examples:
+    positive:
+    - inline:
+        input: The words are ab, abc, abd, b. How many begin with ab?
+        answer: '3'
+        why: The question is about a beginning. Walking ab from the root ends in a node with pass 3 (ab,
+          abc, abd), as a scan of the four words confirms (Theorem 6.3.1 (b)).
+    - inline:
+        input: The words are ab, ac, b. What is the sum of the longest common prefixes over all 3 pairs?
+        answer: '1'
+        why: Only the node a is shared by two words (pass 2), so the sum is C(2, 2) = 1; directly, ab
+          and ac share a (1), and the other two pairs share nothing (Theorem 6.3.2 (b)).
+    - worked_example: ac-abc353_e
+      why: 'The sum of the longest common prefixes over all pairs of up to 3·10^5 strings: pass counts
+        on a trie, C(pass, 2) for every node.'
+    negative:
+    - inline:
+        input: The words are abc, xbc, ybc. How many of them contain bc as a substring?
+        answer: '3'
+        method_gives: '0'
+        why: 'The property fails: bc is not at the beginning of any word, so the walk of bc from the root
+          falls off the tree at once and the trie of the words counts 0. Words that contain a string anywhere
+          need a substring search.'
+      correct_tool:
+        topic: '6.2'
+        card: pattern-occurrences
+    - problem: ac-abc137_c
+      why: 'Two strings are compared as whole objects (are they anagrams?): sort the letters of each string
+        and count equal results in a map. There are no shared beginnings to use.'
+      correct_tool:
+        topic: '0.6'
+        card: map-counting
+  lookalikes:
+  - description: Counting words with a given prefix in a set that never changes
+    tool:
+      topic: '1.4'
+      card: sorted-search
+    flipping_difference: With sorted words, the words with a prefix form one stretch found by two binary
+      searches; the trie is needed when counts are kept along the path, when words are inserted online,
+      or when the walk itself is the question.
+  - description: Putting whole strings into a set or map
+    tool:
+      topic: '0.6'
+      card: map-counting
+    flipping_difference: A map answers equality of whole strings; the trie answers questions about beginnings.
+  complexity: O(S) to build for total length S; O(|u|) per query; memory 26 · S numbers for 26 letters.
+- id: dictionary-split
+  name: Dictionary words that start at each place of a text (a trie walk inside a DP)
+  from_theorem: 6.3.3
+  decisive_property: A DP or a search over the places of a text needs, at each place, the list of all
+    dictionary words that begin there, and the dictionary is large enough that testing every word or every
+    substring is too slow.
+  how_to_test: 'Write the transition as "from place i, add the value of place i + (the length of some
+    dictionary word that begins at i)". Then compare the cost of finding those words: all words (k·L per
+    place), all substrings of length up to L in a set of strings (L substrings of cost L), or one trie
+    walk (at most L steps). If k·L or L² per place times the text length is too big, use the trie.'
+  constraint_shapes:
+  - 'a text of 5000 letters and a dictionary of k = 10^5 words with total length 10^6, longest word L
+    = 10^3: trying every word at every place costs 5000 · 10^5 = 5·10^8 word tests, while one trie walk
+    per place costs at most 5000 · 10^3 = 5·10^6 steps'
+  - 'a text of 10^4 letters and a dictionary whose longest word has 20 letters: a set of strings tests
+    20 substrings per place at 20 letters each, 4·10^6 steps, so a set is enough there'
+  weak_signals:
+  - form: Asks for the number of ways to cut a string into dictionary words, or the fewest extra letters,
+      or whether a cutting exists
+    shape: Text up to 5000 to 10^4 and a dictionary with up to 10^5 words, total length up to 10^6
+  - form: Asks to find the dictionary words inside a long word or in a stream of letters
+    shape: Up to 2000 words of length up to 200 and about 4·10^4 letters coming one by one
+  - form: Asks to explore all ways to read a board or a string by words, where a dead end should be cut
+      at once
+    shape: 'Board 12 × 12 and up to 3·10^4 words of length up to 10: a backtracking that follows trie
+      edges'
+  kill_signals:
+  - 'Each dictionary word may be used only once (or a bounded number of times): the count of cuttings
+    is not a sum over places any more; for the dictionary a, ab, b and the text abab there are 4 cuttings
+    with free reuse, but only 2 when each word is used at most once'
+  - 'The dictionary is tiny or the words are short (up to about 20 letters and a text up to 10^4): a set
+    of strings tests all substrings in about 4·10^6 steps and is simpler'
+  in_action:
+    statement: Count the ways to cut a string s into words of a given dictionary, modulo 10^9 + 7.
+    constraints: '|s| ≤ 5000, up to 10^5 dictionary words, total length of the words ≤ 10^6.'
+    budget: 'Every word at every place: 5000 · 10^5 = 5·10^8 word tests, each up to 10^3 letters. Need
+      about |s| · L = 5·10^6 steps.'
+    candidates:
+    - tool: Try every word at every place (topic 0.5)
+      verdict: rejected
+      because: 5·10^8 word tests, each a comparison.
+    - tool: A set of the words and all substrings up to length L (topic 0.6)
+      verdict: rejected
+      because: '5000 · 10^3 substrings, each hashed or copied in up to 10^3 letters: 5·10^9 steps.'
+    - tool: A trie walk at each place (this topic)
+      verdict: chosen
+      because: One walk from place i lists all words that begin there in at most L steps (Theorem 6.3.3).
+    property_check: The DP needs the lengths of all dictionary words that begin at i, and the sum of the
+      number of ways at i + length. A cutting by free reuse of words is exactly this sum (Theorem 6.3.3,
+      step 5). The property holds.
+    decision: 'Build the trie of the dictionary; ways[n] = 1; for i from n − 1 down to 0, walk s[i..]
+      down the trie and add ways[i + length] at every end node: O(|s| · L).'
+  examples:
+    positive:
+    - inline:
+        input: The dictionary is a, ab, b and the text is abab. In how many ways can the text be cut into
+          dictionary words?
+        answer: '4'
+        why: The cuttings are a+b+a+b, ab+a+b, a+b+ab, ab+ab. The DP over places with the lengths from
+          the trie walk (1 and 2 at place 0) counts the same 4.
+    - inline:
+        input: The dictionary is aa, a and the text is aaaa. In how many ways can the text be cut?
+        answer: '5'
+        why: 'Free reuse of words: ways[4] = 1, ways[3] = 1, ways[2] = 2, ways[1] = 3, ways[0] = 5. Each
+          ways[i] is the sum over the word lengths found by one walk from place i.'
+    negative:
+    - inline:
+        input: The dictionary is a, ab, b and the text is abab, but each dictionary word may be used at
+          most once. In how many ways can the text be cut?
+        answer: 2 (ab+a+b and a+b+ab)
+        method_gives: '4'
+        why: The sum over places counts cuttings with free reuse, 4 here. When each word may be used once,
+          the cuttings a+b+a+b and ab+ab are not allowed, and the state must also remember which words
+          are used.
+      correct_tool:
+        topic: '0.5'
+        card: recursive-choices
+    - problem: lc-word-break
+      why: 'The dictionary words have up to 20 letters and the string at most 300: a set of strings tests
+        the 20 substrings at each place, about 6000 tests, so no trie is needed; the DP over places is
+        the whole solution.'
+      correct_tool:
+        topic: '3.2'
+        card: linear-state
+  lookalikes:
+  - description: Cutting a string into pieces from a small dictionary, with a set of strings
+    tool:
+      topic: '3.2'
+      card: linear-state
+    flipping_difference: With short words, the substrings of each place are tested in a set; with a large
+      dictionary of long words, the trie finds the words of a place without trying all substrings.
+  - description: Does a pattern occur in a text? (one pattern)
+    tool:
+      topic: '6.2'
+      card: pattern-occurrences
+    flipping_difference: One pattern is matched with the prefix function; a dictionary of many words that
+      begin at every place is a trie walk.
+  complexity: O(S) to build the trie; O(L) per place, so O(|s| · L) for the DP.
+- id: binary-xor
+  name: 'XOR against a set of numbers: the largest XOR and counts below a bound (binary trie)'
+  from_theorem: 6.3.4
+  decisive_property: Numbers below 2^B (B up to 30 or 60) are inserted into a set (and perhaps removed),
+    and for a number x the question asks for the stored y with the largest x XOR y, or for how many stored
+    y give x XOR y below a bound.
+  how_to_test: Write the question as "over the stored y, maximise (or count below k) x XOR y". If the
+    set changes between questions, or each question has its own x and its own set (a window, the ancestors
+    of a vertex, the numbers up to a limit), build the binary trie with counts and walk B digits. If the
+    numbers are fixed and only one best pair is wanted, the high-bit-first method of topic 1.7 is shorter.
+  constraint_shapes:
+  - 'n = 3·10^5 numbers below 2^30 and the best partner for each one: n²/2 = 4.5·10^10 pairs, against
+    n · 30 = 9·10^6 steps for the walks'
+  - 'q = 2·10^5 operations "insert x", "remove x", "largest XOR with x": each is one walk of 30 steps,
+    6·10^6 steps in all, while a scan of the multiset costs up to the size of the set per query'
+  weak_signals:
+  - form: Asks for the largest XOR of a number with an element of a set, with insertions and deletions
+      in between
+    shape: q up to 2·10^5 operations on values below 2^30
+  - form: Asks for the largest XOR of a subarray, or of a subarray inside a window, which is the XOR of
+      two prefix values
+    shape: n up to 2·10^5, prefix XORs are the numbers
+  - form: Asks for the number of pairs (or of stored numbers) whose XOR is below, above or in a range
+    shape: n up to 10^6 and values up to 10^9, or q up to 10^5 operations
+  kill_signals:
+  - 'The operation is not XOR: for {5, 6, 3} the pair with the largest XOR is 5 and 3 (XOR 6) and has
+    AND 1, but the largest AND is 4 (from 5 and 6), so the trie walk for XOR finds the wrong pair for
+    an AND question'
+  - 'A fixed array and one question (the largest XOR of two elements): the high-bit-first method of topic
+    1.7 needs no trie and is shorter'
+  in_action:
+    statement: 'A multiset starts with the number 0. There are q operations: add x, remove x (a copy that
+      is present), or ask for the largest x XOR y over the numbers y in the multiset.'
+    constraints: q ≤ 2·10^5, x below 2^30.
+    budget: 'Scanning the multiset for each question: up to q · q / 2 = 2·10^10 steps. Need about q ·
+      30 = 6·10^6.'
+    candidates:
+    - tool: Scan the multiset for every question (topic 0.5)
+      verdict: rejected
+      because: 2·10^10 steps.
+    - tool: High-bit-first with a set of prefixes (topic 1.7)
+      verdict: rejected
+      because: It is built for a fixed array; each insertion or removal changes the sets of prefixes at
+        all 30 levels, and each question needs its own x.
+    - tool: A binary trie with counts (this topic)
+      verdict: chosen
+      because: Insert and remove change the counts on one path; a question is one walk taking the opposite
+        digit when its count is positive (Theorem 6.3.4).
+    property_check: All numbers have B = 30 binary digits, the questions are about XOR with a stored number,
+      and the counts allow removals. The property holds.
+    decision: 'A binary trie with 30 levels and counts; add with +1 or −1; maxXor by the greedy walk:
+      O(30) per operation.'
+  examples:
+    positive:
+    - inline:
+        input: The set is 3, 10, 5, 25, 2, 8. What is the largest XOR of two of its numbers?
+        answer: '28'
+        why: For x = 5 the walk goes to 25 (the only number whose top digit differs), 5 XOR 25 = 28; no
+          other pair gives more (Theorem 6.3.4).
+    - inline:
+        input: The numbers are 1, 2, 3, 4. How many pairs have a XOR below 3?
+        answer: '2'
+        why: The XORs are 1⊕2 = 3, 1⊕3 = 2, 1⊕4 = 5, 2⊕3 = 1, 2⊕4 = 6, 3⊕4 = 7; the pairs (1, 3) and (2,
+          3) are below 3. Counting each number against the earlier ones with the walk of Theorem 6.3.5
+          gives the same 2.
+    - worked_example: cses-1655
+      why: 'The largest XOR of a subarray of up to 2·10^5 numbers: insert the prefix XORs into a binary
+        trie and take the best partner of each new prefix.'
+    negative:
+    - inline:
+        input: The numbers are 5, 6, 3. What is the largest AND of two of them?
+        answer: 4 (5 AND 6)
+        method_gives: '1'
+        why: The trie walk finds the pair with the largest XOR, which is 5 and 3 (XOR 6), with AND 1.
+          AND and XOR are maximised by different pairs, so the property "the quantity is x XOR y" fails.
+      correct_tool:
+        topic: '1.7'
+        card: high-bit-first
+    - problem: lc-maximum-xor-of-two-numbers-in-an-array
+      why: 'A fixed array and one question: the answer is built digit by digit from the top with a set
+        of prefixes of the numbers, in O(31 n), with no trie.'
+      correct_tool:
+        topic: '1.7'
+        card: high-bit-first
+  lookalikes:
+  - description: Sum of XORs over all pairs of a fixed array
+    tool:
+      topic: '1.7'
+      card: per-bit-contribution
+    flipping_difference: 'The sum separates by bit: count the ones and zeros at each place; a trie would
+      be needed only for the maximum or for counts below a bound.'
+  - description: The XOR of any range of a fixed array
+    tool:
+      topic: '1.7'
+      card: prefix-xor
+    flipping_difference: One prefix XOR array answers each range in O(1); the trie is for the best range,
+      not for a given one.
+  complexity: O(B) per insertion, removal, largest-XOR query or count query; memory 2B · (number of stored
+    numbers) nodes at most.
+problems: []
+drill: []
+lookalike_pairs: []
+self_test: []
+checkpoint:
+  time_limit_minutes: 150
+  problems: []
+decision_map: []
+glossary_added:
+- trie
+- pass count
+- binary trie

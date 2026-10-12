@@ -1,0 +1,225 @@
+---
+title: "6.3 Trie and binary trie"
+sidebar:
+  order: 39
+topic: "6.3"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="6.3" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A dictionary has $n = 2 \cdot 10^5$ words with $10^6$ letters in total. You get $q = 2 \cdot 10^5$ questions, and each gives a string $u$ and asks: "how many words of the dictionary begin with $u$?" The dictionary does not change.
+
+Scanning the dictionary for every question costs up to $10^6$ letter comparisons, and $q$ such questions cost $2 \cdot 10^{11}$ comparisons, about 2000 seconds. Sorting the words ([topic 1.1](../../phase-1/1-1-sorting/)) and finding the first and the last word that begin with $u$ by binary search ([topic 1.4](../../phase-1/1-4-binary-search/)) does answer this question, in about $|u| \log n$ steps per question. But the questions that come next in this topic have no such shortcut: "what is the longest common prefix of a word with all the other words?", "which dictionary words begin at this place of the text?", "which number in a set gives the largest XOR with $x$?" For these, the words (or the numbers written in binary) are put into a tree in which **words with the same beginning share the same path**. A word is read from the root one letter at a time, so a question about a prefix is a walk of $|u|$ steps; a count, a best value or a flag can be kept on every node of the walk.
+
+That tree is the **trie** (the name comes from the word "retrieval"). For numbers written in binary, with the highest digit first, it is the **binary trie**, and the walk "take the opposite digit if possible" finds the number that gives the largest XOR.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="6.3" />
+
+### What this topic does not cover
+
+- Sorting all suffixes of a string, so that any two substrings can be compared exactly and the longest common prefix of neighbours is known: the suffix array and LCP array of topic 6.4. Here a trie holds a given set of strings, not all the suffixes of one string.
+- Matching many patterns in one pass over a text with failure links (the Aho–Corasick automaton): not part of this course. The matching of one pattern was topic 6.2.
+- Compressed tries, persistent tries and tries with the sets of numbers stored in the leaves: not part of this course.
+
+## 3. Definitions
+
+- A **trie** stores a set of strings $W$ (a word may be stored several times). It is a rooted tree whose edges carry letters. The **root** stands for the empty string, and a node stands for the string of letters on the path from the root to it. Two edges leaving one node never carry the same letter. For every stored word there is a node that stands for it, and strings that begin the same way share their nodes. Example: the words ab, abc, abd, b are stored in a trie with 6 nodes: the root, a, ab, abc, abd and b.
+- For a node $v$, $\text{pass}[v]$ is the number of stored words (with repeats) that begin with the string of $v$, and $\text{end}[v]$ is the number of stored words equal to the string of $v$. Example: in the trie above $\text{pass}[\text{a}] = 3$, $\text{pass}[\text{ab}] = 3$, $\text{end}[\text{ab}] = 1$, $\text{end}[\text{a}] = 0$. The root has $\text{pass} = |W|$. The **depth** of a node is the length of its string.
+- The **longest common prefix** of two strings $a$ and $b$ is the longest string that begins both; $\text{lcp}(a, b)$ is its length. Example: $\text{lcp}(\text{abc}, \text{abd}) = 2$.
+- A **binary trie** stores numbers below $2^B$ written with exactly $B$ binary digits (leading zeros included), highest digit first. Every edge carries the digit 0 or 1 and every stored number is a path of exactly $B$ edges. Example with $B = 3$: the numbers 1, 5, 6 are 001, 101, 110.
+- The **XOR** of two numbers is taken digit by digit: 1 if the digits differ, 0 if they are equal ([topic 1.7](../../phase-1/1-7-bits/)). Example: $5 \oplus 6 = 101 \oplus 110 = 011 = 3$.
+- In the code a node is a number (its place in a vector), the children of a node are an array with one entry per letter, and the entry 0 means "no such child" (the root, node 0, is never a child). `array<int, 26>` is a fixed-size array of 26 integers; `array<int, 26>{}` is such an array with all entries 0. `vector<array<int, 2>> child = {{0, 0}};` starts the vector with one element, the root with no children. These declarations, written with `= value` inside a `struct`, give the members their starting values when an object is made.
+
+## 4. Theory and proofs
+
+### 4.1 Words that share beginnings
+
+**Theorem 6.3.1 (the trie).** Insert the words $w_1, \dots, w_k$ with total length $S$ one letter at a time: start at the root; for each letter, follow the edge with this letter if it exists and otherwise make a new node and a new edge; add 1 to $\text{pass}$ of every node reached (and of the root); at the last letter add 1 to $\text{end}$ of the node. Then (a) the trie has at most $S + 1$ nodes and building it takes $O(S)$ time; (b) following the letters of a string $u$ from the root ends in a node exactly when some inserted word begins with $u$, and then $\text{pass}[v]$ is the number of inserted words that begin with $u$ and $\text{end}[v]$ is the number equal to $u$; (c) both numbers for a string $u$ are found in $O(|u|)$ time.
+
+:::tip[In plain words]
+Words that begin the same way walk down the same path, so the tree has no more nodes than the words have letters, and often far fewer. A string $u$ is a prefix of some stored word exactly when its walk from the root does not fall off the tree, and the counter on the node where it ends says how many words pass through.
+:::
+
+**A tiny instance.** Insert ab, abc, abd, b. The first word makes the nodes a and ab. The second follows a and ab and makes abc. The third follows a and ab and makes abd. The fourth makes b. The trie has 6 nodes (the root, a, ab, abc, abd, b), at most $S + 1 = 2 + 3 + 3 + 1 + 1 = 10$. The walk of "ab" ends in the node with $\text{pass} = 3$ and $\text{end} = 1$; the walk of "c" falls off at the first letter.
+
+**Proof.**
+1. *Claim (a).* A word of length $\ell$ makes at most $\ell$ new nodes (one for each of its letters, at most), so after all words there are at most $S$ nodes besides the root. Each letter costs one step (following or making an edge, with the children in an array indexed by the letter), so building costs $O(S)$.
+2. *Invariant for (b).* After the insertions, every node stands for a string that is a prefix of some inserted word, and every prefix of every inserted word has a node. Reason: a node is made only while a word is inserted and stands for a prefix of that word; the insertion of a word walks or makes a node for each of its prefixes.
+3. So the walk of $u$ ends in a node exactly when $u$ is a prefix of some inserted word. (Two edges from one node never share a letter, so the walk of $u$ is unique.)
+4. The node $v$ of $u$ is reached by exactly the insertions of words that begin with $u$: an insertion adds 1 to $\text{pass}$ of each node on the path of its word, and the path of a word goes through $v$ exactly when the word begins with $u$. So $\text{pass}[v]$ counts the words that begin with $u$ (with repeats), and $\text{end}[v]$, which is increased only by the words that end at $v$, counts the words equal to $u$.
+5. *Claim (c).* The walk takes $|u|$ steps and then reads one number. $\square$
+
+:::note[This proof needs]
+1. The children of a node are looked up by letter in constant time (an array of one entry per letter). For a large alphabet, use a `map` and the times get a factor $\log$ of the alphabet size.
+2. The alphabet is fixed and small (here 26 lower-case letters); the memory is $26 \cdot (S + 1)$ numbers at most, which is 26 million `int` for $S = 10^6$, about 100 MB. For $S$ above about $10^6$ the memory limit must be checked.
+3. Repeated words are allowed, and counted: $\text{pass}$ and $\text{end}$ count words, not different words.
+:::
+
+<TheoremCode unit="6.3/thm-1" />
+
+The first line is the tiny instance (step 1: 6 nodes). The prefix counts are step 4: "a" and "ab" are begun by 3 words, "abc" and "b" by 1, "c" by none (the walk falls off, step 3). The last two lines tell the words equal to ab and equal to a apart: 1 and 0. The check builds the trie of every list of up to four words of length 1 to 3 over $\{a, b\}$, repeats included, and compares the counts of every prefix with a scan of the words, and the node count with $S + 1$.
+
+### 4.2 Counting pairs of words through their common beginnings
+
+**Theorem 6.3.2 (common beginnings from the counts).** Let the words $w_1, \dots, w_k$ be stored in a trie with the pass counts of Theorem 6.3.1. (a) $\text{lcp}(w_i, w_j)$ is the number of non-root nodes that lie on the paths of both words. (b) The sum of $\text{lcp}(w_i, w_j)$ over all pairs $i < j$ equals the sum over all non-root nodes $v$ of $\binom{\text{pass}[v]}{2}$. (c) For a stored word $w_i$, the longest common prefix with any other stored word is the depth of the deepest node on the path of $w_i$ whose $\text{pass}$ is at least 2 (0 if there is none).
+
+:::tip[In plain words]
+Two words walk down together as long as they have the same letters, and then they part. The number of steps they walk together is the number of nodes they share. So to add up the common beginnings of all pairs, count for every node how many pairs of words pass through it, and add.
+:::
+
+**A tiny instance.** The words aaa, aab, aac, ab. The node a has $\text{pass} = 4$ and contributes $\binom42 = 6$; the node aa has $\text{pass} = 3$ and contributes $\binom32 = 3$; ab, aaa, aab, aac have $\text{pass} = 1$ and contribute 0. The sum is 9. Directly: aaa–aab, aaa–aac, aab–aac share 2 letters each (6), and each of them with ab shares 1 (3): total 9. For the word aab, the deepest node on its path with $\text{pass} \ge 2$ is aa, depth 2: its longest common prefix with another word is 2 (with aaa).
+
+**Proof.**
+1. *Part (a).* The path of a word $w$ passes the nodes of its prefixes $w[0..1), w[0..2), \dots$. A node is on the paths of both $a$ and $b$ exactly when its string is a prefix of both, that is, a common prefix of $a$ and $b$.
+2. The non-root common prefixes of $a$ and $b$ are exactly the prefixes of the longest common prefix of the lengths $1, 2, \dots, \text{lcp}(a, b)$, so there are $\text{lcp}(a, b)$ of them.
+3. *Part (b).* Count the pairs $(\{i, j\}, v)$ with $v$ a non-root node on both paths. By (a), each pair $\{i, j\}$ is counted $\text{lcp}(w_i, w_j)$ times. A node $v$ is on the paths of exactly $\text{pass}[v]$ words (Theorem 6.3.1(b)), so it is counted for $\binom{\text{pass}[v]}{2}$ pairs. Both ways of counting give the same total.
+4. *Part (c).* The longest common prefix of $w_i$ with another word $w_j$ has length equal to the number of shared nodes (a). Those nodes lie on the path of $w_i$ and have $\text{pass} \ge 2$, because they are on the paths of both $w_i$ and $w_j$. Conversely, a node on the path of $w_i$ with $\text{pass} \ge 2$ is on the path of another word $w_j$, so its depth is at most $\text{lcp}(w_i, w_j)$. The shared nodes of a pair are all the nodes from the root down to the deepest one, so the deepest node on the path of $w_i$ with $\text{pass} \ge 2$ has the largest depth over the other words. $\square$
+
+:::note[This proof needs]
+1. $\text{pass}$ counts words with repeats; two equal words share all their nodes (their $\text{lcp}$ is their length), which agrees with (a).
+2. The nodes with $\text{pass} \ge 2$ on a path form a beginning of the path (once the count drops to 1 it stays 1 further down), which is why "the deepest" is the same as "all of them".
+3. The sum can reach $\binom{k}{2} \cdot \max|w|$, about $10^{10} \cdot 10^3$ for large inputs, so it needs a 64-bit integer.
+:::
+
+<TheoremCode unit="6.3/thm-2" />
+
+The first line has the words ab, ac, b: only the node a is shared ($\text{pass} = 2$), so the sum is 1; the word ab has a common beginning of length 1 with another word and b has 0. The second line is the tiny instance: the sum 9, and the values 2 for aab (shared with aaa and aac) and 1 for ab. The last line has two equal words a, a: the node a has $\text{pass} = 2$ and the sum is 1. The check compares the sum and the per-word values with direct computation on every list of up to four words of length 1 to 3 over $\{a, b\}$.
+
+### 4.3 Which dictionary words start here?
+
+**Theorem 6.3.3 (a walk inside a text).** Let the dictionary words be stored in a trie, and let $s$ be a text. For a place $i$ of $s$ (counting from 0), walk the letters $s_i, s_{i+1}, \dots$ down the trie from the root, and stop when an edge is missing or the text ends. The lengths $j - i + 1$ of the walks that end in a node with $\text{end} \ge 1$ are exactly the lengths of the dictionary words that are prefixes of $s[i..]$. The walk takes at most (the length of the longest dictionary word) steps. Consequently the number of ways to cut $s$ into dictionary words, $\text{ways}[i] = \sum \text{ways}[i + \text{length}]$ over those lengths with $\text{ways}[|s|] = 1$, is computed in $O(|s| \cdot L)$ time, where $L$ is the length of the longest word.
+
+:::tip[In plain words]
+Reading the text from a place, you walk along the one path that the text spells in the tree. Every time the walk passes a node where a word ends, that word is a beginning of the rest of the text. You never have to try the words one by one, and you stop at the first missing edge.
+:::
+
+**A tiny instance.** The dictionary a, ab, b and the text abab. From place 0 the walk reads a (a word ends: length 1), then ab (a word ends: length 2), then aba: no such node, stop. So the words at place 0 have lengths 1 and 2. The numbers of ways: $\text{ways}[4] = 1$; $\text{ways}[3]$ (b) $= 1$; $\text{ways}[2]$ (ab: a then b, or ab) $= \text{ways}[3] + \text{ways}[4] = 2$; $\text{ways}[1]$ (bab) $= \text{ways}[2] = 2$; $\text{ways}[0] = \text{ways}[1] + \text{ways}[2] = 4$.
+
+**Proof.**
+1. By Theorem 6.3.1(b), the walk of $s[i..j]$ from the root ends in a node exactly when some dictionary word begins with $s[i..j]$, and in a node with $\text{end} \ge 1$ exactly when $s[i..j]$ itself is a dictionary word.
+2. The walk of $s[i..j+1]$ continues the walk of $s[i..j]$ by one edge. If the walk of $s[i..j]$ fell off the tree, then no dictionary word begins with $s[i..j]$, hence none begins with a longer string that starts with it, and stopping is right.
+3. So the lengths seen at nodes with $\text{end} \ge 1$ are exactly the lengths of the dictionary words that are prefixes of $s[i..]$, each once.
+4. A walk cannot be longer than the longest dictionary word, because no node is deeper than that. So the walk takes at most $L$ steps.
+5. *The count of cuttings.* Every cutting of $s[i..]$ into dictionary words starts with a dictionary word that is a prefix of $s[i..]$, of some length $\ell$, followed by a cutting of $s[i+\ell..]$. Splitting the cuttings by the first word gives $\text{ways}[i] = \sum \text{ways}[i + \ell]$ over the lengths $\ell$ found in step 3; the empty rest has one cutting, the empty one.
+6. Computing $\text{ways}$ from the end of the text to the start needs one walk per place, so $O(|s| \cdot L)$ in all. $\square$
+
+:::note[This proof needs]
+1. The dictionary is fixed before the walks; the trie is built once, in $O(S)$.
+2. The cost of a walk is the length of the *longest* word, not the number of words; this is the gain over trying every word at every place ($|s| \cdot k \cdot L$ in the worst case) or every substring of length up to $L$ in a set of strings ($|s| \cdot L$ substrings, each costing $O(L)$ to hash).
+3. If the cuttings must use each word at most once, or at most a given number of times, the counts $\text{ways}[i]$ are not enough; more state is needed.
+:::
+
+<TheoremCode unit="6.3/thm-3" />
+
+The first line is the tiny instance: the lengths 1 and 2 at place 0, and 4 cuttings of abab. The second, with the dictionary aa and a, counts 5 cuttings of aaaa (the cuttings are 1+1+1+1, 1+1+2, 1+2+1, 2+1+1, 2+2). The third has no cutting of abac with the words ab and c. The check compares the walk with a test of all substrings and the cuttings with a plain recursion, on every string of length 1 to 8 over $\{a, b\}$ and three dictionaries.
+
+### 4.4 The binary trie and the largest XOR
+
+**Theorem 6.3.4 (the largest XOR).** Store the numbers of a set $Y$ below $2^B$ in a binary trie, with $\text{cnt}[v]$ the number of stored numbers that go through $v$. For a number $x$ below $2^B$, walk down from the root: at each level, with $d$ the digit of $x$ at this level, go to the child with the digit $1 - d$ if that child exists and its count is positive; otherwise go to the child with the digit $d$. The number $y$ found at the bottom gives the largest value of $x \oplus y$ over $y \in Y$, in $B$ steps.
+
+:::tip[In plain words]
+The XOR of two numbers is decided by the highest digit where they differ: if it is 1 there, the XOR is bigger than any XOR that has 0 there, whatever the lower digits are. So from the top, always try to find a stored number with the opposite digit. If there is one, taking it is never worse; if there is none, no stored number in this branch can do better.
+:::
+
+**A tiny instance.** $B = 5$, $Y = \{3, 10, 5, 25, 2, 8\}$, that is 00011, 01010, 00101, 11001, 00010, 01000, and $x = 5 = 00101$. The top digit of $x$ is 0, so the walk wants a stored number with top digit 1. Only 25 has it, so the walk goes there, and $5 \oplus 25 = 00101 \oplus 11001 = 11100 = 28$. For $x = 8 = 01000$ the walk again goes to 25, with $8 \oplus 25 = 10001 = 17$.
+
+**Proof.**
+1. For numbers with the same number of digits, comparing by value is the same as comparing the digit strings from the left: the first place where they differ decides. The same holds for the values $x \oplus y$.
+2. Let $g$ be the number found by the walk, and suppose $y' \in Y$ is any stored number with $y' \ne g$. Let $b$ be the highest digit place where the paths of $g$ and $y'$ differ; above it they go through the same nodes, so $x \oplus g$ and $x \oplus y'$ agree above $b$.
+3. At the node where the paths split, the walk took the child with the digit $1 - d$ or the child with the digit $d$. If it took the child with $d$, then the child with $1 - d$ did not exist or had count 0, so no stored number has $1 - d$ at this place below this node, and $y'$ (which is stored and goes through this node) has the digit $d$ as well, contradicting that the paths split here. So the walk took the child with $1 - d$.
+4. Then $g$ has the digit $1 - d$ at the place $b$, so $x \oplus g$ has the digit 1 there. And $y'$ went the other way, so it has the digit $d$, and $x \oplus y'$ has the digit 0 there. By step 1, $x \oplus g > x \oplus y'$. So $g$ gives the largest XOR (and for the numbers on the same path it is equal). $\square$
+
+:::note[This proof needs]
+1. All numbers have the same number of digits $B$ (leading zeros), so that "highest digit first" means the same place for all.
+2. The counts are needed only when numbers are removed: a node whose count dropped to 0 still exists, and the walk must not enter it. Without removals "the child exists" is enough.
+3. The set must not be empty, otherwise the walk has no number to find.
+:::
+
+<TheoremCode unit="6.3/thm-4" />
+
+The first line gives the best partners of 5 and 8 in the set (steps 2 to 4): 28 and 17. The second line is the largest XOR of two numbers of the set, 28. Removing 25 changes the answer for 5 to 15 (with 10: $00101 \oplus 01010 = 01111$). The last line is a set with one number, 7, whose best partner is itself, XOR 0. The check compares the walk with the maximum over the set, with repeats and after a removal, on every set of up to four numbers below 16.
+
+### 4.5 Counting the numbers whose XOR is below a bound
+
+**Theorem 6.3.5 (counting by a bound).** With the binary trie of Theorem 6.3.4 and numbers $x$ and $k$ below $2^B$, the number of stored numbers $y$ with $x \oplus y < k$ is found in $B$ steps: start at the root with the total 0; at each level, with $d$ the digit of $x$ and $e$ the digit of $k$ at this level: if $e = 1$, add $\text{cnt}$ of the child with the digit $d$ (it exists or the add is 0) to the total and continue in the child with the digit $1 - d$; if $e = 0$, continue in the child with the digit $d$; stop when the child does not exist.
+
+:::tip[In plain words]
+Compare $x \oplus y$ with $k$ from the top digit. At a place where $k$ has a 1, a number $y$ that makes the XOR digit 0 is already smaller than $k$, whatever follows, so the whole branch counts at once. The numbers that make the XOR digit 1 stay equal to $k$ so far, and the walk goes on with them. Where $k$ has a 0, the XOR digit must be 0 to stay equal.
+:::
+
+**A tiny instance.** $B = 3$, $Y = \{1, 2, 3, 4\}$ (001, 010, 011, 100), $x = 1$ (001), $k = 3$ (011). Top digit: $k$ has 0, so go to the child with the digit of $x$, which is 0: this branch holds 001, 010, 011. Second digit: $k$ has 1, $x$ has 0: add the child with digit 0 (it holds only 001: count 1); continue in the child with digit 1 (010 and 011). Third digit: $k$ has 1, $x$ has 1: add the child with digit 1 (011: count 1); continue in the child with digit 0 (010). The total is 2: $1 \oplus 1 = 0$ and $1 \oplus 3 = 2$ are below 3, while $1 \oplus 2 = 3$ and $1 \oplus 4 = 5$ are not.
+
+**Proof.**
+1. Compare $x \oplus y$ with $k$ as digit strings of length $B$ from the left (as in the proof of Theorem 6.3.4): $x \oplus y < k$ exactly when, at the first place where they differ, the digit of $x \oplus y$ is 0 and the digit of $k$ is 1.
+2. Fix a level, and consider the stored numbers $y$ whose digits above this level make $x \oplus y$ agree with $k$ above this level (the walk's current node holds exactly these, by induction on the level: it starts with all numbers at the root).
+3. At this level, $x \oplus y$ has the digit $d \oplus (\text{digit of } y)$. If $e = 1$: the numbers $y$ with the digit $d$ have the XOR digit 0 here, which is smaller than $e = 1$, so by step 1 they are below $k$; all of them are counted at once, as $\text{cnt}$ of the child with the digit $d$. The numbers with the digit $1 - d$ have the XOR digit 1, equal to $e$, so they stay equal to $k$ so far: the walk continues with them.
+4. If $e = 0$: numbers with the digit $d$ have the XOR digit 0, equal to $e$, and continue; numbers with the digit $1 - d$ have the XOR digit 1, which is larger than $e = 0$, so they are above $k$ and are dropped.
+5. After the last level, the numbers that remain have $x \oplus y = k$, which is not below $k$ and is not counted. Every number below $k$ was counted exactly once, at the first level where it separated from $k$. $\square$
+
+:::note[This proof needs]
+1. The counts $\text{cnt}[v]$ must be correct for every node, including after removals; the sum uses the counts of whole branches.
+2. A bound $k$ equal to $2^B$ or more counts every stored number; the code is used with $k < 2^B$, and larger bounds are cut to $2^B - 1$ plus a separate test, or $B$ is increased by one.
+3. For a count of pairs, each number is inserted after it is counted against the earlier ones; inserting first counts the number with itself (XOR 0).
+:::
+
+<TheoremCode unit="6.3/thm-5" />
+
+The four examples use the set 1, 2, 3, 4 (the tiny instance and three more): with $x = 0$ and $k = 3$ the numbers 1 and 2 count; with $x = 5$ and $k = 5$ the XORs are 4, 7, 6, 1 and two are below 5; with $k = 0$ nothing is below 0. The check compares the walk with a count over the set, with repeats, for every set of up to four numbers below 8, every $x$ below 8 and every $k$ up to 8.
+
+## 5. Recognition Cards
+
+<Cards topic="6.3" />
+
+## 6. Templates
+
+Templates come in the next step.
+
+## 7. Bug catalogue
+
+Bugs come in the next step.
+
+## 8. Worked examples
+
+Worked examples come in the next step.
+
+## 9. Problem ladder
+
+<Ladder topic="6.3" />
+
+## 10. Identification drill
+
+<Drill topic="6.3" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="6.3" />
+
+## 12. Self-test questions
+
+<SelfTest topic="6.3" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="6.3" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="6.3" />

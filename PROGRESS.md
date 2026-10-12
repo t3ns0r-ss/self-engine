@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M9 (Phase 7), started on Saurabh's "Continue" after the M8 report (M5, M6, M7, M8 and R1 gates are still `waiting`).
-- Topic: 7.3 done; 7.4 next
+- Topic: 7.4 done; 7.5 next
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 7.3, all 10 steps (validate, build, unit tests pass).
-Next action: topic 7.4 (scope, bank additions, theory), then 7.5 to 7.8, the Phase 7 intro and exam.
+Last completed step: topic 7.4, all 10 steps (validate, build, unit tests pass).
+Next action: topic 7.5 (scope, bank additions, theory), then 7.6 to 7.8, the Phase 7 intro and exam.
 
 ## Gates
 | Gate | Status | Date |
@@ -80,6 +80,7 @@ Next action: topic 7.4 (scope, bank additions, theory), then 7.5 to 7.8, the Pha
 | 7.1 | done (on this session's branch) | — |
 | 7.2 | done (on this session's branch; † Codeforces ideas are from recalled statements) | — |
 | 7.3 | done (on this session's branch; † Codeforces ideas are from recalled statements) | — |
+| 7.4 | done (on this session's branch; † Codeforces ideas are from recalled statements) | — |
 | Phase 5 intro and exam | done (on this session's branch) | — |
 
 ## Bank
@@ -128,7 +129,7 @@ Next action: topic 7.4 (scope, bank additions, theory), then 7.5 to 7.8, the Pha
 | 7.1 | short | 24 | 35 |
 | 7.2 | short | 20 | 27 |
 | 7.3 | short | 17 | 25 |
-| 7.4 | short | 20 | 9 |
+| 7.4 | short | 19 | 25 |
 | 7.5 | short | 20 | 10 |
 | 7.6 | short | 16 | 7 |
 | 7.7 | short | 25 | 24 |
@@ -269,3 +270,4 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - **Phase 7 bank additions and choices (M9, topic 7.1).** 8 reserved problems were added (statements read for LeetCode; Codeforces ones are recalled and marked †): drill lc-path-sum-iii, lc-time-needed-to-inform-all-employees, lc-delete-nodes-and-return-forest, lc-count-complete-tree-nodes (four drill problems solved by earlier tools, because the bank had only tree-DP drill problems); look-alike pairs lc-maximize-the-number-of-target-nodes-after-connecting-trees-ii / -i and lc-count-the-number-of-houses-at-a-certain-distance-ii / -i (the bank had no look-alike pair; the second pair is about a graph with one cycle, not a tree). The techniques of the worked examples and ladder problems now list 3.2 and 4.5, the combined topics. The lesson has 4 cards (subtree-dp, through-vertex, rerooting, tree-merge) and 4 theorems; the templates avoid recursion (a breadth-first order). Weak points: ac-abc220_f is the same question as the worked example cses-1133 (it is rung 1 of the rerooting card on purpose); ac-abc036_d (drill) and ac-dp_p are the same problem (dp_p was left out of the review sets); lc-minimize-the-total-price-of-the-trips is the only tree-merge review problem and it is really a two-state DP; the hints of the Codeforces ladder problems come from recalled statements; lc-maximum-profit-from-trading-stocks-with-discounts has a table indexed by a budget, so Theorem 7.1.4's bound does not apply to it (the hint says so).
 - **Phase 7 bank additions and choices (M9, topic 7.2).** 22 problems were added (LeetCode statements read; Codeforces ones are recalled and marked †). Moves: lc-parallel-courses-iii from practice to reserved review, lc-minimum-number-of-days-to-eat-n-oranges to a reserved look-alike (partner lc-minimum-number-of-operations-to-make-x-and-y-equal, a breadth-first search because moves can go back). New pairs: lc-shortest-distance-after-road-addition-queries-ii / -i. The lesson has 4 cards (longest-path, count-paths, condensation-dp, state-dag), 4 theorems, 7 templates, 9 catalogued bugs and 3 worked examples (cses-1680, 1681, 1686). Weak points: lc-maximum-profit-from-valid-topological-order-in-dag is really a bitmask DP (topic 3.7), kept in review set 3 under state-dag; lc-parallel-courses (premium) was dropped; count-paths has no review problem; the hints of the Codeforces ladder problems (cf-919D, 721C, 1679D, 894E, 1137C, 505C) and the checkpoint cf-1472G come from recalled statements.
 - **Phase 7 bank additions and choices (M9, topic 7.3).** 23 problems were added (LeetCode statements read; Codeforces ones are recalled and marked †). Moves: cf-1799D2 to a look-alike with the new cf-1799D1, cf-1557D and lc-maximum-balanced-subsequence-sum and lc-delivering-boxes-from-storage-to-ports to the checkpoint, cf-1197E, cf-1788E, lc-length-of-the-longest-increasing-path and lc-longest-increasing-subsequence-ii to review. New pairs: cf-1799D2 / D1 and cf-1304F2 / F1 (the LeetCode I/II candidates were premium or had unclear limits). The lesson has 4 cards (prefix-max-transition, window-transition, counting-with-tree, range-update-transition), 4 theorems, 7 templates, 9 catalogued bugs and 3 worked examples (ac-dp_q, lc-constrained-subsequence-sum, ac-dp_w). Weak points: counting-with-tree and range-update-transition have no review problem (only ladder, worked or checkpoint); the drill problems cf-519D, cf-1335E2 and cf-1313C2 are recalled statements; lc-longest-increasing-subsequence-ii is a range-of-keys problem filed under the prefix-max card (its hint names the segment tree); the lookalike descriptions of cf-1799D and cf-1304F come from recalled statements; the exam problem for the whole phase from this topic is cf-946G.
+- **Phase 7 bank additions and choices (M9, topic 7.4).** 15 problems were added (LeetCode statements read; Codeforces ones are recalled and marked †). Moves: ac-abc407_e to the checkpoint, ac-abc214_e to the exam, lc-pizza-with-3n-slices and lc-two-best-non-overlapping-events and lc-total-cost-to-hire-k-workers to review. New pair: cf-1249D2 / D1 (the other pair is the existing events I / II; cf-1526C1 and ac-abc137_d were already used in topic 1.5). The four cards are deadline-heap (Theorem 7.4.1, Moore–Hodgson), regret (Theorem 7.4.2, a covering greedy with comparable items), extract-and-replace (Theorem 7.4.3, falling gains and Huffman) and sweep-with-heap (Theorem 7.4.4, earliest last day first and rooms); the bank pattern merge-smallest became the card extract-and-replace and now also holds the halving and pass-ratio problems. Weak points: the undo form of regret (cf-865D, lc-pizza-with-3n-slices) is shown only in a template (buy-sell) and checked by stress, not proved, and cf-865D is an unused extra practice problem; lc-maximum-elegance-of-a-k-length-subsequence is also an unused extra; cf-1251E2, cf-1271D, cf-3D and cf-1249D1/D2 hints come from recalled statements; the exam problem from this topic is ac-abc214_e; the card regret has no worked example of its own beyond refuelling.

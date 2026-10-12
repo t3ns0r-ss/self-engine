@@ -1,0 +1,994 @@
+# Topic 7.4 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
+id: '7.4'
+uses:
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check, and the search over subsets'
+- topic: '0.6'
+  what: 'Standard containers: the priority queue (heap), pairs and tuples in a heap, the ordered multiset'
+- topic: '1.1'
+  what: 'Sorting: the items in the order of the last days, the arrival or a ratio'
+- topic: '1.3'
+  what: 'Two pointers: the fixed window that a look-alike problem needs'
+- topic: '1.4'
+  what: 'Binary search: a search on the answer around a greedy check'
+- topic: '1.5'
+  what: 'The first greedy topic: exchange arguments, the earliest end first, the most extreme first'
+- topic: '3.2'
+  what: 'Dynamic programming: the O(n²) tables that the greedy replaces'
+- topic: '3.3'
+  what: 'Knapsack: choices with values or with unequal gains and costs, where the greedy fails'
+- topic: '4.4'
+  what: 'Disjoint sets: the days left free, in the weighted version of the events problem'
+- topic: '7.3'
+  what: 'DP sped up with trees: the weighted scheduling problem that a DP solves'
+theorems:
+- id: 7.4.1
+  title: Take everything, drop the worst
+  plain_words: 'Do every course for now. As soon as the schedule runs late, the course that wastes the
+    most time is the one to give up: giving up any other course frees less time, and the number of courses
+    given up is the same. Because the courses are looked at in the order of their last days, the only
+    schedule that can run late is the last one added, so one removal repairs it.'
+  code: 7.4/thm-1
+- id: 7.4.2
+  title: Pay late
+  plain_words: Do nothing until a requirement is violated. Then something earlier must have been chosen,
+    and the best earlier item is always at least as good as any other earlier item that could be chosen
+    instead, so it is safe to choose it now, even though the choice is made late. The heap keeps the earlier
+    items that are still available.
+  code: 7.4/thm-2
+- id: 7.4.3
+  title: Take the best and put a changed item back
+  plain_words: If every item gets less and less rewarding, the best $k$ operations are simply the $k$
+    best gains in the whole table, and a heap that always offers each item's next gain hands them out
+    in order. For merging, the two lightest items belong at the bottom of the merge tree, where their
+    weights are counted the most times, so they are merged first.
+  code: 7.4/thm-3
+- id: 7.4.4
+  title: The sweep with a heap of what is available
+  plain_words: Among the events that are open today, the one that closes first is the one that will be
+    missed if it is not taken now, and taking it does not stop us from taking any other event later. For
+    rooms, a new room is opened only when every room in use holds somebody who is still there today; those
+    people, plus the newcomer, are all present on the same day, so that many rooms were needed anyway.
+  code: 7.4/thm-4
+cards:
+- id: deadline-heap
+  name: Take everything, drop the worst when a limit is exceeded
+  from_theorem: 7.4.1
+  decisive_property: The items are looked at in an order in which a limit (a last day, a health bound,
+    a number of segments over a point) must hold after each step, only the number of items kept counts,
+    and when the limit fails, giving up the item that costs the most restores it at the least loss.
+  how_to_test: Sort the items in the order in which the limits come. Write each limit as "total ≤ bound"
+    after the step. Check that what is maximised is the number of items kept (all alike) and that one
+    removal restores the limit. If the items have values, dropping the costliest one is not enough, and
+    the problem is a knapsack.
+  constraint_shapes:
+  - 'n = 2·10^5 potions and the most that can be drunk with the health never below 0: the subsets are
+    2^n and the health has up to 2·10^14 values, against n log n with one heap'
+  - 'n = 2·10^5 courses with last days: a DP over the number of courses is n² = 4·10^10, against n log
+    n'
+  weak_signals:
+  - form: Asks for the largest number of items that can be done one after another, each by its deadline,
+      with durations
+    shape: n up to 2·10^5, durations and deadlines up to 10^9
+  - form: Asks for the most items that can be taken in a row while a running balance (health, money, fuel)
+      never drops below 0
+    shape: n up to 2·10^5, values of both signs
+  - form: Asks for the fewest removals so that no point is covered by more than k intervals
+    shape: n up to 2·10^5, k up to n
+  kill_signals:
+  - 'The items have values and the total value is asked: with the courses (3, 4, value 7) and (2, 4, value
+    6) the drop-the-longest rule keeps the value 6 where 7 is possible; this is a knapsack (topic 3.3)'
+  - 'The limits do not come in one fixed order, so no sorting makes each limit a prefix: one removal no
+    longer repairs the schedule'
+  in_action:
+    statement: n potions in a row change your health by a_i (some are negative). Your health starts at
+      0 and must never be negative, and you drink in the order of the row. Print the largest number of
+      potions you can drink.
+    constraints: n ≤ 2·10^5, |a_i| ≤ 10^9.
+    budget: There are 2^n subsets and the health has up to 2·10^14 values. Need about n log n.
+    candidates:
+    - tool: Try all subsets (topic 0.5)
+      verdict: rejected
+      because: 2^n subsets.
+    - tool: A DP over the position and the health (topic 3.2)
+      verdict: rejected
+      because: The health has up to 2·10^14 different values.
+    - tool: Drink everything and put back the most harmful potion when the health is negative (this topic)
+      verdict: chosen
+      because: The harmful potions are courses whose last day is the sum of the good potions before them,
+        so Theorem 7.4.1 applies.
+    property_check: Only the number of potions counts; the condition after each potion is health ≥ 0;
+      a negative health is repaired by putting back the most harmful potion drunk. The property holds.
+    decision: 'A min-heap of the drunk potions: push, add to the health, and while the health is below
+      0 pop the smallest; the answer is the size of the heap: O(n log n).'
+  examples:
+    positive:
+    - inline:
+        input: The courses (duration, last day) are (100, 200), (200, 1300), (1000, 1250), (2000, 3200).
+          What is the largest number of courses that can be taken one after another?
+        answer: '3'
+        why: 'In the order of the last days the totals are 100, 1100, 1300, and then 3300 passes 3200,
+          so the course of 2000 is dropped (Theorem 7.4.1): 3 courses.'
+    - inline:
+        input: The potions 4, −4, 1, −3, 1, −3 stand in a row; the health starts at 0 and may not drop
+          below 0. What is the largest number of potions that can be drunk?
+        answer: '5'
+        why: 'The loop drinks 4, −4, 1, then −3 makes the health −2, and it puts back the −4 (the health
+          is 2); then 1 and −3 give the health 3 and 0. It keeps 4, 1, −3, 1, −3: 5 potions.'
+    - worked_example: lc-course-schedule-iii
+      why: 'The most courses taken one after another with last days, n up to 10^4 or more: sort by the
+        last day and keep a heap of durations.'
+    negative:
+    - inline:
+        input: 'Two courses with values: (duration 3, last day 4, value 7) and (duration 2, last day 4,
+          value 6). Only one of them fits. What is the largest total value?'
+        answer: '7'
+        method_gives: '6'
+        why: The two courses cannot be taken together (the total 5 passes the day 4). The rule drops the
+          longest, which is the course of value 7, and keeps the value 6. With values the choice is a
+          knapsack.
+      correct_tool:
+        topic: '3.3'
+        card: zero-one
+    - problem: lc-maximum-profit-in-job-scheduling
+      why: 'The jobs have profits and may not overlap: dropping a job by its length is not enough; sort
+        by the end and take the better of skipping a job and taking it with the best total before its
+        start (a DP with a prefix maximum).'
+      correct_tool:
+        topic: '7.3'
+        card: prefix-max-transition
+  lookalikes:
+  - description: Courses with profits (weighted scheduling)
+    tool:
+      topic: '3.3'
+      card: zero-one
+    flipping_difference: When the total value counts and not the number of courses, dropping the longest
+      is wrong, and a DP over the time (or over the number of courses) is used.
+  - description: The most intervals with fixed positions that do not overlap
+    tool:
+      topic: '1.5'
+      card: interval-selection
+    flipping_difference: When the intervals have fixed positions, sort by the end and take what fits,
+      with no heap. Durations with deadlines and a free start need the heap.
+  complexity: O(n log n) time (sorting and the heap), O(n) memory.
+- id: regret
+  name: 'Pay late: repair a violated requirement on a prefix with the best earlier item'
+  from_theorem: 7.4.2
+  decisive_property: The requirements are lower bounds on nested prefixes (the fuel needed to reach a
+    point, the balance of a prefix), an item that was passed can be chosen at any later moment, and any
+    two items are comparable (all costs equal, or all gains equal).
+  how_to_test: 'Write each requirement as "the chosen gain among the items before this point is at least
+    R". Check that the groups of items are nested prefixes and that the items can be ordered by quality:
+    all costs equal (take the largest gain) or all gains equal (take the smallest cost). If both vary,
+    the property fails. Scan the points, put the new items in a heap, and repair each violated requirement
+    with the best item in the heap.'
+  constraint_shapes:
+  - 'n = 2·10^5 stations and the fewest stops to reach a far target: the subsets are 2^n and the DP over
+    the number of stops is n² = 4·10^10, against n log n with a heap'
+  - 'n = 5·10^4 characters "?" in a bracket string, each with a price for "(" and a price for ")": the
+    assignments are 2^n, against n log n'
+  weak_signals:
+  - form: Asks for the fewest (or cheapest) items to choose so that a running total never drops below
+      a bound at any point
+    shape: n up to 2·10^5, the items are passed in order
+  - form: Asks for the furthest point reached with a limited number of one-time boosts (ladders, jumps,
+      refuels) of unequal size
+    shape: n up to 10^5, boosts up to the number of items
+  - form: Asks for the cheapest way to repair a sequence (a bracket string with ?, a balance) so that
+      every prefix is valid
+    shape: n up to 5·10^4, two prices for each unknown
+  kill_signals:
+  - 'The gains and the costs both differ and are not comparable: with the requirement 10 and the items
+    (gain 10, cost 100), (gain 6, cost 1), (gain 5, cost 1) the largest gain costs 100, but the two small
+    items give 11 at the cost 2 (a knapsack, topic 3.3)'
+  - 'The requirement is not a lower bound on a prefix but depends on items after the point: a prefix cannot
+    be repaired from the earlier items alone'
+  in_action:
+    statement: A car starts with startFuel units of fuel and drives to a target at distance target (one
+      unit of fuel per unit of distance). Stations on the way have fuel amounts that are all taken at
+      a stop. Print the fewest stops, or −1.
+    constraints: n ≤ 2·10^5 stations, positions and fuels up to 10^9.
+    budget: The subsets of stations are 2^n and the DP over the number of stops is n². Need about n log
+      n.
+    candidates:
+    - tool: Try all subsets of stations (topic 0.5)
+      verdict: rejected
+      because: 2^n subsets.
+    - tool: 'A DP: the furthest distance with j stops (topic 3.2)'
+      verdict: rejected
+      because: n² steps.
+    - tool: Drive on, keep the passed stations in a heap and use the largest fuel when the fuel runs out
+        (this topic)
+      verdict: chosen
+      because: All stops cost 1, so the largest fuel is at least as good as any other station, and the
+        points to be reached give nested requirements (Theorem 7.4.2).
+    property_check: Each point that must be reached needs a lower bound on the fuel of the stations before
+      it; the groups are nested; all costs are equal. The property holds.
+    decision: 'A max-heap of the fuels of the passed stations; while the reach is below the target pop
+      the largest, add it and count a stop; −1 if the heap is empty: O(n log n).'
+  examples:
+    positive:
+    - inline:
+        input: The target is at 100, the car starts with 10 units, and the stations (position, fuel) are
+          (10, 60), (20, 30), (30, 30), (60, 40). What is the fewest number of stops?
+        answer: '2'
+        why: 'The car reaches 10 and uses the station there (60): the reach is 70. It has passed the stations
+          at 20, 30 and 60; the largest fuel among them is 40: the reach is 110 ≥ 100. Two stops (Theorem
+          7.4.2).'
+    - inline:
+        input: The heights of seven buildings are 4, 2, 7, 6, 9, 14, 12. You have 5 bricks and 1 ladder;
+          a climb of h costs h bricks or one ladder; going down is free. What is the largest index you
+          can reach, starting at the index 0?
+        answer: '4'
+        why: 'The climbs are 5 (to the index 2), 3 (to the index 4) and 5 (to the index 5). The first
+          is paid with 5 bricks. The second needs 3 more: the largest paid climb, 5, becomes the ladder
+          and 5 bricks come back; the second uses 3. The third needs 5 and only 2 bricks are left, and
+          no ladder: the walk stops at the index 4.'
+    - worked_example: lc-minimum-number-of-refueling-stops
+      why: 'The fewest stops to reach a far target, with any number of stations: keep the passed stations
+        in a heap and use the largest fuel late.'
+    negative:
+    - inline:
+        input: 'A car starts with 1 unit of fuel and the target is at distance 10. Three stations stand
+          at the position 1: (fuel 10, price 100), (fuel 6, price 1), (fuel 5, price 1). What is the least
+          total price of the fuel bought?'
+        answer: '2'
+        method_gives: '100'
+        why: 'The largest fuel (10) is chosen first and costs 100, but the two small stations give 11
+          units and cost only 2. Both the fuels and the prices differ, so the largest fuel is not at least
+          as good as the others: a knapsack.'
+      correct_tool:
+        topic: '3.3'
+        card: zero-one
+    - problem: lc-coin-change
+      why: 'Asks for the fewest coins with a given sum: taking the largest coin first fails for the coins
+        1, 3, 4 and the sum 6 (4 + 1 + 1 against 3 + 3); the DP over the sums is the tool.'
+      correct_tool:
+        topic: '3.3'
+        card: unbounded
+  lookalikes:
+  - description: Boosts with one requirement at the end only
+    tool:
+      topic: '1.5'
+      card: extreme-first
+    flipping_difference: 'With a single requirement at the end, sort the boosts and take the largest ones:
+      there is no heap and no repair on the way. The heap is for requirements at several points.'
+  - description: The fewest coins with a given sum (unequal values, no prefix structure)
+    tool:
+      topic: '3.3'
+      card: unbounded
+    flipping_difference: There is no prefix requirement and the largest coin is not safe to take; a DP
+      over the sums is used.
+  complexity: O(n log n) time, O(n) memory.
+- id: extract-and-replace
+  name: Take the best item, change it, and put it back into the heap
+  from_theorem: 7.4.3
+  decisive_property: Each step takes the item with the extreme key (the largest gain, the smallest weight)
+    and changes it, and the next gain of an item is no larger than the one just taken; or the cost of
+    joining two items is the sum of their weights, and the two lightest items are joined first.
+  how_to_test: List what one step does to an item and compare the next gain of that item with the gain
+    just taken. If the gains of an item never increase, the heap of the current best gains is the tool;
+    for joining, check that the cost is the sum of the two weights. If an item can gain more later (a
+    bonus after two steps), the property fails.
+  constraint_shapes:
+  - 'k = 10^5 operations on n = 10^5 numbers, each halving one number: the sequences of choices are n^k,
+    against (n + k) log n with a heap'
+  - 'n = 2·10^5 sticks joined two at a time at the cost of the sum: the number of orders is astronomical,
+    against n log n with a min-heap'
+  weak_signals:
+  - form: Asks for the best result after exactly k operations, each applied to one chosen item and making
+      that item less rewarding to use again
+    shape: n and k up to 10^5, an operation halves a number, or adds one student to a class, or lowers
+      a price
+  - form: Asks for the fewest operations to reduce a total by a given amount, each operation reducing
+      one item
+    shape: n up to 10^5, the item is halved or decremented
+  - form: Asks for the cheapest way to join n pieces two at a time, the cost being the sum of the two
+      sizes
+    shape: n up to 2·10^5, sizes up to 10^9
+  kill_signals:
+  - 'The gains of an item can rise: with two items whose gains are (0, 10) and (3, 2) and two operations,
+    the process takes 3 + 2 = 5 where 10 is possible (use a DP over the number of operations used on each
+    item)'
+  - 'The cost of joining is not the sum of the two weights (a product, or a cost for the place): the two
+    lightest items are no longer best joined first'
+  in_action:
+    statement: An array of n positive numbers. One operation halves a chosen number (the result may be
+      a fraction). Print the fewest operations that reduce the sum of the numbers by at least half.
+    constraints: n ≤ 10^5, numbers up to 10^7.
+    budget: The sequences of choices are exponential. Need about (n + k) log n for k operations.
+    candidates:
+    - tool: Try all sequences of choices (topic 0.5)
+      verdict: rejected
+      because: n^k sequences.
+    - tool: Halve the numbers in the given order
+      verdict: rejected
+      because: The effect of an operation depends on the number it is applied to, so the order matters.
+    - tool: Always halve the current largest number (this topic)
+      verdict: chosen
+      because: The gains x/2, x/4, … of a number fall, so the best operation is on the largest number
+        now (Theorem 7.4.3 (a)).
+    property_check: Each operation gains half of the current value of the number, and the gains of one
+      number only fall. The property holds.
+    decision: 'A max-heap of the current numbers: pop the largest x, add x/2 to the removed amount, push
+      x/2; stop when the removed amount reaches half the sum: O((n + k) log n).'
+  examples:
+    positive:
+    - inline:
+        input: The piles 5, 4, 9 are changed by 2 operations; each removes floor(x / 2) stones from one
+          pile (a pile can be used again). What is the smallest number of stones left?
+        answer: '12'
+        why: 'The gains: the pile 9 gives 4, then the new pile 5 and the old piles 5 and 4 give 2 each;
+          the best two operations gain 4 + 2 = 6 (Theorem 7.4.3 (a)): 18 − 6 = 12.'
+    - inline:
+        input: The weights 4, 3, 2, 6 are joined two at a time; joining two items costs their sum and
+          gives one item. What is the smallest total cost of joining them all into one?
+        answer: '29'
+        why: 'Join the two lightest each time: 2 + 3 = 5 (cost 5), 4 + 5 = 9 (cost 9), 6 + 9 = 15 (cost
+          15). The total is 29 (Theorem 7.4.3 (b)).'
+    negative:
+    - inline:
+        input: Two items have the gains of their successive operations (0, 10) and (3, 2). Two operations
+          are made. What is the largest total gain?
+        answer: '10'
+        method_gives: '5'
+        why: Two operations on the first item give 0 + 10. The process that takes the largest current
+          gain starts with the 3 of the second item and then takes 2, and gets 5, because the gain of
+          the first item rises after a poor first step.
+      correct_tool:
+        topic: '3.2'
+        card: two-index
+    - problem: lc-maximum-points-you-can-obtain-from-cards
+      why: 'Asks for the best k cards taken from the two ends: the next card depends on which end was
+        taken before, and the answer is the total minus the smallest window of n − k cards (a fixed window,
+        or a prefix and a suffix); no heap.'
+      correct_tool:
+        topic: '1.3'
+        card: fixed-window
+  lookalikes:
+  - description: Choosing the k largest elements, where an element is gone after it is taken
+    tool:
+      topic: '0.6'
+      card: heap-extract
+    flipping_difference: If a taken item simply disappears, the k largest can be taken with a heap or
+      a sort. Here the item changes and goes back into the heap with its next gain.
+  - description: Operations whose gains are arbitrary, with a limit on how many are used
+    tool:
+      topic: '3.3'
+      card: zero-one
+    flipping_difference: When the gains of an item do not fall, the best use of the operations is a DP
+      over the budget, not a heap.
+  complexity: O((n + k) log n) time, O(n) memory.
+- id: sweep-with-heap
+  name: Sweep over time or keys, with a heap of the items that are available
+  from_theorem: 7.4.4
+  decisive_property: The items become available in a fixed order (a start time or a key) and are used
+    one at a time or until they expire, and among the available items the one that expires first, or is
+    best by a fixed key, can always be taken without hurting the future.
+  how_to_test: 'Sort the items by the moment they become available. Sweep the time (or the keys): add
+    what has become available to a heap ordered by the end or by the key, drop what has expired, and take
+    the top. Check by an exchange that taking the top loses nothing. If the items have values, or take
+    several days, the property fails.'
+  constraint_shapes:
+  - 'n = 2·10^5 events with first and last days, one event a day: the assignments are exponential, against
+    n log n with one heap'
+  - 'n = 2·10^5 customers with arrival and departure days: scanning all rooms for each customer is 4·10^10
+    steps, against n log n'
+  weak_signals:
+  - form: Asks for the largest number of tasks, events or jobs done when each can be done inside a window
+      of time and one is done at a time
+    shape: n up to 2·10^5, windows of days
+  - form: Asks for the fewest rooms, machines or servers, or for an assignment of items to them, when
+      the items occupy intervals
+    shape: n up to 2·10^5, intervals up to 10^9
+  - form: Asks for the best team or set of k items, where a threshold (the smallest efficiency, the largest
+      ratio) is swept in sorted order
+    shape: n up to 10^5, k up to n
+  kill_signals:
+  - 'The items have values: with two events that can only be attended on the day 1, with the values 1
+    and 5, the earliest-end rule may take the value 1 where 5 is possible (sort by the value and use a
+    disjoint set of free days, topic 4.4)'
+  - 'An item takes several days, or the days are not integers: the earliest end is not the right item
+    to take, because the choice depends on the length'
+  in_action:
+    statement: n customers arrive on the day a_i and leave on the day b_i (both days included). Give each
+      customer a room so that nobody shares a room on the same day, using the fewest rooms. Print the
+      number of rooms and a room for each customer.
+    constraints: n ≤ 2·10^5, days up to 10^9.
+    budget: Scanning all rooms for each customer is n · rooms = 4·10^10 steps. Need about n log n.
+    candidates:
+    - tool: Try all assignments (topic 0.5)
+      verdict: rejected
+      because: Exponentially many.
+    - tool: Scan all rooms for a free one, for each customer
+      verdict: rejected
+      because: n · rooms steps.
+    - tool: Sort by arrival and keep a heap of (departure, room) for the rooms in use (this topic)
+      verdict: chosen
+      because: The room that frees first is the best candidate, and a new room is opened only when all
+        rooms hold somebody present today (Theorem 7.4.4).
+    property_check: The customers are handled in the order of arrival, a room becomes available when its
+      customer leaves, and the one that leaves first is the best candidate. The property holds.
+    decision: 'Sort by arrival; a min-heap of (departure, room); reuse the top if its departure is before
+      the arrival, otherwise a new room: O(n log n).'
+  examples:
+    positive:
+    - inline:
+        input: The events (first day, last day) are (1, 2), (2, 3), (3, 4), (1, 2). One event can be attended
+          each day. What is the largest number of events attended?
+        answer: '4'
+        why: 'Day 1: attend an event ending on 2. Day 2: (2, 3) opens, attend the event ending on 2. Day
+          3: attend (2, 3). Day 4: attend (3, 4). All four (Theorem 7.4.4).'
+    - inline:
+        input: Six engineers have the speeds 2, 10, 3, 1, 5, 8 and the efficiencies 5, 4, 3, 9, 7, 2.
+          A team of at most 2 has the performance (the sum of the speeds) × (the smallest efficiency).
+          What is the largest performance?
+        answer: '60'
+        why: 'Sweeping from the highest efficiency: with the efficiency 4 as the smallest, the best two
+          speeds seen so far are 10 and 5, so the performance is (10 + 5) × 4 = 60.'
+    - worked_example: cses-1164
+      why: 'The fewest rooms for customers with arrival and departure days, n up to 2·10^5: sort by arrival
+        and keep a heap of the rooms in use.'
+    negative:
+    - inline:
+        input: Two events that can only be attended on the day 1, with the values 1 and 5, listed in this
+          order. One event a day. What is the largest total value?
+        answer: '5'
+        method_gives: '1'
+        why: The earliest-end rule sees two events with the same last day and takes the first, of value
+          1. With values, the order must be by value, not by the end.
+      correct_tool:
+        topic: '4.4'
+        card: merge-groups
+    - problem: cses-1629
+      why: 'Asks for the most movies (intervals with fixed times) watched one after another: sort by the
+        end and take what fits; there is no heap.'
+      correct_tool:
+        topic: '1.5'
+        card: interval-selection
+  lookalikes:
+  - description: Fixed intervals, a largest set of non-overlapping ones
+    tool:
+      topic: '1.5'
+      card: interval-selection
+    flipping_difference: 'Intervals with fixed times: sort by the end and take what fits. Windows with
+      a free choice of the day need the heap.'
+  - description: Intervals with values on a line, a best set that does not overlap
+    tool:
+      topic: '7.3'
+      card: prefix-max-transition
+    flipping_difference: With values and whole ranges occupied, a DP with a prefix maximum over the end
+      times is used, not a greedy.
+  complexity: O(n log n) time (sorting and the heap), O(n) memory.
+problems:
+- id: lc-course-schedule-iii
+  role: worked_example
+  summary: Up to 10^4 courses, each with a duration and a last day; one course at a time with no breaks;
+    the largest number of courses that can be taken.
+- id: lc-minimum-number-of-refueling-stops
+  role: worked_example
+  summary: A car with startFuel units of fuel drives to a target at distance target; stations on the way
+    (up to 500) have fuel that is all taken at a stop; the fewest stops, or -1.
+- id: cses-1164
+  role: worked_example
+  summary: n ≤ 2·10^5 customers with arrival and departure days (both included); the fewest rooms so that
+    nobody shares a room on a day, and a room for each customer.
+- id: cf-1526C2
+  role: ladder
+  card: deadline-heap
+  rung: 1
+  twist: 'Base case of the card in the balance form: a heap of the drunk potions.'
+  summary: n ≤ 2·10^5 potions in a row, the i-th changes the health by a_i (|a_i| ≤ 10^9); the health
+    starts at 0 and must never be negative; the largest number of potions that can be drunk, in the order
+    of the row. †
+  hints:
+  - Drinking everything may make the health negative at some moment. What can you give up?
+  - 'Drink the potions in turn; when the health becomes negative, put back the most harmful potion drunk
+    so far (a min-heap of the values drunk): it is the one whose removal helps the most.'
+  - 'Keep the health in 64 bits; the answer is the size of the heap. One removal is enough: the health
+    was non-negative before the last potion, and the potion removed is at least as harmful as the last
+    one.'
+- id: cf-1271D
+  role: ladder
+  card: deadline-heap
+  rung: 2
+  twist: The defences are made as late as possible and cancelled when the warriors run short.
+  summary: n ≤ 5000 castles to conquer in order; castle i needs a_i warriors, gives b_i more and has an
+    importance c_i; after conquering a castle you may leave one warrior in it, or in an earlier castle
+    that has a portal from here; the largest total importance of defended castles, or -1 if the conquest
+    is impossible. †
+  hints:
+  - A castle can be defended from the last castle that has a portal to it (or from itself). Why is the
+    latest moment the best for each defence?
+  - If every castle is defended at its latest moment, each defence costs one warrior at that moment. At
+    which moments do the warriors fall short of the next conquest?
+  - Scan the castles; add the defences whose latest moment is here to a min-heap by importance; when the
+    army is too small for the next conquest, cancel the least important defence made so far. If the heap
+    is empty and the army is still too small, print -1.
+- id: ac-abc249_f
+  role: ladder
+  card: deadline-heap
+  rung: 3
+  twist: The budget of ignored operations is spent on the most negative additions after the last kept
+    reset.
+  summary: 'A list of N ≤ 2·10^5 operations on a number x that starts at 0: type 1 sets x to Y, type 2
+    adds Y to x; at most K operations may be ignored; the largest possible final x.'
+  hints:
+  - The last type 1 operation that is not ignored decides the base value. What follows from this for the
+    type 1 operations after it?
+  - They must all be ignored, so each of them costs one of the K ignores. The rest of the budget can ignore
+    the most negative additions after it.
+  - Scan from the last operation to the first, keeping the sum of the additions after the current point
+    and a bounded max-heap of the most negative ones that are ignored (the size is the remaining budget).
+    At each type 1 operation try the candidate Y plus the kept sum, then that operation must be ignored
+    and the budget falls by 1. The answer is the best candidate.
+- id: lc-furthest-building-you-can-reach
+  role: ladder
+  card: regret
+  rung: 1
+  twist: 'Base case of the card: ladders and bricks, with the largest paid climb turned into a ladder.'
+  summary: Up to 10^5 buildings in a row; moving to a taller next building costs the difference in bricks
+    or one ladder; going down or level is free; with the given bricks and ladders, the furthest building
+    reachable.
+  hints:
+  - Which climbs should get the ladders?
+  - The largest climbs on the way, but you cannot know which are the largest until you have seen them.
+    Pay each climb with bricks at first.
+  - Keep a max-heap of the climbs paid with bricks; when the bricks run out, change the largest of them
+    into a ladder (its bricks come back); if no ladder is left, stop. O(n log n).
+- id: cf-1251E2
+  role: ladder
+  card: regret
+  rung: 2
+  twist: The requirement is on the number of votes, and the cheapest voters are bought late.
+  summary: n ≤ 2·10^5 voters; voter i votes for you if at least m_i other voters vote for you, or if you
+    pay p_i coins; the fewest coins that make everyone vote for you. †
+  hints:
+  - A voter with a small m_i is persuaded by others for free once enough vote. Which voters are the problem?
+  - Go through the thresholds m from the largest to the smallest. For the threshold m the number of voters
+    with a smaller threshold is cnt(< m); if the votes you have plus cnt(< m) are fewer than m, you must
+    buy voters with a threshold at least m.
+  - Keep a min-heap of the prices of the voters with thresholds at least m; whenever the votes are short
+    of m, buy the cheapest one from the heap (pay late). The sum of the prices bought is the answer.
+- id: cf-3D
+  role: ladder
+  card: regret
+  rung: 3
+  twist: A requirement on every prefix and a price that depends on the choice made for each unknown.
+  summary: A string of up to 5·10^4 characters "(", ")" and "?"; each "?" becomes "(" at the cost a_i
+    or ")" at the cost b_i; the least total cost to make a correct bracket sequence, or -1. †
+  hints:
+  - If every ? is closed, where does a prefix balance become negative?
+  - At each such place one of the ? seen so far must be opened instead; opening raises the balance by
+    2 and costs a_i − b_i more. All such choices are alike except for the price.
+  - Close every ?, putting a_i − b_i in a min-heap; when the balance is negative, take the smallest value
+    from the heap, add it to the cost and raise the balance by 2; if the heap is empty print -1. At the
+    end the balance must be 0.
+- id: cses-1161
+  role: ladder
+  card: extract-and-replace
+  rung: 1
+  twist: 'Base case of the card: joining pieces two at a time, the two smallest first.'
+  summary: A stick of length x is to be divided into n ≤ 2·10^5 pieces of the given lengths (their sum
+    is x); dividing a stick of length L costs L; the least total cost.
+  hints:
+  - 'Think backwards: instead of cutting, join the pieces. What does a join cost?'
+  - Joining two pieces of lengths a and b costs a + b, the same as the cut of the stick of length a +
+    b. The cuts form a binary tree whose leaves are the pieces.
+  - Join the two shortest pieces again and again with a min-heap (Theorem 7.4.3 (b)); the sum of the join
+    costs is the answer. 64 bits.
+- id: lc-minimum-operations-to-halve-array-sum
+  role: ladder
+  card: extract-and-replace
+  rung: 2
+  twist: 'A real-valued gain: the largest number is halved and goes back.'
+  summary: An array of up to 10^5 positive integers; one operation halves one number (the result may be
+    a fraction); the fewest operations that reduce the sum by at least half.
+  hints:
+  - Which number gives the largest reduction in one operation?
+  - 'The largest one: halving x removes x / 2, and the next gain on the same number is half as big, so
+    the gains fall.'
+  - 'A max-heap of doubles: pop the largest x, add x / 2 to the removed amount, push x / 2, until the
+    removed amount is at least half of the sum. Count the operations.'
+- id: lc-maximum-average-pass-ratio
+  role: ladder
+  card: extract-and-replace
+  rung: 3
+  twist: The gain of a class is a difference of fractions, and it falls as students are added.
+  summary: Classes with (pass_i, total_i), up to 10^5, and extraStudents ≤ 10^5 students who certainly
+    pass, assigned to classes one by one; the largest possible average pass ratio.
+  hints:
+  - 'What does one more student add to a class: (p + 1) / (t + 1) − p / t?'
+  - This gain falls as students are added to the class, and the classes are independent.
+  - 'A max-heap of gains: pop the class with the largest gain, add a student, push it back with its new
+    gain. extraStudents rounds, O((n + extra) log n); use doubles.'
+- id: ac-abc325_d
+  role: ladder
+  card: sweep-with-heap
+  rung: 1
+  twist: 'Base case of the card: one print each microsecond, the product that leaves first.'
+  summary: N ≤ 2·10^5 products on a conveyor; product i is in the range of a printer from the time T_i
+    to T_i + D_i; the printer prints one product at an instant and needs 1 microsecond to recharge; the
+    largest number of products that can be printed.
+  hints:
+  - 'Treat the time as whole microseconds: a product can be printed in any slot from T_i to T_i + D_i,
+    one product a slot. What known problem is this?'
+  - 'The events problem: one item a day, each inside a window. Among the products in range, print the
+    one that leaves first.'
+  - Sweep the time; push the leaving times of the products that have entered into a min-heap; drop those
+    that are gone; print the top; if the heap is empty jump to the next entering time. O(N log N).
+- id: lc-the-number-of-the-smallest-unoccupied-chair
+  role: ladder
+  card: sweep-with-heap
+  rung: 2
+  twist: 'Two heaps: free chairs by number, taken chairs by the leaving time.'
+  summary: n ≤ 10^4 friends with distinct arrival times and leaving times; each takes the smallest free
+    chair on arrival and frees it on leaving; the number of the chair of the friend targetFriend.
+  hints:
+  - Which chairs are free when a friend arrives?
+  - The chairs of friends who have left, plus never used chairs. You need the smallest number.
+  - Sort by arrival; a min-heap of free chairs and a min-heap of (leaving time, chair); before each arrival
+    move the chairs of the friends who have left into the free heap; take the smallest free chair, or
+    a new number if none. Stop at the target friend.
+- id: lc-process-tasks-using-servers
+  role: ladder
+  card: sweep-with-heap
+  rung: 3
+  twist: Free servers by weight, busy servers by the time they become free.
+  summary: Up to 2·10^5 servers with weights and up to 2·10^5 tasks, one arriving each second, each with
+    a processing time; a task goes to the free server with the smallest weight (then the smallest index),
+    or waits for the first server to become free; the server used for each task.
+  hints:
+  - Which two groups of servers are there, and in which order does each group need to be ordered?
+  - Free servers by (weight, index); busy servers by (the time they become free, weight, index).
+  - 'For the task j at the time t (the later of j and, when no server is free, the first time one becomes
+    free): release the busy servers that have finished by t, then take the best free server and put it
+    in the busy heap. O((n + m) log n).'
+- id: lc-ipo
+  role: ladder
+  card: sweep-with-heap
+  rung: 4
+  twist: The available items are those affordable now, and the best profit is taken.
+  summary: Up to k ≤ 10^5 projects may be done, one at a time; you start with capital w; project i needs
+    capital c_i and adds profit p_i; the largest capital at the end.
+  hints:
+  - Which projects can you start at a given moment?
+  - Those whose needed capital is at most your capital now; among them the one with the largest profit
+    is the best, since profit only helps later.
+  - 'Sort by needed capital; repeat k times: push the profits of all projects now affordable into a max-heap,
+    take the largest. O((n + k) log n).'
+- id: lc-minimum-cost-to-hire-k-workers
+  role: ladder
+  card: sweep-with-heap
+  rung: 5
+  twist: A ratio sets the pay of the whole group; the swept key is the highest ratio.
+  summary: n ≤ 10^4 workers with quality and minimum wage; hire exactly k; every hired worker is paid
+    in proportion to the quality, and at least the minimum wage; the least total pay.
+  hints:
+  - If a group is paid at the rate r per unit of quality, which rates are allowed?
+  - At least wage / quality for each worker, so the worker with the highest ratio in the group sets the
+    rate; the cost is the rate times the sum of the qualities.
+  - Sort by the ratio wage / quality; for the current worker as the highest ratio, the group is the k
+    smallest qualities among the workers seen so far (a max-heap with their sum). The cost is the ratio
+    times the sum; take the minimum over the steps (doubles).
+- id: ac-abc407_e
+  role: checkpoint
+  card: regret
+  summary: A sequence A of length 2N (N ≤ 2·10^5); a correct bracket sequence of length 2N is chosen;
+    the value is the sum of A_i over the positions i that carry "("; the largest value.
+- id: lc-smallest-range-covering-elements-from-k-lists
+  role: checkpoint
+  card: sweep-with-heap
+  summary: k sorted lists of integers (up to 3500 numbers in all); the smallest range [a, b] that contains
+    at least one number from each list.
+- id: lc-minimize-deviation-in-array
+  role: checkpoint
+  card: extract-and-replace
+  summary: An array of up to 5·10^4 positive integers; an even number may be halved and an odd number
+    doubled, any number of times; the least possible difference between the largest and the smallest number.
+- id: lc-maximum-performance-of-a-team
+  role: review
+  card: sweep-with-heap
+  review_set: 1
+  summary: Up to 10^5 engineers with speeds and efficiencies; a team of at most k has the performance
+    (the sum of the speeds) × (the smallest efficiency); the largest performance, modulo 10^9 + 7.
+- id: lc-sell-diminishing-valued-colored-balls
+  role: review
+  card: extract-and-replace
+  review_set: 1
+  summary: Up to 10^5 colours with inventory counts (up to 10^9); the value of a ball is the number of
+    balls of its colour in stock; sell exactly orders balls (up to 10^9) for the largest total value,
+    modulo 10^9 + 7.
+- id: lc-two-best-non-overlapping-events
+  role: review
+  card: sweep-with-heap
+  review_set: 1
+  summary: Events with a start, an end and a value; choose at most two that do not overlap (the second
+    starts after the first ends); the largest total value.
+- id: lc-meeting-rooms-iii
+  role: review
+  card: sweep-with-heap
+  review_set: 2
+  summary: n rooms and meetings with distinct start times; a meeting takes the free room of the smallest
+    number, or waits for the first room to become free and keeps its length; the room that held the most
+    meetings (the smallest number on ties).
+- id: lc-earliest-second-to-mark-indices-ii
+  role: review
+  card: regret
+  review_set: 2
+  summary: 'Arrays nums (n ≤ 5000) and changeIndices (m ≤ 5000); each second one of: decrement a number,
+    set nums[changeIndices[s]] to 0, mark a zero index, or nothing; the earliest second at which all indices
+    can be marked, or -1.'
+- id: lc-total-cost-to-hire-k-workers
+  role: review
+  card: sweep-with-heap
+  review_set: 2
+  summary: An array of costs, k hiring sessions and a number candidates; in each session hire the cheapest
+    worker among the first candidates and the last candidates of the remaining ones (the smallest index
+    on ties); the total cost.
+- id: lc-minimum-interval-to-include-each-query
+  role: review
+  card: sweep-with-heap
+  review_set: 3
+  summary: Up to 10^5 intervals [l, r] and queries; for each query the size r − l + 1 of the smallest
+    interval that contains it, or -1.
+- id: lc-zero-array-transformation-iii
+  role: review
+  card: sweep-with-heap
+  review_set: 3
+  summary: An array nums of up to 10^5 numbers and up to 10^5 queries [l, r]; each query may decrement
+    each index in its range by at most 1 (chosen index by index); the most queries that can be removed
+    so that nums can still become all zeros, or -1.
+- id: lc-pizza-with-3n-slices
+  role: review
+  card: regret
+  review_set: 3
+  summary: A circular pizza of 3n slices (up to 500) with sizes; you pick a slice, your two friends take
+    the neighbouring slices, and so on until none are left; the largest total of the slices you can pick.
+- id: lc-maximum-number-of-events-that-can-be-attended
+  role: lookalike
+  card: sweep-with-heap
+  summary: Up to 10^5 events with a first and a last day; at most one event is attended each day, on any
+    day of its window; the largest number of events attended.
+- id: lc-maximum-number-of-events-that-can-be-attended-ii
+  role: lookalike
+  card: sweep-with-heap
+  summary: Events with a start day, an end day and a value, and a number k; an event occupies its whole
+    range and two attended events may not share a day; at most k events; the largest total value (k ·
+    n ≤ 10^6).
+- id: cf-1249D2
+  role: lookalike
+  card: deadline-heap
+  summary: n ≤ 2·10^5 segments on the points 1..2·10^5 and a number k; the fewest segments to remove so
+    that no point is covered by more than k of the remaining segments, and which. †
+- id: cf-1249D1
+  role: lookalike
+  card: deadline-heap
+  summary: The same question with n, k and the coordinates at most 200. †
+- id: lc-maximum-subsequence-score
+  role: drill
+  summary: Two arrays of up to 10^5 numbers and a number k; choose k indices; the score is (the sum of
+    the chosen nums1) × (the smallest chosen nums2); the largest score.
+- id: lc-single-threaded-cpu
+  role: drill
+  summary: Up to 10^5 tasks with an enqueue time and a processing time; the CPU, when idle, takes the
+    available task with the shortest processing time (the smallest index on ties); the order in which
+    the tasks are processed.
+- id: lc-maximum-number-of-eaten-apples
+  role: drill
+  summary: For each of n ≤ 2·10^4 days a tree gives some apples that rot after a number of days; one apple
+    can be eaten each day, including days after the n-th; the largest number of apples eaten.
+- id: lc-remove-stones-to-minimize-the-total
+  role: drill
+  summary: Up to 10^5 piles of stones and k ≤ 10^5 operations; in one operation choose a pile with x stones
+    and remove floor(x / 2) stones; the least total remaining.
+- id: lc-maximum-number-of-tasks-you-can-assign
+  role: drill
+  summary: Up to 5·10^4 tasks with strength requirements and workers with strengths; pills add strength
+    to a worker (at most one pill each); each worker does at most one task; the largest number of tasks
+    done.
+- id: lc-avoid-flood-in-the-city
+  role: drill
+  summary: A list of up to 10^5 days; a positive number is rain on that lake (a flood if the lake is full),
+    0 is a dry day on which one lake of your choice is emptied; a plan for the dry days that avoids all
+    floods, or none.
+- id: lc-longest-happy-string
+  role: drill
+  summary: Three counts a, b, c ≤ 100; the longest string made of the letters a, b, c with at most these
+    numbers of each letter and without "aaa", "bbb" or "ccc".
+- id: lc-maximum-score-from-removing-stones
+  role: drill
+  summary: Three piles of stones (up to 10^5 each); in one turn take one stone from each of two different
+    non-empty piles for one point; the largest score.
+drill:
+- problem: lc-maximum-subsequence-score
+  answer:
+    topic: '7.4'
+    card: sweep-with-heap
+  property: Sort the pairs by nums2 in decreasing order; the current nums2 is then the smallest of the
+    chosen; the best k indices among those seen are the k largest nums1, kept in a min-heap with their
+    sum.
+  why_others_fail: A search over all k-subsets is exponential, and a DP over (index, count) costs n·k,
+    too much for 10^5.
+- problem: lc-single-threaded-cpu
+  answer:
+    topic: '7.4'
+    card: sweep-with-heap
+  property: Sort the tasks by enqueue time; at each moment the available tasks are in a heap ordered by
+    (processing time, index); if the heap is empty, jump to the next enqueue time.
+  why_others_fail: Sorting once by processing time ignores which tasks have arrived; scanning all tasks
+    for each step costs n².
+- problem: lc-maximum-number-of-eaten-apples
+  answer:
+    topic: '7.4'
+    card: sweep-with-heap
+  property: Each day push (the day the batch rots, its count); drop the rotten batches; eat from the batch
+    that rots soonest; go on after the last day while the heap is not empty.
+  why_others_fail: Eating the freshest apples first wastes the ones that rot soon.
+- problem: lc-remove-stones-to-minimize-the-total
+  answer:
+    topic: '7.4'
+    card: extract-and-replace
+  property: 'A max-heap of the piles: k times pop the largest, remove half of it and push the rest back.'
+  why_others_fail: Taking the k largest original piles once ignores that a halved pile may still be the
+    largest.
+- problem: lc-maximum-number-of-tasks-you-can-assign
+  answer:
+    topic: '1.4'
+    card: answer-search
+  property: 'The answer is monotone in k: binary search on k; for a fixed k the k easiest tasks go to
+    the k strongest workers, and a deque decides who gets a pill.'
+  why_others_fail: A heap by deadline has no deadlines here; taking tasks greedily one by one does not
+    say which worker should get a pill.
+- problem: lc-avoid-flood-in-the-city
+  answer:
+    topic: '0.6'
+    card: ordered-set-lookup
+  property: Keep the set of dry days seen and a map from a lake to its last rain; when a lake rains again,
+    dry it on the first dry day after its last rain (a lower bound in the set).
+  why_others_fail: A heap by deadline does not tell which dry days come after the last rain of a given
+    lake.
+- problem: lc-longest-happy-string
+  answer:
+    topic: '0.6'
+    card: heap-extract
+  property: 'Build the string letter by letter: take the most frequent letter unless that would make three
+    in a row, then the second most frequent; a heap of (count, letter).'
+  why_others_fail: 'There is no limit to repair afterwards and no changing gain: it is a simple simulation
+    with the extreme element each time.'
+- problem: lc-maximum-score-from-removing-stones
+  answer:
+    topic: '1.5'
+    card: extreme-first
+  property: Always take from the two largest piles; for three piles the answer is also min(⌊(a + b + c)
+    / 2⌋, a + b + c − max).
+  why_others_fail: 'A heap works but is not needed: three piles and a formula.'
+lookalike_pairs:
+- a: lc-maximum-number-of-events-that-can-be-attended
+  b: lc-maximum-number-of-events-that-can-be-attended-ii
+  a_tool:
+    topic: '7.4'
+    card: sweep-with-heap
+  b_tool:
+    topic: '3.2'
+    card: two-index
+  shared_surface: Both give events with a first day and a last day and ask which events to attend so that
+    the number or the total value is as large as possible.
+  flipping_difference: 'In version I an event takes any one day inside its window, one event a day, and
+    only the number counts: the event with the earliest last day among the open ones is attended each
+    day, with a heap. In version II an event occupies its whole range and has a value, and at most k events
+    may be attended; the greedy fails, and the answer is a DP over (event, number attended) with a binary
+    search for the next event that does not overlap.'
+  flipping_input: 'The events (1, 3), (2, 4), (3, 5): in version I all three are attended on the days
+    1, 2, 3; in version II (each event occupies its whole range) the events overlap pairwise and only
+    one can be attended.'
+- a: cf-1249D2
+  b: cf-1249D1
+  a_tool:
+    topic: '7.4'
+    card: deadline-heap
+  b_tool:
+    topic: '1.5'
+    card: extreme-first
+  shared_surface: Both give segments on a line and a number k and ask for the fewest segments to remove
+    so that no point is covered by more than k remaining segments.
+  flipping_difference: In the easy version n, k and the coordinates are at most 200, so at each point
+    the covering segments are scanned for the one with the largest right end. In the hard version they
+    are up to 2·10^5, and the covering segments are kept in an ordered collection in which the largest
+    right end is found and removed in O(log n).
+  flipping_input: 'n = k = 2·10^5 with coordinates up to 2·10^5: a scan of all segments at each point
+    is about 4·10^10 steps, against n log n.'
+self_test:
+- q: Run Theorem 7.4.1 on the courses (duration, last day) = (4, 4), (3, 5), (2, 6). Which courses does
+    it keep?
+  a: 'Add (4, 4): the total 4 is in time. Add (3, 5): the total 7 passes the day 5, so the longest course
+    (4) is dropped and the total is 3. Add (2, 6): the total 5 is in time. The kept courses are (3, 5)
+    and (2, 6): two courses.'
+- q: Why is one removal enough when a new course makes the schedule late in Theorem 7.4.1?
+  a: The set was feasible before the new course, so only the constraint of the new course, which is the
+    last one, can fail. Removing a longest course lowers the total by at least the duration of the new
+    course, so the total is back to at most what it was before, which was within the previous last day
+    and so within the new, larger or equal, last day.
+- q: The potions 3, −5, 2, −1, −2 are drunk in a row (the health starts at 0). Which potions does the
+    loop keep?
+  a: 'Drink 3 (health 3). Drink −5: the health is −2, so the −5 is put back (the health 3). Drink 2 (5),
+    −1 (4), −2 (2). The kept potions are 3, 2, −1, −2: four potions.'
+- q: Run the heap of Theorem 7.4.2 for the target 15, the start fuel 5 and the stations (position, fuel)
+    = (4, 5), (9, 3), (10, 10).
+  a: 'The reach is 5; the station at 4 enters the heap {5}. The target is not reached: take 5, the reach
+    is 10 (1 stop). The stations at 9 and 10 enter: {3, 10}. Take 10: the reach is 20 ≥ 15 (2 stops).
+    The answer is 2.'
+- q: Why can the greedy of Theorem 7.4.2 fail when the stations have different prices and different fuels?
+  a: The largest fuel is no longer at least as good as the others, because it may cost much more. With
+    the requirement 10 and the items (fuel 10, price 100), (6, 1), (5, 1) the greedy pays 100 where 2
+    is enough. The exchange step needs an item that is better in both the fuel and the price.
+- q: Join the weights 1, 1, 2, 4 two at a time at the cost of the sum (Theorem 7.4.3 (b)). What is the
+    total cost?
+  a: 'Join 1 + 1 = 2 (cost 2); the items are 2, 2, 4: join 2 + 2 = 4 (cost 4); the items are 4, 4: join
+    them for 8. The total is 2 + 4 + 8 = 14.'
+- q: Why does Theorem 7.4.3 (a) need the gains of one item not to increase?
+  a: The proof says that the best k operations are the k largest gains of the whole table and that the
+    heap hands them out in order. If an item has a small first gain and a large second one, the large
+    one is offered only after the small one is taken; with the gains (0, 10) and (3, 2) and two operations
+    the process gets 3 + 2 = 5, not 0 + 10.
+- q: Run the sweep of Theorem 7.4.4 on the events (first, last) = (1, 3), (1, 3), (2, 2), (3, 3), one
+    event a day.
+  a: 'Day 1: the open events end on 3 and 3; attend one. Day 2: the event (2, 2) opens; the open ones
+    end on 3 and 2; attend the one ending on 2. Day 3: (3, 3) opens; the open ones end on 3 and 3; attend
+    one. Three events are attended; the fourth has no day left, since only the days 1, 2, 3 exist.'
+checkpoint:
+  time_limit_minutes: 150
+  problems:
+  - ac-abc407_e
+  - lc-smallest-range-covering-elements-from-k-lists
+  - lc-minimize-deviation-in-array
+decision_map:
+- weak_signal: The largest number of items done one after another by their deadlines, or taken in a row
+    while a running balance stays non-negative
+  choose: deadline-heap
+  when: Only the number of items counts, the limits come in a fixed order, and giving up the costliest
+    item restores a violated limit (Theorem 7.4.1).
+  over:
+  - card: zero-one
+    topic: '3.3'
+    because: 'The items have values: a knapsack.'
+  - card: interval-selection
+    topic: '1.5'
+    because: 'The intervals have fixed positions: sort by the end.'
+- weak_signal: The fewest or cheapest items to choose so that a running total stays above a bound at every
+    point (refuelling, brackets, buying votes)
+  choose: regret
+  when: The requirements are lower bounds on nested prefixes and the items are comparable (equal costs
+    or equal gains) (Theorem 7.4.2).
+  over:
+  - card: unbounded
+    topic: '3.3'
+    because: 'Neither the gains nor the costs are comparable: a DP.'
+  - card: extreme-first
+    topic: '1.5'
+    because: 'One requirement at the end only: sort and take the largest.'
+- weak_signal: The best result after k operations that each change one item (halve, add a student), or
+    the cheapest way to join pieces two at a time
+  choose: extract-and-replace
+  when: The gains of an item never increase, or the cost of a join is the sum of the weights (Theorem
+    7.4.3).
+  over:
+  - card: heap-extract
+    topic: '0.6'
+    because: An item that is taken is gone and not put back.
+  - card: two-index
+    topic: '3.2'
+    because: 'The gains of an item can rise: a DP over the number of operations.'
+- weak_signal: The most events or tasks done in windows of time, one at a time, or the fewest rooms or
+    machines for intervals
+  choose: sweep-with-heap
+  when: Items become available in a fixed order and the one that expires first can always be taken (Theorem
+    7.4.4).
+  over:
+  - card: interval-selection
+    topic: '1.5'
+    because: 'Fixed intervals: sort by the end, no heap.'
+  - card: merge-groups
+    topic: '4.4'
+    because: 'Items with values: sort by the value and use free days in a disjoint set.'
+glossary_added: []

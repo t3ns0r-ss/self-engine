@@ -1,0 +1,478 @@
+---
+title: "7.4 Greedy II: priority-queue greedy, regret greedy"
+sidebar:
+  order: 44
+topic: "7.4"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.4" />
+
+This topic combines [the first greedy topic](../../phase-1/1-5-greedy-1/) (a locally best choice that an exchange argument shows to be safe) and [the priority queue of the STL toolbox](../../phase-0/0-6-stl-toolbox/) (a heap that gives the best element of a changing collection in $O(\log n)$ time). In the first greedy topic the best choice could be found by sorting once. Here the choice depends on what has been seen so far, on what becomes available over time, or on what changed after it was used. A heap keeps the candidates, and an exchange argument says which one to take.
+
+## 1. Why this topic exists
+
+Here is a small problem. $n = 2 \cdot 10^5$ potions stand in a row. The $i$-th potion changes your health by $a_i$ (some are negative), your health starts at 0 and must never be negative, and you must drink in the order of the row. What is the largest number of potions you can drink? A subset can be chosen in $2^n$ ways, and a DP over the health has up to $2 \cdot 10^{14}$ values. But there is a simple plan: drink every potion in turn; whenever the health becomes negative, put back the most harmful potion drunk so far (it never needs to have been drunk). A heap holds the potions drunk, and the most harmful is at its top. The whole plan costs $n \log n$.
+
+The plan is greedy, but a greedy of a new kind: a choice (drink this potion) is made provisionally and may be withdrawn later. The lesson has four ideas.
+- **Take everything and drop the worst** when a limit is exceeded: the potions above, courses with last days, segments covering a point.
+- **Pay late**: a requirement on a prefix is repaired when it is violated, with the best item seen so far (refuelling in the past).
+- **Take the best and put a changed item back**: halve the largest number, merge the two smallest sticks.
+- **Sweep with a heap of what is available**: events that start and end, tasks that appear over time; always take the one that ends first.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.4" />
+
+### What this topic does not cover
+
+- The exchange argument itself, sorting by a rule, and the greedy choice of the earliest end for intervals: topic 1.5.
+- The heap as a container, its interface and the ordered set: topic 0.6. Dijkstra's algorithm with a heap belongs to topic 4.3 and the minimum spanning tree to topic 4.4.
+- Scheduling in which the items have values and the number is not what counts is a knapsack (topic 3.3); the greedy of this lesson is wrong for it, as the card shows.
+- The general theory of when a greedy works (matroids) is not in this course. The "undo item" form of regret (Buy Low Sell High) is shown in a template and explained by an example, not proved.
+
+## 3. Definitions
+
+- A **priority queue** (heap) holds numbers and gives the largest (or, with `greater`, the smallest) in $O(1)$ time, with $O(\log n)$ time for adding and for removing it. Example: after pushing 5, 2, 9 a max-heap gives 9 and, after removing it, 5.
+- An **exchange argument** shows that some optimal solution contains the greedy choice: take any optimal solution, swap one of its elements for the greedy choice, and check that it stays feasible and no worse.
+- A **course** has a **duration** $t$ and a **last day** $d$. A set of courses is **feasible** if, taken one after another in the order of the last days, each course ends on or before its last day. Example: the courses $(t, d) = (3, 3), (2, 4)$ are not feasible together (the second ends on day 5), but $(2, 4), (2, 5)$ are.
+- A **covering requirement** on a prefix says: among the chosen items that lie in the first $t$ items, the gains add up to at least $R_t$. The first $t$ items for different $t$ are nested.
+- The **gain** of an operation is how much it improves the total; the gains of one item are **non-increasing** if each next operation on the item gains no more than the one before.
+- An **event** has a first day and a last day; **earliest-deadline-first** (EDF) means that on each day the open event with the earliest last day is taken.
+- In the code, `priority_queue<int> h;` is a max-heap with `push`, `top`, `pop`; `priority_queue<int, vector<int>, greater<int>> h;` is a min-heap; pairs and tuples are compared first to last, so a heap of `pair<int, int>` orders by the first number; `multiset<int>` is an ordered collection with `begin()`, `prev(end())` and `erase`.
+
+## 4. Theory and proofs
+
+### 4.1 Take everything, drop the worst
+
+**Theorem 7.4.1 (take everything, drop the worst).** Let courses $1, \dots, n$ have durations $t_i > 0$ and last days $d_1 \le d_2 \le \dots \le d_n$ (sorted). A set $S$ is *feasible* if for every $i \in S$, $\sum_{j \in S,\ j \le i} t_j \le d_i$. Run: $S = \emptyset$; for $i = 1, \dots, n$: add $i$ to $S$, and if $\sum_{j \in S} t_j > d_i$, remove from $S$ a course with the largest duration. Then the final $S$ is a feasible set of the largest possible size, and the run takes $O(n \log n)$ time with a max-heap of the durations in $S$.
+
+:::tip[In plain words]
+Do every course for now. As soon as the schedule runs late, the course that wastes the most time is the one to give up: giving up any other course frees less time, and the number of courses given up is the same. Because the courses are looked at in the order of their last days, the only schedule that can run late is the last one added, so one removal repairs it.
+:::
+
+**A tiny instance.** The courses $(t, d) = (3, 3), (2, 4), (2, 5)$. Add $(3, 3)$: total 3, in time. Add $(2, 4)$: total 5 passes the last day 4, so the longest course (the one with $t = 3$) is dropped and the total is 2. Add $(2, 5)$: total 4, in time. Two courses are kept, and no set of three is feasible (the total 7 passes the last day 5). With $(100, 200), (1000, 1250), (200, 1300), (2000, 3200)$ the totals are $100, 1100, 1300$ and then $3300$ passes $3200$: the course of 2000 is dropped, and three courses are kept.
+
+**Proof.** Let $S_i$ be the set after the step $i$ and $f(i)$ the largest size of a feasible subset of $\{1, \dots, i\}$. We show by induction on $i$: **(a)** $S_i$ is feasible and $|S_i| = f(i)$; **(b)** for every $r \le |S_i|$, every feasible $r$-subset of $\{1, \dots, i\}$ has a total duration at least the sum of the $r$ shortest durations in $S_i$. For $i = 0$ both are empty statements. Let $T = S_{i-1} \cup \{i\}$.
+1. *A subset of a feasible set is feasible* (removing a course only lowers the sums), and if $S$ is feasible, $S \subseteq \{1..i-1\}$ and the total of $S \cup \{i\}$ is at most $d_i$, then $S \cup \{i\}$ is feasible (the other courses are unchanged and $i$ is the last one).
+2. *The lower bound (b) for $T$.* Let $O$ be a feasible $r$-subset of $\{1..i\}$. If $i \notin O$, its total is at least the sum of the $r$ shortest durations of $S_{i-1}$, by (b), and that is at least the sum of the $r$ shortest durations of $T$ (more courses to choose from). If $i \in O$, then $O \setminus \{i\}$ is a feasible $(r-1)$-subset of $\{1..i-1\}$, so its total is at least the sum of the $r - 1$ shortest of $S_{i-1}$ by (b), and with $t_i$ added it is at least the sum of the $r$ shortest of $T$ (those $r - 1$ and $i$ form an $r$-subset of $T$).
+3. *Case 1: the total of $T$ is at most $d_i$.* Then $T$ is feasible (step 1), $f(i) \le f(i-1) + 1 = |T|$, so $S_i = T$ satisfies (a); and (b) is step 2.
+4. *Case 2: the total of $T$ exceeds $d_i$.* A feasible subset $O$ of $\{1..i\}$ of size $f(i-1) + 1$ would contain $i$, and $O \setminus \{i\}$ has size $|S_{i-1}|$, so by (b) its total is at least the total of $S_{i-1}$; then the total of $O$ is at least the total of $T$, which exceeds $d_i$, but $i$ is the last course of $O$, so its total must be at most $d_i$: a contradiction. Hence $f(i) = f(i-1)$.
+5. *$T' = T$ without a longest course $m$ is feasible.* The courses before $i$ have sums no larger than in $S_{i-1}$, which is feasible. If $i \in T'$, the total of $T'$ is at most the total of $S_{i-1}$ (because $t_m \ge t_i$), which is at most the last day of the last course of $S_{i-1}$, which is at most $d_i$. And $|T'| = |S_{i-1}| = f(i-1) = f(i)$, so (a) holds for $S_i = T'$.
+6. *(b) for $T'$.* For $r \le |T'|$, the $r$ shortest durations of $T'$ are the $r$ shortest of $T$ (only a longest duration was removed), and the bound of step 2 holds for $T$. At the end $S_n$ is a feasible set of size $f(n)$. $\square$
+
+:::note[This proof needs]
+1. The courses are processed in the order of non-decreasing last days; this is why one removal is enough and why the new course is the last one of the set.
+2. Only the *number* of courses is maximised. With values (profits) on the courses the claim is false: the courses $(t, d, \text{value}) = (3, 4, 7)$ and $(2, 4, 6)$ cannot be taken together; dropping the longest keeps the second, with value 6, while the first alone has value 7. That is a knapsack (topic 3.3).
+3. The balance form is the same algorithm. In the Potions problem a good potion is always drunk, and a harmful potion is a course whose duration is its harm and whose last day is the sum of the good potions before it; the health is negative exactly when the total passes that last day, and the most harmful potion drunk is the longest course.
+4. The heap needs the durations only; the total is kept in a number (64 bits).
+:::
+
+<TheoremCode unit="7.4/thm-1" />
+
+The first line is the instance with the four courses (three are kept) and the second the tiny instance (two are kept). The check compares the loop with all subsets on 3000 random sets of up to 8 courses.
+
+### 4.2 Pay late
+
+**Theorem 7.4.2 (pay late).** Let there be items with gains $g_i \ge 0$ and costs $c_i \ge 0$, and nested groups $P_1 \subseteq P_2 \subseteq \dots \subseteq P_m$ of items, each with a number $R_t$. A set $X$ of items is *good* if for every $t$, $\sum_{i \in X \cap P_t} g_i \ge R_t$. Assume the items can be compared: item $e$ is *at least as good as* $x$ if $g_e \ge g_x$ and $c_e \le c_x$, and any two items are comparable in this way (this holds when all gains are equal, or when all costs are equal). Run: for $t = 1, \dots, m$, put the items of $P_t \setminus P_{t-1}$ into a heap; while the chosen gain inside $P_t$ is less than $R_t$, take from the heap an item that is at least as good as all the others and choose it; if the heap is empty, report that there is no solution. Then the run finds a good set of the least total cost, and reports "no solution" exactly when no good set exists.
+
+:::tip[In plain words]
+Do nothing until a requirement is violated. Then something earlier must have been chosen, and the best earlier item is always at least as good as any other earlier item that could be chosen instead, so it is safe to choose it now, even though the choice is made late. The heap keeps the earlier items that are still available.
+:::
+
+**A tiny instance.** A car with 10 units of fuel must reach the distance 100; there are stations at the positions 10, 20, 30, 60 with the fuels 60, 30, 30, 40, and every stop costs 1. The groups are the stations before each point that must be reached. At the start the car reaches 10, so the first station enters the heap; the target is not reached, and the largest fuel in the heap, 60, is chosen: the reach is 70. Now the stations at 20, 30, 60 enter the heap; the largest, 40, is chosen: the reach is 110 and the target is reached with 2 stops. With one station of fuel 100 at the position 10 and the start fuel 1, the heap is empty at the point 1: no solution.
+
+**Proof.**
+1. *The first violated requirement.* Let $t^\*$ be the first $t$ with $R_t > 0$ (the requirements before it are met by the empty set, as $R_t \le 0$), and let $e$ be an item at least as good as all items of $P_{t^\*}$. The run chooses $e$ first (the heap holds exactly $P_{t^\*}$). If $P_{t^\*}$ is empty, no set can meet $R_{t^\*} > 0$: there is no solution, as the run reports.
+2. *Some optimal good set contains $e$.* Let $X$ be an optimal good set with $e \notin X$. $X \cap P_{t^\*}$ is not empty, because $R_{t^\*} > 0$; take an item $x$ in it. Put $X' = (X \setminus \{x\}) \cup \{e\}$. For $t < t^\*$ the requirement is trivial. For $t \ge t^\*$, both $x$ and $e$ lie in $P_{t^\*} \subseteq P_t$, so the gain inside $P_t$ does not decrease ($g_e \ge g_x$); the cost does not increase ($c_e \le c_x$). So $X'$ is good and no more costly, and it contains $e$.
+3. *Reduction.* Remove $e$ from the instance and lower every requirement $R_t$ for the groups that contain $e$ by $g_e$. A set $Y$ is good for the reduced instance exactly when $Y \cup \{e\}$ is good for the original one, with the cost lowered by $c_e$. So by step 2 the optimal cost is $c_e$ plus the optimal cost of the reduced instance.
+4. *The run continues as a run on the reduced instance.* After choosing $e$, the run checks the same requirement again with the gain $g_e$ counted; in the reduced instance that requirement is lowered by $g_e$ and nothing is chosen yet. So the following choices of the two runs are the same. The reduced instance has one item fewer, so by induction on the number of items the run finds an optimal solution of it, and with $e$ added, of the original.
+5. *No solution.* The run reports it when the heap is empty and a requirement is still violated; then every item of $P_t$ has been chosen and still $\sum g < R_t$, so no good set exists. $\square$
+
+:::note[This proof needs]
+1. The groups are nested prefixes, so an item that is available for a requirement is available for all later ones. This is why the best earlier item can be chosen late.
+2. The items are totally comparable. With both the gains and the costs different, the choice is not safe: with a requirement of 10 and the items (gain 10, cost 100), (gain 6, cost 1), (gain 5, cost 1), taking the largest gain costs 100, but the two small items give 11 at the cost 2 (a knapsack, topic 3.3).
+3. The requirements can be in any order; each is a lower bound on a prefix. In the refuelling problem every point that must be reached gives one (the start fuel plus the fuel of the used stations before it must reach it); in the bracket problem, every prefix needs balance at least 0, and each opened `?` raises the balance by 2.
+4. For the furthest building, the least number of ladders needed to reach a given building is a single requirement (the total of the climbs minus the bricks, covered by the largest climbs), and the heap of the paid climbs solves all buildings at once.
+:::
+
+<TheoremCode unit="7.4/thm-2" />
+
+The three lines are the refuelling instance (2 stops), the impossible one ($-1$) and the car that is already at the target (0 stops). The check compares the heap with all subsets of up to 8 stations on 3000 random cases.
+
+### 4.3 Take the best and put a changed item back
+
+**Theorem 7.4.3 (take the best and put a changed item back).** (a) Let each item $i$ have gains $g_{i,1} \ge g_{i,2} \ge \cdots$ for its successive operations (the operations of one item are done in order). Choose $k$ operations to maximise the total gain. Taking, $k$ times, the largest next gain among all items (a heap holds the next gain of each item) gives the maximum total gain, in $O((n + k) \log n)$ time. In particular the least number of operations with a total gain at least $G$ is the least $k$ at which this process reaches $G$. (b) Merging two items costs the sum of their weights and gives one item of that weight. The cheapest way to merge $n$ items into one merges the two lightest items again and again (Huffman's rule).
+
+:::tip[In plain words]
+If every item gets less and less rewarding, the best $k$ operations are simply the $k$ best gains in the whole table, and a heap that always offers each item's next gain hands them out in order. For merging, the two lightest items belong at the bottom of the merge tree, where their weights are counted the most times, so they are merged first.
+:::
+
+**A tiny instance.** Halving numbers: $5, 19, 8, 1$ with the sum 33; at least 16.5 must be removed. The gains: halve 19 (gain 9.5), then the new 9.5 (4.75), then 8 (gain 4): the total 18.25 after 3 operations; two operations give only 14.25. Merging the weights $4, 3, 2, 6$: merge $2 + 3 = 5$ (cost 5); the items are $4, 5, 6$: merge $4 + 5 = 9$ (cost 9); then $6 + 9 = 15$ (cost 15); the total is 29, and the other orders cost more.
+
+**Proof.**
+1. *Part (a).* Any $k$ valid operations have a total gain at most the sum of the $k$ largest numbers in the whole table of gains. The heap holds the next gain of every item, and since the gains of an item do not increase, the largest gain not yet taken in the whole table is the next gain of some item, so it is in the heap and is the top. So after $k$ steps the process has taken the $k$ largest gains, and they are valid operations (each item's gains are taken in order). The total is the maximum. The statement about the least number of operations follows, since the totals only grow.
+2. *Part (b), the tree.* A way of merging is a binary tree whose leaves are the items; an item at depth $\delta$ is counted in $\delta$ merges, so the total cost is $\sum w_i \delta_i$.
+3. *The two lightest are siblings at the bottom.* Let $a \le b$ be the two lightest weights, and take an optimal tree. A deepest leaf has a sibling leaf (otherwise a deeper leaf would exist); call these two siblings $x$ and $y$. Swapping the positions of $a$ and $x$ changes the cost by $(w_a - w_x)(\delta_x - \delta_a) \le 0$ (because $w_a \le w_x$ and $\delta_x \ge \delta_a$), and likewise for $b$ and $y$. So an optimal tree exists in which $a$ and $b$ are siblings.
+4. *Induction.* In such a tree, replacing the siblings $a$ and $b$ by one leaf of weight $a + b$ gives a tree for the $n - 1$ items, and the cost is lower by exactly $a + b$ (those two leaves were one level deeper). So the optimum for $n$ items is $a + b$ plus the optimum for the $n - 1$ items with $a, b$ replaced by $a + b$, which by induction on $n$ the process finds. $\square$
+
+:::note[This proof needs]
+1. In (a), the gains of one item must not increase. If a later operation of an item gains more than an earlier one (a bonus after two steps), the largest next gain can miss it: with two items whose gains are $(0, 10)$ and $(3, 2)$ and two operations, the process takes $3 + 2 = 5$ and the best is $0 + 10 = 10$.
+2. In (a), the operations are independent except for the order inside one item. The operation does not change the others' gains.
+3. In (b), the merge cost is the sum of the two weights. For another cost (the product, or a cost that depends on the position) the rule can fail.
+4. Ties are broken arbitrarily; any of the equal choices works.
+:::
+
+<TheoremCode unit="7.4/thm-3" />
+
+The first two lines are the two halving instances (3 operations for $5, 19, 8, 1$ and for $3, 8, 20$) and the last two the merges ($29$ for $4, 3, 2, 6$, and 0 for a single item). The check compares the halving with a search over all sequences of choices (1500 cases of up to 4 numbers) and the merge with a search over all orders of pairs (3000 cases of up to 6 weights).
+
+### 4.4 The sweep with a heap of what is available
+
+**Theorem 7.4.4 (sweep with a heap).** (a) Events have a first day $s_i$ and a last day $e_i$ (integers); each day at most one event is attended, on a day inside its window, and each event once. Sweep the days in order: put into a min-heap (by last day) the events whose first day has come, drop the ones whose last day has passed, and attend the event with the smallest last day. Then the number of events attended is the largest possible. (b) Customers with arrival days $a_i$ and departure days $b_i$ (both days included) are given rooms, no two customers sharing a room on a day. Taking the customers in the order of arrival and giving each the room whose last customer leaves earliest, if that departure day is before the arrival day, and a new room otherwise, uses the fewest rooms: the largest number of customers present on one day.
+
+:::tip[In plain words]
+Among the events that are open today, the one that closes first is the one that will be missed if it is not taken now, and taking it does not stop us from taking any other event later. For rooms, a new room is opened only when every room in use holds somebody who is still there today; those people, plus the newcomer, are all present on the same day, so that many rooms were needed anyway.
+:::
+
+**A tiny instance.** The events $(1, 2), (2, 3), (3, 4), (1, 2)$. Day 1: the open events end on 2 and 2; attend one of them. Day 2: the event $(2, 3)$ opens; the open ones end on 2 and 3; attend the one ending on 2. Day 3: $(3, 4)$ opens; the open ones end on 3 and 4; attend the one ending on 3. Day 4: attend the one ending on 4. All four events are attended. With four events $(1, 2)$ only two can be attended. For rooms: the customers $(1, 2), (2, 4), (4, 4)$: the first gets room 1; the second arrives on day 2 when room 1 is still taken (departure 2 is not before 2): room 2; the third arrives on day 4: room 1 is free (departure 2 < 4): rooms used 2, the largest number present on one day is 2 (days 2 and 4).
+
+**Proof.**
+1. *Part (a), the first day.* Let $D$ be the first day and $e$ the open event with the smallest last day. Take an optimal schedule $O$. If $O$ attends no event on $D$ and $e$ is attended in $O$ on a later day, move $e$ to $D$; if $e$ is not attended in $O$ at all, add it: the count does not decrease. If $O$ attends an event $f \ne e$ on $D$ ($f$ is open on $D$, so its last day is at least that of $e$): if $e$ is not attended in $O$, replace $f$ by $e$; if $e$ is attended on a day $D' > D$, swap them: $f$ goes to $D'$, which is a valid day for $f$ because $D' \le e_e \le e_f$ and $D' > D \ge s_f$. In all cases there is an optimal schedule that attends $e$ on $D$.
+2. *Induction over the days.* After the first day, the remaining problem is the same problem with the day $D$ and the event $e$ removed (events whose last day has passed cannot be attended any more), so the sweep continues in the same way, and by induction on the number of days the sweep attends the largest possible number of events. If no event is open on a day, no event can be attended on that day.
+3. *Part (b), a lower bound.* The customers present on one day need different rooms, so at least as many rooms as the largest number $m$ present on one day are needed.
+4. *Part (b), the sweep opens a room only at need.* A new room is opened for a customer only if the room that frees up earliest has a departure day not before the arrival day. Then every room in use holds a customer who arrived no later than today and leaves no earlier, so is present today. Together with the newcomer these are as many customers present as the number of rooms after opening, so the number of rooms never exceeds $m$. $\square$
+
+:::note[This proof needs]
+1. Each event takes exactly one day. If events take several days, or the days are not integers, the earliest last day is no longer the right choice.
+2. The last days must be compared at the moment of the choice: events that have expired are dropped before choosing.
+3. For a time that jumps (days with nothing open), skip to the next first day, as the code does.
+4. The rooms rule uses "departure before arrival" because both days are included; with departure equal to arrival the room is still taken.
+:::
+
+<TheoremCode unit="7.4/thm-4" />
+
+The first three lines are the three instances (all four events, then the four events with two repeated, then four events that all want the same two days). The check compares the sweep with the largest matching of events to days (augmenting paths) on 3000 random sets of up to 8 events.
+
+## 5. Recognition Cards
+
+<Cards topic="7.4" />
+
+## 6. Templates
+
+Seven templates. Each shows only the function that matters; the program around it reads the input. Each is checked against a brute force (all subsets, all choices, or a DP) on thousands of random small inputs with many equal numbers, and on fixed tests with one item, an impossible case and ties.
+
+### The most potions with a non-negative health (Theorem 7.4.1)
+
+<CodeSnippet unit="7.4/potions" />
+
+**How it works.** `drunk` is a min-heap, so its top is the most harmful potion. Every potion is drunk (pushed, health changed); if the health is below 0, the most harmful potion drunk so far is put back, and the health rises by its harm, which is at least the harm of the potion just drunk. The answer is the size of the heap.
+
+**Alternative formulation.** The courses with last days of Theorem 7.4.1: sort by the last day, keep a max-heap of durations, drop the longest when the total passes the last day.
+
+### The furthest building (Theorem 7.4.2)
+
+<CodeSnippet unit="7.4/furthest-building" />
+
+**How it works.** Each climb is first paid with bricks and pushed into `paid`. When the bricks run out, the largest climb paid with bricks is changed into a ladder: the bricks for it come back. If there is no ladder left, the walk stops at the building `i`. The heap always holds the climbs paid with bricks; all the ladders are on the largest climbs seen so far, which is what is best at every point of the walk.
+
+**Alternative formulation.** A binary search on the reach, with a sort of the climbs up to the reach and a check that the total minus the largest `ladders` climbs fits in the bricks: $O(n \log^2 n)$.
+
+### The cheapest bracket sequence (Theorem 7.4.2)
+
+<CodeSnippet unit="7.4/brackets" />
+
+**How it works.** Every `?` is first closed (its closing cost is paid, the balance falls by 1) and its extra cost for opening, `open - close`, goes into a min-heap. When the balance is below 0, the `?` with the smallest extra cost is opened instead: the balance rises by 2 and the extra cost is paid. If the heap is empty the sequence cannot be repaired. At the end the balance must be 0.
+
+**Alternative formulation.** Decide the number of `?` to open from the end (it is fixed by the length), sort the extra costs of all `?`, and check the prefixes: the greedy above makes the choice online.
+
+### The least total after halving piles (Theorem 7.4.3 (a))
+
+<CodeSnippet unit="7.4/remove-stones" />
+
+**How it works.** The gain of an operation on a pile of `x` stones is `x / 2` (rounded down), and the next gain on the same pile is smaller or equal, so the best operation is on the largest pile. The heap holds the pile sizes: the largest is taken, reduced and pushed back. `total` is kept in 64 bits.
+
+**Alternative formulation.** For very large `k`, count the operations in rounds by binary search on the gain threshold; not needed at these limits.
+
+### The best team (a sweep with a heap)
+
+<CodeSnippet unit="7.4/max-performance" />
+
+**How it works.** Fix the smallest efficiency of the team. Going through the engineers from the highest efficiency down, the engineer being added has the smallest efficiency so far, so every team made of the engineers seen so far has this efficiency as its minimum (or a larger one, which only helps). For this efficiency the best team takes the `k` largest speeds seen so far: a min-heap of size `k` with their sum. The performance is the sum times the efficiency; the best over all steps is the answer.
+
+**Alternative formulation.** Sort by speed and keep the efficiency in a heap: the same cost, but the sum is harder to keep.
+
+### The fewest removals so that no point is covered more than k times (the exchange of Theorem 7.4.1)
+
+<CodeSnippet unit="7.4/segments" />
+
+**How it works.** Sweep the points from left to right. At a point, the segments that start there join `active` (their right ends in an ordered multiset); the ones whose right end is before the point leave. If more than `k` segments cover the point, the surplus must be removed, and the one that reaches farthest to the right is the best to remove: by an exchange argument, any solution removes some segment covering this point, and removing the one that ends last covers no more future points than removing any other. The answer counts the removals.
+
+**Alternative formulation.** A max-heap with lazy deletion of the expired segments (a segment is expired if its right end is before the point) does the same; the multiset is simpler to keep correct.
+
+### Buy low, sell high (the undo form of regret)
+
+<CodeSnippet unit="7.4/buy-sell" />
+
+**How it works.** The min-heap holds the prices at which a share could still be bought. On a day with the price `p`, if the cheapest price `m` in the heap is below `p`, a share bought at `m` is sold for the profit `p - m`. The price `p` is then pushed *twice*: once as the "undo" of this sale (if a later price `q` is above `p`, selling at `q` the share bought at `m` instead gives `q - m = (p - m) + (q - p)`, so the sale today is replaced by a sale at `q` with the extra profit `q - p`), and once as a new purchase today. If nothing is below `p`, `p` is pushed once. This form is not covered by a theorem of this lesson; the stress test against a DP over the number of shares held is what checks it.
+
+**Alternative formulation.** A DP over the day and the number of shares held, $O(n^2)$, which is the brute force of the test.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template or of a worked example and running the random stress test against the brute force; the input shown is a small one that fails (the smallest found among thousands of random cases, or a simpler one that was checked by running it).
+
+### Bug: the least harmful potion is put back
+
+Template: the most potions with a non-negative health.
+
+```cpp
+priority_queue<long long, vector<long long>, less<long long>> drunk;   // instead of greater<long long>
+```
+
+Input: `3`, then the numbers `4 -8 4`.
+
+Wrong output `1`, correct output `2`. With a max-heap the top is the largest potion, so when the health goes negative (after the $-8$) the code puts back the potion $+4$, which hurts, and not the $-8$. The potion to put back is the most harmful one, the smallest number (Theorem 7.4.1, note 3).
+
+**Fix:** keep a min-heap, `greater<long long>`.
+
+### Bug: the courses are sorted by duration
+
+Worked example: Course Schedule III.
+
+```cpp
+sort(courses.begin(), courses.end(), [](auto& a, auto& b) { return a.first < b.first; });   // instead of a.second < b.second
+```
+
+Input: `2`, then the courses `2 2` and `1 8`.
+
+Wrong output `1`, correct output `2`. The courses must be taken in the order of the last days; sorted by duration, the course $(1, 8)$ comes first and the course $(2, 2)$ second, and the total 3 passes its last day 2, so the code drops a course; both fit if the course with the last day 2 is done first (Theorem 7.4.1, note 1).
+
+**Fix:** sort by the last day.
+
+### Bug: the shortest course is dropped
+
+Worked example: Course Schedule III.
+
+```cpp
+priority_queue<int, vector<int>, greater<int>> taken;               // instead of priority_queue<int>
+```
+
+Input: `3`, then the courses `1 2`, `3 5`, `5 4`.
+
+Wrong output `1`, correct output `2`. In the order of the last days the courses are $(1, 2), (5, 4), (3, 5)$; after the second one the total 6 passes the last day 4 and the code drops the shortest course, $(1, 2)$, so the total is still 5 and later nothing fits. The longest course must go (Theorem 7.4.1, step 5).
+
+**Fix:** a max-heap of the durations.
+
+### Bug: the smallest fuel is used first
+
+Worked example: Minimum Number of Refueling Stops.
+
+```cpp
+priority_queue<int, vector<int>, greater<int>> passed;              // instead of priority_queue<int>
+```
+
+Input: `9 5 3`, then the stations `4 5`, `5 3`, `16 7`.
+
+Wrong output `2`, correct output `1`. The car reaches the distance 5 and has passed the stations with 5 and 3 units of fuel. The target 9 needs only the station with 5: the reach 10. The code takes the 3 first (reach 8) and then needs one more stop. The largest fuel is the best earlier item (Theorem 7.4.2).
+
+**Fix:** a max-heap of the fuels.
+
+### Bug: the halved pile is not put back
+
+Template: the least total after halving piles.
+
+```cpp
+total -= x / 2;                                                     // instead of total -= x / 2, heap.push(x - x / 2);
+```
+
+Input: `2 2`, then the piles `8 1`.
+
+Wrong output `5`, correct output `3`. After the first operation the pile 8 is gone from the heap, so the second operation falls on the pile 1 and gains nothing. The changed item must go back into the heap, since its next gain may still be the largest (Theorem 7.4.3 (a)).
+
+**Fix:** push the reduced pile back.
+
+### Bug: the segment that ends first is removed
+
+Template: the fewest removals so that no point is covered more than k times.
+
+```cpp
+while ((int)active.size() > k) active.erase(active.begin()), removed++;   // instead of erase(prev(active.end()))
+```
+
+Input: `3 1`, then the segments `6 7`, `6 8`, `8 9`.
+
+Wrong output `2`, correct output `1`. At the point 6 two segments cover it and one must go. Removing the one that ends first (6–7) leaves 6–8, which still covers the point 8 together with 8–9, so a second removal is needed. Removing the one that ends last (6–8) solves the point 6 and does not trouble the points ahead.
+
+**Fix:** remove the segment with the largest right end.
+
+### Bug: a room is reused on the day the customer leaves
+
+Worked example: Room Allocation.
+
+```cpp
+if (!inUse.empty() && inUse.top().first <= arrival) ...             // instead of inUse.top().first < arrival
+```
+
+Input: `2`, then the customers `1 1` and `1 5`.
+
+The program prints nothing and stops with an error (its own check finds two customers in the same room), correct output `2`. Both days of a stay are included: the customer who leaves on the day 1 is still there on the day 1, when the second customer arrives. A room is free only if the departure day is *before* the arrival day (Theorem 7.4.4, note 4).
+
+**Fix:** compare with `<`.
+
+### Bug: the engineers are swept from the lowest efficiency
+
+Template: the best team.
+
+```cpp
+sort(order.begin(), order.end(), [&](int a, int b) { return efficiency[a] < efficiency[b]; });   // instead of >
+```
+
+Input: `2 2`, then the speeds `7 5` and the efficiencies `7 3`.
+
+Wrong output `84`, correct output `49`. With the engineers swept from the lowest efficiency, the efficiency of the current engineer is the *largest* so far, not the smallest, and the product $12 \times 7 = 84$ is an overestimate that no team has (the team of both engineers has the smallest efficiency 3).
+
+**Fix:** sort by efficiency in decreasing order, so that the current engineer has the smallest efficiency of all engineers seen.
+
+### Bug: the sale is not undone
+
+Template: buy low, sell high.
+
+```cpp
+options.push(p);  // the undo item of this sale                    (the line is deleted)
+```
+
+Input: `4`, then the prices `2 5 7 6`.
+
+Wrong output `5`, correct output `6`. The best plan is: buy at 2, buy at 5, sell at 7, sell at 6, with the profit $5 + 1 = 6$. The code sells at 5 on the second day (profit 3), and on the third day sells at 7 the share bought at 5 (profit 2). Without the undo item the sale at 5 can never be turned into a sale at 7 while the share bought at 5 is kept for the price 6, so the last day finds nothing to buy low. The second copy of 5 in the heap, pushed after the first sale, is exactly this undo item.
+
+**Fix:** push the price twice after a sale.
+
+## 8. Worked examples
+
+### Example 1: Course Schedule III
+
+[LeetCode 630: Course Schedule III](https://leetcode.com/problems/course-schedule-iii/). In short: $n \le 10^4$ courses, course $i$ takes $t_i$ days and must be finished by day $d_i$; one course at a time, no breaks; find the largest number of courses that can be taken.
+
+#### Step 1: Constraints → budget
+
+The subsets are $2^n$. A DP "the least time to take $j$ courses" costs $n^2 = 10^8$ steps: possible at these limits, but not for $n$ near $2 \cdot 10^5$. We want about $n \log n$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A search over subsets ([topic 0.5](../../phase-0/0-5-brute-force/)): $2^n$.
+- A DP over (course, number of courses) ([topic 3.3](../../phase-3/3-3-knapsack/)): $n^2$ steps, too slow for larger limits.
+- Sort by the last day and keep a heap, dropping the longest course when the schedule runs late: the card "Take everything, drop the worst when a limit is exceeded".
+
+#### Step 3: Property check → decision
+
+The courses are sorted by their last days, and the question asks for the *number* of courses, not for their values. A schedule that runs late can be repaired by giving up one course, and the longest one frees the most time. Decision: Theorem 7.4.1.
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.4.1 with the courses sorted by $d_i$, the loop "add the course, and if the total passes its last day drop the longest" keeps a feasible set of the largest size. The total of the kept durations is a 64-bit number (up to $10^4 \cdot 10^4$ fits in 32 bits, but the habit is cheap).
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.4/example-1" />
+
+#### Step 6: Alternative approach
+
+A DP over the courses in the order of the last days, where `dp[j]` is the least time to take $j$ courses: $O(n^2)$ time, enough for the original limits ($10^8$ steps), and it uses no heap.
+
+### Example 2: Minimum Number of Refueling Stops
+
+[LeetCode 871: Minimum Number of Refueling Stops](https://leetcode.com/problems/minimum-number-of-refueling-stops/). In short: a car starts with `startFuel` units of fuel and must drive to a target at distance `target` (one unit of fuel per unit of distance); station $i$ is at the position $p_i$ and has $f_i$ units of fuel, all of which are taken at a stop; find the fewest stops, or $-1$.
+
+#### Step 1: Constraints → budget
+
+There may be up to 500 stations in the original problem; here any number is allowed, so we want $n \log n$. The subsets of stations are too many for a long list.
+
+#### Step 2: Question form → candidate tools
+
+- A search over subsets of stations ([topic 0.5](../../phase-0/0-5-brute-force/)): $2^n$.
+- A DP: `dp[j]` = the furthest distance with $j$ stops, $O(n^2)$ ([topic 3.2](../../phase-3/3-2-dp-foundations/)): correct, enough for 500 stations.
+- The heap of the stations passed, using the best one when the fuel runs out: the card "Pay late".
+
+#### Step 3: Property check → decision
+
+All stops cost 1, so every station is comparable to every other by its fuel only: the largest fuel is at least as good as any other. The requirement for each point to be reached is a lower bound on the total fuel of the stations before it, and the groups of stations before the successive points are nested. Decision: Theorem 7.4.2.
+
+#### Step 4: Proof for this problem
+
+Apply Theorem 7.4.2 with the stations as items (gain = fuel, cost = 1), the points to be reached as the requirements ($R$ = the position minus `startFuel`, for the groups of stations strictly before the point) and the target as the last requirement. The run is the code: advance while the fuel reaches, put the passed stations into the heap, and when the target is not reached take the largest fuel. An empty heap means that no set of stations is good.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.4/example-2" />
+
+#### Step 6: Alternative approach
+
+The DP over the number of stops: process the stations in order of position and for $j$ from the largest down, `dp[j + 1] = max(dp[j + 1], dp[j] + fuel)` if `dp[j]` reaches the station; the answer is the smallest $j$ with `dp[j] >= target`. It is $O(n^2)$ and does not need the exchange argument.
+
+### Example 3: Room Allocation
+
+[CSES 1164: Room Allocation](https://cses.fi/problemset/task/1164). In short: $n \le 2 \cdot 10^5$ customers arrive on the day $a_i$ and leave on the day $b_i$ (both days included); give each customer a room so that nobody shares a room on the same day, using the fewest rooms; print the number of rooms and a room for each customer.
+
+#### Step 1: Constraints → budget
+
+We need about $n \log n$ steps and the assignment itself, which has $n$ numbers.
+
+#### Step 2: Question form → candidate tools
+
+- Try all assignments ([topic 0.5](../../phase-0/0-5-brute-force/)): far too many.
+- Sort the customers by arrival and find a free room by scanning all rooms: $O(n \cdot \text{rooms})$, up to $4 \cdot 10^{10}$.
+- A heap of the rooms in use by their departure: the card "Sweep with a heap of what is available".
+
+#### Step 3: Property check → decision
+
+The customers are handled in the order of arrival, and the room that becomes free first is the best candidate for the next arrival (if even that one is not free, no room is). Decision: Theorem 7.4.4 (b).
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.4.4 (b) the sweep uses as many rooms as the largest number of customers present on one day, which is the least possible. The heap stores (departure day, room); the room at the top is the one that frees first. A customer takes it if its departure is *before* the arrival (both days are included, so equal days still conflict); otherwise a new room is opened. The program of the unit prints the number of rooms and checks that no two customers who share a room overlap.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.4/example-3" />
+
+#### Step 6: Alternative approach
+
+Sort the arrivals and the departures separately and sweep: the number of rooms is the maximum, over the time, of arrivals so far minus departures so far. To print the assignment, keep a stack of free rooms: it is the same sweep with the free rooms on a stack instead of a heap.
+
+## 9. Problem ladder
+
+<Ladder topic="7.4" />
+
+## 10. Identification drill
+
+<Drill topic="7.4" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.4" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.4" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.4" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.4" />

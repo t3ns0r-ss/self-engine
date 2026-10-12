@@ -1,0 +1,999 @@
+# Topic 6.4 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
+id: '6.4'
+uses:
+- topic: '0.3'
+  what: 'String processing: comparing two strings letter by letter and reading a string by its letters'
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check, and the plain comparison of two suffixes'
+- topic: '0.6'
+  what: 'Standard containers: sets of substrings, and maps from letters to letters'
+- topic: '1.1'
+  what: 'Sorting: sorting the suffixes, counting sort, and the sort by a pair of keys'
+- topic: '1.2'
+  what: 'Prefix sums: the difference array that counts the substrings of every length'
+- topic: '1.4'
+  what: 'Binary search: the first suffix that is not below a pattern'
+- topic: '1.5'
+  what: 'Greedy: the letters of the string chosen in turn, as small as the order allows'
+- topic: '1.6'
+  what: 'Monotonic stack: the sum of range minimums over the LCP array'
+- topic: '3.2'
+  what: 'Dynamic programming: the table over substrings of the review problems'
+- topic: '3.4'
+  what: 'Sequence DP: the longest common subsequence of two strings, the contrast with a common substring'
+- topic: '3.6'
+  what: 'Interval DP: counting palindromic substrings of a short string'
+- topic: '4.4'
+  what: 'DSU: merging groups of suffixes by decreasing LCP value'
+- topic: '5.1'
+  what: 'Range minimum: the sparse table over the LCP array and over the starts of a block'
+- topic: '6.1'
+  what: 'Polynomial hashing: the probable alternative for comparing blocks'
+- topic: '6.2'
+  what: 'Prefix function: matching one pattern, the contrast with many patterns on a fixed text'
+- topic: '6.3'
+  what: 'Trie: a set of words, the contrast with all suffixes of one text'
+theorems:
+- id: 6.4.1
+  title: The suffix array by doubling
+  plain_words: First sort the positions by their first letter. A block of two letters is a block of one
+    letter followed by another block of one letter, so two positions are ordered by their first block
+    and, if that ties, by the second block, and both ranks are already known. Sorting pairs of ranks gives
+    the order of the blocks of size 2, then 4, then 8, and so on. After about $\log_2 n$ rounds the blocks
+    are as long as the whole string and the order is complete.
+  code: 6.4/thm-1
+- id: 6.4.2
+  title: LCP as a range minimum
+  plain_words: 'Going from one suffix to another in sorted order you pass all the suffixes between them,
+    and every step can only lose letters of the common beginning, never get them back: a string that lies
+    between two strings that begin with $P$ begins with $P$ as well. So the common beginning of the two
+    ends is the smallest of the common beginnings of the neighbours on the way.'
+  code: 6.4/thm-2
+- id: 6.4.3
+  title: The LCP array in linear time
+  plain_words: If the suffix just before suffix $i$ shares $h$ letters with it, then cutting the first
+    letter off both gives two suffixes that still share $h - 1$ letters and still stand in the same order.
+    The suffix just before suffix $i + 1$ is at least as close to it as that one. So when we go on to
+    suffix $i + 1$ we already know $h - 1$ letters agree and do not compare them again.
+  code: 6.4/thm-3
+- id: 6.4.4
+  title: Different substrings
+  plain_words: Every substring is the beginning of some suffix. Give it to the first suffix in sorted
+    order that starts with it. A suffix does not keep the beginnings that it shares with the suffix before
+    it, only the longer ones, so it gets (its length) minus (its LCP value) new substrings. Adding up
+    over all suffixes gives the total. And since the suffixes are sorted, the new substrings of a later
+    suffix are all larger than those of an earlier suffix.
+  code: 6.4/thm-4
+- id: 6.4.5
+  title: The block of a pattern
+  plain_words: 'All suffixes that start with the pattern stand next to each other in the sorted list,
+    like all the words that start with "ana" in a dictionary. Look only at the first $m$ letters of each
+    suffix: in the sorted list these short pieces go from "smaller than $p$", through "equal to $p$",
+    to "larger than $p$", so two binary searches find where the equal ones start and end. The size of
+    that stretch is the number of occurrences.'
+  code: 6.4/thm-5
+cards:
+- id: distinct-substrings
+  name: 'Different substrings of one string: how many, how many of each length, the k-th (suffix array)'
+  from_theorem: 6.4.4
+  decisive_property: The question counts, orders or scores the different substrings of one string (how
+    many, how many of each length, the k-th in dictionary order, a sum over substrings of a value that
+    depends on how often each occurs), and the string is long enough (10^5 letters or more) that its n²/2
+    substrings cannot be listed.
+  how_to_test: 'Write the question as "over the different substrings of s: count them, count those of
+    length k, find the k-th, or add up a value for each". Estimate n²/2 and what it costs to store or
+    hash that many strings. If n is up to about 3000, a set of strings or a table of size n² is enough.
+    For larger n, check that equal strings at different places count once, and use the suffix array with
+    the LCP array: each suffix owns the prefixes that are longer than its LCP value.'
+  constraint_shapes:
+  - 'n = 10^5 and the number of different substrings: n²/2 = 5·10^9 substrings by place, while the suffix
+    array and the LCP array take about n log n = 1.7·10^6 steps and one pass'
+  - 'n = 10^6 and the number of different substrings of every length: n²/2 = 5·10^11 hashes, against about
+    2·10^7 steps for the suffix array with counting sort and 10^6 for the counts'
+  weak_signals:
+  - form: Asks for the number of different substrings, or for the k-th different substring in dictionary
+      order
+    shape: n up to 10^5 or 5·10^5, and k up to n(n+1)/2, which needs 64 bits
+  - form: Asks for the number of different substrings of each length k = 1 … n
+    shape: n up to 10^5 to 10^6, one answer for each length
+  - form: Asks for a sum or a maximum over all different substrings of a value that depends on how many
+      times each occurs (the square of the count, length times count)
+    shape: n up to 2·10^5, a stack or a DSU over the LCP values
+  kill_signals:
+  - 'The question is about different subsequences, not substrings: aba has 5 different substrings but
+    6 different subsequences (a, b, ab, aa, ba, aba), so n(n+1)/2 minus the sum of the LCP values gives
+    5 where 6 is needed'
+  - 'n is up to about 2000 and only a count is asked: a set of all substrings (or of their hashes) is
+    simpler and fast enough'
+  in_action:
+    statement: Given a string s, print the number of its different substrings.
+    constraints: '|s| ≤ 10^5.'
+    budget: n²/2 = 5·10^9 substrings by place. Need about n log n.
+    candidates:
+    - tool: Put every substring in a set of strings (topic 0.6)
+      verdict: rejected
+      because: 5·10^9 strings, far too many to store.
+    - tool: Hash every substring and count the different hashes (topic 6.1)
+      verdict: rejected
+      because: 'n²/2 hashes: 5·10^9 steps even at O(1) each.'
+    - tool: The sorted suffixes with the LCP array (this topic)
+      verdict: chosen
+      because: Each suffix owns n − sa[r] − lcp[r] new substrings (Theorem 6.4.4), so the count is one
+        pass over the arrays.
+    property_check: The question is about different substrings of one text, taken as strings. The count
+      is n(n+1)/2 minus the sum of the LCP values (Theorem 6.4.4 (a)), with no other condition. The property
+      holds.
+    decision: 'Build the suffix array (Theorem 6.4.1) and the LCP array (Theorem 6.4.3); print n(n+1)/2
+      − Σ lcp as a 64-bit number: O(n log n).'
+  examples:
+    positive:
+    - inline:
+        input: How many different substrings does banana have?
+        answer: '15'
+        why: n(n+1)/2 = 21 and the LCP array is 0, 1, 3, 0, 0, 2 with the sum 6, so 21 − 6 = 15 (Theorem
+          6.4.4 (a)).
+    - inline:
+        input: How many different substrings of length 3 does banana have?
+        answer: '3'
+        why: 'Four suffixes have at least 3 letters and one LCP value (the 3) is at least 3, so 4 − 1
+          = 3: ban, ana, nan (Theorem 6.4.4 (b)).'
+    - worked_example: cses-2108
+      why: 'The k-th different substring of a string of up to 10^5 letters: walk the ranks and subtract
+        the number of substrings that each suffix owns.'
+    negative:
+    - inline:
+        input: How many different subsequences (letters taken in order, not necessarily next to each other)
+          does aba have?
+        answer: 6 (a, b, ab, aa, ba, aba)
+        method_gives: '5'
+        why: The formula counts substrings, and aba has only 5 of them (a, b, ab, ba, aba). A subsequence
+          may skip letters, so the sorted suffixes do not describe them.
+      correct_tool:
+        topic: '3.2'
+        card: linear-state
+    - problem: lc-palindromic-substrings
+      why: 'Counts the substrings that are palindromes, by place, in a string of up to 1000 letters: expanding
+        around each centre or filling an interval table is enough, and neither distinct strings nor the
+        dictionary order are involved.'
+      correct_tool:
+        topic: '3.6'
+        card: palindrome-segment
+  lookalikes:
+  - description: Counting the different blocks of one fixed length k in a string
+    tool:
+      topic: '6.1'
+      card: distinct-by-hash
+    flipping_difference: For one length k a set of the hashes of the windows counts them in O(n); the
+      LCP array answers all lengths at once and exactly.
+  - description: Different substrings of a short string (up to about 2000 letters)
+    tool:
+      topic: '0.6'
+      card: set-membership
+    flipping_difference: 'A set of substrings holds n²/2 strings: fine for a short string, impossible
+      beyond about 3000 letters.'
+  complexity: O(n log n) to build the suffix array (counting sort), O(n) for the LCP array and for each
+    count over the arrays; memory O(n).
+- id: sorted-suffixes
+  name: 'Suffixes in sorted order: ranks, the smallest rotation, the largest substring, the order of positions'
+  from_theorem: 6.4.1
+  decisive_property: The question compares substrings that run to the end of the string (suffixes), or
+    rotations (suffixes of the doubled string), and needs the sorted order or the rank of every suffix,
+    or the best one, in a string long enough that comparing two suffixes letter by letter (up to n letters
+    each) is too slow.
+  how_to_test: Write the question as "order the suffixes", "which suffix is the smallest or largest",
+    "is the suffix i smaller than the suffix j". Multiply the number of comparisons (n log n) by the cost
+    of one (up to n letters, as in aaa…a). If the product is too large, sort the suffixes once by the
+    doubling of Theorem 6.4.1 and use the ranks as O(1) comparisons. If the question is about a subsequence,
+    or about substrings that do not reach the end of the string, it is not about suffixes.
+  constraint_shapes:
+  - 'n = 2·10^5 and sorting the suffixes by direct comparison: about 3.5·10^6 comparisons of up to 2·10^5
+    letters each on aaa…a, 7·10^11 steps, against about 3.6·10^6 for the doubling'
+  - 'n = 10^5 comparisons "is the suffix i smaller than the suffix j" inside a greedy: 10^5 comparisons
+    of up to 10^5 letters, 10^10 steps, against 10^5 reads of ranks'
+  weak_signals:
+  - form: Asks for the lexicographically smallest rotation (cyclic shift) of a string, or for a string
+      built by moving its beginning to its end
+    shape: n up to 10^6, the sorted suffixes of the doubled string
+  - form: Asks for the largest or the smallest suffix, or the largest substring
+    shape: n up to 4·10^5, one answer
+  - form: Gives the order of the suffixes and asks for a string with this order, or compares two suffixes
+      many times inside a greedy or a sort
+    shape: n up to 10^5 to 10^6, a permutation as the input or 10^5 comparisons
+  kill_signals:
+  - 'The question is about subsequences: the smallest subsequence of length 2 of bca is ba, but the first
+    suffix long enough in sorted order is bca and gives bc'
+  - 'The string changes between the questions (letters are changed, added or removed): the suffix array
+    would be built again after each change, n log n each time'
+  in_action:
+    statement: A string s is given. Print its lexicographically smallest rotation.
+    constraints: '|s| ≤ 10^6.'
+    budget: 'Comparing every pair of rotations: n² = 10^12 steps. Need about n log n.'
+    candidates:
+    - tool: Compare every pair of rotations (topic 0.5)
+      verdict: rejected
+      because: 10^12 steps.
+    - tool: Sort the rotations as strings (topic 1.1)
+      verdict: rejected
+      because: 'n log n comparisons of up to n letters each: 2·10^13 steps on a string such as aaa…a.'
+    - tool: The sorted suffixes of s + s (this topic)
+      verdict: chosen
+      because: The first suffix in sorted order that starts inside the first copy begins with the smallest
+        rotation (Theorem 6.4.1 gives the order).
+    property_check: The question is a comparison of rotations, and a rotation is the first n letters of
+      a suffix of s + s that starts in the first copy. If two rotations differ, the order of these suffixes
+      is the order of the rotations. The property holds.
+    decision: 'Build the suffix array of s + s (2·10^6 letters) with the counting sort; print the rotation
+      that starts at the first start below n: O(n log n).'
+  examples:
+    positive:
+    - inline:
+        input: What is the smallest rotation of aabaaa?
+        answer: aaaaab
+        why: Among the suffixes of aabaaaaabaaa that start in the first copy, the first in sorted order
+          starts at 3 and begins with aaaaab (Theorem 6.4.1 gives the order).
+    - inline:
+        input: What is the largest substring of abab?
+        answer: bab
+        why: 'A substring can always be extended to the end of the string and then gets larger, so the
+          largest substring is a suffix: the last suffix in sorted order, bab.'
+    - worked_example: cses-3225
+      why: The order of the suffixes is the input; every two neighbours in that order give a relation
+        between their first letters, from which the string is built.
+    negative:
+    - inline:
+        input: What is the smallest subsequence of length 2 of bca (letters in order, not necessarily
+          next to each other)?
+        answer: ba
+        method_gives: bc
+        why: 'The first suffix in sorted order that is long enough is bca, giving bc. A subsequence may
+          skip letters: b then a gives ba, which is smaller. Sorted suffixes describe substrings that
+          run to the end, not subsequences.'
+      correct_tool:
+        topic: '1.5'
+        card: extreme-first
+    - problem: lc-remove-duplicate-letters
+      why: 'Asks for the smallest string among the subsequences that keep every letter once: a monotonic
+        stack decides which letters to drop, and nothing here is a suffix of the text.'
+      correct_tool:
+        topic: '1.6'
+        card: nearest-greater
+  lookalikes:
+  - description: Comparing two blocks of equal length of one string
+    tool:
+      topic: '6.1'
+      card: substring-compare
+    flipping_difference: Hashes test whether two blocks are equal in O(1) but say nothing about their
+      order; the ranks of the suffixes give the order as well.
+  - description: Sorting a list of separate strings
+    tool:
+      topic: '1.1'
+      card: custom-order
+    flipping_difference: Separate strings are compared as they are; the suffixes of one string share their
+      letters, so a direct comparison may cost n each, and the doubling reuses the ranks.
+  complexity: O(n log n) with the counting sort (O(n log² n) with sort); one comparison of two suffixes
+    by rank is O(1); memory O(n).
+- id: occurrences-by-order
+  name: 'Many patterns in one fixed text: counts, first positions, k-th substring (the block of the suffix
+    array)'
+  from_theorem: 6.4.5
+  decisive_property: A text is fixed, and many patterns are asked about one after another (does it occur,
+    how many times, where is the first occurrence), so that running a matcher over the whole text for
+    each pattern is too slow, while the total length of the patterns is small.
+  how_to_test: 'Write the question as "for each pattern p: the occurrences of p in the text T". Compute
+    q·n for a matcher per pattern (the prefix function of topic 6.2). If that is too large, T does not
+    change and the patterns are plain letters (no wildcards), build the suffix array of T once: each pattern
+    then costs |p| log n.'
+  constraint_shapes:
+  - 'n = 10^5 and q = 5·10^5 patterns of total length 5·10^5: a matcher per pattern costs q·n = 5·10^10
+    steps, the suffix array about 1.7·10^6 + 5·10^5 · 17 ≈ 10^7'
+  - 'n = 5·10^5 and q = 5·10^5 queries with total length 5·10^5: one prefix function per query costs 2.5·10^11
+    steps, the binary searches about 10^7'
+  weak_signals:
+  - form: Asks, for many patterns, whether each occurs in a text, or how many times it occurs (overlaps
+      counted)
+    shape: text 10^5 to 5·10^5 letters, patterns of total length 5·10^5
+  - form: Asks for the first position, or the smallest start, of each pattern
+    shape: the same, plus a range minimum over the starts in the block
+  - form: Asks for the k-th substring of a string in dictionary order with repeated substrings counted
+      separately
+    shape: n up to 10^5 and k up to n(n+1)/2, walking down the blocks letter by letter
+  kill_signals:
+  - 'Only one pattern (or a few) is asked: the prefix function of topic 6.2 finds all occurrences in O(n
+    + |p|) with less code'
+  - 'The pattern has wildcards or allows mismatches: in abcb the pattern a?c (? matches any letter) occurs
+    once, but no suffix begins with the string a?c, so the block is empty'
+  in_action:
+    statement: A text and q patterns are given. For each pattern print how many times it occurs in the
+      text (occurrences may overlap).
+    constraints: '|T| ≤ 10^5, q ≤ 5·10^5, total length of the patterns ≤ 5·10^5.'
+    budget: 'One pass of the prefix function per pattern: q·n = 5·10^10 steps. Need about n log n + Σ|p|
+      log n.'
+    candidates:
+    - tool: The prefix function of each pattern with the text (topic 6.2)
+      verdict: rejected
+      because: 5·10^10 steps.
+    - tool: A trie of the patterns, walked from every place of the text (topic 6.3)
+      verdict: rejected
+      because: 'Up to n times the length of the longest pattern: 10^10 steps.'
+    - tool: The suffix array of the text and two binary searches per pattern (this topic)
+      verdict: chosen
+      because: The occurrences of a pattern are a block of ranks, found in |p| log n steps (Theorem 6.4.5).
+    property_check: The text is fixed, the patterns are plain strings, and the number of occurrences is
+      the size of one block of the suffix array (Theorem 6.4.5 (a)). The property holds.
+    decision: Build the suffix array of the text once; for each pattern find the block by two binary searches
+      and print last − first.
+  examples:
+    positive:
+    - inline:
+        input: How many times does ana occur in banana?
+        answer: '2'
+        why: 'The suffixes that begin with ana are ana and anana, at the ranks 1 and 2: a block of size
+          2. The two occurrences overlap (Theorem 6.4.5).'
+    - inline:
+        input: How many times does aa occur in aaaaa?
+        answer: '4'
+        why: 'Overlapping occurrences all count: the suffixes aaaaa, aaaa, aaa, aa begin with aa, a block
+          of 4.'
+    - worked_example: cses-2102
+      why: 'Whether each of up to 5·10^5 patterns occurs in a text of 10^5 letters: one binary search
+        per pattern in the suffix array.'
+    negative:
+    - inline:
+        input: The pattern is a?c, where ? matches any letter. How many times does it occur in abcb?
+        answer: '1'
+        method_gives: '0'
+        why: The block search treats ? as a letter and finds no suffix that begins with a?c, but the window
+          abc matches. With wildcards the matches no longer form a block of sorted suffixes.
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - problem: cses-1753
+      why: 'One pattern in one text of 10^6 letters: the prefix function finds all occurrences in O(n
+        + m), and no suffix array is needed.'
+      correct_tool:
+        topic: '6.2'
+        card: pattern-occurrences
+  lookalikes:
+  - description: Matching one pattern in a text
+    tool:
+      topic: '6.2'
+      card: pattern-occurrences
+    flipping_difference: 'One pattern: the linear prefix function. Many patterns on a fixed text: sort
+      the suffixes once, then log n steps per letter of a pattern.'
+  - description: Words of a set that begin with a given prefix
+    tool:
+      topic: '6.3'
+      card: prefix-tree
+    flipping_difference: A trie of a set of words answers "begin with"; the suffix array answers "occur
+      anywhere in the text", because every substring is the beginning of some suffix.
+  complexity: O(n log n) to build; O(|p| log n) per pattern for the block; the first position O(1) more
+    with a range-minimum table (O(n log n) memory); listing all occurrences O(count).
+- id: common-substring
+  name: 'How far two places agree: common substrings, sums of common beginnings, comparing blocks (LCP
+    array)'
+  from_theorem: 6.4.2
+  decisive_property: 'The answer is built from the length of the longest common beginning of pairs of
+    places of one string (or of several strings joined into one): the longest shared substring, a sum
+    over all pairs, the comparison of two arbitrary blocks; and the pairs are too many to compare one
+    by one.'
+  how_to_test: 'Write the quantity as a function of lcp(i, j) over pairs of positions. If every pair is
+    (0, j), comparing each suffix with the whole string, the Z-function of topic 6.2 is enough. If the
+    pairs are arbitrary, or all pairs, or taken between two strings, the LCP of two suffixes is a range
+    minimum over the LCP array (Theorem 6.4.2): O(1) per pair after an O(n log n) preparation.'
+  constraint_shapes:
+  - 'two strings of 5·10^5 letters each and their longest common substring: a table of n·m = 2.5·10^11
+    cells, against about (n + m) log (n + m) = 2·10^7 steps for the suffix array'
+  - 'n = 10^6 and the sum of lcp(i, j) over all pairs: n²/2 = 5·10^11 pairs, each compared in many letters,
+    against one pass of a stack over the LCP array, 10^6 steps'
+  weak_signals:
+  - form: Asks for the longest substring that two (or k) strings have in common, or the longest substring
+      that occurs twice in one string
+    shape: total length up to 10^6
+  - form: Asks for a sum or a count over all pairs of positions of the common beginning of their suffixes
+      (or for each position, the sum over all others)
+    shape: n up to 10^6, a 64-bit answer
+  - form: Asks to compare arbitrary pieces of a string in dictionary order, or to find where two given
+      positions first differ, many times
+    shape: n and q up to 2·10^5, queries (a, b)
+  kill_signals:
+  - 'The common part may skip letters: abc and acb have a common substring of 1 letter but a common subsequence
+    of 2 letters (ab or ac), so the suffix method answers 1 where 2 is needed'
+  - 'Every pair compares one suffix with the whole string only (how far does each suffix agree with the
+    beginning): the Z-function of topic 6.2 gives it in O(n) without sorting'
+  in_action:
+    statement: Two strings a and b are given. Print the length of their longest common substring.
+    constraints: '|a| + |b| ≤ 10^6.'
+    budget: 'A table over pairs of places: |a|·|b| up to 2.5·10^11 cells. Need about n log n.'
+    candidates:
+    - tool: A table over pairs of places (topic 3.2)
+      verdict: rejected
+      because: 2.5·10^11 cells.
+    - tool: A binary search on the length with the hashes of the windows (topic 6.1)
+      verdict: rejected
+      because: Correct in expected O(n log n), but probabilistic, and it does not give the sums over pairs
+        that come next; kept as the alternative formulation.
+    - tool: The suffix array of a#b with the LCP array (this topic)
+      verdict: chosen
+      because: A common substring is a common beginning of a suffix of a and a suffix of b, and the largest
+        is reached by two neighbours from different strings (Theorem 6.4.2).
+    property_check: The answer is the maximum of lcp over pairs (a suffix of a, a suffix of b). By Theorem
+      6.4.2 the common beginning of two suffixes is the minimum of the LCP values between them, so the
+      maximum is reached by neighbours in sorted order. The property holds.
+    decision: 'Join the strings with a separator, build the suffix array and the LCP array, and take the
+      largest lcp[r] over the ranks r whose suffix and previous suffix come from different strings: O(n
+      log n).'
+  examples:
+    positive:
+    - inline:
+        input: What is the length of the longest common substring of xabcdy and zbcdw?
+        answer: '3'
+        why: The substring is bcd. In the sorted suffixes of xabcdy#zbcdw the suffixes bcdw and bcdy#zbcdw
+          are neighbours from different strings with the common beginning 3 (Theorem 6.4.2).
+    - inline:
+        input: What is the sum of the longest common beginnings over all pairs of suffixes of banana?
+        answer: '7'
+        why: 'By Theorem 6.4.2 it is the sum of the minimums of all stretches of the LCP array 1, 3, 0,
+          0, 2 (after the first entry): the single values give 1 + 3 + 0 + 0 + 2 = 6, and the stretch
+          1, 3 adds its minimum 1: 7.'
+    negative:
+    - inline:
+        input: What is the length of the longest common subsequence of abc and acb?
+        answer: 2 (ab or ac)
+        method_gives: '1'
+        why: 'The suffix method finds common substrings, blocks without gaps: one letter here. Subsequences
+          may skip letters (a then b is in both strings), so the suffixes do not describe them.'
+      correct_tool:
+        topic: '3.4'
+        card: lcs
+    - problem: lc-sum-of-scores-of-built-strings
+      why: Needs the common beginning of every suffix with the whole string only, which is the Z-function,
+        found in one O(n) pass without sorting any suffixes.
+      correct_tool:
+        topic: '6.2'
+        card: z-compare
+  lookalikes:
+  - description: Whether two blocks of a string are equal (not how far they agree)
+    tool:
+      topic: '6.1'
+      card: substring-compare
+    flipping_difference: A hash test of two blocks is O(1) and needs no sort, but it is probable; the
+      LCP array gives the exact length of agreement for any pair, at the price of the sort.
+  - description: How far each suffix agrees with the whole string
+    tool:
+      topic: '6.2'
+      card: z-compare
+    flipping_difference: 'Only the pairs (0, i): the Z-function in O(n). Any other pairs: the range minimum
+      of Theorem 6.4.2.'
+  complexity: O(n log n) to build; O(1) per pair after an O(n log n) range-minimum table; the sum over
+    all pairs in O(n) by a stack; memory O(n log n) with the table.
+problems:
+- id: cses-2108
+  role: worked_example
+  summary: A string of n ≤ 10^5 letters and a number k; the k-th different substring in dictionary order.
+- id: cses-2102
+  role: worked_example
+  summary: A string of up to 10^5 letters and up to 5·10^5 patterns (total length up to 5·10^5); for each
+    pattern, YES if it occurs in the string and NO if not.
+- id: cses-3225
+  role: worked_example
+  summary: A permutation of 1..n (n ≤ 10^5) given as a suffix array; any string of letters a to z with
+    this suffix array, or -1 if there is none.
+- id: cses-2110
+  role: ladder
+  card: distinct-substrings
+  rung: 1
+  twist: 'Base case of the card: the number of different substrings of every length, from the owner of
+    each substring.'
+  summary: A string of n ≤ 10^5 letters; for every k from 1 to n, the number of different substrings of
+    length k.
+  hints:
+  - Which suffix can be said to "own" a different substring, so that no substring is counted twice?
+  - The first suffix in sorted order that begins with it. The suffix of rank r owns exactly one substring
+    of each length from lcp[r] + 1 to its own length.
+  - Add 1 to the lengths lcp[r] + 1 … n − sa[r] for each rank r with a difference array (topic 1.2), and
+    take running sums.
+- id: cf-123D
+  role: ladder
+  card: distinct-substrings
+  rung: 2
+  twist: A value for each different substring that depends on how many times it occurs, summed with a
+    stack.
+  summary: A string of up to 10^5 letters; for every different substring count its occurrences c and add
+    c(c + 1) / 2; print the total. †
+  hints:
+  - A substring that occurs c times is the beginning of c suffixes. Where are these suffixes in the sorted
+    order?
+  - They are a block of ranks in which all the LCP values (after the first) are at least the length of
+    the substring. For the lengths between two LCP levels the block, and so the count, stays the same.
+  - Use a stack over the LCP array to find, for each LCP value, the block of ranks in which it is the
+    smallest. The lengths between the value of the enclosing block and this value all occur c times each,
+    where c is the size of the block. Add (the number of such lengths) · c(c + 1) / 2, and handle the
+    single suffixes with their own lengths. 64-bit.
+- id: cf-873F
+  role: ladder
+  card: distinct-substrings
+  rung: 3
+  twist: Only some occurrences count; the best of length times count, found by merging neighbouring blocks
+    with a DSU.
+  summary: A string of up to 2·10^5 letters and a mask of forbidden positions; maximise (length of a substring)
+    × (the number of its occurrences that end at an allowed position). †
+  hints:
+  - '"Ends at an allowed place" is not the form the suffix array handles. What changes if you reverse
+    the string?'
+  - In the reversed string the condition is "starts at an allowed place". The occurrences of a substring
+    are a block of ranks; count the allowed starts in the block.
+  - Merge neighbouring ranks in decreasing order of the LCP value with a DSU (topic 4.4) that keeps the
+    number of allowed starts of each group; after each merge at the value h try h × (the allowed starts
+    in the group). Also try every single allowed suffix with its whole length.
+- id: cses-2103
+  role: ladder
+  card: occurrences-by-order
+  rung: 1
+  twist: 'Base case of the card: the count of occurrences as the size of a block, by two binary searches.'
+  summary: A string of up to 10^5 letters and up to 5·10^5 patterns (total length up to 5·10^5); for each
+    pattern, the number of its occurrences in the string.
+  hints:
+  - How would you find all occurrences of a pattern if the suffixes of the text were in dictionary order?
+  - The suffixes that begin with the pattern would stand next to each other. Find the first and the last
+    of them with two binary searches that compare only the first |p| letters of a suffix.
+  - Build the suffix array once (counting sort or sort of pairs); the answer is last − first for each
+    pattern.
+- id: cses-2104
+  role: ladder
+  card: occurrences-by-order
+  rung: 2
+  twist: 'The first occurrence: a range minimum over the starts in the block.'
+  summary: The same input; for each pattern, the first position (counted from 1) where it occurs, or -1.
+  hints:
+  - The block of the pattern holds the starts of all its occurrences. Which of them do you need?
+  - The smallest start in the block, which is a minimum of sa over a range of ranks.
+  - A sparse table over sa (topic 5.1) gives the minimum of a block in O(1); print -1 for an empty block
+    and the minimum plus 1 otherwise.
+- id: ac-abc362_g
+  role: ladder
+  card: occurrences-by-order
+  rung: 3
+  twist: 'The same count with the largest limits: the speed of the build matters.'
+  summary: A string S of up to 5·10^5 letters and Q ≤ 5·10^5 query strings T_i (Σ|T_i| ≤ 5·10^5); for
+    each, the number of substrings of S equal to T_i (substrings at different places count separately).
+  hints:
+  - This is the previous count with the limits at 5·10^5. What must be fast?
+  - 'The suffix array of 5·10^5 letters: sorting pairs with sort in every round takes about 5·10^5 · 19
+    · 19 comparisons in the worst case, so use the counting sort of the template.'
+  - Two binary searches per query, each step comparing at most |T_i| letters; print last − first.
+- id: ac-abc272_f
+  role: ladder
+  card: sorted-suffixes
+  rung: 1
+  twist: 'Base case of the card: rotations of two strings compared through the ranks of suffixes of the
+    doubled strings.'
+  summary: Two strings S and T of length N ≤ 2·10^5; the number of pairs (i, j) such that the rotation
+    of S by i is lexicographically smaller than or equal to the rotation of T by j.
+  hints:
+  - A rotation by i is the first N letters of a suffix of S + S. How can both strings be put into one
+    sorted list?
+  - Join S + S and T + T with a separator and build the suffix array of the whole. Two rotations are equal
+    exactly when their suffixes share at least N letters, so group the rotations by the LCP array.
+  - Sweep the 2N chosen suffixes in sorted order, group by group, and for each rotation of T add the number
+    of rotations of S in earlier groups and in its own group. 64-bit.
+- id: ac-arc044_d
+  role: ladder
+  card: sorted-suffixes
+  rung: 2
+  twist: The same relation between neighbours as in the worked example, now for the smallest string and
+    n up to 10^6.
+  summary: A permutation of 1..N (N ≤ 10^6) given as a suffix array; the lexicographically smallest string
+    of letters A to Z with this suffix array, or -1.
+  hints:
+  - What does the order of two neighbouring suffixes say about their first letters?
+  - The first letters cannot decrease along the order; they may stay equal only if the rests are in the
+    same order as the suffixes.
+  - 'Take the smallest letters greedily: stay equal whenever allowed and go to the next letter otherwise;
+    print -1 if more than 26 letters are needed. Write rank[N] = −1 for the empty rest.'
+- id: ac-arc050_d
+  role: ladder
+  card: sorted-suffixes
+  rung: 3
+  twist: A sort of the suffixes by a different rule, X + Y against Y + X, decided by LCP queries.
+  summary: A string of N ≤ 10^5 letters; put the N suffixes in an order so that their concatenation is
+    the smallest possible string, and print the order.
+  hints:
+  - Two pieces X and Y go in the order XY when XY ≤ YX. Can this be used as the comparator of a sort?
+  - XY and YX are both made of two pieces of the string S. For two suffixes, the first |Y| letters compare
+    X with Y, the next |X| − |Y| letters compare the rest of X with X itself, and the last |Y| letters
+    agree, because both suffixes end where S ends.
+  - Each comparison needs at most two LCP queries on suffixes of S (a suffix array with a sparse table,
+    topic 5.1). Sort the N suffixes with this comparator and print their positions.
+- id: ac-abc213_f
+  role: ladder
+  card: common-substring
+  rung: 1
+  twist: 'Base case of the card: for each position, the sum of the common beginnings with all suffixes,
+    by two stack passes.'
+  summary: A string S of N ≤ 10^6 letters; for each k, the sum over all j of the length of the longest
+    common prefix of the suffixes starting at k and j.
+  hints:
+  - For the suffix of rank r, how long is the common beginning with the suffix of rank r′? Use Theorem
+    6.4.2.
+  - For r′ > r it is the minimum of lcp[r + 1 … r′]. The sum of these running minimums over all r′ is
+    found with a monotonic stack (topic 1.6) for the ranks on one side, and again for the other side.
+  - Add the length of the suffix itself (the pair with itself) and print the value of the rank of each
+    position. 64-bit.
+- id: cf-452E
+  role: ladder
+  card: common-substring
+  rung: 2
+  twist: 'Three strings: counting triples of equal substrings of each length with a DSU over decreasing
+    LCP values.'
+  summary: Three strings of total length up to 3·10^5; for every length L from 1 to the shortest length,
+    the number of triples of positions (one in each string) at which the substrings of length L are equal,
+    modulo 10^9 + 7. †
+  hints:
+  - A triple with equal substrings of length L is three suffixes, one from each string, that share at
+    least L letters. How do you see this in the sorted suffixes?
+  - Join the strings with two different separators and sort the suffixes. The suffixes that share L letters
+    form blocks of ranks, separated by LCP values below L.
+  - Go through the lengths from the largest to 1, merging neighbouring ranks whose LCP value reached L
+    with a DSU (topic 4.4) that keeps the numbers of suffixes from each string; keep the sum of the three-way
+    products over the groups and read it off for each L.
+- id: cf-1073G
+  role: ladder
+  card: common-substring
+  rung: 3
+  twist: 'Queries on two sets of positions: the sum of common beginnings over pairs, by sorting the positions
+    and a stack.'
+  summary: A string of up to 2·10^5 letters and q queries; each gives two sets of positions A and B (total
+    size up to 2·10^5); for each query, the sum of the longest common prefix of the suffix a and the suffix
+    b over all a ∈ A and b ∈ B. †
+  hints:
+  - The common beginning of two suffixes is a range minimum of the LCP array (Theorem 6.4.2). How can
+    a sparse table help?
+  - For one query, sort the positions of A and B by rank. The common beginning of two of them is the minimum
+    of the neighbour values between them, so the sum over pairs becomes a sum of range minimums over a
+    short array.
+  - Count the pairs with a monotonic stack that keeps, for every value, how many ends from A and from
+    B it covers; total work is the total size of the sets times the cost of the sort. 64-bit.
+- id: lc-shortest-uncommon-substring-in-an-array
+  role: review
+  card: distinct-substrings
+  review_set: 1
+  summary: A list of up to 100 strings of up to 20 letters; for each string, its shortest substring that
+    is not a substring of any other string of the list (the smallest in dictionary order among the shortest),
+    or an empty string.
+- id: lc-largest-merge-of-two-strings
+  role: review
+  card: sorted-suffixes
+  review_set: 1
+  summary: Two strings of up to 3000 letters are merged by repeatedly taking the first letter of one of
+    them; the lexicographically largest merge.
+- id: lc-maximum-number-of-occurrences-of-a-substring
+  role: review
+  card: occurrences-by-order
+  review_set: 1
+  summary: A string of up to 10^5 letters and numbers maxLetters, minSize, maxSize ≤ 26; the largest number
+    of occurrences of a substring with at most maxLetters different letters and a length from minSize
+    to maxSize.
+- id: lc-construct-string-with-minimum-cost
+  role: review
+  card: occurrences-by-order
+  review_set: 2
+  summary: A target of up to 5·10^4 letters and a list of words with costs (total length up to 5·10^4);
+    the least cost of building the target by gluing words, where each piece is a prefix of the word it
+    uses, or -1.
+- id: lc-shortest-string-that-contains-three-strings
+  role: review
+  card: common-substring
+  review_set: 2
+  summary: Three strings of up to 100 letters; the shortest string that contains all three as substrings
+    (the smallest in dictionary order among the shortest).
+- id: cf-835D
+  role: review
+  card: common-substring
+  review_set: 2
+  summary: A string of up to 5000 letters; a string is a k-palindrome if it is a palindrome and its halves
+    are (k − 1)-palindromes; for each k, the number of substrings that are k-palindromes. †
+- id: lc-find-the-string-with-lcp
+  role: review
+  card: sorted-suffixes
+  review_set: 3
+  summary: An n × n matrix (n ≤ 1000) that claims to hold the longest common prefix of every two suffixes
+    of an unknown string; the lexicographically smallest string over a to z with this matrix, or an empty
+    string if there is none.
+- id: lc-count-substrings-that-differ-by-one-character
+  role: review
+  card: common-substring
+  review_set: 3
+  summary: Two strings of up to 100 letters; the number of ways to choose a non-empty substring of the
+    first and change exactly one letter so that the result is a substring of the second.
+- id: lc-unique-substrings-in-wraparound-string
+  role: review
+  card: distinct-substrings
+  review_set: 3
+  summary: A string of up to 10^5 letters; the number of its different non-empty substrings that occur
+    in the infinite string abc…zabc…z…
+- id: cf-128B
+  role: checkpoint
+  card: occurrences-by-order
+  summary: A string of up to 10^5 letters and a number k ≤ 10^5; all substrings, with equal ones at different
+    places counted separately, are sorted in dictionary order; print the k-th. †
+- id: cf-427D
+  role: checkpoint
+  card: common-substring
+  summary: Two strings of up to 5000 letters; the length of the shortest substring that occurs exactly
+    once in each of them, or -1. †
+- id: lc-orderly-queue
+  role: checkpoint
+  card: sorted-suffixes
+  summary: A string of up to 1000 letters and a number k; in one move the first of the first k letters
+    is taken and put at the end; the lexicographically smallest string reachable by any number of moves.
+- id: ac-practice2_i
+  role: lookalike
+  card: distinct-substrings
+  summary: A string of up to 5·10^5 letters; the number of its different substrings.
+- id: lc-k-divisible-elements-subarrays
+  role: lookalike
+  card: distinct-substrings
+  summary: An array of up to 200 numbers and numbers k and p; the number of different subarrays that have
+    at most k elements divisible by p.
+- id: lc-last-substring-in-lexicographical-order
+  role: lookalike
+  card: sorted-suffixes
+  summary: A string of up to 4·10^5 letters; its lexicographically largest substring.
+- id: lc-find-the-lexicographically-largest-string-from-the-box-i
+  role: lookalike
+  card: sorted-suffixes
+  summary: A string of up to 5000 letters and a number of friends; the string is cut into that many non-empty
+    pieces in every possible way, all pieces are put in a box; the lexicographically largest piece in
+    the box.
+- id: cses-2105
+  role: drill
+  summary: A string of up to 10^5 letters; the number of its different substrings.
+- id: cses-1113
+  role: drill
+  summary: 'A string of up to 10^6 letters, the last column of the sorted rotations of the original string
+    (with a # appended); print the original string.'
+- id: lc-longest-common-prefix
+  role: drill
+  summary: Up to 200 strings of up to 200 letters; their longest common prefix.
+- id: lc-isomorphic-strings
+  role: drill
+  summary: Two strings of up to 5·10^4 letters; can the letters of the first be replaced one for one to
+    give the second?
+- id: lc-minimum-number-of-steps-to-make-two-strings-anagram
+  role: drill
+  summary: Two strings of up to 5·10^4 letters and the same length; the fewest letters of the first to
+    replace so that it becomes an anagram of the second.
+- id: lc-custom-sort-string
+  role: drill
+  summary: A string order of up to 26 distinct letters and a string s of up to 200 letters; s with its
+    letters permuted so that they follow the order of the first string.
+- id: lc-longest-uncommon-subsequence-ii
+  role: drill
+  summary: Up to 50 strings of up to 10 letters; the length of the longest string among them that is not
+    a subsequence of any other, or -1.
+- id: lc-word-pattern
+  role: drill
+  summary: A pattern of up to 300 letters and a string of up to 3000 letters made of words separated by
+    single spaces; does each letter of the pattern stand for exactly one word, and each word for exactly
+    one letter?
+- id: cf-1003F
+  role: exam
+  card: substring-compare
+  summary: n ≤ 300 words; choose two or more equal, non-overlapping stretches of the text and replace
+    each by the first letters of its words in capitals, to make the text as short as possible; print the
+    least length. †
+- id: lc-longest-chunked-palindrome-decomposition
+  role: exam
+  card: substring-compare
+  summary: A string of up to 1000 letters; the largest number of pieces k such that the string is cut
+    into pieces and the i-th piece equals the (k + 1 − i)-th piece from the end.
+- id: cf-1721E
+  role: exam
+  card: pattern-occurrences
+  summary: A string s of up to 10^6 letters and up to 10^5 queries; each query is a string t of up to
+    10 letters; for each, the prefix function values at the last |t| positions of s + t. †
+- id: lc-encrypt-and-decrypt-strings
+  role: exam
+  card: prefix-tree
+  summary: A letter-to-two-letter-code table and a dictionary of up to 100 words; encrypt(word) glues
+    the codes, decrypt(code string) is the number of dictionary words that encrypt to it (up to 200 calls).
+- id: cses-2109
+  role: exam
+  card: occurrences-by-order
+  summary: A string of up to 10^5 letters and a number k; all substrings, with equal ones at different
+    places counted separately, are sorted in dictionary order; print the k-th.
+- id: cf-557E
+  role: exam
+  card: distinct-substrings
+  summary: A string of up to 5000 letters and a number k; a substring is a half-palindrome if its letters
+    at odd places mirror each other; list the half-palindromic substrings in dictionary order, with repeats,
+    and print the k-th. †
+drill:
+- problem: cses-2105
+  answer:
+    topic: '6.4'
+    card: distinct-substrings
+  property: 'The question counts the different substrings of one string of up to 10^5 letters: n(n+1)/2
+    minus the sum of the LCP values.'
+  why_others_fail: A set of the substrings would hold 5·10^9 strings; hashing them costs the same number
+    of steps.
+- problem: cses-1113
+  answer:
+    topic: '1.1'
+    card: sort-with-index
+  property: 'Sorting the given last column stably (by letter, keeping the original places) gives the first
+    column; the k-th occurrence of a letter in the two columns is the same character, so following these
+    links from # rebuilds the string.'
+  why_others_fail: Sorting all rotations would give the transform itself, not undo it; the inverse needs
+    only one stable sort of single letters.
+- problem: lc-longest-common-prefix
+  answer:
+    topic: '0.3'
+    card: string-processing
+  property: 'Compare the strings letter by letter with the first one and stop at the first difference:
+    at most 200 · 200 letters.'
+  why_others_fail: The sizes are tiny and the pairs are not independent substrings of one text; no sorting
+    of suffixes is needed.
+- problem: lc-isomorphic-strings
+  answer:
+    topic: '0.6'
+    card: map-counting
+  property: Keep two maps, from letters of the first string to letters of the second and back; every position
+    must agree with both maps.
+  why_others_fail: The question is a one-to-one renaming of letters, not a common substring or an order
+    of suffixes.
+- problem: lc-minimum-number-of-steps-to-make-two-strings-anagram
+  answer:
+    topic: '0.6'
+    card: map-counting
+  property: Count the letters of both strings; the answer is the sum of the surplus of the first string
+    over the second.
+  why_others_fail: Only the numbers of the letters matter, not their places, so no suffix is involved.
+- problem: lc-custom-sort-string
+  answer:
+    topic: '1.1'
+    card: custom-order
+  property: Sort the letters of s by their place in the given order, or count each letter and write them
+    out in that order.
+  why_others_fail: The keys are single letters with a given order, not suffixes of one string.
+- problem: lc-longest-uncommon-subsequence-ii
+  answer:
+    topic: '0.5'
+    card: nested-loops
+  property: For each string test with two pointers whether it is a subsequence of any other; with 50 strings
+    of 10 letters that is 25000 steps.
+  why_others_fail: The strings are compared as subsequences, which sorted suffixes cannot describe, and
+    the sizes are tiny.
+- problem: lc-word-pattern
+  answer:
+    topic: '0.6'
+    card: set-membership
+  property: Two maps between the letters of the pattern and the words must stay consistent in both directions.
+  why_others_fail: A pattern of letters is matched to words by a bijection; nothing is looked for in a
+    text.
+lookalike_pairs:
+- a: ac-practice2_i
+  b: lc-k-divisible-elements-subarrays
+  a_tool:
+    topic: '6.4'
+    card: distinct-substrings
+  b_tool:
+    topic: '0.6'
+    card: set-membership
+  shared_surface: Both count the different pieces (substrings of a string, subarrays of an array) that
+    a text has.
+  flipping_difference: 'In the array version there are at most 200 numbers, so all 20 100 subarrays are
+    put into a set and counted. In the string version there are up to 5·10^5 letters, so the n²/2 pieces
+    cannot be stored: sort the suffixes and subtract the LCP values.'
+  flipping_input: A string of 5·10^5 letters has 1.25·10^11 substrings by place, far more than a set can
+    hold, while the suffix array and the LCP array need about 10^7 steps.
+- a: lc-last-substring-in-lexicographical-order
+  b: lc-find-the-lexicographically-largest-string-from-the-box-i
+  a_tool:
+    topic: '6.4'
+    card: sorted-suffixes
+  b_tool:
+    topic: '0.5'
+    card: nested-loops
+  shared_surface: Both ask for the lexicographically largest substring of a string (of a given kind).
+  flipping_difference: 'In the box version the string has at most 5000 letters, so the 5000 candidate
+    pieces are compared one against another directly, 2.5·10^7 letter steps. In the last-substring version
+    the string has up to 4·10^5 letters: the largest substring is the largest suffix, found in the sorted
+    suffixes.'
+  flipping_input: 'A string of 4·10^5 letters equal to a: comparing the candidates directly costs about
+    n²/2 = 8·10^10 steps, while the doubling needs about 4·10^6.'
+self_test:
+- q: Write the suffix array and the LCP array of abab, and use Theorem 6.4.4 to count its different substrings.
+  a: 'The sorted suffixes are ab (2), abab (0), b (3), bab (1), so sa = [2, 0, 3, 1] and lcp = [0, 2,
+    0, 1]. The count is 10 − (2 + 0 + 1) = 7: a, b, ab, ba, aba, bab, abab.'
+- q: Use Theorem 6.4.2 to find the longest common prefix of the suffixes of abab that start at 0 and at
+    2.
+  a: 'Their ranks are 1 (abab) and 0 (ab). The range is lcp[1 … 1] = [2], so the answer is 2. Directly:
+    abab and ab share ab.'
+- q: Do one round of the doubling of Theorem 6.4.1 (k = 1) for the string aab. Give the pairs and the
+    ranks.
+  a: The letters give 97, 97, 98. The pairs are (97, 97), (97, 98), (98, −1) for the positions 0, 1, 2.
+    They are all different and already in order, so the ranks are 0, 1, 2 and the suffix array is [0,
+    1, 2] (aab < ab < b).
+- q: The text is aaab. Find the block of the pattern aa in the suffix array and say where the pattern
+    occurs.
+  a: 'The sorted suffixes are aaab (0), aab (1), ab (2), b (3), so sa = [0, 1, 2, 3]. Their first two
+    letters are aa, aa, ab, b: the first two are equal to aa, the block is [0, 2). The pattern occurs
+    twice, at 0 and at 1 (the first at 0).'
+- q: Why must the empty second block get −1 and not 0 in the doubling?
+  a: A rank 0 belongs to a real block, the smallest one. With 0 for the empty block, a short suffix would
+    tie with a real block of rank 0 and the ranks would never become all different. For aaa the loop would
+    not stop (the template crashes).
+- q: A string has 10^6 letters. Why is the doubling with sort risky, and what is used instead?
+  a: 'Each round sorts 10^6 pairs, about 2·10^7 comparisons, and there are 20 rounds: about 4·10^8 comparisons
+    of pairs, too slow in the worst case. The counting sort makes each round O(n), so the total is about
+    2·10^7 steps.'
+- q: Why does Kasai's algorithm visit the positions in the order of the text, not in the order of the
+    ranks?
+  a: The fact h(i + 1) ≥ h(i) − 1 relates the suffix i to the suffix i + 1, which are far apart in sorted
+    order. Along the ranks the common beginning can fall to 0 and rise again, and nothing is saved.
+checkpoint:
+  time_limit_minutes: 150
+  problems:
+  - cf-128B
+  - cf-427D
+  - lc-orderly-queue
+decision_map:
+- weak_signal: How many different substrings; the k-th different substring; how many of each length; a
+    value summed over all different substrings
+  choose: distinct-substrings
+  when: Each different substring is owned by the first suffix, in sorted order, that begins with it, and
+    the suffix of rank r owns n − sa[r] − lcp[r] of them (Theorem 6.4.4).
+  over:
+  - card: distinct-by-hash
+    topic: '6.1'
+    because: A set of window hashes counts the different blocks of one fixed length; for all lengths at
+      once, or for the k-th substring, the LCP array is needed.
+  - card: set-membership
+    topic: '0.6'
+    because: A set of all substrings is enough up to about 3000 letters.
+- weak_signal: The smallest rotation; the largest or smallest suffix; many comparisons of suffixes; a
+    string made from the order of its suffixes
+  choose: sorted-suffixes
+  when: The suffixes of one long string are sorted once by doubling the compared block (Theorem 6.4.1)
+    and every comparison is then a comparison of two ranks.
+  over:
+  - card: substring-compare
+    topic: '6.1'
+    because: Hashes answer only whether two blocks are equal; the order of the suffixes needs the ranks.
+  - card: custom-order
+    topic: '1.1'
+    because: Separate strings are sorted by comparing them as they are; the suffixes of one string need
+      the doubling.
+- weak_signal: 'Many patterns on one fixed text: how many times, where first, or the k-th substring when
+    repeats count'
+  choose: occurrences-by-order
+  when: The occurrences of a pattern are a block of consecutive ranks, found by two binary searches (Theorem
+    6.4.5).
+  over:
+  - card: pattern-occurrences
+    topic: '6.2'
+    because: One pattern is matched with the prefix function in O(n + |p|); many patterns on a fixed text
+      are answered from the sorted suffixes.
+  - card: prefix-tree
+    topic: '6.3'
+    because: A trie of words answers which words begin with a string; the suffix array answers where a
+      string occurs anywhere in the text.
+- weak_signal: The longest common substring of strings; the sum of the common beginnings over pairs of
+    positions; comparing arbitrary pieces of a string
+  choose: common-substring
+  when: The common beginning of two suffixes is the smallest LCP value between their ranks (Theorem 6.4.2),
+    so pairs become range minimums.
+  over:
+  - card: z-compare
+    topic: '6.2'
+    because: If every pair has the position 0 as one end, the Z-function gives all values in O(n) without
+      sorting.
+  - card: hash-length-search
+    topic: '6.1'
+    because: A binary search on the length with hashes finds one longest repeated or common block, but
+      is probabilistic and does not give sums over pairs.
+glossary_added:
+- suffix
+- suffix array
+- LCP array

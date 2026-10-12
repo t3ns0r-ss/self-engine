@@ -42,10 +42,10 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 5 | [5.2 Fenwick tree (BIT), inversion counting](phase-5/5.2-fenwick.md) | 3 | 1 | 7 | 3 | 8 | 22 | short |
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 1 | 4 | 8 | 17 | 30 | complete |
 | 5 | [5.4 Square-root decomposition, Mo's algorithm](phase-5/5.4-sqrt-decomposition.md) | 0 | 1 | 4 | 4 | 10 | 19 | short |
-| 6 | [6.1 Polynomial hashing](phase-6/6.1-string-hashing.md) | 0 | 2 | 8 | 8 | 3 | 21 | short |
+| 6 | [6.1 Polynomial hashing](phase-6/6.1-string-hashing.md) | 0 | 2 | 8 | 6 | 3 | 19 | short |
 | 6 | [6.2 Prefix function (KMP) and Z-function](phase-6/6.2-prefix-function.md) | 4 | 3 | 3 | 7 | 2 | 19 | short |
 | 6 | [6.3 Trie, binary trie for max-XOR](phase-6/6.3-trie.md) | 0 | 3 | 9 | 6 | 1 | 19 | short |
-| 6 | [6.4 Suffix array and LCP array](phase-6/6.4-suffix-array.md) | 0 | 0 | 3 | 7 | 3 | 13 | short |
+| 6 | [6.4 Suffix array and LCP array](phase-6/6.4-suffix-array.md) | 0 | 0 | 2 | 5 | 8 | 15 | short |
 | 7 | [7.1 DP on trees, rerooting](phase-7/7.1-tree-dp.md) | 2 | 6 | 4 | 6 | 6 | 24 | short |
 | 7 | [7.2 DP on DAGs](phase-7/7.2-dag-dp.md) | 1 | 6 | 5 | 8 | 0 | 20 | short |
 | 7 | [7.3 DP sped up with Fenwick or segment trees](phase-7/7.3-dp-with-ds.md) | 0 | 1 | 7 | 6 | 2 | 16 | short |

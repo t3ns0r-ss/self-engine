@@ -1,0 +1,508 @@
+---
+title: "6.4 Suffix array and LCP array"
+sidebar:
+  order: 40
+topic: "6.4"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="6.4" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A text has $n = 10^5$ letters. You get $q = 10^5$ patterns with $5 \cdot 10^5$ letters in total, and for each pattern you must tell how many times it occurs in the text. The prefix function ([topic 6.2](../../phase-6/6-2-prefix-function/)) finds the occurrences of one pattern in about $n + |p|$ steps, so $q$ patterns cost $q \cdot n = 10^{10}$ steps. Hashing ([topic 6.1](../../phase-6/6-1-string-hashing/)) tells in $O(1)$ whether two blocks are equal, but it cannot tell which of two blocks comes first in dictionary order, and it does not help to find the *places* where a pattern occurs.
+
+The idea of this topic: **sort all $n$ suffixes of the text once.** Every substring of the text is the beginning of some suffix, so every question about substrings turns into a question about a sorted list of $n$ strings. In a dictionary all words that begin with "ana" stand next to each other; in the sorted list of suffixes all suffixes that begin with the pattern stand next to each other too, so a binary search finds them. The list of starting positions in sorted order is the **suffix array**. Next to it we keep the **LCP array**: for each suffix, how many letters it shares with the suffix just before it. With these two arrays one can count the different substrings of a string, find the $k$-th of them in dictionary order, find the longest substring that two strings share, and find the smallest rotation of a string, all in about $n \log n$ steps.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="6.4" />
+
+### What this topic does not cover
+
+- Building the suffix array in $O(n)$ time (the SA-IS algorithm) or with a suffix tree or a suffix automaton: not part of this course. The doubling method of Theorem 6.4.1 is fast enough for $n$ up to about $10^6$.
+- Matching many patterns in one pass over a text with failure links (the Aho–Corasick automaton): not part of this course. Here the *text* is fixed and the patterns are asked one by one.
+- Texts that change between questions (insertions, deletions, changes of a letter): the suffix array is built once for a fixed text.
+- Compressed forms of the arrays and the use of suffix arrays on integer sequences with a huge alphabet: not part of this course.
+
+## 3. Definitions
+
+- A **suffix** of a string $s$ of length $n$ is the part from a position $i$ to the end, $s[i..n)$, written "the suffix $i$"; its length is $n - i$. Positions are counted from 0. Example: banana has the six suffixes banana, anana, nana, ana, na, a (starting at 0, 1, 2, 3, 4, 5).
+- Strings are compared in **lexicographic order**, as in a dictionary: look at the first place where they differ and the smaller letter wins; if one string is the beginning of the other, the shorter one is smaller. Example: a < ana < anana < banana < na < nana.
+- The **suffix array** $sa$ of $s$ lists the starting positions of all suffixes in the sorted order: $sa[0]$ is the start of the smallest suffix, $sa[n-1]$ of the largest. Example: for banana, $sa = [5, 3, 1, 0, 4, 2]$ (the suffixes a, ana, anana, banana, na, nana).
+- The **rank** of a suffix is its place in the sorted order, $rank[sa[r]] = r$; rank and $sa$ are inverse permutations. Example: for banana $rank = [3, 2, 5, 1, 4, 0]$.
+- The **longest common prefix** of two strings is the longest string that begins both, and $\text{lcp}(a, b)$ is its length. Example: $\text{lcp}(\text{ana}, \text{anana}) = 3$.
+- The **LCP array** has $lcp[r] = \text{lcp}(\text{suffix } sa[r-1], \text{suffix } sa[r])$ for $r \ge 1$, and $lcp[0] = 0$. Example: for banana, $lcp = [0, 1, 3, 0, 0, 2]$ (a and ana share 1 letter, ana and anana share 3, na and nana share 2).
+- A **rotation** of $s$ moves some first letters to the end: the rotations of abc are abc, bca, cab. Example: banana moved by 2 gives nanaba.
+- A **block** of the suffix array is a stretch of consecutive ranks $[first, last)$. The suffixes that begin with a given string form such a block (Theorem 6.4.2).
+- In the code, `s.compare(pos, len, p)` compares the part of `s` that starts at `pos` and has at most `len` letters with `p`, and returns a negative number, 0 or a positive number. `iota(v.begin(), v.end(), 0)` fills a vector with 0, 1, 2, …; a `pair<int, int>` is compared first by its first number and then by its second. A lambda `[&](int a, int b) { ... }` is a small function written in place; it may use the variables around it.
+
+## 4. Theory and proofs
+
+### 4.1 Sorting the suffixes by doubling
+
+**Theorem 6.4.1 (the suffix array by doubling).** For a string $s$ of length $n$ and a step $k$, call the *block* of size $k$ at the position $i$ the string $s[i..\min(i+k, n))$. Let $\text{rnk}_k[i]$ be any numbers that order the positions by their blocks of size $k$, with equal numbers exactly for equal blocks. Then sorting the pairs $(\text{rnk}_k[i],\ \text{rnk}_k[i+k])$ (the second number is $-1$ when $i + k \ge n$) gives numbers $\text{rnk}_{2k}$ for the blocks of size $2k$. Start with $k = 1$ (the numbers of the letters) and repeat until all numbers are different; this happens after at most $\lceil \log_2 n \rceil$ rounds, and then $\text{rnk}$ is the rank and the positions sorted by it are the suffix array. With a comparison sort each round costs $O(n \log n)$, with a counting sort $O(n)$, so the total is $O(n \log^2 n)$ or $O(n \log n)$.
+
+:::tip[In plain words]
+First sort the positions by their first letter. A block of two letters is a block of one letter followed by another block of one letter, so two positions are ordered by their first block and, if that ties, by the second block, and both ranks are already known. Sorting pairs of ranks gives the order of the blocks of size 2, then 4, then 8, and so on. After about $\log_2 n$ rounds the blocks are as long as the whole string and the order is complete.
+:::
+
+**A tiny instance.** The string banana, $n = 6$. The numbers of the letters: a = 97, b = 98, n = 110, so $\text{rnk}_1 = [98, 97, 110, 97, 110, 97]$. Round $k = 1$: the pairs are $(98, 97)$, $(97, 110)$, $(110, 97)$, $(97, 110)$, $(110, 97)$, $(97, -1)$; sorted, the positions 5, then 1 and 3 (equal), then 0, then 2 and 4 (equal), so $\text{rnk}_2 = [2, 1, 3, 1, 3, 0]$ (the blocks a, an, an, ba, na, na). Round $k = 2$: the pairs are $(2, 3)$, $(1, 1)$, $(3, 3)$, $(1, 0)$, $(3, -1)$, $(0, -1)$; they are all different, and the order is 5, 3, 1, 0, 4, 2, the suffix array.
+
+**Proof.**
+1. The block of size $2k$ at $i$ is the block of size $k$ at $i$ followed by the block of size $k$ at $i + k$ (an empty block if $i + k \ge n$).
+2. Take two different positions $i, j$ and compare their blocks $X$ and $Y$ of size $2k$. If their first parts differ, the first parts decide: a first part that is a proper beginning of the other one is smaller, and otherwise the first differing letter decides, exactly as for the whole blocks.
+3. If the first parts are equal, then both have $k$ letters. (A first part shorter than $k$ reaches the end of the string, and two equal first parts of that kind would mean $n - i = n - j$, so $i = j$.) Then the second parts decide, and an empty second part is smaller than any non-empty one.
+4. Steps 2 and 3 say: $X < Y$ exactly when the pair $(\text{rnk}_k[i], \text{rnk}_k[i+k])$ is smaller than the pair of $j$, with $-1$ for an empty second part, and $X = Y$ exactly when the pairs are equal. So sorting the pairs and giving equal pairs equal numbers (and a new number at each change) gives $\text{rnk}_{2k}$.
+5. When $2k \ge n$ the block of size $2k$ is the whole suffix, and different suffixes have different lengths, so all numbers are different. Before that, if all numbers happen to be different, the order of the suffixes is already decided by their first $2k$ letters. So the rounds stop after at most $\lceil \log_2 n \rceil$ rounds, and the sorted order of the positions is the suffix array.
+6. A round sorts $n$ pairs: $O(n \log n)$ with `sort`, $O(n)$ with two counting sorts (first by the second number, then, stably, by the first). $\square$
+
+:::note[This proof needs]
+1. The numbers of the first round only have to give the right order of the letters, so the letters can be used as they are. The string has $n \ge 1$ letters (for $n = 1$ one round is made).
+2. The empty second block must get a number *below* all real ones ($-1$). If it got 0 it would tie with a real block of rank 0, the ranks would never become different, and the loop would not stop.
+3. With the comparison `sort` the whole method takes $O(n \log^2 n)$, about $4 \cdot 10^8$ comparisons for $n = 10^6$; the template with counting sort takes $O(n \log n)$.
+:::
+
+<TheoremCode unit="6.4/thm-1" />
+
+The first three lines are the suffix arrays of banana (the tiny instance), aaaa (the shortest suffix is the smallest: 3, 2, 1, 0) and abab. The check sorts the suffixes as strings, directly, and compares the results for every string of length 1 to 10 over $\{a, b\}$ and of length 1 to 6 over $\{a, b, c\}$.
+
+### 4.2 The common beginning of any two suffixes
+
+**Theorem 6.4.2 (LCP as a range minimum).** Let $sa$ be the suffix array and $lcp$ the LCP array of $s$. (a) For strings $X < Y < Z$: $\text{lcp}(X, Z) = \min(\text{lcp}(X, Y), \text{lcp}(Y, Z))$. (b) For the suffixes at the ranks $r_1 < r_2$: $\text{lcp}(\text{suffix } sa[r_1], \text{suffix } sa[r_2]) = \min\ lcp[r_1 + 1 .. r_2]$. (c) The suffixes that begin with a given string $P$ stand at consecutive ranks. With a table for range minimums ([topic 5.1](../../phase-5/5-1-sparse-table/)) the value in (b) is found in $O(1)$ after $O(n \log n)$ preparation.
+
+:::tip[In plain words]
+Going from one suffix to another in sorted order you pass all the suffixes between them, and every step can only lose letters of the common beginning, never get them back: a string that lies between two strings that begin with $P$ begins with $P$ as well. So the common beginning of the two ends is the smallest of the common beginnings of the neighbours on the way.
+:::
+
+**A tiny instance.** For banana, $lcp = [0, 1, 3, 0, 0, 2]$. The suffixes 1 (anana, rank 2) and 3 (ana, rank 1): $\min lcp[2..2] = 3$. The suffixes 0 (banana, rank 3) and 5 (a, rank 0): $\min lcp[1..3] = \min(1, 3, 0) = 0$. The suffixes 1 and 5 (ranks 2 and 0): $\min lcp[1..2] = 1$. The suffixes that begin with "an" are anana and ana, at the ranks 1 and 2.
+
+**Proof.**
+1. *Lemma.* If $X < Y < Z$ and $X$ and $Z$ both begin with $P$, then $Y$ begins with $P$. Otherwise $Y$ is a proper beginning of $P$, hence of $X$, and then $Y < X$; or $Y$ differs from $P$ at a place $t$ inside $P$: with $Y[t] < P[t]$ we get $Y < X$, with $Y[t] > P[t]$ we get $Y > Z$. Both contradict $X < Y < Z$.
+2. *Part (a), at least.* $X$ and $Y$ agree on their first $\text{lcp}(X,Y)$ letters and $Y$ and $Z$ on their first $\text{lcp}(Y,Z)$ letters, so $X$ and $Z$ agree on the first $\min(\cdot,\cdot)$ letters: $\text{lcp}(X, Z) \ge \min(\text{lcp}(X, Y), \text{lcp}(Y, Z))$.
+3. *Part (a), at most.* Let $P$ be the common beginning of $X$ and $Z$, of length $\text{lcp}(X, Z)$. By the lemma $Y$ begins with $P$, so $\text{lcp}(X, Y) \ge |P|$ and $\text{lcp}(Y, Z) \ge |P|$, and the minimum is at least $|P| = \text{lcp}(X, Z)$ as well.
+4. *Part (b), by induction on $r_2 - r_1$.* For $r_2 = r_1 + 1$ it is the definition of $lcp[r_2]$. For $r_2 > r_1 + 1$ apply (a) with $X$ = the suffix of rank $r_1$, $Y$ = the suffix of rank $r_2 - 1$, $Z$ = the suffix of rank $r_2$: the value is $\min(\text{lcp}(X, Y), lcp[r_2])$, and $\text{lcp}(X, Y) = \min lcp[r_1 + 1 .. r_2 - 1]$ by the induction.
+5. *Part (c).* If two suffixes at the ranks $r_1 < r_2$ begin with $P$, then every suffix between them begins with $P$ by the lemma, so the suffixes with $P$ as a beginning fill a stretch of ranks without gaps. $\square$
+
+:::note[This proof needs]
+1. The suffixes of one string are all different (they have different lengths), so the ranks are strict and the order $X < Y < Z$ has no ties. For the same position twice the answer is the length of the suffix, not a minimum.
+2. A range $[r_1 + 1, r_2]$ is not empty because $r_1 < r_2$; the smaller rank must be used on the left, and the entry $lcp[r_1]$ itself must *not* be included (it is about the suffix *before* the one at $r_1$).
+3. The $O(1)$ query needs the sparse table of topic 5.1: $\lceil \log_2 n \rceil$ rows of $n$ numbers, about 80 MB of `int` for $n = 10^6$.
+:::
+
+<TheoremCode unit="6.4/thm-2" />
+
+The first line is the LCP array of banana. The three queries are the tiny instance: 3, 0 and 1; the query of the suffixes 2 and 4 (nana and na, ranks 5 and 4) gives $lcp[5] = 2$. The check compares the minimum with a direct comparison of the two suffixes for every pair of positions of every string of length 1 to 10 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$, and checks that the suffixes that begin with any string of one to three letters stand at consecutive ranks.
+
+### 4.3 The LCP array in linear time
+
+**Theorem 6.4.3 (Kasai's algorithm).** For a position $i$ let $h_i$ be the longest common prefix of the suffix $i$ and the suffix just before it in the sorted order ($h_i = 0$ if it is the smallest suffix). Then $h_{i+1} \ge h_i - 1$. Therefore, going through the positions $i = 0, 1, \dots, n - 1$ and starting each comparison at the length $h_i - 1$ instead of 0, the whole LCP array is computed in $O(n)$ time.
+
+:::tip[In plain words]
+If the suffix just before suffix $i$ shares $h$ letters with it, then cutting the first letter off both gives two suffixes that still share $h - 1$ letters and still stand in the same order. The suffix just before suffix $i + 1$ is at least as close to it as that one. So when we go on to suffix $i + 1$ we already know $h - 1$ letters agree and do not compare them again.
+:::
+
+**A tiny instance.** The string banana. Suffix 0 (banana) has the predecessor anana: they share 0 letters. Suffix 1 (anana) has the predecessor ana: they share 3 letters, so $h_1 = 3$. For suffix 2 (nana) we start at $h = 2$: its predecessor is na, and the comparison continues at the third letter, where na has ended: $h_2 = 2$. For suffix 3 (ana) we start at 1: the predecessor is a, which has ended: $h_3 = 1$. Suffix 4 (na): start at 0; the predecessor is banana: n against b, $h_4 = 0$. Suffix 5 (a) is the smallest, $h_5 = 0$. In rank order the values are $[0, 1, 3, 0, 0, 2]$.
+
+**Proof.**
+1. If $h_i \le 1$, then $h_i - 1 \le 0 \le h_{i+1}$ and there is nothing to show. Let $h_i \ge 2$, and let $j$ be the start of the suffix just before the suffix $i$ in sorted order, so $\text{suffix } j < \text{suffix } i$ and they share their first $h_i \ge 1$ letters.
+2. The first letters are equal, so removing them keeps the order: $\text{suffix } (j+1) < \text{suffix } (i+1)$, and these two share their first $h_i - 1$ letters, call this beginning $P$.
+3. Let $q$ be the start of the suffix just before the suffix $i + 1$ in sorted order. Then $\text{suffix } (j+1) \le \text{suffix } q < \text{suffix } (i+1)$.
+4. Both ends of this chain begin with $P$, so by the lemma in the proof of Theorem 6.4.2 the suffix $q$ begins with $P$. Hence $h_{i+1} = \text{lcp}(\text{suffix } q, \text{suffix } (i+1)) \ge |P| = h_i - 1$.
+5. *The running time.* The value $h$ in the algorithm grows by 1 for each letter comparison that succeeds and falls by at most 1 from one position to the next; it never exceeds $n$. So the successful comparisons number at most $n + n$, and the failed ones at most one per position: $O(n)$ in all. $\square$
+
+:::note[This proof needs]
+1. The suffix array is already known (Theorem 6.4.1) and the positions are visited in the *text* order $i = 0, 1, \dots$, not in the rank order; the predecessor is found through $sa[rank[i] - 1]$.
+2. For the position of rank 0 there is no predecessor and the running value must be set back to 0; the smallest suffix breaks the chain of the argument.
+3. The fact $h_{i+1} \ge h_i - 1$ is used only to save time; the result is the same as comparing neighbours from the start, which is what the check does.
+:::
+
+<TheoremCode unit="6.4/thm-3" />
+
+The first line is the tiny instance. The array of aaaa is $0, 1, 2, 3$ (the suffixes a, aa, aaa, aaaa each share all their letters with the one before), and abab gives $0, 2, 0, 1$ (the sorted suffixes ab, abab, b, bab). The check compares Kasai's array with the one made by comparing every pair of neighbours from the start, for every string of length 1 to 10 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$.
+
+### 4.4 Counting the different substrings
+
+**Theorem 6.4.4 (different substrings).** Let $s$ have length $n$. (a) The number of different substrings of $s$ is $\dfrac{n(n+1)}{2} - \sum_{r=1}^{n-1} lcp[r]$. (b) For each $k$ the number of different substrings of length $k$ is $\#\{r : n - sa[r] \ge k\} - \#\{r : lcp[r] \ge k\}$. (c) Give each different substring to the first suffix, in sorted order, that begins with it. Then the suffix of rank $r$ gets exactly the prefixes of lengths $lcp[r] + 1, \dots, n - sa[r]$, and in the dictionary order of the different substrings, the substrings of the rank $r$ come before those of the rank $r + 1$, and inside one rank they come by length.
+
+:::tip[In plain words]
+Every substring is the beginning of some suffix. Give it to the first suffix in sorted order that starts with it. A suffix does not keep the beginnings that it shares with the suffix before it, only the longer ones, so it gets (its length) minus (its LCP value) new substrings. Adding up over all suffixes gives the total. And since the suffixes are sorted, the new substrings of a later suffix are all larger than those of an earlier suffix.
+:::
+
+**A tiny instance.** Banana, $n = 6$. The suffix lengths are $1, \dots, 6$ with sum 21, and $\sum lcp = 0 + 1 + 3 + 0 + 0 + 2 = 6$, so there are $21 - 6 = 15$ different substrings. By rank: the suffix a gets a (1); ana, with $lcp = 1$, gets an, ana (2); anana, with $lcp = 3$, gets anan, anana (2); banana gets all 6 prefixes; na gets n, na (2); nana, with $lcp = 2$, gets nan, nana (2): $1 + 2 + 2 + 6 + 2 + 2 = 15$. In dictionary order: a, an, ana, anan, anana, b, ba, ban, bana, banan, banana, n, na, nan, nana. For length $k = 2$: the suffixes of length at least 2 number 5, and two LCP values are at least 2 (the values 3 and 2), so $5 - 2 = 3$ (an, ba, na).
+
+**Proof.**
+1. Every different substring $T$ is a beginning of some suffix. By Theorem 6.4.2 (c) the suffixes that begin with $T$ form a block of ranks; the *owner* of $T$ is the first suffix of this block, and every different substring has exactly one owner.
+2. Let $T$ be a beginning of the suffix of rank $r$. If $|T| \le lcp[r]$, the suffix of rank $r - 1$ shares this beginning, so it begins with $T$ and $r$ is not the owner. If $|T| > lcp[r]$, the suffix of rank $r - 1$ shares only $lcp[r] < |T|$ letters with the suffix $r$, so it does not begin with $T$, and neither does any earlier suffix (the block is consecutive), so $r$ is the owner. For $r = 0$ everything is owned.
+3. So the rank $r$ owns exactly the beginnings of lengths $lcp[r] + 1, \dots, n - sa[r]$: that is $n - sa[r] - lcp[r]$ strings.
+4. *Part (a).* Summing over $r$: $\sum (n - sa[r]) - \sum lcp[r]$; the numbers $n - sa[r]$ are the lengths $1, \dots, n$ of the suffixes in some order, with sum $n(n+1)/2$.
+5. *Part (b).* The rank $r$ owns a substring of length $k$ exactly when $lcp[r] < k \le n - sa[r]$. The ranks with $lcp[r] \ge k$ all have $n - sa[r] \ge k$, so the count is (the number of ranks with $n - sa[r] \ge k$) minus (the number with $lcp[r] \ge k$).
+6. *Part (c).* Let $T$ be owned by $r$ with length $a$ and $T'$ by $r' > r$ with length $b$. Let $L = \text{lcp}(\text{suffix of rank } r, \text{suffix of rank } r') = \min lcp[r+1 .. r']$, so $L \le lcp[r'] < b$. If $a \le L$, then $T$ is also a beginning of the suffix $r'$ and a proper beginning of $T'$, so $T < T'$. If $a > L$, the two suffixes differ at the place $L$, both $T$ and $T'$ contain this place, and the suffix $r$ is smaller, so $T < T'$. Inside one rank a shorter beginning is smaller. $\square$
+
+:::note[This proof needs]
+1. Equal substrings at different places count once (they are the same string); the formulas count *different strings*. The number of substrings by place, with repeats, is simply $n(n+1)/2$.
+2. The sum can reach about $5 \cdot 10^{11}$ for $n = 10^6$, so it needs a 64-bit integer; for $k$ above $n$ the count is 0.
+3. Part (c) is the base of the search for the $k$-th different substring: walk the ranks and subtract $n - sa[r] - lcp[r]$ from $k$ until it fits.
+:::
+
+<TheoremCode unit="6.4/thm-4" />
+
+The first line is the tiny instance: 15 different substrings and the counts 3, 3, 3, 3, 2, 1 for the lengths 1 to 6. For aaaa the substrings are a, aa, aaa, aaaa (one of each length), and abab has 7: a, b; ab, ba; aba, bab; abab. The check collects all substrings in a set for every string of length 1 to 10 over $\{a, b\}$ and 1 to 6 over $\{a, b, c\}$.
+
+### 4.5 Finding a pattern in the sorted suffixes
+
+**Theorem 6.4.5 (the block of a pattern).** Let $s$ have the suffix array $sa$ and let $p$ be a pattern of length $m$. (a) The suffixes that begin with $p$ stand at the ranks $[first, last)$, and the starts of the occurrences of $p$ in $s$ are exactly $sa[first], \dots, sa[last - 1]$; their number is $last - first$. (b) The block is found with two binary searches over the ranks, where each step compares $p$ with the first $m$ letters of one suffix; this takes $O(m \log n)$ time. (c) The smallest start of an occurrence is the minimum of $sa$ over the block, which a range-minimum table ([topic 5.1](../../phase-5/5-1-sparse-table/)) gives in $O(1)$.
+
+:::tip[In plain words]
+All suffixes that start with the pattern stand next to each other in the sorted list, like all the words that start with "ana" in a dictionary. Look only at the first $m$ letters of each suffix: in the sorted list these short pieces go from "smaller than $p$", through "equal to $p$", to "larger than $p$", so two binary searches find where the equal ones start and end. The size of that stretch is the number of occurrences.
+:::
+
+**A tiny instance.** The text banana, $sa = [5, 3, 1, 0, 4, 2]$. The pattern ana: the first three letters of the suffixes in order are a, ana, ana, ban, na, nan; "below" ana: a, "equal": ana, ana, "above": ban, na, nan. The block is $[1, 3)$, the starts are $sa[1] = 3$ and $sa[2] = 1$: the pattern occurs twice, and the occurrences overlap. The pattern x: all pieces are below, the block is empty. The pattern a: pieces a, ana, ana are equal, the block is $[0, 3)$ with the starts 5, 3, 1.
+
+**Proof.**
+1. An occurrence of $p$ at the position $i$ means that the suffix $i$ begins with $p$. So the occurrences are exactly the suffixes that begin with $p$, and by Theorem 6.4.2 (c) these stand at consecutive ranks, a block $[first, last)$.
+2. For a suffix $X$ let $X'$ be its first $m$ letters (or all of it, if it is shorter). Call $X$ *below* if $X' < p$, *equal* if $X' = p$, and *above* if $X' > p$. The suffix begins with $p$ exactly when it is equal.
+3. If $X \le Y$ then $X' \le Y'$. If $X'$ and $Y'$ differ at a place inside both, the same place decides $X$ and $Y$. If $X'$ is a proper beginning of $Y'$, then $X' < Y'$. If $Y'$ were a proper beginning of $X'$, then $Y' = Y$ is a whole suffix (shorter than $m$) that is a proper beginning of $X$, so $Y < X$, which is not the case.
+4. So along the ranks the suffixes are first all below, then all equal, then all above. The first binary search finds the first rank that is not below, the second the first rank that is above; between them is the block.
+5. A comparison looks at no more than $m$ letters, and each search takes $O(\log n)$ steps: $O(m \log n)$. Listing the starts takes $O(last - first)$ more, and their minimum is a range minimum over the array $sa$. $\square$
+
+:::note[This proof needs]
+1. The comparison must look at *only the first $m$ letters* of a suffix. Comparing the whole suffix with $p$ makes every suffix that continues beyond $p$ look "above", and the block shrinks to the suffixes that are exactly $p$.
+2. The text is fixed; the suffix array is built once and used for all patterns. Patterns longer than the text give an empty block.
+3. Occurrences may overlap, and they are all counted: the pattern aa in aaaaa occurs 4 times.
+:::
+
+<TheoremCode unit="6.4/thm-5" />
+
+The lines are the tiny instance (ana, na, an, x) and two more patterns: the whole text banana (one occurrence, at 0) and a (three occurrences, at 5, 3 and 1). The check compares the block with a scan of the text for every text of length 1 to 9 over $\{a, b\}$ and every pattern of length 1 to 4 over $\{a, b, c\}$.
+
+## 5. Recognition Cards
+
+<Cards topic="6.4" />
+
+## 6. Templates
+
+Eight templates. Each shows only the function that matters; the program around it reads the input. The first template, the suffix array itself, is used by all the others; the second helper, `lcpArray` of Theorem 6.4.3, stays in the file outside the shown code and is said to be used. Each template is checked against a brute force that compares strings directly, on thousands of random small inputs (strings of one to three letters and up to 12 or 16 letters, so that equal suffixes and long common beginnings are common) and on fixed tests with one letter, all letters equal and a longer string.
+
+### The suffix array in O(n log n) (Theorem 6.4.1)
+
+<CodeSnippet unit="6.4/suffix-array-fast" />
+
+**How it works.** `rk[i]` is the rank of the block of size `k` at `i`, and `sa` is sorted by these blocks at the start of each round (at the start, by the first letter, with a counting sort). To sort by the pair (first block, second block), the code first lists the positions in the order of their second block: the positions `i` with `i + k >= n` come first (their second block is empty, the smallest), then the positions `sa[j] - k` in the order of `sa`, since the block at `sa[j] - k` has the second block that stands at `sa[j]`. A stable counting sort of this list by `rk` of the first block gives the order of the pairs. The new ranks are made by comparing neighbouring pairs, and the loop stops when all ranks differ (`rk[sa[n - 1]] == n - 1`). The array `cnt` has `max(n, 256) + 1` places, enough for the ranks and the letter codes. The function needs `n >= 1`.
+
+**Alternative formulation.** Theorem 6.4.1 with `sort` and a comparison of pairs: shorter (14 lines) and fast enough up to about $n = 2 \cdot 10^5$.
+
+### The number of different substrings (Theorem 6.4.4 (a))
+
+<CodeSnippet unit="6.4/count-distinct" />
+
+**How it works.** All substrings by place number $n(n+1)/2$; the loop removes the beginnings that a suffix shares with the suffix before it. The total is a `long long`, since it reaches $5 \cdot 10^{11}$ for $n = 10^6$. The array `lcp` comes from `lcpArray` (Theorem 6.4.3); `lcp[0]` is 0 and is not used.
+
+**Alternative formulation.** For $n$ up to about 3000, put all substrings into a set of strings ([topic 0.6](../../phase-0/0-6-stl-toolbox/)); or count the different hashes of the substrings of each length ([topic 6.1](../../phase-6/6-1-string-hashing/)), $n^2/2$ hashes in all.
+
+### The number of different substrings of each length (Theorem 6.4.4 (b))
+
+<CodeSnippet unit="6.4/distinct-by-length" />
+
+**How it works.** The answer for the length `k` is (the number of suffixes with length at least `k`) minus (the number of ranks with `lcp[r] >= k`). Both counts are made for all `k` together with a difference array: a suffix of length `L` adds 1 to all `k` from 1 to `L`, which is `diff[1]++` and `diff[L + 1]--`; a rank with `lcp[r] = h` takes 1 off for all `k` from 1 to `h`, `diff[1]--` and `diff[h + 1]++`. A running sum turns the differences into the counts.
+
+**Alternative formulation.** For each length separately: put the hashes of the windows of that length in a set; that is $n$ sets of up to $n$ hashes.
+
+### The count and the first position of each pattern (Theorem 6.4.5)
+
+<CodeSnippet unit="6.4/first-occurrence" />
+
+**How it works.** The text is processed once: the suffix array and a table `mn` for range minimums of `sa` ([topic 5.1](../../phase-5/5-1-sparse-table/)). `lowerBound(p, false)` is the first rank whose first `p.size()` letters are not below `p`, and `lowerBound(p, true)` the first rank that is above `p`; the comparison `s.compare(sa[mid], p.size(), p)` looks only at the first letters of the suffix. If the block is empty the answer is 0 and $-1$; otherwise the count is the size of the block and the first start is the smaller of two table entries that cover the block (`j` is the largest power of two that fits in the block). Starts are counted from 0 inside; the program prints them from 1.
+
+**Alternative formulation.** For one pattern use the prefix function ([topic 6.2](../../phase-6/6-2-prefix-function/)): $O(n + |p|)$. For many patterns of few different lengths, a hash set of the patterns of each length and one pass of a window over the text.
+
+### The smallest rotation (Theorem 6.4.1)
+
+<CodeSnippet unit="6.4/smallest-rotation" />
+
+**How it works.** The rotation of `s` that starts at `i < n` is the first `n` letters of the suffix `i` of `s + s`, and that suffix has more than `n` letters. If two rotations differ, the order of the two suffixes is the order of the rotations; so the first suffix in sorted order that starts inside the first copy begins with the smallest rotation. `s.substr(start) + s.substr(0, start)` builds it.
+
+**Alternative formulation.** A linear-time method with two pointers and no sort (the minimal-rotation algorithm), or the hash of the rotations compared by binary search on the first difference ([topic 6.1](../../phase-6/6-1-string-hashing/)).
+
+### The longest common substring of two strings (Theorems 6.4.2 and 6.4.3)
+
+<CodeSnippet unit="6.4/longest-common-substring" />
+
+**How it works.** The strings are joined with `#`, a letter that occurs in neither, so no common beginning can run across the border. A common substring of the two strings is a common beginning of a suffix from `a` and a suffix from `b`. Among suffixes sorted together, the largest such common beginning is reached by two *neighbours* that come from different strings (by Theorem 6.4.2 (b), the common beginning of two suffixes is a minimum over the neighbours between them, and it is largest for a pair that is as close as possible). `sa[r - 1] < na` tells whether a suffix starts in `a`.
+
+**Alternative formulation.** A binary search on the length with hashes ([topic 6.1](../../phase-6/6-1-string-hashing/)): put the hashes of the windows of `a` in a set and test the windows of `b`, $O((|a| + |b|) \log)$ expected.
+
+### The sum of the common beginnings over all pairs of suffixes (Theorem 6.4.2)
+
+<CodeSnippet unit="6.4/sum-of-lcp-pairs" />
+
+**How it works.** By Theorem 6.4.2 the common beginning of the suffixes at the ranks $r_1 < r_2$ is $\min lcp[r_1 + 1 .. r_2]$, so the sum over all pairs is the sum of the minimums of all stretches $lcp[l..r]$ with $1 \le l \le r \le n - 1$. The loop goes over `r`; `cur` is the sum of the stretch minimums of the stretches that end at `r`, and the stack keeps the values together with the number of left ends `l` whose minimum is that value ([topic 1.6](../../phase-1/1-6-monotonic-stack/)). A new value `lcp[r]` removes all larger or equal values from the top and takes over their left ends; `cur` is corrected on each removal, and `total` adds `cur` for each `r`. Both are `long long`.
+
+**Alternative formulation.** Compare all pairs of suffixes letter by letter: $n^2$ pairs. The sum for each single position $i$ over all other suffixes (not all pairs) is two passes of the same stack, one from each side.
+
+### The common beginning of two given positions (Theorem 6.4.2)
+
+<CodeSnippet unit="6.4/lcp-queries" />
+
+**How it works.** `table[0]` is the LCP array and `table[j][r]` the minimum of the $2^j$ values from `r` ([topic 5.1](../../phase-5/5-1-sparse-table/)). For two different positions the answer is the minimum over `lcp[lo..hi - 1]`, where `lo` is the smaller rank plus one (not the smaller rank itself: `lcp[r]` is about the *previous* suffix); two overlapping blocks of length $2^j$ cover the range. The same position twice gives the length of the suffix. `rank` is the inverse of `sa`.
+
+**Alternative formulation.** Hashes with a binary search on the length ([topic 6.1](../../phase-6/6-1-string-hashing/)): $O(\log n)$ per query, no sort, but probabilistic. The Z-function ([topic 6.2](../../phase-6/6-2-prefix-function/)) answers only the queries against the position 0.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: the end of the string gets the rank 0
+
+Template: the suffix array in O(n log n).
+
+```cpp
+auto key = [&](int i) { return pair<int, int>(rk[i], i + k < n ? rk[i + k] : 0); };   // instead of : -1
+```
+
+Input: `aaa`.
+
+The program crashes (no output), correct output `2 1 0`. A suffix whose second block is empty gets the number 0, the same as the real block with the rank 0, so two different blocks stay tied for ever, the ranks never become all different, `k` doubles until the arrays are indexed out of range. The empty block must be *smaller* than every real one (Theorem 6.4.1, note 2).
+
+**Fix:** use $-1$ for the empty second block.
+
+### Bug: the common beginning is counted again from zero
+
+Template: the number of different substrings (the LCP array of Theorem 6.4.3).
+
+```cpp
+// if (h > 0) h--;     the line is missing in lcpArray
+```
+
+Input: `bbb`.
+
+Wrong output `2`, correct output `3`. Without the step down by one the running value `h` keeps its old size and the next comparison starts too far: the code believes that `h` letters agree without looking at them. For bbb the suffix bb shares 2 letters with b, so `h` is 2; the next suffix is the one-letter b and is taken to share 2 letters with its neighbour too, but it has only one. The LCP values are too large, too much is subtracted and the answer is too small. The next suffix may share only $h - 1$ letters with its neighbour (Theorem 6.4.3, steps 1 to 4), not $h$.
+
+**Fix:** after each position, `if (h > 0) h--;`.
+
+### Bug: the end point of the difference array is shifted
+
+Template: the number of different substrings of each length.
+
+```cpp
+diff[lcp[r]]++;                                    // instead of diff[lcp[r] + 1]++
+```
+
+Input: `aa`.
+
+Wrong output `2 1`, correct output `1 1`. The rank with `lcp[r] = h` must be taken off for the lengths 1 to $h$ inclusive, so the change must start at $h + 1$. Put at $h$, it is taken off for the lengths 1 to $h - 1$ only, and the length $h$ is counted twice: aa has one substring of length 1 (a), but the code counts two (Theorem 6.4.4 (b)).
+
+**Fix:** `diff[lcp[r] + 1]++`.
+
+### Bug: the first start is the first suffix in sorted order
+
+Template: the count and the first position of each pattern.
+
+```cpp
+return {hi - lo, sa[lo]};                          // instead of the minimum of sa over the block
+```
+
+Input: `aa`, then `1`, then the pattern `a`.
+
+Wrong output `2 2`, correct output `2 1`. The first rank of the block is the *smallest suffix* that begins with the pattern in dictionary order (the shortest one), not the one that starts first in the text. The first occurrence is the minimum of the starts in the whole block (Theorem 6.4.5 (c)).
+
+**Fix:** take the range minimum of `sa` over the block.
+
+### Bug: the whole suffix is compared with the pattern
+
+Template: the count and the first position of each pattern.
+
+```cpp
+int mid = (lo + hi) / 2, c = s.substr(sa[mid]).compare(p);   // instead of s.compare(sa[mid], p.size(), p)
+```
+
+Input: `aa`, then `1`, then the pattern `a`.
+
+Wrong output `1 2`, correct output `2 1`. The suffix aa continues beyond the pattern a, so compared as a whole it is *larger* than a and falls into the "above" part; only the suffix a itself counts. Only the first $m$ letters of a suffix may be compared with a pattern of length $m$ (Theorem 6.4.5, note 1).
+
+**Fix:** compare `s.compare(sa[mid], p.size(), p)`.
+
+### Bug: the suffix array of the string, not of the doubled string
+
+Template: the smallest rotation.
+
+```cpp
+for (int start : suffixArray(s))                   // instead of suffixArray(s + s)
+```
+
+Input: `caa`.
+
+Wrong output `aca`, correct output `aac`. The smallest suffix of caa is a (at 2), and the rotation that starts there is a followed by ca, which is aca; but the rotation aac starts at 1, and its suffix aa is larger than a only because it is longer. Rotations are compared by their first $n$ letters, which only the suffixes of $s + s$ have all the way.
+
+**Fix:** sort the suffixes of `s + s`.
+
+### Bug: the border letter is missing
+
+Template: the longest common substring of two strings.
+
+```cpp
+string t = a + b;                                  // instead of a + '#' + b
+```
+
+Input: `a`, then `aa`.
+
+Wrong output `2`, correct output `1`. Without a separator the suffix of `a` continues into `b`, and the suffix a·aa shares two letters with aa, which is more than `a` and `aa` really share (one letter, a). The separator must not occur in either string, so that a common beginning cannot run through the border.
+
+**Fix:** join with a letter that occurs in neither string.
+
+### Bug: the stack sum is not corrected on removal
+
+Template: the sum of the common beginnings over all pairs of suffixes.
+
+```cpp
+// cur -= (long long)stack.back().first * stack.back().second;     the line is missing in the while loop
+```
+
+Input: `caa`.
+
+Wrong output `2`, correct output `1`. When a smaller value arrives, the left ends that had the larger value as their minimum now have the smaller value; `cur` must lose their old contribution before gaining the new one. Without the removal, the old contribution stays and is added again (Theorem 6.4.2 (b): each stretch counts once, with its own minimum).
+
+**Fix:** subtract the removed entry from `cur`.
+
+### Bug: the range starts at the smaller rank itself
+
+Template: the common beginning of two given positions.
+
+```cpp
+int lo = min(rank[a], rank[b]), hi = max(rank[a], rank[b]) + 1;   // instead of min(...) + 1
+```
+
+Input: `aa`, then `1`, then the query `0 1`.
+
+Wrong output `0`, correct output `1`. The entry `lcp[r]` is the common beginning of the suffix of rank `r` with the suffix of rank `r - 1`, which is *before* the pair. The range must start one rank after the smaller rank (Theorem 6.4.2, note 2). Here the suffixes a (rank 0) and aa (rank 1) share one letter, but the code reads `lcp[0] = 0`.
+
+**Fix:** start at the smaller rank plus 1.
+
+## 8. Worked examples
+
+### Example 1: Substring Order I
+
+[CSES 2108: Substring Order I](https://cses.fi/problemset/task/2108). In short: given a string of up to $10^5$ letters and a number $k$, list the different substrings in dictionary order and print the $k$-th of them.
+
+#### Step 1: Constraints → budget
+
+$n = 10^5$ gives $n(n+1)/2 = 5 \cdot 10^9$ substrings, and $k$ may be as large as the number of different substrings, so $k$ needs 64 bits. Listing or storing the substrings is impossible; a solution in about $n \log n$ steps is needed.
+
+#### Step 2: Question form → candidate tools
+
+- All substrings in a set of strings ([topic 0.6](../../phase-0/0-6-stl-toolbox/)): $5 \cdot 10^9$ strings.
+- A trie of all suffixes ([topic 6.3](../../phase-6/6-3-trie/)): up to $n^2/2$ nodes, too much memory.
+- The sorted suffixes and the LCP array: the card "Different substrings of one string: how many, how many of each length, the k-th (suffix array)".
+
+#### Step 3: Property check → decision
+
+The question is about the different substrings of one string, in dictionary order. By Theorem 6.4.4 (c) they come in the order of the ranks of their owners, and inside one rank by length, and the rank $r$ owns $n - sa[r] - lcp[r]$ of them. Decision: build the suffix array and the LCP array, then walk the ranks and subtract.
+
+#### Step 4: Proof for this problem
+
+By Theorem 6.4.4 (c) the different substrings in dictionary order are: first the ones owned by the rank 0, by length, then the ones owned by the rank 1, and so on. Walk the ranks; if $k \le n - sa[r] - lcp[r]$, then the answer is the $k$-th substring owned by $r$, that is the prefix of the suffix $sa[r]$ with the length $lcp[r] + k$; otherwise subtract that number from $k$ and go on. The sum of all the numbers is the count of different substrings (Theorem 6.4.4 (a)), which is at least $k$, so the walk stops.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.4/example-1" />
+
+#### Step 6: Alternative approach
+
+Binary search on the answer letter by letter: for a prefix $P$ of the answer, count the different substrings that begin with $P$ by the block of the suffix array (Theorem 6.4.5); this walks down an implicit trie and costs more code than the single pass over the ranks.
+
+### Example 2: Finding Patterns
+
+[CSES 2102: Finding Patterns](https://cses.fi/problemset/task/2102). In short: given a string of up to $10^5$ letters and up to $5 \cdot 10^5$ patterns of total length at most $5 \cdot 10^5$, tell for each pattern whether it occurs in the string.
+
+#### Step 1: Constraints → budget
+
+$5 \cdot 10^5$ patterns against a text of $10^5$ letters: the prefix function for each pattern costs about $n$ steps, in all $5 \cdot 10^{10}$. We need about $n \log n$ for the text and $|p| \log n$ for each pattern.
+
+#### Step 2: Question form → candidate tools
+
+- The prefix function of each pattern and the text ([topic 6.2](../../phase-6/6-2-prefix-function/)): $5 \cdot 10^{10}$ steps.
+- A trie of the patterns and a walk from each place of the text ([topic 6.3](../../phase-6/6-3-trie/)): up to $n \cdot (\text{longest pattern})$ steps.
+- The suffix array of the text and one binary search per pattern: the card "Many patterns in one fixed text: counts and positions as a block of sorted suffixes".
+
+#### Step 3: Property check → decision
+
+The text is fixed and the patterns are many, each asked separately. A pattern occurs exactly when some suffix begins with it (Theorem 6.4.5 (a)). Decision: build the suffix array once and answer each pattern by a binary search.
+
+#### Step 4: Proof for this problem
+
+By Theorem 6.4.5 (a) and (b), the suffixes whose first $m$ letters are not below $p$ start at the first rank that is not below, and from this rank on the first $m$ letters are equal for a while and then above. So $p$ occurs exactly when the first suffix that is not below $p$ exists and is equal, that is, begins with $p$. One binary search is enough (no need for the end of the block), and each pattern costs $O(|p| \log n)$; the total is $5 \cdot 10^5 \cdot 17$ steps.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.4/example-2" />
+
+#### Step 6: Alternative approach
+
+The patterns have total length $5 \cdot 10^5$, so there are at most about 1000 different lengths (the lengths $1, 2, \dots, 1000$ already add up to $5 \cdot 10^5$). For each length put the hashes of the patterns of this length in a set and slide a window of that length over the text: $1000 \cdot 10^5 = 10^8$ steps with hashes ([topic 6.1](../../phase-6/6-1-string-hashing/)), probabilistic and slower than the suffix array.
+
+### Example 3: Inverse Suffix Array
+
+[CSES 3225: Inverse Suffix Array](https://cses.fi/problemset/task/3225). In short: given a permutation of $1..n$ ($n \le 10^5$), find a string of letters a to z whose suffix array is this permutation, or print $-1$ if there is none.
+
+#### Step 1: Constraints → budget
+
+$n = 10^5$ and $26^n$ strings: no search over strings. The answer must come from the permutation itself, in about $n$ or $n \log n$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- Try all strings ([topic 0.5](../../phase-0/0-5-brute-force/)): $26^n$.
+- Build candidate strings and check each one by building its suffix array: only if the candidate is known to be right.
+- Read the rules that the order of the suffixes puts on neighbouring letters: the card "Suffixes in sorted order: comparing positions of one string, smallest rotation, largest substring".
+
+#### Step 3: Property check → decision
+
+The input is itself the sorted order of the suffixes, and the output is a string with this order. The order says, for every two neighbours, which one is smaller; and that is a condition on one letter and the order of the rest. Decision: find the rule for neighbours and give out letters greedily.
+
+#### Step 4: Proof for this problem
+
+Let $A = sa[r-1]$ and $B = sa[r]$, so $\text{suffix } A < \text{suffix } B$, and let $rank[n] = -1$ for the empty rest. (1) Necessarily $s[A] \le s[B]$. (2) If $s[A] = s[B]$, the first letters cancel and $\text{suffix } (A+1) < \text{suffix } (B+1)$, that is $rank[A+1] < rank[B+1]$. (3) Conversely, if $s[A] < s[B]$, or $s[A] = s[B]$ and $rank[A+1] < rank[B+1]$ for all neighbours, then the order of the given permutation is the true order of the suffixes: by induction over the length of the suffixes, the order of $A + 1$ and $B + 1$ in the permutation is their true order, so every neighbouring pair is truly ordered, and a chain of true neighbour orders is the true order. So the letters must grow along the permutation, grow strictly where $rank[A+1] > rank[B+1]$, and may stay equal elsewhere. Staying equal whenever allowed gives the fewest letters, and each letter is as small as possible. If this needs more than 26 letters, then every string has to use that many, and there is no answer.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.4/example-3" />
+
+#### Step 6: Alternative approach
+
+The same rule with a plain array of ranks and one pass over positions instead of ranks of suffixes; or, to check an answer, build its suffix array (Theorem 6.4.1) and compare it with the input. For the statement "print any string" a larger alphabet is not needed, but a string with fewer distinct letters is never worse.
+
+## 9. Problem ladder
+
+<Ladder topic="6.4" />
+
+## 10. Identification drill
+
+<Drill topic="6.4" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="6.4" />
+
+## 12. Self-test questions
+
+<SelfTest topic="6.4" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="6.4" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="6.4" />

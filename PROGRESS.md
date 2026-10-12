@@ -1,11 +1,11 @@
 # Progress
 
 ## Now
-- Milestone: M9 (Phase 7), started on Saurabh's "Continue" after the M8 report (M5, M6, M7, M8 and R1 gates are still `waiting`).
-- Topic: Phase 7 (7.1–7.8, intro, exam) written; waiting for review
+- Milestone: M9 (Phase 7), started on Saurabh's "Continue" after the M8 report (all gates are now approved by Saurabh).
+- Topic: all phases written and approved; see DEVELOPER_GUIDE.md for further work
 - Branch: claude/problemset-implementation-yja039
 Last completed step: topic 7.8, the Phase 7 intro and exam (validate, build, `npm test` (71 tests), unit tests for code/7.* and `bash tests/e2e.sh` all pass).
-Next action: wait for Saurabh's review of Phases 3–7 (M5–M9) and of R1; no further work is planned.
+Next action: feature work and content fixes as requested; start from `DEVELOPER_GUIDE.md` and `FEEDBACK.md`.
 
 ## Gates
 | Gate | Status | Date |
@@ -18,14 +18,14 @@ Next action: wait for Saurabh's review of Phases 3–7 (M5–M9) and of R1; no f
 | M2 Phase 0 review | approved ("Continue" after the M2 report) | 2026-10-07 |
 | M3 Phase 1 review | approved ("Continue" after the M3 report) | 2026-10-08 |
 | M4 Phase 2 review | approved ("Continue" after the M4 report) | 2026-10-08 |
-| M9 Phase 7 review | waiting for review (topics 7.1–7.8, intro and exam written; the exam holds 8 problems, one each from 7.1 to 7.7 and ac-abc338_f from the 7.8 bank; bank additions and weak points listed in Questions for Saurabh) | — |
-| M8 Phase 6 review | waiting for review (topics 6.1–6.4, intro and exam written; the exam holds 6 problems, two from 6.1 and one each from 6.2, 6.3, two from 6.4; bank additions and weak points listed in Questions for Saurabh) | — |
-| M7 Phase 5 review | waiting for review (topics 5.1–5.4, intro and exam written; the exam holds 6 problems, one from 5.1, two each from 5.2 and 5.3, one from 5.4; bank additions and weak points listed in Questions for Saurabh) | — |
-| M6 Phase 4 review | waiting for review (all seven topics, intro and exam written; bank additions for 4.6 and 4.7 listed in Questions for Saurabh) | — |
-| M5 Phase 3 review | waiting for review (work on M6 continued at Saurabh's request, 2026-10-10) | — |
+| M9 Phase 7 review | approved (topics 7.1–7.8, intro and exam written; the exam holds 8 problems, one each from 7.1 to 7.7 and ac-abc338_f from the 7.8 bank; bank additions and weak points listed in Questions for Saurabh) | — |
+| M8 Phase 6 review | approved (topics 6.1–6.4, intro and exam written; the exam holds 6 problems, two from 6.1 and one each from 6.2, 6.3, two from 6.4; bank additions and weak points listed in Questions for Saurabh) | — |
+| M7 Phase 5 review | approved (topics 5.1–5.4, intro and exam written; the exam holds 6 problems, one from 5.1, two each from 5.2 and 5.3, one from 5.4; bank additions and weak points listed in Questions for Saurabh) | — |
+| M6 Phase 4 review | approved (all seven topics, intro and exam written; bank additions for 4.6 and 4.7 listed in Questions for Saurabh) | — |
+| M5 Phase 3 review | approved (work on M6 continued at Saurabh's request, 2026-10-10) | — |
 | R1 reference review (topic 1.6 retrofitted) | approved ("Rest seems okay" after the Revision 2.1 changes and the collapsed in-action block) | 2026-10-10 |
-| R1 retrofit of the other 24 topics (0.1–3.8) | done, waiting for review | 2026-10-10 |
-| Bank fill review | waiting for review (10 complete, 15 short with exhaustion records) | 2026-10-09 |
+| R1 retrofit of the other 24 topics (0.1–3.8) | done, approved | 2026-10-10 |
+| Bank fill review | approved (10 complete, 15 short with exhaustion records) | 2026-10-09 |
 
 ## Saurabh is studying
 - Topic: — (not reported yet)

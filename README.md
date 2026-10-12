@@ -1,6 +1,6 @@
 # CP Training
 
-A self-study competitive programming site (Astro + Starlight + React). The full plan is in `PLAN.md`. The problem bank plan is in `PROBLEM_BANK_PLAN.md`. Current status is in `PROGRESS.md`. Feedback goes in `FEEDBACK.md`.
+A self-study competitive programming site (Astro + Starlight + React). The full plan is in `PLAN.md`. The problem bank plan is in `PROBLEM_BANK_PLAN.md`. Current status is in `PROGRESS.md`. Feedback goes in `FEEDBACK.md`. Agents and new contributors: start with `DEVELOPER_GUIDE.md`.
 
 ## Run locally
 ```

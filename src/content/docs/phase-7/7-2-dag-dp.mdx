@@ -1,0 +1,468 @@
+---
+title: "7.2 DP on DAGs"
+sidebar:
+  order: 42
+topic: "7.2"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.2" />
+
+This topic combines [dynamic programming](../../phase-3/3-2-dp-foundations/) (a value for each small case, built from the values of smaller cases) and [the structure of directed graphs](../../phase-4/4-2-graph-structure/) (an order in which every edge points forward, when the graph has no directed cycle). A dynamic program needs an order in which every value is ready when it is used; in a graph without cycles, the topological order is that order.
+
+## 1. Why this topic exists
+
+Here is a small problem. A game has $n = 10^5$ levels joined by $m = 2 \cdot 10^5$ one-way teleporters, and no sequence of teleporters leads back to a level it started from. In how many ways can you go from level 1 to level $n$? The number of paths can be astronomically large, so they cannot be listed. But every path to a level $v$ ends with a teleporter $u \to v$, so the number of paths to $v$ is the sum of the numbers of paths to the levels $u$ that have a teleporter into $v$. If the levels are handled in an order in which every $u$ comes before every $v$ it points to, each number is ready when it is needed, and the whole table costs $O(n + m)$.
+
+An order with all the edges pointing forward is a **topological order**, and it exists exactly when the graph has no directed cycle (such a graph is called a **DAG**, a directed acyclic graph). This lesson has four ideas that grow from it. The best path in a DAG, and the number of paths, are DPs in that order. When the graph does have cycles, the groups of vertices that lie on a common cycle can be glued into single vertices, and what is left is a DAG: a DP on the **condensation**. And often there is no graph in the statement at all, only states and moves in which some number always gets smaller: the **state graph** is then a DAG, and a memoised recursion is a DP on it.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.2" />
+
+### What this topic does not cover
+
+- Shortest paths in graphs that have cycles, with weights that may be negative: topic 4.3. A graph with no directed cycle needs none of those methods.
+- Walks of a fixed length in a graph with cycles, counted with powers of a matrix: topic 7.6.
+- DP whose transitions are sped up with a Fenwick tree or a segment tree: topic 7.3.
+- Games on graphs and the Sprague–Grundy theorem: topic 7.5.
+- DP over subsets of vertices (bitmasks): topic 3.7. The review problem about orders of a DAG uses it, and says so.
+
+## 3. Definitions
+
+- A **directed graph** has vertices and edges $u \to v$, each with a tail $u$ and a head $v$. A **path** follows edges from vertex to vertex without repeating a vertex; a **walk** may repeat vertices. A **directed cycle** is a walk that returns to its first vertex. Example: in the graph with the edges $0 \to 1$, $1 \to 2$, $2 \to 1$, the walk $1 \to 2 \to 1$ is a directed cycle.
+- A **DAG** is a directed graph without a directed cycle. The **in-degree** of $v$ is the number of edges into it. Example: in the DAG with the edges $0 \to 1$, $0 \to 2$, $1 \to 3$, $2 \to 3$, the vertex 3 has the in-degree 2.
+- A **topological order** lists the vertices so that every edge goes from an earlier vertex to a later one. Example: $0, 1, 2, 3$ for the DAG above.
+- Two vertices are in the same **strongly connected component** if each can reach the other. The **condensation** of a graph has one vertex for each component and an edge from a component to another if some edge leads from the first to the second. Example: for $0 \to 1$, $1 \to 0$, $1 \to 2$ the components are $\{0, 1\}$ and $\{2\}$, with one edge between them.
+- A **state graph** has the states of a process as vertices and the allowed moves as edges; the states do not have to be listed. **Memoisation** stores the value of a state in a table the first time it is computed, so that a repeated call returns at once.
+- In the code, `priority_queue<int, vector<int>, greater<int>>` is a heap that gives the smallest number first; `array<int, 26>{}` is 26 integers, all 0; `map<long long, long long>` stores values by number; a function can be given a `map` by reference (`map<...>& memo`) so that all calls share one table.
+
+## 4. Theory and proofs
+
+### 4.1 Topological order and the DP in it
+
+**Theorem 7.2.1 (topological order and the DP in it).** Let a directed graph have $n$ vertices and $m$ edges. **Kahn's algorithm** repeatedly takes a vertex that has no edge from a vertex not yet taken, in the following way: put the vertices of in-degree 0 in a list; while reading the list, for each edge $u \to v$ out of the vertex being read, lower the count of $v$ by 1 and append $v$ when its count reaches 0. (a) The list contains all $n$ vertices exactly when the graph has no directed cycle, and then every edge goes from an earlier vertex to a later one. (b) In a DAG, if $f(v) = \max(b_v,\ \max_{u \to v} (f(u) + w_{uv}))$, then $f$ is computed in the order of the list in $O(n + m)$ time. In particular the largest total weight of a path that ends at $v$ (a path may be a single vertex) is such an $f$.
+
+:::tip[In plain words]
+If a graph has no cycle, there is always a vertex that nothing points into: start there. Take it away and repeat. This gives an order in which every edge points forward, so when a vertex is reached, everything it depends on is already finished. If at some moment every remaining vertex has an edge coming from a remaining vertex, walking backwards along those edges must meet a vertex twice, and that is a cycle.
+:::
+
+**A tiny instance.** The DAG with the edges $0 \to 1$, $0 \to 2$, $1 \to 3$, $2 \to 3$, $3 \to 4$, $2 \to 5$. The in-degrees are $0, 1, 1, 2, 1, 1$. The list starts with 0; reading 0 appends 1 and 2; reading 1 lowers the count of 3 to 1; reading 2 lowers it to 0 (append 3) and appends 5; reading 3 appends 4. The order is $0, 1, 2, 3, 5, 4$. The largest number of edges of a path ending at each vertex is $0, 1, 1, 2, 3, 2$ (vertex 4: the path $0 \to 1 \to 3 \to 4$). For the graph $0 \to 1$, $1 \to 2$, $2 \to 1$, $2 \to 3$ only the vertex 0 is taken: the other vertices lie on or behind a cycle.
+
+**Proof.**
+1. *If all vertices are taken.* A vertex is appended only when its count has fallen to 0, and each fall is caused by reading the tail of an edge into it. So for every edge $u \to v$, $u$ is read before $v$ is appended: every edge goes forward. A directed cycle would need an edge that goes backward in the list, so there is no cycle.
+2. *If some vertices are not taken.* Take the vertices left over. Each of them has a count above 0, so it has an edge from a vertex that was not read; that vertex is not taken either (a vertex that was appended is read, and reading it lowers its heads).
+3. Start at a left-over vertex and step backwards along such an edge again and again. There are finitely many vertices, so some vertex repeats; the part of the walk between the two visits, read forwards, is a directed cycle. So a graph without a cycle has all its vertices taken. This proves (a).
+4. Each vertex is appended once and read once, and each edge lowers a count once: $O(n + m)$.
+5. *Part (b).* A path ending at $v$ is either just $v$ (value $b_v$) or ends with an edge $u \to v$ after a path ending at $u$; the best value of the second kind is $f(u) + w_{uv}$ with the best $f(u)$ for the same $u$. By (a), $u$ is read before $v$, so when $f(v)$ is needed, every $f(u)$ with $u \to v$ is final. $\square$
+
+:::note[This proof needs]
+1. The order is not unique; any order with the edges forward will do. A heap in place of the list gives the smallest one (the template).
+2. There must be no directed cycle. With a cycle, the vertices on and behind it are never taken. The longest *simple* path in a graph with cycles is a hard problem, and the DP gives nothing for it.
+3. Negative weights are no problem in a DAG, for the longest and for the shortest path; the methods for graphs with cycles (topic 4.3) are not needed.
+4. A question about paths from one vertex must skip the vertices that cannot be reached from it, whose values are not defined.
+:::
+
+<TheoremCode unit="7.2/thm-1" />
+
+The first line is the order of the tiny instance and the second the longest paths ending at each vertex (the vertex 4 gets 3). The third line is the graph with a cycle: only 1 of the 4 vertices is taken. The check runs both functions on 3000 random graphs of up to 8 vertices, acyclic ones and ones with cycles: all vertices are taken exactly when there is no cycle (decided by a closure of reachability), the edges go forward in the order, and the longest path equals a search from every vertex.
+
+### 4.2 Counting paths, and the best value together with its number
+
+**Theorem 7.2.2 (counting paths).** Let a DAG have a start vertex $s$ and edge weights, and let the vertices be handled in a topological order. (a) The number of paths from $s$ to $v$ is $1$ for $v = s$ and otherwise $\sum_{u \to v} \text{cnt}(u)$ over the edges into $v$ (parallel edges count separately). (b) Let $c(v)$ be the least total weight of a path from $s$ to $v$ and $k(v)$ the number of paths with this weight. Then $c(v) = \min_{u \to v} (c(u) + w_{uv})$, and $k(v)$ is the sum of $k(u)$ over the edges $u \to v$ for which $c(u) + w_{uv} = c(v)$. Both are computed in $O(n + m)$ time, modulo any number if only the counts are asked.
+
+:::tip[In plain words]
+Every path to $v$ ends with one last edge. Sorting the paths by their last edge, the paths ending with the edge $u \to v$ are exactly the paths to $u$ followed by that edge, so there are as many of them as paths to $u$. The best paths to $v$ end with an edge from a vertex where the path so far is itself best: otherwise the beginning could be replaced by a better one. So the best value and its number are kept together, and a better value replaces the pair while an equal value adds the numbers.
+:::
+
+**A tiny instance.** The DAG of Theorem 7.2.1 with the weights $0 \to 1$: 2, $0 \to 2$: 1, $1 \to 3$: 1, $2 \to 3$: 2, $3 \to 4$: 1, $2 \to 5$: 5, and $s = 0$. The numbers of paths are $1, 1, 1, 2, 2, 1$ (the vertex 3 is reached by $0 \to 1 \to 3$ and $0 \to 2 \to 3$). The least weights are $0, 2, 1, 3, 4, 6$, and the numbers of such paths are $1, 1, 1, 2, 2, 1$: to reach 3 the two paths cost $2 + 1 = 3$ and $1 + 2 = 3$, both the cheapest.
+
+**Proof.**
+1. *Part (a).* A path from $s$ to $v \ne s$ has a last edge $u \to v$; remove it and what is left is a path from $s$ to $u$; conversely a path from $s$ to $u$ followed by $u \to v$ is a path to $v$ when $u \to v$ is an edge (no vertex repeats because the graph has no cycle). So the paths to $v$ with the last edge $e = (u \to v)$ correspond one to one to the paths to $u$, and the sets for different edges are disjoint. Summing over the edges gives the formula; the empty path is the single path to $s$.
+2. *Part (b), the weight.* A cheapest path to $v \ne s$ has a last edge $u \to v$, and its first part is a path to $u$; the first part must be cheapest, since a cheaper path to $u$ could replace it, and the new path is a path (no cycle). So $c(v) = \min (c(u) + w_{uv})$.
+3. *Part (b), the number.* A cheapest path to $v$ with the last edge $u \to v$ exists exactly when $c(u) + w_{uv} = c(v)$, and then its first part is any cheapest path to $u$ (by step 2) and every cheapest path to $u$ gives one. Counting as in step 1 gives $k(v) = \sum k(u)$ over those edges.
+4. The values at $v$ are final when $v$ is handled, because all the tails are before it in the order; each edge is used once: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. No directed cycle: in a graph with a cycle the number of walks is infinite, and the number of simple paths is not given by this sum.
+2. Take the counts modulo the modulus after every addition. The weights must be added in 64 bits, and a vertex that cannot be reached from $s$ must be left out (its $c$ is "infinity").
+3. For a *largest* value in place of the least, change the comparison. For both a best value and a number of ways, keep the pair together and never add the numbers of a worse value.
+:::
+
+<TheoremCode unit="7.2/thm-2" />
+
+The three lines are the tiny instance: the numbers of paths, the least weights and the numbers of cheapest paths. The check lists all paths from the vertex 0 for 3000 random DAGs of up to 8 vertices with weights from 1 to 4, and compares the three numbers.
+
+### 4.3 Graphs with cycles: the DP on the components
+
+**Theorem 7.2.3 (the condensation).** Let a directed graph have a number $c_v \ge 0$ on each vertex. A walk may visit vertices again, and its value is the sum of $c_v$ over the *different* vertices it visits. (a) The condensation is a DAG. (b) The largest value of a walk is the largest total weight of a path in the condensation, where a component has the weight $\sum c_v$ over its vertices. (c) With the components numbered in a topological order, $\text{best}(C) = \text{total}(C) + \max (0, \max \text{best}(P))$ over the components $P$ with an edge into $C$, and the answer is the largest $\text{best}$. This takes $O(n + m)$ time once the components are known.
+
+:::tip[In plain words]
+Inside a component every vertex can be reached from every other, so a walk that enters it can collect everything in it before it leaves. Between components there is no way back, so a walk goes through the components in an order given by a path of the condensation. So gluing each component into one vertex with the sum of its coins turns the question into a longest path in a graph without cycles.
+:::
+
+**A tiny instance.** Six rooms with the coins $2, 3, 1, 4, 1, 7$ and the tunnels $0 \to 1$, $1 \to 2$, $2 \to 0$, $2 \to 3$, $3 \to 4$, $4 \to 3$, $2 \to 5$. The components are $\{0, 1, 2\}$ (coins $2 + 3 + 1 = 6$), $\{3, 4\}$ ($4 + 1 = 5$) and $\{5\}$ (7). The first component has edges into the other two, so the best is $6 + \max(5, 7) = 13$: collect the first three rooms and go to the room 5.
+
+**Proof.**
+1. *Part (a).* If two components $A \ne B$ had a path from $A$ to $B$ in the condensation and also one from $B$ to $A$, then a vertex of $A$ and a vertex of $B$ would reach each other, and they would be in the same component. So there is no directed cycle.
+2. Inside a component $C$, any vertex $x$ reaches any vertex $y$ by a walk, and the walk stays inside $C$ (every vertex on it is reachable from $x$ and reaches $y$, hence is in $C$). So from an entry vertex a walk can visit all vertices of $C$ and end at any vertex of $C$.
+3. *Upper bound.* A walk never returns to a component it has left (that would give a cycle in the condensation), so the components it visits, in order, form a path in the condensation. The value of the walk is at most the sum of the weights of these components, because every vertex counted lies in one of them.
+4. *Lower bound.* Given a path of components $C_1 \to \dots \to C_k$ in the condensation, pick an edge from each $C_i$ to $C_{i+1}$ and build a walk that, in each $C_i$, goes from the entry vertex through all vertices of $C_i$ to the tail of the chosen edge (step 2). Its value is the sum of the weights of the components (they are disjoint and $c \ge 0$). This proves (b).
+5. *Part (c).* The recurrence is the longest path in the DAG by Theorem 7.2.1(b), with $\max(0, \cdot)$ because a path may start at $C$. With the components numbered in topological order, all $P$ are numbered before $C$. $\square$
+
+:::note[This proof needs]
+1. $c_v \ge 0$. With negative numbers a walk may avoid some vertices of a component (it still has to pass through some), and the component total is not what can be collected: a cycle of two rooms with 5 and $-3$ coins is worth 5, not 2.
+2. The components must be known. The template computes them with Kosaraju's algorithm without recursion (topic 4.7); in its second pass the components come out in a topological order of the condensation, which is the order the DP needs.
+3. A coin is taken once: the value counts *different* vertices. If every visit could collect again, the value would be unbounded.
+:::
+
+<TheoremCode unit="7.2/thm-3" />
+
+The first line gives the components of the six rooms: the rooms 0, 1, 2 form the component 0, the room 5 the component 1 and the rooms 3, 4 the component 2 (the numbering is a topological order, and the edges $2 \to 5$ and $2 \to 3$ go forward). The second line is the answer 13. The check compares the DP with a search over (room, set of rooms visited) states, for 3000 random graphs of up to 7 rooms with cycles and coins from 0 to 9, and checks that every edge goes forward in the numbering of the components.
+
+### 4.4 Implicit DAGs: states with a falling measure
+
+**Theorem 7.2.4 (memoised recursion on a state graph).** Let $S$ be a set of states, let every state $s$ have a finite list of moves to states $t$, and let there be a measure $\mu(s) \in \{0, 1, 2, \dots\}$ with $\mu(t) < \mu(s)$ for every move $s \to t$. Let $f(s)$ be defined by a rule that gives $f(s)$ from the values $f(t)$ of the moves of $s$ (and a given value when $s$ has no moves). Then the recursion that computes $f(s)$ from the values of its moves, storing every computed value in a table, ends, returns $f(s)$, and evaluates each reachable state once. The time is (the number of reachable states) times (the cost of one rule).
+
+:::tip[In plain words]
+If every move makes some number smaller, the states with their moves have no cycle: a DAG that is never written out. A recursive function that remembers its answers is then exactly a DP on it, and it visits only the states that are really reached, which are often very few even when the possible values are huge.
+:::
+
+**A tiny instance.** The fewest days to eat $n$ oranges, where each day you eat one orange, or half of them if their number is even, or two thirds if it is divisible by 3. With $\text{days}(n) = 1 + \min(n \bmod 2 + \text{days}(\lfloor n / 2 \rfloor),\ n \bmod 3 + \text{days}(\lfloor n / 3 \rfloor))$ and $\text{days}(0) = 0$, $\text{days}(1) = 1$, the call for $n = 10$ reaches the states $10, 5, 3, 2$ (and the values 0 and 1 at the bottom): $\text{days}(2) = 1 + \min(0 + 1, 2 + 0) = 2$, $\text{days}(3) = 1 + \min(1 + 1, 0 + 1) = 2$, $\text{days}(5) = 1 + \min(1 + 2, 2 + 1) = 4$, $\text{days}(10) = 1 + \min(0 + 4,\ 1 + 2) = 4$. The reachable states are all of the form $\lfloor n / (2^a 3^b) \rfloor$, so there are at most about $\log_2 n \cdot \log_3 n$ of them: 257 for $n = 2 \cdot 10^9$.
+
+**Proof.**
+1. *The recursion ends.* The measure falls with every call, and it cannot fall below 0, so every chain of calls is finite, and there are finitely many moves from each state.
+2. *It returns $f(s)$.* By induction over $\mu(s)$: for a state with no moves the value is given; for another state the calls return $f(t)$ for the moves $t$ (their measure is smaller, so the induction applies), and the rule gives $f(s)$.
+3. *Each state is evaluated once.* The first time a state is reached its value is computed and stored; every later call finds it in the table and returns at once.
+4. *The time.* Only states that are reached from the first state are ever evaluated; each costs one application of the rule plus the lookups of its moves. $\square$
+
+:::note[This proof needs]
+1. A measure that falls with *every* move. If a move can lead back (a number that can be increased and decreased), the state graph has cycles, the recursion may never end, and a breadth-first search over the states (topic 4.1) is needed.
+2. A state must contain everything the future depends on. If the rule depends on how the state was reached (the last move, a budget used), that must be in the state.
+3. The saving is in the number of reachable states. For the oranges, the formula $n \bmod 2 + \text{days}(n / 2)$ says that single oranges are eaten only to make the number divisible by 2 (or by 3). That this suffices follows because two single oranges eaten before a halving can be replaced by one single orange eaten after it, which reaches the same number in fewer days, and in the same way three singles before taking two thirds can be replaced by one after it. The unit test also checks the formula against a search for every $n$ up to 3000.
+:::
+
+<TheoremCode unit="7.2/thm-4" />
+
+The lines are the tiny instance ($n = 10$ takes 4 days with 4 numbers computed), $n = 6$ (3 days: eat 3, eat 2, eat 1), $n = 1$ (no number is computed, the base case) and $n = 2 \cdot 10^9$ with 32 days and only 257 numbers. The check compares the recursion with a breadth-first search over the numbers $0..n$ with the three moves, for every $n$ from 1 to 3000.
+
+## 5. Recognition Cards
+
+<Cards topic="7.2" />
+
+## 6. Templates
+
+Seven templates. Each shows only the function that matters; the program around it reads the input. Several of them use `topologicalOrder` of Theorem 7.2.1 (Kahn's algorithm; it stays in the file outside the shown code and is said to be used). Each template is checked against a brute force that lists all paths or runs a search over states, on thousands of random small inputs (up to 7 to 9 vertices, with a random order of the vertices so that the numbers do not follow the order of the edges, and with graphs that sometimes contain cycles) and on fixed tests with one vertex, a path and a graph with a cycle.
+
+### The smallest topological order, or a cycle (Theorem 7.2.1)
+
+<CodeSnippet unit="7.2/topological-order" />
+
+**How it works.** `indeg[v]` is the number of edges into `v` not yet used. A vertex of in-degree 0 goes into the heap `ready`; the smallest one is taken, appended to `order`, and each edge out of it lowers the count of its head, which enters the heap when the count reaches 0. If the loop stops with `order` shorter than `n`, the rest lies on or behind a cycle. With a plain list (as in the theorem) any topological order is obtained; the heap gives the smallest one in the numbering of the vertices, in $O((n + m) \log n)$.
+
+**Alternative formulation.** A depth-first search that appends a vertex after all its heads, read backwards, gives a topological order too; it needs a recursion (or an explicit stack) and a way to notice a cycle.
+
+### The longest path in a DAG with weights (Theorem 7.2.1)
+
+<CodeSnippet unit="7.2/longest-path" />
+
+**How it works.** `dp[v]` is the largest total of a path that ends at `v`, at least 0 because a path may begin at `v`. The loop goes through the vertices in a topological order, so when `v` is reached, every edge into `v` has already updated `dp[v]`; `best` takes `dp[v]` at that moment and the edges out of `v` update their heads. Negative weights are fine. The program passes `topologicalOrder` the input degrees.
+
+**Alternative formulation.** A memoised recursion from each vertex (the longest path starting there): the same table, filled in the other direction, with a recursion that can be as deep as $n$.
+
+### The cheapest paths and their number (Theorem 7.2.2)
+
+<CodeSnippet unit="7.2/count-best-paths" />
+
+**How it works.** `cost[v]` is the least weight of a path from the vertex 0 to `v`, and `ways[v]` the number of such paths, modulo $10^9 + 7$. The vertex 0 starts with `cost` 0 and one way. For an edge `v -> u` of weight `w`: if `cost[v] + w` is smaller than `cost[u]`, the pair of `u` is replaced (`ways[u] = ways[v]`); if it is equal, the numbers of ways are added; if larger, nothing happens. Vertices that cannot be reached from 0 keep the cost `LLONG_MAX` and are skipped, so no addition overflows.
+
+**Alternative formulation.** Dijkstra's algorithm with counts (topic 4.3) gives the same numbers for graphs with cycles and positive weights; in a DAG the order is free, and negative weights are allowed.
+
+### The most frequent letter on a path (Theorem 7.2.1 with a second dimension)
+
+<CodeSnippet unit="7.2/label-counts" />
+
+**How it works.** The state of a vertex is a row of 26 numbers: `dp[v][c]` is the largest number of vertices with the letter `c` on a path that ends at `v`. When `v` is reached in the order, all edges into it have merged their rows by maximum, so `v` adds itself (`dp[v][letters[v] - 'a']++`) and then passes its row to its heads. If `order` has fewer than `n` vertices there is a cycle and the answer is $-1$. The cost is $26 (n + m)$.
+
+**Alternative formulation.** One pass for each letter, with a single number per vertex: the same cost, less memory (26 passes of $n$ numbers).
+
+### The components and the condensation (Theorem 7.2.3)
+
+<CodeSnippet unit="7.2/scc-condensation" />
+
+**How it works.** Kosaraju's algorithm: the first pass is a depth-first search that records the order in which the vertices finish (the explicit stack `stack` and the pointer `next[v]` replace the recursion). The second pass takes the vertices from the last finished to the first and searches the *reversed* graph (`in`) from each vertex not yet in a component: what it finds is one component, and the components come out in a topological order of the condensation. The program then counts the different pairs of components joined by an edge.
+
+**Alternative formulation.** Tarjan's algorithm finds the components in one pass (in the reverse topological order); the topic 4.7 lesson gives it.
+
+### The number of days to eat n oranges (Theorem 7.2.4)
+
+<CodeSnippet unit="7.2/memo-states" />
+
+**How it works.** `days(n)` is the fewest days to eat `n` oranges. For $n \le 1$ the answer is $n$. Otherwise it is one day plus the better of two choices: eat single oranges until the number is even (`n % 2` of them) and then halve, or until it is divisible by 3 (`n % 3`) and then take two thirds. Every call is on a smaller number, and each number is stored in `memo` the first time it is computed. Only numbers of the form $\lfloor n / (2^a 3^b) \rfloor$ are reached, so the work is tiny for $n$ up to $2 \cdot 10^9$.
+
+**Alternative formulation.** A table for all numbers $0..n$ in increasing order (a DP in the order of $n$): fine for $n \le 10^7$ and useless for $2 \cdot 10^9$; a breadth-first search over the numbers is the same.
+
+### The longest increasing path in a grid (Theorem 7.2.4, with the order made by sorting)
+
+<CodeSnippet unit="7.2/increasing-path-grid" />
+
+**How it works.** A move goes to a neighbour with a larger number, so the cells in increasing order of their numbers are a topological order (two equal numbers have no edge between them). `cells` is sorted by value, and `dp[i][j]` is the length of the longest increasing path that ends at the cell: one more than the best neighbour with a smaller number, which is already final. The graph is never built; its edges are tested on the fly.
+
+**Alternative formulation.** A memoised depth-first search from every cell (the longest path starting there): the same table, with a recursion up to $rc$ deep, which can overflow the stack for a grid of $10^5$ cells.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: a cycle is not reported
+
+Template: the smallest topological order, or a cycle.
+
+```cpp
+// if ((int)order.size() < n) return cout << "IMPOSSIBLE\n", 0;      the line is missing
+```
+
+Input: `3 2`, then the edges `2 3` and `3 2`.
+
+Wrong output: three numbers, the first of which is the vertex 1 and the others read past the end of the order, correct output `IMPOSSIBLE`. The vertices 2 and 3 point at each other, so neither is ever taken and `order` holds only the vertex 1. The loop that prints `n` numbers then reads outside it (Theorem 7.2.1 (a)).
+
+**Fix:** if fewer than `n` vertices were taken, print IMPOSSIBLE.
+
+### Bug: the vertices are handled in the order of their numbers
+
+Template: the longest path in a DAG with weights.
+
+```cpp
+for (int v = 0; v < (int)out.size(); v++) {                          // instead of for (int v : order)
+```
+
+Input: `2 1`, then the edge `2 1 7`.
+
+Wrong output `0`, correct output `7`. The edge goes from the vertex 2 to the vertex 1, so the vertex 1 is handled first, before its edge has been used. The numbers of the vertices are labels, not an order; only a topological order has all edges pointing forward (Theorem 7.2.1 (b)).
+
+**Fix:** go through the vertices in a topological order.
+
+### Bug: the values start at minus infinity
+
+Template: the longest path in a DAG with weights.
+
+```cpp
+vector<long long> dp(out.size(), LLONG_MIN / 2);                    // instead of dp(out.size(), 0)
+```
+
+Input: `2 1`, then the edge `2 1 7`.
+
+Wrong output `0`, correct output `7`. A path may begin at any vertex, so `dp[v]` must start at 0. With a very small start, a vertex with no edge into it is never the end of any path and the edges out of it add to a very small number (Theorem 7.2.1 (b), the case "just $v$").
+
+**Fix:** start every `dp[v]` at 0 (the path that begins at `v`).
+
+### Bug: an equal weight replaces the number of ways
+
+Template: the cheapest paths and their number.
+
+```cpp
+else if (cost[v] + w == cost[u]) ways[u] = ways[v];                  // instead of (ways[u] + ways[v]) % MOD
+```
+
+Input: `5 5`, then the edges `2 5 1`, `1 5 3`, `3 4 2`, `1 4 1`, `1 2 2`.
+
+Wrong output `3 1`, correct output `3 2`. There are two cheapest paths from the vertex 1 to the vertex 5, $1 \to 5$ with the weight 3 and $1 \to 2 \to 5$ with $2 + 1 = 3$. When the second one arrives with an equal weight the numbers must be added; replacing forgets the first (Theorem 7.2.2 (b)).
+
+**Fix:** add the numbers of ways when the weights are equal.
+
+### Bug: a better weight keeps the old number of ways
+
+Template: the cheapest paths and their number.
+
+```cpp
+if (cost[v] + w < cost[u]) cost[u] = cost[v] + w, ways[u] += ways[v];   // instead of ways[u] = ways[v]
+```
+
+Input: `7 6`, then the edges `3 7 3`, `3 5 3`, `1 3 2`, `1 6 2`, `6 7 2`, `1 5 2`.
+
+Wrong output `4 2`, correct output `4 1`. The vertex 7 is first reached by a path of weight 5 ($1 \to 3 \to 7$) and later by a path of weight 4 ($1 \to 6 \to 7$). The better weight must forget the number of the worse paths; adding keeps one path that is not cheapest (Theorem 7.2.2 (b)).
+
+**Fix:** set the number of ways to that of the better path.
+
+### Bug: the cycle is not noticed
+
+Template: the most frequent letter on a path.
+
+```cpp
+// if ((int)order.size() < n) return -1;      the line is missing
+```
+
+Input: `2 2`, the letters `cc`, then the edges `2 1` and `1 2`.
+
+Wrong output `0`, correct output `-1`. The two vertices point at each other, so neither is taken, the loop over `order` does nothing and the best value stays 0. The graph has a cycle, and the problem asks for $-1$ then (Theorem 7.2.1 (a)).
+
+**Fix:** if fewer than `n` vertices were taken, return $-1$.
+
+### Bug: the second pass searches the original graph
+
+Template: the components and the condensation.
+
+```cpp
+for (int u : out[v])                                                // in the second pass, instead of for (int u : in[v])
+```
+
+Input: `3 1`, then the edge `3 2`.
+
+Wrong output `2 0`, correct output `3 1`. The graph has the three components $\{1\}$, $\{2\}$, $\{3\}$ and one edge between components. Searching forwards from the last finished vertex collects everything that vertex can reach as one component, which merges components that are not strongly connected. The second pass must follow the edges backwards (Theorem 7.2.3, step 2).
+
+**Fix:** search the reversed graph in the second pass.
+
+### Bug: the single oranges are forgotten
+
+Template: the number of days to eat n oranges.
+
+```cpp
+return memo[n] = 1 + min(days(n / 2, memo), n % 3 + days(n / 3, memo));   // instead of n % 2 + days(n / 2, memo)
+```
+
+Input: `7`.
+
+Wrong output `3`, correct output `4`. For the odd number 7 the halving branch is taken as if 7 were even: $1 + \text{days}(3) = 1 + 2 = 3$, but 7 oranges cannot be halved; one single orange must be eaten first, which is the `n % 2` (Theorem 7.2.4, tiny instance).
+
+**Fix:** add the single oranges, `n % 2 + days(n / 2, memo)`.
+
+### Bug: equal numbers are treated as a step
+
+Template: the longest increasing path in a grid.
+
+```cpp
+if (x >= 0 && x < r && y >= 0 && y < c && grid[x][y] <= grid[i][j])   // instead of <
+```
+
+Input: `1 2`, then the row `1 1`.
+
+Wrong output `3`, correct output `1`. A move must go to a strictly larger number. With `<=`, two equal cells count as an edge in both directions; the order by sorting no longer has all edges forward (equal cells are in some order), and the length is wrong: 3 for two cells (Theorem 7.2.4, note 1: the measure must fall with every move).
+
+**Fix:** compare strictly.
+
+## 8. Worked examples
+
+### Example 1: Longest Flight Route
+
+[CSES 1680: Longest Flight Route](https://cses.fi/problemset/task/1680). In short: given $n \le 10^5$ cities and $m \le 2 \cdot 10^5$ one-way flights with no directed cycle, find a route from the city 1 to the city $n$ through the largest number of cities, and print the number of cities and the route, or IMPOSSIBLE.
+
+#### Step 1: Constraints → budget
+
+There may be exponentially many routes, so they cannot be listed. We need about $n + m$ steps and the route itself, which has up to $n$ cities.
+
+#### Step 2: Question form → candidate tools
+
+- A search over all routes ([topic 0.5](../../phase-0/0-5-brute-force/)): exponentially many.
+- Dijkstra with negated weights ([topic 4.3](../../phase-4/4-3-shortest-paths/)): negative weights break it.
+- The longest path in a DAG: the card "Best value of a path ending at each vertex of an acyclic graph (order from in-degrees)".
+
+#### Step 3: Property check → decision
+
+The graph has no directed cycle, and the quantity (the number of cities) adds one for each edge, so the best route to a city is a best route to a city before it plus one. Decision: the DP in a topological order, with the predecessor kept so that the route can be read backwards. The cities not reachable from the city 1 get no value.
+
+#### Step 4: Proof for this problem
+
+Let $\text{dp}(v)$ be the largest number of cities on a route from the city 1 to $v$, or "none" if there is none. By Theorem 7.2.1 (b), $\text{dp}(1) = 1$ and $\text{dp}(v) = 1 + \max \text{dp}(u)$ over the flights $u \to v$ with $u$ reachable. Keeping at every city $v$ a predecessor $u$ that gives the maximum, the route is read backwards from $n$ by following the predecessors until the city 1 (each step is a flight and the number of cities is $\text{dp}(n)$). The program picks, among the predecessors that give the maximum, the one with the smallest number, so that its answer is unique; the problem accepts any route.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.2/example-1" />
+
+#### Step 6: Alternative approach
+
+A memoised recursion from the city 1 to the city $n$ ("the longest route from here to $n$"); it needs recursion up to $n$ deep, which can overflow the stack, so the order from Kahn's algorithm is the safer choice.
+
+### Example 2: Game Routes
+
+[CSES 1681: Game Routes](https://cses.fi/problemset/task/1681). In short: a game has $n \le 10^5$ levels and $m \le 2 \cdot 10^5$ teleporters with no directed cycle; count the ways to go from the level 1 to the level $n$, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+The number of ways can be exponential, so we count and do not list: about $n + m$ steps, the numbers modulo $10^9 + 7$.
+
+#### Step 2: Question form → candidate tools
+
+- Listing the paths ([topic 0.5](../../phase-0/0-5-brute-force/)): exponentially many.
+- A DP over the levels in a topological order: the card "Number of paths (or best value and its number) in an acyclic graph".
+
+#### Step 3: Property check → decision
+
+The graph has no directed cycle, and every path ends with one last teleporter. Decision: the number of paths to a level is the sum of the numbers for the levels with a teleporter into it.
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.2.2 (a), $\text{ways}(v) = \sum_{u \to v} \text{ways}(u)$ with $\text{ways}(1) = 1$, in a topological order. Parallel teleporters count separately, as the sum over edges does. The answer is $\text{ways}(n)$ modulo $10^9 + 7$. The code adds each level's number into its heads while it reads the level, which gives the same sums.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.2/example-2" />
+
+#### Step 6: Alternative approach
+
+A memoised recursion from the level $n$ backwards ("the number of ways to reach the level $v$"): the same sums, with a deep recursion; or the same with the order of Kahn's algorithm run on the reversed graph.
+
+### Example 3: Coin Collector
+
+[CSES 1686: Coin Collector](https://cses.fi/problemset/task/1686). In short: a game has $n \le 10^5$ rooms and $m \le 2 \cdot 10^5$ one-way tunnels; each room has up to $10^9$ coins; starting and ending anywhere, what is the largest number of coins that can be collected (a room's coins are taken once)?
+
+#### Step 1: Constraints → budget
+
+The tunnels may form cycles, so a DP over the rooms cannot be done directly. We need about $n + m$ steps and 64 bits (up to $10^5 \cdot 10^9$ coins).
+
+#### Step 2: Question form → candidate tools
+
+- A DP in a topological order ([topic 4.2](../../phase-4/4-2-graph-structure/)): there is none, because of the cycles.
+- The components of mutual reachability ([topic 4.7](../../phase-4/4-7-connectivity/)) and then a DP on the components: the card "A directed graph with cycles: the DP on its components".
+
+#### Step 3: Property check → decision
+
+The coins are non-negative and each room's coins are counted once, which are the conditions of Theorem 7.2.3. Decision: components, their sums, and the longest path in the condensation.
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.2.3 (b), the largest number of coins on a walk is the largest total weight of a path of components, where a component has the sum of the coins of its rooms. By (c), in the topological numbering of the components, $\text{best}(C) = \text{total}(C) + \max(0, \max \text{best}(P))$ over the components $P$ with a tunnel into $C$; the answer is the largest $\text{best}$. The sums reach $10^{14}$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.2/example-3" />
+
+#### Step 6: Alternative approach
+
+A DFS-based algorithm of Tarjan finds the components in the reverse topological order, so the DP then runs over the components backwards; the idea and the cost are the same.
+
+## 9. Problem ladder
+
+<Ladder topic="7.2" />
+
+## 10. Identification drill
+
+<Drill topic="7.2" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.2" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.2" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.2" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.2" />

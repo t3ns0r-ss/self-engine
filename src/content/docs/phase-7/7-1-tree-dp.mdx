@@ -1,0 +1,472 @@
+---
+title: "7.1 DP on trees, rerooting"
+sidebar:
+  order: 41
+topic: "7.1"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.1" />
+
+This topic combines [dynamic programming](../../phase-3/3-2-dp-foundations/) (a value for each small case, built from the values of smaller cases) and [trees](../../phase-4/4-5-trees/) (a rooted shape in which every vertex has a subtree). A tree is the shape on which "smaller cases" are given for free: the subtree of a child is a smaller copy of the problem of its parent.
+
+## 1. Why this topic exists
+
+Here is a small problem. A tree has $n = 10^5$ vertices. Each vertex is painted white or black, and no two neighbouring vertices may both be black. How many paintings are there, modulo $10^9 + 7$? There are $2^n$ paintings, so they cannot be listed. But look at one vertex $v$ and its subtree. The paintings of the subtree of $v$ depend on the colour of $v$ and on the paintings of the subtrees of its children, and the subtrees of different children touch each other only through $v$. So the number of paintings of the subtree of $v$ is a product of numbers for the children, and the whole answer comes from one pass over the vertices, children first.
+
+That is the **subtree DP**. This lesson has three more ideas that grow from it. The best path in a tree has a *top vertex*, where it joins two downward paths. An answer wanted for *every* vertex as the root can be found in $O(n)$ by moving the root along the edges, **rerooting**. And when the answer needs a number of chosen vertices, the tables of the children are merged with a loop bounded by their sizes, which costs $O(n^2)$ in all, not more.
+
+A last practical point: a tree can be a path of $2 \cdot 10^5$ vertices, and a recursive function that deep overflows the stack. The code here never recurses: it makes a list of the vertices in which every parent comes before its children (a breadth-first order) and goes through the list forwards or backwards.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.1" />
+
+### What this topic does not cover
+
+- DP on graphs without cycles in which a vertex has many parents (a directed acyclic graph): topic 7.2. A tree is the case in which every vertex has one parent.
+- Speeding up a tree DP with a Fenwick tree or a segment tree: topic 7.3.
+- Trees that change between the questions (edges added or removed), and decompositions of a tree by centroids or heavy paths: not part of this course.
+- DP on graphs that contain cycles. The product rule of Theorem 7.1.1 needs that the parts hanging from a vertex touch only through it; with a cycle they do not (the four-cycle example in the card).
+
+## 3. Definitions
+
+- A **rooted tree** has a chosen vertex, the **root**; every other vertex has one **parent**, the neighbour on the way to the root, and its other neighbours are its **children**. The **subtree** of $v$ is $v$ and everything below it. Example: in the tree with the edges 0–1, 0–2, 2–3, 2–4, rooted at 0, the vertex 2 has the children 3 and 4 and the subtree $\{2, 3, 4\}$. A **leaf** has no children.
+- The **size** of a subtree is its number of vertices; the **top vertex** of a path in a rooted tree is its vertex closest to the root (a path goes up to it and then down). Example: the path 1–0–2–3 has the top vertex 0.
+- A **state** of a vertex is the small piece of information about it that its parent needs: black or white, "has its parent edge taken", the number of chosen vertices below it. The DP keeps one value per state.
+- An **order with parents first** lists the vertices so that every parent stands before its children; a breadth-first search from the root gives one. Going through the list backwards visits every child before its parent, which is the order of the DP. Example: for the tree above, the order 0, 1, 2, 3, 4.
+- **Rerooting** means getting the answer for every vertex taken as the root, not only for one root.
+- In the code, `array<long long, 2>` is a pair of two numbers stored in a fixed place (the number of ways with the vertex white and with it black); `auto [a, b] : edges` takes a pair apart into two names; `LLONG_MIN` is the smallest 64-bit number and is used as "minus infinity" (cut by a quarter so that adding two of them does not overflow); `vector<long long>().swap(v)` empties a vector and frees its memory.
+
+## 4. Theory and proofs
+
+### 4.1 The subtree DP
+
+**Theorem 7.1.1 (the subtree DP).** Root a tree at $r$. Paint every vertex black or white so that no two neighbours are both black. For a vertex $v$ let $w_v$ and $b_v$ be the numbers of such paintings of the subtree of $v$ in which $v$ is white and in which $v$ is black. Then $w_v = \prod_{c} (w_c + b_c)$ and $b_v = \prod_{c} w_c$, the products going over the children $c$ of $v$ (an empty product is 1). The number of paintings of the whole tree is $w_r + b_r$, and all the values are computed in $O(n)$ time by handling the vertices in an order in which every child comes before its parent.
+
+:::tip[In plain words]
+The subtree of a vertex is a smaller copy of the same question, and the subtrees of different children have nothing in common except that they hang from the same vertex. So once the colour of the vertex is fixed, the paintings of the child subtrees are chosen independently, and the counts multiply. A white vertex lets each child have any colour; a black vertex forces each child to be white.
+:::
+
+**A tiny instance.** The tree with the edges 0–1, 0–2, 2–3, 2–4, rooted at 0. The leaves 1, 3 and 4 have $(w, b) = (1, 1)$. The vertex 2 has two leaf children: $w_2 = 2 \cdot 2 = 4$ and $b_2 = 1 \cdot 1 = 1$. The vertex 0 has the children 1 and 2: $w_0 = (1 + 1)(4 + 1) = 10$ and $b_0 = 1 \cdot 4 = 4$. The total is $10 + 4 = 14$.
+
+**Proof.**
+1. The edges of the subtree of $v$ are the edges inside the subtrees of the children and the edges $(v, c)$ to the children. A painting of the subtree of $v$ is valid exactly when its restriction to every child subtree is valid and no edge $(v, c)$ has two black ends.
+2. Fix the colour of $v$. The only conditions that link different children are the edges $(v, c)$, and each of them involves $v$ (already fixed) and one child $c$ only. So the paintings of the child subtrees can be chosen independently, and by the product rule their numbers multiply.
+3. If $v$ is white, an edge $(v, c)$ is fine whatever the colour of $c$: the child subtree has $w_c + b_c$ paintings. This gives $w_v = \prod (w_c + b_c)$.
+4. If $v$ is black, every child must be white: $b_v = \prod w_c$.
+5. A leaf has no children, both products are empty, and $w = b = 1$. By induction over the height of the subtree, the formulas hold for every vertex; the whole tree is the subtree of $r$.
+6. Each vertex takes a number of steps proportional to its number of children, so the total is $O(n)$; in the order of a breadth-first search read backwards, the values of the children are ready when their parent is handled. $\square$
+
+:::note[This proof needs]
+1. The graph is a tree: subtrees of different children are disjoint and are joined only through $v$. With a cycle the product rule fails. The four-cycle has 7 paintings, but the rule applied to the path 0–1–2–3 (the cycle with one edge forgotten) gives 8.
+2. The state must contain everything the parent needs to know about the subtree. Here it is one bit, the colour of $v$. A rule that reaches further (no two black vertices at distance 2) needs more state per vertex.
+3. The counts can be huge: take them modulo $M$ after every multiplication. The traversal must not recurse; a path of $2 \cdot 10^5$ vertices would overflow the stack.
+:::
+
+<TheoremCode unit="7.1/thm-1" />
+
+The first five lines are the tiny instance (the pairs $(w, b)$ of every vertex), and the sixth line is its total, 14. The path of three vertices has 5 paintings and the star with a centre and three leaves has 9 (the samples of AtCoder DP P). The check compares the DP with trying all $2^n$ paintings, for 2000 random trees of up to 12 vertices and random moduli.
+
+### 4.2 The best path through a top vertex
+
+**Theorem 7.1.2 (the best path).** Let a rooted tree have an integer $a_v$ on each vertex. Let $\text{down}(v) = a_v + \max(0, \max_c \text{down}(c))$ over the children $c$ of $v$; this is the largest sum of a path that starts at $v$ and goes down. Let $t_1 \ge t_2$ be the two largest of the numbers $\max(0, \text{down}(c))$ over the children (a missing number is 0). Then the largest sum of a path whose top vertex is $v$ is $a_v + t_1 + t_2$, and the largest sum of a path in the tree is the maximum of this over all vertices $v$. This takes $O(n)$ time.
+
+:::tip[In plain words]
+Every path in a rooted tree has one highest vertex, where it turns from going up to going down. From that vertex it goes down into at most two different children. So the best path through a vertex is its own value plus the best two downward paths of its children, and a child whose best downward path is negative is simply left out. Take the best over all the vertices.
+:::
+
+**A tiny instance.** The tree 0–1, 0–2, 2–3, 2–4 with the values $-2, 5, 1, 3, -4$ on the vertices 0 to 4. Then $\text{down}(1) = 5$, $\text{down}(3) = 3$, $\text{down}(4) = -4$, $\text{down}(2) = 1 + \max(0, 3, -4) = 4$ and $\text{down}(0) = -2 + \max(0, 5, 4) = 3$. The best path with the top 0 is $-2 + 5 + 4 = 7$ (the path 1–0–2–3), with the top 2 it is $1 + 3 + 0 = 4$, and so the answer is 7. With the values $-2, -5, -1, -3, -4$ all the child paths are left out and the answer is the largest single value, $-1$.
+
+**Proof.**
+1. In a rooted tree a path from $x$ to $y$ goes up from $x$ to the lowest common ancestor of $x$ and $y$ and then down to $y$ (either part may be empty). That vertex is the *top* of the path, and every path has exactly one.
+2. Fix the top $v$. Below $v$ the path uses at most two different children: it is $v$, a downward path that starts at a child $c_1$ (or nothing), and a downward path that starts at another child $c_2$ (or nothing). Its sum is $a_v + P_1 + P_2$.
+3. The largest sum of a downward path that starts at $u$ is $\text{down}(u)$: the path is $u$ alone, or $u$ followed by a downward path that starts at one child; the best of the second kind is $\max_c \text{down}(c)$, and we take it only if it is positive. This is proved by induction over the height.
+4. For the top $v$, the two parts $P_1$ and $P_2$ must come from different children, and either may be empty (sum 0). The largest total is obtained by taking the two largest of the numbers $\max(0, \text{down}(c))$.
+5. Every path has a top, so the largest sum over all paths is the maximum over the vertices of $a_v + t_1 + t_2$. $\square$
+
+:::note[This proof needs]
+1. A path has at least one vertex. When all values are negative, every $t$ is 0 and the answer is the largest single value, which the formula gives.
+2. For weights on edges, put the weight of the edge to the parent on the child vertex; the same code works with $a_v$ read as "edge to the parent" (and the top vertex adds no weight of its own).
+3. The two parts must come from *different* children. If the path may also branch (a connected set, not a path), all positive children are used and the answer is the subtree DP of Theorem 7.1.1 with the sum as the rule, not this.
+:::
+
+<TheoremCode unit="7.1/thm-2" />
+
+The first line is the tiny instance (7). The second has all values negative (the answer is the largest value, $-1$). In the third the values are 0 on the vertices 0, 2, 3 and 4 on the vertices 1 and 4, and the path 1–0–2–4 gives 8. The check compares the result with a search from every vertex, for 3000 random trees of up to 10 vertices with values from $-6$ to 6.
+
+### 4.3 Rerooting
+
+**Theorem 7.1.3 (rerooting).** For a vertex $r$ let $F(r)$ be the number of connected sets of vertices that contain $r$, modulo any number $M$. Root the tree at the vertex 0 and let $\text{down}(v) = \prod_{c} (\text{down}(c) + 1)$ over the children of $v$ (so $\text{down}(v)$ is $F(v)$ computed inside the subtree of $v$). For a vertex $c$ with the parent $p$ let $\text{up}(c) = (\text{up}(p) + 1) \cdot \prod_{s \ne c} (\text{down}(s) + 1)$ over the other children $s$ of $p$, with $\text{up}(0) = 0$. Then $F(v) = \text{down}(v) \cdot (\text{up}(v) + 1)$ for every $v$. All the values are found in $O(n)$ time without any division, with prefix and suffix products over the children of each vertex.
+
+:::tip[In plain words]
+The answer for a root is made from the parts of the tree that hang from its neighbours. Rooting the tree once gives the part below every vertex. The part above a vertex $c$ is the tree seen from its parent $p$ without the subtree of $c$, and it is made from the part above $p$ and the other children of $p$. To leave one child out of a product, keep the product of the children in front of it and the product of those behind it. Each vertex does work proportional to its number of children.
+:::
+
+**A tiny instance.** The tree 0–1, 0–2, 2–3, 2–4, $M$ large. Going up from the leaves: $\text{down}(1) = \text{down}(3) = \text{down}(4) = 1$, $\text{down}(2) = 2 \cdot 2 = 4$, $\text{down}(0) = 2 \cdot 5 = 10$. Going down from the root: $\text{up}(1) = (0 + 1) \cdot (\text{down}(2) + 1) = 5$, $\text{up}(2) = 1 \cdot (\text{down}(1) + 1) = 2$, $\text{up}(3) = (\text{up}(2) + 1)(\text{down}(4) + 1) = 6$. Then $F(1) = 1 \cdot 6 = 6$, $F(2) = 4 \cdot 3 = 12$, $F(3) = 1 \cdot 7 = 7$, and $F(0) = 10 \cdot 1 = 10$. For example, the connected sets that contain the vertex 1 are $\{1\}$ alone (1 way), or the vertex 1 with the vertex 0 and then, on the side of 2, nothing or one of the 4 connected sets that contain 2 (5 ways): $1 + 5 = 6$.
+
+**Proof.**
+1. For a root $r$, a connected set that contains $r$ is $r$ together with, for each neighbour $u$, either nothing or a connected set that contains $u$ and lies in the part of the tree beyond $u$ (the component of $u$ after removing the edge $(r, u)$). The parts beyond different neighbours are disjoint and joined only through $r$, so as in Theorem 7.1.1 the numbers multiply: $F(r) = \prod_u (G_u + 1)$, where $G_u$ is the number of connected sets that contain $u$ inside its part.
+2. For a child $c$ of $p$ in the tree rooted at 0, the part beyond $c$ seen from $p$ is the subtree of $c$, so $G_c = \text{down}(c)$, and by step 1 applied inside the subtree $\text{down}(v) = \prod_c (\text{down}(c) + 1)$.
+3. The part beyond $p$ seen from its child $c$ is made of $p$, the part above $p$ and the subtrees of the other children of $p$. By step 1 its number of connected sets that contain $p$ is $\text{up}(c) = (\text{up}(p) + 1) \prod_{s \ne c} (\text{down}(s) + 1)$ for $p \ne 0$. For $p = 0$ there is no part above, which is the factor 1, written as $\text{up}(0) + 1$ with $\text{up}(0) = 0$.
+4. A vertex $v$ has the neighbours $c$ (its children, with $G = \text{down}(c)$) and its parent (with $G = \text{up}(v)$); step 1 gives $F(v) = \text{down}(v) \cdot (\text{up}(v) + 1)$.
+5. The product over the children of $p$ without the child $c$ is (the product of the children in front of $c$) times (the product of those behind $c$). The prefix products are made in one pass over the children, the suffix products in another, so nothing is divided and the method works for any $M$, also when a factor is 0 modulo $M$.
+6. The work at a vertex is proportional to its number of children, and the sum of these is $n - 1$: $O(n)$ in all; the values $\text{up}$ are made going from the root down, so a parent is finished before its children. $\square$
+
+:::note[This proof needs]
+1. The combining operation (here the product) must be associative with a neutral element, so that prefix and suffix values exist; the same method works for sums, maxima, minima and gcd. When the operation has an inverse (a sum, a product by a number with an inverse) one may instead take the parent's value and take the child's part out; the answer for the sum of distances is $\text{answer}(c) = \text{answer}(p) + n - 2 \cdot \text{size}(c)$ in this way.
+2. A maximum has no inverse: the value of the part above $c$ must not be the parent's best value if that best value goes through $c$. Keep the two best values of each vertex, or use prefix and suffix maxima.
+3. The vertices must be handled in an order with parents first for the downward pass, and in the reverse order for the upward pass; no recursion.
+:::
+
+<TheoremCode unit="7.1/thm-3" />
+
+The first line is the tiny instance. The second line takes the same values modulo 6: 10, 6, 12, 7, 7 become 4, 0, 0, 1, 1. The factor $\text{up}(1) + 1 = 6$ is then 0 modulo 6, and a method that divides by a factor would fail there; the prefix and suffix products do not. The third line is the path of three vertices, 3, 4, 3. The check compares the result with the plain subtree DP started from every vertex as the root, for 2000 random trees of up to 12 vertices and random moduli.
+
+### 4.4 Choosing vertices: merging tables with the size bound
+
+**Theorem 7.1.4 (merging with sizes).** Let a rooted tree have an integer $a_v$ on each vertex. Let $f_v[j]$ be the largest sum of a connected set that contains $v$, lies in the subtree of $v$, and has exactly $j$ vertices. Handle the children of $v$ one after another with a table $g$ for $v$ and the children handled so far, starting with $g[1] = a_v$. To add a child $c$ set $g'[j] = \max(g[j],\ \max_{a + b = j,\ b \ge 1} (g[a] + f_c[b]))$. Then the table at the end is $f_v$. A merge costs (the size of the part already merged) times (the size of the subtree of $c$), and the total over the whole tree is exactly $n(n - 1)/2$, so all tables are found in $O(n^2)$ time.
+
+:::tip[In plain words]
+To choose $j$ vertices in the subtree of $v$ we decide how many come from each child; this is a knapsack over the children. The table of a vertex has as many entries as its subtree has vertices, so merging two tables of sizes $a$ and $b$ takes $a \cdot b$ steps. That is the number of pairs made of one vertex from each part. Two vertices are brought together only once, at their lowest common ancestor, so the whole work is at most the number of pairs of vertices.
+:::
+
+**A tiny instance.** The tree 0–1, 0–2, 2–3, 2–4 with the values $1, -5, -5, 10, 10$. The subtree of 2 gives $f_2 = [\,\cdot, -5, 5, 15\,]$ (one vertex: $-5$; two: $-5 + 10$; three: $-5 + 10 + 10$), and $f_1 = [\,\cdot, -5\,]$. At the root, $g = [\,\cdot, 1\,]$. Merging the child 1: $g = [\,\cdot, 1, -4\,]$ (1 step). Merging the child 2 (size 3, with the two vertices already merged): $2 \cdot 3 = 6$ steps, and $g = [\,\cdot, 1, -4, 6, 16, 11\,]$. Inside the subtree of 2 the two leaves took $1 + 2 = 3$ steps. In all $1 + 6 + 3 = 10$ steps, which is $5 \cdot 4 / 2$. For $j = 3$ the best set containing the root is $\{0, 2, 3\}$ with the sum $6$.
+
+**Proof.**
+1. A connected set that contains $v$ consists of $v$ and, for every child $c$, either nothing or a connected set that contains $c$ inside the subtree of $c$ (it must contain $c$ to be joined to $v$ through the edge $(v, c)$). The choices for different children are independent, and the sum of the values is the sum of the parts.
+2. Adding the children one by one: after the child $c$ the set takes either nothing from $c$ (the entry $g[j]$ stays) or $b \ge 1$ vertices from it, which adds $f_c[b]$ and $b$ to the size. This is the merge.
+3. The merge loops over $a$ from 1 to the size of the part already merged and over $b$ from 1 to the size of the subtree of $c$.
+4. So the number of steps of the merge is the number of pairs $(x, y)$ with $x$ in the part already merged ($v$ and the subtrees of the children handled earlier) and $y$ in the subtree of $c$.
+5. Take two different vertices $x$ and $y$ and their lowest common ancestor $v$. Either $v = x$ (or $v = y$), and then $v$ is in the merged part when the child whose subtree holds the other vertex is handled; or they are in the subtrees of two different children of $v$, and the one in the earlier child is in the merged part when the later child is handled. At any other vertex the two are not on different sides of a merge. So every pair is counted exactly once in all merges, and the total number of steps is $n(n - 1)/2$. $\square$
+
+:::note[This proof needs]
+1. The merged table must be built in a *new* array. Updating the table in place while reading it counts a child's contribution more than once.
+2. The sets must contain $v$ (connected through the root of the subtree); a set that does not contain the top vertex of the subtree is found by taking the best over all vertices $v$ of $f_v[j]$.
+3. The bound uses full tables. If only sizes up to $K$ are needed the tables can be cut at $K$ entries and the work is smaller (known to be $O(nK)$; the proof is not given here).
+:::
+
+<TheoremCode unit="7.1/thm-4" />
+
+The first line shows the tiny instance: the best connected sets containing the root with 1, 2, 3, 4 and 5 vertices have the sums $1, -4, 6, 16, 11$. The second line counts the steps of the loops: 10, which is $5 \cdot 4 / 2$. The check compares the table of the root with the best over all subsets that are connected and contain the root, and the step count with $n(n - 1)/2$, for 2000 random trees of up to 11 vertices.
+
+## 5. Recognition Cards
+
+<Cards topic="7.1" />
+
+## 6. Templates
+
+Seven templates. Each shows only the function that matters; the program around it reads the input. All of them use the struct `Rooted` of the first template (it stays in the file outside the shown code for the others, and is said to be used): it numbers the vertices from 0, roots the tree at 0, and keeps `parent`, `children` and `order` (parents before children). Each template is checked against a brute force that tries all subsets or runs a search from every vertex, on thousands of random trees of up to 9 to 12 vertices (with random labels, so that the parent of a vertex is not always a smaller number) and on fixed tests with one vertex, a path and a star.
+
+### Rooting a tree without recursion, with the subtree sizes (Theorem 7.1.1)
+
+<CodeSnippet unit="7.1/tree-order" />
+
+**How it works.** The vertices are read in the order of a breadth-first search: `order` starts with the root and grows while it is being read, and each vertex appends the neighbours that are not its parent, setting their parent. A vertex is always after its parent in `order`, so a loop from the end to the start sees every child before its parent. `subtreeSizes` adds the size of each vertex to its parent's size in that order, so that when a vertex is added its own size is final. The loop stops at `i > 0` because the root has no parent.
+
+**Alternative formulation.** A recursive search with `size[v] += size[u]` after each child: shorter, but it overflows the stack for a path of about $10^5$ to $10^6$ vertices on many judges.
+
+### Counting the paintings with no two black neighbours (Theorem 7.1.1)
+
+<CodeSnippet unit="7.1/count-colourings" />
+
+**How it works.** `f[v]` holds the numbers of ways with `v` white (`f[v][0]`) and black (`f[v][1]`) for the subtree of `v`, starting at 1 for the empty product. In the loop from the end of `order`, each vertex `v` is already finished when it is used by its parent, because the parent stands earlier in `order` and is handled later in the backward loop. A white vertex multiplies by the sum of the two numbers of the child; a black vertex by the white number only. The values start at `1 % M` so that a modulus 1 also gives the right answer 0.
+
+**Alternative formulation.** For a path the same recurrence is the DP of topic 3.2 over positions; the rooted form is needed only when a vertex has several children.
+
+### The best sum of a path (Theorem 7.1.2)
+
+<CodeSnippet unit="7.1/best-path" />
+
+**How it works.** `down[v]` is the best sum of a path that starts at `v` and goes down. For each child the code keeps `d = max(0, down[c])`, since a negative child path is better left out, and the two largest values `top1 >= top2`. The path with the top `v` adds both to `w[v]`; `best` takes the maximum over all vertices, so also a single vertex (both tops are 0) is a path. `LLONG_MIN` as the start of `best` is replaced at the first vertex.
+
+**Alternative formulation.** For the longest path with all values 1 (the diameter), two searches from far vertices ([topic 4.5](../../phase-4/4-5-trees/)) are shorter; the DP is needed when the values are different or negative.
+
+### The best connected set containing each vertex (Theorem 7.1.3, with the child taken out)
+
+<CodeSnippet unit="7.1/best-subtree-for-each" />
+
+**How it works.** `down[v]` starts as `w[v]` and receives `max(0, down[child])` from each child: the best connected set that contains `v` and lies in its subtree. The vertex `c` then asks for the best set that contains `c` and also reaches upwards: `answer[p]` is the best set that contains `p`, and it may contain `c` and its subtree; those are exactly `max(0, down[c])`, so the part of `p` without `c` is `answer[p] - max(0, down[c])`, and it is used only if it is positive. The sum takes the child out by subtraction because a sum has an inverse.
+
+**Alternative formulation.** Run the subtree DP from every vertex as the root: $O(n^2)$, enough for $n$ up to about 3000.
+
+### The number of connected sets containing each vertex, for any modulus (Theorem 7.1.3)
+
+<CodeSnippet unit="7.1/count-connected-sets" />
+
+**How it works.** `down[v]` is the product over the children of `down[c] + 1` (each child contributes nothing, or a connected set that contains it). `up[c]` is the same for the part above `c`, seen from its parent: the part above the parent (`up[v] + 1`) times the factors of the other children. For each vertex `v` the code makes `suffix[i]`, the product of the factors of the children from `i` to the end, and runs `prefix` from the left, holding the part above `v` and the children before the current one. So `up[c] = prefix * suffix[i + 1]` leaves out exactly the child `c`. No division is used, so a modulus such as 6 is fine.
+
+**Alternative formulation.** Multiply all factors and divide by the factor of `c`: simpler, but wrong when a factor is 0 modulo $M$ or $M$ is not a prime.
+
+### The farthest vertex from each vertex (Theorem 7.1.3 for a maximum)
+
+<CodeSnippet unit="7.1/farthest-for-each" />
+
+**How it works.** `down[v]` is the height of the subtree of `v`. For a vertex `v` the code finds `best1` and `best2`, the two longest ways out of `v`: the way up (`up[v]`) and the ways down (`down[c] + 1` for each child). The answer for `v` is `best1`. For a child `c`, the longest way out of `v` that does not go into `c` is `best2` if the best way is the one through `c` (`down[c] + 1 == best1`) and `best1` otherwise, and `up[c]` is that plus the edge to `v`. A maximum has no inverse, so "the best without `c`" needs the second best value.
+
+**Alternative formulation.** Two searches find the ends of a longest path; the farthest vertex from any vertex is one of the two ends ([topic 4.5](../../phase-4/4-5-trees/)): simpler for this particular question, but the two-best method works for any rule with a maximum.
+
+### The best connected set of exactly k vertices (Theorem 7.1.4)
+
+<CodeSnippet unit="7.1/tree-knapsack" />
+
+**How it works.** `dp[v]` is the table of the best sums of connected sets that contain `v` and have `j` vertices (index 0 is unused). It starts as `{NEG, w[v]}` and each child's table is merged into a new vector `merged` of the right length: nothing from the child (`merged[a]`), or `b` vertices from it. After `v` is finished, `best` takes `dp[v][k]` (the best set whose top vertex is `v`), and the child tables are freed. A table is as long as its subtree, so the loops cost $O(n^2)$ together (Theorem 7.1.4). `NEG` is a quarter of the smallest 64-bit number, so adding two of them cannot overflow.
+
+**Alternative formulation.** When the set does not have to be connected, the `k` largest values are enough (sort them, [topic 1.1](../../phase-1/1-1-sorting/)); the DP is needed because of connectedness.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: a black vertex allows black children
+
+Template: counting the paintings with no two black neighbours.
+
+```cpp
+f[v][1] = f[v][1] * ((f[c][0] + f[c][1]) % M) % M;           // instead of f[v][1] * f[c][0] % M
+```
+
+Input: `2 3`, then the edge `2 1`.
+
+Wrong output `1`, correct output `0`. The two vertices have 3 paintings (white–white, white–black, black–white) and the modulus is 3, so the answer is 0; the bug also counts black–black, 4 paintings, which is 1 modulo 3. A black vertex needs every child to be white (Theorem 7.1.1, step 4).
+
+**Fix:** multiply by the white number of the child only.
+
+### Bug: the vertices are handled from the root down
+
+Template: counting the paintings with no two black neighbours.
+
+```cpp
+for (int i = 0; i < t.n; i++) {                              // instead of i = t.n - 1 down to 0
+```
+
+Input: `3 4`, then the edges `2 3` and `3 1`.
+
+Wrong output `3`, correct output `1`. The root is handled first, when the values of its children are still the starting 1; a vertex must be finished before its parent uses it (Theorem 7.1.1, step 6). Here the path has 5 paintings, which is 1 modulo 4.
+
+**Fix:** go through `order` from the end to the start.
+
+### Bug: only one child path is used at the top
+
+Template: the best sum of a path.
+
+```cpp
+best = max(best, w[v] + top1);                               // instead of w[v] + top1 + top2
+```
+
+Input: `3`, the values `4 3 1`, then the edges `3 1` and `1 2`.
+
+Wrong output `7`, correct output `8`. The best path is 2–1–3 with the values $3 + 4 + 1 = 8$; with the middle vertex as the top, the path may use two children, and the bug uses one (Theorem 7.1.2, step 2).
+
+**Fix:** add both of the two best child paths at the top.
+
+### Bug: the child is counted twice in its own answer
+
+Template: the best connected set containing each vertex.
+
+```cpp
+answer[c] = down[c] + max(0LL, answer[p]);                   // instead of answer[p] - max(0LL, down[c])
+```
+
+Input: `2`, the values `1 3`, then the edge `1 2`.
+
+Wrong output `4 7`, correct output `4 4`. The value `answer[p]` already contains the whole set of `c`; if it is added to `down[c]` again, the set of `c` is counted twice: 7 instead of 4 (Theorem 7.1.3, step 3: the part above `c` must not contain `c`'s subtree).
+
+**Fix:** subtract what `c` gave to `p` before adding.
+
+### Bug: the part above forgets the +1
+
+Template: the number of connected sets containing each vertex, for any modulus.
+
+```cpp
+long long prefix = up[v] % M;                                // instead of (up[v] + 1) % M
+```
+
+Input: `2 6`, then the edge `1 2`.
+
+Wrong output `2` and `1` (one line each), correct output `2` and `2`. The factor of the part above is "nothing, or a connected set of `up[v]` ways", which is `up[v] + 1`. For the root `up[v] = 0`, so the bug makes the factor 0 and wipes out the part above for every child; the child gets 0 from the root and the answer 1 (Theorem 7.1.3, step 3). The root's own answer is computed separately and stays right.
+
+**Fix:** start the prefix product at `(up[v] + 1) % M`.
+
+### Bug: the best way out may go through the child itself
+
+Template: the farthest vertex from each vertex.
+
+```cpp
+up[c] = 1 + best1;                                           // instead of 1 + (down[c] + 1 == best1 ? best2 : best1)
+```
+
+Input: `2`, then the edge `2 1`.
+
+Wrong output `1 2`, correct output `1 1`. For the root 1 the best way out is down into 2, of length 1; for the vertex 2 the part above must not use the way back into its own subtree. The bug gives the vertex 2 the length $1 + 1 = 2$. Leave out the child's own way with the second best value (Theorem 7.1.3, note 2).
+
+**Fix:** use `best2` when the best way is the one through `c`.
+
+### Bug: the second best way is not kept
+
+Template: the farthest vertex from each vertex.
+
+```cpp
+// else best2 = max(best2, d);        the line is missing
+```
+
+Input: `3`, then the edges `2 1` and `3 1`.
+
+Wrong output `1 1 1`, correct output `1 2 2`. The root 1 has two children of the same height. The first sets `best1`; the second is not larger, so it does not change `best1`, and without the line it does not set `best2` either. `best2` stays 0, and the vertex 2 believes that the way out through 1 has length 1 only, while the true farthest vertex is 3, at distance 2.
+
+**Fix:** update `best2` also when the new value is not larger than `best1`.
+
+### Bug: a child that is not used is not allowed
+
+Template: the best connected set of exactly k vertices.
+
+```cpp
+// merged[a] = max(merged[a], dp[v][a]);      the line is missing
+```
+
+Input: `2 1`, the values `2 1`, then the edge `2 1`.
+
+Wrong output `1`, correct output `2`. The set with one vertex that contains the vertex 1 takes nothing from its child; without the line the table only has entries that use at least one vertex from every child, and the best single vertex is lost (Theorem 7.1.4, step 2).
+
+**Fix:** copy the old entry before adding the child's.
+
+### Bug: the sizes are added in the wrong direction
+
+Template: rooting a tree without recursion, with the subtree sizes.
+
+```cpp
+for (int i = 1; i < n; i++) size[parent[order[i]]] += size[order[i]];   // instead of i = n - 1 down to 1
+```
+
+Input: `3`, then the edges `2 3` and `3 1`.
+
+Wrong first line `0 2`, correct first line `0 3` (the line of the root: parent 0, size). The path is 1–3–2 rooted at 1. Going forwards, the vertex 3 adds its size to the root while it is still 1, because the size of 2 has not yet been added to it; the root gets 2 instead of 3. A size is final only after all its children have added theirs (Theorem 7.1.1, step 6).
+
+**Fix:** go through `order` from the end.
+
+## 8. Worked examples
+
+### Example 1: Tree Distances II
+
+[CSES 1133: Tree Distances II](https://cses.fi/problemset/task/1133). In short: given a tree of $n \le 2 \cdot 10^5$ vertices, print for every vertex the sum of the distances from it to all other vertices.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$: a search from every vertex costs $n^2 = 4 \cdot 10^{10}$ steps. The sums reach about $n^2 / 2 = 2 \cdot 10^{10}$, so 64 bits are needed. We need about $n$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A breadth-first search from every vertex ([topic 4.1](../../phase-4/4-1-graph-traversal/)): $4 \cdot 10^{10}$ steps.
+- The sum of depths for one root ([topic 4.5](../../phase-4/4-5-trees/)) and then the answer for every vertex: the card "An answer for every vertex as the root (rerooting)".
+
+#### Step 3: Property check → decision
+
+The question asks for the same quantity for every vertex taken as the root, and the answer for a vertex is a sum over the parts of the tree beyond its neighbours: it changes in a simple way along one edge. Decision: find the answer for the root 0 and move the root along the edges.
+
+#### Step 4: Proof for this problem
+
+The answer for the root is the sum of the depths. Move the root from $p$ to its child $c$: the $\text{size}(c)$ vertices in the subtree of $c$ get one step closer to the root, and the other $n - \text{size}(c)$ vertices get one step farther. So $\text{answer}(c) = \text{answer}(p) - \text{size}(c) + (n - \text{size}(c)) = \text{answer}(p) + n - 2\,\text{size}(c)$. This is the rule of Theorem 7.1.3 with the sum as the combining operation (the sum has an inverse, so no prefix or suffix is needed).
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.1/example-1" />
+
+#### Step 6: Alternative approach
+
+Count each edge: the edge to the parent of $c$ lies on the path from every vertex in the subtree of $c$ to every vertex outside, which gives the *total* of all pairs ($\sum \text{size}(c)(n - \text{size}(c))$) but not the sum for each vertex; the per-vertex answer needs the rerooting.
+
+### Example 2: Select Edges
+
+[AtCoder ABC 259 F: Select Edges](https://atcoder.jp/contests/abc259/tasks/abc259_f). In short: a tree of $N \le 3 \cdot 10^5$ vertices with a weight (possibly negative) on each edge, and a number $d_i$ for each vertex; choose edges so that at most $d_i$ chosen edges touch the vertex $i$, with the largest total weight.
+
+#### Step 1: Constraints → budget
+
+$N = 3 \cdot 10^5$, so a subset of edges cannot be tried; we need about $N \log N$ steps. The weights reach $10^9$ and there are up to $3 \cdot 10^5$ of them: 64 bits.
+
+#### Step 2: Question form → candidate tools
+
+- All subsets of edges ([topic 0.5](../../phase-0/0-5-brute-force/)): $2^{N-1}$.
+- A greedy by weight ([topic 1.5](../../phase-1/1-5-greedy-1/)): taking the heaviest edge first is wrong, since it may block two edges that together weigh more.
+- A subtree DP with a state for "the edge to the parent is taken": the card "Best value or number of ways for a subtree, from the values of its children (states per vertex)".
+
+#### Step 3: Property check → decision
+
+The only thing the parent needs to know about the subtree of $c$ is whether the edge $(p, c)$ is taken, because that uses up one of the edges allowed at $c$. Two states per vertex. Decision: $f_0[v]$ and $f_1[v]$ as in the comments of the code.
+
+#### Step 4: Proof for this problem
+
+Let $f_0[v]$ be the best total inside the subtree of $v$ when $v$ may use $d_v$ edges to its children, and $f_1[v]$ when it may use $d_v - 1$ (the edge to the parent is taken). At $v$ each child $c$ either gets its own best $f_0[c]$ with the edge $(v, c)$ not taken, or the edge $(v, c)$ is taken and the child $c$ is used with $d_c - 1$ child edges, giving $f_1[c] + w_{vc}$ (possible only if $d_c \ge 1$). So the child changes the total by the *gain* $f_1[c] + w_{vc} - f_0[c]$ if the edge is taken. The choices for different children are independent except for the limit on how many are taken, so the best is to take the largest positive gains, at most $d_v$ for $f_0$ and at most $d_v - 1$ for $f_1$. This is the product rule of Theorem 7.1.1 with a sum and a limited choice.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.1/example-2" />
+
+#### Step 6: Alternative approach
+
+A priority-queue exchange argument or a flow model would also handle degree limits, but the tree DP is the shortest. For a path with $d_i \le 2$ the same DP is the DP of topic 3.2 over positions.
+
+### Example 3: Number of Good Leaf Nodes Pairs
+
+[LeetCode 1530: Number of Good Leaf Nodes Pairs](https://leetcode.com/problems/number-of-good-leaf-nodes-pairs/). In short: given a binary tree and a number `distance` up to 10, count the pairs of different leaves whose distance is at most `distance`. (The code works for any rooted tree.)
+
+#### Step 1: Constraints → budget
+
+Up to $2^{10}$ vertices and `distance` up to 10. Testing all pairs of leaves is at most $500^2 / 2$ pairs with a search each, fine for the limits, but a solution that scales to $10^5$ vertices needs about $n \cdot \text{distance}^2$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A search from every leaf ([topic 4.1](../../phase-4/4-1-graph-traversal/)): about $n^2$ steps.
+- Counting by the top vertex of each pair: the card "Best path or pair of vertices in a tree: the top vertex combines two downward paths".
+
+#### Step 3: Property check → decision
+
+A pair of leaves is a path, and every path has a top vertex where it goes into two different children. The distance is the sum of the two depths below the top, which we only need up to 10. Decision: for each vertex keep `below[v][x]`, the number of leaves at distance $x$ below it, for $x$ up to `distance`.
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.1.2 (step 1), a pair of leaves has a unique top vertex $v$ with the two leaves in the subtrees of two different children $c_1, c_2$. If they are at distances $x$ and $y$ from $c_1$ and $c_2$, their distance is $x + y + 2$. The code counts it when the later child is merged: the earlier children are already summed in `below[v]` (shifted by one step to be measured from $v$), and the leaves of the new child at distance $x$ from $c$ are at $x + 1$ from $v$, so the pair has the distance $y + (x + 1)$ with $y$ the index in `below[v]`. Every pair is counted once, at its top vertex. The work is $n \cdot \text{distance}^2$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.1/example-3" />
+
+#### Step 6: Alternative approach
+
+Compute the distance between each pair of leaves with a search from each leaf and count: $O(L \cdot n)$ for $L$ leaves, fine for $n \le 2^{10}$ and the way the brute force of the unit works.
+
+## 9. Problem ladder
+
+<Ladder topic="7.1" />
+
+## 10. Identification drill
+
+<Drill topic="7.1" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.1" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.1" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.1" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.1" />

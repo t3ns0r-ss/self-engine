@@ -6,16 +6,28 @@ uses:
   what: 'Types and overflow: why a product of two 61-bit numbers needs a 128-bit type'
 - topic: '0.2'
   what: 'Complexity budgets: the n·q estimates that rule out comparing letter by letter'
+- topic: '0.3'
+  what: 'String processing: scanning a string once, the direct way of testing a palindrome'
 - topic: '0.5'
-  what: 'Brute force: the reference solution of every check'
+  what: 'Brute force: the reference solution of every check, and the plain double loops that hashing replaces'
+- topic: '0.6'
+  what: 'Standard containers: sets and maps of short objects, the alternative to hashing'
 - topic: '1.1'
   what: 'Sorting: finding equal hashes by sorting them'
 - topic: '1.2'
   what: 'Prefix sums: the idea behind prefix hashes'
+- topic: '1.3'
+  what: 'Two pointers and windows: counting inside a window without comparing windows'
 - topic: '1.4'
   what: 'Binary search: the search along the length of a block'
 - topic: '2.2'
   what: 'Modular arithmetic: working modulo a prime and the inverse of a non-zero residue'
+- topic: '3.2'
+  what: 'Dynamic programming: counting subsequences, and DPs that need an equality test inside'
+- topic: '3.4'
+  what: 'Sequence DP: the common subsequence, which is not a pair of equal blocks'
+- topic: '3.6'
+  what: 'Interval DP: palindromic subsequences and the table of palindromic blocks'
 theorems:
 - id: 6.1.1
   title: Prefix hashes
@@ -57,7 +69,395 @@ theorems:
     The order does not matter, so the same collection always gets the same total. Two different collections
     get the same total only if the random numbers happen to line up, which has probability one in $p$.
   code: 6.1/thm-6
-cards: []
+cards:
+- id: substring-compare
+  name: Equal blocks of a string in O(1) (prefix hashes)
+  from_theorem: 6.1.1
+  decisive_property: The answer depends only on whether pairs of blocks of the same length (of one string
+    or of two strings) are exactly equal, letter for letter, and the number of comparisons times the length
+    of the longest block stays far below the prime (about 2.3·10^18).
+  how_to_test: 'Two checks. (1) Is every comparison an exact equality of two blocks whose ends are known
+    (or found by a search)? A wildcard, "differs in at most one place" or "is a subsequence" fails it.
+    (2) Multiply the number of comparisons c by the longest block L: if c·L is below about 10^12, one
+    hash modulo 2^61 − 1 is safe (Theorem 6.1.2).'
+  constraint_shapes:
+  - 'n = 3·10^5 and a loop over every length L ≤ n/2 that compares s[0..L) with s[L..2L): comparing letters
+    costs 1 + 2 + … + n/2 ≈ n²/8 = 1.1·10^10 steps, while n/2 hash comparisons cost 1.5·10^5'
+  - 'n = 2000 and one equality test for every pair (start, length) inside a DP: n²/2 = 2·10^6 tests of
+    up to 10^3 letters is 2·10^9 steps by letters, 2·10^6 by hashes'
+  weak_signals:
+  - form: Asks whether two parts of a string are equal, or for which lengths a prefix equals a suffix
+      or a block equals the next block
+    shape: One string of length 10^5 to 10^6 and either many pairs of positions in the input or a loop
+      over all lengths
+  - form: Inside a DP or a loop over cut points, compares the block before the cut with the block after
+      it
+    shape: Length up to 5000, so about 2.5·10^7 states each needing one block equality test
+  - form: Asks which of two substrings is smaller, or for the smallest rotation of a string
+    shape: Length up to 10^6 and about n comparisons, each answered by binary searching the common length
+      with hashes
+  kill_signals:
+  - 'A wildcard or "almost equal" condition: with ? matching any letter, the blocks ab and ?b match, but
+    their hashes differ (the hash treats ? as a letter), so the hash says "different"'
+  - 'The comparisons are so many or the blocks so long that c·L/p is not small: with p = 10^9 + 7, c =
+    2·10^5 and L = 2·10^5 the bound of Theorem 6.1.2 is 4·10^10 / 10^9 = 40, so a hash modulo 10^9 + 7
+    alone is not safe; use 2^61 − 1'
+  in_action:
+    statement: A string s of length n has a "square start" at length L if s[0..L) = s[L..2L). Count the
+      lengths L with 2L ≤ n for which s has a square start.
+    constraints: n ≤ 3·10^5, lower-case letters.
+    budget: 'Comparing letters: for each L up to n/2 about L steps, n²/8 ≈ 1.1·10^10 steps, over 100 seconds.
+      Need about O(n).'
+    candidates:
+    - tool: Compare the two blocks letter by letter for every length (topic 0.5)
+      verdict: rejected
+      because: About 1.1·10^10 steps.
+    - tool: Prefix sums (topic 1.2)
+      verdict: rejected
+      because: A sum of letter numbers can agree for different blocks (ad and bc both sum to 5); it cannot
+        test equality.
+    - tool: Prefix hashes (this topic)
+      verdict: chosen
+      because: Each test is an exact equality of two blocks (Theorem 6.1.1).
+    property_check: Every test is an exact equality of two blocks of length L. There are c = 1.5·10^5
+      tests of length at most 1.5·10^5, so c·L/p ≈ 2.3·10^10 / 2.3·10^18 = 10^-8. The property holds.
+    decision: 'Build the prefix hashes in O(n) and compare get(0, L) with get(L, 2L) for each L: O(n)
+      in all.'
+  examples:
+    positive:
+    - inline:
+        input: s = abababab. For how many lengths L ≤ 4 is s[0..L) = s[L..2L)?
+        answer: '2'
+        why: 'Each test is an exact equality of two blocks: L = 2 (ab, ab) and L = 4 (abab, abab) work,
+          L = 1 and L = 3 do not, and the hash comparison gives the same 2 as comparing letters.'
+    - inline:
+        input: s = aaaaaa. For how many lengths L ≤ 3 is s[0..L) = s[L..2L)?
+        answer: '3'
+        why: All blocks of equal length are equal, so all three tests succeed; equal blocks always have
+          equal hashes (Theorem 6.1.1 (d)).
+    - worked_example: cses-1110
+      why: The smallest rotation needs the comparison of two rotations of one string; the first different
+        letter is found by binary searching the length of the equal part with block hashes.
+    negative:
+    - inline:
+        input: s = ab?b where ? may stand for any letter. For how many lengths L ≤ 2 do s[0..L) and s[L..2L)
+          match?
+        answer: '1 (L = 2: ab matches ?b)'
+        method_gives: '0'
+        why: 'With a wildcard the property fails: the question is not exact equality. The hash treats
+          ? as a letter, so ab and ?b get different hashes and the method counts no match. Only a letter-by-letter
+          scan can use the wildcard rule.'
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - problem: lc-uncrossed-lines
+      why: 'Equal numbers may be joined across gaps: the matched elements are a common subsequence, not
+        two equal blocks, so there is no pair of blocks to hash. A table over prefixes of both arrays
+        answers it.'
+      correct_tool:
+        topic: '3.4'
+        card: lcs
+  lookalikes:
+  - description: Longest common subsequence of two strings
+    tool:
+      topic: '3.4'
+      card: lcs
+    flipping_difference: A subsequence may skip letters, so there are no fixed blocks to compare; the
+      table over pairs of prefixes counts the matches.
+  - description: The most vowels (or distinct letters) in a window of fixed length
+    tool:
+      topic: '1.3'
+      card: fixed-window
+    flipping_difference: The condition is a count that changes by one letter when the window moves, so
+      it is updated directly; there is no second block to compare with.
+  complexity: O(n) to build the prefix hashes, O(1) per comparison; O(log n) per comparison of order,
+    by binary searching the common length.
+- id: distinct-by-hash
+  name: Counting or grouping equal strings (or sets) by hash
+  from_theorem: 6.1.2
+  decisive_property: The question counts or groups objects that are long strings, or sets of values, using
+    only whether two objects are equal, and each object's hash is available in O(1) (Theorems 6.1.1, 6.1.3,
+    6.1.6); the number of objects N times their size L satisfies N²·L / p ≪ 1.
+  how_to_test: 'Ask: (1) is the answer a count of distinct objects, or a grouping of equal objects, with
+    no order or arithmetic between them? (2) is each object a block of a string, a window that moves,
+    a string with one letter changed, or a set of values? (3) is N²·L/p small? For N = 2·10^5 blocks of
+    length 10^5 the bound is 2·10^10 · 10^5 / 2.3·10^18 ≈ 10^-3, acceptable; two bases make it far smaller.'
+  constraint_shapes:
+  - 'n = 2·10^5 and blocks of length k = 5·10^4: storing every block in a set of strings costs (n − k)
+    · k = 7.5·10^9 letter copies, while n − k hashes cost 1.5·10^5 and a sort 3·10^6'
+  - 'n = 2000 and every one of the n²/2 = 2·10^6 substrings put into a set: by hash each is one number,
+    in a set of strings the total length is about n³/6 = 1.3·10^9'
+  weak_signals:
+  - form: Asks for the number of different substrings, windows or rotations with some property
+    shape: String length 2000 to 2·10^5, so n² substrings (4·10^6 to 4·10^10) cannot be stored as strings
+  - form: Asks whether a word with one letter changed is in a dictionary, or groups words that are equal
+      after a change
+    shape: Total length up to 6·10^5 and several hundred thousand queries, each trying 2 or 3 replacements
+      per place
+  - form: Asks to group vertices, columns or types whose set of neighbours (or whose multiset of occurrences)
+      is the same
+    shape: n, m up to 10^6 and the sets are large, so comparing two sets takes O(size)
+  kill_signals:
+  - 'The objects are subsequences, not blocks: aba has 5 distinct substrings but 6 distinct non-empty
+    subsequences (a, b, ab, aa, ba, aba), and hashing blocks counts the first number'
+  - 'The objects are short (a window of up to 20 letters, a number below 10^18): put them in a set directly
+    (topic 0.6); no hash is needed'
+  in_action:
+    statement: A DNA string of length n has windows of k consecutive letters. Count the different windows.
+    constraints: n ≤ 2·10^5, k ≤ 5·10^4.
+    budget: 'There are n − k + 1 ≈ 1.5·10^5 windows. A set of strings copies every window: 1.5·10^5 ·
+      5·10^4 = 7.5·10^9 letters. Need about O(n log n).'
+    candidates:
+    - tool: A set of the window strings (topic 0.6)
+      verdict: rejected
+      because: 7.5·10^9 letter copies and comparisons.
+    - tool: Compare all pairs of windows letter by letter (topic 0.5)
+      verdict: rejected
+      because: 1.1·10^10 pairs, each up to 5·10^4 letters.
+    - tool: Hash every window, sort the hashes, count different neighbours (this topic)
+      verdict: chosen
+      because: Window hashes come from the prefix hashes in O(1) each (Theorem 6.1.1).
+    property_check: Only equality matters. The bound over all pairs of windows is N²/2 · (k − 1)/p = 1.1·10^10
+      · 5·10^4 / 2.3·10^18 ≈ 2.4·10^-4. The property holds (a second base would make it negligible).
+    decision: 'Prefix hashes, hash of every window, sort, count the distinct values: O(n log n).'
+  examples:
+    positive:
+    - inline:
+        input: s = abababa. How many different blocks of length 2 does it have?
+        answer: '2'
+        why: 'Only equality of blocks matters: ab and ba. Hashing the six windows and counting distinct
+          values gives 2, as storing the strings does.'
+    - inline:
+        input: s = abcabcab. How many different blocks of length 3 does it have?
+        answer: '3'
+        why: The windows are abc, bca, cab, abc, bca, cab; their hashes take three values, and equal blocks
+          have equal hashes (Theorem 6.1.1 (d)).
+    negative:
+    - inline:
+        input: s = aba. How many different non-empty subsequences does it have?
+        answer: 6 (a, b, ab, aa, ba, aba)
+        method_gives: '5'
+        why: 'Counting distinct blocks of every length gives only 5 (a, b, ab, ba, aba): the subsequence
+          aa skips the letter b, which is not a block. Hashing blocks cannot see it, so the property "the
+          objects are blocks" fails.'
+      correct_tool:
+        topic: '3.2'
+        card: linear-state
+    - problem: cses-3420
+      why: The question is about the values inside each window (are they all different?), not about whether
+        windows differ from each other; two pointers with a table of counts answers it in O(n).
+      correct_tool:
+        topic: '1.3'
+        card: count-windows
+  lookalikes:
+  - description: Putting short objects (numbers, strings of up to 20 letters) in a set and counting its
+      size
+    tool:
+      topic: '0.6'
+      card: set-membership
+    flipping_difference: A short object is stored whole, so there is nothing to hash; hashing helps when
+      objects are long, many, or sets of values.
+  - description: Counting subarrays whose elements are all different
+    tool:
+      topic: '1.3'
+      card: count-windows
+    flipping_difference: The condition is on the values in one window and is kept up to date by moving
+      the two ends; no window is compared with another.
+  complexity: O(n log n) for sorting n hashes, or O(n) expected with a hash set; the error bound is N²·L/p.
+- id: hash-length-search
+  name: Longest block with a repeat property (binary search on the length with hashes)
+  from_theorem: 6.1.4
+  decisive_property: The statement about a length L ("two equal blocks of length L exist", "a block of
+    length L is unique", "the prefix of length L can be repeated k times") is closed under shortening
+    (or under lengthening), and it can be tested for one L by hashing all blocks of length L.
+  how_to_test: Take a true instance of the statement at length L and cut one letter off the end of both
+    copies. If the statement stays true for every input, it is monotone and binary search on L is valid.
+    Then check that one test for a given L is a pass of window hashes (O(n log n) or O(n)). "Occurs exactly
+    twice" fails the first check.
+  constraint_shapes:
+  - 'n = 3·10^5 and all pairs of starts compared with their common extension: n²/2 = 4.5·10^10 pairs;
+    binary search needs ⌈log₂ n⌉ = 19 tests of O(n log n) = 5.4·10^6 each, about 10^8 in all'
+  - 'Many sequences with total length 10^5 (a common block of all of them): 17 tests, each hashing 10^5
+    windows and sorting them: about 3·10^7 steps'
+  weak_signals:
+  - form: Asks for the longest block that appears twice (or k times, or in all of several strings), or
+      the shortest block that appears once
+    shape: Length 10^4 to 10^6 and a second copy anywhere in the string
+  - form: Asks for the largest length L such that a prefix, a suffix or a block of length L has a property
+      that gets easier as L shrinks
+    shape: Length up to 2·10^5 and a test that scans the string once for a given L
+  - form: Asks for the longest common block of two or more strings or sequences
+    shape: Total length up to 10^5 to 10^6; any block of the right length may be the common one
+  kill_signals:
+  - 'The statement is not monotone: "some block occurs exactly twice" is true at length 3 and false at
+    lengths 1 and 2 in aaaa, so binary search ends at 0 instead of 3'
+  - 'Each test costs more than O(n log n) (for example comparing blocks letter by letter): 19 tests of
+    4.5·10^10 steps are no better than the plain double loop'
+  in_action:
+    statement: Find the length of the longest block of a string that appears at least twice (the two copies
+      may overlap).
+    constraints: n ≤ 3·10^5.
+    budget: 'Comparing every pair of starts with a scan for the common length: n²/2 = 4.5·10^10 pairs.
+      Need about O(n log² n).'
+    candidates:
+    - tool: Compare every pair of starts (topic 0.5)
+      verdict: rejected
+      because: 4.5·10^10 pairs.
+    - tool: Binary search on the answer with a letter-by-letter test (topic 1.4)
+      verdict: rejected
+      because: One test for a length L compares blocks of length L and costs far more than O(n log n).
+    - tool: Binary search on the length with window hashes (this topic)
+      verdict: chosen
+      because: A repeat of length L gives a repeat of length L − 1 (Theorem 6.1.4), and one test is a
+        sorted pass over n hashes.
+    property_check: 'Cut the last letter off both copies of a repeated block: they stay equal, so the
+      statement is closed under shortening. One test hashes n − L + 1 windows in O(n) and sorts them in
+      O(n log n). The property holds.'
+    decision: Binary search L in [0, n − 1]; the test sorts the window hashes and looks for equal neighbours.
+      About 19 · 5·10^6 = 10^8 steps.
+  examples:
+    positive:
+    - inline:
+        input: s = banana. What is the length of the longest block that appears at least twice?
+        answer: '3'
+        why: ana appears at places 1 and 3 (overlapping), and no block of length 4 appears twice. Repeats
+          exist for lengths 1, 2, 3 and not 4, so the search finds 3 (Theorem 6.1.4).
+    - inline:
+        input: s = abcabcabc. What is the length of the longest block that appears at least twice?
+        answer: '6'
+        why: abcabc appears at the places 0 and 3. Shortening the repeated block keeps it repeated, so
+          the lengths with a repeat are exactly 1 to 6.
+    - worked_example: cses-2106
+      why: 'The longest block with a second copy anywhere in a string of length up to 10^5: binary search
+        on the length, a set of the window hashes decides each test.'
+    negative:
+    - inline:
+        input: s = aaaa. What is the largest L such that some block of length L occurs exactly twice?
+        answer: '3'
+        method_gives: '0'
+        why: aaa occurs twice, but aa occurs three times and a four times, so the statement is true at
+          3 and false at 1 and 2. It is not closed under shortening, binary search starts at the middle
+          (false) and moves left, and ends at 0.
+      correct_tool:
+        topic: '0.5'
+        card: enumerate-answer
+    - problem: lc-longest-substring-without-repeating-characters
+      why: The statement (no letter twice) is monotone, but its test is a count of letters kept up to
+        date as a window moves; two pointers need no binary search and no hash.
+      correct_tool:
+        topic: '1.3'
+        card: shrinkable-window
+  lookalikes:
+  - description: The smallest value of the answer for which a greedy check passes
+    tool:
+      topic: '1.4'
+      card: answer-search
+    flipping_difference: There the check is a greedy scan over numbers; here the check is a comparison
+      of blocks, which is what the hash makes cheap.
+  - description: The longest window whose letter counts satisfy a bound
+    tool:
+      topic: '1.3'
+      card: shrinkable-window
+    flipping_difference: Counts of the window can be kept while the two ends move, in O(n); there is no
+      pair of blocks to compare, so no hash and no binary search.
+  complexity: O(n log n) per test, O(n log² n) for the binary search (O(n log n) with hash sets).
+- id: palindrome-hash
+  name: Palindrome tests in O(1) (forward and reverse hashes)
+  from_theorem: 6.1.5
+  decisive_property: 'The question asks whether blocks of one string are palindromes (exactly: equal to
+    their own reverse), for many blocks, or for the longest palindrome around many centres, and n is too
+    large to store a table of all blocks.'
+  how_to_test: 'Two checks. (1) The objects are blocks (consecutive letters), not subsequences. (2) A
+    table of all n² blocks does not fit or is too slow to fill: n = 5000 gives 2.5·10^7 entries, still
+    fine; n = 2·10^5 gives 4·10^10, which is not. If both hold, hash the string and its reverse.'
+  constraint_shapes:
+  - 'n = 2·10^5 and q = 2·10^5 queries "is s[l..r) a palindrome?": scanning each block costs up to 10^5
+    steps, 2·10^10 in all; two prefix-hash arrays answer each query in O(1)'
+  - 'n = 10^6 and the longest palindrome around every centre: expanding letter by letter is up to n²/4
+    = 2.5·10^11 steps; a binary search on the radius needs 20 hash tests per centre, 4·10^7 in all'
+  weak_signals:
+  - form: Asks for the longest palindromic substring, the number of palindromic substrings, or the palindrome
+      around each position
+    shape: Length 10^5 to 10^6, too long for a table of all blocks
+  - form: Asks to cut a string into palindromes, or to prepend or append letters to make a palindrome
+    shape: Length 5·10^4 to 10^6 and the palindromic prefixes or suffixes are tested one after another
+  - form: Asks, for several (l, r) in the input, whether the block is a palindrome, possibly after letters
+      change
+    shape: n, q up to 2·10^5 or 10^6
+  kill_signals:
+  - 'The question is about palindromic subsequences: for agbcba the longest palindromic subsequence has
+    length 5 (abcba), but the longest palindromic block has length 3 (bcb), so block hashing answers a
+    different question'
+  - 'The length is at most 5000: the table of which blocks are palindromes (2.5·10^7 entries) is simpler
+    and exact'
+  in_action:
+    statement: A string s of length n and q queries (l, r). For each, is the block s[l..r) a palindrome?
+    constraints: n, q ≤ 2·10^5.
+    budget: 'Reading each block: up to 10^5 letters per query, q · n/2 = 2·10^10 steps. A table of all
+      blocks has n²/2 = 2·10^10 entries. Need O(1) or O(log n) per query.'
+    candidates:
+    - tool: Compare the block with its reverse for each query (topic 0.5)
+      verdict: rejected
+      because: Up to 2·10^10 steps in all.
+    - tool: A table of which blocks are palindromes (topic 3.6)
+      verdict: rejected
+      because: 2·10^10 entries do not fit in memory.
+    - tool: Hashes of s and of its reverse (this topic)
+      verdict: chosen
+      because: The reverse of s[l..r) is a block of the reversed string (Theorem 6.1.5).
+    property_check: The objects are blocks, and each test is an equality of two blocks of equal length.
+      q = 2·10^5 tests of length up to 2·10^5 give q·L/p ≈ 4·10^10 / 2.3·10^18 ≈ 2·10^-8. The property
+      holds.
+    decision: 'Prefix hashes of s and of its reverse, same base and modulus; answer each query with two
+      get calls: O(n + q).'
+  examples:
+    positive:
+    - inline:
+        input: s = forgeeksskeegfor. What is the length of the longest palindromic substring?
+        answer: '10'
+        why: geeksskeeg is a palindrome of even length. For every centre the set of palindromic radii
+          is closed downwards (Theorem 6.1.5), so a binary search on the radius with the forward and reverse
+          hash finds 10.
+    - inline:
+        input: s = abacdfgdcaba. What is the length of the longest palindromic substring?
+        answer: '3'
+        why: aba (twice) is the longest block equal to its reverse; the hash test per radius gives the
+          same 3 as a scan.
+    - worked_example: cses-1111
+      why: 'The longest palindromic block of a string of length up to 10^6: the radius around each centre
+        is found by binary search with a hash test.'
+    negative:
+    - inline:
+        input: s = agbcba. What is the length of the longest palindromic subsequence?
+        answer: 5 (abcba)
+        method_gives: '3'
+        why: The subsequence abcba skips the letter g, so it is not a block; block hashing finds only
+          bcb with length 3. The property "the objects are blocks" fails.
+      correct_tool:
+        topic: '3.6'
+        card: palindrome-segment
+    - problem: cf-245H
+      why: The string has length at most 5000, so the table of which blocks are palindromes (about 1.25·10^7
+        entries) is built exactly by the interval DP and a 2D prefix sum counts the queries; no hash is
+        needed.
+      correct_tool:
+        topic: '3.6'
+        card: palindrome-segment
+  lookalikes:
+  - description: Longest palindromic subsequence, or fewest insertions to make a palindrome
+    tool:
+      topic: '3.6'
+      card: palindrome-segment
+    flipping_difference: Letters may be skipped, so the answer comes from a table over the ends of blocks,
+      not from comparing a block with its mirror image.
+  - description: One palindrome test, or a string of at most a few thousand letters
+    tool:
+      topic: '0.3'
+      card: string-processing
+    flipping_difference: A direct scan costs O(n) per test; hashing pays off only when there are many
+      tests or the string is long.
+  complexity: O(n) to build both prefix-hash arrays, O(1) per palindrome test, O(log n) per centre for
+    the longest palindrome around it.
 problems: []
 drill: []
 lookalike_pairs: []

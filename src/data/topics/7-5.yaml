@@ -1,0 +1,987 @@
+# Topic 7.5 data file (PLAN.md Section 5, Revision 2.1). Problems reference the bank by id.
+id: '7.5'
+uses:
+- topic: '0.3'
+  what: 'Implementation: reading a given board position and checking it'
+- topic: '0.4'
+  what: 'Parity and divisibility: the case analysis on counts modulo 3 and the divisor games'
+- topic: '0.5'
+  what: 'Brute force: the search over all positions of a game, the reference of every check'
+- topic: '1.1'
+  what: 'Sorting: a rule that orders the stones, used by a greedy look-alike'
+- topic: '1.2'
+  what: 'Prefix sums: the one-dimensional DP of the score game'
+- topic: '1.4'
+  what: 'Binary search: a search on the answer around a greedy check'
+- topic: '1.7'
+  what: 'Bitwise operations: the xor, its highest bit and the arithmetic of Nim'
+- topic: '2.1'
+  what: 'Number theory: prime factors and divisors in games on numbers'
+- topic: '3.1'
+  what: 'Backtracking: the search over the positions of a small board'
+- topic: '3.2'
+  what: 'Dynamic programming: a value for each position, built from the positions it moves to'
+- topic: '3.6'
+  what: 'Interval DP: score games where the players take from the two ends of a row'
+- topic: '3.7'
+  what: 'Bitmask DP: games where the state is the set of numbers already used'
+- topic: '4.1'
+  what: 'Graph traversal: the states of a game as a graph, searched from the end'
+- topic: '4.2'
+  what: 'Graph structure: cycles and the order of a directed graph'
+- topic: '4.5'
+  what: 'Trees: the vertices and leaves of a game on a tree'
+- topic: '6.3'
+  what: 'Trie: a game that builds a word letter by letter in a dictionary'
+- topic: '7.2'
+  what: 'DP on DAGs: a game on an acyclic state graph'
+theorems:
+- id: 7.5.1
+  title: Winning and losing positions
+  plain_words: 'Start from the positions where the game is over: the player to move there has lost. A
+    position from which one can move to a lost position is won. A position from which every move leads
+    to a won position is lost. Go on until nothing new can be said. If the moves can go round in a circle,
+    some positions may never get a label, and those are the draws, where each player can keep avoiding
+    defeat for ever.'
+  code: 7.5/thm-1
+- id: 7.5.2
+  title: Nim
+  plain_words: The xor 0 is a position from which every move spoils the balance, and from every unbalanced
+    position there is a move that restores it. The game ends in a balanced position (no stones), so whoever
+    balances the position last wins. To balance, look at the highest bit in which the piles are unbalanced;
+    some pile has a 1 there, and it can be cut so that all the bits of the xor are repaired, because changing
+    that bit from 1 to 0 makes the number smaller.
+  code: 7.5/thm-2
+- id: 7.5.3
+  title: Sprague–Grundy
+  plain_words: 'Every impartial game behaves like a Nim pile whose size is its Grundy number: the mex
+    says that from the position one can reach every smaller number, and none equal to itself, exactly
+    as from a Nim pile of that size. A sum of Nim piles is decided by the xor of their sizes, so a sum
+    of arbitrary games is decided by the xor of their Grundy numbers.'
+  code: 7.5/thm-3
+- id: 7.5.4
+  title: Periodicity of subtraction games
+  plain_words: The next number depends only on the last $m$ numbers, and these numbers are small. There
+    are only finitely many different windows of $m$ small numbers, so the same window must come twice,
+    and from then on the sequence repeats. The program watches for the first repeated window, and then
+    every position far away is read from the period.
+  code: 7.5/thm-4
+cards:
+- id: win-lose
+  name: Label the positions as winning or losing from the end of the game
+  from_theorem: 7.5.1
+  decisive_property: Two players move alternately by the same rules, the player who cannot move loses,
+    the positions (heap sizes, states of a board, vertices) can be listed, and a position is winning exactly
+    when some move leads to a losing one.
+  how_to_test: 'Write the complete state of the game, including whose turn it is when the players have
+    different moves. Count the states: if there are at most about 10^7 and each has few moves, a table
+    over them is enough. Check the end of the game (positions without moves are lost). If positions can
+    repeat, use the counters of Theorem 7.5.1 and expect draws.'
+  constraint_shapes:
+  - 'a heap of n = 10^6 sticks with at most 100 allowed removals: 10^8 steps label all the sizes, against
+    an exponential search without a memo'
+  - 'a monster on a circle of n = 7000 objects, two players with up to 7000 steps each: about 10^8 edges,
+    labelled by counters in O(V + E)'
+  weak_signals:
+  - form: 'Asks who wins (or the result: win, lose, loop) from a given position of a two-player game with
+      perfect play'
+    shape: a heap, a circle, a grid or a graph with up to 10^6 positions
+  - form: Asks for the winner from every starting position of a game with a small set of moves
+    shape: n up to 10^6, at most 100 moves
+  - form: Asks who wins a game on a graph that may have cycles, where a draw is possible
+    shape: up to 10^5 vertices, moves depending on the player
+  kill_signals:
+  - 'The players do not have the same moves and the state does not record whose turn it is: the label
+    of a position is then not a function of the position alone; put the player into the state'
+  - 'The game has a score to maximise and not a win/lose result: the table is over the best score difference
+    (topic 3.6 or 3.2), and the rule "the last mover wins" gives a wrong answer (the coins 1, 5, 2: the
+    first player loses on points, but takes the last coin)'
+  in_action:
+    statement: A heap of n sticks and a set of allowed removals p_1, …, p_k. The players remove sticks
+      in turn; the player who cannot move loses. For every heap size 1..n tell who wins.
+    constraints: n ≤ 10^6, k ≤ 100.
+    budget: The sequences of moves are exponential; labelling n sizes with k moves each costs n·k = 10^8.
+    candidates:
+    - tool: Search all sequences of moves (topic 0.5)
+      verdict: rejected
+      because: Exponential without a memo.
+    - tool: Grundy numbers (this topic)
+      verdict: rejected
+      because: 'More than needed: only the winner of one heap is asked.'
+    - tool: Label the sizes in increasing order (this topic)
+      verdict: chosen
+      because: The game is finite and acyclic, and a position is winning exactly when some move leads
+        to a losing position (Theorem 7.5.1).
+    property_check: Both players have the same moves, the game is finite, the player who cannot move loses.
+      The property holds.
+    decision: 'win[0] = false; win[x] = true if some p ≤ x has win[x − p] false: O(n·k).'
+  examples:
+    positive:
+    - inline:
+        input: A heap of 7 sticks; each player removes 1, 3 or 4 sticks; the player who cannot move loses.
+          Does the player to move win (answer W) or lose (answer L)?
+        answer: L
+        why: 'The labels of the heaps 0 to 7 are L W L W W W W L (Theorem 7.5.1): from 7 every move leads
+          to a winning heap (6, 4 or 3).'
+    - inline:
+        input: A game on the positions 0, 1, 2, 3 with the moves 0→1, 1→0, 2→0, 2→3; the player who cannot
+          move loses. The player to move stands at the position 2. Is the result W (win), L (lose) or
+          D (draw)?
+        answer: W
+        why: 'The position 3 has no moves: L. The position 2 has a move to 3, so it is W. The positions
+          0 and 1 move only to each other and stay unlabelled: draws (Theorem 7.5.1 (b)).'
+    - worked_example: cses-1729
+      why: 'Who wins a heap game with a small set of removals, for every size up to 10^6: the table of
+        win/lose in increasing order.'
+    negative:
+    - inline:
+        input: The coins 1, 5, 2 lie in a row; the players take a coin from either end in turn, and the
+          player with the larger total at the end wins. Does the first player win (yes or no)?
+        answer: 'no'
+        method_gives: 'yes'
+        why: The first player ends with 3 and the second with 5, so the first player loses on points.
+          The rule "the player who takes the last coin wins" says that the first player takes the last
+          of three coins and wins. The result depends on the scores, not on who moves last.
+      correct_tool:
+        topic: '3.6'
+        card: take-from-ends
+    - problem: lc-predict-the-winner
+      why: 'Asks who gets the larger score when the players take numbers from the two ends: a DP on the
+        best difference of scores over the intervals, not a win/lose label.'
+      correct_tool:
+        topic: '3.6'
+        card: take-from-ends
+  lookalikes:
+  - description: A score game (the larger total wins)
+    tool:
+      topic: '3.6'
+      card: take-from-ends
+    flipping_difference: When the winner is the player with more points, the table holds the best score
+      difference of the remaining part; the label "winning" is not enough.
+  - description: Several independent heaps played together
+    tool:
+      topic: '7.5'
+      card: grundy-sum
+    flipping_difference: A sum of games has too many positions to label; each part gets a Grundy number
+      and the numbers are combined by xor.
+  complexity: O(V + E) time and memory for a game graph; O(n·k) for a heap game with k removals.
+- id: nim-sum
+  name: 'Nim: any number of stones from one pile, decided by the xor of the sizes'
+  from_theorem: 7.5.2
+  decisive_property: The position is a set of independent piles, a move takes any positive number of items
+    from exactly one pile (or the game can be seen as such, with a hidden pile), and the player who cannot
+    move loses; the position is lost exactly when the xor of the sizes is 0.
+  how_to_test: Identify the piles. Check that a move changes one pile only and that any smaller size can
+    be reached from a pile (not only a fixed number of items less). If the moves are limited (at most
+    2 stones, one stone from several piles), use the Grundy numbers instead. Compute the xor of the sizes;
+    for hidden Nim (stairs, rules stated with the xor) find which part of the position is the pile.
+  constraint_shapes:
+  - 'n = 10^5 piles of up to 10^9 stones: the positions are astronomically many, against one xor of n
+    numbers'
+  - 'n = 10^5 runs of consecutive pile sizes up to 10^16: the piles cannot be listed, against the xor
+    of a run in O(1) by the formula for 0..k'
+  weak_signals:
+  - form: Asks who wins a game with several piles where a move takes any number of stones from one pile
+    shape: n up to 10^6 piles, sizes up to 10^9 or 10^16
+  - form: Asks who wins a game on stairs or along a line where balls move one step down, the last mover
+      wins
+    shape: n up to 10^5 stairs, up to 10^9 balls
+  - form: Asks who wins a game where players erase numbers and the rules mention the xor of what is left
+    shape: n up to 1000 numbers
+  kill_signals:
+  - 'A move may take only a limited number of stones: with at most 2 stones per move, a pile of 3 is lost
+    for the player to move, while the xor of the sizes (3) says he wins (use the Grundy numbers)'
+  - 'A move may touch several piles at once (one stone from each pile of a chosen set): two piles of 1
+    are won by taking both, while the xor of the sizes says that the first player loses'
+  in_action:
+    statement: 'Several quarries: each has a run of heaps of the consecutive sizes x, x+1, …, x+m−1 (up
+      to 10^16). A move takes any positive number of stones from one heap; the player who cannot move
+      loses. Who wins?'
+    constraints: n quarries, x and m up to 10^16.
+    budget: The heaps cannot be listed. Need O(1) for each quarry.
+    candidates:
+    - tool: A table over the positions (this topic)
+      verdict: rejected
+      because: The positions are made of many huge numbers.
+    - tool: List the heaps and xor them (topic 1.7)
+      verdict: rejected
+      because: A run can have 10^16 heaps.
+    - tool: The xor of a run by the formula for 0..k (this topic)
+      verdict: chosen
+      because: Nim is decided by the xor of the sizes (Theorem 7.5.2), and the xor of a run is two values
+        of the formula for 0..k.
+    property_check: 'A move takes any number of stones from one heap and the heaps are independent: Nim.
+      The property holds.'
+    decision: 'total = xor over the quarries of (xorUpTo(x + m − 1) xor xorUpTo(x − 1)); the first player
+      wins iff total ≠ 0: O(n).'
+  examples:
+    positive:
+    - inline:
+        input: Nim with the piles 3, 4, 5. Does the first player (answer first) or the second player (answer
+          second) win?
+        answer: first
+        why: The xor 3 ⊕ 4 ⊕ 5 = 2 is not 0; the first player wins by leaving 1, 4, 5, whose xor is 0
+          (Theorem 7.5.2).
+    - inline:
+        input: A staircase of 4 stairs with 5, 2, 7, 2 balls. A move takes any positive number of balls
+          from a stair k ≥ 2 to the stair k − 1; the player who cannot move loses. Does the first or the
+          second player win?
+        answer: second
+        why: 'The balls on the even stairs are Nim piles: the stairs 2 and 4 have 2 and 2 balls, with
+          the xor 0, so the second player wins.'
+    - worked_example: lc-chalkboard-xor-game
+      why: A game of erasing numbers decided by the xor of the board and the parity of their count.
+    negative:
+    - inline:
+        input: One pile of 3 stones. A move takes 1 or 2 stones. The player who cannot move loses. Does
+          the first or the second player win?
+        answer: second
+        method_gives: first
+        why: 'A pile of 3 is lost for the player to move: whatever he takes (1 or 2), the opponent takes
+          the rest. The xor rule of Nim says that the size 3 is a win for the first player, but a move
+          may not take all 3 stones.'
+      correct_tool:
+        topic: '7.5'
+        card: grundy-sum
+    - problem: lc-can-i-win
+      why: 'Asks who wins when numbers are chosen without repetition until a total is reached: the state
+        is the set of numbers used, a bitmask table, not a Nim pile.'
+      correct_tool:
+        topic: '3.7'
+        card: assignment-mask
+  lookalikes:
+  - description: Piles with a limit on the number of stones taken in a move
+    tool:
+      topic: '7.5'
+      card: grundy-sum
+    flipping_difference: A limit makes the xor of the sizes wrong; each pile gets a Grundy number (size
+      modulo the limit plus one for the limit of removals 1..limit) and the numbers are xored.
+  - description: A game of parity where a move touches several piles
+    tool:
+      topic: '7.5'
+      card: grundy-pattern
+    flipping_difference: 'When a move changes several piles at once, the piles are not independent: a
+      brute force on small cases finds the pattern (for example, "some pile is odd").'
+  complexity: O(n) time for n piles (O(1) for a run of sizes).
+- id: grundy-sum
+  name: 'Sums of independent games: the xor of the Grundy numbers of the parts'
+  from_theorem: 7.5.3
+  decisive_property: The position is made of independent parts, a move changes exactly one part (possibly
+    splitting it into new independent parts), the game is finite with normal play, and the Grundy number
+    of one part (the mex over its moves) can be computed or guessed.
+  how_to_test: Cut the position into parts that do not influence each other. Check that every move touches
+    one part only. Compute the Grundy numbers of one part by the mex for small sizes; for large sizes
+    find a formula or a period (next card). The sum is lost exactly when the xor of the numbers is 0.
+    If a move touches two parts at once, the property fails.
+  constraint_shapes:
+  - 'n = 2·10^5 piles of up to 10^9 stones with moves of L to R stones: the sum has astronomically many
+    positions, against a formula for the Grundy number of one pile and one xor'
+  - 'n = 10^5 numbers up to 10^6 where a move replaces a number by a proper divisor: a sieve gives the
+    Grundy number of every number, and one xor'
+  weak_signals:
+  - form: Asks who wins a game that is a collection of independent objects of the same kind (heaps, numbers,
+      intervals) where a move changes one object
+    shape: n up to 2·10^5 objects, sizes up to 10^9
+  - form: Asks who wins a game where a move splits an object into independent objects
+    shape: sizes up to 2000, a table of Grundy numbers by the mex over the splits
+  - form: Asks who wins independent heaps with a range of allowed removals
+    shape: sizes up to 10^9, the Grundy number by a formula with a period
+  kill_signals:
+  - 'A move touches several parts at once: in the game "remove one stone from each pile of a chosen set",
+    two piles of 1 are a win for the first player (take both), while the numbers of the single piles (1
+    and 1) have the xor 0 (find the pattern, next card)'
+  - 'The game has cycles, or the players have different moves: Grundy numbers are not defined; use the
+    labels of Theorem 7.5.1 with the player in the state'
+  in_action:
+    statement: N piles of A_i stones; a move removes between L and R stones from one pile; the player
+      who cannot move loses. Who wins?
+    constraints: N ≤ 2·10^5, A_i ≤ 10^9.
+    budget: The positions of the sum are astronomically many. Need O(N).
+    candidates:
+    - tool: 'Plain Nim: the xor of the sizes (this topic)'
+      verdict: rejected
+      because: The number of stones per move is limited, so the xor of the sizes is wrong.
+    - tool: A table of Grundy numbers up to 10^9
+      verdict: rejected
+      because: Too big.
+    - tool: The Grundy number of one pile by its period, then the xor (this topic)
+      verdict: chosen
+      because: The piles are independent; a pile has the number ⌊(A mod (L + R)) / L⌋ (Theorem 7.5.3).
+    property_check: 'Independent piles, a move changes one pile, a finite game: a sum of games. The property
+      holds.'
+    decision: 'g(A) = (A mod (L + R)) / L; the first player wins iff the xor of the g(A_i) is not 0: O(N).'
+  examples:
+    positive:
+    - inline:
+        input: The heap game with the removals 1, 3, 4 is played on the three heaps 5, 3, 6 together (a
+          move is made in one heap). Does the first or the second player win?
+        answer: second
+        why: The Grundy numbers of the heaps are 3, 1, 2 (the table starts 0 1 0 1 2 3 2); their xor 3
+          ⊕ 1 ⊕ 2 = 0, so the second player wins (Theorem 7.5.3).
+    - inline:
+        input: Two piles of 4 and 7 stones; a move removes 2 or 3 stones from one pile; the player who
+          cannot move loses. Does the first or the second player win?
+        answer: first
+        why: 'A pile has the number ⌊(A mod 5) / 2⌋: 4 gives 2 and 7 gives 1; the xor 3 is not 0, so the
+          first player wins.'
+    - worked_example: cses-2207
+      why: 'A move splits a heap into two independent heaps: the Grundy number of a heap is the mex of
+        the xors of the numbers of the two parts.'
+    negative:
+    - inline:
+        input: Two piles of 1 stone. A move chooses any non-empty set of non-empty piles and removes one
+          stone from each. Does the first or the second player win?
+        answer: first
+        method_gives: second
+        why: The first player takes one stone from both piles and the second player cannot move. Treating
+          each pile as a separate game with the single move "remove one stone" gives the numbers 1 and
+          1, whose xor is 0 and the answer "second"; but a move touches both piles, so they are not independent.
+      correct_tool:
+        topic: '7.5'
+        card: grundy-pattern
+    - problem: lc-stone-game-vii
+      why: 'Asks for the best score difference when the players take stones from the two ends: a score
+        to maximise, with the state an interval, not a sum of independent games.'
+      correct_tool:
+        topic: '3.6'
+        card: take-from-ends
+  lookalikes:
+  - description: Independent heaps with any number of stones taken
+    tool:
+      topic: '7.5'
+      card: nim-sum
+    flipping_difference: If a move takes any number of stones from one heap, the Grundy number of a heap
+      is its size and the xor of the sizes decides.
+  - description: A single token on a graph (not a sum of games)
+    tool:
+      topic: '7.5'
+      card: win-lose
+    flipping_difference: With one token, label the positions by Theorem 7.5.1; Grundy numbers are needed
+      only when several such games are played at the same time.
+  complexity: O(size · moves) for the Grundy numbers of one part (or O(1) with a formula), then O(parts)
+    for the xor.
+- id: grundy-pattern
+  name: Find the pattern of the results by a brute force, then prove it
+  from_theorem: 7.5.4
+  decisive_property: The state space is too large for a table, but the game can be solved by brute force
+    on small sizes, the results show a pattern (a period, a formula in a few quantities, or a parity),
+    and the pattern can be proved by induction on the size.
+  how_to_test: Write a brute force for small sizes and print the results (the winners, or the Grundy numbers)
+    in a table. Look for a period, a parity, a threshold, or a formula in the maximum or the sum. State
+    the pattern and prove it by induction (the result after any move is known by the pattern); compare
+    it with the brute force for all small cases and far beyond the first period. If no pattern shows up
+    where the brute force reaches, the property is not established.
+  constraint_shapes:
+  - 'n = 10^9 and a move subtracts a divisor: the positions cannot be tabled, but the brute force for
+    n up to 60 shows who wins (odd n lose, even n win, except the powers of two)'
+  - '10^5 piles of sizes up to 10^9 where a move removes one cow or splits a pile: the Grundy numbers
+    of small sizes show a short period and a recursion for the large ones'
+  weak_signals:
+  - form: Asks who wins a game with a very large number of stones or a huge number, with moves that are
+      simple to state
+    shape: sizes up to 10^9 or 10^18, a handful of moves
+  - form: Asks who wins a game where a move depends on the divisors, the parity or the maximum of the
+      state
+    shape: n up to 100 piles, sizes up to 10^9
+  - form: Asks for the Grundy number of one huge object, to be combined by xor
+    shape: n up to 10^5, a formula or a period is needed
+  kill_signals:
+  - 'The game is not impartial: Alice may remove 1 or 2 stones and Bob only 1, from a heap of 3; treating
+    both as having the moves 1 and 2 says the first player loses (3 is a multiple of 3), but Alice wins
+    (label the states with the player, Theorem 7.5.1)'
+  - 'The brute force cannot reach sizes at which a pattern is visible, or the pattern is only guessed
+    and never checked far beyond the cases it was seen on: it stays a conjecture'
+  in_action:
+    statement: A number n ≤ 10^9. A move subtracts a divisor d of n with 1 < d < n. The player who cannot
+      move loses; Alice moves first. For each of t ≤ 10^4 tests print who wins.
+    constraints: t ≤ 10^4, n ≤ 10^9.
+    budget: The labels of all numbers up to 10^9 cannot be tabled. Need O(1) or O(log n) for each test.
+    candidates:
+    - tool: Label all numbers up to n (Theorem 7.5.1)
+      verdict: rejected
+      because: 10^9 positions.
+    - tool: Grundy numbers of all numbers
+      verdict: rejected
+      because: The same size problem.
+    - tool: A brute force for small n, a pattern, and a proof (this topic)
+      verdict: chosen
+      because: 'For n up to 60 the winners show a rule: odd n lose, even n that is not a power of two
+        win, and 2^k wins exactly when k is even; it is proved by induction (Theorem 7.5.1).'
+    property_check: An impartial game; the brute force reaches sizes where the pattern is clear; the pattern
+      has an induction proof. The property holds.
+    decision: 'Print the winner by the parity of n and by whether n is a power of two: O(1) for each test.'
+  examples:
+    positive:
+    - inline:
+        input: The heap game with the removals 1, 3, 4. What is the Grundy number of a heap of 100 stones?
+        answer: '0'
+        why: 'The numbers have the period 7: 0 1 0 1 2 3 2. Since 100 mod 7 = 2 and g(2) = 0, the Grundy
+          number is 0 (Theorem 7.5.4).'
+    - inline:
+        input: The heap game with the removals 1 and 2. What is the Grundy number of a heap of 1000 stones?
+        answer: '1'
+        why: The numbers repeat 0, 1, 2 with the period 3, and 1000 mod 3 = 1, so the number is 1 (Theorem
+          7.5.4).
+    negative:
+    - inline:
+        input: A heap of 3 stones. Alice may remove 1 or 2 stones, Bob may remove only 1 stone; the player
+          who cannot move loses; Alice moves first. Who wins (Alice or Bob)?
+        answer: Alice
+        method_gives: Bob
+        why: Alice removes 1, Bob must remove 1, Alice removes the last stone and Bob cannot move. Treating
+          both players as having the moves 1 and 2 gives the Grundy number 0 for the heap 3, so "the first
+          player loses", but the players do not have the same moves and the Grundy numbers do not apply.
+      correct_tool:
+        topic: '7.5'
+        card: win-lose
+    - problem: lc-stone-game-v
+      why: 'Asks for the best score in a game where a row is split into two parts: an interval DP over
+        the scores, not a question of who moves last.'
+      correct_tool:
+        topic: '3.6'
+        card: merge-split
+  lookalikes:
+  - description: A single small state space (a heap up to 10^6)
+    tool:
+      topic: '7.5'
+      card: win-lose
+    flipping_difference: If the positions can be listed, the table of win/lose answers directly; the pattern
+      is for sizes that cannot be tabled.
+  - description: Independent parts whose Grundy numbers are already known by a formula
+    tool:
+      topic: '7.5'
+      card: grundy-sum
+    flipping_difference: When the number of one part is known (a formula or a period), the sum is a plain
+      xor; finding the pattern is the step before.
+  complexity: O(table size) to find the period, then O(1) for each query; the proof is done once.
+problems:
+- id: cses-1729
+  role: worked_example
+  summary: A heap of n ≤ 10^6 sticks and k ≤ 100 allowed move sizes; a move removes one allowed number
+    of sticks; the player who cannot move loses; for every heap size from 1 to n print W or L.
+- id: lc-chalkboard-xor-game
+  role: worked_example
+  summary: A list of up to 1000 numbers; Alice and Bob erase one number in turn, Alice first; a player
+    whose erasure makes the xor of the rest 0 loses, and a player who starts with xor 0 wins; does Alice
+    win?
+- id: cses-2207
+  role: worked_example
+  summary: A heap of n ≤ 2000 coins; a move splits one heap into two non-empty heaps of different sizes;
+    the player who cannot move loses; for each of up to 100 values of n print first or second.
+- id: cf-1363C
+  role: ladder
+  card: win-lose
+  rung: 1
+  twist: 'Base case of the card: a game on a tree reduced to counting, with a special case.'
+  summary: A tree of n ≤ 1000 vertices and a special vertex x; two players remove a leaf in turn, Ayush
+    first; the player who removes x wins; who wins? †
+  hints:
+  - Try the case where x is a leaf at the start. Who wins at once?
+  - If x is not a leaf, the game goes on until x becomes a leaf, and then the player to move takes it.
+    Everything else only changes how many vertices are removed before that.
+  - 'The game ends exactly when only x and one neighbour are left, so n − 2 vertices are removed first
+    and the player to move then takes x: Ayush wins if x is a leaf, or if n is even; otherwise Ashish
+    wins.'
+- id: cf-1033C
+  role: ladder
+  card: win-lose
+  rung: 2
+  twist: The states are the cells of a permutation, and the order of labelling is given by the values.
+  summary: A permutation a of 1 … n, n ≤ 10^5, and a token on a cell i; a move goes to a cell j with a_j
+    > a_i and |i − j| divisible by a_i; the player who cannot move loses; for each starting cell print
+    who wins when Alice starts. †
+  hints:
+  - Every move goes to a larger value. Does the game graph have a cycle?
+  - 'No: so the cells can be labelled in the order of decreasing value, and a cell is won exactly when
+    some move goes to a lost cell (Theorem 7.5.1).'
+  - 'For a cell i look at i ± a_i, i ± 2a_i, … : n / a_i cells. The sum over all values is n (1 + 1/2
+    + 1/3 + …), about n log n steps.'
+- id: cf-917B
+  role: ladder
+  card: win-lose
+  rung: 3
+  twist: The state holds two token positions, the last letter and whose turn it is.
+  summary: A DAG of n ≤ 100 vertices with a letter on each edge; Max and Lucas each have a marble and
+    move it in turn, Max first; the letters of the moves must not decrease along the game; the player
+    who cannot move loses; for every pair of start vertices print who wins. †
+  hints:
+  - What must the state remember so that the allowed moves are known?
+  - 'The two positions, the last letter, and whose turn it is: n · n · 26 · 2 states, each with at most
+    n moves.'
+  - 'Memoise win(a, b, last letter, turn) over the DAG: the player to move wins if some edge from his
+    vertex with a letter at least the last letter leads to a state that is lost for the other. The graph
+    has no cycle, so the recursion ends.'
+- id: cf-786A
+  role: ladder
+  card: win-lose
+  rung: 4
+  twist: 'Cycles are possible: the answer has a third value, and the labelling goes backward from the
+    terminal state.'
+  summary: n ≤ 7000 objects in a circle, the object 1 is a black hole; two players have their own sets
+    of step sizes; a player who moves the monster into the black hole wins; for every start and for each
+    player moving first, print Win, Lose or Loop. †
+  hints:
+  - The game may never end. Can a plain recursion work?
+  - 'Use states (object, player to move) and find the lost states first: the black hole is lost for the
+    player to move.'
+  - 'Run Theorem 7.5.1 (b) backward from the black hole: a state is won if some move leads to a lost state,
+    lost when all its moves lead to won states (a counter of the moves left), and the states never marked
+    are loops.'
+- id: cf-15C
+  role: ladder
+  card: nim-sum
+  rung: 2
+  twist: Plain Nim, but the heap sizes come in huge runs.
+  summary: n ≤ 10^5 quarries; the quarry i has m_i heaps of the sizes x_i, x_i + 1, …, x_i + m_i − 1 (up
+    to 10^16); a move takes any positive number of stones from one heap; the first player wins if the
+    last move is his; who wins? †
+  hints:
+  - This is plain Nim. Which number decides the winner?
+  - The xor of all the heap sizes (Theorem 7.5.2). But there are far too many heaps to xor one by one.
+  - The xor of 0 … k is k, 1, k + 1, 0 for k mod 4 = 0, 1, 2, 3, so the xor of a run is xorUpTo(x + m
+    − 1) xor xorUpTo(x − 1); xor these over the quarries and test for 0.
+- id: cf-1147C
+  role: ladder
+  card: nim-sum
+  rung: 3
+  twist: The game is not Nim on its face; the winner is found by a pattern of the smallest size, and the
+    proof is by exchange.
+  summary: n ≤ 50 piles (n even) with at most 50 stones; a move chooses exactly n / 2 non-empty piles
+    and removes a positive number of stones from each; the player who cannot move loses; Alice first.
+    †
+  hints:
+  - Write a brute force for small n and sizes (topic 0.5) and print who wins. What does the winner depend
+    on?
+  - Look at the smallest size m and at the number c of piles that have it. Try to guess when the player
+    to move loses.
+  - 'The player to move loses exactly when c > n / 2: otherwise he can cut n / 2 larger piles down to
+    m and leave more than n / 2 piles of the smallest size, and from a position with c > n / 2 every move
+    makes some pile smaller than m, at most n / 2 piles can then have the new minimum.'
+- id: cf-1383B
+  role: ladder
+  card: nim-sum
+  rung: 1
+  twist: 'Base case of the card with a twist: the scores are xors, and the highest bit that has an odd
+    count decides, with a count modulo 4.'
+  summary: An array of n ≤ 10^5 numbers; two players take one number in turn, Koa first, and xor it into
+    their own score; the larger final score wins; print WIN, LOSE or DRAW for Koa. †
+  hints:
+  - Let the xor of all numbers be s. If s = 0 what happens? Think about the sum of the two scores.
+  - 'The two scores have xor s. Look at the highest bit b of s: the player whose score has the bit b wins,
+    so the game is about who gets an odd number of numbers with the bit b.'
+  - Let c be the number of elements with the bit b (c is odd). If c mod 4 = 1 the first player wins; if
+    c mod 4 = 3, he wins exactly when the number of the other elements is odd, and loses otherwise. If
+    s = 0, print DRAW.
+- id: ac-abc368_f
+  role: ladder
+  card: grundy-sum
+  rung: 1
+  twist: 'Base case of the card: every number is an independent heap; find the heap size.'
+  summary: A sequence A of N ≤ 10^5 numbers up to 10^5; a move chooses an index i and replaces A_i by
+    one of its proper divisors; the player who cannot move loses; Anna moves first; who wins?
+  hints:
+  - Each number is a game of its own, and a move changes one number only. Which theorem is for this?
+  - 'Theorem 7.5.3: the xor of the Grundy numbers of the games. What is the Grundy number of a number
+    A?'
+  - A proper divisor removes some prime factors, and any number from 1 to Ω(A) of them can be removed,
+    so the number is a Nim heap of size Ω(A), its number of prime factors with repetition. Sieve the smallest
+    primes, xor the values, and Anna wins when the xor is not 0.
+- id: ac-abc206_f
+  role: ladder
+  card: grundy-sum
+  rung: 2
+  twist: 'The independent games appear only after a move: an interval splits into two intervals.'
+  summary: T ≤ 20 tests; N ≤ 100 half-open intervals [L_i, R_i) with coordinates up to 100; the players
+    in turn choose an interval that lies in the current segment and cut it out, which splits the segment
+    into the parts left and right of the interval; the player who cannot move loses.
+  hints:
+  - After a move, what are the games that remain? Do they affect each other?
+  - 'The two parts are independent, so use Theorem 7.5.3 (b) on a segment [l, r): g[l][r] is the mex over
+    the intervals [L, R) inside it of g[l][L] xor g[R][r].'
+  - 'Fill the table by increasing length of the segment: 100 · 100 segments with N intervals each, 10^6
+    steps per test. The first player wins when g[0][100] is not 0 (the start segment covers all the coordinates).'
+- id: ac-abc297_g
+  role: ladder
+  card: grundy-sum
+  rung: 3
+  twist: 'A pile with a range of removals: the Grundy value is found by a pattern with a proof.'
+  summary: N ≤ 2·10^5 piles of up to 10^9 stones and numbers L ≤ R; a move removes between L and R stones
+    from one pile, if there are at least L stones; the player who cannot move loses; Takahashi first.
+  hints:
+  - Compute the Grundy numbers of one pile for small A, L and R by the definition of mex, and print them.
+    What do they look like?
+  - 'They go 0 … 0, 1 … 1, 2 … 2 in blocks, with the block length L, and the period L + R: the value looks
+    like floor((A mod (L + R)) / L).'
+  - 'Prove it by induction on A (the template explains the steps), then xor the values of all piles: Takahashi
+    wins when the xor is not 0.'
+- id: lc-nim-game
+  role: ladder
+  card: grundy-pattern
+  rung: 1
+  twist: 'Base case of the card: one heap with the moves 1, 2, 3 and a short period.'
+  summary: A heap of n ≤ 2^31 − 1 stones; a move takes 1, 2 or 3 stones; you move first; the player who
+    takes the last stone wins; can you win?
+  hints:
+  - Label the heaps 0, 1, 2, … as won or lost by the rule of Theorem 7.5.1 for a few steps.
+  - 'The labels are L W W W L W W W … : the period is 4.'
+  - 'The player to move loses exactly when n is a multiple of 4: from any other size he removes n mod
+    4 stones. Answer n % 4 != 0.'
+- id: cf-1194D
+  role: ladder
+  card: grundy-pattern
+  rung: 2
+  twist: The period depends on the parameter k, and a case analysis comes with it.
+  summary: T ≤ 100 tests, each with n and k up to 10^9; a move takes 1, 2 or k stones from the heap; Alice
+    first; the player who cannot move loses; who wins? †
+  hints:
+  - Write the win/lose table for small n and k with a brute force (topic 0.5) and compare several k.
+  - 'If k is not a multiple of 3, the moves 1 and 2 give the period 3 and k does not matter: the player
+    to move loses exactly when n mod 3 = 0.'
+  - 'If k is a multiple of 3, the period is k + 1: let r = n mod (k + 1); if r = k the player to move
+    wins, otherwise he loses exactly when r mod 3 = 0. Check the table against the brute force, and prove
+    it by induction on n.'
+- id: cf-1537D
+  role: ladder
+  card: grundy-pattern
+  rung: 3
+  twist: The moves are the proper divisors, and the pattern depends on the parity and on a power of two.
+  summary: T ≤ 10^4 tests with n up to 10^9; a move subtracts from n a divisor of n that is neither 1
+    nor n; the player who cannot move loses; Alice first; who wins? †
+  hints:
+  - Print the win/lose table for n up to 50 with a brute force and look at the odd numbers.
+  - An odd n has only odd divisors, so a move gives an even number; an even n can move to an odd number.
+  - Odd n is lost for the player to move; even n that is not a power of two can subtract an odd divisor
+    and win; n = 2^k wins exactly when k is even. Prove each claim by induction on n.
+- id: cf-1396B
+  role: ladder
+  card: grundy-pattern
+  rung: 4
+  twist: 'A rule about the previous move: the game is decided by the largest pile and the parity of the
+    total.'
+  summary: n ≤ 100 piles of up to 10^9 stones; in turn a player takes one stone from a pile that is not
+    the pile used in the previous move; the player who cannot move loses; T first; who wins? †
+  hints:
+  - A brute force with the state (piles, last pile) is feasible for small piles. Print the winner and
+    look for what decides it.
+  - If one pile is larger than all the others together, the player to move can use it again and again
+    (the opponent has to use other piles).
+  - 'If the largest pile exceeds the sum of the others, the first player wins. Otherwise all stones are
+    used up and the player who takes the last one wins: the first player wins exactly when the total is
+    odd.'
+- id: lc-cat-and-mouse
+  role: checkpoint
+  card: win-lose
+  summary: An undirected graph of up to 50 nodes; the mouse starts at node 1, the cat at node 2, the hole
+    is node 0 which the cat cannot enter; the mouse moves first; the mouse wins by reaching the hole,
+    the cat by catching the mouse, and 1000 moves make a draw; who wins?
+- id: ac-abc349_e
+  role: checkpoint
+  card: win-lose
+  summary: A 3 × 3 board of numbers; Takahashi and Aoki alternately colour a free cell red or blue, Takahashi
+    first; a three-in-a-row of one colour wins at once, and at the end the larger sum of the coloured
+    cells wins; who wins with optimal play?
+- id: cf-768E
+  role: checkpoint
+  card: grundy-sum
+  summary: n ≤ 10^6 piles of at most 60 stones; in each pile a number of stones may be removed only if
+    it was not removed from this pile before; the player who cannot move loses; Sam first; who wins? †
+- id: cf-255E
+  role: review
+  card: grundy-pattern
+  review_set: 1
+  summary: Piles of up to 7.7·10^11 stones; a move replaces a pile of x stones by a pile of y stones with
+    ⌈x^{1/4}⌉ ≤ y ≤ ⌊√x⌋; the player who cannot move loses; who wins? †
+- id: cf-936B
+  role: review
+  card: win-lose
+  review_set: 1
+  summary: A directed graph of n ≤ 10^5 vertices and m ≤ 2·10^5 edges; Petya makes the moves of both players
+    of a game from the vertex s, the second player moves second; can he win, or at least draw? †
+- id: lc-stone-game-iii
+  role: review
+  card: win-lose
+  review_set: 1
+  summary: A row of up to 5·10^4 piles with values; in turn a player takes 1, 2 or 3 piles from the front;
+    the larger total wins; who wins, or a tie?
+- id: cf-2004E
+  role: review
+  card: grundy-pattern
+  review_set: 2
+  summary: n ≤ 3·10^5 piles of up to 10^7 stones; a move takes y stones from a pile of x stones if gcd(x,
+    y) = 1; the player who cannot move loses; who wins? †
+- id: lc-stone-game-ix
+  role: review
+  card: win-lose
+  review_set: 2
+  summary: An array of up to 10^5 stone values; in turn a player removes a stone so that the sum of the
+    removed values is not divisible by 3, or loses; Alice first; who wins?
+- id: cf-731E
+  role: review
+  card: win-lose
+  review_set: 2
+  summary: A row of n ≤ 2·10^5 numbers; in turn a player takes the k ≥ 2 leftmost numbers, replaces them
+    by their sum and scores it; the game ends with one number; the difference of the scores under optimal
+    play. †
+- id: cf-78C
+  role: review
+  card: grundy-sum
+  review_set: 3
+  summary: n logs of length m (up to 10^9) and a number k; a move cuts one log into t ≥ 2 equal parts
+    with an integer length of at least k; the player who cannot move loses; who wins? †
+- id: cf-603C
+  role: review
+  card: grundy-pattern
+  review_set: 3
+  summary: n ≤ 10^5 piles of cows and a number k; a move removes one cow from a pile, or replaces a pile
+    of 2x cows by k piles of x cows; the player who takes the last cow wins; who wins? †
+- id: cf-850C
+  role: review
+  card: grundy-sum
+  review_set: 3
+  summary: n ≤ 100 numbers up to 10^9; a move picks a prime power p^k and divides every number divisible
+    by it by p^k; the player who cannot move loses; who wins? †
+- id: cses-1098
+  role: lookalike
+  card: grundy-sum
+  summary: n ≤ 2·10^5 heaps, each with up to 10^9 sticks, and a move that takes 1, 2 or 3 sticks from
+    one heap; the player who cannot move loses; who wins? (Nim Game II)
+- id: cses-1730
+  role: lookalike
+  card: nim-sum
+  summary: n ≤ 2·10^5 heaps, each with up to 10^9 sticks, and a move that takes any positive number of
+    sticks from one heap; the player who cannot move loses; who wins? (Nim Game I)
+- id: cses-2208
+  role: lookalike
+  card: grundy-pattern
+  summary: n ≤ 2·10^5 heaps of coins; a move takes a positive number of coins from one heap (all of the
+    heap or part), with the starting rule of the statement; the player who cannot move loses; who wins?
+    (Another Game)
+- id: cses-1099
+  role: lookalike
+  card: nim-sum
+  summary: n ≤ 2·10^5 stairs with balls; a move takes balls from a stair k to the stair k − 1; the player
+    who cannot move loses; who wins? (Stair Game)
+- id: lc-stone-game-ii
+  role: drill
+  summary: A row of up to 100 piles; in turn a player takes all the stones of the first x piles with 1
+    ≤ x ≤ 2M, and then M becomes max(M, x); the most stones that Alice can collect.
+- id: lc-stone-game-vi
+  role: drill
+  summary: Two arrays of values of n ≤ 5·10^4 stones for Alice and for Bob; in turn a player takes one
+    stone and gets his value of it; the player with the larger total wins; who wins?
+- id: lc-stone-game-viii
+  role: drill
+  summary: A row of up to 10^5 stones; in turn a player removes the x ≥ 2 leftmost stones and scores their
+    sum, which is put back as a single stone; the game ends with one stone; the best difference of scores.
+- id: cf-1728D
+  role: drill
+  summary: A string of even length at most 2000; in turn, Alice first, a player takes the first or the
+    last letter of it and appends it to a word; the lexicographic comparison of the word of Alice with
+    that of Bob decides, with a draw possible; who wins? †
+- id: cf-455B
+  role: drill
+  summary: Strings with a total length up to 10^5 and a number k up to 10^9 of games; in a game players
+    add a letter so that the word stays a prefix of one of the strings, and the player who cannot move
+    loses; the loser of a game starts the next one; who wins the last game? †
+- id: cf-1190B
+  role: drill
+  summary: n ≤ 10^5 piles of stones; a move takes one stone from a non-empty pile; the player after whose
+    move two piles have an equal number of stones loses; the player who cannot move loses; who wins? †
+- id: cf-3C
+  role: drill
+  summary: A 3 × 3 board of cells containing X, 0 or a dot; print whose turn it is, which player won,
+    a draw, or that the position is illegal. †
+- id: cf-1527B2
+  role: drill
+  summary: A binary string of length up to 1000; a move changes a 0 to a 1 at the cost of one dollar,
+    or reverses the string for free (not twice in a row, and only if it is not a palindrome); who spends
+    less wins. †
+drill:
+- problem: lc-stone-game-ii
+  answer:
+    topic: '7.5'
+    card: win-lose
+  property: 'The positions (first pile left, M) are finitely many and every move shortens the row: the
+    value of a position is the suffix sum minus the best of the opponent over x ≤ 2M, a minimax over the
+    states of Theorem 7.5.1.'
+  why_others_fail: A greedy choice of x does not work; the winner is decided by the future moves of the
+    opponent, which the memo over (position, M) holds.
+- problem: lc-stone-game-vi
+  answer:
+    topic: '1.1'
+    card: custom-order
+  property: 'A stone is worth aliceValues[i] + bobValues[i] to the pair: taking it gains for you and denies
+    the opponent. Sort the stones by this sum, take them in turns, compare the totals.'
+  why_others_fail: There are 5·10^4 stones, so the states are too many for a game DP; the sort by the
+    sum is the only thing needed.
+- problem: lc-stone-game-viii
+  answer:
+    topic: '3.2'
+    card: linear-state
+  property: 'Let dp[i] be the best difference when the leftmost i stones are already merged: dp[i] = max(dp[i
+    + 1], prefix[i] − dp[i + 1]) from the right, and the answer is dp[2].'
+  why_others_fail: 'A search of the game tree is exponential, and the Grundy numbers need independent
+    games: it is a single scoring game, so a DP of the score difference is enough.'
+- problem: cf-1728D
+  answer:
+    topic: '3.6'
+    card: take-from-ends
+  property: The remaining letters are always a substring; dp[l][r] holds the outcome win, draw or lose
+    for the player to move, so it is an interval DP.
+  why_others_fail: Theorem 7.5.1 alone does not help with three outcomes that depend on the comparison
+    of two words; the substring is the state.
+- problem: cf-455B
+  answer:
+    topic: '6.3'
+    card: prefix-tree
+  property: The positions are the prefixes of the strings, so they are the nodes of the trie; compute
+    for each node whether the player to move can force a win and whether he can force a loss, then combine
+    over k games.
+  why_others_fail: A table of all words is not available; the trie is the game graph, and k is large,
+    so only the two flags are needed.
+- problem: cf-1190B
+  answer:
+    topic: '7.5'
+    card: grundy-pattern
+  property: The game is finite and has a short rule; a brute force on small piles shows that the winner
+    depends on the parity of sum(a_i − i) over the sorted piles, after the first moves that lose at once
+    are excluded.
+  why_others_fail: A search over the piles is too big for 10^9 stones; the pattern, found with the brute
+    force, gives the answer.
+- problem: cf-3C
+  answer:
+    topic: '0.3'
+    card: case-analysis
+  property: 'Only one position is given: count the signs, test the eight lines and decide among the cases
+    (wrong counts, two winners, a win followed by another move).'
+  why_others_fail: 'There is no game tree to search: the question is about the legality of one board,
+    not about optimal play.'
+- problem: cf-1527B2
+  answer:
+    topic: '7.5'
+    card: grundy-pattern
+  property: Small strings can be searched by the brute force; the result depends only on the number of
+    zeros and on whether the string is a palindrome (with a special case of one centre zero), a short
+    case analysis found from small cases.
+  why_others_fail: The strings are too long for a search over the positions; the pattern from the brute
+    force is used.
+lookalike_pairs:
+- a: cses-1098
+  b: cses-1730
+  a_tool:
+    topic: '7.5'
+    card: grundy-sum
+  b_tool:
+    topic: '7.5'
+    card: nim-sum
+  shared_surface: Both give n heaps of sticks, a move takes sticks from one heap, and the player who cannot
+    move loses.
+  flipping_difference: 'In Nim Game I any number of sticks can be taken, so a heap is a Nim heap and the
+    winner is decided by the xor of the sizes. In Nim Game II only 1, 2 or 3 sticks can be taken: the
+    Grundy number of a heap of x sticks is x mod 4, and the xor is taken over these numbers, not over
+    the sizes.'
+  flipping_input: Heaps 4 and 4 with the moves 1 to 3 give the values 0 and 0 (second wins, xor of x mod
+    4 is 0); heaps 1 and 2 with any move give 1 xor 2 = 3 (first wins). The heaps 3 and 4 give 3 xor 4
+    = 7 in the first game and 3 xor 0 = 3 in the second, but heaps 4 alone are won in the first game and
+    lost in the second.
+- a: cses-2208
+  b: cses-1099
+  a_tool:
+    topic: '7.5'
+    card: grundy-pattern
+  b_tool:
+    topic: '7.5'
+    card: nim-sum
+  shared_surface: Both give a row of heaps or stairs with counters, a move takes some of them from one
+    place, and the player who cannot move loses.
+  flipping_difference: 'In Stair Game a move sends balls from a stair to the one below, and the answer
+    is the xor of every second stair: Nim on part of the position. In Another Game the answer is an invariant
+    of the parity of the heap sizes: the first player wins exactly when some heap has an odd size.'
+  flipping_input: The single heap 2 is lost for the first player in Another Game; one stair with 2 balls
+    on the stair 2 is won in Stair Game (the xor of p_2 is 2).
+self_test:
+- q: The moves of a heap game are to remove 2 or 3 sticks. Label the heaps 0 to 7 as W (the player to
+    move wins) or L (Theorem 7.5.1).
+  a: 0 L, 1 L, 2 W, 3 W, 4 W (to 1), 5 L (to 3 and 2, both W), 6 L (to 4 and 3, both W), 7 W (to 5).
+- q: Nim with the piles 6, 10, 13. Who wins, and what is a winning move? (Theorem 7.5.2)
+  a: '6 xor 10 = 12 and 12 xor 13 = 1, which is not 0, so the first player wins. The pile 13 xor 1 = 12
+    is smaller than 13: take one stone from the pile 13.'
+- q: Compute mex{0, 1, 3, 4} and mex{1, 2}. What does a Grundy number 0 mean?
+  a: mex{0, 1, 3, 4} = 2 and mex{1, 2} = 0. A position with the Grundy number 0 is lost for the player
+    to move.
+- q: A heap game with the moves remove 1 or remove 2. Give g(0) … g(5), and decide who wins with the heaps
+    4, 5, 7.
+  a: 'g = 0, 1, 2, 0, 1, 2 (x mod 3). The heaps give 1, 2, 1: the xor is 2, so the first player wins.'
+- q: 'Each heap allows only the move "remove one stone". Two heaps of one stone each: who wins, and what
+    do the sum and the xor of the Grundy numbers say?'
+  a: 'The first player removes a stone, the second removes the other, and the first cannot move: the second
+    player wins. Each heap has g = 1; the xor is 0 (lost, correct), the sum 2 would wrongly say won.'
+- q: A subtraction game has the moves 2 and 5. List the lost heaps up to 15, give the period, and decide
+    whether 100 is lost (Theorem 7.5.4).
+  a: 'Lost: 0, 1, 4, 7, 8, 11, 14, 15. The period is 7, the lost residues 0, 1, 4. 100 mod 7 = 2, so 100
+    is a win.'
+- q: After the backward search of Theorem 7.5.1 (b) a position has no label. What is it, and why can neither
+    player force a win from it?
+  a: It is a draw (a loop). Every move from it leads to a won position or to another unlabelled one, and
+    at least one leads to an unlabelled position; each player can avoid losing by staying among the unlabelled
+    positions.
+checkpoint:
+  time_limit_minutes: 150
+  problems:
+  - lc-cat-and-mouse
+  - ac-abc349_e
+  - cf-768E
+decision_map:
+- weak_signal: Two players move in turn on a position, the player who cannot move loses, and the question
+    is who wins (or what the result of every start is)
+  choose: win-lose
+  when: 'The positions are few enough to label, or the label of a position depends only on the labels
+    after a move: win if some move reaches a lost position (Theorem 7.5.1).'
+  over:
+  - card: memo-recursion
+    topic: '3.2'
+    because: A one-player best value needs only a maximum; here the opponent chooses too, and the result
+      is win or lose.
+  - card: state-graph
+    topic: '4.1'
+    because: Only reachability is asked; here the opponent also moves, and the labels alternate.
+- weak_signal: 'Several piles or a pile of numbers, a move changes one pile, and any number of stones
+    may be taken (or a very simple structure: a run of heaps, stairs)'
+  choose: nim-sum
+  when: Each pile is a Nim heap, so the first player wins exactly when the xor of the sizes is not 0 (Theorem
+    7.5.2).
+  over:
+  - card: win-lose
+    topic: '7.5'
+    because: The number of positions is too large to label; the xor decides without labelling.
+  - card: grundy-sum
+    topic: '7.5'
+    because: Here every heap allows any removal; if the moves are restricted, the heap size is not its
+      Grundy number.
+- weak_signal: Independent games added together (piles, numbers, intervals, primes), each with its own
+    move rule, and the first player who cannot move loses
+  choose: grundy-sum
+  when: 'A game splits into parts that do not affect each other: compute the Grundy number of each part
+    by the mex and xor them (Theorem 7.5.3).'
+  over:
+  - card: nim-sum
+    topic: '7.5'
+    because: The Grundy number of a part is not its size unless every removal is allowed.
+  - card: win-lose
+    topic: '7.5'
+    because: A table over the product of the parts is too large; the numbers of the parts are combined
+      with the xor.
+- weak_signal: 'A game whose rule is simple but whose answer for large parameters is unclear: a subtraction
+    set, a parity or period, a rule with a previous move'
+  choose: grundy-pattern
+  when: Write a brute force, print the labels or Grundy numbers for small inputs, find the period or the
+    case rule, and prove it by induction (Theorem 7.5.4).
+  over:
+  - card: win-lose
+    topic: '7.5'
+    because: The parameter is too large for the table; only the pattern fits.
+  - card: case-analysis
+    topic: '0.3'
+    because: The pattern must be proved and checked against a brute force; a guess without proof is not
+      enough.
+glossary_added: []

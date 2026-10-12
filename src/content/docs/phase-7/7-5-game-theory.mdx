@@ -1,0 +1,474 @@
+---
+title: "7.5 Sprague–Grundy theorem"
+sidebar:
+  order: 45
+topic: "7.5"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.5" />
+
+This topic combines [dynamic programming](../../phase-3/3-2-dp-foundations/) (a value for each position, built from the values of the positions it can move to) and [bitwise operations](../../phase-1/1-7-bits/) (the xor of numbers, which is addition without carry and is exactly the arithmetic of the game Nim). Two players move in turn; the one who cannot move loses; both play perfectly. The question is always who wins, and the answer is a label on the starting position.
+
+## 1. Why this topic exists
+
+Here is a small problem. Three heaps of stones have the sizes $a, b, c$, each up to $10^9$. A move takes any positive number of stones from one heap, and the player who cannot move loses. Who wins? The positions are triples of numbers, far too many to label one by one, so a table over the positions is out of the question. But there is a rule: the first player wins exactly when $a \oplus b \oplus c \ne 0$, where $\oplus$ is the xor. The rule comes from the theory of this lesson, and it extends to games that look nothing like Nim.
+
+The lesson has four ideas.
+- **Winning and losing positions.** A position is winning if some move leads to a losing position, and losing if every move leads to a winning one. When the positions can be listed, this is a DP over them (and, when moves can return to a position, a search backwards from the positions without moves).
+- **Nim and the xor.** Several heaps, any number of stones from one heap: the position is lost exactly when the xor of the sizes is 0.
+- **Grundy numbers and sums of games.** Every position of a game gets a number, the *mex* of the numbers of the positions it can move to. A game made of independent parts is lost exactly when the xor of the numbers of the parts is 0.
+- **Finding the pattern.** When the sizes are huge, compute the Grundy numbers of small sizes by a program, find the period or the formula, and prove it.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.5" />
+
+### What this topic does not cover
+
+- Games in which the two players have different moves (partisan games), games in which the player who cannot move *wins* (misère play), and games with a score to maximise. A score game is a DP on the difference of the scores (topic 3.2) and not a question of winning positions.
+- The theory of sums of partisan games and game values (surreal numbers).
+- Games with chance or hidden information: expected values (topic 2.4).
+- Interactive problems in which the program plays the game against the judge.
+
+## 3. Definitions
+
+- An **impartial game** has positions and moves; both players have the same moves from every position, they move alternately, and the player who cannot move loses (**normal play**). Example: a heap of $n$ stones, a move removes 1 or 2 stones.
+- A position is **winning** if the player to move can force a win, and **losing** if the player to move loses against perfect play. Example: in the heap game with removals 1 and 2, the heaps 0, 3, 6 are losing and 1, 2, 4, 5 are winning. If play can go on for ever, a position can also be a **draw**.
+- The **xor** $a \oplus b$ of two numbers has the bit 1 where exactly one of them has a 1. Example: $3 \oplus 5 = 011_2 \oplus 101_2 = 110_2 = 6$. The xor of equal numbers is 0.
+- The **mex** (minimum excluded value) of a set of non-negative integers is the least non-negative integer not in the set. Example: $\text{mex}\{0, 1, 3\} = 2$ and $\text{mex}\{\} = 0$.
+- The **Grundy number** $g(P)$ of a position $P$ is the mex of the Grundy numbers of the positions that $P$ moves to. A position without moves has $g = 0$. Example: in the heap game with removals 1 and 2, $g(0) = 0$, $g(1) = \text{mex}\{0\} = 1$, $g(2) = \text{mex}\{g(1), g(0)\} = \text{mex}\{1, 0\} = 2$, $g(3) = \text{mex}\{g(2), g(1)\} = \text{mex}\{2, 1\} = 0$.
+- A **sum** of games has several independent parts; a move is a move in exactly one part, and the game ends when no part has a move.
+- In the code, `__builtin_clz(s)` counts the leading zero bits of a 32-bit number (so `31 - __builtin_clz(s)` is the index of its highest bit); `set<int>` is a set of numbers with `insert` and `count`; `map<vector<int>, bool>` stores a value for each vector; `enum { DRAW, WIN, LOSE };` names the numbers 0, 1, 2.
+
+## 4. Theory and proofs
+
+### 4.1 Winning and losing positions
+
+**Theorem 7.5.1 (winning and losing positions).** Let a game be given by a graph whose vertices are the positions and whose edges are the moves, and let the player who cannot move lose. Label the positions by these rules: a position without moves is LOSE; a position with a move to a LOSE position is WIN; a position all of whose moves lead to WIN positions is LOSE. (a) If the graph has no cycle, every position gets a label by these rules, and WIN means that the player to move can force a win and LOSE means that he loses against perfect play. (b) In any graph, the rules applied as long as they can be (with a counter of the moves that are not yet known to lead to a WIN position) label exactly the positions with a forced win or loss; the other positions are draws, and the labelling takes $O(V + E)$ time.
+
+:::tip[In plain words]
+Start from the positions where the game is over: the player to move there has lost. A position from which one can move to a lost position is won. A position from which every move leads to a won position is lost. Go on until nothing new can be said. If the moves can go round in a circle, some positions may never get a label, and those are the draws, where each player can keep avoiding defeat for ever.
+:::
+
+**A tiny instance.** A heap of 0 to 5 stones with the removals 1 and 2. The heap 0 has no moves: LOSE. The heaps 1 and 2 move to 0: WIN. The heap 3 moves to 2 and 1, both WIN: LOSE. The heaps 4 and 5 move to 3: WIN. The labels are L W W L W W: the multiples of 3 lose. A graph with a cycle: the positions $0 \to 1$, $1 \to 0$, $2 \to 0$, $2 \to 3$ and 3 without moves. The position 3 is LOSE, so 2 (a move to 3) is WIN. The positions 0 and 1 only move to each other: neither gets a label, they are draws.
+
+**Proof.**
+1. *The labels are correct when they appear.* Order the positions by the moment of labelling. A position is labelled LOSE when it has no moves, or when all its moves lead to positions already labelled WIN; by induction on this order those positions are won for the player who moves there, so the player to move loses. A position is labelled WIN when it has a move to a position already labelled LOSE, which is lost for the opponent by induction; so the player to move wins.
+2. *Acyclic case, part (a).* Every play is finite, so induct on the length of the longest play from a position: a position whose moves all lead to labelled positions gets a label by one of the rules (no moves; or some move to LOSE; or all moves to WIN). So every position is labelled.
+3. *Unlabelled positions are draws, part (b).* Let $v$ be unlabelled at the end. No move of $v$ leads to a LOSE position (otherwise $v$ would be WIN). And not all moves lead to WIN positions (otherwise $v$ would be LOSE), so some move leads to a position that is not WIN and, being also not LOSE, is unlabelled. So the player to move can always move from an unlabelled position to an unlabelled position; a position without moves is labelled LOSE, so he never runs out of moves. Both players can do this, so neither can force a win, and the play can go on for ever: a draw.
+4. *The algorithm.* The positions without moves are LOSE and go into a queue. Taking a labelled position $u$ from the queue, look at each position $v$ that moves to $u$ (stored in a list of reverse edges): if $u$ is LOSE, $v$ becomes WIN; if $u$ is WIN, one move of $v$ is now known to lead to a WIN position, and when the counter of $v$ reaches 0, $v$ becomes LOSE. Each position is labelled once and each edge is looked at once: $O(V + E)$. $\square$
+
+:::note[This proof needs]
+1. Normal play: the player who cannot move loses. For the opposite rule (misère) the labels of the positions without moves change, and the results can differ.
+2. Both players have the same moves from every position (impartial game). If the moves depend on whose turn it is, make the player part of the state (as the template for the game with a black hole does).
+3. A finite number of positions. For a heap game with a huge number of stones, the labels are found from a pattern (Theorem 7.5.4).
+4. Several moves from $v$ to the same position count separately in the counter, and are listed separately among the reverse edges; the code does this without special care.
+:::
+
+<TheoremCode unit="7.5/thm-1" />
+
+The first line is the heap of 0 to 5 stones (L for losing, W for winning, D for draw), the second the graph with the cycle. The check compares the counters with the three rules applied again and again on 3000 random graphs of up to 7 positions.
+
+### 4.2 Nim
+
+**Theorem 7.5.2 (Nim, Bouton's theorem).** In the game with piles of $a_1, \dots, a_n$ stones where a move takes any positive number of stones from one pile, the position is lost for the player to move exactly when $s = a_1 \oplus \dots \oplus a_n = 0$. If $s \ne 0$, a winning move is: take the pile that has the highest bit of $s$ set, and reduce it to $a_i \oplus s$.
+
+:::tip[In plain words]
+The xor 0 is a position from which every move spoils the balance, and from every unbalanced position there is a move that restores it. The game ends in a balanced position (no stones), so whoever balances the position last wins. To balance, look at the highest bit in which the piles are unbalanced; some pile has a 1 there, and it can be cut so that all the bits of the xor are repaired, because changing that bit from 1 to 0 makes the number smaller.
+:::
+
+**A tiny instance.** The piles 3, 4, 5: the xor is $011 \oplus 100 \oplus 101 = 010 = 2$, not 0. The highest bit of 2 is the bit 1. The pile 3 ($011$) has it; reduce it to $3 \oplus 2 = 1$. The piles 1, 4, 5 have the xor $001 \oplus 100 \oplus 101 = 0$. The piles 1, 2, 3 have the xor 0, and any move breaks it: for example 1, 2, 2 has the xor 1.
+
+**Proof.**
+1. *A move from xor 0 gives xor not 0.* A move changes exactly one pile $a_i$ to $a_i' < a_i$, so the xor changes by $a_i \oplus a_i' \ne 0$, and from $0$ it becomes non-zero.
+2. *A move from xor not 0 to xor 0 exists.* Let $b$ be the highest bit of $s \ne 0$. Since $s$ has the bit $b$, an odd number of the piles have the bit $b$; take one of them, $a_i$. Put $a_i' = a_i \oplus s$. The xor of the new position is $s \oplus a_i \oplus a_i' = 0$.
+3. *The move is a legal one.* $a_i' < a_i$: the numbers $a_i$ and $a_i'$ differ exactly in the bits of $s$; the highest of them is $b$, which is 1 in $a_i$ and 0 in $a_i'$, so $a_i' < a_i$.
+4. *Conclusion.* Let $Z$ be the positions with xor 0. The position with no stones is in $Z$ and is lost. By steps 1 and 2, every move from $Z$ leaves $Z$, and from every position outside $Z$ there is a move into $Z$. By induction on the total number of stones, the positions in $Z$ are exactly the lost ones: a position of $Z$ has only moves to positions outside $Z$, which are won (they have a move into $Z$, a lost position by induction); a position outside $Z$ moves into $Z$. $\square$
+
+:::note[This proof needs]
+1. A move removes any positive number of stones from one pile. If the number is limited (at most 2 per move, for example) the xor of the sizes is not the right value, and the Grundy numbers of the next theorem are used instead.
+2. All piles are independent, and a move touches one pile only. If a move may touch several piles, the xor of the sizes does not decide.
+3. The xor of the sizes of a *range* of consecutive integers has a short formula: $0 \oplus 1 \oplus \dots \oplus k$ is $k$, $1$, $k + 1$, $0$ for $k \bmod 4 = 0, 1, 2, 3$.
+4. Games that look different but are Nim in disguise (stairs, a pile of stones where a move gives stones to the next pile) are found by asking which part of the position is the heap.
+:::
+
+<TheoremCode unit="7.5/thm-2" />
+
+The first line is the winning move for the piles 3, 4, 5 and the second the position 1, 2, 3. The check goes through all positions of 4 piles with the sizes 0 to 5: the winner agrees with the xor, and the move given leads to a lost position.
+
+### 4.3 Grundy numbers and sums of games
+
+**Theorem 7.5.3 (Sprague–Grundy).** For a finite acyclic impartial game define $g(P) = \text{mex}\{g(Q) : P \to Q\}$. (a) A position $P$ is lost for the player to move exactly when $g(P) = 0$. (b) If a game $G$ is a sum of independent games $G_1, \dots, G_k$, then $g(G) = g(G_1) \oplus \dots \oplus g(G_k)$. So a sum is lost exactly when the xor of the Grundy numbers of its parts is 0.
+
+:::tip[In plain words]
+Every impartial game behaves like a Nim pile whose size is its Grundy number: the mex says that from the position one can reach every smaller number, and none equal to itself, exactly as from a Nim pile of that size. A sum of Nim piles is decided by the xor of their sizes, so a sum of arbitrary games is decided by the xor of their Grundy numbers.
+:::
+
+**A tiny instance.** The heap game with the removals 1, 3, 4. $g(0) = 0$; $g(1) = \text{mex}\{g(0)\} = 1$; $g(2) = \text{mex}\{g(1)\} = 0$; $g(3) = \text{mex}\{g(2), g(0)\} = \text{mex}\{0\} = 1$; $g(4) = \text{mex}\{g(3), g(1), g(0)\} = \text{mex}\{1, 1, 0\} = 2$; $g(5) = \text{mex}\{g(4), g(2), g(1)\} = \text{mex}\{2, 0, 1\} = 3$; $g(6) = \text{mex}\{g(5), g(3), g(2)\} = \text{mex}\{3, 1, 0\} = 2$; $g(7) = \text{mex}\{2, 2, 1\} = 0$; $g(8) = \text{mex}\{0, 3, 2\} = 1$. The sum of the heaps 5, 3, 6 has the xor $3 \oplus 1 \oplus 2 = 0$: lost for the first player.
+
+**Proof.**
+1. *Part (a).* By induction on the length of the longest play: positions with $g = 0$ are lost and positions with $g \ne 0$ are won. If $g(P) = 0$, then $0$ is not among the numbers of the positions $P$ moves to, so every move leads to a position with $g \ne 0$, which is won by induction; $P$ is lost. If $g(P) \ne 0$, then $0$ is smaller than the mex, so it is among the numbers of the moves: $P$ has a move to a position with $g = 0$, lost by induction, and $P$ is won.
+2. *Part (b), two games.* By induction on the number of parts it is enough to prove it for $A + B$. Let $x = g(A)$, $y = g(B)$, $z = x \oplus y$. We show that the mex of the numbers of the moves of $A + B$ is $z$, using by induction that the position $A' + B$ has the number $g(A') \oplus y$ (and the same for a move in $B$).
+3. *No move leads to a position with the number $z$.* A move in $A$ goes to $A'$ with $g(A') \ne x$ (the mex is not in the set), so $g(A') \oplus y \ne x \oplus y = z$. The same holds for a move in $B$.
+4. *Every number $t < z$ is reached.* Put $d = z \oplus t \ne 0$, and let $b$ be the highest bit of $d$. Since $t < z$, the bit $b$ is 1 in $z$ and 0 in $t$. As $z = x \oplus y$, exactly one of $x, y$ has the bit $b$; say $x$ (the other case is symmetric). Then $x' = x \oplus d < x$ (the highest changed bit goes from 1 to 0), and by the definition of the mex, $A$ has a move to a position $A'$ with $g(A') = x'$. The new number is $x' \oplus y = x \oplus d \oplus y = z \oplus d = t$.
+5. *The mex.* Steps 3 and 4 say that the numbers of the moves of $A + B$ contain all of $0, \dots, z - 1$ and not $z$: the mex is $z$. $\square$
+
+:::note[This proof needs]
+1. The parts are independent: a move changes exactly one part. If a move can change two parts (remove one stone from several heaps at once), the xor of the Grundy numbers of the parts is not the value of the sum.
+2. The game must be finite (no cycles) and impartial, with normal play. With cycles the Grundy numbers may not exist; with different moves for the two players the theory does not apply.
+3. A part that splits into independent parts after a move (a heap split in two, as in Grundy's game) is handled by the same theorem: the value of the position after the move is the xor of the values of the two heaps.
+4. To compute $g$ for a sum, compute it for each part and xor; the table of one heap is enough for all the heaps of the same game.
+:::
+
+<TheoremCode unit="7.5/thm-3" />
+
+The first line is the table of the Grundy numbers (the removals 1, 3, 4, heaps 0 to 8) and the second the sum of the heaps 5, 3, 6, lost for the first player. The check compares the xor rule with a search over all sums of up to 3 heaps of sizes up to 9, for four different sets of removals.
+
+### 4.4 Finding the pattern
+
+**Theorem 7.5.4 (periodicity of subtraction games).** In the heap game with a finite set $S$ of allowed removals, $m = \max S$, the Grundy numbers $g(n) = \text{mex}\{g(n - r) : r \in S, r \le n\}$ satisfy $g(n) \le |S|$, and the sequence is eventually periodic: if the windows $(g(i - m), \dots, g(i - 1))$ and $(g(j - m), \dots, g(j - 1))$ are equal for some $m \le i < j$, then $g(i + k) = g(j + k)$ for all $k \ge 0$. A window repeats within the first $(|S| + 1)^m + 1$ positions, so $g(n)$ for any $n$ is found from a table of that size.
+
+:::tip[In plain words]
+The next number depends only on the last $m$ numbers, and these numbers are small. There are only finitely many different windows of $m$ small numbers, so the same window must come twice, and from then on the sequence repeats. The program watches for the first repeated window, and then every position far away is read from the period.
+:::
+
+**A tiny instance.** The removals 1, 3, 4 ($m = 4$): the numbers from the previous theorem are $0, 1, 0, 1, 2, 3, 2, 0, 1, 0, 1, 2, 3, 2, \dots$ The window of the positions 0–3 ($0, 1, 0, 1$) comes again at the positions 7–10, so the period is 7 from the start. Then $g(100) = g(100 \bmod 7) = g(2) = 0$, and $g(10^{18}) = g(10^{18} \bmod 7) = g(1) = 1$ because $10^{18} \bmod 7 = 1$. For the removals 1, 2: $g(n) = n \bmod 3$, and $g(10^{18}) = 1$.
+
+**Proof.**
+1. *The bound.* The mex of a set with at most $|S|$ elements is at most $|S|$, so $g(n) \in \{0, \dots, |S|\}$.
+2. *The next number depends on the window.* For $n \ge m$ every removal $r \le m \le n$ is allowed, so $g(n)$ is the mex of $\{g(n - r) : r \in S\}$, and these values are inside the window $g(n - m), \dots, g(n - 1)$.
+3. *Equal windows give equal futures.* If the windows before $i$ and before $j$ are equal, then $g(i) = g(j)$ by step 2, and then the windows before $i + 1$ and $j + 1$ are equal again; by induction $g(i + k) = g(j + k)$ for all $k \ge 0$.
+4. *A window repeats.* By step 1 there are at most $(|S| + 1)^m$ different windows, so among any $(|S| + 1)^m + 1$ consecutive window positions two are equal; by step 3 the sequence is periodic from the first of them with the period $j - i$, and $g(n) = g(i + (n - i) \bmod (j - i))$ for $n \ge i$. $\square$
+
+:::note[This proof needs]
+1. A finite set of removals, so that a window has a fixed length $m$. For games with moves of any size (like Nim) the sequence is not periodic.
+2. The period can be very long: the bound is $(|S| + 1)^m$. In practice it is short, but a pattern found by a program is a conjecture until it is checked far enough or proved, as here.
+3. For games where a move depends on more than the size of one heap (several heaps, a splitting move), the same idea needs a different state; the brute force still finds a pattern in many cases, and the proof is then done by induction on the size.
+4. Always print the first few values of a brute force table before trusting a formula, and compare the formula with the table far beyond the first period.
+:::
+
+<TheoremCode unit="7.5/thm-4" />
+
+The three lines are the removals 1, 3, 4 at $n = 100$ and at $n = 10^{18}$, and the removals 1, 2 at $10^{18}$. The check compares the window search with the plain table for 300 random sets of removals and every $n$ up to 300.
+
+## 5. Recognition Cards
+
+<Cards topic="7.5" />
+
+## 6. Templates
+
+Seven templates. Each shows only the function that matters; the program around it reads the input. The function `solveGame` of Theorem 7.5.1 stays in the file outside the shown code for the first template. Each template is checked against a brute force (a search over all positions of the game, or the definition of the Grundy numbers) on thousands of random small inputs, and on fixed tests with the smallest cases and with positions that are lost.
+
+### A game with a black hole and two sets of moves (Theorem 7.5.1)
+
+<CodeSnippet unit="7.5/berzerk" />
+
+**How it works.** The state is (object, player to move), and the number of the state is $2(p - 1) + \text{who}$. The two players have different sets of steps, so the player is part of the state, and the game on the states is impartial. A move of $x$ steps from the object $p$ leads to the object $((p - 1 + x) \bmod n) + 1$ with the other player to move. The state of the object 1 has no moves: the player to move there has lost, because the other player has just moved the monster into the black hole. `solveGame` labels all states as WIN, LOSE or DRAW (printed as Win, Lose, Loop).
+
+**Alternative formulation.** A search with a memo and a visited mark finds the same labels, but it needs care for cycles; the counters make the order of the labelling explicit.
+
+### Nim with runs of heap sizes (Theorem 7.5.2)
+
+<CodeSnippet unit="7.5/nim-range" />
+
+**How it works.** The xor of all the heap sizes decides. A quarry is the run of heaps $x, x + 1, \dots, x + m - 1$, whose xor is the xor of $0..x + m - 1$ with the xor of $0..x - 1$ (the common part cancels). The xor of $0..k$ is read from $k \bmod 4$. The sizes are up to $10^{16}$, so the runs are never listed; the first player wins when the total is not 0.
+
+**Alternative formulation.** The bit by bit count: in each bit position, count how many numbers of the run have a 1 and take the parity; this costs 60 steps for each run and does not need the formula.
+
+### Dividing game: a number as a Nim heap (Theorem 7.5.3)
+
+<CodeSnippet unit="7.5/divisor-omega" />
+
+**How it works.** From $A$ one may move to a proper divisor $d$, which removes some prime factors (with repetition); any number of them from 1 to $\Omega(A)$ can be removed (take the divisor with the chosen factors left), and the number $\Omega$ of the new position is smaller. So the moves from a number with $\Omega = k$ lead to the numbers $\Omega = 0, \dots, k - 1$ (all of them) and the game of one number is a Nim heap of size $k$. $\Omega$ comes from a sieve of smallest primes: $\Omega(x) = \Omega(x / \text{spf}(x)) + 1$. The first player wins when the xor of the $\Omega$ values is not 0.
+
+**Alternative formulation.** Compute $\Omega$ by trial division for each number, $O(\sqrt{A})$ each; the sieve is faster for many numbers.
+
+### A pile with a range of removals (Theorem 7.5.3)
+
+<CodeSnippet unit="7.5/constrained-nim" />
+
+**How it works.** A pile of $A$ stones with the removals $L, L + 1, \dots, R$ has the Grundy number $\lfloor (A \bmod (L + R)) / L \rfloor$: the sizes $0..L - 1$ have no move and the number 0, the sizes $L..2L - 1$ can move to a size below $L$ and have the number 1, and so on in blocks of length $L$ up to the size $L + R - 1$. At the size $L + R$ every move leads to a size between $L$ and $R$, whose numbers are all at least 1, so the number is 0 again and the pattern repeats with the period $L + R$. The piles are independent, so the xor of the numbers decides; the formula was found with the table of Theorem 7.5.3 and checked against it.
+
+**Alternative formulation.** Compute the table of one pile up to $2(L + R)$ with the mex and read the period from it (Theorem 7.5.4): it works for any set of removals, not only a range.
+
+### A pile where each removal size is used once (Theorem 7.5.3)
+
+<CodeSnippet unit="7.5/game-of-stones" />
+
+**How it works.** A pile of $s$ stones where every size of removal may be used only once on this pile has the Grundy number $k$, the largest $k$ with $1 + 2 + \dots + k \le s$ (the sizes $1, \dots, k$ can all be used and no more than $k$ of them). The formula was found with the table of the state (stones, used sizes) for small $s$, and checked by the brute force of the template. The piles are independent games; the second player wins exactly when the xor is 0.
+
+**Alternative formulation.** The table over (stones, set of used sizes): for a pile of at most 60 stones only the sizes up to 10 can be used (since $1 + 2 + \dots + 10 = 55$), so there are at most $2^{10}$ sets for each size; this is what the brute force does for small piles.
+
+### Thanos Nim: a pattern with a proof by induction
+
+<CodeSnippet unit="7.5/thanos-nim" />
+
+**How it works.** A move touches exactly $n / 2$ non-empty piles. Let $m$ be the smallest size and $c$ the number of piles of that size. The player to move loses exactly when $c > n / 2$. The proof is by induction: if $c \le n / 2$, at least $n / 2$ piles are above $m$ and can be cut down to $m$, leaving more than $n / 2$ piles of size $m$; if $c > n / 2$, every move touches only $n / 2$ piles, so at least one pile of size $m$ goes below $m$, and at most $n / 2$ piles have the new minimum. When all piles are 0 there are no moves and $c = n > n / 2$. The brute force found the pattern; the stress test checks it.
+
+**Alternative formulation.** A search over all positions for small $n$ and sizes; it finds the pattern but is too slow for $n = 50$, sizes 50.
+
+### The stair game: Nim on every second stair
+
+<CodeSnippet unit="7.5/stair-game" />
+
+**How it works.** Balls move from the stair $k \ge 2$ to the stair $k - 1$. A ball on an even stair is a Nim heap: a move from an even stair takes any number of balls to an odd stair, where they are out of play. A move from an odd stair puts balls on an even stair, but the other player undoes it by moving the same balls on to the next odd stair. So the position is decided by the xor of the numbers of balls on the even stairs, and the first player wins when it is not 0. In the code `p[0]` is the stair 1, so the even stairs are the indices $1, 3, \dots$
+
+**Alternative formulation.** A search over all positions finds the winner for small numbers of balls; it is the brute force of the test.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template or of a worked example and running the random stress test against the brute force; the input shown is a small one that fails (the smallest found among thousands of random cases, or a simpler one that was checked by running it).
+
+### Bug: the win condition is read from the wrong side
+
+Worked example: Stick Game.
+
+```cpp
+if (p <= x && win[x - p]) win[x] = 1;                               // instead of !win[x - p]
+```
+
+Input: `4 1`, then the move `1`.
+
+Wrong output `LLLL`, correct output `WLWL`. A position is won when some move leads to a *lost* position for the opponent, not to a won one. With the test turned over, nothing is ever marked as won, since the base position 0 is not won (Theorem 7.5.1 (a)).
+
+**Fix:** test `!win[x - p]`.
+
+### Bug: the xor of a run of heaps, case 1
+
+Template: Nim with runs of heap sizes.
+
+```cpp
+case 1: return 0;                                                   // instead of return 1
+```
+
+Input: `1`, then the run `8 6` (the heaps 8, 9, 10, 11, 12, 13).
+
+Wrong output `bolik`, correct output `tolik`. The xor of $0..k$ is $k$, $1$, $k+1$, $0$ for $k \bmod 4 = 0, 1, 2, 3$; the heaps $8..13$ have the xor $\text{xorUpTo}(13) \oplus \text{xorUpTo}(7) = 1 \oplus 0 = 1 \ne 0$, and with the wrong constant it becomes 0. The four cases of the formula are small, so check each of them with the brute force (Theorem 7.5.2).
+
+**Fix:** return 1.
+
+### Bug: the numbers of the divisors are added
+
+Template: the dividing game.
+
+```cpp
+total += omega[x];                                                  // instead of total ^= omega[x]
+```
+
+Input: `2`, then the numbers `9 4`.
+
+Wrong output `Anna`, correct output `Bruno`. The numbers 9 and 4 are Nim heaps of size 2 and 2: the xor is 0, so the first player loses. The sum 4 is not 0. A sum of independent games is decided by the xor of the Grundy numbers, never by the sum (Theorem 7.5.3 (b)).
+
+**Fix:** use `^=`.
+
+### Bug: the modulus is divided by the wrong end of the range
+
+Template: a pile with a range of removals.
+
+```cpp
+total ^= a % (L + R) / R;                                           // instead of a % (L + R) / L
+```
+
+Input: `1 1 4`, then the pile `3`.
+
+Wrong output `Second`, correct output `First`. With $L = 1$, $R = 4$ the pile of 3 stones has the value $\lfloor 3 / 1 \rfloor = 3 \ne 0$: the first player takes the whole pile. Dividing by $R = 4$ gives 0. The value counts the blocks of $L$ stones, the smallest allowed removal.
+
+**Fix:** divide by `L`.
+
+### Bug: the half is counted with `>=`
+
+Template: Thanos Nim.
+
+```cpp
+return count >= (int)piles.size() / 2 ? "Bob" : "Alice";           // instead of >
+```
+
+Input: `2`, then the sizes `1 3`.
+
+Wrong output `Bob`, correct output `Alice`. With two piles one pile is cut at each move. Alice cuts the pile 3 down to 1 and leaves the piles $1, 1$; Bob must empty one pile, and Alice takes the other. The smallest size is held by one pile, which is not *more* than half of two. The proof of the pattern needs a strict inequality: the player to move loses exactly when more than $n / 2$ piles have the smallest size.
+
+**Fix:** compare with `>`.
+
+### Bug: the stairs of the wrong parity are xored
+
+Template: the stair game.
+
+```cpp
+for (size_t k = 0; k < p.size(); k += 2) total ^= p[k];             // instead of k = 1
+```
+
+Input: `1`, then the number `3` (one stair, with 3 balls).
+
+Wrong output `first`, correct output `second`. The stair 1 has no move, because a ball cannot leave it, so with one stair the player to move loses. The code xors the stair 1 as if it were a Nim heap. The Nim heaps are the stairs $2, 4, \dots$, which are the array indices $1, 3, \dots$ (Theorem 7.5.2 and the explanation of the template).
+
+**Fix:** start the loop at the index 1.
+
+### Bug: the black hole has moves
+
+Template: the game with a black hole.
+
+```cpp
+for (int p = 1; p <= n; p++)                                        // instead of p = 2
+```
+
+Input: `4`, then `1 3` and `1 3`.
+
+Wrong output: `Loop Loop Loop` on both lines; correct output `Win Lose Win` on both lines. The black hole is the end of the game: the player who moves into it wins, so the state "black hole, player to move" has no moves and is LOSE. If it is given moves, it is no longer terminal, the retrograde search never starts from it, and every state becomes a draw (Theorem 7.5.1 (b)).
+
+**Fix:** build the moves only for the objects $2..n$.
+
+### Bug: two equal heaps are allowed in the split
+
+Worked example: Grundy's Game.
+
+```cpp
+for (int a = 1; a <= x - a; a++) reach.insert(g[a] ^ g[x - a]);     // instead of a < x - a
+```
+
+Input: `1`, then `5`.
+
+Wrong output `second`, correct output `first`. The split of 4 into $2 + 2$ is forbidden (the heaps must differ); with it allowed, $g(4)$ is computed as a mex that also contains $0 = g(2) \oplus g(2)$, so $g(4)$ changes, and the change reaches the heap 5, whose moves lead to 4 and to $2 + 3$. The values change from 4 on, and the answers with them.
+
+**Fix:** use `a < x - a`.
+
+### Bug: the parity test is turned over
+
+Worked example: Chalkboard XOR Game.
+
+```cpp
+return x == 0 || nums.size() % 2 == 1;                              // instead of % 2 == 0
+```
+
+Input: `1`, then the number `7`.
+
+Wrong output `true`, correct output `false`. Alice has one number, 7, and must erase it, so the xor becomes 0 by her move: she loses. With an odd count she cannot keep a safe move, as in the proof; the count must be *even* (and the xor non-zero) for Alice to win.
+
+**Fix:** test `% 2 == 0`.
+
+## 8. Worked examples
+
+### Example 1: Stick Game
+
+[CSES 1729: Stick Game](https://cses.fi/problemset/task/1729). In short: a heap of $n \le 10^6$ sticks and $k \le 100$ allowed moves $p_1, \dots, p_k$ (a move removes $p_i$ sticks); the player who cannot move loses; for every heap size from 1 to $n$ print W if the player to move wins and L otherwise.
+
+#### Step 1: Constraints → budget
+
+There are $n$ positions, one for each heap size, and $k$ moves from each: $n k = 10^8$ simple steps, which is fine. A search that tries every sequence of moves without remembering the results is exponential.
+
+#### Step 2: Question form → candidate tools
+
+- A search over the sequences of moves ([topic 0.5](../../phase-0/0-5-brute-force/)): exponential without a memo.
+- A DP over the heap sizes ([topic 3.2](../../phase-3/3-2-dp-foundations/)) with the rule "win if some move leads to a lost position": the card "Winning and losing positions".
+- Grundy numbers: also correct, but the question asks only who wins a single heap, so the numbers are not needed.
+
+#### Step 3: Property check → decision
+
+The game is finite and acyclic: every move lowers the number of sticks. Decision: Theorem 7.5.1 (a), labelling the sizes in increasing order.
+
+#### Step 4: Proof for this problem
+
+By Theorem 7.5.1, `win[x]` is true exactly when some allowed $p \le x$ leads to a size $x - p$ that is lost, and `win[0]` is false because the player to move at 0 has no move and loses. The heaps are labelled in the increasing order of $x$, so the sizes $x - p$ are ready when needed; the answer for the size $x$ is `win[x]`.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.5/example-1" />
+
+#### Step 6: Alternative approach
+
+The Grundy numbers of the heap game (Theorem 7.5.3) with the same recurrence; the player to move wins exactly when the number is not 0. It gives the same letters and is needed only when several heaps are played together.
+
+### Example 2: Chalkboard XOR Game
+
+[LeetCode 810: Chalkboard XOR Game](https://leetcode.com/problems/chalkboard-xor-game/). In short: a list of up to 1000 numbers on a board; Alice and Bob erase one number in turn, Alice first; a player who makes the xor of the remaining numbers 0 by his erasure loses; if the xor of all numbers is 0 at the start of a player's turn, that player wins. Does Alice win?
+
+#### Step 1: Constraints → budget
+
+There can be $2^{1000}$ sets of erased numbers, so no search over them. We need a rule that is found by thinking about the xor and the parity.
+
+#### Step 2: Question form → candidate tools
+
+- A search over the sets of erased numbers ([topic 0.5](../../phase-0/0-5-brute-force/)): possible only for about 20 numbers.
+- The xor and the exchange idea of Nim ([topic 1.7](../../phase-1/1-7-bits/) and the card "Nim and the xor"): the winner is decided by the xor of the numbers and by the parity of their count.
+
+#### Step 3: Property check → decision
+
+The rule of the game is stated with the xor of the whole board, and a player can choose which number to erase. Decision: look for an invariant. Let $X$ be the xor of all the numbers.
+
+#### Step 4: Proof for this problem
+
+If $X = 0$ at the start, Alice wins at once. Let $X \ne 0$. *If the number of numbers is even*, then the numbers are not all equal to $X$ (an even number of copies of $X$ has the xor 0, not $X$), so at her turn Alice can always erase a number different from the current xor $X'$, and the xor stays non-zero (erasing $v$ changes the xor to $X' \oplus v \ne 0$). After her move the count is odd, and Bob erases one number; at each of Alice's turns the count is even and the xor is non-zero, so she always has a safe move. The counts at Bob's turns are odd; when one number is left, Bob must erase it and the xor becomes 0: Bob loses. So Alice wins. *If the number of numbers is odd*, the roles swap: the counts at Bob's turns are even, so Bob always has a safe move, and Alice is the one who must erase the last number: she loses. Answer: Alice wins exactly if $X = 0$ or $n$ is even.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.5/example-2" />
+
+#### Step 6: Alternative approach
+
+For about 20 numbers a search over the sets of erased numbers (a bitmask with a memo) gives the winner directly; it is how the unit checks the rule.
+
+### Example 3: Grundy's Game
+
+[CSES 2207: Grundy's Game](https://cses.fi/problemset/task/2207). In short: a heap of $n \le 2000$ coins; a move splits one heap into two non-empty heaps of different sizes; the player who cannot move loses; for each of $t$ values of $n$, print who wins.
+
+#### Step 1: Constraints → budget
+
+The positions are multisets of heap sizes, far too many to list. But the two heaps after a split are independent games, so each heap size can have one number, and a table up to $n = 2000$ with $n / 2$ splits each costs about $10^6$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A win/lose search over the multisets of heaps ([topic 0.5](../../phase-0/0-5-brute-force/)): the number of multisets with the total $n$ is the number of partitions, huge for $n = 2000$.
+- The Grundy numbers of one heap and the xor of the parts after a split: the card "Sums of independent games".
+
+#### Step 3: Property check → decision
+
+A move replaces one heap by two, and the game of a heap goes on in the two parts independently; the game is finite (the sizes fall). Decision: Theorem 7.5.3.
+
+#### Step 4: Proof for this problem
+
+Let $g(x)$ be the Grundy number of a heap of $x$ coins. After the split $x = a + (x - a)$ with $a < x - a$, the position is the sum of the two heaps, whose number is $g(a) \oplus g(x - a)$ by Theorem 7.5.3 (b). So $g(x) = \text{mex}\{g(a) \oplus g(x - a) : 1 \le a < x - a\}$. A heap of $n$ coins is a win for the first player exactly when $g(n) \ne 0$ (part (a)). The table is computed once up to the largest $n$ of the tests.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.5/example-3" />
+
+#### Step 6: Alternative approach
+
+Only 41 of the sizes up to 2000 are lost for the first player (the last one is 1222), so the answer "second" is rare; a program could store this list, but computing the table is simpler and does not depend on a list found offline.
+
+## 9. Problem ladder
+
+<Ladder topic="7.5" />
+
+## 10. Identification drill
+
+<Drill topic="7.5" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.5" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.5" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.5" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.5" />

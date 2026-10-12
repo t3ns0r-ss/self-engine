@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M9 (Phase 7), started on Saurabh's "Continue" after the M8 report (M5, M6, M7, M8 and R1 gates are still `waiting`).
-- Topic: 7.4 done; 7.5 next
+- Topic: 7.5 done; 7.6 next
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topic 7.4, all 10 steps (validate, build, unit tests pass).
-Next action: topic 7.5 (scope, bank additions, theory), then 7.6 to 7.8, the Phase 7 intro and exam.
+Last completed step: topic 7.5, all 10 steps (validate, build, unit tests pass).
+Next action: topic 7.6 (scope, bank additions, theory), then 7.7, 7.8, the Phase 7 intro and exam.
 
 ## Gates
 | Gate | Status | Date |
@@ -81,6 +81,7 @@ Next action: topic 7.5 (scope, bank additions, theory), then 7.6 to 7.8, the Pha
 | 7.2 | done (on this session's branch; † Codeforces ideas are from recalled statements) | — |
 | 7.3 | done (on this session's branch; † Codeforces ideas are from recalled statements) | — |
 | 7.4 | done (on this session's branch; † Codeforces ideas are from recalled statements) | — |
+| 7.5 | done (on this session's branch; † Codeforces ideas are from recalled statements) | — |
 | Phase 5 intro and exam | done (on this session's branch) | — |
 
 ## Bank
@@ -130,6 +131,7 @@ Next action: topic 7.5 (scope, bank additions, theory), then 7.6 to 7.8, the Pha
 | 7.2 | short | 20 | 27 |
 | 7.3 | short | 17 | 25 |
 | 7.4 | short | 19 | 25 |
+| 7.5 | short | 19 | 25 |
 | 7.5 | short | 20 | 10 |
 | 7.6 | short | 16 | 7 |
 | 7.7 | short | 25 | 24 |
@@ -170,6 +172,7 @@ Next action: topic 7.5 (scope, bank additions, theory), then 7.6 to 7.8, the Pha
 - 7.2: short: reserved has 5 of 24; `count-paths` (3) and `state-dag` (3, all tier 4) are thin, `condensation-dp` spans tiers 3–4. Many classic DAG-DP problems were already used as 4.2/4.3 practice. 7 Codeforces notes are recalled (†).
 - 7.3: short: 16 practice and 3 reserved. Problems where a Fenwick or segment tree speeds up a DP are mostly rated 2300+ on Codeforces or ABC F/G; many LeetCode candidates have O(n²) or deque solutions. 7 Codeforces notes are recalled (†).
 - 7.4: short: reserved has 9 of 24; `merge-smallest` has 1 problem (CSES Stick Divisions; LeetCode's version is premium) and `regret` 3. Several heap-greedy problems use 'marginal gain' or 'best-first enumeration', which match no pattern here. Suggestion: add a pattern `marginal-gain` (repeatedly apply the step with the largest gain from a heap). 5 Codeforces notes are recalled (†).
+- 7.5: short: 19 practice and 25 reserved (checkpoint 3, review 9, drill 8, look-alike 4, exam 1). Several game problems on a graph with a draw, and the misère games, match no pattern here; `win-lose` holds both the DP over positions and the retrograde search. Many Codeforces notes are recalled (†).
 - 7.5: short: reserved has 10 of 24; `nim-sum` and `grundy-sum` have 3 practice problems each. In-band Grundy-sum problems are few (most game problems are win-lose or ad hoc). 12 Codeforces notes are recalled (†).
 - 7.6: short: 18 practice and 7 reserved (two look-alike pairs: LeetCode Transformations I/II and LeetCode/CSES Fibonacci). `min-plus` has 2 practice problems and `augmented-matrix` 2. Most in-band matrix problems are Codeforces (14 recalled notes, †).
 - 7.7: short: drill 5 of 8, review 8 of 10, one look-alike pair (LeetCode DI String Match / Construct Smallest Number From DI String); `permutation-build` and `operation-sequence` span 2 tiers. Practice skews to tiers 1–2 (only constructions recalled reliably were chosen, since 33 Codeforces notes are recalled, †); harder ARC/CF constructions should be added after a statement check.
@@ -271,3 +274,4 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - **Phase 7 bank additions and choices (M9, topic 7.2).** 22 problems were added (LeetCode statements read; Codeforces ones are recalled and marked †). Moves: lc-parallel-courses-iii from practice to reserved review, lc-minimum-number-of-days-to-eat-n-oranges to a reserved look-alike (partner lc-minimum-number-of-operations-to-make-x-and-y-equal, a breadth-first search because moves can go back). New pairs: lc-shortest-distance-after-road-addition-queries-ii / -i. The lesson has 4 cards (longest-path, count-paths, condensation-dp, state-dag), 4 theorems, 7 templates, 9 catalogued bugs and 3 worked examples (cses-1680, 1681, 1686). Weak points: lc-maximum-profit-from-valid-topological-order-in-dag is really a bitmask DP (topic 3.7), kept in review set 3 under state-dag; lc-parallel-courses (premium) was dropped; count-paths has no review problem; the hints of the Codeforces ladder problems (cf-919D, 721C, 1679D, 894E, 1137C, 505C) and the checkpoint cf-1472G come from recalled statements.
 - **Phase 7 bank additions and choices (M9, topic 7.3).** 23 problems were added (LeetCode statements read; Codeforces ones are recalled and marked †). Moves: cf-1799D2 to a look-alike with the new cf-1799D1, cf-1557D and lc-maximum-balanced-subsequence-sum and lc-delivering-boxes-from-storage-to-ports to the checkpoint, cf-1197E, cf-1788E, lc-length-of-the-longest-increasing-path and lc-longest-increasing-subsequence-ii to review. New pairs: cf-1799D2 / D1 and cf-1304F2 / F1 (the LeetCode I/II candidates were premium or had unclear limits). The lesson has 4 cards (prefix-max-transition, window-transition, counting-with-tree, range-update-transition), 4 theorems, 7 templates, 9 catalogued bugs and 3 worked examples (ac-dp_q, lc-constrained-subsequence-sum, ac-dp_w). Weak points: counting-with-tree and range-update-transition have no review problem (only ladder, worked or checkpoint); the drill problems cf-519D, cf-1335E2 and cf-1313C2 are recalled statements; lc-longest-increasing-subsequence-ii is a range-of-keys problem filed under the prefix-max card (its hint names the segment tree); the lookalike descriptions of cf-1799D and cf-1304F come from recalled statements; the exam problem for the whole phase from this topic is cf-946G.
 - **Phase 7 bank additions and choices (M9, topic 7.4).** 15 problems were added (LeetCode statements read; Codeforces ones are recalled and marked †). Moves: ac-abc407_e to the checkpoint, ac-abc214_e to the exam, lc-pizza-with-3n-slices and lc-two-best-non-overlapping-events and lc-total-cost-to-hire-k-workers to review. New pair: cf-1249D2 / D1 (the other pair is the existing events I / II; cf-1526C1 and ac-abc137_d were already used in topic 1.5). The four cards are deadline-heap (Theorem 7.4.1, Moore–Hodgson), regret (Theorem 7.4.2, a covering greedy with comparable items), extract-and-replace (Theorem 7.4.3, falling gains and Huffman) and sweep-with-heap (Theorem 7.4.4, earliest last day first and rooms); the bank pattern merge-smallest became the card extract-and-replace and now also holds the halving and pass-ratio problems. Weak points: the undo form of regret (cf-865D, lc-pizza-with-3n-slices) is shown only in a template (buy-sell) and checked by stress, not proved, and cf-865D is an unused extra practice problem; lc-maximum-elegance-of-a-k-length-subsequence is also an unused extra; cf-1251E2, cf-1271D, cf-3D and cf-1249D1/D2 hints come from recalled statements; the exam problem from this topic is ac-abc214_e; the card regret has no worked example of its own beyond refuelling.
+- **Phase 7 bank additions and choices (M9, topic 7.5).** 14 problems were added (LeetCode statements read; Codeforces ones are recalled and marked †); ac-abc201_d was left out because topic 3.5 has it. Moves: cf-1147C to practice; cses-2208 and cses-1099, and cses-1098 and cses-1730, are the two look-alike pairs; cf-768E to the checkpoint; cf-2004E and lc-stone-game-ix to review; lc-stone-game-iv is the exam problem. The four cards are win-lose (Theorem 7.5.1, labels by increasing order or retrograde counters), nim-sum (Theorem 7.5.2), grundy-sum (Theorem 7.5.3, mex and xor of independent games) and grundy-pattern (Theorem 7.5.4, subtraction games are eventually periodic, found by a brute force and proved). Weak points: cf-786A, cf-1147C, cf-15C and ac-abc297_g are also the templates (berzerk, thanos-nim, nim-range, constrained-nim), so the ladder problems repeat the template code; the statements of cf-1363C, cf-1033C, cf-917B, cf-1383B, cf-1194D, cf-1537D and cf-1396B in the ladder are from recalled statements; the periodicity of Theorem 7.5.4 is shown only with a detection routine and stress, and the proof of the period bound is the pigeonhole argument for finite move sets.

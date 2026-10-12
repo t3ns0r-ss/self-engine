@@ -2,10 +2,10 @@
 
 ## Now
 - Milestone: M8 (Phase 6), started on Saurabh's "Continue" after the M7 fix report (M5, M6, M7 and R1 gates are still `waiting`).
-- Topic: 6.3 trie and binary trie (next)
+- Topic: 6.4 suffix array and LCP array (next)
 - Branch: claude/problemset-implementation-yja039
-Last completed step: topics 6.1 and 6.2 done, all 10 steps each (validate, build, unit tests pass).
-Next action: scope and bank additions for 6.3.
+Last completed step: topics 6.1, 6.2 and 6.3 done, all 10 steps each (validate, build, unit tests pass).
+Next action: scope and bank additions for 6.4 (short bank), then the Phase 6 intro and exam.
 
 ## Gates
 | Gate | Status | Date |
@@ -74,6 +74,7 @@ Next action: scope and bank additions for 6.3.
 | 5.4 | done (on this session's branch; † Codeforces links confirmed to open by the owner on 2026-10-11, ideas are still from recalled statements) | — |
 | 6.1 | done (on this session's branch) | — |
 | 6.2 | done (on this session's branch) | — |
+| 6.3 | done (on this session's branch) | — |
 | Phase 5 intro and exam | done (on this session's branch) | — |
 
 ## Bank
@@ -258,4 +259,5 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - **e2e script, placeholder stage.** FIXED 2026-10-11: `tests/placeholder/make.mjs` now has the real 1.3 cards `opposite-ends` and `merge-walk` (3 ladder rungs each), so the placeholder stage validates again.
 - **Phase 6 bank additions and choices (M8, topic 6.1).** The 6.1 bank was short of reserved problems, so 15 reserved problems and 1 practice problem were added (statements read for AtCoder, CSES and LeetCode; Codeforces recalled and marked †): checkpoint cf-985F, cf-113B (with lc-shortest-palindrome); review cf-611D, cf-757C, cf-633C, ac-abc343_g, lc-maximum-product-of-the-length-of-two-palindromic-substrings (with four existing ones); look-alike pair cf-1948D / lc-distinct-echo-substrings (lc-distinct-echo-substrings moved from review to look-alike); drill ac-abc250_e, ac-abc158_e, cf-1731C, cf-778A, cf-1290B, cf-1426F, cf-682D (with cses-3138; six of the eight are solved by earlier tools); practice lc-smallest-unique-subarray. Several well-known problems were already used by other topics, so the ids were changed to unused ones. Weak points: hashing for the three palindrome and substring ladder rungs with a natural exact alternative (the lesson says so in Step 6 of the examples); the Codeforces hints are from recalled statements. The lesson uses one prime, 2^61 − 1, with `__int128`, a random base from the clock, and states the collision bound (Theorem 6.1.2) with its proof, including the "polynomial of degree d has at most d roots modulo a prime" step.
 - **Phase 6 bank additions and choices (M8, topic 6.2).** 15 reserved problems were added (Codeforces recalled and marked †): checkpoint cf-631D, cf-1984D (with cses-1733); review cf-494B, cf-1120C, cf-1537E2, cf-825F, lc-find-all-good-strings, lc-find-the-occurrence-of-first-almost-equal-substring, lc-repeated-string-match (with cses-1112 and lc-minimum-number-of-valid-strings-to-form-target-ii); drill cf-471D, cf-2010C2, cf-1295B, cf-1360F, cf-1660F2, cf-1182C (with lc-longest-happy-prefix and lc-minimum-number-of-valid-strings-to-form-target-i; four of the eight drill problems are solved by earlier tools). The lesson has 3 cards instead of 4: the pattern `prefix-counts` (one practice problem, cf-432D) is a rung of the border card, and its theorem (6.2.6) has a template. Weak points: cf-1537E2, lc-repeated-string-match and cf-1295B have a natural simpler solution (the notes say so); the lesson teaches the matching automaton (Theorem 6.2.4 (b)) because cses-1112, cf-808G and lc-find-all-good-strings need it.
+- **Phase 6 bank additions and choices (M8, topic 6.3).** 11 reserved problems were added (Codeforces recalled and marked †): look-alike partners lc-count-prefix-and-suffix-pairs-i and lc-maximum-strong-pair-xor-i (their version II problems moved to look-alike: lc-count-prefix-and-suffix-pairs-ii from practice to reserved, lc-maximum-strong-pair-xor-ii from exam to look-alike); review lc-k-th-smallest-in-lexicographical-order, lc-maximum-subarray-xor-with-bounded-range, lc-longest-common-prefix-of-k-strings-after-removal, lc-delete-duplicate-folders-in-system (lc-concatenated-words moved from review to checkpoint); drill cf-1879D, lc-camelcase-matching, lc-top-k-frequent-words, lc-words-within-two-edits-of-dictionary, lc-partition-string (with lc-implement-trie-prefix-tree, lc-map-sum-pairs and lc-extra-characters-in-a-string; five of the eight are solved by earlier tools). The three later_drill problems of the bank (lc-replace-words, lc-longest-word-in-dictionary, lc-short-encoding-of-words) stay unused for the later topics. The lesson has 3 cards: the patterns `max-xor` and `xor-count` are one card (binary-xor), because `xor-count` had only two practice problems. Weak points: lc-extra-characters-in-a-string, lc-words-within-two-edits-of-dictionary and lc-camelcase-matching have tiny constraints (the notes say that a set or a plain scan is enough); the ladder of binary-xor and the 1.7 high-bit-first card overlap for a fixed array (the card says so, and lc-maximum-xor-of-two-numbers-in-an-array is a negative example).
 

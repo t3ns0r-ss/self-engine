@@ -190,15 +190,263 @@ The four examples use the set 1, 2, 3, 4 (the tiny instance and three more): wit
 
 ## 6. Templates
 
-Templates come in the next step.
+Six templates. Each shows only the function that matters; the program around it reads the input. The first three use the `Trie` of Theorem 6.3.1, the last three the `BinaryTrie` of Theorem 6.3.4 (they stay in the file outside the shown code and are said to be used). Each template is checked against a brute force that compares strings or numbers directly, on thousands of random small inputs (words over one to three letters, numbers below 41, so that equal beginnings are common) and on fixed tests with one element, all elements equal and large sizes.
+
+### The first word with a given prefix (Theorem 6.3.1, data kept on the nodes)
+
+<CodeSnippet unit="6.3/first-with-prefix" />
+
+**How it works.** Besides the counts of the trie, every node `v` keeps `first[v]`, the smallest index of an inserted word that passes through it. After each insertion `first` is made as long as the number of nodes (`resize` fills the new entries with `INT_MAX`, a very large number from the standard library), and the word is walked once more to lower `first` on its path. The words are inserted in the order of their indices, so the first one to reach a node already has the smallest index there; the `min` makes the code correct for any insertion order. A query walks its string with `find` and reads `first` of the node it ends in, or answers $-1$ when the walk falls off the tree. A query string must not be empty (the root has no `first`).
+
+**Alternative formulation.** Sort the words and keep the index with each; the words with a prefix are a stretch of the sorted list, and the smallest index in the stretch is a range minimum ([topic 5.1](../../phase-5/5-1-sparse-table/)): two binary searches and one table query per question, with no tree.
+
+### The longest common prefix with any other word (Theorem 6.3.2 (c))
+
+<CodeSnippet unit="6.3/best-prefix-with-others" />
+
+**How it works.** All words are inserted, so `pass` of a node is the number of words that begin with its string. For a word the loop walks its path and remembers the largest depth at which `pass` is at least 2: the word itself is counted in `pass`, so a second word must pass through the node too. The depth of the deepest such node is the length of the longest common prefix with another word (an equal word makes the whole path count). The walk never falls off the tree, because the word itself was inserted.
+
+**Alternative formulation.** Sort the words: the best partner of a word is one of its two neighbours in sorted order, so the answer is the larger of two common-prefix lengths with the neighbours ([topic 1.1](../../phase-1/1-1-sorting/)); equal words are neighbours. It needs the comparison of neighbours letter by letter, $O(S)$ in all.
+
+### The number of cuttings into dictionary words (Theorem 6.3.3)
+
+<CodeSnippet unit="6.3/count-cuttings" />
+
+**How it works.** `ways[i]` is the number of cuttings of the rest of the string from place `i`, and `ways[n] = 1` (the empty rest). The loop goes from the end of the string to the start, so that every `ways[j + 1]` it reads is final. For the place `i` the inner loop walks the string down the trie; `child[v][c] == 0` means no word begins with these letters, so the walk stops; at a node where a word ends, `end[v]` is positive and `ways[j + 1]` is added. The additions are taken modulo $10^9 + 7$ ([topic 2.2](../../phase-2/2-2-modular-arithmetic/)). The trie of the dictionary is built once and passed in.
+
+**Alternative formulation.** Put all words in a set of strings and test the substrings of each place up to the length of the longest word: simpler, and fine when the words are short (up to about 20 letters).
+
+### The largest XOR of two numbers of an array (Theorem 6.3.4)
+
+<CodeSnippet unit="6.3/max-xor-pair" />
+
+**How it works.** The numbers are taken from left to right. Before a number is inserted, `maxXor` asks the trie of the numbers before it for its best partner, so each pair is considered once and a number is never paired with itself. The `BinaryTrie` has 30 levels, enough for numbers below $2^{30}$; the walk takes $B = 30$ steps for a number, so the cost is $30 n$.
+
+**Alternative formulation.** The method of [topic 1.7](../../phase-1/1-7-bits/): build the answer digit from the top, with a set of the prefixes of the numbers at each level; it uses a hash set instead of the tree and also takes $O(30 n)$ for a fixed array.
+
+### Pairs whose XOR is below a bound (Theorem 6.3.5)
+
+<CodeSnippet unit="6.3/xor-pairs-below" />
+
+**How it works.** For each number `x` in order, `countXorBelow(x, k)` counts the numbers inserted before it with `x ^ y < k`, and then `x` is inserted. Inserting `x` first would count the pair of `x` with itself (XOR 0), which is below every positive `k`. The bound `k` must be below $2^{30}$: the walk reads only the 30 low digits of `k`, so $k = 2^{30}$ would be read as 0 (use a 31st level, or cap `k` at $2^{30} - 1$ and add the equal case separately). The total can reach $n(n-1)/2$, which needs a `long long`.
+
+**Alternative formulation.** For a count of pairs in a range [low, high], use `countPairsBelow(high + 1) - countPairsBelow(low)`; for a fixed array and one bound, sort the numbers by their top digits and divide the problem recursively, which is longer to write.
+
+### A multiset with additions, removals and largest-XOR questions (Theorem 6.3.4)
+
+<CodeSnippet unit="6.3/xor-multiset" />
+
+**How it works.** The `BinaryTrie` is created with the number 0 in it, so a question always has an answer (the problem promises that 0 is in the multiset). `add(x, +1)` and `add(x, -1)` change the counts along the path of `x`; a removal does not delete nodes, and the walk of `maxXor` enters a child only when its count is positive (the `cnt[opposite] > 0` test). `auto [sign, x]` unpacks a pair into two names. Each operation is one walk of 30 steps.
+
+**Alternative formulation.** Offline, if all operations are known: no simpler method; a balanced set of the numbers ([topic 0.6](../../phase-0/0-6-stl-toolbox/)) cannot answer the XOR question, because XOR does not follow the order of the numbers.
 
 ## 7. Bug catalogue
 
-Bugs come in the next step.
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: the last word instead of the first
+
+Template: the first word with a given prefix.
+
+```cpp
+first[v] = i;                                      // instead of first[v] = min(first[v], i)
+```
+
+Input: `2`, then the words `aa` and `aa`, then `1`, then the query `a`.
+
+Wrong output `2`, correct output `1`. Both words go through the node a, and the second insertion overwrites the index of the first with a larger one. A value kept on a node must be combined with what is already there (here, by the minimum), not replaced; the counts `pass` work the same way, by adding (Theorem 6.3.1 (b)).
+
+**Fix:** take the minimum.
+
+### Bug: a node with one word counts as shared
+
+Template: the longest common prefix with any other word.
+
+```cpp
+if (t.pass[v] >= 1) best = depth;                  // instead of >= 2
+```
+
+Input: `1`, then the word `b`.
+
+Wrong output `1`, correct output `0`. The word itself passes through every node of its path, so `pass` is at least 1 everywhere; a node is shared with another word only when at least two words pass through it (Theorem 6.3.2 (c)). With a single word the answer must be 0.
+
+**Fix:** require `pass >= 2`.
+
+### Bug: the walk does not stop at a missing edge
+
+Template: the number of cuttings into dictionary words.
+
+```cpp
+v = dictionary.child[v][s[j] - 'a'];               // the line  if (!v) break;  is missing
+```
+
+Input: `ba`, then `1`, then the word `a`.
+
+Wrong output `1`, correct output `0`. From the place 0 the letter b has no edge, so `v` becomes 0, the root, and the walk goes on as if it had started again at the root: the next letter a leads to the word a, and `ways[2]` is added to `ways[0]`. Node 0 means "no edge", and a walk that reaches it must stop (Theorem 6.3.3, step 2).
+
+**Fix:** stop the walk when `v` is 0.
+
+### Bug: the places are visited from the left
+
+Template: the number of cuttings into dictionary words.
+
+```cpp
+for (int i = 0; i < n; i++) {                      // instead of i = n - 1 down to 0
+```
+
+Input: `aa`, then `1`, then the word `a`.
+
+Wrong output `0`, correct output `1`. The value `ways[i]` needs `ways[j + 1]` of later places. Going from the left, the place 0 is computed first and reads `ways[1]`, which is still 0 because place 1 has not been processed; so `ways[0]` stays 0 (Theorem 6.3.3, step 6: compute from the end of the text).
+
+**Fix:** loop from the last place to the first.
+
+### Bug: the digits are read from the lowest
+
+Template: the largest XOR of two numbers of an array.
+
+```cpp
+for (int b = 0; b < BITS; b++) {                   // in maxXor, instead of b = BITS - 1 down to 0
+```
+
+Input: `2`, then `2 1`.
+
+Wrong output `268435457`, correct output `3`. The walk takes the opposite digit at the lowest place first, but the trie is built from the highest digit down, so the digit it looks at is not the one it thinks (and the shifts build a wrong number). The greedy choice is valid only from the highest digit (Theorem 6.3.4, step 1).
+
+**Fix:** go from the highest digit to the lowest, in the same order as the insertion.
+
+### Bug: a number is counted against itself
+
+Template: pairs whose XOR is below a bound.
+
+```cpp
+t.add(x, +1);                                       // before pairs += t.countXorBelow(x, k), instead of after it
+```
+
+Input: `1 4`, then the number `1`.
+
+Wrong output `1`, correct output `0`. With one number there is no pair. Inserted first, the number is counted against itself, and $1 \oplus 1 = 0 < 4$ (Theorem 6.3.5, note 3).
+
+**Fix:** count against the earlier numbers first, insert afterwards.
+
+### Bug: following the wrong child where the bound has a 1
+
+Template: pairs whose XOR is below a bound.
+
+```cpp
+v = child[v][d];                                    // in countXorBelow, where k has a 1, instead of child[v][d ^ 1]
+```
+
+Input: `2 7`, then `1 1`.
+
+Wrong output `3`, correct output `1`. Where $k$ has a digit 1, the numbers with the digit equal to $x$'s give the XOR digit 0 and are counted at once; the walk must then continue with the others, whose XOR digit is 1, equal to $k$'s. The wrong line continues with the ones already counted, and counts them again at every level (Theorem 6.3.5, step 3).
+
+**Fix:** continue in the other child.
+
+### Bug: a removed number is still reachable
+
+Template: a multiset with additions, removals and largest-XOR questions.
+
+```cpp
+if (opposite) best |= 1 << b, v = opposite;         // in maxXor, instead of if (opposite && cnt[opposite] > 0)
+```
+
+Input: `3`, then the operations `+ 2`, `- 2`, `? 0`.
+
+Wrong output `2`, correct output `0`. After the removal the multiset holds only 0, but the nodes of 2 stay in the trie with the count 0, and the walk enters them and reports $0 \oplus 2 = 2$. A removal lowers counts, it does not delete nodes, so the walk must look at the count (Theorem 6.3.4, note 2).
+
+**Fix:** enter a child only if its count is positive.
 
 ## 8. Worked examples
 
-Worked examples come in the next step.
+### Example 1: Yet Another Sigma Problem
+
+[AtCoder ABC 353 E: Yet Another Sigma Problem](https://atcoder.jp/contests/abc353/tasks/abc353_e). In short: for strings $x$ and $y$ let $f(x, y)$ be the length of their longest common prefix; given $N$ strings with total length at most $3 \cdot 10^5$, print the sum of $f(S_i, S_j)$ over all pairs $i < j$.
+
+#### Step 1: Constraints → budget
+
+$N$ up to $3 \cdot 10^5$ gives $N^2 / 2 = 4.5 \cdot 10^{10}$ pairs, too many even if each pair cost one step. The total length is $3 \cdot 10^5$, so a solution that takes time proportional to the total length is needed.
+
+#### Step 2: Question form → candidate tools
+
+- All pairs, comparing letter by letter ([topic 0.5](../../phase-0/0-5-brute-force/)): $4.5 \cdot 10^{10}$ pairs.
+- Sort the strings and use the common prefix of neighbours with a stack ([topic 1.6](../../phase-1/1-6-monotonic-stack/)): possible but longer.
+- A trie with pass counts: the card "Words that share beginnings: counts, longest common prefixes, per-node data (trie)".
+
+#### Step 3: Property check → decision
+
+The question is the sum over pairs of the common beginning, and Theorem 6.3.2 (b) writes this as a sum over nodes. The sum is up to about $\binom{N}{2}$ times the length, so it needs a 64-bit integer. Decision: a trie with pass counts.
+
+#### Step 4: Proof for this problem
+
+By Theorem 6.3.2 (b) the sum of $f(S_i, S_j)$ over all pairs is the sum over non-root nodes $v$ of the trie of $\binom{\text{pass}[v]}{2}$, where $\text{pass}[v]$ counts the strings that begin with the string of $v$. The trie has at most $3 \cdot 10^5 + 1$ nodes (Theorem 6.3.1 (a)), so the sum is one pass over the nodes.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.3/example-1" />
+
+#### Step 6: Alternative approach
+
+Sort the strings. The common prefix of two strings in sorted order is the minimum of the common prefixes of the neighbours between them, so the sum over all pairs is the sum of range minimums of the neighbour values, found with a monotonic stack ([topic 1.6](../../phase-1/1-6-monotonic-stack/)) in $O(S)$ after the sort. The trie avoids the sort and the stack.
+
+### Example 2: Maximum Xor Subarray
+
+[CSES 1655: Maximum Xor Subarray](https://cses.fi/problemset/task/1655). In short: given an array of $n \le 2 \cdot 10^5$ numbers up to $10^9$, print the largest XOR of a subarray.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$ gives $n^2 / 2 = 2 \cdot 10^{10}$ subarrays, too many even with a running XOR. A solution in about $30 n = 6 \cdot 10^6$ steps is needed.
+
+#### Step 2: Question form → candidate tools
+
+- All subarrays with a running XOR ([topic 0.5](../../phase-0/0-5-brute-force/)): $2 \cdot 10^{10}$ steps.
+- Prefix XORs ([topic 1.7](../../phase-1/1-7-bits/)) turn a subarray into a pair of prefix values; the largest XOR of a pair of numbers by building the answer digit by digit from the top ([topic 1.7](../../phase-1/1-7-bits/)).
+- A binary trie of the prefix values: the card "XOR against a set of numbers: the largest XOR and counts below a bound (binary trie)".
+
+#### Step 3: Property check → decision
+
+The XOR of a subarray $a[l..r]$ is $P[r+1] \oplus P[l]$ for the prefix XORs $P$ with $P[0] = 0$ ([topic 1.7](../../phase-1/1-7-bits/)). So the answer is the largest XOR of two prefix values $P[i]$, $P[j]$ with $i < j$: a question about the largest XOR of a pair. All values are below $2^{30}$ ($10^9 < 2^{30}$), so a binary trie with 30 levels. Decision: insert the prefix values one by one and ask for each new value its best partner among the earlier ones.
+
+#### Step 4: Proof for this problem
+
+Every non-empty subarray $a[l..r]$ corresponds to the pair of prefix values $P[l]$ and $P[r+1]$ with $l < r + 1$, and every such pair corresponds to a subarray, so the answer is the largest $P[i] \oplus P[j]$ over $i < j$. For each $j$, Theorem 6.3.4 gives the largest $P[j] \oplus P[i]$ over the earlier prefix values $P[i]$ in the trie. The maximum over $j$ is the answer. The set starts with $P[0] = 0$, so it is never empty.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.3/example-2" />
+
+#### Step 6: Alternative approach
+
+The method of [topic 1.7](../../phase-1/1-7-bits/) applies to the array of prefix values too: ask, from the top digit down, whether the answer can have this digit 1, with a set of the prefixes of the values at that level. It takes about $30 n$ steps and a hash set, and needs no tree.
+
+### Example 3: Find the Length of the Longest Common Prefix
+
+[LeetCode 3043: Find the Length of the Longest Common Prefix](https://leetcode.com/problems/find-the-length-of-the-longest-common-prefix/). In short: two arrays of positive integers up to $10^8$, up to $5 \cdot 10^4$ numbers each; a prefix of a number is formed by some of its digits from the left; find the length of the longest common prefix over all pairs $(x, y)$ with $x$ from the first array and $y$ from the second, or 0.
+
+#### Step 1: Constraints → budget
+
+$n = m = 5 \cdot 10^4$ gives $2.5 \cdot 10^9$ pairs, each compared in up to 9 digits: too many. A solution in about $9 (n + m) = 9 \cdot 10^5$ steps is possible.
+
+#### Step 2: Question form → candidate tools
+
+- All pairs, digit by digit ([topic 0.5](../../phase-0/0-5-brute-force/)): $2.5 \cdot 10^9$ pairs.
+- A set of all prefixes of the first array: for each number of the second array test its prefixes from the longest ([topic 0.6](../../phase-0/0-6-stl-toolbox/)); about $9 (n + m)$ set operations.
+- A trie of the digits of the first array: the card "Words that share beginnings: counts, longest common prefixes, per-node data (trie)".
+
+#### Step 3: Property check → decision
+
+The question is about the beginning of numbers written in decimal, which are strings of at most 9 digits. The first array is a set of strings and every number of the second is a query that asks for the longest beginning that is also a beginning of a stored string. Decision: a trie of the digits of the first array; the answer for a query is how far its walk goes.
+
+#### Step 4: Proof for this problem
+
+Write each number as a string of digits. By Theorem 6.3.1 (b), the walk of a string $u$ from the root of the trie of the first array's strings ends at the first digit where no stored string continues $u$, so the depth reached is the length of the longest common prefix of $u$ with some stored string. The maximum over the second array's numbers is the answer. Each walk takes at most 9 steps.
+
+#### Step 5: Code
+
+<CodeSnippet unit="6.3/example-3" />
+
+#### Step 6: Alternative approach
+
+Put every prefix of every number of the first array in a set (at most $9 n$ entries), and for each number of the second test its prefixes from the longest to the shortest, stopping at the first that is in the set. It is the same idea with a hash set and no tree.
 
 ## 9. Problem ladder
 

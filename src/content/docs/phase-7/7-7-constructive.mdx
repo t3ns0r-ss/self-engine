@@ -1,0 +1,386 @@
+---
+title: "7.7 Constructive algorithms"
+sidebar:
+  order: 47
+topic: "7.7"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.7" />
+
+This topic combines [brute force](../../phase-0/0-5-brute-force/) (an exhaustive search on tiny inputs, which shows what the answers look like) and [parity and divisibility](../../phase-0/0-4-elementary-math/) (the kind of simple fact that tells when an answer cannot exist), together with everything else from Phases 0 to 2. A constructive problem asks for an object, a permutation, a string, a grid or a list of operations, and accepts any valid one. There is no formula for the answer; there is a pattern that works, and a short proof that it works.
+
+## 1. Why this topic exists
+
+Here is a small problem. Given $n$ and $k$, write the numbers $1, \dots, n$ in some order so that the $n - 1$ differences of neighbours contain exactly $k$ distinct values. There are $n!$ orders; for $n = 20$ that is $2.4 \cdot 10^{18}$, and for $n = 10^5$ a search is out of the question. But a program that prints all valid orders for $n = 5$ and $k = 3$ shows that they are all of one kind: they zig-zag between small and large numbers. The zig-zag $1, 4, 2, 3$ has the differences $3, 2, 1$, and each further step of the zig-zag adds one more distinct difference. That is a pattern; it takes three lines of proof to show that it always works.
+
+The lesson has four ideas, and a habit that goes with all of them: *write the checker first*, a short function that tests whether a given output is valid. With the checker and an exhaustive search for small $n$ you see the answers; with the checker and the construction you test the pattern on all small cases before you trust it.
+- **Placing values from both ends.** An order given by "up" and "down" rules is built by taking the smallest or the largest unused value (Theorem 7.7.1).
+- **A regular arrangement.** Equal items are spread by writing them into every second place. This works exactly when a counting condition holds (Theorem 7.7.2).
+- **A necessary condition first.** Find a condition that every answer must satisfy (a parity, a sum, a count), and then show by construction that it is enough (Theorem 7.7.3).
+- **A list of operations within a limit.** Each operation puts one more element in its final place without disturbing the others, so the number of operations is bounded (Theorem 7.7.4).
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.7" />
+
+### What this topic does not cover
+
+- Constructive problems on graphs and trees whose solution is a traversal or a spanning tree: they belong to the graph topics (Phase 4); here the objects are arrays, strings, grids and lists of operations.
+- Problems with a score to optimise, where a heuristic or a search for the best answer is needed. Here a valid answer is enough, or the exact least size is proved.
+- Interactive problems, in which the program asks questions and the judge answers.
+- Games, in which two players choose (topic 7.5).
+
+## 3. Definitions
+
+- A **constructive problem** asks for an object (an array, a string, a grid, a list of operations) that satisfies given conditions, or for the statement that none exists. Several answers may be correct, and the judge runs a **checker** (a function that tests an answer).
+- A **permutation** of $1, \dots, n$ is a list in which every number occurs once. A **cycle** of a permutation $p$ is a set of positions $i_1 \to i_2 \to \dots \to i_t \to i_1$ with $i_{j+1} = p[i_j]$. Example: for $p = (2, 3, 1, 5, 4)$ the positions $1 \to 2 \to 3 \to 1$ form one cycle and $4 \to 5 \to 4$ another, so there are 2 cycles. A position with $p[i] = i$ is a cycle by itself (a **fixed point**).
+- An **invariant** is a quantity that every allowed operation leaves unchanged; a **necessary condition** is a property that every valid answer has. Example: the sum of $1 + \dots + n$ is $n(n+1)/2$ whatever the order, so two sets of equal sum can exist only if this number is even.
+- A **pattern string** is a string of the letters `I` (increase) and `D` (decrease) that tells for each pair of neighbours whether the second number is larger or smaller. Example: `IDI` for $(1, 3, 2, 4)$.
+- A **potential** is a number that gets closer to its final value with every operation; if each operation changes it by at least one and its range is bounded, the number of operations is bounded.
+- In the code, `iota(p.begin(), p.end(), 1)` fills $p$ with $1, 2, 3, \dots$, `reverse(a, b)` reverses the range $[a, b)$, `next_permutation(p.begin(), p.end())` steps to the next permutation in lexicographic order (and returns false after the last), and `set<int>` keeps distinct values.
+
+## 4. Theory and proofs
+
+### 4.1 Placing values from both ends
+
+**Theorem 7.7.1 (a permutation for a pattern string).** For every pattern string $s_0 \dots s_{n-1}$ over `I` and `D` there is a permutation $p_0, \dots, p_n$ of $0, \dots, n$ with $p_i < p_{i+1}$ when $s_i = $ `I` and $p_i > p_{i+1}$ when $s_i = $ `D`. It is built in $O(n)$ time: keep the unused values as the interval $[lo, hi]$, start with $lo = 0$ and $hi = n$, and for each letter output $lo$ (and increase it) for `I`, or $hi$ (and decrease it) for `D`; the last value is what is left.
+
+:::tip[In plain words]
+For an "up" take the smallest number that is still unused, so every number that comes later is larger. For a "down" take the largest one, so everything that comes later is smaller. The numbers left over always form an unbroken range, so the rule never gets stuck.
+:::
+
+**A tiny instance.** The pattern `IDID` with $n = 4$: $lo = 0$, $hi = 4$. `I` outputs 0 ($lo = 1$); `D` outputs 4 ($hi = 3$); `I` outputs 1 ($lo = 2$); `D` outputs 3 ($hi = 2$); the last value is 2. The permutation is $0, 4, 1, 3, 2$: up, down, up, down.
+
+**Proof.**
+1. *The unused values are an interval.* At the start they are $0, \dots, n$. Taking the smallest or the largest unused value leaves an interval $[lo, hi]$ again, and each step shrinks it by one, so after $n$ letters exactly one value is left, with $lo = hi$.
+2. *An `I` goes up.* When $s_i$ = `I`, the output $p_i$ is the smallest unused value, and $p_{i+1}$ is an unused value other than $p_i$ (the next step's output, or the last value), so $p_{i+1} > p_i$.
+3. *A `D` goes down.* In the same way $p_i$ is the largest unused value and $p_{i+1} < p_i$.
+4. *It is a permutation.* Every output is a value that was unused and is then used, so no value repeats, and all $n + 1$ values are used (the last one is the leftover). $\square$
+
+:::note[This proof needs]
+1. The conditions are only comparisons between *neighbours* (up or down). A condition on the size of the difference, or on non-neighbours, is not covered; the other theorems and the templates deal with those.
+2. Any permutation is accepted. If the smallest one in lexicographic order is required, the construction changes (the template "the smallest permutation for a pattern string").
+:::
+
+<TheoremCode unit="7.7/thm-1" />
+
+The first line is the tiny instance (steps 1 to 3 of the proof); the second is a pattern of only `I`, which takes $lo$ each time; the third is only `D`. The check goes through every pattern string up to length 12 and tests the permutation against the pattern.
+
+### 4.2 A regular arrangement
+
+**Theorem 7.7.2 (no two equal neighbours).** The letters of a string $s$ of length $n$ can be arranged so that no two equal letters are neighbours exactly when no letter occurs more than $\lceil n / 2 \rceil$ times. An arrangement is built in $O(n \log n)$ time: sort the letters by decreasing count (equal letters together) and write them into the positions $0, 2, 4, \dots$ and then $1, 3, 5, \dots$.
+
+:::tip[In plain words]
+A letter can stand at most in every second place, so no letter may fill more than half of the places (rounded up). If this holds, write the most frequent letter first into the even places, then the next one, and so on; after the even places are full, continue with the odd places. A letter that has to be split between even and odd places is short enough that its two parts do not touch.
+:::
+
+**A tiny instance.** The letters of `aabbcc`: the counts are 2, 2, 2, the list is $a, a, b, b, c, c$, and the positions in order are $0, 2, 4, 1, 3, 5$. So $a$ goes to 0 and 2, $b$ to 4 and 1, $c$ to 3 and 5: the string is `abacbc`, with no equal neighbours. For `aaab`, $n = 4$ and the letter $a$ occurs 3 times, more than 2: impossible.
+
+**Proof.** Let $E = \lceil n/2 \rceil$ be the number of even positions.
+1. *Necessity.* Cut the positions into the pairs $(0, 1), (2, 3), \dots$ (the last one may be a single position). There are $E$ pieces and two neighbours cannot both hold the same letter, so a letter occupies at most one position in each piece: at most $E$ in all.
+2. *The order of the positions.* Let the list of positions be $o_t = 2t$ for $t < E$ and $o_t = 2(t - E) + 1$ for $t \ge E$. The $t$-th letter of the sorted list goes to $o_t$. Equal letters form a block of consecutive entries $[s, s + r - 1]$ of the list, where $r \le E$ is the count.
+3. *A block inside one half.* If the block has all its entries below $E$ (even positions) or all at least $E$ (odd positions), its positions differ by at least 2, so they are not neighbours.
+4. *A block that crosses.* Suppose $s < E \le s + r - 1$. The first block (the most frequent letter) starts at $s = 0$ and has $r \le E$ entries, so it ends below $E$: it does not cross. Any other crossing block comes after the first block, which has at least $r$ entries (blocks are sorted by size), so $s \ge r$.
+5. *The positions of a crossing block* are the even positions $2t$ for $t = s, \dots, E - 1$ and the odd positions $2u + 1$ for $u = 0, \dots, s + r - 1 - E$. The positions $2t$ and $2u + 1$ are neighbours only if $t = u$ or $t = u + 1$. Since $r \le E$, we have $u \le s + r - 1 - E \le s - 1$, and $t \ge s$, so $t = u + 1$ needs $u = s - 1$ and $t = s$, which means $r = E$. But $s \ge r = E$ contradicts $s < E$. So no two positions of the block are neighbours.
+6. By steps 3 to 5 no two equal letters are neighbours. The arrangement exists exactly when the condition holds (necessity in step 1, sufficiency by the construction). $\square$
+
+:::note[This proof needs]
+1. Only neighbours must differ. If equal letters must also be at least $d$ places apart, the condition and the construction change (the card "A simple pattern" has an example).
+2. The sorting by count matters. For the letters of `abb` ($n = 3$), the order $a, b, b$ writes $a$ to the position 0 and the two $b$ to the positions 2 and 1, which are neighbours; the order by count $b, b, a$ writes $b$ to 0 and 2 and $a$ to 1, giving `bab`.
+3. The number of different letters is arbitrary; for two letters the construction reduces to alternating.
+:::
+
+<TheoremCode unit="7.7/thm-2" />
+
+The first example has an odd length, the second is impossible ($a$ occurs 3 times in 4 places), the third is the tiny instance. The check goes through every string over $\{a, b, c\}$ of length 1 to 8, compares the answer with a search over all arrangements, and tests the answer.
+
+### 4.3 A necessary condition, then a construction
+
+**Theorem 7.7.3 (two sets of equal sum).** The numbers $1, 2, \dots, n$ can be split into two sets of equal sum exactly when $n(n+1)/2$ is even, that is when $n \bmod 4$ is 0 or 3. A split is found in $O(n)$ time: go from $j = n$ down to 1 and put $j$ into the first set if $j$ is at most the part of the half-sum that is still missing.
+
+:::tip[In plain words]
+If the total is odd, no split into two equal halves exists. If the total is even, take the large numbers first and the small numbers last: the large ones eat up most of the half-sum, and the small ones, which are fine-grained, fill the gap exactly.
+:::
+
+**A tiny instance.** $n = 7$: the total is 28, the half is 14. Take 7 (missing 7), take 6 (missing 1), skip 5, 4, 3, 2 (each is larger than 1), take 1 (missing 0). The first set is $\{7, 6, 1\}$ and the other is $\{5, 4, 3, 2\}$, both with the sum 14. For $n = 5$ the total 15 is odd: no split.
+
+**Proof.**
+1. *Necessity.* If the two sets have the same sum, the total $n(n+1)/2$ is twice that sum, so it is even.
+2. *The greedy.* Let $T = n(n+1)/4$ be the half-sum, and let $r_j$ be the missing part when the greedy is about to look at $j$ (so $r_n = T$).
+3. *The invariant:* $0 \le r_j \le j(j+1)/2$. At the start $r_n = T \le n(n+1)/2$.
+4. *The step.* If $j \le r_j$, the greedy takes $j$ and $r_{j-1} = r_j - j \le j(j+1)/2 - j = (j-1)j/2$, and $r_{j-1} \ge 0$. If $j > r_j$, the greedy skips $j$, $r_{j-1} = r_j \le j - 1$, and $j - 1 \le (j-1)j/2$ for $j \ge 2$; for $j = 1$ we get $r_1 < 1$, so $r_0 = r_1 = 0$.
+5. *The end.* After $j = 1$ the invariant gives $0 \le r_0 \le 0$, so the missing part is 0: the first set has the sum $T$ and the rest has the sum $T$ as well. $\square$
+
+:::note[This proof needs]
+1. Equal parts and the numbers $1, \dots, n$ exactly. For three sets the sum must be divisible by 3, but that is not enough ($n = 3$: the sum 6 is divisible by 3, yet the number 3 is larger than the target 2); this is a bitmask DP problem (topic 3.7).
+2. The invariant $r_j \le j(j+1)/2$ is the heart of the proof: what is missing never exceeds what the unused small numbers can supply.
+3. The order of the greedy matters (largest first); smallest first does not reach the target in general.
+:::
+
+<TheoremCode unit="7.7/thm-3" />
+
+The three lines are $n = 3$, $n = 7$ (the tiny instance) and $n = 5$ (odd total). The check goes through $n = 1 \dots 60$, compares with a subset-sum table, and tests that the first set has distinct numbers with the half-sum.
+
+### 4.4 A list of operations within a limit
+
+**Theorem 7.7.4 (sorting by swaps).** A permutation of $1, \dots, n$ with $c$ cycles can be sorted by $n - c$ swaps of two elements, and no sequence of swaps is shorter. The sorting is found in $O(n)$ time: for $i = 1, \dots, n$, if the value $i$ is not at the position $i$, swap it into place.
+
+:::tip[In plain words]
+Each swap can fix at most one more cycle, because a swap changes the number of cycles by exactly one. The sorted permutation has all $n$ elements in cycles of their own. So at least $n - c$ swaps are needed. The simple method that puts the values 1, 2, 3, … in place one by one makes every swap split off one fixed point, so it uses exactly that many.
+:::
+
+**A tiny instance.** The permutation $(2, 3, 1)$ is one cycle $1 \to 2 \to 3 \to 1$, so $n - c = 2$. The method: the value 1 is at the position 3, swap the positions 1 and 3 to get $(1, 3, 2)$; the value 2 is at the position 3, swap the positions 2 and 3 to get $(1, 2, 3)$. Two swaps. The permutation $(2, 1, 4, 3)$ has 2 cycles and needs $4 - 2 = 2$ swaps.
+
+**Proof.**
+1. *A swap changes the number of cycles by exactly 1.* Swapping the values at the positions $a$ and $b$ exchanges where $a$ and $b$ lead to. If $a$ and $b$ are on the same cycle, the cycle breaks into two (one through $a$ and one through $b$); if they are on different cycles, the two cycles are joined into one.
+2. *Lower bound.* The sorted permutation has $n$ cycles (all fixed points), the start has $c$, and a swap raises the number by at most 1. So at least $n - c$ swaps are needed.
+3. *The method fixes position $i$.* At step $i$ the positions $1, \dots, i-1$ hold the values $1, \dots, i-1$, so the value $i$ is at some position $j \ge i$. If $j \ne i$, swapping the positions $i$ and $j$ puts $i$ at the position $i$ and leaves the positions $1, \dots, i-1$ untouched.
+4. *The method raises the cycle count by 1.* The positions $i$ and $j$ were on the same cycle (the position $j$ holds $i$, so $j \to i$), and the swap makes $i$ a fixed point, so by step 1 the number of cycles goes up by exactly 1.
+5. *Conclusion.* After the step $n$ the array is sorted (every value $i$ stands at the position $i$), the number of swaps is $n - c$ (each one raised the count by 1 from $c$ to $n$), and by step 2 no sequence is shorter. $\square$
+
+:::note[This proof needs]
+1. The operation is a swap of any two elements. For reversals of prefixes (pancake flips), or swaps of neighbours only, the count of cycles is not the right quantity; the bound changes (neighbour swaps count inversions).
+2. When only *some* sequence within a limit is asked (not the shortest), a looser method is enough, such as two operations per element.
+3. The idea "each operation puts one more element in its final place without disturbing the ones before it" gives the limit directly.
+:::
+
+<TheoremCode unit="7.7/thm-4" />
+
+The first line is the tiny instance (the swaps in the proof's step 3), the second has two cycles, the third needs no swaps. The check goes through every permutation of up to 7 elements, tests that the swaps sort it, that their number is $n - c$, and that a breadth-first search over swaps finds nothing shorter.
+
+## 5. Recognition Cards
+
+<Cards topic="7.7" />
+
+## 6. Templates
+
+Four templates. Each shows only the function that builds the answer; the program around it reads the input and then *checks* the answer with a short checker, printing only the verdict. Each template is compared with an exhaustive search (all arrangements, all permutations, or a search over all states) on thousands of random small inputs, and on fixed tests with the smallest cases and the cases that have no answer.
+
+### Letters with no two equal neighbours (Theorem 7.7.2)
+
+<CodeSnippet unit="7.7/no-adjacent-equal" />
+
+**How it works.** `count` gives the number of times each letter occurs. The vector `order` holds pairs (minus the count, letter), so that sorting puts the most frequent letter first. If the first count is larger than $(n + 1) / 2$ the answer is impossible. Otherwise every letter is written `count` times at the current position, which moves by 2; when it runs past the end, it jumps to the position 1, so the even places are filled first and then the odd places. The checker in `main` compares the multiset of letters and the neighbours.
+
+### The smallest permutation for a pattern string
+
+<CodeSnippet unit="7.7/smallest-pattern" />
+
+**How it works.** The construction of Theorem 7.7.1 gives some permutation; here the lexicographically smallest one of $1, \dots, n + 1$ is wanted. Start from $1, 2, \dots, n + 1$ and reverse each maximal block of `D`: a block of $d$ letters `D` covers $d + 1$ positions, which become $d + 1, d, \dots, 1$ of that stretch. Why this is the smallest: the first position of a block of $d$ letters `D` must be larger than the $d$ values after it, so it is at least the $(d+1)$-th smallest value of the block; using the smallest $d + 1$ values for the block makes it the smallest; the second position must exceed $d - 1$ later values, so it is at least the $d$-th smallest, and so on; blocks of `I` letters take the next smallest values in order. The positions of a block use the smallest values that are still available, so they cannot be improved.
+
+### Fewest swaps to sort a permutation (Theorem 7.7.4)
+
+<CodeSnippet unit="7.7/swap-sort" />
+
+**How it works.** `where[v]` is the position of the value `v`. For each position $i$ from the left, if the value $i + 1$ is not there, find its position $j$ with `where`, swap the two entries, and update `where` for both values. The positions to the left of $i$ are never changed again. The number of swaps is $n - c$; the checker in `main` applies the swaps and tests that the array is sorted.
+
+### Is a target array reachable? Work backwards (Theorem 7.7.4's idea of a forced last move)
+
+<CodeSnippet unit="7.7/reverse-sums" />
+
+**How it works.** The move is: choose an index $i$ and set $a_i$ to the sum of the array. Forward, the choices are $n$ at each step; backward they are forced. After a move, the written element is the sum of the array before it, which is $a_i^{\text{old}} + \text{rest}$, where $\text{rest}$ is the sum of all the other elements. It is larger than every other element (it exceeds $\text{rest}$ for $n \ge 2$), so the *largest* element is the one written last. Undoing the move restores $a_i^{\text{old}} = m - \text{rest}$, which must be at least 1: if $m \le \text{rest}$, the target is not reachable. If $m - \text{rest}$ is still larger than $\text{rest}$, the same element is the largest again and the same undo applies, so the code takes all these undos at once with $m \bmod \text{rest}$; if that is 0 the element would become 0, so the answer is no. If $\text{rest} = 1$ (an array of two elements, the other being 1), repeated undoing reaches 1 and the answer is yes. The loop stops when the largest element is 1.
+
+**Alternative formulation.** The same backward loop without the remainder, subtracting `rest` one step at a time, is correct but takes up to $10^9$ steps for the target $[10^9, 1]$.
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template or of a worked example and running the random stress test against the brute force; the input shown is a small one that fails (the smallest found among thousands of random cases).
+
+### Bug: the second pass starts at the wrong place
+
+Template: letters with no two equal neighbours.
+
+```cpp
+int position = 1;                                  // instead of int position = 0;
+```
+
+Input: `a`.
+
+Wrong output `BAD` (the program's own check fails), correct output `YES`. The first letter of the most frequent group must go to the position 0; starting at 1 leaves the position 0 unfilled (the `?` of the initial string), and for a single letter the string is not a rearrangement at all. The even positions come first, then the odd ones (Theorem 7.7.2).
+
+**Fix:** start at `position = 0`.
+
+### Bug: the limit is one too small
+
+Template: letters with no two equal neighbours.
+
+```cpp
+if (-order[0].first > n / 2) return "";            // instead of (n + 1) / 2
+```
+
+Input: `a`.
+
+Wrong output `NO`, correct output `YES`. For an odd length the most frequent letter may stand in $(n + 1)/2$ places, the even positions $0, 2, \dots, n - 1$; with `n / 2` every string of odd length such as `aba` (a occurs twice, $n/2 = 1$) is refused (Theorem 7.7.2, the bound is $\lceil n/2 \rceil$).
+
+**Fix:** use `(n + 1) / 2`.
+
+### Bug: a block is reversed one place short
+
+Template: the smallest permutation for a pattern string.
+
+```cpp
+reverse(p.begin() + i, p.begin() + j);             // instead of p.begin() + j + 1
+```
+
+Input: `D`.
+
+Wrong output `1 2`, correct output `2 1`. A run of $d$ letters `D` covers $d + 1$ positions: the letters are between the positions, and the last `D` also touches the position after it. Reversing only $d$ positions leaves the last value in place, which breaks the pattern (Theorem 7.7.1, note on blocks).
+
+**Fix:** reverse up to `j + 1`.
+
+### Bug: the repeated undoing is not skipped when it ends at zero
+
+Template: is a target array reachable? Work backwards.
+
+```cpp
+if (m <= rest) return false;                       // instead of if (m <= rest || m % rest == 0) return false;
+```
+
+Input: `2`, then the numbers `4 8`.
+
+The program stops with an error (it divides by zero a step later) and prints nothing; correct output `NO`. When the largest element $m$ is a multiple of the sum $rest$ of the others, undoing it as many times as possible would leave $0$, which is not a legal value (all values are at least 1), so the target is unreachable. The remainder $m \bmod rest$ is a valid old value only when it is non-zero.
+
+**Fix:** return `false` also when `m % rest == 0`.
+
+### Bug: the zig-zag runs one value too far
+
+Worked example: Beautiful Arrangement II.
+
+```cpp
+for (int v = k + 1; v <= n; v++)                   // instead of v = k + 2
+```
+
+Input: `2 1` ($n = 2$, $k = 1$).
+
+Wrong output `BAD`, correct output `OK`. The zig-zag already uses the values $1, \dots, k + 1$; the tail must start at $k + 2$. Starting at $k + 1$ writes that value twice, and the answer is not a permutation.
+
+**Fix:** start the tail at `k + 2`.
+
+### Bug: the first and last conditions are not both checked
+
+Worked example: Tr/ee.
+
+```cpp
+bool ok = s[0] == '1';                             // instead of s[0] == '1' && s[n - 1] == '0'
+```
+
+Input: `11`.
+
+Wrong output `BAD` (the program builds a tree for a string that does not allow one), correct output `-1`. The last character must be `0`: a component of size $n$ cannot exist, since removing an edge always leaves two parts. Without that check the construction runs on an impossible string and produces an edge list that its own checker rejects.
+
+**Fix:** require both `s[0] == '1'` and `s[n - 1] == '0'`.
+
+### Bug: the caterpillar joins the wrong vertex
+
+Worked example: Tr/ee.
+
+```cpp
+if (s[i - 1] == '1') hold = i;                     // instead of hold = i + 1
+```
+
+Input: `1011010`.
+
+Wrong output `BAD`, correct output `YES` (a tree exists). The tree is built as a path of `hold` vertices with a leaf for each `0`. When `hold` becomes $i$ instead of $i + 1$, the later vertices hang under the vertex $i$, so the cut at that edge leaves $n - i + 1$ vertices below it instead of $n - i$, a size that the string does not allow, and the checker rejects the tree.
+
+**Fix:** set `hold = i + 1`.
+
+## 8. Worked examples
+
+### Example 1: Beautiful Arrangement II
+
+[LeetCode 667: Beautiful Arrangement II](https://leetcode.com/problems/beautiful-arrangement-ii/). In short: given $n$ and $k$ with $1 \le k < n \le 10^4$, write the numbers $1, \dots, n$ in a list so that the $n - 1$ absolute differences of neighbours have exactly $k$ distinct values; any valid list is accepted.
+
+#### Step 1: Constraints → budget
+
+There are $n!$ lists, so no search. The answer has $n$ numbers, so we want $O(n)$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A search over all lists with a check ([topic 0.5](../../phase-0/0-5-brute-force/)): $n!$.
+- A greedy that adds numbers one at a time with a check of the number of distinct differences ([topic 1.5](../../phase-1/1-5-greedy-1/)): it gets stuck, because a choice that is good now may use a difference that is needed later.
+- A pattern found from small cases and proved: the card "Build a permutation with a controlled property".
+
+#### Step 3: Property check → decision
+
+Printing all valid lists for $n = 5$ and $k = 3$ shows the same shape every time: a zig-zag between the small and the large numbers, followed by the rest in order. The number of distinct differences grows by one with each step of the zig-zag, and the check of a list is $O(n)$. Decision: Theorem 7.7.1 style (placing values from both ends), with the zig-zag over $1, \dots, k + 1$.
+
+#### Step 4: Proof for this problem
+
+Write the first $k + 1$ numbers as $1, k+1, 2, k, 3, \dots$ (alternately the smallest and the largest unused number of $1, \dots, k + 1$). The $j$-th difference ($j = 0, \dots, k - 1$) is $k - j$: the pairs are $(1, k+1)$, $(k+1, 2)$, $(2, k)$, … and each difference is one less than the one before it. So the zig-zag has the differences $k, k-1, \dots, 1$, which are $k$ distinct values. Then the numbers $k + 2, \dots, n$ follow in order. Their mutual differences are 1. The step from the last number $L$ of the zig-zag to $k + 2$ has the difference $k + 2 - L$; here $2 \le L \le k + 1$ (the number 1 is the first one, so $L \ne 1$), so the difference is between 1 and $k$ and adds nothing new. So the differences are exactly $\{1, \dots, k\}$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.7/example-1" />
+
+#### Step 6: Alternative approach
+
+Write $1, 2, \dots, n - k - 1$ first (differences 1), and then zig-zag over the last $k + 1$ numbers $n - k, \dots, n$, starting from the smallest. The step into the zig-zag has the difference 1, and the zig-zag has the differences $k, \dots, 1$, so again exactly $k$ distinct values.
+
+### Example 2: Tr/ee
+
+[AtCoder ARC 103 C: Tr/ee](https://atcoder.jp/contests/arc103/tasks/arc103_c). In short: a string $s$ of 0 and 1 of length $n$ ($2 \le n \le 10^5$). Is there a tree with $n$ vertices such that for each $i$, removing one edge can leave a component of size $i$ exactly when $s_i$ = 1? If so, print one.
+
+#### Step 1: Constraints → budget
+
+There are $n^{n-2}$ labelled trees. We want $O(n)$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A search over trees, for example through all Prüfer sequences ([topic 0.5](../../phase-0/0-5-brute-force/)): only possible for $n \le 8$.
+- Random trees with a check: a random tree has almost no chance to give the right set of sizes.
+- A necessary condition, then a construction: the card "Necessary condition, then construction".
+
+#### Step 3: Property check → decision
+
+Removing an edge cuts the tree into two parts of sizes $i$ and $n - i$. So the set of sizes is symmetric, and since a tree has a leaf, the size 1 occurs. A component of size $n$ is impossible. Decision: find these conditions, then build a tree for every string that meets them.
+
+#### Step 4: Proof for this problem
+
+*Necessary.* (1) $s_n = 0$: no edge removal leaves a component of size $n$. (2) $s_1 = 1$: a tree with at least two vertices has a leaf, and removing its edge leaves a component of size 1. (3) $s_i = s_{n-i}$ for $1 \le i < n$: the two components of an edge have the sizes $i$ and $n - i$.
+
+*Sufficient.* Put `hold` = vertex 1. For $i = 1, \dots, n - 1$ add the edge between `hold` and the vertex $i + 1$, and if $s_i$ = 1 let `hold` become $i + 1$. If $s_i$ = 1, the vertex $i + 1$ becomes the new `hold`, so all the vertices $i + 2, \dots, n$ are attached under it: removing the edge $(\text{old hold}, i + 1)$ leaves the component $\{i + 1, \dots, n\}$ of size $n - i$, and the other part has $i$ vertices. If $s_i$ = 0, the vertex $i + 1$ never becomes `hold`, so it is a leaf and its edge splits the tree into 1 and $n - 1$. So every size that occurs is some $i$ with $s_i$ = 1, or $n - i$ for such an $i$ (equal to some $j$ with $s_j$ = 1 by condition 3), or 1 and $n - 1$ (allowed by conditions 2 and 3). Every $i$ with $s_i$ = 1 occurs. So the tree matches the string.
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.7/example-2" />
+
+#### Step 6: Alternative approach
+
+Build the tree from the other end: attach every vertex to the current `hold` and move `hold` from $n$ downwards. It gives another tree with the same sets of sizes; there is no natural alternative to the necessary-and-sufficient check.
+
+## 9. Problem ladder
+
+<Ladder topic="7.7" />
+
+## 10. Identification drill
+
+<Drill topic="7.7" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.7" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.7" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.7" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.7" />

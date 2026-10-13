@@ -47,6 +47,12 @@ function Status({ at, error, transport }: { at?: number | null; error?: string |
 export default function ProfilesIsland() {
   const profiles = useStore(getProfiles, {});
   const log = useStore(getSyncLog, []);
+  // Runs a sync and reports what happened, so the button never looks dead.
+  async function syncMessage(p: 'cf' | 'ac'): Promise<string> {
+    const r = await syncPlatform(p);
+    if (r.error) return `Sync failed: ${r.error}`;
+    return r.added > 0 ? `Synced: ${r.added} new submission${r.added === 1 ? '' : 's'}.` : 'Synced: already up to date, no new submissions.';
+  }
   useRefresh();
   const [cf, setCf] = useState('');
   const [ac, setAc] = useState('');
@@ -90,8 +96,8 @@ export default function ProfilesIsland() {
         <label htmlFor="cf-handle">Codeforces handle</label>
         <input id="cf-handle" value={cf} onChange={(e) => setCf(e.target.value)} placeholder="tourist" autoComplete="off" spellCheck={false} />
         <div className="actions">
-          <button type="button" disabled={!cf.trim() || busy === 'cf'} onClick={() => act('cf', () => linkCodeforces(cf), 'Saved and synced.')}>Save and sync</button>
-          <button type="button" className="secondary" disabled={!profiles.codeforces || busy === 'cf'} onClick={() => act('cf', async () => { await syncPlatform('cf'); return getProfiles().codeforces?.lastError ?? null; })}>Sync now</button>
+          <button type="button" disabled={!cf.trim() || busy === 'cf'} onClick={() => act('cf', () => linkCodeforces(cf), 'Saved and synced.')}>{busy === 'cf' ? 'Working…' : 'Save and sync'}</button>
+          <button type="button" className="secondary" disabled={!profiles.codeforces || busy === 'cf'} onClick={() => act('cf', () => syncMessage('cf'))}>{busy === 'cf' ? 'Working…' : 'Sync now'}</button>
           <button type="button" className="secondary" disabled={!cf.trim() || busy === 'cf'} onClick={() => act('cf', async () => { const r = await verifyCodeforces(cf); return r.error ?? `Handle found: ${r.handle}.`; })}>Verify</button>
           <button type="button" className="secondary" disabled={!profiles.codeforces} onClick={() => { if (confirm('This removes the handle and its cached submissions. Your own log is not affected.')) { removeProfile('codeforces'); setCf(''); say('cf', 'Removed.'); } }}>Remove</button>
         </div>
@@ -105,7 +111,7 @@ export default function ProfilesIsland() {
         <p className="muted">Submissions come from AtCoder Problems (an unofficial service), so very recent submissions may take a while to appear.</p>
         <div className="actions">
           <button type="button" disabled={!ac.trim() || busy === 'ac'} onClick={() => act('ac', () => linkAtCoder(ac), 'Saved and synced.')}>Save and sync</button>
-          <button type="button" className="secondary" disabled={!profiles.atcoder || busy === 'ac'} onClick={() => act('ac', async () => { await syncPlatform('ac'); return getProfiles().atcoder?.lastError ?? null; })}>Sync now</button>
+          <button type="button" className="secondary" disabled={!profiles.atcoder || busy === 'ac'} onClick={() => act('ac', () => syncMessage('ac'))}>{busy === 'ac' ? 'Working…' : 'Sync now'}</button>
           <button type="button" className="secondary" disabled={!profiles.atcoder} onClick={() => { if (confirm('This removes the user id and its cached submissions. Your own log is not affected.')) { removeProfile('atcoder'); setAc(''); say('ac', 'Removed.'); } }}>Remove</button>
         </div>
         {profiles.atcoder && <Status at={profiles.atcoder.lastSyncAt} error={profiles.atcoder.lastError} transport={profiles.atcoder.transport} />}

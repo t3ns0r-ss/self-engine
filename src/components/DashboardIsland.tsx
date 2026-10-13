@@ -18,6 +18,7 @@ export default function DashboardIsland({ topics, problems }: { topics: DashTopi
   const { logs, status: st, entry, profiles } = useSync();
   const [logOpen, setLogOpen] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState('');
   const topicState = useStore(getTopics, {});
   const settings = useStore(getSettings, {});
   const now = today();
@@ -52,8 +53,12 @@ export default function DashboardIsland({ topics, problems }: { topics: DashTopi
   const failing = linked.map((l) => ({ ...l, ...failingRuns(l.key) })).filter((f) => f.count >= 3);
   async function syncNow() {
     setSyncing(true);
-    await Promise.all(linked.map((l) => syncPlatform(l.key)));
+    setSyncMsg('');
+    const results = await Promise.all(linked.map(async (l) => ({ name: l.name, r: await syncPlatform(l.key) })));
     setSyncing(false);
+    const failed = results.filter((x) => x.r.error);
+    const added = results.reduce((n, x) => n + x.r.added, 0);
+    setSyncMsg(failed.length ? failed.map((x) => `${x.name}: ${x.r.error}`).join(' ') : added ? `Synced: ${added} new submission${added === 1 ? '' : 's'}.` : 'Synced: already up to date.');
   }
 
   // Mistakes in the last 30 days.
@@ -93,7 +98,8 @@ export default function DashboardIsland({ topics, problems }: { topics: DashTopi
       {linked.length > 0 && (
         <p className="muted">
           {minutesAgo === null ? 'Not synced yet' : minutesAgo < 1 ? 'Last synced just now' : `Last synced ${minutesAgo} minute${minutesAgo === 1 ? '' : 's'} ago`} ·{' '}
-          <button type="button" className="secondary" disabled={syncing} onClick={syncNow}>{syncing ? 'Syncing…' : 'Sync now'}</button>
+          <button type="button" className="secondary" disabled={syncing} onClick={syncNow}>{syncing ? 'Syncing…' : 'Sync now'}</button>{' '}
+          <span role="status">{syncMsg}</span>
         </p>
       )}
       <section>

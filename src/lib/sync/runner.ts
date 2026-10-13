@@ -25,7 +25,8 @@ async function loadProxyBase(base: string): Promise<string | null> {
 
 const gates = { cf: makeGate('cf'), ac: makeGate('ac') };
 const preferred: { cf?: TransportName; ac?: TransportName } = {};
-const running: { cf?: Promise<void>; ac?: Promise<void> } = {};
+export interface SyncResult { added: number; error: string | null }
+const running: { cf?: Promise<SyncResult>; ac?: Promise<SyncResult> } = {};
 let siteBase = '/';
 export const setSiteBase = (b: string) => { siteBase = b; };
 
@@ -52,16 +53,17 @@ export function failingRuns(platform: string): { count: number; since: number | 
   return { count, since, message };
 }
 
-async function run(platform: 'cf' | 'ac'): Promise<void> {
+async function run(platform: 'cf' | 'ac'): Promise<SyncResult> {
   const profiles = getProfiles();
   const t0 = Date.now();
   const c = newCounters();
   const key = platform === 'cf' ? 'codeforces' : 'atcoder';
   const prof = platform === 'cf' ? profiles.codeforces : profiles.atcoder;
-  if (!prof) return;
+  if (!prof) return { added: 0, error: 'No account is linked.' };
   const name = platform === 'cf' ? (prof as { handle: string }).handle : (prof as { userId: string }).userId;
   const before = getCache(platform);
   let error: string | null = null;
+  let added = 0;
   const notes: string[] = [];
   try {
     const net = await netFor(platform);
@@ -74,7 +76,7 @@ async function run(platform: 'cf' | 'ac'): Promise<void> {
       error = 'No submissions found for this user id. AtCoder user ids are case-insensitive on AtCoder Problems, but check the spelling.';
     preferred[platform] = c.transport ?? preferred[platform];
     patchProfile(key, { lastSyncAt: nowSec(), lastError: error, transport: c.transport } as never);
-    const added = totalTries(next) - totalTries(before);
+    added = totalTries(next) - totalTries(before);
     announceUpdate({ platform, message: added > 0 ? `${added} new submission${added === 1 ? '' : 's'} synced from ${platform === 'cf' ? 'Codeforces' : 'AtCoder'}` : undefined });
     appendSyncLog({ at: nowSec(), platform, transport: c.transport, requests: c.requests, newSubmissions: added, ms: Date.now() - t0, error, ...(c.unknownVerdicts.size ? (notes.push(`unknown verdicts counted as attempts: ${[...c.unknownVerdicts].join(', ')}`), {}) : {}), ...(notes.length ? { note: notes.join('; ') } : {}) } as never);
   } catch (e) {
@@ -83,10 +85,11 @@ async function run(platform: 'cf' | 'ac'): Promise<void> {
     appendSyncLog({ at: nowSec(), platform, transport: c.transport, requests: c.requests, newSubmissions: 0, ms: Date.now() - t0, error });
     announceUpdate({ platform });
   }
+  return { added, error };
 }
 
 /** Syncs one platform now. Concurrent calls share one run. */
-export function syncPlatform(platform: 'cf' | 'ac'): Promise<void> {
+export function syncPlatform(platform: 'cf' | 'ac'): Promise<SyncResult> {
   return (running[platform] ??= run(platform).finally(() => { running[platform] = undefined; }));
 }
 
@@ -99,8 +102,7 @@ export async function linkCodeforces(handle: string): Promise<string | null> {
     if (all.codeforces?.handle !== canonical) clearCache('cf');
     all.codeforces = { handle: canonical, addedAt: nowSec(), lastSyncAt: null, lastError: null, transport: c.transport };
     saveProfiles(all);
-    await syncPlatform('cf');
-    return null;
+    return (await syncPlatform('cf')).error;
   } catch (e) {
     return describe(e, 'cf');
   }
@@ -112,8 +114,7 @@ export async function linkAtCoder(userId: string): Promise<string | null> {
   if (all.atcoder?.userId !== id) clearCache('ac');
   all.atcoder = { userId: id, addedAt: nowSec(), lastSyncAt: null, lastError: null, transport: null };
   saveProfiles(all);
-  await syncPlatform('ac');
-  return null;
+  return (await syncPlatform('ac')).error;
 }
 /** Checks a Codeforces handle without saving it. Returns the canonical handle or an error message. */
 export async function verifyCodeforces(handle: string): Promise<{ handle?: string; error?: string }> {

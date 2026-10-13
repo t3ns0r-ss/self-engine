@@ -47,6 +47,17 @@ async function rowStatus(p, id) {
     const stored = await p.evaluate(() => JSON.parse(localStorage.getItem('cp:v1:problems')));
     check(JSON.stringify(stored) === JSON.stringify({ 'cf-660C': { status: 'editorial', hintsOpened: 0 } }), 'sync never wrote into the learner log');
 
+    // Sync now gives visible feedback (the button reports what happened).
+    await p.goto(`${BASE}/profiles/`);
+    await p.click('#cf-h ~ .actions button:has-text("Sync now")');
+    await p.waitForSelector('#cf-h ~ p[role=status]:has-text("Synced:")', { timeout: 10000 });
+    check(true, 'Sync now reports its result on the Profiles page');
+    await p.goto(`${BASE}/`);
+    await p.waitForSelector('.dashboard button:has-text("Sync now")');
+    await p.click('.dashboard button:has-text("Sync now")');
+    await p.waitForSelector('.dashboard [role=status]:has-text("Synced:")', { timeout: 10000 });
+    check(true, 'Sync now reports its result on the dashboard');
+
     // 7. Remove the handle: synced statuses go, hand-set stays.
     await p.goto(`${BASE}/profiles/`);
     await p.click('#cf-h ~ .actions button:has-text("Remove")');

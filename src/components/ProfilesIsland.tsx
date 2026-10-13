@@ -4,6 +4,8 @@ import { getProfiles, getSyncLog } from '../lib/sync/store';
 import { applyImport, linkAtCoder, linkCodeforces, removeProfile, setLeetCodeUsername, syncPlatform, verifyCodeforces } from '../lib/sync/runner';
 import { decodeLcFragment, parseImportText } from '../lib/sync/leetcode';
 import { useStore } from '../lib/useStore';
+import { leetCodeSnippet } from '../lib/sync/snippet';
+import { url } from '../lib/url';
 import { SYNC_EVENT } from '../lib/sync/store';
 
 const TRANSPORT_LABEL: Record<string, string> = { direct: 'direct', jsonp: 'JSONP', proxy: 'proxy' };
@@ -52,6 +54,7 @@ export default function ProfilesIsland() {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<Record<string, string>>({});
   const [paste, setPaste] = useState('');
+  const [snippet, setSnippet] = useState('');
   const say = (k: string, v: string) => setMsg((m) => ({ ...m, [k]: v }));
 
   useEffect(() => {
@@ -117,12 +120,25 @@ export default function ProfilesIsland() {
           <button type="button" className="secondary" disabled={!profiles.leetcode} onClick={() => { if (confirm('This removes the username and its imported statuses. Your own log is not affected.')) { removeProfile('leetcode'); setLc(''); say('lc', 'Removed.'); } }}>Remove</button>
         </div>
         <p className="muted" title={exact(profiles.leetcode?.lastImportAt)}>Last import: {ago(profiles.leetcode?.lastImportAt)}</p>
+        <div className="actions">
+          <button type="button" disabled={!lc.trim()} onClick={async () => {
+            const text = leetCodeSnippet(location.origin + url('/profiles/'), lc);
+            setSnippet(text);
+            try { await navigator.clipboard.writeText(text); say('lc', 'Snippet copied. Follow the steps below.'); } catch { say('lc', 'Could not copy automatically: select the snippet below and copy it.'); }
+          }}>Copy LeetCode snippet</button>
+        </div>
         <p>
-          LeetCode has no public API for your full history, so statuses arrive by importing the result of a console snippet that
-          you run yourself on leetcode.com while logged in. The snippet needs a desktop browser with developer tools. It is not
-          available yet: it is built from the output of the LeetCode probe (see <code>docs/sync/leetcode-probe.js</code>), which
-          has not been run. You can already import a result file below.
+          LeetCode has no public API for your full history, so statuses arrive from a short snippet that you run yourself on
+          leetcode.com while logged in. It reads only which problems you solved or tried, makes at most one request per second,
+          and never reads your session cookie. <strong>It needs a desktop browser with developer tools.</strong>
         </p>
+        <ol>
+          <li>Enter your username above and press <em>Copy LeetCode snippet</em>.</li>
+          <li>Open <a href="https://leetcode.com" target="_blank" rel="noopener noreferrer">leetcode.com</a> in the same browser, logged in, and open the developer tools console (F12, then Console).</li>
+          <li>Paste the snippet and press Enter. Wait until it prints <em>Done</em>.</li>
+          <li>Open the link it prints (or paste the copied result into <em>Import a submissions file</em> below). The statuses appear within seconds.</li>
+        </ol>
+        {snippet && <details><summary>Show the snippet</summary><pre><code>{snippet}</code></pre></details>}
         {msg.lc && <p role="status">{msg.lc}</p>}
       </Card>
 

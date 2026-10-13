@@ -112,6 +112,14 @@ async function rowStatus(p, id) {
     s = await rowStatus(p, 'lc-subarray-product-less-than-k');
     check(/Attempted/.test(s.text), 'LeetCode notac shows Attempted');
 
+    // The snippet button fills in the username and site address.
+    await p.goto(`${BASE}/profiles/`);
+    await p.fill('#lc-user', 'me');
+    await p.click('button:has-text("Copy LeetCode snippet")');
+    await p.click('summary:has-text("Show the snippet")');
+    const snippetText = await p.locator('details pre code').innerText();
+    check(snippetText.includes('const USERNAME = "me";') && snippetText.includes(`${BASE}/profiles/`) && snippetText.split('\n').length <= 80, 'LeetCode snippet is generated for this user and site');
+
     // Export keeps profiles and the LeetCode cache, drops the rebuildable caches.
     await p.goto(`${BASE}/progress/`);
     const exported = await p.evaluate(() => { const o = {}; for (const k of ['cp:v1:profiles','cp:v1:sync:lc','cp:v1:sync:cf','cp:v1:sync:ac']) o[k] = localStorage.getItem(k) !== null; return o; });

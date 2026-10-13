@@ -58,3 +58,11 @@ server that echoes the request it received, because the sandbox cannot reach the
 `node scripts/cf_aliases.mjs`: 662 Codeforces keys used on the site, 242 contests that ran in parallel with another
 contest fetched through `contest.standings` (bare form, trimmed and cached in `.cache/cf/`, about 25 minutes uncached),
 112 keys with a twin. Result in `src/data/sync/cf-aliases.json`.
+
+## LeetCode probe result (2026-10-13, run by Saurabh in a logged-in browser)
+
+- `POST /graphql` with the `questionList(categorySlug: "", limit, skip, filters)` query (aliased as `problemsetQuestionList`, fields `totalNum` and `data { titleSlug status }`) works **with and without** the `x-csrftoken` header (HTTP 200 both times). The snippet still sends it when the cookie exists.
+- Unfiltered: total 4082 problems, `status` is `"ac"` or `null` on the first page. Filter `{status: "AC"}`: total 91, all `"ac"`. Filter `{status: "TRIED"}`: total 3, all `"notac"`. So the two filters give solved and attempted problems directly, with no list of site problems needed (nothing about reserved problems is revealed).
+- The single-problem query `question(titleSlug)` also returns `status` (`"ac"`), but it is not used.
+- `copy()` exists in his console (the probe copied its output). Not checked in Firefox.
+- The snippet pages at 50 problems per request and one request per second; a limit above 5 was not part of the probe, so the first run of the snippet is the real test of `limit: 50` (gate S4).

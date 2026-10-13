@@ -65,8 +65,8 @@ cached submissions.
   3. Paste and press Enter. It makes at most one request per second and never reads your session cookie.
   4. When it finishes it prints a link ending in `#lc=...` and copies the result. Open the link, or paste the result into
      *Import a submissions file* on the Profiles page.
-  *Status:* the snippet is not built yet; it waits for the output of `docs/sync/leetcode-probe.js` (the same steps, run
-  once, read-only). Importing a result file already works.
+  The snippet is generated from `src/lib/sync/snippet.ts` (written from the output of the read-only probe
+  `docs/sync/leetcode-probe.js`). It pages through your solved and attempted lists, 50 problems per request.
 - **Import a file**: if no automatic route works, save the API response from the address bar and import it.
 
 Sync runs when the site opens (if the last sync is older than 15 minutes) and when you return to the tab after opening a

@@ -79,6 +79,8 @@ Naming: topic `1.3` -> `1-3.yaml`, `phase-1/1-3-two-pointers.mdx`, `code/1.3/`, 
 
 **Add a phase-level page or edit a phase intro/exam.** `src/content/docs/phase-N/index.mdx` and `exam.mdx`; the exam list comes from `exam` problems in the phase's last topic yaml (`<PhaseExam phase={N} />`, shuffled by id hash).
 
+**Profile sync** (`PROFILE_SYNC_PLAN.md`, notes in `docs/sync/API_NOTES.md`). Code is in `src/lib/sync/`: `core.ts` (pure logic, tested), `status.ts` (`computeStatus`; the React hook is `useStatuses`/`useSync` in `useStatuses.ts`), `runner.ts` (network plus storage), `reserved.ts` (compromised problems). Every component shows statuses through `useStatuses()`; reading `.status` from `cp:v1:problems` directly fails build check Y2 (`scripts/check_sync.mjs`). New Codeforces problems need `node scripts/cf_aliases.mjs` (slow; fails build check Y1 otherwise). Node tests import the `.ts` files directly, so sync modules must not use constructor parameter properties, enums, or extensionless relative imports. Browser tests: `tests/e2e/sync.cjs` (part of `tests/e2e.sh`).
+
 ## 7. Gotchas learned the hard way
 
 - `tests/e2e.sh` part 2 swaps topic 1.3's files for a placeholder. Any later topic that cites a **1.3 practice problem** (by id) breaks that run; cite problems from other topics.

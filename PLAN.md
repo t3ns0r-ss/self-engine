@@ -931,12 +931,12 @@ At the start of every session: `git status` and `git log -5`; read `FEEDBACK.md`
 ### 16.3 `FEEDBACK.md` format and handling
 ```markdown
 ## 2026-10-12 — topic 1.3
-- Type: confusing | error | wrong link | misplaced problem | too hard | too easy | missing | other
+- Type: confusing | error | wrong link | misplaced problem | too hard | too easy | missing | compromised | other
 - Where: section 4, Theorem 1.3.1  (or problem id)
 - What: …
 - Status: open
 ```
-Handle every `open` item before new topic work, on a `feedback/…` branch; set `Status: fixed in {commit}`. Repeated Recognition misses on one card mean: rewrite that card's weak signals, kill signals, and look-alikes, and add a drill item for it. A "misplaced problem" report means: recheck the solution note; if the problem needs a later technique, replace it and add it to "Dropped candidates".
+Handle every `open` item before new topic work, on a `feedback/…` branch; set `Status: fixed in {commit}`. Repeated Recognition misses on one card mean: rewrite that card's weak signals, kill signals, and look-alikes, and add a drill item for it. A "compromised" item (added by the profile sync feature) means a reserved problem the learner had already solved before it was shown: replace it with an unseen problem of the same role, card, and tier from the bank's reserved set or `bank-fill/SPARE.md`, following the purity rules, and record the swap in the topic's merge message. A "misplaced problem" report means: recheck the solution note; if the problem needs a later technique, replace it and add it to "Dropped candidates".
 
 ---
 

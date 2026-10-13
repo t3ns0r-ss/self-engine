@@ -18,8 +18,46 @@ cp.example.com {
 	# 	saurabh $2a$14$REPLACE_WITH_HASH
 	# }
 
-	try_files {path} {path}/ {path}.html
-	file_server
+	# Profile sync proxy (PROFILE_SYNC_PLAN.md Section 7.3), optional. Build the site with SYNC_PROXY_BASE=/sync-proxy to
+	# turn it on; without that variable the browser never calls it. Only these GET paths are forwarded; no cookies go
+	# upstream and no Set-Cookie comes back. Caddy has no built-in rate limiter, so the site's own client gate (one
+	# request per 2.1 s for Codeforces, 1.1 s for AtCoder Problems) is the limit. Access logs are off by default in
+	# Caddy; keep them off for /sync-proxy/ so handles in query strings are never logged.
+	@syncCf {
+		method GET
+		path /sync-proxy/cf/api/user.info /sync-proxy/cf/api/user.status
+	}
+	handle @syncCf {
+		uri strip_prefix /sync-proxy/cf
+		reverse_proxy https://codeforces.com {
+			header_up Host codeforces.com
+			header_up -Cookie
+			header_up -Authorization
+			header_down -Set-Cookie
+		}
+	}
+	@syncAc {
+		method GET
+		path /sync-proxy/ac/atcoder/atcoder-api/v3/user/submissions
+	}
+	handle @syncAc {
+		uri strip_prefix /sync-proxy/ac
+		reverse_proxy https://kenkoooo.com {
+			header_up Host kenkoooo.com
+			header_up -Cookie
+			header_up -Authorization
+			header_down -Set-Cookie
+		}
+	}
+	# Everything else under /sync-proxy/ is refused.
+	handle /sync-proxy/* {
+		respond 404
+	}
+
+	handle {
+		try_files {path} {path}/ {path}.html
+		file_server
+	}
 
 	handle_errors {
 		@404 expression {err.status_code} == 404

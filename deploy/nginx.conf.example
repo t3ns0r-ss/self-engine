@@ -2,6 +2,11 @@
 # Replace cp.example.com with the domain in SITE_URL and /var/www/cp-training with DEPLOY_PATH.
 # HTTPS is required (the "Copy feedback" button needs a secure page). After installing this
 # block, get a certificate with:  certbot --nginx -d cp.example.com
+# Profile sync proxy (PROFILE_SYNC_PLAN.md Section 7.3), optional. These two lines belong in the http context (this file is
+# normally included there). Codeforces allows 1 request per 2 s, AtCoder Problems asks for more than 1 s between requests.
+limit_req_zone $binary_remote_addr zone=sync_cf:1m rate=30r/m;
+limit_req_zone $binary_remote_addr zone=sync_ac:1m rate=60r/m;
+
 server {
     listen 80;
     server_name cp.example.com;
@@ -17,6 +22,44 @@ server {
         add_header Cache-Control "public, max-age=31536000, immutable";
         try_files $uri =404;
     }
+
+    # Profile sync proxy. Build the site with SYNC_PROXY_BASE=/sync-proxy to turn it on. Only these GET paths are
+    # forwarded, with no cookies upstream and no Set-Cookie back. access_log is off so handles in query strings are
+    # never logged. user.info could be cached for 60 s (proxy_cache); it is left uncached to keep this file small.
+    location = /sync-proxy/cf/api/user.info {
+        limit_except GET { deny all; }
+        limit_req zone=sync_cf burst=3 nodelay;
+        access_log off;
+        proxy_pass https://codeforces.com/api/user.info;
+        proxy_ssl_server_name on;
+        proxy_set_header Host codeforces.com;
+        proxy_set_header Cookie "";
+        proxy_set_header Authorization "";
+        proxy_hide_header Set-Cookie;
+    }
+    location = /sync-proxy/cf/api/user.status {
+        limit_except GET { deny all; }
+        limit_req zone=sync_cf burst=3 nodelay;
+        access_log off;
+        proxy_pass https://codeforces.com/api/user.status;
+        proxy_ssl_server_name on;
+        proxy_set_header Host codeforces.com;
+        proxy_set_header Cookie "";
+        proxy_set_header Authorization "";
+        proxy_hide_header Set-Cookie;
+    }
+    location = /sync-proxy/ac/atcoder/atcoder-api/v3/user/submissions {
+        limit_except GET { deny all; }
+        limit_req zone=sync_ac burst=3 nodelay;
+        access_log off;
+        proxy_pass https://kenkoooo.com/atcoder/atcoder-api/v3/user/submissions;
+        proxy_ssl_server_name on;
+        proxy_set_header Host kenkoooo.com;
+        proxy_set_header Cookie "";
+        proxy_set_header Authorization "";
+        proxy_hide_header Set-Cookie;
+    }
+    location /sync-proxy/ { access_log off; return 404; }
 
     location / {
         # Optional password protection. Create the file with:  htpasswd -c /etc/nginx/cp.htpasswd saurabh

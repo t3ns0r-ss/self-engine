@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { STATUS_LABELS, isSolved, saveProblem, type ProblemLog } from '../lib/storage';
+import { STATUS_LABELS, saveProblem, type ProblemLog } from '../lib/storage';
 import { useProblems } from '../lib/useProblems';
+import { useStatuses } from '../lib/sync/useStatuses';
+import { isSolvedView } from '../lib/sync/status';
+import StatusChip from './StatusChip';
 import LogPanel from './LogPanel';
 import PlatformBadge from './PlatformBadge';
 
@@ -43,11 +46,12 @@ function Hints({ p, log, budget }: { p: LadderProblem; log?: ProblemLog; budget:
 
 export default function LadderIsland({ groups, more, budget }: { groups: LadderGroup[]; more: ExtraProblem[]; budget: string }) {
   const logs = useProblems();
+  const st = useStatuses();
   const [open, setOpen] = useState<string | null>(null);
   return (
     <div className="ladder">
       {groups.map((g) => {
-        const solved = g.problems.filter((p) => isSolved(logs[p.id])).length;
+        const solved = g.problems.filter((p) => isSolvedView(st(p.id))).length;
         return (
           <section key={g.card.id} className="ladder-group">
             <h3 id={`ladder-${g.card.id}`}>{g.card.name}</h3>
@@ -58,7 +62,7 @@ export default function LadderIsland({ groups, more, budget }: { groups: LadderG
             {g.problems.map((p) => {
               const log = logs[p.id];
               return (
-                <article key={p.id} className={`ladder-item${log?.status ? ` status-${log.status}` : ''}`}>
+                <article key={p.id} className={`ladder-item${st(p.id).status ? ` status-${st(p.id).status}` : ''}`}>
                   <header>
                     <span className="rung">Rung {p.rung}</span>{' '}
                     <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>{' '}
@@ -68,7 +72,7 @@ export default function LadderIsland({ groups, more, budget }: { groups: LadderG
                   <p>{p.summary}</p>
                   <Hints p={p} log={log} budget={budget} />
                   <div className="ladder-status">
-                    <span>{log?.status ? STATUS_LABELS[log.status] : 'Not started'}</span>
+                    <StatusChip view={st(p.id)} />
                     {log?.hintsOpened ? <span className="muted"> · {log.hintsOpened} hint{log.hintsOpened > 1 ? 's' : ''} opened</span> : null}{' '}
                     <button type="button" className="secondary" aria-expanded={open === p.id} onClick={() => setOpen(open === p.id ? null : p.id)}>Log</button>
                   </div>
@@ -85,9 +89,9 @@ export default function LadderIsland({ groups, more, budget }: { groups: LadderG
           <p>Extra problems from the bank for this topic, easiest tier first. No hints.</p>
           <ul className="more-practice">
             {more.map((p) => (
-              <li key={p.id} className={logs[p.id]?.status ? `status-${logs[p.id]!.status}` : undefined}>
+              <li key={p.id} className={st(p.id).status ? `status-${st(p.id).status}` : undefined}>
                 <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a> <PlatformBadge source={p.source} /> {p.difficulty} · tier {p.tier} · {p.pattern}
-                {logs[p.id]?.status ? ` · ${STATUS_LABELS[logs[p.id]!.status!]}` : ''}
+                {st(p.id).status ? ` · ${STATUS_LABELS[st(p.id).status!]}` : ''}
               </li>
             ))}
           </ul>

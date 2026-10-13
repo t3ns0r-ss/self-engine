@@ -1,11 +1,11 @@
 // All topics with practice counts per tier and the learner's solved counts (bank plan Section 9.1).
-import { useProblems } from '../lib/useProblems';
-import { isSolved } from '../lib/storage';
+import { useStatuses } from '../lib/sync/useStatuses';
+import { isSolvedView } from '../lib/sync/status';
 
 export type OverviewRow = { id: string; title: string; phase: number; href: string; tiers: number[]; practiceIds: string[]; status: string };
 
 export default function BankOverview({ rows }: { rows: OverviewRow[] }) {
-  const logs = useProblems();
+  const st = useStatuses();
   return (
     <div className="table-scroll">
       <table className="bank-table">
@@ -14,7 +14,7 @@ export default function BankOverview({ rows }: { rows: OverviewRow[] }) {
         </thead>
         <tbody>
           {rows.map((r) => {
-            const solved = r.practiceIds.filter((id) => isSolved(logs[id])).length;
+            const solved = r.practiceIds.filter((id) => isSolvedView(st(id))).length;
             return (
               <tr key={r.id}>
                 <td>{r.phase}</td>

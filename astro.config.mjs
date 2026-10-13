@@ -42,6 +42,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'CP Training',
+      components: { Footer: './src/components/Footer.astro' },
       customCss: ['katex/dist/katex.min.css', './src/styles/custom.css'],
       head: [{ tag: 'script', attrs: { src: `${base.replace(/\/$/, '')}/later-badge.js`, defer: true } }],
       sidebar: [
@@ -54,6 +55,7 @@ export default defineConfig({
         { label: 'Problem bank', link: '/bank/' },
         { label: 'Contest log', link: '/contests/' },
         { label: 'Progress', link: '/progress/' },
+        { label: 'Profiles', link: '/profiles/' },
       ],
     }),
     react(),

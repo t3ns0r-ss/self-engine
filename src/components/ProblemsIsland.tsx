@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { STATUS_LABELS, getProblems, getTopics } from '../lib/storage';
+import { STATUS_LABELS, getTopics } from '../lib/storage';
+import { useStatuses } from '../lib/sync/useStatuses';
+import StatusChip from './StatusChip';
 import { useStore } from '../lib/useStore';
 import type { IndexedProblem } from '../lib/data';
 import PlatformBadge from './PlatformBadge';
@@ -10,11 +12,11 @@ type Key = 'title' | 'source' | 'difficulty' | 'topic' | 'role' | 'cardName' | '
 const num = (d: string) => (/^-?\d+$/.test(d) ? Number(d) : ({ Easy: 1, Medium: 2, Hard: 3 } as Record<string, number>)[d] ?? -1);
 
 export default function ProblemsIsland({ rows, order }: { rows: IndexedProblem[]; order: Record<string, number> }) {
-  const logs = useStore(getProblems, {});
+  const st = useStatuses();
   const topics = useStore(getTopics, {});
   const [f, setF] = useState({ source: '', topic: '', role: '', status: '', q: '' });
   const [sort, setSort] = useState<{ key: Key; dir: 1 | -1 }>({ key: 'topic', dir: 1 });
-  const status = (id: string) => logs[id]?.status ?? '';
+  const status = (id: string) => st(id).status ?? '';
 
   const visible = rows
     .filter((r) => !HIDDEN.has(r.role) || topics[r.topic]?.checkpointPassedOn)
@@ -64,7 +66,7 @@ export default function ProblemsIsland({ rows, order }: { rows: IndexedProblem[]
                 <td>{r.topic}</td>
                 <td>{ROLE_LABEL[r.role]}{r.reviewSet ? ` ${r.reviewSet}` : ''}</td>
                 <td>{r.cardName}</td>
-                <td>{status(r.id) ? STATUS_LABELS[status(r.id) as keyof typeof STATUS_LABELS] : '—'}</td>
+                <td>{status(r.id) ? <StatusChip view={st(r.id)} /> : '—'}</td>
               </tr>
             ))}
           </tbody>

@@ -2,7 +2,8 @@
 // (PROBLEM_BANK_PLAN.md Section 9.1). Receives practice problems only.
 import { Fragment, useState } from 'react';
 import { useProblems } from '../lib/useProblems';
-import { STATUS_LABELS } from '../lib/storage';
+import { useStatuses } from '../lib/sync/useStatuses';
+import StatusChip from './StatusChip';
 import LogPanel from './LogPanel';
 
 export type BankRow = { id: string; title: string; url: string; source: string; difficulty: string; pattern: string; apiOnly?: boolean };
@@ -12,6 +13,7 @@ const PLATFORM: Record<string, string> = { codeforces: 'Codeforces', atcoder: 'A
 
 export default function BankTable({ tiers, patternNames }: { tiers: BankTier[]; patternNames: Record<string, string> }) {
   const logs = useProblems();
+  const st = useStatuses();
   const [open, setOpen] = useState<string | null>(null);
   const total = tiers.reduce((a, t) => a + t.problems.length, 0);
   if (!total) return <p>No practice problems have been collected for this topic yet.</p>;
@@ -35,7 +37,7 @@ export default function BankTable({ tiers, patternNames }: { tiers: BankTier[]; 
                     const log = logs[p.id];
                     return (
                       <Fragment key={p.id}>
-                        <tr className={log?.status ? `status-${log.status}` : undefined}>
+                        <tr className={st(p.id).status ? `status-${st(p.id).status}` : undefined}>
                           <td>
                             <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>
                             <div className="problem-id">{p.id}{p.apiOnly && <span title="Statement not checked by the bank builder; please spot-check"> †</span>}</div>
@@ -43,7 +45,7 @@ export default function BankTable({ tiers, patternNames }: { tiers: BankTier[]; 
                           <td><span className={`badge badge-${p.source}`}>{PLATFORM[p.source]}</span></td>
                           <td>{p.difficulty}</td>
                           <td>{patternNames[p.pattern] ?? p.pattern}</td>
-                          <td>{log?.status ? STATUS_LABELS[log.status] : 'Not started'}</td>
+                          <td><StatusChip view={st(p.id)} /></td>
                           <td>
                             <button type="button" className="secondary" aria-expanded={open === p.id} onClick={() => setOpen(open === p.id ? null : p.id)}>
                               Log

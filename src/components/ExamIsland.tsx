@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getExams, saveExam, today, type ExamState } from '../lib/storage';
 import { useStore } from '../lib/useStore';
+import { COMPROMISED_NOTE, beginReservedSet, ensureFresh, scaledPassRule, verifyWindow, type Verification } from '../lib/sync/reserved';
+import { useSync } from '../lib/sync/useStatuses';
 import PlatformBadge from './PlatformBadge';
 
 export type ExamProblem = {
@@ -24,8 +26,19 @@ export default function ExamIsland({ phase, hours, problems }: { phase: string; 
   const [missed, setMissed] = useState<Record<string, boolean>>({});
   const [showMap, setShowMap] = useState(false);
   const [result, setResult] = useState('');
+  const [verified, setVerified] = useState<Record<string, { result: Verification; platform: string | null }>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
+  const { entry } = useSync();
+  const stored = state.compromised ?? [];
+  const ids = problems.map((p) => p.id);
   const limit = hours * 3_600_000;
-  const need = Math.ceil(problems.length * 0.6);
+  // 60% of the problems that still test recognition (Section 10.2: pass rules scale, rounding up).
+  const scaled = scaledPassRule(problems.length, Math.ceil(problems.length * 0.6), stored.length);
+  const need = scaled?.need ?? Math.ceil(problems.length * 0.6);
+  const counted = scaled?.of ?? problems.length;
+  const note = (id: string) => stored.includes(id) && <p className="notice">{COMPROMISED_NOTE(entry(id)?.firstAc ?? null)}</p>;
+  const platformName = (c: string | null) => (c === 'cf' ? 'Codeforces' : c === 'ac' ? 'AtCoder' : c === 'lc' ? 'LeetCode' : c ?? '');
   const running = !!state.startedAt && !state.finished;
   const left = running ? Math.min(limit, state.startedAt! + limit - now) : 0;
 
@@ -37,10 +50,24 @@ export default function ExamIsland({ phase, hours, problems }: { phase: string; 
   useEffect(() => {
     if (running && left <= 0) saveExam(phase, { finished: true });
   }, [running, left <= 0]);
+  // After the timer: sync once and pre-fill "solved in time" from the platforms.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!state.finished || !state.startedAt || prefilled.current) return;
+    prefilled.current = true;
+    const startSec = Math.floor(state.startedAt / 1000);
+    ensureFresh(ids, 0).then(() => {
+      // Measured after the sync, so a submission accepted while it ran still counts.
+      const endSec = Math.min(startSec + hours * 3600, Math.floor(Date.now() / 1000) + 1);
+      const v = verifyWindow(ids, startSec, endSec);
+      setVerified(v);
+      setSolved(Object.fromEntries(ids.map((id) => [id, v[id].result === 'yes'])));
+    });
+  }, [state.finished, state.startedAt]);
 
   const rule = (
     <p>
-      Pass rule: solve at least {need} of the {problems.length} problems ({Math.round((need / problems.length) * 100)}%) within {hours} hours,
+      Pass rule: solve at least {need} of the {counted} problems that count ({Math.round((need / counted) * 100)}%) within {hours} hours,
       with no Recognition miss on a solved problem (a solved problem where the first tool you tried was the wrong one).
       The problems are hidden until you start, so they stay unseen.
     </p>
@@ -74,6 +101,7 @@ export default function ExamIsland({ phase, hours, problems }: { phase: string; 
       {problems.map((p) => (
         <li key={p.id}>
           <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a> <PlatformBadge source={p.source} /> <span className="muted">{p.difficulty}</span>
+          {note(p.id)}
         </li>
       ))}
     </ol>
@@ -95,7 +123,15 @@ export default function ExamIsland({ phase, hours, problems }: { phase: string; 
         {rule}
         {result && <p role="status">{result}</p>}
         {state.lastAttemptOn && remediation}
-        <button type="button" onClick={() => { setNow(Date.now()); setResult(''); setSolved({}); setMissed({}); setShowMap(false); saveExam(phase, { startedAt: Date.now(), finished: false }); }}>
+        <button type="button" disabled={busy} onClick={async () => {
+          setBusy(true);
+          await ensureFresh(ids, 300);
+          const bad = [...beginReservedSet(ids)];
+          prefilled.current = false;
+          setNow(Date.now()); setResult(''); setSolved({}); setMissed({}); setVerified({}); setTouched({}); setShowMap(false);
+          saveExam(phase, { startedAt: Date.now(), finished: false, compromised: bad });
+          setBusy(false);
+        }}>
           Start the {hours}-hour exam
         </button>
       </div>
@@ -113,7 +149,7 @@ export default function ExamIsland({ phase, hours, problems }: { phase: string; 
   }
 
   function submit() {
-    const ok = problems.filter((p) => solved[p.id]).map((p) => p.id);
+    const ok = problems.filter((p) => solved[p.id] && !stored.includes(p.id)).map((p) => p.id);
     const misses = ok.filter((id) => missed[id]);
     const pass = ok.length >= need && misses.length === 0;
     saveExam(phase, { startedAt: null, finished: false, solved: ok, recognitionMisses: misses, lastAttemptOn: today(), passedOn: pass ? today() : null });
@@ -125,17 +161,22 @@ export default function ExamIsland({ phase, hours, problems }: { phase: string; 
 
   return (
     <div className="checkpoint exam">
-      <p><strong>Time is up.</strong> For each problem, mark whether you solved it in time (accepted on the judge), and whether the first tool you tried was the wrong one.</p>
-      {problems.map((p) => (
+      <p><strong>Time is up.</strong> For each problem, mark whether you solved it in time (accepted on the judge), and whether the first tool you tried was the wrong one. Codeforces and AtCoder are checked for you; change a box if it is wrong.</p>
+      {problems.map((p) => {
+        const v = verified[p.id];
+        const mine = touched[p.id] && !!solved[p.id] !== (v?.result === 'yes');
+        return (
         <div key={p.id} className="exam-row">
           <label className="check">
-            <input type="checkbox" checked={!!solved[p.id]} onChange={(e) => setSolved({ ...solved, [p.id]: e.target.checked })} /> Solved: {p.title}
+            <input type="checkbox" checked={!!solved[p.id]} disabled={stored.includes(p.id)} onChange={(e) => { setSolved({ ...solved, [p.id]: e.target.checked }); setTouched({ ...touched, [p.id]: true }); }} /> Solved: {p.title}
           </label>
+          {stored.includes(p.id) ? note(p.id) : mine ? <span className="muted">confirmed by you</span> : v?.result === 'yes' ? <span className="muted">verified on {platformName(v.platform)}</span> : v?.result === 'unknown' ? <span className="muted">confirm by hand</span> : null}
           <label className="check">
             <input type="checkbox" checked={!!missed[p.id]} onChange={(e) => setMissed({ ...missed, [p.id]: e.target.checked })} /> Recognition miss
           </label>
         </div>
-      ))}
+        );
+      })}
       <button type="button" onClick={submit}>Submit results</button>
     </div>
   );

@@ -26,6 +26,7 @@ npx astro build > /dev/null
 PREVIEW_PID=$!
 wait_up
 BASE=http://localhost:4329/self-engine node tests/e2e/lessons.cjs
+BASE=http://localhost:4329/self-engine node tests/e2e/sync.cjs
 kill "$PREVIEW_PID"; wait "$PREVIEW_PID" 2>/dev/null || true
 PREVIEW_PID=
 # 2. Every component on the placeholder topic.

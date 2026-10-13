@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react';
 import { MISTAKE_LABELS, exportAll, getProblems, importAll, resetAll, today, type Mistake } from '../lib/storage';
+import { compromisedIn } from '../lib/sync/reserved';
+import { getCaches, getShown } from '../lib/sync/store';
 
 type Info = { title: string; topic: string; card: string };
 
@@ -33,9 +35,21 @@ export function feedbackMarkdown(problems: Record<string, Info>): string {
     .join('\n\n') + '\n';
 }
 
+/**
+ * FEEDBACK.md items of type `compromised` (PROFILE_SYNC_PLAN.md Section 10.2): reserved problems the learner solved before
+ * they were shown. Only problems that have already been displayed are listed, so no unseen reserved problem is named.
+ */
+export function compromisedFeedback(): string {
+  const shown = getShown();
+  return [...compromisedIn(Object.keys(shown), getCaches(), shown)].sort()
+    .map((id) => `## ${today()} — compromised problem\n- Type: compromised\n- Where: ${id}\n- What: solved before it was shown; replace with an unseen problem of the same role, card and tier.\n- Status: open\n`)
+    .join('\n');
+}
+
 export default function ProgressIsland({ problems }: { problems: Record<string, Info> }) {
   const [msg, setMsg] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [spoilers, setSpoilers] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   function download() {
@@ -60,13 +74,16 @@ export default function ProgressIsland({ problems }: { problems: Record<string, 
     setMsg(err ?? 'Imported.');
   }
   async function copyFeedback() {
-    const md = feedbackMarkdown(problems);
+    const main = feedbackMarkdown(problems);
+    const spoil = compromisedFeedback();
+    const md = [main, spoil].filter(Boolean).join('\n');
+    setSpoilers(spoil);
     if (!md) {
       setFeedback(null);
       setMsg('No mistakes logged yet, so there is nothing to send.');
       return;
     }
-    setFeedback(md);
+    setFeedback(main);
     try {
       await navigator.clipboard.writeText(md);
       setMsg('Copied. Paste it at the end of FEEDBACK.md.');
@@ -88,6 +105,12 @@ export default function ProgressIsland({ problems }: { problems: Record<string, 
       <p>Builds a note from your logged mistakes, grouped by topic and card, in the format of <code>FEEDBACK.md</code>.</p>
       <button type="button" onClick={copyFeedback}>Copy feedback</button>
       {feedback && <textarea className="feedback-box" readOnly rows={10} value={feedback} onFocus={(e) => e.target.select()} />}
+      {spoilers && (
+        <details>
+          <summary>Contains names of reserved problems (spoilers). Paste into FEEDBACK.md without reading.</summary>
+          <textarea className="feedback-box" readOnly rows={6} value={spoilers} onFocus={(e) => e.target.select()} />
+        </details>
+      )}
       <h2 id="reset">Reset</h2>
       <button type="button" className="secondary" onClick={() => {
         if (confirm('Delete all progress in this browser? Export first if you might want it back.')) setMsg(resetAll() ? 'All progress deleted.' : 'Browser storage is unavailable.');

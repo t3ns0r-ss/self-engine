@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { REVIEW_OFFSETS, STATUS_LABELS, addDays, getTopics } from '../lib/storage';
+import { useEffect, useState } from 'react';
+import { REVIEW_OFFSETS, addDays, getTopics } from '../lib/storage';
 import { useProblems } from '../lib/useProblems';
+import { COMPROMISED_NOTE, beginReservedSet } from '../lib/sync/reserved';
+import { useCompromised, useStatuses, useSync } from '../lib/sync/useStatuses';
+import StatusChip from './StatusChip';
 import { useStore } from '../lib/useStore';
 import LogPanel from './LogPanel';
 import PlatformBadge from './PlatformBadge';
@@ -10,9 +13,15 @@ export type ReviewProblem = { id: string; title: string; url: string; source: st
 export default function ReviewIsland({ topic, set, problems }: { topic: string; set: 1 | 2 | 3; problems: ReviewProblem[] }) {
   const passed = useStore(() => getTopics()[topic]?.checkpointPassedOn ?? null, null);
   const logs = useProblems();
+  const st = useStatuses();
   const [showAnyway, setShowAnyway] = useState(false);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [open, setOpen] = useState<string | null>(null);
+  const { entry } = useSync();
+  const bad = useCompromised(problems.map((p) => p.id));
+  const visible = !!passed || showAnyway;
+  // A review set is "shown" once its problems are displayed (Section 10.1).
+  useEffect(() => { if (visible) beginReservedSet(problems.map((p) => p.id)); }, [visible]);
 
   if (!passed && !showAnyway) {
     return (
@@ -28,17 +37,18 @@ export default function ReviewIsland({ topic, set, problems }: { topic: string; 
       {problems.map((p) => {
         const log = logs[p.id];
         return (
-          <article key={p.id} className={`ladder-item${log?.status ? ` status-${log.status}` : ''}`}>
+          <article key={p.id} className={`ladder-item${st(p.id).status ? ` status-${st(p.id).status}` : ''}`}>
             <header>
               <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a> <PlatformBadge source={p.source} /> <span className="muted">{p.difficulty}</span>
             </header>
             <p>{p.summary}</p>
+            {bad.has(p.id) && <p className="notice">{COMPROMISED_NOTE(entry(p.id)?.firstAc ?? null)}</p>}
             {revealed[p.id] ? (
               <p className="drill-answer"><strong>Tool:</strong> {p.card}. <strong>Property:</strong> {p.property}</p>
             ) : (
               <button type="button" className="secondary" onClick={() => setRevealed({ ...revealed, [p.id]: true })}>Reveal tool and property</button>
             )}{' '}
-            <span>{log?.status ? STATUS_LABELS[log.status] : 'Not started'}</span>{' '}
+            <StatusChip view={st(p.id)} />{' '}
             <button type="button" className="secondary" onClick={() => setOpen(open === p.id ? null : p.id)}>Log</button>
             {open === p.id && <LogPanel id={p.id} log={log} onDone={() => setOpen(null)} />}
           </article>

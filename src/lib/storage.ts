@@ -8,7 +8,14 @@ export const KEYS = {
   contests: 'cp:v1:contests',
   settings: 'cp:v1:settings',
   exams: 'cp:v1:exams',
+  // Profile sync (PROFILE_SYNC_PLAN.md Section 4). These three travel in the progress export.
+  profiles: 'cp:v1:profiles',
+  shown: 'cp:v1:shown',
+  syncLc: 'cp:v1:sync:lc',
 } as const;
+
+/** Caches rebuilt by a full sync: not exported, cleared on import and reset. */
+export const SYNC_KEYS = { cf: 'cp:v1:sync:cf', ac: 'cp:v1:sync:ac', log: 'cp:v1:sync:log' } as const;
 
 export type ProblemStatus = 'attempted' | 'solved' | 'solved_hints' | 'editorial';
 export type Mistake = '' | 'recognition' | 'property' | 'implementation' | 'edge_case' | 'complexity';
@@ -37,11 +44,13 @@ export interface ProblemLog {
   property?: string;
   date?: string;
   note?: string;
+  /** The learner undid an automatic re-solve detection (PROFILE_SYNC_PLAN.md Section 9). */
+  resolveUndone?: boolean;
 }
 
 export const CHANGE_EVENT = 'cp-storage-change';
 
-function read<T>(key: string, fallback: T): T {
+export function read<T>(key: string, fallback: T): T {
   try {
     const raw = globalThis.localStorage?.getItem(key);
     return raw ? (JSON.parse(raw) as T) : fallback;
@@ -50,7 +59,7 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function write(key: string, value: unknown): boolean {
+export function write(key: string, value: unknown): boolean {
   try {
     globalThis.localStorage?.setItem(key, JSON.stringify(value));
     globalThis.dispatchEvent?.(new CustomEvent(CHANGE_EVENT, { detail: { key } }));
@@ -87,6 +96,8 @@ export interface TopicState {
   checkpointSolved?: string[];
   /** True once the timer ran out or the learner finished early, until results are submitted. */
   checkpointFinished?: boolean;
+  /** Problems already solved before they were assigned (PROFILE_SYNC_PLAN.md Section 10.2); they do not count. */
+  checkpointCompromised?: string[];
 }
 /** One phase exam attempt (PLAN.md Section 11.3), keyed by phase number. */
 export interface ExamState {
@@ -99,6 +110,7 @@ export interface ExamState {
   recognitionMisses?: string[];
   passedOn?: string | null;
   lastAttemptOn?: string | null;
+  compromised?: string[];
 }
 export interface DrillState {
   chosenCard?: string;
@@ -165,12 +177,15 @@ export function importAll(data: unknown): string | null {
   for (const k of [KEYS.problems, KEYS.topics, KEYS.drills, KEYS.settings]) if (!isObj(d[k])) return `Field ${k} has the wrong shape.`;
   // Exports made before the phase exams existed have no exams field.
   if (d[KEYS.exams] !== undefined && !isObj(d[KEYS.exams])) return `Field ${KEYS.exams} has the wrong shape.`;
+  for (const k of [KEYS.profiles, KEYS.shown, KEYS.syncLc]) if (d[k] !== undefined && !isObj(d[k])) return `Field ${k} has the wrong shape.`;
   if (!(d[KEYS.contests] === null || Array.isArray(d[KEYS.contests]))) return `Field ${KEYS.contests} has the wrong shape.`;
   try {
     for (const k of Object.values(KEYS)) {
       if (d[k] === null || d[k] === undefined) globalThis.localStorage?.removeItem(k);
       else globalThis.localStorage?.setItem(k, JSON.stringify(d[k]));
     }
+    // The submission caches are rebuilt by a full sync (PROFILE_SYNC_PLAN.md Section 4).
+    for (const k of [SYNC_KEYS.cf, SYNC_KEYS.ac, SYNC_KEYS.log]) globalThis.localStorage?.removeItem(k);
     globalThis.dispatchEvent?.(new CustomEvent(CHANGE_EVENT, { detail: { key: '*' } }));
     return null;
   } catch {
@@ -180,7 +195,7 @@ export function importAll(data: unknown): string | null {
 
 export function resetAll(): boolean {
   try {
-    for (const k of Object.values(KEYS)) globalThis.localStorage?.removeItem(k);
+    for (const k of [...Object.values(KEYS), ...Object.values(SYNC_KEYS)]) globalThis.localStorage?.removeItem(k);
     globalThis.dispatchEvent?.(new CustomEvent(CHANGE_EVENT, { detail: { key: '*' } }));
     return true;
   } catch {

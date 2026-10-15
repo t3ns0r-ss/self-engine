@@ -1,7 +1,7 @@
 # DESIGN_TRACKS_PLAN.md: Low Level Design (LLD) and High Level Design (HLD) Training
 
 **Audience:** the same autonomous coding agent that follows `PLAN.md`, in the same repository.
-**Learner:** Saurabh, a working backend engineer (C#/.NET day to day) preparing for design rounds at product-based companies and for deeper systems work. He has real production experience but little formal practice in design interviews and little formal vocabulary for design trade-offs.
+**Learner:** Saurabh, a working backend engineer (C#/.NET day to day, and comfortable in C++ from the CP programme) preparing for design rounds at product-based companies and for deeper systems work. He has real production experience but little formal practice in design interviews and little formal vocabulary for design trade-offs.
 **What this adds:** two new tracks on the existing site, built the same way as the competitive-programming (CP) programme in `PLAN.md`: strict dependency order, one idea at a time, recognition first, everything checkable checked by code.
 
 - **LLD track** (low level design): designing the classes, interfaces, and object interactions of one program, in code. Interview names: "machine coding", "object-oriented design".
@@ -53,7 +53,7 @@ Everything in `PLAN.md` that is not listed in 0.2 applies as written. In particu
 | Ids | LLD topics `L{phase}.{n}`, HLD topics `H{phase}.{n}` (e.g., `L2.1`, `H4.2`). File naming follows PLAN.md Section 3: `L2.1` → data file `L2-1.yaml`, lesson `lld/phase-2/L2-1-strategy.mdx`. Exercise ids are globally unique as `{topic}/{local-id}`, e.g., `L2.1/ex-3`. |
 | Lesson template | Section 8 of this file replaces PLAN.md Section 6 for LLD and HLD topics. |
 | "Problems" | Replaced by **exercises** (Section 10). There is no online judge for design, so each exercise ships with its own checker: tests, a numeric answer, or an evidence-based rubric. |
-| Code | LLD code is C#; HLD code is Python 3 (standard library only). Tested with the scripts in Section 9, not with `stress.sh`. |
+| Code | LLD code is C++17 (standard library only); HLD code is Python 3 (standard library only). Tested with the scripts in Section 9, not with `stress.sh`. |
 | Validation | Section 12 of this file adds to PLAN.md Section 12. |
 | Definition of Done | Section 16 of this file replaces PLAN.md Section 17.1 for these tracks. |
 
@@ -75,7 +75,7 @@ Take Saurabh from "I can build services that work" to "given an unfamiliar desig
 3. **Builds recognition:** each technique is tied to the force or need it answers, a decisive property, and kill signals.
 4. **Sticks:** spaced re-design of related prompts, recognition drills, and number drills.
 5. **Calibrated:** exercises rise in small steps, each adding one force.
-6. **Readable for Saurabh:** terms defined before use; abbreviations expanded on first use on each page; code or a diagram for every mechanism; every C# or Python construct that is not obvious explained in plain words. No pattern or architecture is explained by metaphor alone (no "like a pizza shop" without the code or diagram that follows immediately).
+6. **Readable for Saurabh:** terms defined before use; abbreviations expanded on first use on each page; code or a diagram for every mechanism; every C++ or Python construct that is not obvious explained in plain words. No pattern or architecture is explained by metaphor alone (no "like a pizza shop" without the code or diagram that follows immediately).
 
 ### 1.3 How CP ideas map to design
 | In CP | In LLD | In HLD |
@@ -129,15 +129,15 @@ Every worked example and reference solution ends with a short **decision record*
 Create `src/data/design.config.yaml`:
 
 ```yaml
-lld_language: csharp          # change only if Saurabh says so in PROGRESS.md (see below)
-dotnet_target: net10.0        # the current Long-Term Support (LTS) release; check Microsoft's .NET support policy page at D0
+lld_language: cpp             # change only if Saurabh says so in PROGRESS.md (see below)
+lld_standard: c++17           # same standard as the CP code (PLAN.md 8.1); flags -O2 -Wall -Wextra -Werror
 hld_language: python          # simulations and calculators; standard library only
 hld_python_min: "3.10"
 ```
 
 **Changing `lld_language`** is a deliberate project change, not a setting the scripts read: it requires updating Section 9.2's unit layout, block 3 of `test_design.sh`, the kit `test.sh` files, and the CI job. Record the change under "Questions for Saurabh" first and wait for approval.
 
-**`dotnet_target`:** .NET 8 support ends in November 2026, so new code targets the current LTS release. Confirm the version on Microsoft's support policy page during D0 and pin the SDK in CI (`actions/setup-dotnet` with an exact version) and in a `global.json`.
+**`lld_standard`:** C++17, as in the CP programme (`PLAN.md` 8.1), so every construct Saurabh already met there is available without explanation. CI uses the runner's `g++` (version recorded in `PROGRESS.md`). **History:** the LLD language was C# in Revision 2 of this file; Saurabh changed it to C++ on 2026-10-15, and the layout, `test_design.sh` block 3, the kit convention and the CI job were updated then.
 
 **Cross-track links:** a lesson may link to another track only in an optional final `## See also` section (Section 8). These links are never prerequisites.
 
@@ -148,7 +148,6 @@ hld_python_min: "3.10"
 ```
 .
 ├── DESIGN_TRACKS_PLAN.md       # this file
-├── global.json                 # pins the .NET SDK version
 ├── code/
 │   ├── _shared/constants.json  # generated from src/data/constants.yaml (Section 9.6); committed
 │   ├── L2.1/
@@ -266,7 +265,7 @@ Topics are ordered by `order` within the track; "requires" is explicit. Keywords
 | 37 | L6.1 | races-locks | standard | Race conditions, atomicity, visibility, locks, deadlock and lock ordering | L0.1 | race condition, deadlock, lock ordering |
 | 38 | L6.2 | thread-safe-objects | standard | Thread-safe objects: immutability, confinement, concurrent collections, lock granularity, optimistic concurrency (compare-and-swap, version numbers) | L6.1, L1.5 | lock granularity, compare-and-swap, optimistic concurrency |
 | 39 | L6.3 | producer-consumer | standard | Producer–consumer, blocking queues, thread pools | L6.2 | blocking queue, thread pool |
-| 40 | L6.4 | async | standard | Async/await, timeouts, cancellation | L6.3 | async/await, cancellation token |
+| 40 | L6.4 | futures | standard | Futures and promises, timeouts, cancellation flags | L6.3 | future and promise, cancellation flag |
 
 ### Phase L7: Whole systems (integration)
 Each L7 lesson opens with "This topic combines X and Y." linking both. Each family lesson teaches a **family skeleton** (the base design most prompts of that family share) plus the three mistakes that recur in that family; its ladder is one evolving system (Section 10.2).
@@ -588,7 +587,7 @@ Adjust the relative import depth to the folder depth. `light` topics keep headin
 As `PLAN.md` 6.2: `<WhatYouNeed>` from `uses`; "What this topic does not cover" is the only place later keywords may appear.
 
 ### 8.3 Section 3: Definitions
-As `PLAN.md` 6.3. LLD definitions include a 3–6 line C# example. HLD definitions include a number or tiny diagram when the term is quantitative ("p99 latency: the value below which 99 of every 100 requests fall").
+As `PLAN.md` 6.3. LLD definitions include a 3–6 line C++ example. HLD definitions include a number or tiny diagram when the term is quantitative ("p99 latency: the value below which 99 of every 100 requests fall").
 
 ### 8.4 Section 4: Principles and claims
 Every claim is numbered `Claim {topic}.{n}`, has an entry in `claims` (Section 7.2), and uses this layout:
@@ -621,7 +620,7 @@ As `PLAN.md` 6.5 (as revised), with the field names of Section 7.2. Also:
 - Negative examples include "the simplest design is correct here" instances (`correct_tool: {simplest: …}`).
 
 ### 8.6 Section 6: Reference designs
-- **LLD:** for each pattern or principle, in order: a class diagram (Mermaid); a sequence diagram of one call; the plain design and then the designed version, both as tested code via `<Code>` imports of the unit files; **How it works** (walk through the names); **C# details explained** (every generic, delegate, LINQ call, `record`, default interface member, attribute, or other non-obvious construct, in plain words, or "None beyond earlier topics"); **Tested** (the commands and result).
+- **LLD:** for each pattern or principle, in order: a class diagram (Mermaid); a sequence diagram of one call; the plain design and then the designed version, both as tested code via `<Code>` imports of the unit files; **How it works** (walk through the names); **C++ details explained** (every template, lambda, smart pointer, `std::function`, `override`, `= default`/`= delete`, move operation, or other construct not met in the CP lessons, in plain words, or "None beyond earlier topics"); **Tested** (the commands and result).
 - **HLD:** a Mermaid architecture diagram; the read path and the write path as numbered steps; the data model; the capacity table from a calc unit; the failure table (what happens when each component fails, how it is detected, what the user sees).
 - Always show the simplest alternative first, then the designed version, then the measured or computed difference.
 
@@ -683,17 +682,19 @@ As `PLAN.md` 6.14. LLD groups are **symptoms** ("a change keeps editing the same
 - Units use only constructs explained in earlier lessons of the same track; new constructs are explained where first used.
 - Comments in code that state a problem use a multi-line block without a leading asterisk on each line.
 
-### 9.2 LLD solution units (C#)
-A solution unit is a .NET solution with a library project and an xUnit test project:
+### 9.2 LLD solution units (C++)
+A solution unit is a folder with a marker file, headers and sources that contain **no `main`**, and test files:
 ```
 code/L2.1/caller-unchanged/
-├── CallerUnchanged.sln
-├── src/CallerUnchanged/CallerUnchanged.csproj        # TargetFramework from design.config.yaml (net10.0); Nullable enable; TreatWarningsAsErrors true
-└── tests/CallerUnchanged.Tests/CallerUnchanged.Tests.csproj
+├── cpp-unit.yaml                 # marker (may be empty); makes test_design.sh build and run this unit
+├── src/*.hpp, src/*.cpp          # the design under test; no main()
+└── tests/*.cpp                   # exactly one of them defines MINI_TEST_MAIN before including mini_test.hpp
 ```
-Rules: one public type per file; no `static` mutable state (except where a mistake-catalogue entry shows why); PascalCase names; interfaces begin with `I`; every language feature beyond earlier lessons explained where first used (`record`, pattern matching, LINQ, `async`, and so on). At least 6 tests per unit, including edge cases and one test per behaviour a mistake-catalogue entry breaks.
+`scripts/test_design.sh` builds `src/*.cpp` and `tests/*.cpp` with `g++ -std=c++17 -O2 -Wall -Wextra -Werror -fsanitize=address,undefined -fno-sanitize-recover=undefined -I src -I code/_shared` and runs the result; exit 0 means every test passed. Tests use `code/_shared/mini_test.hpp` (a header of about 100 lines: `TEST`, `CHECK`, `CHECK_EQ`, `CHECK_THROWS`; standard library only), which L0.8 explains and which earlier lessons do not need.
 
-**No C# in this plan was compiled** (the workspace used to write it had no .NET SDK). Your first LLD unit must build and pass in CI (PLAN.md 14.1, with `actions/setup-dotnet` pinned to the version in `global.json`). If a snippet here does not compile, fix it; the intent is what counts.
+Rules: one class per header, with `#pragma once`; ownership is explicit (`std::unique_ptr` for owned polymorphic members, references or `std::shared_ptr` only with a stated reason); interfaces are abstract classes with a virtual destructor and names beginning with `I`; no mutable global state (except where a mistake-catalogue entry shows why); `snake_case` functions, `PascalCase` types; every construct beyond the CP lessons is explained where first used. At least 6 tests per unit, including edge cases and one test per behaviour a mistake-catalogue entry breaks. Concurrency units (L6) also get a second build with `-fsanitize=thread` when their `cpp-unit.yaml` contains the line `thread_sanitizer: true`.
+
+**No C++ in this plan was compiled.** Your first LLD unit must build and pass locally and in CI. If a snippet here does not compile, fix it; the intent is what counts.
 
 ### 9.3 LLD pattern units (the measured comparison)
 Required only in `measured` topics: at least two units with different `domain`s, at least one with 3 or more scenarios.
@@ -802,14 +803,14 @@ code/H0.2/calc-photo-uploads/{calc.py, expected.txt}
 - Formulas are written as comments. Round only in the final printed value, and say how.
 
 ### 9.7 `scripts/test_design.sh` (use exactly; tested)
-Runs every `check.py` and `calc.py` unit (standard output must equal `expected.txt`), every pattern unit (regenerated `change_cost.sh` output must equal `measured-*.tsv`), and every C# solution (`dotnet test`).
+Runs every `check.py` and `calc.py` unit (standard output must equal `expected.txt`), every pattern unit (regenerated `change_cost.sh` output must equal `measured-*.tsv`), and every C++ solution unit (`cpp-unit.yaml`: build with `g++`, run the tests).
 ```bash
 #!/usr/bin/env bash
 # Usage: test_design.sh [code-root]   (default: code)
 # Runs every design code unit under the root:
 #   1. claim/calc units: check.py or calc.py; stdout must equal expected.txt exactly
 #   2. pattern units (unit.yaml with "kind: pattern"): change_cost.sh stdout must equal measured-<variant>.tsv
-#   3. C# solutions (*.sln): dotnet test   (edit this block if lld_language changes; see Section 3)
+#   3. C++ solution units (cpp-unit.yaml): g++ build with sanitizers, run tests   (edit this block if lld_language changes; see Section 3)
 set -euo pipefail
 ROOT="${1:-code}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -834,10 +835,25 @@ while IFS= read -r y; do
   done
 done < <(find "$ROOT" -name unit.yaml | sort)
 
-while IFS= read -r sln; do
-  command -v dotnet > /dev/null || { echo "dotnet not installed; cannot test $sln"; fail=1; continue; }
-  dotnet test "$sln" --nologo -warnaserror > /dev/null || { echo "FAIL (dotnet test): $sln"; fail=1; }
-done < <(find "$ROOT" -name '*.sln' | sort)
+CXX_STD="${CXX_STD:-c++17}"
+SHARED="$HERE/../code/_shared"
+while IFS= read -r m; do
+  d="$(dirname "$m")"
+  srcs=(); shopt -s nullglob; srcs=("$d"/src/*.cpp "$d"/tests/*.cpp); shopt -u nullglob
+  if [ ! -d "$d/tests" ] || ! ls "$d"/tests/*.cpp > /dev/null 2>&1; then echo "MISSING tests/*.cpp: $d"; fail=1; continue; fi
+  bin="$(mktemp)"; log="$(mktemp)"
+  sans="-fsanitize=address,undefined -fno-sanitize-recover=undefined"
+  if ! g++ -std="$CXX_STD" -O2 -g -Wall -Wextra -Werror $sans -I "$d/src" -I "$SHARED" "${srcs[@]}" -o "$bin" > "$log" 2>&1; then
+    echo "FAIL (build): $d"; cat "$log"; fail=1
+  elif ! "$bin" > "$log" 2>&1; then
+    echo "FAIL (tests): $d"; cat "$log"; fail=1
+  elif grep -q '^thread_sanitizer: true' "$m"; then
+    if ! g++ -std="$CXX_STD" -O1 -g -Wall -Wextra -Werror -fsanitize=thread -I "$d/src" -I "$SHARED" "${srcs[@]}" -o "$bin" > "$log" 2>&1 || ! "$bin" > "$log" 2>&1; then
+      echo "FAIL (thread sanitizer): $d"; cat "$log"; fail=1
+    fi
+  fi
+  rm -f "$bin" "$log"
+done < <(find "$ROOT" -name cpp-unit.yaml | sort)
 
 [ "$fail" -eq 0 ] && echo "All design code units passed" || exit 1
 ```
@@ -916,8 +932,8 @@ Design has no online judge, so the exercises are authored here, and each ships w
 exercises/L2.1/ex-3/
 ├── README.md        # the prompt (own words) and the public interface contract
 ├── test.sh          # bash test.sh <absolute-solution-dir>; exit 0 means all tests pass
-├── starter/         # compiling stubs that throw NotImplementedException
-├── tests/           # xUnit tests, behaviour only, through the public interface
+├── starter/         # compiling stubs that throw std::logic_error("not implemented")
+├── tests/           # mini_test.hpp tests, behaviour only, through the public interface
 └── min_mutants      # optional; default 3
 reference/L2.1/ex-3/                         # reference solution
 reference/L2.1/ex-3/wrong-1.md … wrong-3.md  # full wrong answers, for rubric calibration (Section 10.7)
@@ -935,7 +951,7 @@ Each exercise's reference contains `SOLUTION.md`: the design in 10–25 lines; a
 Real design rounds begin with questions. Every `build`, `deep_dive`, `scale_ladder`, and `mock` exercise has a `clarifying` list of at least 4 entries, at least 2 marked `critical: true` (the design changes with the answer). On the site, the learner first types his own questions, then reveals the list, then ticks the critical ones he asked. The count feeds the rubric criterion "asked the questions that change the design".
 
 ### 10.6 Sources
-- **LLD:** the Gang of Four book (cite by pattern name and intent), Fowler's refactoring catalogue, the C# and .NET documentation, and the Liskov and Liskov–Wing papers for the substitution principle. Open each before citing.
+- **LLD:** the Gang of Four book (cite by pattern name and intent), Fowler's refactoring catalogue, the C++ standard library reference (cppreference.com) and the C++ Core Guidelines, and the Liskov and Liskov–Wing papers for the substitution principle. Open each before citing.
 - **HLD:** primary sources for facts about real systems. Candidate anchors, **to be verified** (open each; record the exact title, URL, and `accessed` date; drop any you cannot open): Dynamo (Amazon, 2007); Bigtable (Google, 2006); the Google File System (2003); MapReduce (2004); Spanner (2012); the Raft paper (2014); the Kafka paper (2011); "Scaling Memcache at Facebook" (2013); TAO (2013); Lamport, "Time, Clocks, and the Ordering of Events" (1978); Karger et al. on consistent hashing (1997); Flajolet et al. on HyperLogLog (2007); Shapiro et al. on CRDTs (2011); the Google SRE book; and the documentation of any real system a lesson names.
 - Never copy figures. Never state a number about a real product from memory.
 - Common interview prompts (URL shortener, news feed, parking lot) are common knowledge; write every prompt in your own words. `inspired_by` is optional and is a link, never copied text.
@@ -1072,7 +1088,7 @@ Every block below includes the phase intros and phase exams for the phases it co
 
 | Milestone | Work | Gate |
 |---|---|---|
-| **D0** | Infrastructure: curriculum rows (99 topics), schemas, components (Section 11), the three scripts of Section 9 (copied exactly and run on a synthetic example before first use), `constants_export.mjs`, `keyword_collisions.mjs`, CI (pinned .NET SDK and Python), `product-names.yaml`, Mermaid rendering, `rubrics.yaml`, `design.config.yaml`, `global.json`. Then the **exercise inventory** for all 99 topics (Section 10.10). | ⏸ "D0 review" → `waiting`; continue on `approved`. At this gate Saurabh also confirms `lld_language` and may change the order of blocks below. |
+| **D0** | Infrastructure: curriculum rows (99 topics), schemas, components (Section 11), the three scripts of Section 9 (copied exactly and run on a synthetic example before first use), `constants_export.mjs`, `keyword_collisions.mjs`, CI (`g++` and Python), `product-names.yaml`, Mermaid rendering, `rubrics.yaml`, `design.config.yaml`, `code/_shared/mini_test.hpp`, `scripts/cpp_kit_test.sh`. Then the **exercise inventory** for all 99 topics (Section 10.10). | ⏸ "D0 review" → `waiting`; continue on `approved`. At this gate Saurabh also confirms `lld_language` and may change the order of blocks below. |
 | **DL1** | **L2.1 Strategy as the LLD exemplar**, all 10 steps; earlier topics appear as "coming soon" links. | ⏸ |
 | **DH1** | **H4.2 Quorums as the HLD exemplar**, all 10 steps. | ⏸ |
 | **L-A** | L0.1–L0.8 | ⏸ |
@@ -1110,7 +1126,7 @@ The default order alternates LLD and HLD blocks. The PLAN.md pacing rule applies
 - [ ] Ladder: one new force per rung, at least one "no new structure" rung. Drill: quotas of Section 8.10.
 - [ ] Every exercise has an allowed checker combination; kits pass the kit check; numeric answers come from calc units; rubrics calibrated; every cited source was opened (`accessed` set).
 - [ ] No later-topic reference outside "does not cover"; header "Builds on" and "What you need" identical.
-- [ ] Every abbreviation expanded on first use on the page; every term defined before use; every C# or Python construct explained in plain words.
+- [ ] Every abbreviation expanded on first use on the page; every term defined before use; every C++ or Python construct explained in plain words.
 - [ ] Hints, timers, rubric scoring, reveal gating, export, and review dates work in the browser (desktop and a narrow mobile width).
 - [ ] Honesty check and reading test done; `PROGRESS.md` updated; merged and tagged.
 
@@ -1132,7 +1148,7 @@ The default order alternates LLD and HLD blocks. The PLAN.md pacing rule applies
 | Kit tests pass a mutant | The tests are too weak: add a test that fails on the mutant. Never delete the mutant. |
 | Kit tests fail a valid alternative design | The tests depend on internal structure: rewrite them against the public interface. |
 | A rubric reference scores below 90%, or a wrong answer scores 60% or more | Rewrite the anchors and recalibrate. |
-| .NET or Python missing in your environment | Install it (CI: setup actions; locally: README). If impossible, stop code work for that track, note it under "Blocked", and continue only with prose that does not depend on running code. Never ship untested code. |
+| `g++` or Python missing in your environment | Install it (CI: runner packages; locally: README). If impossible, stop code work for that track, note it under "Blocked", and continue only with prose that does not depend on running code. Never ship untested code. |
 | A look-alike or kill signal needs a later topic | Describe the condition without naming the later tool, or move the pair to the later topic's lesson. |
 | A prompt closely resembles a copyrighted exam or book exercise | Rewrite it in a different domain with different numbers. |
 
@@ -1140,7 +1156,7 @@ The default order alternates LLD and HLD blocks. The PLAN.md pacing rule applies
 
 ## Appendix A: sample LLD Recognition Card (Strategy), with measured numbers
 
-The numbers below were measured by running `change_cost.sh` on an equivalent **Java** implementation of the pricing example, because the workspace used to write this plan had no .NET SDK. The C# pattern unit must be re-measured, and its numbers replace these; expect the same shape, not identical line counts. This is one domain; the lesson needs a second (Section 9.3).
+The numbers below were measured by running `change_cost.sh` on an equivalent **Java** implementation of the pricing example, because the workspace used to write this plan had no toolchain for the language it then used. The C++ pattern unit must be re-measured, and its numbers replace these; expect the same shape, not identical line counts. This is one domain; the lesson needs a second (Section 9.3).
 
 **Base designs** (same behaviour: hourly plan at 20 per started hour, daily plan at 100 per started day).
 

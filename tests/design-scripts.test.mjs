@@ -158,25 +158,105 @@ test('test_design: claim/calc outputs, pattern units and missing files', () => {
   assert.match(r.stdout, /MISSING expected\.txt: .*calc-a/);
 });
 
-test('test_design: a pattern unit without variants, and a .sln when dotnet is missing, both fail', () => {
-  const root = tmp();
-  const code = join(root, 'code');
+test('test_design: a pattern unit without variants fails', () => {
+  const code = join(tmp(), 'code');
   write(join(code, 'L1.1', 'p', 'unit.yaml'), 'kind: pattern\ndomain: demo\n');
-  let r = sh('test_design.sh', [code]);
+  const r = sh('test_design.sh', [code]);
   assert.notEqual(r.status, 0);
   assert.match(r.stdout, /MISSING variants/);
+});
 
-  rmSync(join(code, 'L1.1'), { recursive: true });
-  write(join(code, 'L1.2', 'sol', 'Sol.sln'), '');
-  // PATH with only the tools the script needs, none of which is dotnet
-  const bin = join(root, 'bin'); mkdirSync(bin);
-  for (const t of ['bash', 'find', 'sort', 'dirname', 'grep', 'sed', 'tr', 'diff', 'mktemp', 'rm', 'cat', 'python3']) {
-    const p = spawnSync('bash', ['-c', `command -v ${t}`], { encoding: 'utf8' }).stdout.trim();
-    if (p) spawnSync('ln', ['-s', p, join(bin, t)]);
-  }
-  r = sh('test_design.sh', [code], { env: { PATH: bin } });
+// C++ solution units (cpp-unit.yaml): header-only design under src/, tests with mini_test.hpp.
+const COUNTER_HPP = `#pragma once
+#include <stdexcept>
+class Counter {
+public:
+    void add(int n) { if (n < 0) throw std::invalid_argument("negative"); total_ += n; }
+    int total() const { return total_; }
+private:
+    int total_ = 0;
+};
+`;
+const testFile = (body) => `#define MINI_TEST_MAIN\n#include "mini_test.hpp"\n#include "counter.hpp"\n${body}\n`;
+const PASSING = `
+TEST(adds) { Counter c; c.add(2); c.add(3); CHECK_EQ(c.total(), 5); }
+TEST(rejects_negative) { Counter c; CHECK_THROWS(c.add(-1), std::invalid_argument); }
+TEST(starts_at_zero) { Counter c; CHECK(c.total() == 0); }
+`;
+function cppUnit(root, body = PASSING, marker = '') {
+  const d = join(root, 'code', 'L0.1', 'counter');
+  write(join(d, 'cpp-unit.yaml'), marker);
+  write(join(d, 'src', 'counter.hpp'), COUNTER_HPP);
+  write(join(d, 'tests', 'counter_test.cpp'), testFile(body));
+  return d;
+}
+
+test('test_design: a passing C++ unit passes, and the harness reports the count', () => {
+  const root = tmp(); cppUnit(root);
+  const r = sh('test_design.sh', [join(root, 'code')]);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(r.stdout.trim(), 'All design code units passed');
+});
+test('test_design: a failing C++ test is reported with the failing check and values', () => {
+  const root = tmp(); cppUnit(root, PASSING + 'TEST(wrong) { Counter c; c.add(1); CHECK_EQ(c.total(), 2); }');
+  const r = sh('test_design.sh', [join(root, 'code')]);
   assert.notEqual(r.status, 0);
-  assert.match(r.stdout, /dotnet not installed; cannot test .*Sol\.sln/);
+  assert.match(r.stdout, /FAIL \(tests\): .*counter/);
+  assert.match(r.stdout, /FAIL wrong: .*c\.total\(\) == 2 failed: 1 vs 2/);
+  assert.match(r.stdout, /4 tests, 1 failed/);
+});
+test('test_design: a CHECK_THROWS that does not throw fails; an uncaught exception is reported', () => {
+  const root = tmp(); cppUnit(root, 'TEST(a) { Counter c; CHECK_THROWS(c.add(1), std::invalid_argument); }\nTEST(b) { throw std::runtime_error("boom"); }');
+  const r = sh('test_design.sh', [join(root, 'code')]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stdout, /FAIL a: .*did not throw std::invalid_argument/);
+  assert.match(r.stdout, /FAIL b: unexpected exception: boom/);
+});
+test('test_design: a compile error and a warning (-Werror) both fail the build', () => {
+  let root = tmp(); cppUnit(root, 'TEST(a) { Counter c; c.nope(); }');
+  let r = sh('test_design.sh', [join(root, 'code')]);
+  assert.notEqual(r.status, 0); assert.match(r.stdout, /FAIL \(build\)/);
+  root = tmp(); cppUnit(root, 'TEST(a) { int unused; }');
+  r = sh('test_design.sh', [join(root, 'code')]);
+  assert.notEqual(r.status, 0); assert.match(r.stdout, /FAIL \(build\)/); assert.match(r.stdout, /unused variable/);
+});
+test('test_design: sanitizers catch undefined behaviour that a plain run would miss', () => {
+  const root = tmp(); cppUnit(root, 'TEST(a) { volatile int big = 2147483647; int next = big + 1; CHECK(next != 12345); }');
+  const r = sh('test_design.sh', [join(root, 'code')]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stdout, /FAIL \(tests\)/);
+  assert.match(r.stdout, /signed integer overflow/);
+});
+test('test_design: a unit without tests is reported', () => {
+  const root = tmp(); const d = cppUnit(root); rmSync(join(d, 'tests'), { recursive: true });
+  const r = sh('test_design.sh', [join(root, 'code')]);
+  assert.notEqual(r.status, 0); assert.match(r.stdout, /MISSING tests\/\*\.cpp/);
+});
+test('test_design: thread_sanitizer: true adds a second build that catches a data race', () => {
+  const racy = `#include <thread>
+int shared = 0;
+TEST(race) { std::thread a([] { for (int i = 0; i < 1000; ++i) ++shared; }); std::thread b([] { for (int i = 0; i < 1000; ++i) ++shared; }); a.join(); b.join(); CHECK(shared > 0); }`;
+  let root = tmp(); cppUnit(root, racy);
+  let r = sh('test_design.sh', [join(root, 'code')]);
+  assert.equal(r.status, 0, r.stdout + r.stderr); // without the marker the race goes unnoticed
+  root = tmp(); cppUnit(root, racy, 'thread_sanitizer: true\n');
+  r = sh('test_design.sh', [join(root, 'code')]);
+  assert.notEqual(r.status, 0);
+  assert.match(r.stdout, /FAIL \(thread sanitizer\)/);
+});
+
+// ---------------------------------------------------------------- cpp_kit_test.sh
+test('cpp_kit_test: runs tests against a solution dir; starter stubs fail, a reference passes', () => {
+  const root = tmp();
+  const tests = join(root, 'tests');
+  write(join(tests, 't.cpp'), '#define MINI_TEST_MAIN\n#include "mini_test.hpp"\n#include "math.hpp"\nTEST(sq) { CHECK_EQ(square(3), 9); }\nTEST(neg) { CHECK_EQ(square(-2), 4); }\n');
+  write(join(root, 'ref', 'math.hpp'), '#pragma once\ninline int square(int x) { return x * x; }\n');
+  write(join(root, 'starter', 'math.hpp'), '#pragma once\n#include <stdexcept>\ninline int square(int) { throw std::logic_error("not implemented"); }\n');
+  write(join(root, 'mutant', 'math.hpp'), '#pragma once\ninline int square(int x) { return x < 0 ? 0 : x * x; }\n');
+  const run = (d) => sh('cpp_kit_test.sh', [join(root, d), tests]);
+  assert.equal(run('ref').status, 0);
+  assert.notEqual(run('starter').status, 0);
+  assert.notEqual(run('mutant').status, 0);
 });
 
 // ---------------------------------------------------------------- exercise_kit_check.sh

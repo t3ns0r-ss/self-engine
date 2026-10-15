@@ -3,7 +3,7 @@
 # Runs every design code unit under the root:
 #   1. claim/calc units: check.py or calc.py; stdout must equal expected.txt exactly
 #   2. pattern units (unit.yaml with "kind: pattern"): change_cost.sh stdout must equal measured-<variant>.tsv
-#   3. C# solutions (*.sln): dotnet test   (edit this block if lld_language changes; see Section 3)
+#   3. C++ solution units (cpp-unit.yaml): g++ build with sanitizers, run tests   (edit this block if lld_language changes; see Section 3)
 set -euo pipefail
 ROOT="${1:-code}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -28,9 +28,24 @@ while IFS= read -r y; do
   done
 done < <(find "$ROOT" -name unit.yaml | sort)
 
-while IFS= read -r sln; do
-  command -v dotnet > /dev/null || { echo "dotnet not installed; cannot test $sln"; fail=1; continue; }
-  dotnet test "$sln" --nologo -warnaserror > /dev/null || { echo "FAIL (dotnet test): $sln"; fail=1; }
-done < <(find "$ROOT" -name '*.sln' | sort)
+CXX_STD="${CXX_STD:-c++17}"
+SHARED="$HERE/../code/_shared"
+while IFS= read -r m; do
+  d="$(dirname "$m")"
+  srcs=(); shopt -s nullglob; srcs=("$d"/src/*.cpp "$d"/tests/*.cpp); shopt -u nullglob
+  if [ ! -d "$d/tests" ] || ! ls "$d"/tests/*.cpp > /dev/null 2>&1; then echo "MISSING tests/*.cpp: $d"; fail=1; continue; fi
+  bin="$(mktemp)"; log="$(mktemp)"
+  sans="-fsanitize=address,undefined -fno-sanitize-recover=undefined"
+  if ! g++ -std="$CXX_STD" -O2 -g -Wall -Wextra -Werror $sans -I "$d/src" -I "$SHARED" "${srcs[@]}" -o "$bin" > "$log" 2>&1; then
+    echo "FAIL (build): $d"; cat "$log"; fail=1
+  elif ! "$bin" > "$log" 2>&1; then
+    echo "FAIL (tests): $d"; cat "$log"; fail=1
+  elif grep -q '^thread_sanitizer: true' "$m"; then
+    if ! g++ -std="$CXX_STD" -O1 -g -Wall -Wextra -Werror -fsanitize=thread -I "$d/src" -I "$SHARED" "${srcs[@]}" -o "$bin" > "$log" 2>&1 || ! "$bin" > "$log" 2>&1; then
+      echo "FAIL (thread sanitizer): $d"; cat "$log"; fail=1
+    fi
+  fi
+  rm -f "$bin" "$log"
+done < <(find "$ROOT" -name cpp-unit.yaml | sort)
 
 [ "$fail" -eq 0 ] && echo "All design code units passed" || exit 1

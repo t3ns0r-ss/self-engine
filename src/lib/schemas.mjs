@@ -229,7 +229,7 @@ export const glossaryFile = z.array(glossaryEntry);
 // ---- Design-track data files (DESIGN_TRACKS_PLAN.md Sections 3, 7.4, 7.5, 10.7) ----
 export const designConfig = z.strictObject({
   lld_language: z.string().min(1),
-  dotnet_target: z.string().regex(/^net\d+\.\d+$/),
+  lld_standard: z.string().regex(/^c\+\+(14|17|20|23)$/),
   hld_language: z.string().min(1),
   hld_python_min: z.string().regex(/^3\.\d+$/),
 });

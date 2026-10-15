@@ -31,6 +31,12 @@ Next action: Saurabh runs the LeetCode snippet from the Profiles page (gate S4),
 | R1 retrofit of the other 24 topics (0.1–3.8) | done, approved | 2026-10-10 |
 | Bank fill review | approved (10 complete, 15 short with exhaustion records) | 2026-10-09 |
 
+## Design tracks (DESIGN_TRACKS_PLAN.md)
+| Milestone | Status |
+|---|---|
+| D0 infrastructure | in progress (2026-10-15). Done: the plan file, `change_cost.sh`, `test_design.sh`, `exercise_kit_check.sh` (exact code, 15 tests on synthetic units), 99 curriculum rows with `track` (47 LLD, 52 HLD) and their validator (order, same-track requires, kinds, capstone, keyword collisions D11), `design.config.yaml`, `global.json`, `rubrics.yaml` (4 rubrics, D12), `constants.yaml` + `constants_export.mjs` (build checks the JSON, D6 data part), `product-names.yaml`, `keyword_collisions.mjs`, CI job `design`. Not done: exercise components and pages (Section 11), Mermaid rendering (D10), D1/D2/D4/D5/D7/D8/D9/D13/D14 checks (they need topic and exercise files to exist), the exercise inventory (Section 10.10) |
+| D0 review gate | not reached |
+
 ## Profile sync (PROFILE_SYNC_PLAN.md)
 | Milestone | Status |
 |---|---|
@@ -46,6 +52,8 @@ Tests added: `tests/sync-*.test.mjs`, `tests/validate-sync.test.mjs` (node:test,
 
 ## Saurabh is studying
 - Topic: — (not reported yet)
+- LLD topic: — (not started)
+- HLD topic: — (not started)
 
 ## Topics
 | id | status | merged commit |
@@ -212,6 +220,7 @@ Tests added: `tests/sync-*.test.mjs`, `tests/validate-sync.test.mjs` (node:test,
 - Bank 4.7 is short (reserved: checkpoint 1, lookalike 2, review 2; no exam): candidates are being researched; I add reserved problems with notes (as for 4.6) and flag them for review. Exam problems for Phase 4 come from the reserved exam sets of the 4.1–4.5 banks.
 
 ## Blocked
+- **.NET SDK not installable in the cloud session (2026-10-15).** `dot.net`/`builds.dotnet.microsoft.com` is refused by the session's network policy and apt has no `dotnet-sdk-10.0`. Per DESIGN_TRACKS_PLAN.md Section 17, no C# unit can be built or tested here, so LLD code work (L2.1 exemplar and every LLD solution/kit) waits. CI has the pinned SDK (`global.json`), so C# can be tested there. Fix: allow `builds.dotnet.microsoft.com` (and `dotnetcli.azureedge.net` if the installer asks) in the environment's network settings, or tell me to rely on CI.
 - Codeforces problem pages (and LeetCode's problem pages) answer automated clients with a bot check, so their statements can't be opened from the build environment. Decided with Saurabh: Codeforces problems are checked through the official API (exact title, rating, tags) and marked `source_check: api`, shown with † in the lists; their solution notes need a spot-check on the page. LeetCode is checked through LeetCode's own question data (the same title, difficulty, premium flag, and statement its page shows); premium problems are skipped.
 - Note for whoever maintains the environment: an attempt to look into the Codeforces bot check was stopped by the session's safety checks and was not pursued; some CA certificates added to the container's NSS store during that attempt were left in place (removing them was also blocked). They live only in this temporary container.
 

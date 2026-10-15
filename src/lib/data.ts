@@ -4,10 +4,12 @@ import { getCollection } from 'astro:content';
 import { existsSync, readFileSync } from 'node:fs';
 import { validateAll } from './validate.mjs';
 import { validateTopics } from './validate-topics.mjs';
+import { validateDesignCurriculum } from './validate-design.mjs';
 import { findLessons } from './lessons.mjs';
 import { url } from './url';
 
 export type Topic = { order: number; id: string; phase: number; slug: string; title: string; requires: string[]; keywords: string[]; target_rating: [number, number] };
+export type DesignTopic = { track: 'lld' | 'hld'; order: number; id: string; phase: string; slug: string; kind: 'measured' | 'standard' | 'light' | 'capstone'; title: string; requires: string[]; keywords: string[] };
 export type Pattern = { id: string; name: string; description: string; precondition: string };
 export type Source = 'codeforces' | 'atcoder' | 'cses' | 'leetcode';
 export type BankProblem = {
@@ -66,6 +68,7 @@ export type FullProblem = TopicProblem & Pick<BankProblem, 'source' | 'title' | 
 
 export type SiteData = {
   curriculum: Topic[];
+  designCurriculum: DesignTopic[];
   patterns: Record<string, { topic: string; patterns: Pattern[] }>;
   banks: Record<string, BankFile>;
   topics: Record<string, TopicFile>;
@@ -78,7 +81,10 @@ let cache: Promise<SiteData> | undefined;
 
 export function loadData(): Promise<SiteData> {
   cache ??= (async () => {
-    const curriculum = (await getCollection('curriculum')).map((e) => e.data as Topic).sort((a, b) => a.order - b.order);
+    const allRows = (await getCollection('curriculum')).map((e) => e.data);
+    // The CP validators and components only ever see the CP track; design rows are validated by validate-design.mjs.
+    const curriculum = allRows.filter((r) => r.track === 'cp').map((r) => r as unknown as Topic).sort((a, b) => a.order - b.order);
+    const designCurriculum = (allRows.filter((r) => r.track !== 'cp') as unknown as DesignTopic[]).sort((a, b) => a.track.localeCompare(b.track) || a.order - b.order);
     const patterns = Object.fromEntries((await getCollection('bankPatterns')).map((e) => [e.data.topic, e.data]));
     const banks = Object.fromEntries((await getCollection('bank')).map((e) => [e.data.topic, e.data as BankFile]));
     const topics = Object.fromEntries((await getCollection('topics')).map((e) => [e.data.id, e.data as TopicFile]));
@@ -94,11 +100,12 @@ export function loadData(): Promise<SiteData> {
       ...lessonErrors,
       ...validateAll({ curriculum, patterns, banks, notes }),
       ...validateTopics({ curriculum, patterns, banks, topics, glossary, lessons }),
+      ...validateDesignCurriculum(designCurriculum),
     ];
     if (errors.length) throw new Error(`Data validation failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
     const bankById = new Map<string, BankProblem>();
     for (const b of Object.values(banks)) for (const p of b.problems) bankById.set(p.id, p);
-    return { curriculum, patterns, banks, topics, glossary, lessons, bankById };
+    return { curriculum, designCurriculum, patterns, banks, topics, glossary, lessons, bankById };
   })();
   return cache;
 }

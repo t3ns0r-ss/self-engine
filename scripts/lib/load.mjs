@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { curriculumFile, patternFile, bankFile, topicFile, glossaryFile } from '../../src/lib/schemas.mjs';
+import { designConfig, rubricsFile, constantsFile, productNamesFile, curriculumFile, patternFile, bankFile, topicFile, glossaryFile } from '../../src/lib/schemas.mjs';
 import { findLessons } from '../../src/lib/lessons.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -31,7 +31,9 @@ const yamlFiles = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.e
 /** @returns {{curriculum, patterns, banks, notes, topics, glossary, lessons, errors: string[]}} */
 export function loadAll() {
   const errors = [];
-  const curriculum = parseWith(curriculumFile, join(DATA, 'curriculum.yaml'), errors) ?? [];
+  const allRows = parseWith(curriculumFile, join(DATA, 'curriculum.yaml'), errors) ?? [];
+  const curriculum = allRows.filter((r) => r.track === 'cp');
+  const designCurriculum = allRows.filter((r) => r.track !== 'cp');
   const patterns = {};
   for (const f of yamlFiles(join(DATA, 'bank', 'patterns'))) {
     const d = parseWith(patternFile, join(DATA, 'bank', 'patterns', f), errors);
@@ -63,5 +65,11 @@ export function loadAll() {
   const glossary = existsSync(glossaryPath) ? parseWith(glossaryFile, glossaryPath, errors) ?? [] : [];
   const { lessons, errors: lessonErrors } = findLessons(ROOT);
   errors.push(...lessonErrors);
-  return { curriculum, patterns, banks, notes, topics, glossary, lessons, errors };
+  const designData = {
+    config: parseWith(designConfig, join(DATA, 'design.config.yaml'), errors),
+    rubrics: parseWith(rubricsFile, join(DATA, 'rubrics.yaml'), errors) ?? [],
+    constants: parseWith(constantsFile, join(DATA, 'constants.yaml'), errors) ?? [],
+    productNames: parseWith(productNamesFile, join(DATA, 'product-names.yaml'), errors) ?? [],
+  };
+  return { curriculum, designCurriculum, designData, patterns, banks, notes, topics, glossary, lessons, errors };
 }

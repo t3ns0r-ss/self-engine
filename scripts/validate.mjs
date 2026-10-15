@@ -4,9 +4,10 @@
 import { loadAll } from './lib/load.mjs';
 import { validateAll } from '../src/lib/validate.mjs';
 import { validateTopics } from '../src/lib/validate-topics.mjs';
+import { validateDesignCurriculum, validateRubrics, validateConstants } from '../src/lib/validate-design.mjs';
 
 const data = loadAll();
-const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data)])];
+const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDesignCurriculum(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants)])];
 if (errors.length) {
   console.error(`Validation failed with ${errors.length} error(s):`);
   for (const e of errors) console.error(`  - ${e}`);
@@ -14,7 +15,7 @@ if (errors.length) {
 }
 const counts = Object.values(data.banks).map((b) => b.problems.length);
 console.log(
-  `Validation passed: ${data.curriculum.length} topics, ${Object.keys(data.patterns).length} pattern files, ` +
+  `Validation passed: ${data.curriculum.length} topics (+${data.designCurriculum.length} design topics), ${Object.keys(data.patterns).length} pattern files, ` +
     `${counts.length} bank files, ${counts.reduce((a, b) => a + b, 0)} bank problems, ` +
     `${Object.keys(data.topics).length} topic files, ${Object.keys(data.lessons).length} lessons, ${data.glossary.length} glossary terms.`,
 );

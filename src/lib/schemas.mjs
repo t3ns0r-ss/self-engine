@@ -13,6 +13,7 @@ const isoDate = z.preprocess(
 );
 
 export const curriculumRow = z.strictObject({
+  track: z.literal('cp').default('cp'),
   order: z.number().int().min(1),
   id: topicId,
   phase: z.number().int().min(0).max(7),
@@ -22,7 +23,25 @@ export const curriculumRow = z.strictObject({
   keywords: z.array(z.string().min(1)),
   target_rating: z.tuple([z.number().int(), z.number().int()]),
 });
-export const curriculumFile = z.array(curriculumRow);
+
+// Design tracks (DESIGN_TRACKS_PLAN.md Sections 5-7). Ids: L{phase}.{n} and H{phase}.{n}; `order` is per track.
+export const DESIGN_TOPIC_ID = /^(L[0-7]\.[1-8]|H[0-8]\.([1-9]|10))$/;
+export const designTopicId = z.string().regex(DESIGN_TOPIC_ID, 'topic id like "L2.1" or "H4.2"');
+export const KINDS = ['measured', 'standard', 'light', 'capstone'];
+export const designCurriculumRow = z.strictObject({
+  track: z.enum(['lld', 'hld']),
+  order: z.number().int().min(1),
+  id: designTopicId,
+  phase: z.string().regex(/^[LH][0-8]$/),
+  slug,
+  kind: z.enum(KINDS),
+  title: z.string().min(1),
+  requires: z.array(designTopicId),
+  keywords: z.array(z.string().min(1)),
+});
+/** One row of curriculum.yaml: a CP row or a design-track row. */
+export const anyCurriculumRow = z.union([curriculumRow, designCurriculumRow]);
+export const curriculumFile = z.array(anyCurriculumRow);
 
 export const pattern = z.strictObject({
   id: slug,
@@ -206,3 +225,40 @@ export const glossaryEntry = z.strictObject({
   topic: topicId,
 });
 export const glossaryFile = z.array(glossaryEntry);
+
+// ---- Design-track data files (DESIGN_TRACKS_PLAN.md Sections 3, 7.4, 7.5, 10.7) ----
+export const designConfig = z.strictObject({
+  lld_language: z.string().min(1),
+  dotnet_target: z.string().regex(/^net\d+\.\d+$/),
+  hld_language: z.string().min(1),
+  hld_python_min: z.string().regex(/^3\.\d+$/),
+});
+
+export const rubricCriterion = z.strictObject({
+  id: slug,
+  name: z.string().min(1),
+  weight: z.number().int().min(1).max(100),
+  critical: z.boolean(),
+  critical_when: z.string().min(1).optional(), // LLD concurrency: critical only when the prompt involves it
+  anchors: z.strictObject({ 0: z.string().min(1), 1: z.string().min(1), 2: z.string().min(1) }),
+});
+export const rubric = z.strictObject({
+  id: z.string().regex(/^rubric-(lld|hld)-[a-z-]+-v\d+$/),
+  name: z.string().min(1),
+  criteria: z.array(rubricCriterion).min(1),
+});
+export const rubricsFile = z.array(rubric);
+
+const urlString = z.string().regex(/^https?:\/\/\S+$/, 'URL');
+export const constant = z.strictObject({
+  id: slug,
+  quantity: z.string().min(1),
+  value: z.number(),
+  unit: z.enum(['s', 'bytes', 'bytes/s', 'requests/s', 'count', 'ratio']),
+  display: z.string().min(1),
+  source: z.strictObject({ title: z.string().min(1), url: urlString, accessed: isoDate, section: z.string().min(1) }),
+  caveat: z.string().min(1),
+});
+export const constantsFile = z.array(constant);
+
+export const productNamesFile = z.array(z.string().min(1));

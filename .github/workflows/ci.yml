@@ -14,22 +14,43 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/setup-go@v6          # the design script tests build Go and C++23 fixtures
+        with:
+          go-version-file: code/go.mod
+      - name: GCC 16
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y g++-16
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-16 160
       - run: npm ci
       - name: Validator unit tests
         run: npm test
       - name: Build (validates data and checks problem-bank/ is up to date)
         run: npm run build
 
-  # DESIGN_TRACKS_PLAN.md Sections 9 and 14 (D0): design code units, exercise kits. Python is pinned; g++ comes from the runner image.
+  # DESIGN_TRACKS_PLAN.md Sections 9 and 14 (D0): Go labs with -race, C++ units with sanitizers, exercise kits,
+  # experiment quick modes. Integration tests (Docker stacks) do not run here: they run on the LAN lab server (Section 9.13).
   design:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-go@v6
         with:
-          python-version: "3.12"
-      - name: Design code units (claim, calc, pattern and C++ solutions)
+          go-version-file: code/go.mod
+      - name: GCC 16 (C++23)
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y g++-16
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-16 160
+          g++ --version
+      - name: Go module is tidy
+        run: cd code && go mod tidy -diff
+      - name: Design code units (Go with -race, C++ with sanitizers, claim, calc and pattern units)
         run: bash scripts/test_design.sh code
+      - name: Experiment quick modes
+        run: cd code && go test -tags experiment -run Quick ./...
       - name: Exercise kits (tests fail on starter and mutants, pass on reference)
         run: |
           if [ -d exercises ]; then bash scripts/exercise_kit_check.sh; else echo "no exercises yet"; fi

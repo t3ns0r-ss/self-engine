@@ -7,14 +7,21 @@
 #   <exercises-root>/<rel>/min_mutants   optional; a number (default 3)
 #   <reference-root>/<rel>/              the reference solution
 #   <mutants-root>/<rel>/<name>/         deliberately wrong solutions
+#   <exercises-root>/<rel>/needs_docker  optional marker: the kit's tests start containers. Such kits are
+#                                        skipped (and reported) when Docker is unavailable, unless REQUIRE_DOCKER=1.
 # Checks: tests FAIL on the starter, PASS on the reference, and FAIL on every mutant; enough mutants exist.
 set -euo pipefail
 EX="$(cd "${1:-exercises}" && pwd)"; REF="$(cd "${2:-reference}" && pwd)"
 MUT="${3:-reference-mutants}"; mkdir -p "$MUT"; MUT="$(cd "$MUT" && pwd)"
 fail=0
+docker_ok=0; docker info > /dev/null 2>&1 && docker_ok=1
 while IFS= read -r t; do
   kit="$(dirname "$t")"; rel="${kit#"$EX"/}"
   ref="$REF/$rel"
+  if [ -f "$kit/needs_docker" ] && [ "$docker_ok" -eq 0 ]; then
+    if [ "${REQUIRE_DOCKER:-0}" = "1" ]; then echo "FAIL: Docker unavailable for $rel"; fail=1; else echo "SKIPPED (Docker unavailable): $rel"; fi
+    continue
+  fi
   [ -d "$kit/starter" ] || { echo "MISSING starter: $rel"; fail=1; continue; }
   [ -d "$ref" ] || { echo "MISSING reference: $rel"; fail=1; continue; }
   if bash "$t" "$kit/starter" > /dev/null 2>&1; then echo "FAIL: tests pass on the starter: $rel"; fail=1; fi

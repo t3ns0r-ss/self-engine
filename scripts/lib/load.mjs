@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { designConfig, rubricsFile, constantsFile, productNamesFile, curriculumFile, patternFile, bankFile, topicFile, glossaryFile } from '../../src/lib/schemas.mjs';
+import { designTopicFile, designExerciseFile, unitYaml, labYaml, experimentRecord, inventoryFile, designConfig, rubricsFile, constantsFile, productNamesFile, curriculumFile, patternFile, bankFile, topicFile, glossaryFile } from '../../src/lib/schemas.mjs';
 import { findLessons } from '../../src/lib/lessons.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -26,7 +26,8 @@ function parseWith(schema, path, errors) {
   return r.data;
 }
 
-const yamlFiles = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.yaml')).sort() : []);
+const yamlFiles = (dir, re = /./) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.yaml') && re.test(f)).sort() : []);
+const walk = (dir, name) => (existsSync(dir) ? readdirSync(dir, { recursive: true }).map(String).filter((f) => f === name || f.endsWith(`/${name}`)).sort() : []);
 
 /** @returns {{curriculum, patterns, banks, notes, topics, glossary, lessons, errors: string[]}} */
 export function loadAll() {
@@ -54,7 +55,7 @@ export function loadAll() {
     }
   }
   const topics = {};
-  for (const f of yamlFiles(join(DATA, 'topics'))) {
+  for (const f of yamlFiles(join(DATA, 'topics'), /^\d/)) {
     const d = parseWith(topicFile, join(DATA, 'topics', f), errors);
     if (d) {
       if (f !== `${d.id.replace('.', '-')}.yaml`) errors.push(`src/data/topics/${f}: file name does not match topic ${d.id}`);
@@ -71,5 +72,38 @@ export function loadAll() {
     constants: parseWith(constantsFile, join(DATA, 'constants.yaml'), errors) ?? [],
     productNames: parseWith(productNamesFile, join(DATA, 'product-names.yaml'), errors) ?? [],
   };
+  designData.topics = {};
+  for (const f of yamlFiles(join(DATA, 'topics'), /^[LH]/)) {
+    const d = parseWith(designTopicFile, join(DATA, 'topics', f), errors);
+    if (d) {
+      if (f !== `${d.id.replace('.', '-')}.yaml`) errors.push(`src/data/topics/${f}: file name does not match topic ${d.id}`);
+      designData.topics[d.id] = d;
+    }
+  }
+  designData.exercises = {};
+  for (const f of yamlFiles(join(DATA, 'exercises'), /^[LH]/)) {
+    const d = parseWith(designExerciseFile, join(DATA, 'exercises', f), errors);
+    if (d) {
+      if (f !== `${d.topic.replace('.', '-')}.yaml`) errors.push(`src/data/exercises/${f}: file name does not match topic ${d.topic}`);
+      designData.exercises[d.topic] = d;
+    }
+  }
+  const invPath = join(DATA, 'exercises', 'INVENTORY.yaml');
+  designData.inventory = existsSync(invPath) ? parseWith(inventoryFile, invPath, errors) : null;
+  // code units: unit.yaml and lab.yaml anywhere under code/, keyed by their folder relative to code/
+  designData.units = {};
+  designData.labs = {};
+  for (const [name, schema, into] of [['unit.yaml', unitYaml, designData.units], ['lab.yaml', labYaml, designData.labs]]) {
+    for (const rel of walk(join(ROOT, 'code'), name)) {
+      const d = parseWith(schema, join(ROOT, 'code', rel), errors);
+      if (d) into[rel.slice(0, -name.length - 1)] = d;
+    }
+  }
+  designData.experiments = {};
+  const expDir = join(DATA, 'experiments');
+  if (existsSync(expDir)) for (const f of readdirSync(expDir, { recursive: true }).map(String).filter((x) => x.endsWith('.yaml'))) {
+    const d = parseWith(experimentRecord, join(expDir, f), errors);
+    if (d) designData.experiments[d.experiment] = d;
+  }
   return { curriculum, designCurriculum, designData, patterns, banks, notes, topics, glossary, lessons, errors };
 }

@@ -25,9 +25,10 @@ export const curriculumRow = z.strictObject({
 });
 
 // Design tracks (DESIGN_TRACKS_PLAN.md Sections 5-7). Ids: L{phase}.{n} and H{phase}.{n}; `order` is per track.
-export const DESIGN_TOPIC_ID = /^(L[0-7]\.[1-8]|H[0-8]\.([1-9]|10))$/;
+export const DESIGN_TOPIC_ID = /^(L[0-7]\.[0-8]|H[0-8]\.([1-9]|10))$/;
 export const designTopicId = z.string().regex(DESIGN_TOPIC_ID, 'topic id like "L2.1" or "H4.2"');
 export const KINDS = ['measured', 'standard', 'light', 'capstone'];
+export const LAB_STACKS = ['postgres', 'mysql', 'redis', 'kafka'];
 export const designCurriculumRow = z.strictObject({
   track: z.enum(['lld', 'hld']),
   order: z.number().int().min(1),
@@ -37,7 +38,13 @@ export const designCurriculumRow = z.strictObject({
   kind: z.enum(KINDS),
   title: z.string().min(1),
   requires: z.array(designTopicId),
+  lab: z.string().min(1).optional(),                 // HLD only: one line, what is built (Section 6)
+  infra: z.array(z.enum(LAB_STACKS)).optional(),     // HLD only: stacks the lab needs on the lab server, [] for none
   keywords: z.array(z.string().min(1)),
+}).superRefine((r, ctx) => {
+  const hld = r.track === 'hld';
+  if (hld && (r.lab === undefined || r.infra === undefined)) ctx.addIssue({ code: 'custom', message: `HLD topic ${r.id} needs lab and infra` });
+  if (!hld && (r.lab !== undefined || r.infra !== undefined)) ctx.addIssue({ code: 'custom', message: `LLD topic ${r.id} must not have lab or infra` });
 });
 /** One row of curriculum.yaml: a CP row or a design-track row. */
 export const anyCurriculumRow = z.union([curriculumRow, designCurriculumRow]);
@@ -228,10 +235,21 @@ export const glossaryFile = z.array(glossaryEntry);
 
 // ---- Design-track data files (DESIGN_TRACKS_PLAN.md Sections 3, 7.4, 7.5, 10.7) ----
 export const designConfig = z.strictObject({
-  lld_language: z.string().min(1),
-  lld_standard: z.string().regex(/^c\+\+(14|17|20|23)$/),
-  hld_language: z.string().min(1),
-  hld_python_min: z.string().regex(/^3\.\d+$/),
+  lld: z.strictObject({
+    language: z.literal('cpp'),
+    standard: z.string().regex(/^c\+\+(20|23|26)$/),
+    compiler: z.string().min(1),
+    flags: z.string().min(1),
+    sanitizers_default: z.string().min(1),
+    sanitizers_concurrency: z.string().min(1),
+  }),
+  hld: z.strictObject({
+    language: z.literal('go'),
+    go_version: z.string().regex(/^1\.\d+$/),
+    module: z.string().min(1),
+    allowed_modules: z.array(z.string().min(1)),   // third-party Go modules, each added through Section 9.5
+    lab_server: z.boolean(),
+  }),
 });
 
 export const rubricCriterion = z.strictObject({
@@ -239,7 +257,7 @@ export const rubricCriterion = z.strictObject({
   name: z.string().min(1),
   weight: z.number().int().min(1).max(100),
   critical: z.boolean(),
-  critical_when: z.string().min(1).optional(), // LLD concurrency: critical only when the prompt involves it
+  critical_when: z.string().min(1).optional(), // LLD ownership and concurrency: critical only when the prompt involves it
   anchors: z.strictObject({ 0: z.string().min(1), 1: z.string().min(1), 2: z.string().min(1) }),
 });
 export const rubric = z.strictObject({
@@ -262,3 +280,156 @@ export const constant = z.strictObject({
 export const constantsFile = z.array(constant);
 
 export const productNamesFile = z.array(z.string().min(1));
+
+// ---- Design-track topic, exercise, unit, lab and experiment files (DESIGN_TRACKS_PLAN.md Sections 7.2, 7.3, 7.6, 9) ----
+const dText = z.string().min(1);
+const dDate = z.union([isoDate, z.literal('TODO')]);          // scaffolding writes TODO; check D18 rejects it later
+export const designCardRef = z.strictObject({ topic: designTopicId, card: slug });
+export const CLAIM_KINDS = ['proved', 'computed', 'simulated', 'measured', 'experimented', 'cited'];
+export const claimId = z.string().regex(/^[LH][0-7]\.\d+\.\d+$/, 'claim id like "L2.1.1" or "H4.2.1"');
+export const designSource = z.strictObject({ title: dText, url: urlString, accessed: isoDate, section: dText });
+
+export const designClaim = z.strictObject({
+  id: claimId,
+  kind: z.enum(CLAIM_KINDS),
+  title: dText,
+  plain_words: dText,
+  evidence: z.array(dText),                  // units under code/ ("L2.1/strategy-fee") or experiment ids
+  source: designSource.nullable(),           // cited claims only
+}).superRefine((c, ctx) => {
+  if ((c.kind === 'cited') !== (c.source !== null)) ctx.addIssue({ code: 'custom', message: `${c.id}: source is required for cited claims and only for them` });
+});
+
+const dInlinePositive = z.strictObject({ inline: z.strictObject({ input: dText, answer: dText, why: dText }) });
+const dInlineNegative = z.strictObject({
+  inline: z.strictObject({ input: dText, answer: dText, why: dText }),
+  correct_tool: z.union([designCardRef, z.strictObject({ simplest: dText })]),
+});
+export const designCard = z.strictObject({
+  id: slug,
+  name: dText,
+  force: dText.optional(),                   // LLD
+  need: dText.optional(),                    // HLD
+  decisive_property: dText,
+  from_claim: claimId,
+  how_to_test: dText,
+  trade_off_table: z.strictObject({ units: z.array(dText).min(1), overhead: dText, per_change: dText, blast_radius: dText, verdict: dText }).optional(),
+  capacity_table: z.strictObject({ units: z.array(dText).min(1), threshold: dText, price: dText }).optional(),
+  lab: z.strictObject({ unit: dText, holds_test: dText, breaks_test: dText }).optional(),
+  constraint_shapes: z.array(dText).min(1).max(3),
+  weak_signals: z.array(z.strictObject({ form: dText, shape: dText })).min(2).max(4),
+  kill_signals: z.array(dText).min(2),
+  in_action: z.strictObject({
+    statement: dText, constraints: dText, budget: dText,
+    candidates: z.array(z.strictObject({ tool: dText, verdict: z.enum(['chosen', 'rejected']), because: dText })).min(2),
+    property_check: dText, decision: dText,
+  }),
+  examples: z.strictObject({
+    positive: z.array(dInlinePositive).min(2),
+    negative: z.array(dInlineNegative).min(2),
+  }),
+  lookalikes: z.array(z.strictObject({ description: dText, tool: designCardRef, flipping_difference: dText })),
+  cost: dText,
+});
+
+export const designTopicFile = z.strictObject({
+  id: designTopicId,
+  track: z.enum(['lld', 'hld']),
+  uses: z.array(z.strictObject({ topic: designTopicId, what: dText })),
+  claims: z.array(designClaim),
+  cards: z.array(designCard),
+  lookalike_pairs: z.array(z.strictObject({
+    a: dText, b: dText,
+    a_tool: z.union([designCardRef, dText]), b_tool: z.union([designCardRef, dText]),
+    flipping_difference: dText,
+    flipping_input: dText.optional(),
+  })),
+  self_test: z.array(z.strictObject({ q: dText, a: dText })),
+  decision_map: z.array(z.strictObject({
+    weak_signal: dText, choose: dText, when: dText,
+    over: z.array(z.strictObject({ topic: designTopicId.optional(), card: dText, because: dText })),
+  })),
+  glossary_added: z.array(dText),
+});
+
+export const EXERCISE_ROLES = ['ladder', 'worked_example', 'drill', 'checkpoint', 'review', 'exam'];
+export const LLD_TYPES = ['recognise', 'refactor', 'build', 'change_ladder', 'mock'];
+export const HLD_TYPES = ['recognise', 'estimate', 'lab', 'deep_dive', 'scale_ladder', 'failure', 'mock'];
+const kitChecker = z.strictObject({ kind: z.literal('kit'), path: dText });
+const numericChecker = z.strictObject({
+  kind: z.literal('numeric'), calc: dText, key: dText, unit: dText, factor: z.number().positive().optional(),
+});
+const rubricChecker = z.strictObject({ kind: z.literal('rubric'), id: z.string().regex(/^rubric-(lld|hld)-[a-z-]+-v\d+$/) });
+export const checker = z.discriminatedUnion('kind', [kitChecker, numericChecker, rubricChecker]);
+export const exerciseAnswer = z.union([
+  z.strictObject({ kind: z.literal('card'), card: designCardRef, property: dText, why_others_fail: dText }),
+  z.strictObject({ kind: z.literal('none'), simplest: dText, why: dText }),
+]);
+export const designExercise = z.strictObject({
+  id: z.string().regex(/^(rung|ex|est|r|mock|cp|exam)-\d+$|^rev-\d+-\d+$/, 'local id like rung-2, ex-1, est-1, r-3, mock-1, cp-1, rev-1-2, exam-4'),
+  role: z.enum(EXERCISE_ROLES),
+  type: z.enum([...new Set([...LLD_TYPES, ...HLD_TYPES])]),
+  title: dText,
+  prompt: dText,
+  inspired_by: dText.nullable().optional(),
+  card: slug.nullable().optional(),
+  rung: z.number().int().min(1).nullable().optional(),
+  new_force: dText.nullable().optional(),
+  needs_new_structure: z.boolean().optional(),
+  review_set: z.number().int().min(1).nullable().optional(),
+  answer: exerciseAnswer.nullable().optional(),
+  clarifying: z.array(z.strictObject({ q: dText, a: dText, critical: z.boolean() })).optional(),
+  checkers: z.array(checker),
+  run: dText.optional(),
+  reference: dText.optional(),
+  alternatives: z.array(dText).optional(),
+  hints: z.array(dText).optional(),
+  time_limit_minutes: z.number().int().positive().nullable().optional(),
+  techniques: z.array(dText).optional(),
+  checked_on: dDate.optional(),
+});
+export const designExerciseFile = z.strictObject({
+  topic: designTopicId,
+  exercises: z.array(designExercise),
+});
+
+export const unitYaml = z.strictObject({
+  kind: z.enum(['solution', 'pattern']),
+  domain: dText.optional(),
+  variants: z.array(dText).optional(),
+  claims: z.array(claimId).optional(),
+  scenarios: z.array(z.strictObject({
+    name: dText,
+    request: dText,
+    blast_radius: z.record(z.string(), z.strictObject({ count: z.number().int().min(0), behaviours: z.array(dText), where: dText })),
+  })).optional(),
+});
+export const labYaml = z.strictObject({
+  title: dText,
+  holds: z.array(dText).min(1),
+  breaks: z.array(dText).min(1),
+  run: dText,
+  experiments: z.array(dText),
+  stacks: z.array(z.enum(LAB_STACKS)),
+});
+export const experimentRecord = z.strictObject({
+  experiment: z.string().regex(/^[LH]\d\.\d+\/[a-z0-9-]+$/),
+  program: dText,
+  machine: z.strictObject({ cpu: dText, cores: z.number().int().min(1), os: dText, go: dText }),
+  run_on: isoDate,
+  commit: z.string().regex(/^[0-9a-f]{7,40}$/),
+  shape_checks: z.array(dText).min(1),
+  results_file: z.string().regex(/-labserver\.txt$|\.tsv$/, 'a results file; full runs are *-labserver.txt (D19)'),
+});
+export const inventoryFile = z.strictObject({
+  topics: z.record(designTopicId, z.strictObject({
+    cards: z.array(z.strictObject({ id: slug, name: dText })),
+    ladder: z.array(z.strictObject({
+      rung: z.number().int().min(1), card: slug.nullable(), new_force: dText, needs_new_structure: z.boolean(), tests: dText,
+    })),
+    drill: z.array(z.strictObject({ stub: dText, answer: z.union([z.literal('none'), designCardRef]) })),
+    checkpoint: z.strictObject({ title: dText, type: z.enum([...new Set([...LLD_TYPES, ...HLD_TYPES])]) }).nullable(),
+    reviews: z.array(z.strictObject({ set: z.number().int().min(1), stubs: z.array(dText).min(1) })),
+    estimates: z.array(dText).optional(),
+  })),
+});

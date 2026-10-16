@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateDesignCurriculum, keywordCollisions } from '../src/lib/validate-design.mjs';
+import { validateDesignCurriculum, validateDesignCounts, keywordCollisions } from '../src/lib/validate-design.mjs';
 
 const row = (o) => ({ track: 'lld', order: 1, id: 'L0.1', phase: 'L0', slug: 'a', kind: 'standard', title: 'T', requires: [], keywords: ['alpha'], ...o });
 const good = () => [
@@ -36,4 +36,23 @@ test('keyword inside a template heading is a collision', () => {
 });
 test('the reverse (earlier keyword inside a later one) is allowed', () => {
   const g = good(); g[1].keywords = ['alpha beta']; assert.deepEqual(keywordCollisions(g), []);
+});
+
+const hrow = (o) => ({ track: 'hld', order: 1, id: 'H0.1', phase: 'H0', slug: 'a', kind: 'standard', title: 'T', requires: [], lab: 'Build x', infra: [], keywords: ['alpha'], ...o });
+test('HLD rows need a lab line and an infra list; a topic with no lab has no infra', () => {
+  has(validateDesignCurriculum([hrow({ lab: undefined, kind: 'capstone' })]), /need a lab line and an infra list/);
+  has(validateDesignCurriculum([hrow({ lab: 'none (mock rounds)', infra: ['postgres'], kind: 'capstone' })]), /no lab has no infra/);
+  assert.deepEqual(validateDesignCurriculum([hrow({ kind: 'capstone', keywords: [] })]), []);
+});
+test('track sizes and first topics of Revision 5 are enforced', () => {
+  const errs = validateDesignCounts(good());
+  has(errs, /track lld has 3 topics, expected 48/);
+  has(errs, /first lld topic must be L0\.0, not L0\.1/);
+});
+test('the real curriculum has 48 LLD (from L0.0) and 52 HLD (from H0.1) topics', async () => {
+  const { loadAll } = await import('../scripts/lib/load.mjs');
+  const d = loadAll();
+  assert.deepEqual(d.errors, []);
+  assert.deepEqual(validateDesignCounts(d.designCurriculum), []);
+  assert.deepEqual(validateDesignCurriculum(d.designCurriculum), []);
 });

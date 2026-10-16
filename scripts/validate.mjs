@@ -4,10 +4,18 @@
 import { loadAll } from './lib/load.mjs';
 import { validateAll } from '../src/lib/validate.mjs';
 import { validateTopics } from '../src/lib/validate-topics.mjs';
-import { validateDesignCurriculum, validateRubrics, validateConstants } from '../src/lib/validate-design.mjs';
+import { ROOT } from './lib/load.mjs';
+import { validateDesignFiles, validateCodeHygiene, validateDesignLesson, realFs } from '../src/lib/validate-design-files.mjs';
+import { validateDesignCurriculum, validateDesignCounts, validateRubrics, validateConstants } from '../src/lib/validate-design.mjs';
 
 const data = loadAll();
-const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDesignCurriculum(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants)])];
+function designFileErrors(d) {
+  const fsx = realFs(ROOT);
+  const out = [...validateDesignFiles(d.designData, fsx, { rows: d.designCurriculum, products: d.designData.productNames }), ...validateCodeHygiene(fsx)];
+  for (const [id, l] of Object.entries(d.lessons)) if (/^[LH]/.test(id)) out.push(...validateDesignLesson(l.text, l.path));
+  return out;
+}
+const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDesignCurriculum(data.designCurriculum), ...validateDesignCounts(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants), ...designFileErrors(data)])];
 if (errors.length) {
   console.error(`Validation failed with ${errors.length} error(s):`);
   for (const e of errors) console.error(`  - ${e}`);

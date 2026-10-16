@@ -31,6 +31,17 @@ export function keywordCollisions(rows) {
   return errors;
 }
 
+/** Track sizes of Revision 5 (Sections 5 and 6): 48 LLD topics starting at L0.0, 52 HLD topics starting at H0.1. */
+export function validateDesignCounts(rows) {
+  const errors = [];
+  for (const [track, want, first] of [['lld', 48, 'L0.0'], ['hld', 52, 'H0.1']]) {
+    const rs = rows.filter((r) => r.track === track).sort((a, b) => a.order - b.order);
+    if (rs.length !== want) errors.push(`src/data/curriculum.yaml: track ${track} has ${rs.length} topics, expected ${want}`);
+    if (rs[0] && rs[0].id !== first) errors.push(`src/data/curriculum.yaml: the first ${track} topic must be ${first}, not ${rs[0].id}`);
+  }
+  return errors;
+}
+
 /**
  * @param {Array} rows design-track rows of curriculum.yaml (track lld or hld)
  * @returns {string[]}
@@ -63,6 +74,8 @@ export function validateDesignCurriculum(rows) {
         if (!t) err(`topic ${r.id} requires ${q}, which is not a topic of track ${track} (no cross-track dependencies)`);
         else if (t.order >= r.order) err(`topic ${r.id} requires ${q}, which is not earlier`);
       }
+      if (track === 'hld' && (!r.lab || !Array.isArray(r.infra))) err(`topic ${r.id}: HLD topics need a lab line and an infra list`);
+      if (track === 'hld' && /^none/.test(r.lab ?? '') && r.infra.length) err(`topic ${r.id}: a topic with no lab has no infra`);
       if (r.kind === 'capstone') {
         const earlier = rs.filter((x) => x.order < r.order).map((x) => x.id);
         for (const e of earlier) if (!r.requires.includes(e)) err(`capstone ${r.id} must require every earlier topic; missing ${e}`);

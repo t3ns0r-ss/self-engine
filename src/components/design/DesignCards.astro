@@ -1,0 +1,92 @@
+---
+// Recognition Cards of an LLD or HLD topic (Section 8.5): force or need, decisive property, how to test, shapes with arithmetic,
+// weak and kill signals, a worked recognition, examples, look-alikes, cost; trade-off tables from pattern units and
+// capacity tables from calc programs; HLD cards link their lab's holds and breaks tests.
+import { loadData, designRow, designLessonHref } from '../../lib/data';
+import TradeOffTable from './TradeOffTable.astro';
+const { topic } = Astro.props as { topic: string };
+const data = await loadData();
+const cards = data.designTopics[topic]?.cards ?? [];
+const label = (r: { topic: string; card: string }) => {
+  const c = data.designTopics[r.topic]?.cards.find((x) => x.id === r.card);
+  const row = designRow(data, r.topic);
+  return { name: c?.name ?? r.card, href: data.lessons[r.topic] ? `${designLessonHref(row)}#card-${r.card}` : null, topic: r.topic };
+};
+---
+{cards.map((c) => (
+  <section class="recognition-card" id={`card-${c.id}`}>
+    <h3>{c.name}</h3>
+    {c.force && <p><strong>Force</strong> (the pressure this structure relieves): {c.force}</p>}
+    {c.need && <p><strong>Need</strong> (the requirement, with its number): {c.need}</p>}
+    <p><strong>Decisive property</strong> (Claim {c.from_claim}): {c.decisive_property}</p>
+    <p><strong>How to test it:</strong> {c.how_to_test}</p>
+    <p><strong>Shapes</strong> (what the numbers force):</p>
+    <ul>{c.constraint_shapes.map((s) => <li>{s}</li>)}</ul>
+    <p><strong>Weak signals</strong> (they suggest the card and prove nothing):</p>
+    <ul>{c.weak_signals.map((w) => <li><strong>{w.form}.</strong> Typical shape: {w.shape}</li>)}</ul>
+    <p><strong>Kill signals</strong> (rule it out, including the over-engineering case):</p>
+    <ul>{c.kill_signals.map((s) => <li>{s}</li>)}</ul>
+    {c.trade_off_table && (
+      <>
+        <p><strong>Trade-off</strong> (from the pattern units):</p>
+        {c.trade_off_table.units.map((u) => <TradeOffTable unit={u} />)}
+        <ul>
+          <li><strong>Overhead:</strong> {c.trade_off_table.overhead}</li>
+          <li><strong>Per change:</strong> {c.trade_off_table.per_change}</li>
+          <li><strong>Blast radius:</strong> {c.trade_off_table.blast_radius}</li>
+          <li><strong>Verdict:</strong> {c.trade_off_table.verdict}</li>
+        </ul>
+      </>
+    )}
+    {c.capacity_table && (
+      <ul>
+        <li><strong>Becomes necessary at:</strong> {c.capacity_table.threshold}</li>
+        <li><strong>Price:</strong> {c.capacity_table.price}</li>
+        <li><strong>From:</strong> {c.capacity_table.units.map((u) => <code>{u} </code>)}</li>
+      </ul>
+    )}
+    {c.lab && (
+      <p><strong>Lab evidence:</strong> <code>{c.lab.unit}</code>: holds in <code>{c.lab.holds_test}</code>; breaks in <code>{c.lab.breaks_test}</code>.</p>
+    )}
+    <details class="in-action">
+      <summary><strong>Recognition in action</strong></summary>
+      <ol>
+        <li><strong>Statement.</strong> {c.in_action.statement}</li>
+        <li><strong>Numbers.</strong> {c.in_action.constraints}</li>
+        <li><strong>Budget.</strong> {c.in_action.budget}</li>
+        <li><strong>Candidates.</strong>
+          <ul>{c.in_action.candidates.map((k) => <li>{k.tool}: <em>{k.verdict}</em>. {k.because}</li>)}</ul>
+        </li>
+        <li><strong>Property check.</strong> {c.in_action.property_check}</li>
+        <li><strong>Decision.</strong> {c.in_action.decision}</li>
+      </ol>
+    </details>
+    <div class="examples">
+      <div class="example works">
+        <p><strong>Works</strong></p>
+        <ul>{c.examples.positive.map((e) => <li><code>{e.inline.input}</code> gives <strong>{e.inline.answer}</strong>. {e.inline.why}</li>)}</ul>
+      </div>
+      <div class="example not-works">
+        <p><strong>Does not work</strong></p>
+        <ul>
+          {c.examples.negative.map((e) => {
+            const t = 'simplest' in e.correct_tool ? null : label(e.correct_tool);
+            return (
+              <li>
+                <code>{e.inline.input}</code> gives <strong>{e.inline.answer}</strong>. {e.inline.why}{' '}
+                Use instead: {'simplest' in e.correct_tool ? <strong>{e.correct_tool.simplest}</strong> : t?.href ? <a href={t.href}>{t.name}</a> : t?.name}.
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+    {c.lookalikes.length > 0 && (
+      <>
+        <p><strong>Look-alikes</strong></p>
+        <ul>{c.lookalikes.map((l) => { const t = label(l.tool); return <li>{l.description} Often confused with {t.href ? <a href={t.href}>{t.name}</a> : t.name} ({t.topic}). <em>The difference that flips the choice:</em> {l.flipping_difference}</li>; })}</ul>
+      </>
+    )}
+    <p><strong>Cost:</strong> {c.cost}</p>
+  </section>
+))}

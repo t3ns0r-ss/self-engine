@@ -1,0 +1,23 @@
+---
+// Machine, seed, results table and shape checks of a recorded experiment (Section 9.7). Numbers are labelled "on this machine".
+import { experimentRecord, readCode, parseTsv } from '../../lib/design-files';
+const { experiment } = Astro.props as { experiment: string };
+const r = experimentRecord(experiment);
+if (!r) throw new Error(`ExperimentResult: no record for ${experiment}`);
+const rel = `${r.program.replace(/^code\//, '')}/${r.results_file}`;
+const text = (await readCode(rel)) ?? '';
+const lines = text.split('\n');
+const checks = lines.filter((l) => /^(PASS|FAIL) shape:/.test(l));
+const tsv = parseTsv(lines.filter((l) => l.includes('\t')).join('\n') || '\t');
+---
+<div class="experiment-result">
+  <p><strong>Experiment {r.experiment}</strong>, run on the lab server on {r.run_on} (commit <code>{r.commit}</code>). Numbers below are <em>on this machine</em>; the claims are about shapes.</p>
+  <p>Machine: {r.machine.cpu}, {r.machine.cores} cores, {r.machine.os}, Go {r.machine.go}.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr>{tsv[0].map((h) => <th>{h}</th>)}</tr></thead>
+      <tbody>{tsv.slice(1).map((row) => <tr>{row.map((c) => <td>{c}</td>)}</tr>)}</tbody>
+    </table>
+  </div>
+  <ul>{checks.map((c) => <li>{c.startsWith('PASS') ? '✔ ' : '✘ '}{c.replace(/^(PASS|FAIL) shape: /, '')}</li>)}</ul>
+</div>

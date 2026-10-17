@@ -1,0 +1,32 @@
+---
+// The evidence of one claim: the claim program or C++ unit source (Code) and its expected output (Section 11.7).
+import { Code } from '@astrojs/starlight/components';
+import { loadData } from '../../lib/data';
+import { unitFileList, readCode, langOf } from '../../lib/design-files';
+const { claim } = Astro.props as { claim: string };
+const data = await loadData();
+const topic = claim.split('.').slice(0, 2).join('.');
+const c = data.designTopics[topic]?.claims.find((x) => x.id === claim);
+if (!c) throw new Error(`ClaimEvidence: unknown claim ${claim}`);
+const units = await Promise.all(c.evidence.map(async (u) => {
+  const files = unitFileList(u).filter((f) => !/\/(measured-.*\.tsv|unit\.yaml|test\.sh)$/.test(f) && !/\/(scenarios|base)\//.test(f));
+  return { unit: u, files: await Promise.all(files.map(async (f) => ({ f, text: (await readCode(f)) ?? '' }))) };
+}));
+---
+<div class="claim-evidence" id={`evidence-${claim}`}>
+  <p><strong>Evidence for Claim {claim}</strong> ({c.kind}).</p>
+  {units.map((u) => (
+    <details>
+      <summary><code>code/{u.unit}</code></summary>
+      {u.files.map((x) => (
+        <>
+          <p><code>{x.f}</code></p>
+          <Code code={x.text} lang={langOf(x.f)} />
+        </>
+      ))}
+    </details>
+  ))}
+  {c.kind === 'cited' && c.source && (
+    <p>Source: <a href={c.source.url} rel="noopener noreferrer">{c.source.title}</a>, {c.source.section} (opened {c.source.accessed}).</p>
+  )}
+</div>

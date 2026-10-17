@@ -12,6 +12,9 @@ export const KEYS = {
   profiles: 'cp:v1:profiles',
   shown: 'cp:v1:shown',
   syncLc: 'cp:v1:sync:lc',
+  // Design tracks (DESIGN_TRACKS_PLAN.md Section 11.2): attempts per exercise and the number flashcards.
+  designAttempts: 'cp:v1:design-attempts',
+  numbers: 'cp:v1:numbers',
 } as const;
 
 /** Caches rebuilt by a full sync: not exported, cleared on import and reset. */
@@ -125,8 +128,11 @@ export interface ContestEntry {
   upsolved: string[];
   note: string;
 }
+export type Track = 'cp' | 'lld' | 'hld';
+export type CurrentTopics = { cp?: string; lld?: string; hld?: string };
 export interface Settings {
-  currentTopic?: string;
+  /** A topic id string before the design tracks existed; `{ cp, lld, hld }` afterwards (read both, write the new shape). */
+  currentTopic?: string | CurrentTopics;
 }
 
 const asRecord = <T>(v: unknown): Record<string, T> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, T>) : {});
@@ -160,6 +166,48 @@ export const saveContests = (list: ContestEntry[]) => write(KEYS.contests, list)
 export const getSettings = (): Settings => asRecord<unknown>(read(KEYS.settings, {})) as Settings;
 export const saveSettings = (patch: Partial<Settings>) => write(KEYS.settings, { ...getSettings(), ...patch });
 
+/** The current topic of a track; migrates the old single-string shape (a CP topic id) when reading. */
+export function currentTopicOf(settings: Settings, track: Track = 'cp'): string | undefined {
+  const c = settings.currentTopic;
+  if (typeof c === 'string') return track === 'cp' ? c : undefined;
+  return c && typeof c === 'object' ? c[track] : undefined;
+}
+export const getCurrentTopic = (track: Track = 'cp') => currentTopicOf(getSettings(), track);
+export function setCurrentTopic(track: Track, id: string): boolean {
+  const c = getSettings().currentTopic;
+  const base: CurrentTopics = typeof c === 'string' ? { cp: c } : c && typeof c === 'object' ? c : {};
+  return saveSettings({ currentTopic: { ...base, [track]: id } });
+}
+
+// ---- Design attempts and number flashcards (DESIGN_TRACKS_PLAN.md Sections 11.2 and 11.4) ----
+
+export interface DesignAttempt {
+  date: string;
+  minutes?: number | null;
+  hints?: number;
+  testsPassed?: boolean | null;
+  measured?: string | null;
+  scores?: Record<string, { score: 0 | 1 | 2; evidence: string }>;
+  mistake?: string;
+  note?: string;
+}
+export const DESIGN_MISTAKES = ['Missed a requirement', 'Wrong structure', 'Over-engineered', 'Under-engineered', 'Numbers wrong', 'Missed a failure case', 'Concurrency or ownership bug', 'Implementation bug'] as const;
+export const getDesignAttempts = () => asRecord<DesignAttempt[]>(read(KEYS.designAttempts, {}));
+export function addDesignAttempt(globalId: string, a: DesignAttempt): boolean {
+  const all = getDesignAttempts();
+  all[globalId] = [...(Array.isArray(all[globalId]) ? all[globalId] : []), a];
+  return write(KEYS.designAttempts, all);
+}
+export interface NumberCard { own?: number | null; unit?: string; due?: string; box?: number; }
+export const getNumbers = () => asRecord<NumberCard>(read(KEYS.numbers, {}));
+export function saveNumber(id: string, patch: Partial<NumberCard>): boolean {
+  const all = getNumbers();
+  all[id] = { ...all[id], ...patch };
+  return write(KEYS.numbers, all);
+}
+/** Flashcard spacing of Section 11.4: 1, 3, 7, 21 days. */
+export const NUMBER_INTERVALS = [1, 3, 7, 21] as const;
+
 // ---- Export, import, reset (PLAN.md Section 10.6) ----
 
 export function exportAll(): Record<string, unknown> {
@@ -177,7 +225,7 @@ export function importAll(data: unknown): string | null {
   for (const k of [KEYS.problems, KEYS.topics, KEYS.drills, KEYS.settings]) if (!isObj(d[k])) return `Field ${k} has the wrong shape.`;
   // Exports made before the phase exams existed have no exams field.
   if (d[KEYS.exams] !== undefined && !isObj(d[KEYS.exams])) return `Field ${KEYS.exams} has the wrong shape.`;
-  for (const k of [KEYS.profiles, KEYS.shown, KEYS.syncLc]) if (d[k] !== undefined && !isObj(d[k])) return `Field ${k} has the wrong shape.`;
+  for (const k of [KEYS.profiles, KEYS.shown, KEYS.syncLc, KEYS.designAttempts, KEYS.numbers]) if (d[k] !== undefined && !isObj(d[k])) return `Field ${k} has the wrong shape.`;
   if (!(d[KEYS.contests] === null || Array.isArray(d[KEYS.contests]))) return `Field ${KEYS.contests} has the wrong shape.`;
   try {
     for (const k of Object.values(KEYS)) {

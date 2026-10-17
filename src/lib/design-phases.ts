@@ -1,0 +1,20 @@
+// Phase names of the design tracks (DESIGN_TRACKS_PLAN.md Sections 5 and 6).
+export const DESIGN_PHASES: Record<string, string> = {
+  L0: "Object foundations in C++",
+  L1: "From requirements to a model",
+  L2: "Varying behaviour",
+  L3: "Creating objects",
+  L4: "Structuring objects",
+  L5: "Collaboration between objects",
+  L6: "Concurrency in designs",
+  L7: "Whole systems (integration)",
+  H0: "Numbers, vocabulary, and the design round",
+  H1: "Data on one machine",
+  H2: "Scaling reads and splitting services",
+  H3: "Scaling writes and data",
+  H4: "Consistency and coordination",
+  H5: "Asynchronous work and overload",
+  H6: "Specialised structures and services",
+  H7: "Running it for real",
+  H8: "Whole systems (integration)",
+};

@@ -64,8 +64,11 @@ export function loadAll() {
   }
   const glossaryPath = join(DATA, 'glossary.yaml');
   const glossary = existsSync(glossaryPath) ? parseWith(glossaryFile, glossaryPath, errors) ?? [] : [];
-  const { lessons, errors: lessonErrors } = findLessons(ROOT);
+  const { lessons: allLessons, errors: lessonErrors } = findLessons(ROOT);
   errors.push(...lessonErrors);
+  // CP validators only see CP lessons; design lessons are checked by validateDesignLesson.
+  const lessons = Object.fromEntries(Object.entries(allLessons).filter(([k]) => !/^[LH]/.test(k)));
+  const designLessons = Object.fromEntries(Object.entries(allLessons).filter(([k]) => /^[LH]/.test(k)));
   const designData = {
     config: parseWith(designConfig, join(DATA, 'design.config.yaml'), errors),
     rubrics: parseWith(rubricsFile, join(DATA, 'rubrics.yaml'), errors) ?? [],
@@ -105,5 +108,5 @@ export function loadAll() {
     const d = parseWith(experimentRecord, join(expDir, f), errors);
     if (d) designData.experiments[d.experiment] = d;
   }
-  return { curriculum, designCurriculum, designData, patterns, banks, notes, topics, glossary, lessons, errors };
+  return { curriculum, designCurriculum, designData, designLessons, patterns, banks, notes, topics, glossary, lessons, errors };
 }

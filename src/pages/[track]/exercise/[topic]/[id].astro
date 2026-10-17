@@ -1,0 +1,55 @@
+---
+// One static page per PRACTICE exercise, inside the Starlight layout. Reserved exercises are never pre-rendered.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { parse } from 'yaml';
+import rubricsText from '../../../../data/rubrics.yaml?raw';
+import { allExercises, isPractice, type Exercise } from '../../../../lib/exercises';
+import { readSolution, readCode } from '../../../../lib/design-files';
+import { timerKind } from '../../../../lib/design-client';
+import AskFirst from '../../../../components/design/AskFirst';
+import KitInstructions from '../../../../components/design/KitInstructions.astro';
+import NumericAnswer from '../../../../components/design/NumericAnswer';
+import PhaseTimer from '../../../../components/design/PhaseTimer';
+import RubricScorer from '../../../../components/design/RubricScorer';
+import ReferenceReveal from '../../../../components/design/ReferenceReveal';
+import ExportForReview from '../../../../components/design/ExportForReview';
+import AttemptLog from '../../../../components/design/AttemptLog';
+
+export function getStaticPaths() {
+  return allExercises()
+    .filter(isPractice)
+    .map((e) => ({ params: { track: e.track, topic: e.topic, id: e.id }, props: { exercise: e } }));
+}
+const { exercise } = Astro.props as { exercise: Exercise };
+const rubrics = parse(rubricsText) as { id: string; name: string; criteria: any[] }[];
+const kit = exercise.checkers?.find((c) => c.kind === 'kit');
+const rubricChecker = exercise.checkers?.find((c) => c.kind === 'rubric');
+const rubric = rubricChecker && rubricChecker.kind === 'rubric' ? rubrics.find((r) => r.id === rubricChecker.id) : undefined;
+const numerics = await Promise.all((exercise.checkers ?? []).filter((c) => c.kind === 'numeric').map(async (c) => {
+  if (c.kind !== 'numeric') throw new Error('unreachable');
+  const text = (await readCode(`${c.calc}/expected.txt`)) ?? '';
+  const m = new RegExp(`^${c.key} = ([0-9.eE+-]+)`, 'm').exec(text);
+  return { key: c.key, unit: c.unit, factor: c.factor ?? 2, reference: m ? Number(m[1]) : NaN, derivation: text };
+}));
+const solution = kit && kit.kind === 'kit' ? await readSolution(kit.path) : undefined;
+const minutes = exercise.time_limit_minutes;
+---
+<StarlightPage frontmatter={{ title: `${exercise.globalId}: ${exercise.title}` }}>
+  <p class="muted">{exercise.track.toUpperCase()} · {exercise.type.replace('_', ' ')}{exercise.rung ? ` · rung ${exercise.rung}` : ''}{exercise.new_force ? ` · new force: ${exercise.new_force}` : ''}</p>
+  <p>{exercise.prompt}</p>
+  {exercise.clarifying && exercise.clarifying.length > 0 && <AskFirst client:load clarifying={exercise.clarifying} />}
+  {minutes && <PhaseTimer client:load minutes={minutes} kind={timerKind(exercise.track, exercise.type)} />}
+  {kit && kit.kind === 'kit' && <KitInstructions kit={kit.path} server={exercise.track === 'hld'} />}
+  {exercise.run && <><h3>Run step</h3><pre>{exercise.run}</pre></>}
+  {numerics.map((n) => <NumericAnswer client:load reference={n.reference} unit={n.unit} factor={n.factor} derivation={n.derivation} />)}
+  {rubric && <RubricScorer client:load rubric={rubric as any} globalId={exercise.globalId} minutes={minutes ?? null} />}
+  {exercise.hints && exercise.hints.length > 0 && (
+    <details>
+      <summary>Hints (open one at a time; try for 20 minutes first in L0-L1 and H0-H1, 30 after)</summary>
+      <ol>{exercise.hints.map((h) => <li><details><summary>Hint</summary>{h}</details></li>)}</ol>
+    </details>
+  )}
+  <AttemptLog client:load globalId={exercise.globalId} measured={numerics.length > 0} />
+  {solution && <ReferenceReveal client:load globalId={exercise.globalId} solution={solution} />}
+  <ExportForReview client:load globalId={exercise.globalId} prompt={exercise.prompt} rubric={rubric as any} />
+</StarlightPage>

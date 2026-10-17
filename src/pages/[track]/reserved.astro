@@ -1,0 +1,28 @@
+---
+// Shell page for reserved exercises (drill, checkpoint, review, exam). The build knows nothing about them:
+// the browser reads ?id=H4.2/r-1, fetches /data/reserved/H4.2.json, and renders the item after unlock.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+
+export function getStaticPaths() {
+  return [{ params: { track: 'lld' } }, { params: { track: 'hld' } }];
+}
+---
+<StarlightPage frontmatter={{ title: 'Exercise' }}>
+  <div id="reserved-root">Loading…</div>
+  <script>
+    const id = new URLSearchParams(location.search).get('id') ?? '';
+    const topic = id.split('/')[0];
+    const root = document.getElementById('reserved-root')!;
+    fetch(`/data/reserved/${encodeURIComponent(topic)}.json`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((items: { globalId: string; title: string; prompt: string }[]) => {
+        const item = items.find((e) => e.globalId === id);
+        if (!item) { root.textContent = 'Not found.'; return; }
+        // The real page checks the unlock rule (Section 10.8) before this point and mounts the components.
+        const h = document.createElement('h2'); h.textContent = item.title;
+        const p = document.createElement('p'); p.textContent = item.prompt;
+        root.replaceChildren(h, p);
+      })
+      .catch((e) => { root.textContent = `Could not load: ${e.message}`; });
+  </script>
+</StarlightPage>

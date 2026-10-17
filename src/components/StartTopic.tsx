@@ -1,9 +1,9 @@
 // Marks a topic as the learner's current topic (dashboard uses it).
-import { getSettings, getTopics, saveSettings, saveTopic, today } from '../lib/storage';
+import { getCurrentTopic, getTopics, saveTopic, setCurrentTopic, today, type Track } from '../lib/storage';
 import { useStore } from '../lib/useStore';
 
-export default function StartTopic({ topic }: { topic: string }) {
-  const current = useStore(() => getSettings().currentTopic ?? null, null);
+export default function StartTopic({ topic, track = 'cp' }: { topic: string; track?: Track }) {
+  const current = useStore(() => getCurrentTopic(track) ?? null, null);
   if (current === topic) return <p className="muted">This is your current topic.</p>;
   return (
     <button
@@ -11,7 +11,7 @@ export default function StartTopic({ topic }: { topic: string }) {
       className="secondary"
       onClick={() => {
         if (!getTopics()[topic]?.started) saveTopic(topic, { started: today() });
-        saveSettings({ currentTopic: topic });
+        setCurrentTopic(track, topic);
       }}
     >
       Make this my current topic

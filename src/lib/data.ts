@@ -9,7 +9,8 @@ import { findLessons } from './lessons.mjs';
 import { url } from './url';
 
 export type Topic = { order: number; id: string; phase: number; slug: string; title: string; requires: string[]; keywords: string[]; target_rating: [number, number] };
-export type DesignTopic = { track: 'lld' | 'hld'; order: number; id: string; phase: string; slug: string; kind: 'measured' | 'standard' | 'light' | 'capstone'; title: string; requires: string[]; keywords: string[] };
+export type DesignTopic = { track: 'lld' | 'hld'; order: number; id: string; phase: string; slug: string; kind: 'measured' | 'standard' | 'light' | 'capstone'; title: string; requires: string[]; lab?: string; infra?: string[]; keywords: string[] };
+export type DesignTopicFile = import('./design-types').DesignTopicFile;
 export type Pattern = { id: string; name: string; description: string; precondition: string };
 export type Source = 'codeforces' | 'atcoder' | 'cses' | 'leetcode';
 export type BankProblem = {
@@ -69,6 +70,7 @@ export type FullProblem = TopicProblem & Pick<BankProblem, 'source' | 'title' | 
 export type SiteData = {
   curriculum: Topic[];
   designCurriculum: DesignTopic[];
+  designTopics: Record<string, DesignTopicFile>;
   patterns: Record<string, { topic: string; patterns: Pattern[] }>;
   banks: Record<string, BankFile>;
   topics: Record<string, TopicFile>;
@@ -85,6 +87,7 @@ export function loadData(): Promise<SiteData> {
     // The CP validators and components only ever see the CP track; design rows are validated by validate-design.mjs.
     const curriculum = allRows.filter((r) => r.track === 'cp').map((r) => r as unknown as Topic).sort((a, b) => a.order - b.order);
     const designCurriculum = (allRows.filter((r) => r.track !== 'cp') as unknown as DesignTopic[]).sort((a, b) => a.track.localeCompare(b.track) || a.order - b.order);
+    const designTopics = Object.fromEntries((await getCollection('designTopics')).map((e) => [e.data.id, e.data as unknown as DesignTopicFile]));
     const patterns = Object.fromEntries((await getCollection('bankPatterns')).map((e) => [e.data.topic, e.data]));
     const banks = Object.fromEntries((await getCollection('bank')).map((e) => [e.data.topic, e.data as BankFile]));
     const topics = Object.fromEntries((await getCollection('topics')).map((e) => [e.data.id, e.data as TopicFile]));
@@ -99,13 +102,13 @@ export function loadData(): Promise<SiteData> {
     const errors = [
       ...lessonErrors,
       ...validateAll({ curriculum, patterns, banks, notes }),
-      ...validateTopics({ curriculum, patterns, banks, topics, glossary, lessons }),
+      ...validateTopics({ curriculum, patterns, banks, topics, glossary, lessons: Object.fromEntries(Object.entries(lessons).filter(([k]) => !isDesignId(k))) }),
       ...validateDesignCurriculum(designCurriculum),
     ];
     if (errors.length) throw new Error(`Data validation failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
     const bankById = new Map<string, BankProblem>();
     for (const b of Object.values(banks)) for (const p of b.problems) bankById.set(p.id, p);
-    return { curriculum, designCurriculum, patterns, banks, topics, glossary, lessons, bankById };
+    return { curriculum, designCurriculum, designTopics, patterns, banks, topics, glossary, lessons, bankById };
   })();
   return cache;
 }
@@ -128,6 +131,10 @@ export function practiceOf(bank: BankFile | undefined): BankProblem[] {
 }
 
 export const topicSlug = (id: string) => id.replace('.', '-');
+export const isDesignId = (id: string) => /^[LH]\d/.test(id);
+export const designRow = (data: SiteData, id: string) => data.designCurriculum.find((x) => x.id === id)!;
+/** /lld/phase-2/L2-1-strategy/ : the lesson folder follows PLAN.md Section 3 with the track as a prefix. */
+export const designLessonHref = (t: DesignTopic) => url(`/${t.track}/phase-${t.phase.slice(1)}/${topicSlug(t.id).toLowerCase()}-${t.slug}/`);
 export const lessonHref = (t: Topic) => url(`/phase-${t.phase}/${topicSlug(t.id)}-${t.slug}/`);
 export const PHASE_NAMES = ['Foundations', 'Array techniques', 'Mathematics I', 'Recursion to dynamic programming', 'Graphs', 'Range data structures', 'Strings', 'Integration'];
 export const PLATFORM_NAMES: Record<Source, string> = { codeforces: 'Codeforces', atcoder: 'AtCoder', cses: 'CSES', leetcode: 'LeetCode' };
@@ -160,6 +167,12 @@ export function problemIndex(data: SiteData): IndexedProblem[] {
 
 /** The one list behind "What you need" (PLAN.md Section 6.2). */
 export function getUses(data: SiteData, topic: string) {
+  if (isDesignId(topic)) {
+    return (data.designTopics[topic]?.uses ?? []).map((u) => {
+      const t = designRow(data, u.topic);
+      return { topic: u.topic, title: t.title, what: u.what, href: data.lessons[u.topic] ? designLessonHref(t) : null };
+    });
+  }
   return (data.topics[topic]?.uses ?? []).map((u) => {
     const t = data.curriculum.find((x) => x.id === u.topic)!;
     return { topic: u.topic, title: t.title, what: u.what, href: data.lessons[u.topic] ? lessonHref(t) : null };

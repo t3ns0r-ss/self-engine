@@ -1,0 +1,29 @@
+---
+// Overhead, edit-cost and blast-radius table for the two variants of a pattern unit (Section 9.3), from
+// measured-naive.tsv, measured-patterned.tsv and unit.yaml. Never typed by hand.
+import { parse } from 'yaml';
+import { readCode, parseTsv } from '../../lib/design-files';
+const { unit } = Astro.props as { unit: string };
+const meta = parse((await readCode(`${unit}/unit.yaml`)) ?? '') as { domain: string; variants: string[]; scenarios?: { name: string; request: string; blast_radius: Record<string, { count: number; where: string }> }[] };
+const tables = Object.fromEntries(await Promise.all(meta.variants.map(async (v) => [v, parseTsv((await readCode(`${unit}/measured-${v}.tsv`)) ?? '')])));
+const rowFor = (v: string, name: string) => tables[v].find((r) => r[0] === name);
+---
+<div class="table-scroll trade-off">
+  <p><strong>Domain:</strong> {meta.domain}. Edit cost from <code>change_cost.sh</code>; blast radius counted per Section 9.3.</p>
+  <table>
+    <thead>
+      <tr><th>Change request</th>{meta.variants.map((v) => <th>{v}: files changed</th>)}{meta.variants.map((v) => <th>{v}: lines added/removed</th>)}{meta.variants.map((v) => <th>{v}: blast radius</th>)}</tr>
+    </thead>
+    <tbody>
+      {(meta.scenarios ?? []).map((s) => (
+        <tr>
+          <td>{s.request}</td>
+          {meta.variants.map((v) => { const r = rowFor(v, s.name); return <td>{r ? Number(r[1]) + Number(r[2]) + Number(r[3]) : '?'}</td>; })}
+          {meta.variants.map((v) => { const r = rowFor(v, s.name); return <td>{r ? `+${Number(r[4]) + Number(r[6])} / -${r[5]}` : '?'}</td>; })}
+          {meta.variants.map((v) => <td>{s.blast_radius[v]?.count ?? '?'}</td>)}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <p>Base: {meta.variants.map((v) => `${v}: ${tables[v][0]?.slice(1).join(', ')}`).join('; ')}.</p>
+</div>

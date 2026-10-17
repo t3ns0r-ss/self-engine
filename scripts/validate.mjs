@@ -12,7 +12,10 @@ const data = loadAll();
 function designFileErrors(d) {
   const fsx = realFs(ROOT);
   const out = [...validateDesignFiles(d.designData, fsx, { rows: d.designCurriculum, products: d.designData.productNames }), ...validateCodeHygiene(fsx)];
-  for (const [id, l] of Object.entries(d.lessons)) if (/^[LH]/.test(id)) out.push(...validateDesignLesson(l.text, l.path));
+  for (const [id, l] of Object.entries(d.designLessons)) {
+    out.push(...validateDesignLesson(l.text, l.path));
+    if (!d.designCurriculum.some((r) => r.id === id)) out.push(`${l.path}: frontmatter topic ${id} is not in the curriculum`);
+  }
   return out;
 }
 const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDesignCurriculum(data.designCurriculum), ...validateDesignCounts(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants), ...designFileErrors(data)])];

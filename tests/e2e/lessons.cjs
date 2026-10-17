@@ -14,7 +14,7 @@ const check = (cond, msg) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`); 
 const ROOT = path.join(__dirname, '..', '..');
 const curriculum = parse(fs.readFileSync(path.join(ROOT, 'src/data/curriculum.yaml'), 'utf8'));
 const topicDir = path.join(ROOT, 'src/data/topics');
-const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml')).map((f) => parse(fs.readFileSync(path.join(topicDir, f), 'utf8')));
+const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml') && /^\d/.test(f)).map((f) => parse(fs.readFileSync(path.join(topicDir, f), 'utf8')));
 
 (async () => {
   const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});

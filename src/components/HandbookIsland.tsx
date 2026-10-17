@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getSettings } from '../lib/storage';
+import { getCurrentTopic } from '../lib/storage';
 
 export type HCard = {
   topic: string; order: number; href: string; id: string; name: string; property: string; theorem: string;
@@ -13,7 +13,7 @@ export default function HandbookIsland({ topics, cards, groups }: { topics: { id
   const [flashIndex, setFlashIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
   useEffect(() => {
-    const cur = getSettings().currentTopic;
+    const cur = getCurrentTopic('cp');
     const t = topics.find((x) => x.id === cur);
     if (t) setAsOf(t.order);
   }, []);

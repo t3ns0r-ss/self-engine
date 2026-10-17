@@ -47,3 +47,10 @@ Each stack was started with `up --wait`, reached `healthy`, and was stopped with
 ## Go modules
 
 None (`allowed_modules: []`). Expected first additions, each through Section 9.5 when a lab needs it: a PostgreSQL driver, a MySQL driver, a Redis-protocol client, a Kafka client, a WebSocket library.
+
+## Samples re-run on the new toolchains (2026-10-16)
+
+- Appendix A solution unit (`caller-unchanged`, with `check.hpp`): passes under `test_design.sh` with g++ 16 and the address and undefined-behaviour sanitizers.
+- Appendix B claim program and the `quorumkv` lab with its tests on `simnet`: pass with Go 1.27.2 and `-race`.
+- Appendix C token-bucket kit: `exercise_kit_check.sh` fails the starter, passes the reference, and catches all three mutants (one only by the race detector); kept as `tests/fixtures/design/bucket`.
+- `tests/design-scripts.test.mjs` runs every script on synthetic Go and C++ units, including a thread-sanitizer-only mutant.

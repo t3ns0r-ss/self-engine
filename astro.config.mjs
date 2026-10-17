@@ -11,7 +11,8 @@ import { parse } from 'yaml';
 // Each phase lists its intro, every topic in order, and its exam. A topic without a lesson yet
 // links to its problem bank page and carries a "soon" badge. data-order lets the browser add
 // a "later" badge to topics after the learner's current topic (see src/styles/later-badge.js).
-const curriculum = parse(readFileSync('./src/data/curriculum.yaml', 'utf8'));
+const allRows = parse(readFileSync('./src/data/curriculum.yaml', 'utf8'));
+const curriculum = allRows.filter((x) => x.track === 'cp');
 // GitHub Pages serves the site under /<repo>/; BASE_PATH is set by the Pages workflow.
 const base = process.env.BASE_PATH || '/';
 const PHASES = ['Foundations', 'Array techniques', 'Mathematics I', 'Recursion to dynamic programming', 'Graphs', 'Range data structures', 'Strings', 'Integration'];
@@ -34,6 +35,27 @@ const phaseGroups = PHASES.map((name, phase) => {
   return { label: `Phase ${phase}: ${name}`, collapsed: true, items };
 });
 
+// LLD and HLD groups (DESIGN_TRACKS_PLAN.md Section 11.1): per phase an intro, the lessons, and an exam; topics without a
+// lesson yet link to the track handbook with a "soon" badge.
+const designPhases = (track, names) => Object.entries(names).map(([ph, name]) => {
+  const n = ph.slice(1);
+  const dir = `./src/content/docs/${track}/phase-${n}`;
+  const items = [];
+  if (existsSync(`${dir}/index.mdx`)) items.push({ label: 'Introduction', link: `/${track}/phase-${n}/` });
+  for (const t of allRows.filter((x) => x.track === track && x.phase === ph)) {
+    const lesson = existsSync(`${dir}/${dash(t.id)}-${t.slug}.mdx`);
+    items.push({
+      label: `${t.id} ${t.title.length > 60 ? t.title.slice(0, 57) + '…' : t.title}`,
+      link: lesson ? `/${track}/phase-${n}/${dash(t.id).toLowerCase()}-${t.slug}/` : `/${track}/handbook/`,
+      attrs: { 'data-order': String(t.order), 'data-topic': t.id },
+      ...(lesson ? {} : { badge: { text: 'soon', variant: 'note' } }),
+    });
+  }
+  if (existsSync(`${dir}/exam.mdx`)) items.push({ label: 'Phase exam', link: `/${track}/phase-${n}/exam/` });
+  return { label: `Phase ${ph}: ${name}`, collapsed: true, items };
+});
+const phaseNames = (track) => Object.fromEntries([...readFileSync('./src/lib/design-phases.ts', 'utf8').matchAll(/^\s+([LH]\d): "(.+)",$/gm)].filter((m) => m[1][0] === (track === 'lld' ? 'L' : 'H')).map((m) => [m[1], m[2]]));
+
 // SITE_URL comes from .env.deploy at deploy time (PLAN.md Section 14.2); never hard-code a host.
 export default defineConfig({
   site: process.env.SITE_URL || undefined,
@@ -49,6 +71,8 @@ export default defineConfig({
         { label: 'Home', link: '/' },
         { label: 'Method', link: '/method/' },
         ...phaseGroups,
+        { label: 'LLD: object design in C++', collapsed: true, items: [...designPhases('lld', phaseNames('lld')), { label: 'Pattern Handbook', link: '/lld/handbook/' }] },
+        { label: 'HLD: system design with Go labs', collapsed: true, items: [...designPhases('hld', phaseNames('hld')), { label: 'Component Handbook', link: '/hld/handbook/' }, { label: 'Labs', link: '/hld/labs/' }, { label: 'Numbers sheet', link: '/hld/numbers/' }] },
         { label: 'Recognition Handbook', link: '/handbook/' },
         { label: 'Glossary', link: '/glossary/' },
         { label: 'Problems', link: '/problems/' },

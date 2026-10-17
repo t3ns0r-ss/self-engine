@@ -200,7 +200,7 @@ export function validateDesignFiles(d, fsx, { rows, products = [] }) {
   }
 
   // D18: no placeholders in finished data
-  for (const dir of ['src/data/topics', 'src/data/exercises', 'exercises', 'reference']) {
+  for (const dir of ['src/data/topics', 'src/data/exercises', 'src/content/docs/lld', 'src/content/docs/hld', 'exercises', 'reference']) {
     for (const f of fsx.list(dir)) {
       if (!/\.(ya?ml|md|go|hpp|cpp|mdx|txt|sh)$/.test(f)) continue;
       if (/^[0-9]/.test(f.split('/').pop() ?? '') && dir === 'src/data/topics') continue;     // CP topic files

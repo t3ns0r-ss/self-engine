@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { MISTAKE_LABELS, REVIEW_OFFSETS, addDays, getSettings, getTopics, resolveDue, saveProblem, today, type Mistake } from '../lib/storage';
+import { MISTAKE_LABELS, REVIEW_OFFSETS, addDays, currentTopicOf, getSettings, getTopics, resolveDue, saveProblem, today, type Mistake } from '../lib/storage';
 import { useStore } from '../lib/useStore';
 import { url } from '../lib/url';
 import { resolvedSince } from '../lib/sync/core';
@@ -22,7 +22,7 @@ export default function DashboardIsland({ topics, problems }: { topics: DashTopi
   const topicState = useStore(getTopics, {});
   const settings = useStore(getSettings, {});
   const now = today();
-  const current = topics.find((t) => t.id === settings.currentTopic);
+  const current = topics.find((t) => t.id === currentTopicOf(settings, 'cp'));
 
   // Due reviews: a set is due from its date until every problem in it has a logged status.
   const dueReviews = topics.flatMap((t) => {

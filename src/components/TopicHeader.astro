@@ -1,13 +1,30 @@
 ---
 // Top of every lesson: topic, phase, and a "this is my current topic" control.
-import { loadData, topicSlug, PHASE_NAMES } from '../lib/data';
+import { loadData, topicSlug, PHASE_NAMES, isDesignId, designRow, getUses } from '../lib/data';
 import StartTopic from './StartTopic';
 import { url } from '../lib/url';
+import { DESIGN_PHASES } from '../lib/design-phases';
 
 const { topic } = Astro.props as { topic: string };
 const data = await loadData();
-const t = data.curriculum.find((x) => x.id === topic)!;
+const design = isDesignId(topic);
+const t = design ? null : data.curriculum.find((x) => x.id === topic)!;
+const d = design ? designRow(data, topic) : null;
+const uses = design ? getUses(data, topic) : [];
 ---
+{design && d ? (
+<div class="topic-header">
+  <p>
+    <strong>Topic {d.id}</strong> · {d.track === 'lld' ? 'Low-level design (C++)' : 'High-level design (Go labs)'} · Phase {d.phase} ({DESIGN_PHASES[d.phase] ?? d.phase}) · {d.kind}
+  </p>
+  {uses.length > 0 && (
+    <p><strong>Builds on:</strong> {uses.map((u, i) => (<>{i > 0 && ', '}{u.href ? <a href={u.href}>{u.topic}</a> : <span>{u.topic}</span>}</>))}</p>
+  )}
+  {d.lab && !/^none/.test(d.lab) && <p><strong>Lab:</strong> {d.lab}</p>}
+  {d.infra && d.infra.length > 0 && <p><strong>Needs on the lab server:</strong> {d.infra.join(', ')}</p>}
+  <StartTopic client:load topic={d.id} track={d.track} />
+</div>
+) : t && (
 <div class="topic-header">
   {data.topics[topic]?.draft && (
     <p class="draft-note"><strong>Draft.</strong> This lesson is still being written; sections may be empty or change.</p>
@@ -18,3 +35,4 @@ const t = data.curriculum.find((x) => x.id === topic)!;
   {t.id !== '7.8' && <p><a href={url(`/bank/${topicSlug(t.id)}/`)}>All practice problems for this topic</a></p>}
   <StartTopic client:load topic={t.id} />
 </div>
+)}

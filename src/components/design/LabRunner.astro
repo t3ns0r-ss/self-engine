@@ -1,0 +1,22 @@
+---
+// The HLD "Reference designs" block for one lab (Section 8.6): test list (holds and breaks), run commands with copy
+// buttons, the recorded run transcript, and the stacks the lab needs on the lab server.
+import { Code } from '@astrojs/starlight/components';
+import { parse } from 'yaml';
+import { readCode } from '../../lib/design-files';
+const { unit } = Astro.props as { unit: string };
+const lab = parse((await readCode(`${unit}/lab.yaml`)) ?? '') as { title: string; holds: string[]; breaks: string[]; run: string; experiments: string[]; stacks: string[] };
+if (!lab) throw new Error(`LabRunner: ${unit}/lab.yaml not found`);
+const run = (await readCode(`${unit}/${lab.run}`)) ?? '';
+// Commands are the indented or fenced lines of run.md that start with a shell word; everything else is prose.
+const commands = [...run.matchAll(/^(?: {4}|\t)?((?:bash|go|curl|kill|cd) .+)$/gm)].map((m) => m[1]);
+---
+<section class="lab-runner" id={`lab-${unit.replace(/[^\w]/g, '-')}`}>
+  <h3>Lab: {lab.title}</h3>
+  <p><strong>Tests where the property holds:</strong> {lab.holds.map((t, i) => <><code>{t}</code>{i < lab.holds.length - 1 ? ', ' : ''}</>)}</p>
+  <p><strong>Tests where it is broken and the guarantee fails:</strong> {lab.breaks.map((t, i) => <><code>{t}</code>{i < lab.breaks.length - 1 ? ', ' : ''}</>)}</p>
+  {lab.stacks.length > 0 && <p><strong>Needs on the lab server:</strong> {lab.stacks.join(', ')} (<code>bash scripts/labserver.sh up {lab.stacks[0]}</code>)</p>}
+  <h4>Run it</h4>
+  {commands.length > 0 && <Code code={commands.join('\n')} lang="bash" />}
+  <details><summary>Full run.md</summary><Code code={run} lang="markdown" /></details>
+</section>

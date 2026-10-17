@@ -16,7 +16,7 @@ trap cleanup EXIT
 # The preview server runs as our own child (no npx wrapper, so kill reaches it); --ignore-lock lets
 # it start even if another preview server holds the lock.
 wait_up() {
-  for _ in $(seq 1 60); do curl -sf http://localhost:4329/self-engine/ > /dev/null && return 0; sleep 0.5; done
+  for _ in $(seq 1 240); do curl -sf http://localhost:4329/self-engine/ > /dev/null && return 0; sleep 0.5; done
   echo "preview server did not start"; return 1
 }
 # 1. The real lessons, built without the placeholder (it replaces topic 1.3's files while it exists).

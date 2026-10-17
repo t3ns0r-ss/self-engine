@@ -27,6 +27,7 @@ node scripts/fetch_problem.mjs <id>     # read a problem statement (ids like lc-
 ```
 
 - `test_units.sh` is slow: run it in the background and poll a log. It keeps `.unit-stamps/` so unchanged units are skipped.
+- Mermaid diagrams (design lessons) are rendered to inline SVG at build time by `rehype-mermaid`, which launches Chromium only when a page has a diagram. Without a browser a build that contains a diagram fails; CI installs Chromium in the check and deploy jobs. The project pins `playwright` to the version whose browser is installed. `astro preview` can take ~25 s to answer the first request here; the e2e scripts wait up to 2 minutes.
 - Playwright is preinstalled in the cloud image (Chromium at `/opt/pw-browsers`); do not run `playwright install`.
 - CI (`ci.yml`) runs `npm test`, `npm run build` and the e2e on every push. It does **not** run `test_units.sh`; you must.
 

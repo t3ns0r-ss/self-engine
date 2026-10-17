@@ -33,6 +33,16 @@ const check = (cond, msg) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`); 
     await ctx.close();
   }
 
+  // ---- D10: the lesson's Mermaid diagram is inline SVG, rendered at build time ----
+  {
+    const c = await b.newContext({ viewport: { width: 1200, height: 900 } });
+    const p = await c.newPage();
+    await p.goto(BASE + '/lld/phase-2/l2-1-strategy/', { waitUntil: 'networkidle' });
+    const n = await p.evaluate(() => [...document.querySelectorAll('svg')].filter((s) => s.id.startsWith('mermaid')).length);
+    check(n === 1, 'LLD lesson: Mermaid diagram rendered as inline SVG');
+    await c.close();
+  }
+
   // ---- interactions at desktop width ----
   const ctx = await b.newContext({ viewport: { width: 1200, height: 900 } });
   let page = await ctx.newPage();

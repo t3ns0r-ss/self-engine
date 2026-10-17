@@ -178,7 +178,7 @@ w('exercises/L2.1/ladder/rung-1/test.sh', '#!/usr/bin/env bash\ntrue\n');
 w('exercises/L2.1/ladder/rung-1/starter/fee.hpp', '#pragma once\n');
 w('reference/L2.1/ladder/rung-1/fee.hpp', '#pragma once\n');
 w('reference/L2.1/ladder/rung-1/SOLUTION.md', 'The design in a few lines.\n');
-w('src/content/docs/lld/phase-2/L2-1-strategy.mdx', mdx('L2.1', 'lld', 2, 'strategy', '**Claim L2.1.1.** Callers never change.\n\n<ClaimEvidence claim="L2.1.1" />'));
+w('src/content/docs/lld/phase-2/L2-1-strategy.mdx', mdx('L2.1', 'lld', 2, 'strategy', '**Claim L2.1.1.** Callers never change.\n\n```mermaid\nclassDiagram\n  Context --> Strategy\n  Strategy <|-- Fast\n```\n\n<ClaimEvidence claim="L2.1.1" />'));
 
 // ---------------- HLD H4.2 ----------------
 w('code/H4.2/calc-x/main.go', 'package main\n\nimport "fmt"\n\nfunc main() { fmt.Println("peak_reads = 4200 requests/s") }\n');

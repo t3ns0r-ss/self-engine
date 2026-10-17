@@ -4,6 +4,7 @@ import starlight from '@astrojs/starlight';
 import react from '@astrojs/react';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeMermaid from 'rehype-mermaid';
 import { readFileSync, existsSync } from 'node:fs';
 import { parse } from 'yaml';
 
@@ -60,7 +61,13 @@ const phaseNames = (track) => Object.fromEntries([...readFileSync('./src/lib/des
 export default defineConfig({
   site: process.env.SITE_URL || undefined,
   base,
-  markdown: { remarkPlugins: [remarkMath], rehypePlugins: [rehypeKatex] },
+  // DESIGN_TRACKS_PLAN.md D10: Mermaid blocks become inline SVG at build time (no runtime network).
+  // rehype-mermaid starts Chromium only when a page has a diagram, so builds without diagrams need no browser.
+  markdown: {
+    syntaxHighlight: { type: 'shiki', excludeLangs: ['mermaid'] },
+    remarkPlugins: [remarkMath],
+    rehypePlugins: [rehypeKatex, [rehypeMermaid, { strategy: 'inline-svg' }]],
+  },
   integrations: [
     starlight({
       title: 'CP Training',

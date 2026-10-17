@@ -15,5 +15,5 @@ npx astro build > /dev/null
 node scripts/check_built.mjs
 ./node_modules/.bin/astro preview --port 4329 --ignore-lock > /dev/null 2>&1 &
 PREVIEW_PID=$!
-for _ in $(seq 1 60); do curl -sf http://localhost:4329/self-engine/ > /dev/null && break; sleep 0.5; done
+for _ in $(seq 1 240); do curl -sf http://localhost:4329/self-engine/ > /dev/null && break; sleep 0.5; done
 BASE=http://localhost:4329/self-engine node tests/e2e/design.cjs

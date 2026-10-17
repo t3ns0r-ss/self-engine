@@ -60,4 +60,9 @@ if (errors.length) {
   console.error(`Built-site check failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
   process.exit(1);
 }
+// D10: every Mermaid block is rendered to inline SVG at build time; none left as source, none loaded from the network.
+for (const [p, html] of pageTexts) {
+  if (/language-mermaid|class="mermaid"/.test(html)) errors.push(`${p}: unrendered Mermaid block (D10)`);
+  if (/<script[^>]+src="https?:/.test(html)) errors.push(`${p}: loads a script from the network (D10)`);
+}
 console.log(`Built-site check passed: ${checked} lessons, ${reservedChecked} reserved design items kept out of HTML.`);

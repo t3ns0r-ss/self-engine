@@ -18,7 +18,7 @@ Each digest is the multi-architecture index digest of the tag, read from the Doc
 |---|---|---|---|
 | PostgreSQL | `postgres:18.6` | `sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336` | PostgreSQL licence (permissive) |
 | MySQL | `mysql:9.7.2` | `sha256:c7cb87a9822f499375287930cbff71d6d3b201e346b45108b1115b435ee2df13` | GPLv2 (MySQL Community) |
-| Redis | `redis:8.8.3` | `sha256:eb1aa641bc5380ed14442398e45a5a51aeaaac919fab811e4f134eb77c71dd2d` | **Redis 8 is tri-licensed: RSALv2, SSPLv1 or AGPLv3** (its `LICENSE.txt`). Running it locally for labs is fine; see "Questions for Saurabh" in `PROGRESS.md`. |
+| Valkey (Redis-protocol) | `valkey/valkey:9.1.2` | `sha256:418652cfb58ef879d4978c33553735d7147016032d5aefaa14c828e611eb9dfd` | BSD-3-Clause. Chosen by Saurabh 2026-10-18 over Redis 8 (RSALv2/SSPLv1/AGPLv3) and Dragonfly (BSL). Same protocol; the stack keeps the name `redis` and the variable `REDIS_IMAGE`. |
 | Kafka | `apache/kafka:4.3.1` | `sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837` | Apache License 2.0 |
 
 `apache/kafka:4.3.1` is the newest 4.x tag by version number; the newest push is `4.2.2` (2026-09-28), a patch of an older line.

@@ -320,9 +320,9 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - Not built, as the plan says to ask first (Section 19): CSES sync, contest-log import with an automatic upsolve list, multiple learners, background sync.
 
 ### Design tracks: questions for Saurabh (D0)
-- **Redis licence.** `redis:8.8.3` is tri-licensed (RSALv2, SSPLv1 or AGPLv3). Running it locally for labs is fine. Do you want Valkey (BSD-licensed fork) instead? It speaks the same protocol, so no lab changes.
-- **GCC 16.** The only GCC 16 package for Ubuntu 24.04 is a development snapshot (`16.0.1 20260315`, "experimental"); all tests pass with `-std=c++23`. Build 16.2 from source, or keep the snapshot until a release is packaged?
-- **Public or private repository?** Decides whether a self-hosted Actions runner on this server may run the integration job (Section 9.13). Not set up.
+- **Redis licence. DECIDED 2026-10-18: Valkey 9.1.2 (BSD), stack verified.** Was: `redis:8.8.3` tri-licensed (RSALv2, SSPLv1 or AGPLv3). Running it locally for labs is fine. Do you want Valkey (BSD-licensed fork) instead? It speaks the same protocol, so no lab changes.
+- **GCC 16. DECIDED 2026-10-18: build 16.2.0 from source into `~/toolchains/gcc-16.2.0` (in progress).** Was: the only GCC 16 package for Ubuntu 24.04 is a development snapshot (`16.0.1 20260315`, "experimental"); all tests pass with `-std=c++23`. Build 16.2 from source, or keep the snapshot until a release is packaged?
+- **Repository: public (decided 2026-10-18).** Decides whether a self-hosted Actions runner on this server may run the integration job (Section 9.13). Not set up.
 - **Extra Go modules** (Section 9.5): none added. Expected later: a PostgreSQL driver, a MySQL driver, a Redis client, a Kafka client, a WebSocket library. Approve each when its lab needs it.
 - **Host ports.** PostgreSQL 5432 and MySQL 3306 are taken by other services on this server. Lab stacks use 15432, 13306, 16379 and 19092 via the gitignored `.env.labserver`; only about 2 GiB RAM is free, so stacks run one at a time.
 - **"Builds on" header line.** Revision 5 (Section 11.7) puts it back in the design `TopicHeader`; PLAN.md Revision 2.1 removed it for the CP track. Implemented as Revision 5 says, for design topics only.

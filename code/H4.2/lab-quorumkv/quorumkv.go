@@ -5,6 +5,7 @@ package quorumkv
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -97,6 +98,7 @@ func (c *Client) fanOut(ids []string, req any) []reply {
 		}(id)
 	}
 	wg.Wait()
+	sort.Slice(replies, func(i, j int) bool { return replies[i].from < replies[j].from }) // same order every run
 	return replies
 }
 

@@ -133,6 +133,39 @@ func TestSloppyQuorumBreaksOverlap(t *testing.T) {
 	}
 }
 
+// A and B hold version 1; only C holds version 2. A read of all three must return version 2,
+// not the first reply it happens to get.
+func TestGetReturnsNewestOfReplies(t *testing.T) {
+	net, w, r := setup(1, 3)
+	if err := w.Put("k", Versioned{"v1", 1}); err != nil {
+		t.Fatal(err)
+	}
+	net.Partition("writer", "A", true)
+	net.Partition("writer", "B", true)
+	if err := w.Put("k", Versioned{"v2", 2}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.Get("k")
+	if err != nil || got.Value != "v2" {
+		t.Fatalf("got %v, %v; want v2", got, err)
+	}
+}
+
+// A late, older write must not replace a newer value.
+func TestOlderVersionDoesNotOverwrite(t *testing.T) {
+	_, w, r := setup(3, 3)
+	if err := w.Put("k", Versioned{"v2", 2}); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Put("k", Versioned{"v1", 1}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := r.Get("k")
+	if err != nil || got.Value != "v2" {
+		t.Fatalf("got %v, %v; want v2", got, err)
+	}
+}
+
 // Run with -race: many clients writing different keys at once.
 func TestConcurrentClients(t *testing.T) {
 	net, _, _ := setup(2, 2)

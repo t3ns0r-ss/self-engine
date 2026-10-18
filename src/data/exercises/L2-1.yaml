@@ -1,0 +1,377 @@
+topic: L2.1
+exercises:
+- id: rung-1
+  role: ladder
+  type: change_ladder
+  title: Two parking plans behind one fee function
+  prompt: Build a FeeService that prices a parking stay for the plans HOURLY (20 for each started hour) and DAILY (100 for each started day). Minutes below 0 and unknown plan names are rejected with an exception. More plans will be asked for later, so keep each plan separate from the code that uses it. The tests call only FeeService::fee(plan, minutes).
+  card: strategy
+  rung: 1
+  new_force: Two parking plans, hourly and daily, behind one fee function
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L2.1/ladder/rung-1
+  reference: reference/L2.1/ladder/rung-1
+  alternatives:
+  - 'One function with an if per plan: shorter for two plans, and the right choice if no plan will ever be added.'
+  hints:
+  - Write the one function header that both plans could share. What goes in, what comes out?
+  - Put that header in an abstract class, give each plan its own class, and keep the plans in a map from name to std::unique_ptr.
+  - FeeService should find the plan by name and call it, and only the function that fills the map should mention the plan classes.
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: rung-2
+  role: ladder
+  type: change_ladder
+  title: Add a weekend plan
+  prompt: 'Add the plan WEEKEND at 40 for each started hour to the service from rung 1, without editing the code of the existing plans. When you are done, compare your edit with the edit a single function holding all plans would have needed: run git diff --numstat between your rung-1 and rung-2 tags and write down both numbers.'
+  card: strategy
+  rung: 2
+  new_force: Add a weekend plan
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L2.1/ladder/rung-2
+  reference: reference/L2.1/ladder/rung-2
+  alternatives:
+  - 'Add one more if in the single function: 1 line, but in the function that holds every other plan.'
+  hints:
+  - What is the smallest piece of new code that fits the shared function header?
+  - A new class in a new file, plus one line that registers it by name.
+  - If you edited HourlyPricing or DailyPricing, the isolation that Strategy is for was lost; try again without touching them.
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: rung-3
+  role: ladder
+  type: change_ladder
+  title: Choose the plan at run time from a setting
+  prompt: Add a class Parking that is created from a plan name, as if read from a configuration file, and prices a stay with fee(minutes). An unknown plan name must throw when the Parking is created, not on the first call to fee. Keep FeeService working as it did.
+  card: strategy
+  rung: 3
+  new_force: Choose the plan at run time from a setting
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L2.1/ladder/rung-3
+  reference: reference/L2.1/ladder/rung-3
+  alternatives:
+  - 'Let Parking take a std::unique_ptr<PricingStrategy> instead of a name: better when plans are built in code or tests, worse when the choice arrives as text.'
+  hints:
+  - 'Where should the check that the name is valid live: in the constructor or in fee?'
+  - 'Reuse FeeService: it already knows which names exist. It needs one small way to answer "do you know this plan?".'
+  - Parking can hold a FeeService and the chosen name and forward fee(minutes) to the service.
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: rung-4
+  role: ladder
+  type: change_ladder
+  title: A plan needs an extra input the others do not
+  prompt: 'Add the plan MEMBER: the hourly fee with a percentage taken off, rounded down. The percentage is given when the Parking is created: Parking(plan, discount) with default 0. A discount outside 0 to 100 throws. Plans other than MEMBER ignore the discount. Keep the one-argument fee(minutes) that every plan shares.'
+  card: strategy
+  rung: 4
+  new_force: A plan needs an extra input the others do not
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L2.1/ladder/rung-4
+  reference: reference/L2.1/ladder/rung-4
+  alternatives:
+  - 'Add the discount to the shared header: better only when most plans need it.'
+  hints:
+  - Which plans need the discount? If it is only one, should the shared function header carry it?
+  - Give the discount to the MEMBER class through its constructor and keep fee(minutes) unchanged.
+  - Parking creates the MemberPricing with the discount and registers it, so the shared interface and the other plans stay untouched.
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: rung-5
+  role: ladder
+  type: change_ladder
+  title: A change to the fee signature itself
+  prompt: 'Every fee now depends on the vehicle: Parking::fee takes (minutes, Vehicle). Trucks pay double on HOURLY (so also on MEMBER, before the discount), 150 instead of 100 for each started day on DAILY, and the same as cars on WEEKEND. Make the change and count the files you had to edit. From this rung only Parking is tested.'
+  card: null
+  rung: 5
+  new_force: A change to the fee signature itself
+  needs_new_structure: false
+  checkers:
+  - kind: kit
+    path: L2.1/ladder/rung-5
+  reference: reference/L2.1/ladder/rung-5
+  alternatives:
+  - 'Pass a request object so the next input does not change the header again: better when more inputs are coming, worse if it becomes a bag of unrelated fields.'
+  hints:
+  - List every place that mentions the fee function header. How many are there?
+  - The shared header gains a parameter, so every plan class gets it, even the one that ignores it.
+  - 'After you finish, compare the number of files you edited with what you would have edited in one function: this is the case where Strategy is no better.'
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: ex-1
+  role: worked_example
+  type: recognise
+  title: Shipping rates for three carriers, more coming
+  prompt: A shop ships with STANDARD, EXPRESS and PICKUP; two more carriers are expected this year. Each rate is one arithmetic expression of the weight in grams. Decide whether Strategy applies, and in which form.
+  card: strategy
+  answer:
+    kind: card
+    card:
+      topic: L2.1
+      card: strategy
+    property: Every carrier fits cost(grams) and no planned change adds an input.
+    why_others_fail: A function with an if per carrier puts every edit next to the other carriers; a class per carrier is longer than the one-line rates it would hold.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: ex-2
+  role: worked_example
+  type: recognise
+  title: Two tax rules that are fixed by law
+  prompt: Food is taxed at 5 per cent and everything else at 20 per cent, rounded half up, in cents. The law has not changed these in the life of the product and no change is expected. Decide whether Strategy applies.
+  answer:
+    kind: none
+    simplest: A plain function with a conditional
+    why: 'Two fixed rules and no expected change: Strategy would add 4 files and about 39 lines to protect nothing.'
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-1
+  role: drill
+  type: recognise
+  title: Parking plans
+  prompt: A parking system has four plans (hourly, daily, weekend, overnight) that each work out a fee from the stay length in minutes. Two more are promised this year, and finance checks each plan separately.
+  answer:
+    kind: card
+    card:
+      topic: L2.1
+      card: strategy
+    property: All plans fit fee(minutes), the input is settled, and plans change separately.
+    why_others_fail: A single function with an if per plan puts every edit next to every other plan; subclasses of a ticket class would fix the plan when the ticket is created.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-2
+  role: drill
+  type: recognise
+  title: Fixed discounts
+  prompt: A shop has two discount rules, 10 per cent for staff and 5 per cent for students, written into its terms of service. They have not changed in six years and nobody has asked for a change.
+  answer:
+    kind: none
+    simplest: A plain function with a conditional
+    why: 'Two fixed rules with no expected change: Strategy would add four files and dozens of lines to protect rules nobody edits.'
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-3
+  role: drill
+  type: recognise
+  title: Sort keys
+  prompt: An order list can be sorted by one of five keys the user picks (date, total, customer, status, region), and the team has a ticket for three more. Each key is a different comparison.
+  answer:
+    kind: card
+    card:
+      topic: L2.1
+      card: strategy
+    property: Every key fits one comparison signature (two orders in, a yes or no out) and keys are added and tested one by one.
+    why_others_fail: A switch on a key code needs an edit in the shared function for every new key.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-4
+  role: drill
+  type: recognise
+  title: Rounding
+  prompt: A report always rounds money to two decimals, written in one helper that every page calls. The finance team confirms that will never change.
+  answer:
+    kind: none
+    simplest: One helper function
+    why: There is one behaviour, not several to choose between, so there is nothing to vary.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-5
+  role: drill
+  type: recognise
+  title: Payment rules by country
+  prompt: 'A payment service has a validation and fee rule for each country: 12 so far, one more each quarter. The rules differ in how they compute, take the same amount and currency in, and are tested per country.'
+  answer:
+    kind: card
+    card:
+      topic: L2.1
+      card: strategy
+    property: All countries fit validate_and_fee(amount, currency); countries are added and changed independently.
+    why_others_fail: One long function with an if per country has a growing blast radius; subclasses of Payment fix the country when the object is created and tie the rule to the data.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-6
+  role: drill
+  type: recognise
+  title: Rates per branch
+  prompt: A car-hire chain charges 20, 25 or 30 per day depending on the branch. The branches only differ in that number; the way the fee is worked out is the same.
+  answer:
+    kind: none
+    simplest: A rate stored as data, passed in or looked up
+    why: The variants differ in a value, not in what they do, so a field or a lookup is enough. Strategy needs different behaviour, not a different number.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-7
+  role: drill
+  type: recognise
+  title: Regional tax
+  prompt: A checkout computes tax by region. There are seven regional rule sets with different formulas (flat, tiered, with exemptions), each owned by a different team, and they change several times a year. Every rule takes the basket total in cents and returns the tax.
+  answer:
+    kind: card
+    card:
+      topic: L2.1
+      card: strategy
+    property: Every region fits tax(total); the formulas differ, change often, and belong to different owners.
+    why_others_fail: A conditional on the region keeps seven owners editing one function; the input is settled, so the cost of many classes is worth paying.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: r-8
+  role: drill
+  type: recognise
+  title: Fixed pipeline
+  prompt: An order passes through two checks (stock and fraud). Both always run, in that order, for every order. No third check is planned.
+  answer:
+    kind: none
+    simplest: Two function calls in a row
+    why: Both behaviours always run; nothing is chosen between variants, so there is nothing to put behind an interface.
+  checkers: []
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: cp-1
+  role: checkpoint
+  type: build
+  title: Pricing engine with swappable rules
+  prompt: 'Build a checkout total in 60 minutes. A Checkout totals a basket of items (prices in cents) under one named discount rule: NONE, PERCENT10 (10 per cent off, rounded down), FIXED5 (500 off from 2000), CHEAPEST_FREE (with three or more items the cheapest is free). In the last phase, extend it with BULK (from ten items, 15 per cent off, rounded down). Unknown rules and negative prices throw. Explain your structure choice in a short decision record.'
+  clarifying:
+  - q: Is the money in cents, and are all prices whole numbers?
+    a: Yes, whole cents in long long.
+    critical: false
+  - q: How are discounts rounded?
+    a: Down, for PERCENT10 and BULK.
+    critical: true
+  - q: Can two rules apply to one basket?
+    a: No. One rule is chosen per call, by name.
+    critical: true
+  - q: Will more rules be added after BULK?
+    a: Yes, the shop expects several a year; this decides the structure.
+    critical: true
+  - q: What happens for an empty basket or an unknown rule name?
+    a: An empty basket totals 0 under every rule; an unknown name throws.
+    critical: false
+  checkers:
+  - kind: kit
+    path: L2.1/cp-1
+  - kind: rubric
+    id: rubric-lld-build-v1
+  reference: reference/L2.1/cp-1
+  time_limit_minutes: 60
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+- id: rev-1-1
+  role: review
+  type: recognise
+  title: Three shipping rates
+  prompt: A shop has three shipping rates (standard, express, pickup). They are written into the contract with the courier and no new rate is expected. Each is one line.
+  review_set: 1
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+  answer:
+    kind: none
+    simplest: A plain function with a conditional
+    why: 'Three fixed one-line rates and no expected change: Strategy would add files and lines for nothing.'
+  checkers: []
+- id: rev-1-2
+  role: review
+  type: recognise
+  title: One header for every discount rule
+  prompt: A cart applies one of several discount rules chosen by the marketing team. Write down the one function header every rule could share, and say whether Strategy fits.
+  review_set: 1
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+  answer:
+    kind: card
+    card:
+      topic: L2.1
+      card: strategy
+    property: Every rule fits discount(basket) returning the amount off, and marketing adds and edits rules separately.
+    why_others_fail: An if per rule keeps every rule next to every other; an unstable header (a rule needing the customer) would break the property.
+  checkers: []
+- id: rev-1-3
+  role: review
+  type: refactor
+  title: Shipping rates without the if chain
+  prompt: A ShippingRates class is a chain of ifs over four carriers and cannot add one. Refactor it to a map from carrier name to rate function, add and replace carriers at run time, and keep the four fees.
+  review_set: 1
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+  checkers:
+  - kind: kit
+    path: L2.1/rev-1-3
+  reference: reference/L2.1/rev-1-3
+- id: rev-2-1
+  role: review
+  type: refactor
+  title: Replace the type code with channels
+  prompt: A Notifier switches on a type code, so each new channel edits the switch. Replace it with channel objects stored by name, so that a channel written by the caller can be added without editing the Notifier.
+  review_set: 2
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+  checkers:
+  - kind: kit
+    path: L2.1/rev-2-1
+  reference: reference/L2.1/rev-2-1
+- id: rev-2-2
+  role: review
+  type: recognise
+  title: Lambdas or classes
+  prompt: A scoring module has nine scoring rules, each one expression of a number or two, kept in one table. They never need names, descriptions or their own tests. Should each rule be a class?
+  review_set: 2
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+  answer:
+    kind: card
+    card:
+      topic: L2.1
+      card: strategy
+    property: All rules fit score(input) and each is one expression, so a std::function holding a lambda is enough.
+    why_others_fail: A class per rule would be longer than the rule it holds; an if chain would put nine rules in one function.
+  checkers: []
+- id: rev-2-3
+  role: review
+  type: recognise
+  title: Two sort keys
+  prompt: A list is always sorted by last name, then first name. The product owner says there will never be another sort order.
+  review_set: 2
+  techniques:
+  - L2.1
+  checked_on: '2026-10-18'
+  answer:
+    kind: none
+    simplest: A plain comparison function
+    why: One fixed behaviour; no variants exist, so nothing needs choosing.
+  checkers: []

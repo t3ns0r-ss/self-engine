@@ -1,0 +1,130 @@
+id: "L2.1"
+track: lld
+
+uses:
+  - {topic: "L0.5", what: "Change scenarios, edit cost and blast radius: how to count what a change touches"}
+  - {topic: "L0.6", what: "Depending on an interface (an abstract class) instead of a concrete class"}
+  - {topic: "L1.2", what: "Giving one reason to change to one class, so each class has a single responsibility"}
+
+claims:
+  - id: "L2.1.1"
+    kind: measured
+    title: "One class per variant keeps the other variants untouched when one is added or changed, and costs more files and lines overall"
+    plain_words: "With one class per variant, adding a variant is a new class plus a wiring line and changing one variant edits only its class. In two different programs the plain version needed fewer lines every time, and the class version was worse when the shared signature changed."
+    evidence: ["L2.1/strategy-fee", "L2.1/strategy-notify"]
+    source: null
+  - id: "L2.1.2"
+    kind: proved
+    title: "Code that depends only on the shared signature never has to change when a variant is added"
+    plain_words: "If the calling code knows only the interface, a new class that implements the interface cannot force an edit in that calling code, because the caller never names it."
+    evidence: ["L2.1/caller-unchanged"]
+    source: null
+  - id: "L2.1.3"
+    kind: proved
+    title: "A std::function holds any callable with the shared signature, so a one-line variant needs no class"
+    plain_words: "A lambda, a plain function and an object with operator() can all be stored as one std::function type and called the same way, which gives Strategy without a class hierarchy when each variant is short."
+    evidence: ["L2.1/function-plan"]
+    source: null
+
+cards:
+  - id: strategy
+    name: "Strategy"
+    force: "Behaviour that varies independently of the code that uses it, with variants added or changed over time."
+    decisive_property: "All variants fit one function signature that is unlikely to change, and callers do not need to know which variant runs."
+    from_claim: "L2.1.2"
+    how_to_test: "List the variants and write the one signature they could all share. If the inputs differ per variant, or the inputs are still changing, the property does not hold yet."
+    trade_off_table:
+      units: ["L2.1/strategy-fee", "L2.1/strategy-notify"]
+      overhead: "+4 files and +39 non-blank lines for two parking plans; +4 files and +46 lines for two message channels (measured)."
+      per_change: "Adding a variant: 16 lines against 8 (parking), 19 against 8 (channels). Changing one variant: 15 against 15, and 6 against 6. Changing the shared signature: 55 lines in 7 files against 46 in 3 (parking), 47 lines in 7 files against 38 in 3 (channels)."
+      blast_radius: "Adding or changing a variant: 0 other variants touched against 2, in both programs. Changing the signature: 1 against 1 (parking) and 0 against 0 (channels), because every variant has to change anyway."
+      verdict: "Strategy never wins on lines in these measurements. It buys isolation between variants and costs files and lines, and it costs most when the shared signature changes. It pays when variants are added or changed often, are owned or tested separately, and the shared inputs are stable."
+    constraint_shapes:
+      - "3 or more variants now, or 2 plus a stated expectation of more; each variant longer than one or two lines; the inputs every variant needs are settled"
+    weak_signals:
+      - form: "The requirement says 'support different' pricing, payment, discount, routing, sorting or delivery rules"
+        shape: "At least 3 named kinds, or 'new kinds will be added', and the kinds differ in a calculation or a decision, not only in stored data"
+      - form: "The requirement says 'depending on the plan, type or mode, calculate'"
+        shape: "The kind in use can change per request or per customer, and the same calling code handles every kind"
+    kill_signals:
+      - "Two variants, no expected change, one line each: the plain function is 4 files and 39 lines smaller (measured)"
+      - "The inputs every variant needs are still changing: each change edits every variant class, 7 files against 3 (measured)"
+      - "Variants differ in the data they carry, not in what they do: use fields or subtypes instead"
+    in_action:
+      statement: "A parking system charges by an hourly or a daily plan; marketing says weekend plans and promotions will follow."
+      constraints: "2 plans now, at least 2 more planned this quarter, each plan checked separately by the finance team; every plan needs only the stay length in minutes"
+      budget: "At least 4 expected edits to pricing per year. In one shared function, each edit touches code that also holds every other plan (2 other plans at risk per edit, measured)."
+      candidates:
+        - {tool: "Plain function with an if for each plan name", verdict: rejected, because: "Each edit sits in a function that holds every other plan, so every change puts the other plans at risk."}
+        - {tool: "Strategy", verdict: chosen, because: "The property holds: every plan is fee(minutes), and no planned change adds an input."}
+      property_check: "Write the signature: long long fee(long long minutes) const. Hourly, daily and weekend all fit it, and no planned change adds an input. Yes."
+      decision: "Strategy: an abstract PricingStrategy, one final class per plan, a map from plan name to std::unique_ptr<PricingStrategy>, filled in one wiring function."
+    examples:
+      positive:
+        - inline: {input: "Plans: hourly, daily, weekend, first-30-minutes-free; each tested alone; more promised; all need only the stay length", answer: "Strategy", why: "All fit fee(minutes); plans change often and separately."}
+        - inline: {input: "Message channels: email, SMS, push, each with its own formatting and limit; channels get added", answer: "Strategy", why: "All fit send(to, text); each is added, changed and tested on its own."}
+      negative:
+        - inline: {input: "Two plans (hourly, daily) fixed by regulation for the life of the product", answer: "A plain function", why: "Strategy adds 4 files and 39 lines and saves nothing when nothing changes."}
+          correct_tool: {simplest: "plain function"}
+        - inline: {input: "Pricing rules are about to gain vehicle type, membership and time-of-day inputs", answer: "A plain function for now", why: "The shared signature is unstable; one new input edited 7 files against 3 in the measurement."}
+          correct_tool: {simplest: "plain function"}
+    lookalikes: []
+    cost: "Time: one virtual call per use (a function-pointer jump). Code: see the trade-off table. Every reader must also learn where the wiring lives."
+
+lookalike_pairs:
+  - a: "Pricing plans behind one interface, chosen by name at run time"
+    b: "Subclasses of one Order class, one per order kind, chosen when the object is created"
+    a_tool: {topic: "L2.1", card: "strategy"}
+    b_tool: "Inheritance for a true is-a relationship (taught in L0.3)"
+    flipping_difference: "A subclass fixes the variant for the life of the object, and the variant is tied to the data. Strategy lets the caller choose or swap the behaviour while the object keeps living, and keeps the variants out of the class that uses them."
+    flipping_input: "A parking ticket that must change from the hourly plan to the weekend plan while it is open"
+  - a: "Three delivery channels with their own formatting, more expected"
+    b: "Two discount rules fixed for the life of the product"
+    a_tool: {topic: "L2.1", card: "strategy"}
+    b_tool: "A plain function with a conditional"
+    flipping_difference: "Both look like 'several behaviours chosen by a name'. Only the first has variants that will be added and changed, so only it repays the extra files and lines."
+    flipping_input: "Marketing announces four more discount rules next quarter"
+  - a: "A pricing plan written as a class that implements the interface"
+    b: "A pricing plan written as a lambda stored in a std::function"
+    a_tool: {topic: "L2.1", card: "strategy"}
+    b_tool: {topic: "L2.1", card: "strategy"}
+    flipping_difference: "The same card in two forms. A class is better when the variant has several functions, state worth naming, or its own tests; a std::function is better when each variant is one short expression."
+    flipping_input: "A plan that needs a name, a description and a validity check as well as the fee"
+
+self_test:
+  - q: "Two parking plans, hourly at 20 per started hour and daily at 100 per started day, are fixed by regulation and will not change. The plain version is 3 files and 47 lines; the Strategy version is 7 files and 86 lines. Which do you write, and what do the extra 4 files and 39 lines buy?"
+    a: "The plain version. The extra files and lines buy isolation between plans when plans are added or changed (0 other plans touched instead of 2), and with no expected change there is nothing for that isolation to protect."
+  - q: "A plain function holds hourly, daily and weekend plans. You change only the hourly plan. How many other plans sit in the function you edit, and what could go wrong?"
+    a: "Two (daily and weekend). Any slip in the edited function can break them, and a review has to check that they still behave the same. With one class per plan, the edit is in the hourly class and the other plans are not touched."
+  - q: "Every plan now also needs the vehicle type. In the measurement, how many files did the Strategy version edit compared with the plain version, and why?"
+    a: "7 files against 3 in the parking program. The shared signature is in the interface, every plan class, the calculator, the tests and the demo, so one change to the signature reaches every class."
+  - q: "You add a new plan class and the code that sums fees across a ticket list does not compile. What does the claim about callers say went wrong?"
+    a: "The calling code names a concrete class, or knows which plan runs, so it does not depend only on the shared interface. The claim holds only when callers use the interface and nothing else."
+  - q: "Predict before reading the table: for a change that adds one new variant, will Strategy touch fewer, equal or more lines than the plain version in total? Then check the table."
+    a: "More in total (16 against 8 lines for parking, 19 against 8 for channels), because it adds a whole class and a wiring line. What it saves is the other variants' code, which stays untouched."
+  - q: "When is std::function a better fit than an abstract class with virtual functions for the variants?"
+    a: "When each variant is one short expression with no state worth naming and no separate tests, so a lambda is clearer than a class. When variants need several functions, a name or their own tests, the abstract class is better."
+
+decision_map:
+  - weak_signal: "Several rules for the same calculation, a new kind announced, each kind differing in what it computes"
+    choose: "Strategy: an interface with one function, one class per kind, wiring in one place"
+    when: "3 or more kinds now or expected soon, and the inputs they all need are settled"
+    over:
+      - {card: "A plain function with a conditional", because: "Every change to one kind sits next to all the others (2 other kinds touched per change, measured)."}
+  - weak_signal: "Two or three rules that never change, each a line or two"
+    choose: "A plain function with a conditional"
+    when: "Nothing is expected to change"
+    over:
+      - {topic: "L2.1", card: "strategy", because: "Strategy would add 4 files and 39 lines to protect nothing."}
+  - weak_signal: "Many tiny variants, each one expression, no state"
+    choose: "Strategy as a std::function holding lambdas"
+    when: "Each variant fits in a lambda and needs no name, state or separate test"
+    over:
+      - {topic: "L2.1", card: "strategy", because: "A class per variant would be longer than the logic it holds."}
+
+glossary_added:
+  - "strategy"
+  - "shared signature"
+  - "wiring function"
+  - "std::function"
+  - "callable"

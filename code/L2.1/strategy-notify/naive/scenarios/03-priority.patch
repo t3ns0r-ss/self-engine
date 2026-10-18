@@ -1,0 +1,86 @@
+diff --git a/main.cpp b/main.cpp
+index 3e9e72a..051726d 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -3,7 +3,7 @@
+ 
+ int main() {
+     Notifier n;
+-    std::cout << n.send("EMAIL", "ann", "your parcel has arrived") << "\n";
+-    std::cout << n.send("SMS", "ann", "your parcel has arrived") << "\n";
+-    std::cout << n.send("PUSH", "ann", "your parcel has arrived") << "\n";
++    std::cout << n.send("EMAIL", "ann", "your parcel has arrived", Priority::Normal) << "\n";
++    std::cout << n.send("SMS", "ann", "your parcel has arrived", Priority::Normal) << "\n";
++    std::cout << n.send("PUSH", "ann", "your parcel has arrived", Priority::Normal) << "\n";
+ }
+diff --git a/notifier.hpp b/notifier.hpp
+index 2a19b63..53d5492 100644
+--- a/notifier.hpp
++++ b/notifier.hpp
+@@ -2,12 +2,15 @@
+ #include <stdexcept>
+ #include <string>
+ 
++enum class Priority { Normal, Urgent };
++
+ class Notifier {
+ public:
+-    std::string send(const std::string& channel, const std::string& to, const std::string& text) const {
+-        if (channel == "EMAIL") return "EMAIL to " + to + ": " + text;
+-        if (channel == "SMS") return "SMS to " + to + ": " + ("[Acme] " + text).substr(0, 160);
+-        if (channel == "PUSH") return "PUSH to " + to + ": " + text.substr(0, 60);
++    std::string send(const std::string& channel, const std::string& to, const std::string& text, Priority priority) const {
++        const std::string body = priority == Priority::Urgent ? "URGENT: " + text : text;
++        if (channel == "EMAIL") return "EMAIL to " + to + ": " + body;
++        if (channel == "SMS") return "SMS to " + to + ": " + ("[Acme] " + body).substr(0, 160);
++        if (channel == "PUSH") return "PUSH to " + to + ": " + body.substr(0, 60);
+         throw std::invalid_argument("unknown channel: " + channel);
+     }
+ };
+diff --git a/tests.cpp b/tests.cpp
+index d8d3cea..0d9a3cf 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -3,22 +3,28 @@
+ 
+ void email_sends_the_whole_text() {
+     Notifier n;
+-    CHECK(n.send("EMAIL", "ann", "hello") == "EMAIL to ann: hello");
+-    CHECK(n.send("EMAIL", "ann", std::string(200, 'x')).size() == std::string("EMAIL to ann: ").size() + 200);
++    CHECK(n.send("EMAIL", "ann", "hello", Priority::Normal) == "EMAIL to ann: hello");
++    CHECK(n.send("EMAIL", "ann", std::string(200, 'x'), Priority::Normal).size() == std::string("EMAIL to ann: ").size() + 200);
+ }
+ void sms_is_cut_at_160_characters() {
+     Notifier n;
+-    CHECK(n.send("SMS", "bob", "hi") == "SMS to bob: [Acme] hi");
+-    CHECK(n.send("SMS", "bob", std::string(200, 'x')) == "SMS to bob: [Acme] " + std::string(153, 'x'));
++    CHECK(n.send("SMS", "bob", "hi", Priority::Normal) == "SMS to bob: [Acme] hi");
++    CHECK(n.send("SMS", "bob", std::string(200, 'x'), Priority::Normal) == "SMS to bob: [Acme] " + std::string(153, 'x'));
+ }
+ void unknown_channel_throws() {
+     Notifier n;
+-    CHECK_THROWS(n.send("FAX", "ann", "hi"));
++    CHECK_THROWS(n.send("FAX", "ann", "hi", Priority::Normal));
+ }
+ void push_is_cut_at_60_characters() {
+     Notifier n;
+-    CHECK(n.send("PUSH", "cy", "hi") == "PUSH to cy: hi");
+-    CHECK(n.send("PUSH", "cy", std::string(200, 'x')) == "PUSH to cy: " + std::string(60, 'x'));
++    CHECK(n.send("PUSH", "cy", "hi", Priority::Normal) == "PUSH to cy: hi");
++    CHECK(n.send("PUSH", "cy", std::string(200, 'x'), Priority::Normal) == "PUSH to cy: " + std::string(60, 'x'));
++}
++void urgent_adds_a_prefix_on_every_channel() {
++    Notifier n;
++    CHECK(n.send("EMAIL", "ann", "hi", Priority::Urgent) == "EMAIL to ann: URGENT: hi");
++    CHECK(n.send("SMS", "bob", "hi", Priority::Urgent) == "SMS to bob: [Acme] URGENT: hi");
++    CHECK(n.send("PUSH", "cy", "hi", Priority::Urgent) == "PUSH to cy: URGENT: hi");
+ }
+ 
+ int main() {
+@@ -26,5 +32,6 @@ int main() {
+     RUN(sms_is_cut_at_160_characters);
+     RUN(unknown_channel_throws);
+     RUN(push_is_cut_at_60_characters);
++    RUN(urgent_adds_a_prefix_on_every_channel);
+     return check::report();
+ }

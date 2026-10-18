@@ -1,0 +1,66 @@
+diff --git a/main.cpp b/main.cpp
+index 974dffd..edc4bce 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -5,4 +5,5 @@ int main() {
+     Notifier n = make_notifier();
+     std::cout << n.send("EMAIL", "ann", "your parcel has arrived") << "\n";
+     std::cout << n.send("SMS", "ann", "your parcel has arrived") << "\n";
++    std::cout << n.send("PUSH", "ann", "your parcel has arrived") << "\n";
+ }
+diff --git a/make_notifier.hpp b/make_notifier.hpp
+index 2e86674..3de836d 100644
+--- a/make_notifier.hpp
++++ b/make_notifier.hpp
+@@ -2,6 +2,7 @@
+ #include <memory>
+ #include "email_channel.hpp"
+ #include "notifier.hpp"
++#include "push_channel.hpp"
+ #include "sms_channel.hpp"
+ 
+ // Composition root: the only place that knows which channels exist.
+@@ -9,5 +10,6 @@ inline Notifier make_notifier() {
+     Notifier n;
+     n.add_channel("EMAIL", std::make_unique<EmailChannel>());
+     n.add_channel("SMS", std::make_unique<SmsChannel>());
++    n.add_channel("PUSH", std::make_unique<PushChannel>());
+     return n;
+ }
+diff --git a/push_channel.hpp b/push_channel.hpp
+new file mode 100644
+index 0000000..31c6aa0
+--- /dev/null
++++ b/push_channel.hpp
+@@ -0,0 +1,10 @@
++#pragma once
++#include "channel.hpp"
++
++class PushChannel final : public Channel {
++public:
++    std::string send(const std::string& to, const std::string& text) const override {
++        const std::string& t = text;
++        return "PUSH to " + to + ": " + t.substr(0, 60);
++    }
++};
+diff --git a/tests.cpp b/tests.cpp
+index c2cbae1..f8980e4 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -15,10 +15,16 @@ void unknown_channel_throws() {
+     Notifier n = make_notifier();
+     CHECK_THROWS(n.send("FAX", "ann", "hi"));
+ }
++void push_is_cut_at_60_characters() {
++    Notifier n = make_notifier();
++    CHECK(n.send("PUSH", "cy", "hi") == "PUSH to cy: hi");
++    CHECK(n.send("PUSH", "cy", std::string(200, 'x')) == "PUSH to cy: " + std::string(60, 'x'));
++}
+ 
+ int main() {
+     RUN(email_sends_the_whole_text);
+     RUN(sms_is_cut_at_160_characters);
+     RUN(unknown_channel_throws);
++    RUN(push_is_cut_at_60_characters);
+     return check::report();
+ }

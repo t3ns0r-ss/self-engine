@@ -1,0 +1,101 @@
+diff --git a/fee_calculator.hpp b/fee_calculator.hpp
+index d17be49..c80806f 100644
+--- a/fee_calculator.hpp
++++ b/fee_calculator.hpp
+@@ -3,12 +3,15 @@
+ #include <stdexcept>
+ #include <string>
+ 
++enum class Vehicle { Car, Truck };
++
+ class FeeCalculator {
+ public:
+-    long long fee(const std::string& plan, long long minutes) const {
+-        if (plan == "HOURLY") return (std::max(minutes - 30, 0LL) + 59) / 60 * 20;
++    long long fee(const std::string& plan, long long minutes, Vehicle vehicle) const {
++        const bool truck = vehicle == Vehicle::Truck;
++        if (plan == "HOURLY") return (std::max(minutes - 30, 0LL) + 59) / 60 * (truck ? 40 : 20);
+         if (plan == "WEEKEND") return (minutes + 59) / 60 * 40;
+-        if (plan == "DAILY") return (minutes + 1439) / 1440 * 100;
++        if (plan == "DAILY") return (minutes + 1439) / 1440 * (truck ? 150 : 100);
+         throw std::invalid_argument("unknown plan: " + plan);
+     }
+ };
+diff --git a/main.cpp b/main.cpp
+index df852ad..1a1c781 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -3,7 +3,7 @@
+ 
+ int main() {
+     FeeCalculator calc;
+-    std::cout << "HOURLY 150 minutes: " << calc.fee("HOURLY", 150) << "\n";
+-    std::cout << "DAILY 150 minutes: " << calc.fee("DAILY", 150) << "\n";
+-    std::cout << "WEEKEND 150 minutes: " << calc.fee("WEEKEND", 150) << "\n";
++    std::cout << "HOURLY 150 minutes: " << calc.fee("HOURLY", 150, Vehicle::Car) << "\n";
++    std::cout << "DAILY 150 minutes: " << calc.fee("DAILY", 150, Vehicle::Car) << "\n";
++    std::cout << "WEEKEND 150 minutes: " << calc.fee("WEEKEND", 150, Vehicle::Car) << "\n";
+ }
+diff --git a/tests.cpp b/tests.cpp
+index 4ae5559..fe32beb 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -3,33 +3,39 @@
+ 
+ void hourly_rounds_up_started_hours() {
+     FeeCalculator calc;
+-    CHECK(calc.fee("HOURLY", 31) == 20);
+-    CHECK(calc.fee("HOURLY", 90) == 20);
+-    CHECK(calc.fee("HOURLY", 91) == 40);
++    CHECK(calc.fee("HOURLY", 31, Vehicle::Car) == 20);
++    CHECK(calc.fee("HOURLY", 90, Vehicle::Car) == 20);
++    CHECK(calc.fee("HOURLY", 91, Vehicle::Car) == 40);
+ }
+ void hourly_first_30_minutes_are_free() {
+     FeeCalculator calc;
+-    CHECK(calc.fee("HOURLY", 0) == 0);
+-    CHECK(calc.fee("HOURLY", 30) == 0);
++    CHECK(calc.fee("HOURLY", 0, Vehicle::Car) == 0);
++    CHECK(calc.fee("HOURLY", 30, Vehicle::Car) == 0);
+ }
+ void daily_rounds_up_started_days() {
+     FeeCalculator calc;
+-    CHECK(calc.fee("DAILY", 1) == 100);
+-    CHECK(calc.fee("DAILY", 1440) == 100);
+-    CHECK(calc.fee("DAILY", 1441) == 200);
++    CHECK(calc.fee("DAILY", 1, Vehicle::Car) == 100);
++    CHECK(calc.fee("DAILY", 1440, Vehicle::Car) == 100);
++    CHECK(calc.fee("DAILY", 1441, Vehicle::Car) == 200);
+ }
+ void zero_minutes_is_free() {
+     FeeCalculator calc;
+-    CHECK(calc.fee("DAILY", 0) == 0);
++    CHECK(calc.fee("DAILY", 0, Vehicle::Car) == 0);
+ }
+ void unknown_plan_throws() {
+     FeeCalculator calc;
+-    CHECK_THROWS(calc.fee("MONTHLY", 10));
++    CHECK_THROWS(calc.fee("MONTHLY", 10, Vehicle::Car));
+ }
+ void weekend_is_double_the_old_hourly_rate() {
+     FeeCalculator calc;
+-    CHECK(calc.fee("WEEKEND", 1) == 40);
+-    CHECK(calc.fee("WEEKEND", 61) == 80);
++    CHECK(calc.fee("WEEKEND", 1, Vehicle::Car) == 40);
++    CHECK(calc.fee("WEEKEND", 61, Vehicle::Car) == 80);
++}
++void trucks_pay_more_on_hourly_and_daily_but_not_weekend() {
++    FeeCalculator calc;
++    CHECK(calc.fee("HOURLY", 31, Vehicle::Truck) == 40);
++    CHECK(calc.fee("DAILY", 1, Vehicle::Truck) == 150);
++    CHECK(calc.fee("WEEKEND", 1, Vehicle::Truck) == 40);
+ }
+ 
+ int main() {
+@@ -39,5 +45,6 @@ int main() {
+     RUN(zero_minutes_is_free);
+     RUN(unknown_plan_throws);
+     RUN(weekend_is_double_the_old_hourly_rate);
++    RUN(trucks_pay_more_on_hourly_and_daily_but_not_weekend);
+     return check::report();
+ }

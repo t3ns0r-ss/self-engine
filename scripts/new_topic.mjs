@@ -21,7 +21,7 @@ if (!row) { console.error(`topic ${id} is not in src/data/curriculum.yaml`); pro
 
 const track = row.track;                       // 'lld' | 'hld'
 const dash = id.replace('.', '-');
-const lessonDir = path.join(root, 'src/content/docs', track, `phase-${row.phase}`);
+const lessonDir = path.join(root, 'src/content/docs', track, `phase-${String(row.phase).replace(/^[LH]/, "")}`);
 const files = {
   lesson: path.join(lessonDir, `${dash}-${row.slug}.mdx`),
   topic: path.join(root, 'src/data/topics', `${dash}.yaml`),

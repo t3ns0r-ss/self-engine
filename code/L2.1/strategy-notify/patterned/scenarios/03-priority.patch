@@ -1,0 +1,141 @@
+diff --git a/channel.hpp b/channel.hpp
+index 9166a4d..fb381c9 100644
+--- a/channel.hpp
++++ b/channel.hpp
+@@ -1,9 +1,11 @@
+ #pragma once
+ #include <string>
+ 
++enum class Priority { Normal, Urgent };
++
+ // The one signature every delivery channel shares.
+ class Channel {
+ public:
+     virtual ~Channel() = default;   // deleting through a base pointer must run the derived destructor
+-    virtual std::string send(const std::string& to, const std::string& text) const = 0;
++    virtual std::string send(const std::string& to, const std::string& text, Priority priority) const = 0;
+ };
+diff --git a/email_channel.hpp b/email_channel.hpp
+index f9a8f18..5e448c8 100644
+--- a/email_channel.hpp
++++ b/email_channel.hpp
+@@ -3,8 +3,8 @@
+ 
+ class EmailChannel final : public Channel {
+ public:
+-    std::string send(const std::string& to, const std::string& text) const override {
+-        const std::string& t = text;
++    std::string send(const std::string& to, const std::string& text, Priority priority) const override {
++        const std::string t = priority == Priority::Urgent ? "URGENT: " + text : text;
+         return "EMAIL to " + to + ": " + t;
+     }
+ };
+diff --git a/main.cpp b/main.cpp
+index edc4bce..52ddd89 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -3,7 +3,7 @@
+ 
+ int main() {
+     Notifier n = make_notifier();
+-    std::cout << n.send("EMAIL", "ann", "your parcel has arrived") << "\n";
+-    std::cout << n.send("SMS", "ann", "your parcel has arrived") << "\n";
+-    std::cout << n.send("PUSH", "ann", "your parcel has arrived") << "\n";
++    std::cout << n.send("EMAIL", "ann", "your parcel has arrived", Priority::Normal) << "\n";
++    std::cout << n.send("SMS", "ann", "your parcel has arrived", Priority::Normal) << "\n";
++    std::cout << n.send("PUSH", "ann", "your parcel has arrived", Priority::Normal) << "\n";
+ }
+diff --git a/notifier.hpp b/notifier.hpp
+index 4800b6e..5228505 100644
+--- a/notifier.hpp
++++ b/notifier.hpp
+@@ -10,10 +10,10 @@ public:
+     void add_channel(const std::string& name, std::unique_ptr<Channel> channel) {
+         channels_[name] = std::move(channel);
+     }
+-    std::string send(const std::string& channel, const std::string& to, const std::string& text) const {
++    std::string send(const std::string& channel, const std::string& to, const std::string& text, Priority priority) const {
+         auto it = channels_.find(channel);
+         if (it == channels_.end()) throw std::invalid_argument("unknown channel: " + channel);
+-        return it->second->send(to, text);
++        return it->second->send(to, text, priority);
+     }
+ private:
+     std::map<std::string, std::unique_ptr<Channel>> channels_;
+diff --git a/push_channel.hpp b/push_channel.hpp
+index 31c6aa0..b4dd98e 100644
+--- a/push_channel.hpp
++++ b/push_channel.hpp
+@@ -3,8 +3,8 @@
+ 
+ class PushChannel final : public Channel {
+ public:
+-    std::string send(const std::string& to, const std::string& text) const override {
+-        const std::string& t = text;
++    std::string send(const std::string& to, const std::string& text, Priority priority) const override {
++        const std::string t = priority == Priority::Urgent ? "URGENT: " + text : text;
+         return "PUSH to " + to + ": " + t.substr(0, 60);
+     }
+ };
+diff --git a/sms_channel.hpp b/sms_channel.hpp
+index 38f6758..17d1b39 100644
+--- a/sms_channel.hpp
++++ b/sms_channel.hpp
+@@ -3,8 +3,8 @@
+ 
+ class SmsChannel final : public Channel {
+ public:
+-    std::string send(const std::string& to, const std::string& text) const override {
+-        const std::string& t = text;
++    std::string send(const std::string& to, const std::string& text, Priority priority) const override {
++        const std::string t = priority == Priority::Urgent ? "URGENT: " + text : text;
+         return "SMS to " + to + ": " + ("[Acme] " + t).substr(0, 160);
+     }
+ };
+diff --git a/tests.cpp b/tests.cpp
+index 7239ab8..6dfd3ad 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -3,22 +3,28 @@
+ 
+ void email_sends_the_whole_text() {
+     Notifier n = make_notifier();
+-    CHECK(n.send("EMAIL", "ann", "hello") == "EMAIL to ann: hello");
+-    CHECK(n.send("EMAIL", "ann", std::string(200, 'x')).size() == std::string("EMAIL to ann: ").size() + 200);
++    CHECK(n.send("EMAIL", "ann", "hello", Priority::Normal) == "EMAIL to ann: hello");
++    CHECK(n.send("EMAIL", "ann", std::string(200, 'x'), Priority::Normal).size() == std::string("EMAIL to ann: ").size() + 200);
+ }
+ void sms_is_cut_at_160_characters() {
+     Notifier n = make_notifier();
+-    CHECK(n.send("SMS", "bob", "hi") == "SMS to bob: [Acme] hi");
+-    CHECK(n.send("SMS", "bob", std::string(200, 'x')) == "SMS to bob: [Acme] " + std::string(153, 'x'));
++    CHECK(n.send("SMS", "bob", "hi", Priority::Normal) == "SMS to bob: [Acme] hi");
++    CHECK(n.send("SMS", "bob", std::string(200, 'x'), Priority::Normal) == "SMS to bob: [Acme] " + std::string(153, 'x'));
+ }
+ void unknown_channel_throws() {
+     Notifier n = make_notifier();
+-    CHECK_THROWS(n.send("FAX", "ann", "hi"));
++    CHECK_THROWS(n.send("FAX", "ann", "hi", Priority::Normal));
+ }
+ void push_is_cut_at_60_characters() {
+     Notifier n = make_notifier();
+-    CHECK(n.send("PUSH", "cy", "hi") == "PUSH to cy: hi");
+-    CHECK(n.send("PUSH", "cy", std::string(200, 'x')) == "PUSH to cy: " + std::string(60, 'x'));
++    CHECK(n.send("PUSH", "cy", "hi", Priority::Normal) == "PUSH to cy: hi");
++    CHECK(n.send("PUSH", "cy", std::string(200, 'x'), Priority::Normal) == "PUSH to cy: " + std::string(60, 'x'));
++}
++void urgent_adds_a_prefix_on_every_channel() {
++    Notifier n = make_notifier();
++    CHECK(n.send("EMAIL", "ann", "hi", Priority::Urgent) == "EMAIL to ann: URGENT: hi");
++    CHECK(n.send("SMS", "bob", "hi", Priority::Urgent) == "SMS to bob: [Acme] URGENT: hi");
++    CHECK(n.send("PUSH", "cy", "hi", Priority::Urgent) == "PUSH to cy: URGENT: hi");
+ }
+ 
+ int main() {
+@@ -26,5 +32,6 @@ int main() {
+     RUN(sms_is_cut_at_160_characters);
+     RUN(unknown_channel_throws);
+     RUN(push_is_cut_at_60_characters);
++    RUN(urgent_adds_a_prefix_on_every_channel);
+     return check::report();
+ }

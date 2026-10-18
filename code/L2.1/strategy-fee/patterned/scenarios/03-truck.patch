@@ -1,0 +1,148 @@
+diff --git a/daily_pricing.hpp b/daily_pricing.hpp
+index c5180f8..f307f57 100644
+--- a/daily_pricing.hpp
++++ b/daily_pricing.hpp
+@@ -3,5 +3,7 @@
+ 
+ class DailyPricing final : public PricingStrategy {
+ public:
+-    long long fee(long long minutes) const override { return (minutes + 1439) / 1440 * 100; }
++    long long fee(long long minutes, Vehicle vehicle) const override {
++        return (minutes + 1439) / 1440 * (vehicle == Vehicle::Truck ? 150 : 100);
++    }
+ };
+diff --git a/fee_calculator.hpp b/fee_calculator.hpp
+index 74fcc78..9e7c39d 100644
+--- a/fee_calculator.hpp
++++ b/fee_calculator.hpp
+@@ -10,10 +10,10 @@ public:
+     void add_plan(const std::string& name, std::unique_ptr<PricingStrategy> plan) {
+         plans_[name] = std::move(plan);
+     }
+-    long long fee(const std::string& plan, long long minutes) const {
++    long long fee(const std::string& plan, long long minutes, Vehicle vehicle) const {
+         auto it = plans_.find(plan);
+         if (it == plans_.end()) throw std::invalid_argument("unknown plan: " + plan);
+-        return it->second->fee(minutes);
++        return it->second->fee(minutes, vehicle);
+     }
+ private:
+     std::map<std::string, std::unique_ptr<PricingStrategy>> plans_;
+diff --git a/hourly_pricing.hpp b/hourly_pricing.hpp
+index af8fcbc..2bc522e 100644
+--- a/hourly_pricing.hpp
++++ b/hourly_pricing.hpp
+@@ -4,5 +4,7 @@
+ 
+ class HourlyPricing final : public PricingStrategy {
+ public:
+-    long long fee(long long minutes) const override { return (std::max(minutes - 30, 0LL) + 59) / 60 * 20; }
++    long long fee(long long minutes, Vehicle vehicle) const override {
++        return (std::max(minutes - 30, 0LL) + 59) / 60 * (vehicle == Vehicle::Truck ? 40 : 20);
++    }
+ };
+diff --git a/main.cpp b/main.cpp
+index 98aac97..bdd135f 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -3,7 +3,7 @@
+ 
+ int main() {
+     FeeCalculator calc = make_calculator();
+-    std::cout << "HOURLY 150 minutes: " << calc.fee("HOURLY", 150) << "\n";
+-    std::cout << "DAILY 150 minutes: " << calc.fee("DAILY", 150) << "\n";
+-    std::cout << "WEEKEND 150 minutes: " << calc.fee("WEEKEND", 150) << "\n";
++    std::cout << "HOURLY 150 minutes: " << calc.fee("HOURLY", 150, Vehicle::Car) << "\n";
++    std::cout << "DAILY 150 minutes: " << calc.fee("DAILY", 150, Vehicle::Car) << "\n";
++    std::cout << "WEEKEND 150 minutes: " << calc.fee("WEEKEND", 150, Vehicle::Car) << "\n";
+ }
+diff --git a/pricing_strategy.hpp b/pricing_strategy.hpp
+index 988250c..d65aa4e 100644
+--- a/pricing_strategy.hpp
++++ b/pricing_strategy.hpp
+@@ -1,8 +1,10 @@
+ #pragma once
+ 
++enum class Vehicle { Car, Truck };
++
+ // The one signature every pricing plan shares.
+ class PricingStrategy {
+ public:
+     virtual ~PricingStrategy() = default;   // deleting through a base pointer must run the derived destructor
+-    virtual long long fee(long long minutes) const = 0;
++    virtual long long fee(long long minutes, Vehicle vehicle) const = 0;
+ };
+diff --git a/tests.cpp b/tests.cpp
+index de3bd8e..a81c856 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -3,33 +3,39 @@
+ 
+ void hourly_rounds_up_started_hours() {
+     FeeCalculator calc = make_calculator();
+-    CHECK(calc.fee("HOURLY", 31) == 20);
+-    CHECK(calc.fee("HOURLY", 90) == 20);
+-    CHECK(calc.fee("HOURLY", 91) == 40);
++    CHECK(calc.fee("HOURLY", 31, Vehicle::Car) == 20);
++    CHECK(calc.fee("HOURLY", 90, Vehicle::Car) == 20);
++    CHECK(calc.fee("HOURLY", 91, Vehicle::Car) == 40);
+ }
+ void hourly_first_30_minutes_are_free() {
+     FeeCalculator calc = make_calculator();
+-    CHECK(calc.fee("HOURLY", 0) == 0);
+-    CHECK(calc.fee("HOURLY", 30) == 0);
++    CHECK(calc.fee("HOURLY", 0, Vehicle::Car) == 0);
++    CHECK(calc.fee("HOURLY", 30, Vehicle::Car) == 0);
+ }
+ void daily_rounds_up_started_days() {
+     FeeCalculator calc = make_calculator();
+-    CHECK(calc.fee("DAILY", 1) == 100);
+-    CHECK(calc.fee("DAILY", 1440) == 100);
+-    CHECK(calc.fee("DAILY", 1441) == 200);
++    CHECK(calc.fee("DAILY", 1, Vehicle::Car) == 100);
++    CHECK(calc.fee("DAILY", 1440, Vehicle::Car) == 100);
++    CHECK(calc.fee("DAILY", 1441, Vehicle::Car) == 200);
+ }
+ void zero_minutes_is_free() {
+     FeeCalculator calc = make_calculator();
+-    CHECK(calc.fee("DAILY", 0) == 0);
++    CHECK(calc.fee("DAILY", 0, Vehicle::Car) == 0);
+ }
+ void unknown_plan_throws() {
+     FeeCalculator calc = make_calculator();
+-    CHECK_THROWS(calc.fee("MONTHLY", 10));
++    CHECK_THROWS(calc.fee("MONTHLY", 10, Vehicle::Car));
+ }
+ void weekend_is_double_the_old_hourly_rate() {
+     FeeCalculator calc = make_calculator();
+-    CHECK(calc.fee("WEEKEND", 1) == 40);
+-    CHECK(calc.fee("WEEKEND", 61) == 80);
++    CHECK(calc.fee("WEEKEND", 1, Vehicle::Car) == 40);
++    CHECK(calc.fee("WEEKEND", 61, Vehicle::Car) == 80);
++}
++void trucks_pay_more_on_hourly_and_daily_but_not_weekend() {
++    FeeCalculator calc = make_calculator();
++    CHECK(calc.fee("HOURLY", 31, Vehicle::Truck) == 40);
++    CHECK(calc.fee("DAILY", 1, Vehicle::Truck) == 150);
++    CHECK(calc.fee("WEEKEND", 1, Vehicle::Truck) == 40);
+ }
+ 
+ int main() {
+@@ -39,5 +45,6 @@ int main() {
+     RUN(zero_minutes_is_free);
+     RUN(unknown_plan_throws);
+     RUN(weekend_is_double_the_old_hourly_rate);
++    RUN(trucks_pay_more_on_hourly_and_daily_but_not_weekend);
+     return check::report();
+ }
+diff --git a/weekend_pricing.hpp b/weekend_pricing.hpp
+index 692dae2..b17edd7 100644
+--- a/weekend_pricing.hpp
++++ b/weekend_pricing.hpp
+@@ -3,5 +3,5 @@
+ 
+ class WeekendPricing final : public PricingStrategy {
+ public:
+-    long long fee(long long minutes) const override { return (minutes + 59) / 60 * 40; }
++    long long fee(long long minutes, Vehicle) const override { return (minutes + 59) / 60 * 40; }
+ };

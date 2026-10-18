@@ -4,12 +4,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export BASE_PATH=/self-engine/
+# Run in a throwaway copy of the repository, so the placeholder topics (which reuse the ids L2.1 and H4.2)
+# can never overwrite or delete real lessons. The copy hard-links this project's node_modules.
+SRC="$PWD"
+WORK="$(mktemp -d)"
+tar -C "$SRC" --exclude=./node_modules --exclude=./dist --exclude=./.git --exclude=./work --exclude=./.astro -cf - . | tar -C "$WORK" -xf -
+cp -al "$SRC/node_modules" "$WORK/node_modules"   # hard links: no extra space; a symlink breaks Astro's path resolution
+cd "$WORK"
 cleanup() {
   [ -n "${PREVIEW_PID:-}" ] && kill "$PREVIEW_PID" 2>/dev/null || true
-  node tests/placeholder-design/make.mjs --remove
+  cd "$SRC"; rm -rf "$WORK"
 }
 trap cleanup EXIT
-node tests/placeholder-design/make.mjs
+CLEAR_REAL=1 node tests/placeholder-design/make.mjs
 node scripts/validate.mjs
 npx astro build > /dev/null
 node scripts/check_built.mjs

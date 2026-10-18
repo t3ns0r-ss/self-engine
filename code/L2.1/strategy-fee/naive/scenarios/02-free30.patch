@@ -1,0 +1,48 @@
+diff --git a/fee_calculator.hpp b/fee_calculator.hpp
+index 95e2ecd..d17be49 100644
+--- a/fee_calculator.hpp
++++ b/fee_calculator.hpp
+@@ -1,11 +1,12 @@
+ #pragma once
++#include <algorithm>
+ #include <stdexcept>
+ #include <string>
+ 
+ class FeeCalculator {
+ public:
+     long long fee(const std::string& plan, long long minutes) const {
+-        if (plan == "HOURLY") return (minutes + 59) / 60 * 20;
++        if (plan == "HOURLY") return (std::max(minutes - 30, 0LL) + 59) / 60 * 20;
+         if (plan == "WEEKEND") return (minutes + 59) / 60 * 40;
+         if (plan == "DAILY") return (minutes + 1439) / 1440 * 100;
+         throw std::invalid_argument("unknown plan: " + plan);
+diff --git a/tests.cpp b/tests.cpp
+index da30372..4ae5559 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -3,9 +3,14 @@
+ 
+ void hourly_rounds_up_started_hours() {
+     FeeCalculator calc;
+-    CHECK(calc.fee("HOURLY", 1) == 20);
+-    CHECK(calc.fee("HOURLY", 60) == 20);
+-    CHECK(calc.fee("HOURLY", 61) == 40);
++    CHECK(calc.fee("HOURLY", 31) == 20);
++    CHECK(calc.fee("HOURLY", 90) == 20);
++    CHECK(calc.fee("HOURLY", 91) == 40);
++}
++void hourly_first_30_minutes_are_free() {
++    FeeCalculator calc;
++    CHECK(calc.fee("HOURLY", 0) == 0);
++    CHECK(calc.fee("HOURLY", 30) == 0);
+ }
+ void daily_rounds_up_started_days() {
+     FeeCalculator calc;
+@@ -29,6 +34,7 @@ void weekend_is_double_the_old_hourly_rate() {
+ 
+ int main() {
+     RUN(hourly_rounds_up_started_hours);
++    RUN(hourly_first_30_minutes_are_free);
+     RUN(daily_rounds_up_started_days);
+     RUN(zero_minutes_is_free);
+     RUN(unknown_plan_throws);

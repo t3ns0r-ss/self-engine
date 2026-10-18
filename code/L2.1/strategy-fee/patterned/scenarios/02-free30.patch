@@ -1,0 +1,44 @@
+diff --git a/hourly_pricing.hpp b/hourly_pricing.hpp
+index 0c9118c..af8fcbc 100644
+--- a/hourly_pricing.hpp
++++ b/hourly_pricing.hpp
+@@ -1,7 +1,8 @@
+ #pragma once
++#include <algorithm>
+ #include "pricing_strategy.hpp"
+ 
+ class HourlyPricing final : public PricingStrategy {
+ public:
+-    long long fee(long long minutes) const override { return (minutes + 59) / 60 * 20; }
++    long long fee(long long minutes) const override { return (std::max(minutes - 30, 0LL) + 59) / 60 * 20; }
+ };
+diff --git a/tests.cpp b/tests.cpp
+index 6c1ac86..de3bd8e 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -3,9 +3,14 @@
+ 
+ void hourly_rounds_up_started_hours() {
+     FeeCalculator calc = make_calculator();
+-    CHECK(calc.fee("HOURLY", 1) == 20);
+-    CHECK(calc.fee("HOURLY", 60) == 20);
+-    CHECK(calc.fee("HOURLY", 61) == 40);
++    CHECK(calc.fee("HOURLY", 31) == 20);
++    CHECK(calc.fee("HOURLY", 90) == 20);
++    CHECK(calc.fee("HOURLY", 91) == 40);
++}
++void hourly_first_30_minutes_are_free() {
++    FeeCalculator calc = make_calculator();
++    CHECK(calc.fee("HOURLY", 0) == 0);
++    CHECK(calc.fee("HOURLY", 30) == 0);
+ }
+ void daily_rounds_up_started_days() {
+     FeeCalculator calc = make_calculator();
+@@ -29,6 +34,7 @@ void weekend_is_double_the_old_hourly_rate() {
+ 
+ int main() {
+     RUN(hourly_rounds_up_started_hours);
++    RUN(hourly_first_30_minutes_are_free);
+     RUN(daily_rounds_up_started_days);
+     RUN(zero_minutes_is_free);
+     RUN(unknown_plan_throws);

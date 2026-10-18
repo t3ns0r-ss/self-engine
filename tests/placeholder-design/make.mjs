@@ -20,6 +20,12 @@ if (process.argv.includes('--remove')) {
   console.log('design placeholder removed');
   process.exit(0);
 }
+// CLEAR_REAL=1 (set only by tests/e2e-design.sh, which runs in a throwaway copy of the repository) removes real
+// lessons from that copy first, so the placeholders can use the ids L2.1 and H4.2.
+if (process.env.CLEAR_REAL === '1') {
+  for (const f of FILES) rmSync(f, { force: true });
+  for (const d of DIRS) rmSync(d, { recursive: true, force: true });
+}
 for (const d of DIRS) if (existsSync(d)) { console.error(`refusing: ${d} already exists`); process.exit(1); }
 for (const f of FILES) if (existsSync(f)) { console.error(`refusing: ${f} already exists`); process.exit(1); }
 writeFileSync(ACTIVE, 'present\n');

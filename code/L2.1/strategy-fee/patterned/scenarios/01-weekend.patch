@@ -1,0 +1,63 @@
+diff --git a/main.cpp b/main.cpp
+index f409724..98aac97 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -5,4 +5,5 @@ int main() {
+     FeeCalculator calc = make_calculator();
+     std::cout << "HOURLY 150 minutes: " << calc.fee("HOURLY", 150) << "\n";
+     std::cout << "DAILY 150 minutes: " << calc.fee("DAILY", 150) << "\n";
++    std::cout << "WEEKEND 150 minutes: " << calc.fee("WEEKEND", 150) << "\n";
+ }
+diff --git a/make_calculator.hpp b/make_calculator.hpp
+index c1b4c5d..2a1d25a 100644
+--- a/make_calculator.hpp
++++ b/make_calculator.hpp
+@@ -3,11 +3,13 @@
+ #include "daily_pricing.hpp"
+ #include "fee_calculator.hpp"
+ #include "hourly_pricing.hpp"
++#include "weekend_pricing.hpp"
+ 
+ // Composition root: the only place that knows which plans exist.
+ inline FeeCalculator make_calculator() {
+     FeeCalculator calc;
+     calc.add_plan("HOURLY", std::make_unique<HourlyPricing>());
+     calc.add_plan("DAILY", std::make_unique<DailyPricing>());
++    calc.add_plan("WEEKEND", std::make_unique<WeekendPricing>());
+     return calc;
+ }
+diff --git a/tests.cpp b/tests.cpp
+index c7bbb9a..6c1ac86 100644
+--- a/tests.cpp
++++ b/tests.cpp
+@@ -21,11 +21,17 @@ void unknown_plan_throws() {
+     FeeCalculator calc = make_calculator();
+     CHECK_THROWS(calc.fee("MONTHLY", 10));
+ }
++void weekend_is_double_the_old_hourly_rate() {
++    FeeCalculator calc = make_calculator();
++    CHECK(calc.fee("WEEKEND", 1) == 40);
++    CHECK(calc.fee("WEEKEND", 61) == 80);
++}
+ 
+ int main() {
+     RUN(hourly_rounds_up_started_hours);
+     RUN(daily_rounds_up_started_days);
+     RUN(zero_minutes_is_free);
+     RUN(unknown_plan_throws);
++    RUN(weekend_is_double_the_old_hourly_rate);
+     return check::report();
+ }
+diff --git a/weekend_pricing.hpp b/weekend_pricing.hpp
+new file mode 100644
+index 0000000..692dae2
+--- /dev/null
++++ b/weekend_pricing.hpp
+@@ -0,0 +1,7 @@
++#pragma once
++#include "pricing_strategy.hpp"
++
++class WeekendPricing final : public PricingStrategy {
++public:
++    long long fee(long long minutes) const override { return (minutes + 59) / 60 * 40; }
++};

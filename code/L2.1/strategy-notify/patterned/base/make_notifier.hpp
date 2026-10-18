@@ -4,7 +4,7 @@
 #include "notifier.hpp"
 #include "sms_channel.hpp"
 
-// Composition root: the only place that knows which channels exist.
+// Wiring: the only place that knows which channels exist.
 inline Notifier make_notifier() {
     Notifier n;
     n.add_channel("EMAIL", std::make_unique<EmailChannel>());

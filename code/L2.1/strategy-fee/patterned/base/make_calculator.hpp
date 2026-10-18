@@ -4,7 +4,7 @@
 #include "fee_calculator.hpp"
 #include "hourly_pricing.hpp"
 
-// Composition root: the only place that knows which plans exist.
+// Wiring: the only place that knows which plans exist.
 inline FeeCalculator make_calculator() {
     FeeCalculator calc;
     calc.add_plan("HOURLY", std::make_unique<HourlyPricing>());

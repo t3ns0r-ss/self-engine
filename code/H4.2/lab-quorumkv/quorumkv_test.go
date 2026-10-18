@@ -95,7 +95,7 @@ func TestReadRepairHealsStaleReplica(t *testing.T) {
 }
 
 // Without repair the same read leaves C stale (the contrast for the test above).
-func TestWithoutRepairReplicaStaysStale(t *testing.T) {
+func TestWithoutReadRepairReplicaStaysStale(t *testing.T) {
 	net, w, r := setup(2, 3)
 	net.SetDown("C", true)
 	if err := w.Put("k", Versioned{"v1", 1}); err != nil {

@@ -41,6 +41,14 @@ func main() {
 	fmt.Printf("write_ingress = %s MB/s\n", capcalc.Format(ingress/capcalc.MB, 4))
 	fmt.Printf("replica_traffic_n3 = %s MB/s\n", capcalc.Format(ingress*n/capcalc.MB, 4))
 
+	// Review twist: 8 000 writes/s of 2 KB to N = 5 replicas.
+	fmt.Printf("replica_traffic_n5_8000w = %s MB/s\n", capcalc.Format(capcalc.Bandwidth(8000, 2000)*5/capcalc.MB, 4))
+
+	// W = 3 of N = 3: a write needs every replica up, so write availability is 0.999^3.
+	allUp := atLeast(3, 3, up)
+	fmt.Printf("write_availability_n3w3 = %s\n", capcalc.Format(allUp, 9))
+	fmt.Printf("write_downtime_n3w3 = %s minutes per 30-day month\n", capcalc.Format((1-allUp)*minutesPerMonth, 4))
+
 	// W=1, R=1, N=3: the write has reached 2 replicas, one lags; a read asks one replica chosen evenly.
 	fmt.Printf("stale_read_probability_w1r1_one_lagging = %s\n", capcalc.Format(1.0/3.0, 4))
 }

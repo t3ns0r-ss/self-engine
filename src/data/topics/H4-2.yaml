@@ -1,0 +1,174 @@
+id: "H4.2"
+track: hld
+
+uses:
+  - {topic: "H2.3", what: "Replicas, leader and follower copies, and why a follower can lag"}
+  - {topic: "H3.2", what: "Placing the copies of a key on a fixed set of nodes"}
+  - {topic: "H4.1", what: "Why clocks on different machines cannot order writes, so versions must be supplied"}
+
+claims:
+  - id: "H4.2.1"
+    kind: proved
+    title: "If W + R > N, a read that starts after a write was acknowledged contacts at least one replica that stored the write"
+    plain_words: "If the group that confirmed the write and the group that answers the read together have more members than the whole replica set, they share a member, and that member has the write."
+    evidence: ["H4.2/claim-1"]
+    source: null
+  - id: "H4.2.2"
+    kind: computed
+    title: "Three replicas with W = R = 2 turn 99.9% machines into 99.9997% operations, at three times the write traffic"
+    plain_words: "An operation can go ahead when at least 2 of 3 machines are up. With each machine up 99.9% of the time and failing independently, that is 0.999997, about 8 seconds of downtime a month instead of 43 minutes; every write is sent three times."
+    evidence: ["H4.2/calc-quorum-table"]
+    source: null
+  - id: "H4.2.3"
+    kind: proved
+    title: "A read that contacts every replica with read repair on leaves every replica holding the newest version it saw"
+    plain_words: "When a replica missed a write, the next read of that key notices that it answered with an older version and sends it the newest one. Without repair the replica stays behind until a write reaches it."
+    evidence: ["H4.2/claim-3"]
+    source: null
+
+cards:
+  - id: quorum-replication
+    name: "Quorum replication"
+    need: "Acknowledged writes must survive machine failures and be visible to reads that start after the acknowledgement, while reads and writes keep working with a minority of replicas down."
+    decisive_property: "W + R > N over a fixed replica set; writes acknowledged after W durable copies; reads start after the acknowledgement and return the newest of R replies by a per-key total order of versions; no substitute replicas."
+    from_claim: "H4.2.1"
+    how_to_test: "Write down N, W and R and check W + R > N. Then check the four conditions in the claim's box, and how versions are ordered."
+    lab: {unit: "H4.2/lab-quorumkv", holds_test: "TestReadMeetsAcknowledgedWrite", breaks_test: "TestW1R1CanReturnStale"}
+    capacity_table:
+      units: ["H4.2/calc-quorum-table"]
+      threshold: "Needed when the availability target is above what one machine gives: 0.999 is 43.2 minutes down per 30-day month."
+      price: "Three times the write traffic (20 MB/s in becomes 60 MB/s between machines for 20 000 writes/s of 1 KB); each write waits for the W-th fastest of N replies and each read for the R-th fastest; N = 3, W = R = 2 survives 1 failure."
+    constraint_shapes:
+      - "Availability target of 99.99% or more (at most about 4.3 minutes down per month) for single-key reads and writes, where one machine gives 99.9% (43.2 minutes): N = 3, W = 2, R = 2 gives 0.999997 (0.13 minutes)"
+    weak_signals:
+      - form: "The requirement says 'no single point of failure' and 'a read after a successful write must see it'"
+        shape: "Operations touch one key at a time; the write rate fits within one replica group (20 000 writes/s of 1 KB is 20 MB/s, and three copies make it 60 MB/s)"
+      - form: "The requirement says 'keep working when one zone is down'"
+        shape: "Three or more zones, one replica per zone; single-key operations"
+    kill_signals:
+      - "Operations must change several keys together: quorums give guarantees per key only"
+      - "Every read must agree on one order of writes even while writes are in flight: W + R > N alone does not give that"
+      - "A single-region admin tool with 50 requests a day and a 99.9% target: one machine already gives 43.2 minutes down per month, and three replicas triple the machines and add quorum code for nothing"
+      - "Replicas share a failure domain (one rack or one zone): the independence assumed in the 0.999997 figure is false"
+    in_action:
+      statement: "Store user session records. An acknowledged write must not be lost; a machine may die at any time; reads are 5 times as frequent as writes."
+      constraints: "20 000 writes per second, 100 000 reads per second, three zones, 99.999% availability for single-key operations; each write of a key carries a version larger than every earlier one (stated assumption)"
+      budget: "One machine gives 0.999 (43.2 minutes down per month). 99.999% allows about 0.43 minutes per month."
+      candidates:
+        - {tool: "Single machine", verdict: rejected, because: "0.999 is below the target of 0.99999."}
+        - {tool: "Quorum replication, N = 3, W = 2, R = 2", verdict: chosen, because: "0.999997 by the table, above 0.99999; W + R = 4 > 3."}
+      property_check: "Fixed set of 3 replicas, one per zone; writes acknowledged after 2 durable copies; reads take the newest of 2 replies by version; no substitute replicas. All conditions hold."
+      decision: "N = 3, W = 2, R = 2, one replica per zone."
+    examples:
+      positive:
+        - inline: {input: "N = 3, W = 2, R = 2", answer: "Every read set meets every write set", why: "W + R = 4 > 3 (lab: TestReadMeetsAcknowledgedWrite)."}
+        - inline: {input: "N = 5, W = 3, R = 3", answer: "Every read set meets every write set, and 2 failures are tolerated", why: "W + R = 6 > 5; any 3 of 5 still form both quorums."}
+      negative:
+        - inline: {input: "N = 3, W = 1, R = 1", answer: "A read can miss the write", why: "W + R = 2 is not greater than 3 (lab: TestW1R1CanReturnStale)."}
+          correct_tool: {simplest: "one primary with synchronous replication"}
+        - inline: {input: "Two keys must be updated together; N = 3, W = 2, R = 2", answer: "Quorums do not make the pair atomic", why: "The guarantee is per key."}
+          correct_tool: {simplest: "one database transaction"}
+    lookalikes: []
+    cost: "Write latency is the W-th fastest of N replies, read latency the R-th fastest; write traffic is N times the client traffic. A smaller W lowers write latency and raises the chance a read misses the write unless R grows to match."
+
+  - id: read-repair
+    name: "Read repair"
+    need: "A replica that missed a write (it was down or cut off) must catch up without a separate batch job, for keys that are read."
+    decisive_property: "A read already contacts several replicas and sees which ones answered with an older version; versions are totally ordered per key, so the newest is known; writing the newest version back is safe to repeat and never lowers a version."
+    from_claim: "H4.2.3"
+    how_to_test: "Check that reads contact at least two replicas, that every value carries a version that orders it, and that a replica ignores a write older than what it holds. Then ask how long a key can go unread."
+    lab: {unit: "H4.2/lab-quorumkv", holds_test: "TestReadRepairHealsStaleReplica", breaks_test: "TestWithoutReadRepairReplicaStaysStale"}
+    capacity_table:
+      units: ["H4.2/calc-quorum-table"]
+      threshold: "Useful when replicas miss writes (down 0.1% of the time each, so about 43 minutes a month) and keys are read often enough that the repair happens soon after the replica returns."
+      price: "One extra write to each stale replica on a read that finds one; nothing on a read where all agree. Keys that are never read are never repaired."
+    constraint_shapes:
+      - "Each replica is down about 0.1% of the time (43 minutes in a 30-day month) and misses every write in that time; a key read once a minute is repaired within a minute of the replica returning"
+    weak_signals:
+      - form: "The requirement says 'replicas must converge after an outage' and the keys are read regularly"
+        shape: "A key is read at least once between outages (for example hot keys read many times a second)"
+      - form: "The requirement says 'a node that comes back must catch up on its own'"
+        shape: "No operator is available to run a repair job; versions order the writes of a key"
+    kill_signals:
+      - "Keys that are almost never read (for example an archive read once a year): read repair never fires, so a periodic comparison of replicas is the tool"
+      - "Versions do not order the writes of a key (concurrent writers with no common order): repair may write back the wrong 'newest'"
+      - "A system with one replica per key and 50 reads a day: there is nobody to repair from"
+    in_action:
+      statement: "A session store with N = 3, W = 2, R = 2. A node was down for ten minutes during a deploy and missed about 12 000 writes; sessions are read every few seconds while a user is active."
+      constraints: "Reads of active sessions come every 5 seconds on average; the node is back; no operator action wanted"
+      budget: "About 12 000 stale keys on one replica; active sessions are read within a few seconds, so most are repaired within a minute."
+      candidates:
+        - {tool: "Nothing: wait for the next write of each key", verdict: rejected, because: "A key that is read often but written rarely stays stale on that replica, and a later failure of another replica could leave a quorum with two stale copies."}
+        - {tool: "Read repair", verdict: chosen, because: "Each read already contacts the stale replica, so one extra write per stale key repairs it."}
+      property_check: "Reads contact all 3 replicas; versions order writes per key; a replica ignores older versions; repair is a plain write of the newest version. All conditions hold."
+      decision: "Turn read repair on in the client: after each read, write the newest version to any replica that answered with an older one."
+    examples:
+      positive:
+        - inline: {input: "N = 3; replica C missed a write; the key is read 100 times a minute", answer: "Read repair", why: "The first read after C returns repairs it (lab: TestReadRepairHealsStaleReplica)."}
+        - inline: {input: "A replica was down for 10 minutes during a deploy; sessions are read every 5 seconds", answer: "Read repair", why: "Active keys are repaired within seconds without an operator."}
+      negative:
+        - inline: {input: "An archive of records read once a year; a replica missed 1 000 000 writes", answer: "A periodic comparison of replicas", why: "No read comes, so read repair never runs (lab: TestWithoutReadRepairReplicaStaysStale shows the replica staying stale)."}
+          correct_tool: {simplest: "a nightly script that compares replicas"}
+        - inline: {input: "One database with one standby that is only for emergencies, 50 requests a day", answer: "Nothing", why: "Reads do not contact more than one copy, so there is nothing to compare."}
+          correct_tool: {simplest: "plain replication from the primary"}
+    lookalikes: []
+    cost: "Reads that find a stale replica do an extra write. Keys that are not read stay stale. Repair is only as good as the version order: with concurrent writers it can write back the wrong version."
+
+lookalike_pairs:
+  - a: "Reads and writes that must survive one of three machines failing, with a read after a write seeing it"
+    b: "One primary with one standby that takes over after a failure"
+    a_tool: {topic: "H4.2", card: "quorum-replication"}
+    b_tool: "One primary with synchronous replication"
+    flipping_difference: "The standby needs a failover step during which writes stop. Quorum operations continue with a minority down. If the target allows a minute of downtime when the primary fails, the simpler primary with a standby is enough."
+    flipping_input: "The target moves from 99.9% to 99.999% for single-key operations"
+  - a: "Quorum with N = 3, W = 2, R = 2"
+    b: "Quorum with N = 3, W = 1, R = 1"
+    a_tool: {topic: "H4.2", card: "quorum-replication"}
+    b_tool: {topic: "H4.2", card: "quorum-replication"}
+    flipping_difference: "The same card with different numbers. 2 + 2 > 3, so reads meet writes (TestReadMeetsAcknowledgedWrite); 1 + 1 is not greater than 3, so a read can miss the write (TestW1R1CanReturnStale)."
+    flipping_input: "A requirement that a read after an acknowledged write always sees it"
+  - a: "A stale replica repaired by the read that finds it"
+    b: "A stale replica repaired by a scheduled comparison of all keys"
+    a_tool: {topic: "H4.2", card: "read-repair"}
+    b_tool: "A periodic comparison of replicas"
+    flipping_difference: "Read repair only touches keys that are read; a scheduled comparison covers every key at the price of reading all of them. Keys read rarely need the comparison."
+    flipping_input: "A key that has not been read for 90 days"
+
+self_test:
+  - q: "N = 3 and W = 2. What is the smallest R that guarantees a read that starts after an acknowledged write contacts a replica holding it, and why?"
+    a: "R = 2, because the write set and the read set must together have more members than N: W + R > 3 means R > 1. With R = 1 the read could reach the one replica that missed the write."
+  - q: "Each machine is up 99.9% of the time and fails independently. A single machine is down 43.2 minutes a month. What does N = 3, W = R = 2 cost you and what does it give you?"
+    a: "It gives about 8 seconds down a month (0.999997), and costs three machines and three times the write traffic: 20 000 writes a second of 1 KB become 60 MB/s between machines instead of 20 MB/s."
+  - q: "Predict before running: with N = 3, W = 1, R = 1, the write reached only replica A and the read asks only replica C. What does the read return, and which lab test shows it?"
+    a: "It returns the empty value, a stale read, because W + R = 2 is not greater than 3. TestW1R1CanReturnStale shows it."
+  - q: "When would you not use quorum replication for a session store?"
+    a: "When one machine already meets the availability target (an admin tool with 50 requests a day and a 99.9% target), when operations must change several keys together, or when the replicas share a rack or zone so they do not fail independently."
+  - q: "Replica C was down while key k was written and is now back. Nobody reads k. What does read repair do for k, and what should you use instead?"
+    a: "Nothing: read repair only runs when k is read, so C stays stale. Use a periodic comparison of the replicas for keys that are read rarely."
+  - q: "A sloppy quorum acknowledges a write after W nodes, some of which are stand-ins outside the key's home replicas. Why can a later read of the home replicas with W + R > N still miss it?"
+    a: "The read set and the write set can have no node in common, because the write set includes a stand-in that the reader does not ask. The count W + R > N only guarantees overlap inside the fixed set of N home replicas. TestSloppyQuorumBreaksOverlap shows it."
+
+decision_map:
+  - weak_signal: "No single point of failure, and a read after a successful write must see it, for single keys"
+    choose: "Quorum replication with W + R > N, for example N = 3, W = 2, R = 2"
+    when: "Availability target above what one machine gives, one key at a time, replicas in separate failure domains"
+    over:
+      - {card: "One primary with synchronous replication", because: "It stops writes during failover; quorum operations continue with a minority down (0.13 minutes against the failover time)."}
+  - weak_signal: "A replica that was down must catch up by itself, and the keys are read often"
+    choose: "Read repair on top of the quorum client"
+    when: "Reads contact several replicas and versions order the writes of each key"
+    over:
+      - {card: "A periodic comparison of replicas", because: "No separate job is needed for keys that are read; it costs one extra write per stale answer."}
+  - weak_signal: "50 requests a day, one region, a 99.9% target"
+    choose: "One database"
+    when: "One machine already meets the target (43.2 minutes down per month allowed)"
+    over:
+      - {topic: "H4.2", card: "quorum-replication", because: "Three machines and quorum code would protect against a failure the target already accepts."}
+
+glossary_added:
+  - "quorum"
+  - "read quorum"
+  - "write quorum"
+  - "read repair"
+  - "sloppy quorum"
+  - "anti-entropy"

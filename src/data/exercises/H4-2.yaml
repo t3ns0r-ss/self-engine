@@ -1,0 +1,451 @@
+topic: H4.2
+exercises:
+- id: rung-1
+  role: ladder
+  type: lab
+  title: Put and Get over three replicas
+  prompt: 'Implement the replica handler and the client Put and Get for three replicas with W = 2 and R = 2. In this rung every replica must answer: if any call fails, return an error. Get returns the newest version it saw, and an older write never replaces a newer value. The tests bring a fake network, so you only edit the files in starter/.'
+  card: quorum-replication
+  rung: 1
+  new_force: A key-value store that keeps three copies and reads the newest
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.2/lab/rung-1
+  reference: reference/H4.2/lab/rung-1
+  alternatives:
+  - 'One map behind a mutex on one machine: simpler, and enough when a machine failing for 43 minutes a month is acceptable.'
+  hints:
+  - Each replica keeps a map from key to the newest Versioned it has seen. What should Handle do with a PutReq whose version is not newer?
+  - The client helper call already sends one request to every replica at once and gives you a slice with nil for a failed call. Put needs every entry to be non-nil in this rung.
+  - Get asks every replica, then picks the reply with the highest Version. Do not take the first reply.
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  clarifying:
+  - q: How many replicas are there, and can that number change while the store runs?
+    a: Three, fixed for the life of the store. Changing the replica set is a different problem.
+    critical: true
+  - q: When is a write acknowledged?
+    a: When at least W = 2 replicas have stored it.
+    critical: true
+  - q: Who supplies the version of a value?
+    a: The caller; versions grow for each key. The store only compares them.
+    critical: false
+  - q: What does reading a key nobody wrote return?
+    a: The zero value (empty value, version 0), not an error.
+    critical: false
+  run: Run the real three-process version from code/H4.2/lab-quorumkv/run.md (nodes plus fault proxies) and write in your attempt log what the client printed after each step.
+- id: rung-2
+  role: ladder
+  type: lab
+  title: One replica is down
+  prompt: Make the store keep working when a replica is down or cut off. Put succeeds when at least W replicas acknowledged and Get when at least R answered. Otherwise return an error that wraps ErrNoQuorum (so errors.Is(err, ErrNoQuorum) is true). With two of three replicas unreachable both operations must fail.
+  card: quorum-replication
+  rung: 2
+  new_force: One replica is down during writes and reads
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.2/lab/rung-2
+  reference: reference/H4.2/lab/rung-2
+  alternatives:
+  - 'Keep requiring all replicas: simpler, but then three machines are three ways for the store to be unavailable (write availability 0.997, 129.5 minutes down a month).'
+  hints:
+  - Count the replicas that answered instead of requiring all of them.
+  - Compare the count with c.W for a write and c.R for a read, and wrap ErrNoQuorum with %w.
+  - 'There is no need for a new data structure: the fan-out helper already tells you who answered.'
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  run: Run the real three-process version from code/H4.2/lab-quorumkv/run.md (nodes plus fault proxies) and write in your attempt log what the client printed after each step.
+- id: rung-3
+  role: ladder
+  type: lab
+  title: Refuse settings that can read stale data
+  prompt: Add NewClient. It returns ErrUnsafeQuorum when W + R is not greater than the number of replicas, unless allowStale is true, and an error when W or R is outside 1 to N. A client made with allowStale and W = 1, R = 1 must really be able to return a stale read; the tests set that up with cut links.
+  card: quorum-replication
+  rung: 3
+  new_force: W = 1, R = 1 can read stale data
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.2/lab/rung-3
+  reference: reference/H4.2/lab/rung-3
+  alternatives:
+  - 'Leave W and R free and document the rule: less code, but the first person to set W = 1, R = 1 reads stale data without being told.'
+  hints:
+  - Which inequality makes a read set and a write set always share a replica?
+  - Check the range first, then check the overlap rule, and let allowStale switch only the second check off.
+  - The struct fields stay as they are; NewClient only validates and fills them.
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  run: Run the real three-process version from code/H4.2/lab-quorumkv/run.md (nodes plus fault proxies) and write in your attempt log what the client printed after each step.
+- id: rung-4
+  role: ladder
+  type: lab
+  title: Read repair
+  prompt: Add read repair. When the client field ReadRepair is true, Get writes the newest version back to every replica that answered with an older one. A failed repair must not fail the read, a repair never lowers a version, and with the flag off nothing is written.
+  card: read-repair
+  rung: 4
+  new_force: A replica that missed a write stays stale until something repairs it
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.2/lab/rung-4
+  reference: reference/H4.2/lab/rung-4
+  alternatives:
+  - 'Do nothing and let the next write of the key bring the replica up to date: fine when keys are rewritten often, wrong for keys that are read much more often than written.'
+  hints:
+  - After picking the newest version, which of the replies were older?
+  - Send a PutReq with the newest version to each of those replicas and ignore the error from that call.
+  - The replica already ignores older versions, so a repair that arrives late is harmless.
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  run: Run the real three-process version from code/H4.2/lab-quorumkv/run.md (nodes plus fault proxies) and write in your attempt log what the client printed after each step.
+- id: rung-5
+  role: ladder
+  type: lab
+  title: A workload that tolerates a second of staleness
+  prompt: 'Write Choose(toleratedStalenessMs) for three replicas. Below 1000 ms return W = 2, R = 2 without read repair. At 1000 ms or more return W = 2, R = 1 with read repair. The client does not change in this rung: the answer is a setting, and the tests check that both settings keep working with one replica down.'
+  card: null
+  rung: 5
+  new_force: A workload that tolerates one second of staleness
+  needs_new_structure: false
+  checkers:
+  - kind: kit
+    path: H4.2/lab/rung-5
+  reference: reference/H4.2/lab/rung-5
+  alternatives:
+  - 'Always use R = 2: simplest to reason about, and the right choice when no reader can tolerate staleness. R = 1 saves one read of two per request.'
+  hints:
+  - Which part of the store has to change to read from one replica instead of two? Probably none.
+  - The two settings differ only in R and in the read repair flag.
+  - Write the threshold as a single comparison and test the boundary values 999 and 1000.
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  run: Run the real three-process version from code/H4.2/lab-quorumkv/run.md (nodes plus fault proxies) and write in your attempt log what the client printed after each step.
+- id: est-1
+  role: ladder
+  type: estimate
+  title: Replication traffic for the session store
+  prompt: The session store takes 20 000 writes a second of 1 KB each. Every write is sent to all three replicas. How much data a second leaves the clients and goes to the replicas, in megabytes per second?
+  card: quorum-replication
+  rung: 6
+  new_force: Size the write traffic of N = 3
+  needs_new_structure: false
+  checkers:
+  - kind: numeric
+    calc: H4.2/calc-quorum-table
+    key: replica_traffic_n3
+    unit: MB/s
+    factor: 2
+  hints:
+  - Write the formula with units first.
+  - Check that every quantity is per second or per month, not mixed.
+  - Compare your answer with one machine to see whether the setup is worth it.
+  alternatives: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: est-2
+  role: ladder
+  type: estimate
+  title: Downtime of three replicas
+  prompt: Each machine is up 99.9% of the time and fails independently of the others. With three replicas and W = R = 2, how many minutes a 30-day month can an operation not go ahead?
+  card: quorum-replication
+  rung: 7
+  new_force: Turn machine availability into operation availability
+  needs_new_structure: false
+  checkers:
+  - kind: numeric
+    calc: H4.2/calc-quorum-table
+    key: downtime_n3w2r2
+    unit: minutes per month
+    factor: 3
+  hints:
+  - Write the formula with units first.
+  - Check that every quantity is per second or per month, not mixed.
+  - Compare your answer with one machine to see whether the setup is worth it.
+  alternatives: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: est-3
+  role: ladder
+  type: estimate
+  title: A stale read with one lagging replica
+  prompt: N = 3, W = 1, R = 1. A write was acknowledged by one replica and has reached two of the three copies; the third lags. A read asks one replica chosen evenly at random. What is the probability that it returns the old value?
+  card: quorum-replication
+  rung: 8
+  new_force: Compute the chance of a stale read
+  needs_new_structure: false
+  checkers:
+  - kind: numeric
+    calc: H4.2/calc-quorum-table
+    key: stale_read_probability_w1r1_one_lagging
+    unit: probability
+    factor: 2
+  hints:
+  - Write the formula with units first.
+  - Check that every quantity is per second or per month, not mixed.
+  - Compare your answer with one machine to see whether the setup is worth it.
+  alternatives: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: ex-1
+  role: worked_example
+  type: estimate
+  title: Five replicas, three needed
+  prompt: A store keeps five replicas, each up 99.9% of the time and failing independently, with W = R = 3. Work out how many minutes in a 30-day month an operation cannot go ahead, and decide whether five replicas are worth it against three.
+  card: quorum-replication
+  checkers:
+  - kind: numeric
+    calc: H4.2/calc-quorum-table
+    key: downtime_n5w3r3
+    unit: minutes per month
+    factor: 3
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: ex-2
+  role: worked_example
+  type: recognise
+  title: Replicas that fell behind during a deploy
+  prompt: A session store has N = 3, W = 2, R = 2. During a deploy one node was down for ten minutes and missed about 12 000 writes. Sessions are read every few seconds while a user is active. Decide what, if anything, to add so the node catches up by itself.
+  card: read-repair
+  answer:
+    kind: card
+    card: &id001
+      topic: H4.2
+      card: read-repair
+    property: Reads contact several replicas, versions order the writes of each key, and writing the newest version back is safe to repeat.
+    why_others_fail: Waiting for the next write leaves rarely written keys stale on that node; a scheduled comparison of every key is needed only for keys that are not read.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: r-1
+  role: drill
+  type: recognise
+  title: Session store across three zones
+  prompt: A session store spans three zones and must survive the loss of one zone with single-key reads and writes. Operations touch one key. The target is 99.999%.
+  answer:
+    kind: card
+    card: &id002
+      topic: H4.2
+      card: quorum-replication
+    property: N = 3, one replica per zone, W = 2, R = 2, so W + R = 4 > 3 and a minority can be down.
+    why_others_fail: One machine gives 99.9% (43.2 minutes a month); a standby needs a failover step during which writes stop.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: r-2
+  role: drill
+  type: recognise
+  title: Replicas drift after outages
+  prompt: After each outage the replicas of a busy key-value store differ, and nothing brings them back together. Keys are read many times a minute.
+  answer:
+    kind: card
+    card: *id001
+    property: Reads already contact several replicas, versions order the writes, and writing the newest version back is repeatable.
+    why_others_fail: Waiting for the next write leaves keys that are read much more than written stale; quorum settings alone do not repair a replica that missed a write.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: r-3
+  role: drill
+  type: recognise
+  title: Admin tool
+  prompt: A single-region admin tool gets 50 requests a day. An outage of an hour a month is acceptable.
+  answer:
+    kind: none
+    simplest: One database on one machine
+    why: One machine gives 43.2 minutes down a month, within the target; three replicas would add machines and quorum code for no need.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: r-4
+  role: drill
+  type: recognise
+  title: Settings table
+  prompt: A settings table is updated twice a month and read from one database that is backed up every night. Briefly stale values are acceptable.
+  answer:
+    kind: none
+    simplest: The single database it already uses
+    why: Two writes a month do not need a replica group; a quorum protects against a failure the target accepts.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: r-5
+  role: drill
+  type: recognise
+  title: Archive read once a year
+  prompt: An archive of 40 million records is read once a year. A replica was down for a month and missed 1 000 000 writes.
+  answer:
+    kind: none
+    simplest: A scheduled comparison of the replicas
+    why: Read repair only runs when a key is read, so the stale replica stays stale; a periodic comparison covers every key.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: r-6
+  role: drill
+  type: recognise
+  title: Five-node store
+  prompt: A key-value store keeps five replicas per key. Each write is acknowledged by three and each read asks three. Operations touch one key.
+  answer:
+    kind: card
+    card: *id002
+    property: W + R = 6 > 5 over a fixed set of five replicas, and any 3 of 5 still form both quorums, so two failures are tolerated.
+    why_others_fail: Acknowledging fewer than three would let a read set miss the write set.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: r-7
+  role: drill
+  type: recognise
+  title: Two regions with one counter
+  prompt: Two regions both add to one shared counter and must show the same total at all times, even during a network cut between the regions.
+  answer:
+    kind: none
+    simplest: One region that owns the counter
+    why: A quorum keeps copies of a key available but does not make two concurrent updates agree on one order; the simplest tool is a single writer.
+  checkers: []
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: cp-1
+  role: checkpoint
+  type: deep_dive
+  title: Quorum store for a shopping cart
+  prompt: A shop wants its shopping carts to survive the loss of one machine without losing an acknowledged item. Carts are read 5 times as often as written, 5 000 writes a second at peak, 600 bytes per write, three zones. Write a design for the storage layer in 40 minutes. Choose N, W and R, justify them with numbers, say what a client sees when one and when two machines fail, and cite at least one result from your own runs of the H4.2 lab (the test names and what they showed).
+  card: quorum-replication
+  clarifying:
+  - q: How many carts and how large is one?
+    a: About 20 million active carts of about 3 KB each.
+    critical: false
+  - q: Is a read right after adding an item allowed to miss it?
+    a: 'No: the shopper must see the item they just added.'
+    critical: true
+  - q: What availability is the target?
+    a: 99.99% for cart reads and writes.
+    critical: true
+  - q: Do operations change more than one cart at once?
+    a: No, one cart per operation.
+    critical: true
+  - q: Do carts of one user ever get written by two devices at the same moment?
+    a: Rarely, and the later write may win for this exercise.
+    critical: false
+  checkers:
+  - kind: rubric
+    id: rubric-hld-deep-dive-v1
+  time_limit_minutes: 40
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+- id: rev-1-1
+  role: review
+  type: recognise
+  title: Pick N, W and R for a shopping cart
+  prompt: A cart service spans three zones. One cart per operation, a shopper must see an item just added, and one zone may be lost. Choose the settings.
+  card: quorum-replication
+  review_set: 1
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  answer:
+    kind: card
+    card: *id002
+    property: N = 3, W = 2, R = 2 over a fixed set, one replica per zone.
+    why_others_fail: W = 1, R = 1 can miss the write; one primary needs a failover.
+  checkers: []
+- id: rev-1-2
+  role: review
+  type: estimate
+  title: Replication traffic at another size
+  prompt: A log store takes 8 000 writes a second of 2 KB each and keeps five replicas. How much data a second goes to the replicas, in megabytes per second?
+  card: quorum-replication
+  review_set: 1
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  checkers:
+  - kind: numeric
+    calc: H4.2/calc-quorum-table
+    key: replica_traffic_n5_8000w
+    unit: MB/s
+    factor: 2
+- id: rev-1-3
+  role: review
+  type: recognise
+  title: Why does W + R > N give an overlap?
+  prompt: 'Two engineers disagree: one says N = 5, W = 2, R = 3 is safe because the numbers add up to the replica count. Decide whether reads always meet writes.'
+  card: quorum-replication
+  review_set: 1
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  answer:
+    kind: none
+    simplest: 'Do not rely on it: 2 + 3 = 5 is not greater than 5'
+    why: A read set of 3 can be exactly the 3 replicas that the write of 2 missed, so a read can return the old value.
+  checkers: []
+- id: rev-2-1
+  role: review
+  type: recognise
+  title: 'Sloppy quorum: what is given up?'
+  prompt: A store lets a write count stand-in nodes when home replicas are unreachable so it stays available. A later read asks only the home replicas. Is a read after an acknowledged write guaranteed to see it?
+  card: quorum-replication
+  review_set: 2
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  answer:
+    kind: none
+    simplest: 'No: use a fixed replica set if reads must see acknowledged writes'
+    why: The write set may contain nodes the reader never asks, so the count W + R > N no longer implies a shared node (TestSloppyQuorumBreaksOverlap).
+  checkers: []
+- id: rev-2-2
+  role: review
+  type: recognise
+  title: When is read repair not enough?
+  prompt: A store has replicas that missed 50 000 writes while down. Half the keys are read daily and half are never read. Decide what to rely on for each half.
+  card: read-repair
+  review_set: 2
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  answer:
+    kind: card
+    card: *id001
+    property: Reads contact several replicas and versions order the writes; the keys read daily are repaired by those reads.
+    why_others_fail: Keys that are never read are never repaired, so they need a scheduled comparison of the replicas.
+  checkers: []
+- id: rev-2-3
+  role: review
+  type: estimate
+  title: Write availability when every replica must acknowledge
+  prompt: N = 3 with W = 3 (every replica must acknowledge a write), each machine up 99.9% of the time and independent. How many minutes a 30-day month can a write not go ahead?
+  card: quorum-replication
+  review_set: 2
+  techniques:
+  - H4.2
+  checked_on: '2026-10-18'
+  checkers:
+  - kind: numeric
+    calc: H4.2/calc-quorum-table
+    key: write_downtime_n3w3
+    unit: minutes per month
+    factor: 2
+

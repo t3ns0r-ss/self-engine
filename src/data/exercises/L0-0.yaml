@@ -1,0 +1,362 @@
+topic: L0.0
+exercises:
+- id: rung-1
+  role: ladder
+  type: change_ladder
+  title: A connection that closes itself
+  prompt: 'Implement Connection (see kit.hpp). Creating one counts an open in the Log it is given and destroying it counts one close, whichever way the scope ends: the last line, an early return, or an exception. A Connection cannot be copied but can be moved, and a moved-from one closes nothing.'
+  card: raii
+  rung: 1
+  new_force: A class that owns a connection and closes it in its destructor
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L0.0/ladder/rung-1
+  reference: reference/L0.0/ladder/rung-1
+  alternatives:
+  - 'A plain close() function that the caller calls: simpler to write, skipped by every early return and every throw.'
+  hints:
+  - Which function of the class always runs when an object goes out of scope, however the scope ends?
+  - Count the open in the constructor and the close in the destructor. Two owners of one connection would close it twice, so what should copying do?
+  - 'A move must leave the old object with nothing to close: keep a pointer and set the old one to null.'
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: rung-2
+  role: ladder
+  type: change_ladder
+  title: A function that returns a heap object
+  prompt: 'Implement make_report(n): it returns a std::unique_ptr<Report> whose total is 1 + 2 + ... + n and which the caller owns. For n below 1 it throws std::invalid_argument and leaves no Report alive.'
+  card: raii
+  rung: 2
+  new_force: A function returns a heap object and the caller must not leak it
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L0.0/ladder/rung-2
+  reference: reference/L0.0/ladder/rung-2
+  alternatives:
+  - 'Return a raw pointer: shorter, and the caller must remember to delete it on every path.'
+  hints:
+  - Who destroys the Report when the caller is done with it?
+  - std::make_unique<Report>(...) builds the object and puts it straight into the owner. Check n before building anything.
+  - 'Return the unique_ptr by value: the caller receives sole ownership.'
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: rung-3
+  role: ladder
+  type: change_ladder
+  title: Two owners really need the same object
+  prompt: 'Implement ImageCache::get(name): callers asking for the same name while any of them still holds the image get the same Image. The cache must not keep an image alive on its own; when all holders let go the image is destroyed, and the next get loads a new one.'
+  card: ownership-pointer
+  rung: 3
+  new_force: Two owners really need the same object
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L0.0/ladder/rung-3
+  reference: reference/L0.0/ladder/rung-3
+  alternatives:
+  - 'The cache holds shared_ptr and keeps every image for the life of the program: simplest, and right when images should live that long.'
+  hints:
+  - How many owners can an Image have here, and when should it die?
+  - Hand out std::shared_ptr<Image>. What can the cache hold so that it can find an image without owning it?
+  - std::weak_ptr has a lock() function that returns an owner, or an empty pointer if the image is gone.
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: rung-4
+  role: ladder
+  type: change_ladder
+  title: A function that only reads an object
+  prompt: 'Implement name_length(const Image&): it returns the number of characters in the image name, takes no ownership and makes no copy. It must accept a temporary Image and a const Image.'
+  card: ownership-pointer
+  rung: 4
+  new_force: A function only reads an object it does not own
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: L0.0/ladder/rung-4
+  reference: reference/L0.0/ladder/rung-4
+  alternatives:
+  - 'Take a std::shared_ptr<Image>: needed only if the function stores the image, and otherwise a count update on every call for nothing.'
+  hints:
+  - Does the function keep the image after it returns?
+  - 'If not, it does not need to own it: a reference is enough. Which kind of reference accepts a temporary?'
+  - A const reference can bind to a temporary and promises not to change the object.
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: rung-5
+  role: ladder
+  type: change_ladder
+  title: A small value that is copied freely
+  prompt: 'Implement midpoint(Point, Point) for the plain value type Point: each coordinate is the integer average of the two inputs, truncating toward zero. Do not add pointers or smart pointers: Point stays a plain value.'
+  card: null
+  rung: 5
+  new_force: A small value type is copied freely
+  needs_new_structure: false
+  checkers:
+  - kind: kit
+    path: L0.0/ladder/rung-5
+  reference: reference/L0.0/ladder/rung-5
+  alternatives:
+  - 'Hold the Point behind a unique_ptr: adds an allocation and an owner to think about for 8 bytes of data.'
+  hints:
+  - Does Point need an owner?
+  - Two ints copy as 8 bytes and nothing else can go wrong. Pass and return Points by value.
+  - Integer division of -3 by 2 gives -1 in C++, which is the truncation the tests expect.
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: ex-1
+  role: worked_example
+  type: recognise
+  title: A lock that must be released on every return path
+  prompt: A 25-line function takes a lock, then has three return statements and one call that can throw. Decide how to make sure the lock is released every time.
+  card: raii
+  answer:
+    kind: card
+    card: &id001
+      topic: L0.0
+      card: raii
+    property: Acquire in a constructor and release in the destructor, so all 4 exits release it.
+    why_others_fail: An unlock before each return misses the throw and breaks when a fifth exit is added.
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: ex-2
+  role: worked_example
+  type: recognise
+  title: A pair of numbers passed to a function 100 times a second
+  prompt: A struct of two ints (a point) is passed to a function 100 times a second. Someone suggests wrapping it in a smart pointer so that it is never copied. Decide.
+  answer:
+    kind: none
+    simplest: Pass the small struct by value
+    why: Copying 8 bytes costs less than the allocation and the count a smart pointer would add; there is nothing to own.
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: r-1
+  role: drill
+  type: recognise
+  title: A socket that may throw halfway
+  prompt: A function opens a socket, parses a header and may throw halfway. The socket must be closed whatever happens.
+  answer:
+    kind: card
+    card: *id001
+    property: Acquire in a constructor and release in the destructor, so the throw and every return release it.
+    why_others_fail: A close() at the end is skipped by the throw.
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: r-2
+  role: drill
+  type: recognise
+  title: One image for three widgets
+  prompt: A photo viewer decodes a 40 MB picture once and shows it in three panels; each panel may be closed first, in any order.
+  answer:
+    kind: card
+    card: &id002
+      topic: L0.0
+      card: ownership-pointer
+    property: 'Several owners with no known release order: the last one out destroys the image (shared_ptr).'
+    why_others_fail: A unique_ptr per widget would copy 40 MB three times; a raw pointer would dangle when the first widget ends.
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: r-3
+  role: drill
+  type: recognise
+  title: A printing helper
+  prompt: A helper prints a record it is given and keeps nothing.
+  answer:
+    kind: none
+    simplest: A const reference parameter
+    why: 'The helper owns nothing and keeps nothing: no pointer of any kind is needed.'
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: r-4
+  role: drill
+  type: recognise
+  title: A struct of three ints
+  prompt: A struct of three ints is passed to a function 100 times a second.
+  answer:
+    kind: none
+    simplest: Pass it by value
+    why: Copying 12 bytes is cheaper than any indirection, and there is nothing to own.
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: r-5
+  role: drill
+  type: recognise
+  title: A factory that hands over a parser
+  prompt: A factory builds a parser and gives sole ownership to its caller.
+  answer:
+    kind: card
+    card: *id002
+    property: 'One owner after the factory returns: a unique_ptr returned by value.'
+    why_others_fail: A raw pointer leaves the delete to the caller; a shared_ptr pays for a count nobody needs.
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: r-6
+  role: drill
+  type: recognise
+  title: A lock on a 25-line function
+  prompt: A lock must be released on every return path of a 25-line function that has four of them.
+  answer:
+    kind: card
+    card: *id001
+    property: 'A scoped hold: lock in the constructor, unlock in the destructor.'
+    why_others_fail: Four hand-written unlocks must all stay correct when a fifth return is added.
+  checkers: []
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: cp-1
+  role: checkpoint
+  type: build
+  title: Wrap a temporary file so it is always deleted
+  prompt: 'Build TempFile in 45 minutes (see exercises/L0.0/cp-1). It creates an empty file in the temporary directory, deletes it when its owner goes away on every way out of the scope, can be moved but not copied, and a moved-from object must not delete the file the new owner still uses. Add a short decision record: which way out of the scope would a hand-written delete have missed?'
+  card: raii
+  clarifying:
+  - q: Where is the file created and how is it named?
+    a: In the system temporary directory, with the name the caller passes.
+    critical: false
+  - q: What should happen if the file cannot be created?
+    a: The constructor throws std::runtime_error.
+    critical: true
+  - q: Can a TempFile be copied?
+    a: No. It can be moved; the new owner then owns the file.
+    critical: true
+  - q: May the destructor throw if the delete fails?
+    a: No. A destructor must not throw; ignore the error.
+    critical: true
+  - q: Does write replace or append?
+    a: Append.
+    critical: false
+  checkers:
+  - kind: kit
+    path: L0.0/cp-1
+  - kind: rubric
+    id: rubric-lld-build-v1
+  reference: reference/L0.0/cp-1
+  time_limit_minutes: 45
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+- id: rev-1-1
+  role: review
+  type: refactor
+  title: Spot the leak
+  prompt: A loader allocates an Image with new, then throws on two of its paths and deletes only on the last. Fix it so that no Image stays alive on any path, without changing results.
+  card: raii
+  review_set: 1
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+  checkers:
+  - kind: kit
+    path: L0.0/rev-1-1
+  reference: reference/L0.0/rev-1-1
+- id: rev-1-2
+  role: review
+  type: recognise
+  title: A logger passed to five classes
+  prompt: A logger is created in main and passed to five classes. All five are destroyed before main ends. Decide how each class should hold the logger.
+  card: ownership-pointer
+  review_set: 1
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+  answer:
+    kind: card
+    card: *id002
+    property: The logger outlives every user, so each class can hold a plain reference; no ownership is shared.
+    why_others_fail: A shared_ptr in each class would add a count to a lifetime that is already clear.
+  checkers: []
+- id: rev-1-3
+  role: review
+  type: recognise
+  title: A single-line wrapper
+  prompt: A function opens a file, reads one integer and closes it. Nothing between the open and the close can throw and there is only one return. A colleague wants a FileGuard class.
+  card: raii
+  review_set: 1
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+  answer:
+    kind: none
+    simplest: Open, read and close in order
+    why: There is one exit and nothing in between can throw, so a 15-line class protects against nothing.
+  checkers: []
+- id: rev-2-1
+  role: review
+  type: build
+  title: A scoped timer
+  prompt: Write a scoped timer that records elapsed time even on early return or when an exception passes through.
+  card: raii
+  review_set: 2
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+  checkers:
+  - kind: kit
+    path: L0.0/rev-2-1
+  reference: reference/L0.0/rev-2-1
+  clarifying:
+  - q: What does the timer read, and where does it write?
+    a: It calls the clock function it was given and appends to the vector it was given.
+    critical: true
+  - q: What is recorded if the scope throws?
+    a: The elapsed time up to the throw, once.
+    critical: true
+  - q: Can the timer be copied?
+    a: No; it can be moved, and a moved-from timer records nothing.
+    critical: false
+  - q: Does it need real clocks?
+    a: 'No: the tests pass a fake clock function.'
+    critical: false
+- id: rev-2-2
+  role: review
+  type: recognise
+  title: One configuration replaced every hour
+  prompt: Two request handlers read a configuration object that a background task replaces every hour. A handler may still be reading the old one when the new one arrives. Who owns each version?
+  card: ownership-pointer
+  review_set: 2
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+  answer:
+    kind: card
+    card: *id002
+    property: Each handler and the holder of the current version share ownership, so an old version is destroyed when the last handler lets go.
+    why_others_fail: A reference to a single object breaks when it is replaced; a unique_ptr has one owner, so a second holder would have to copy.
+  checkers: []
+- id: rev-2-3
+  role: review
+  type: recognise
+  title: Midpoint of two coordinates
+  prompt: A function averages two points, each two 32-bit integers. Someone proposes std::shared_ptr<Point> parameters to avoid copying.
+  card: ownership-pointer
+  review_set: 2
+  techniques:
+  - L0.0
+  checked_on: '2026-10-19'
+  answer:
+    kind: none
+    simplest: Pass the points by value
+    why: 'Each point is 8 bytes: copying is cheaper than a count, and there is nothing to own.'
+  checkers: []
+

@@ -1,0 +1,173 @@
+id: "L0.0"
+track: lld
+
+uses: []
+
+claims:
+  - id: "L0.0.1"
+    kind: proved
+    title: "A destructor runs once on every way out of the scope that owns the object, so a resource released there is never skipped"
+    plain_words: "When a function ends by reaching its last line, by an early return, or because an exception passes through it, the objects it created are destroyed. If the object's destructor releases the resource, the release happens on all of those paths, exactly once."
+    evidence: ["L0.0/raii-once", "L0.0/ex-1-scoped-lock"]
+    source: null
+  - id: "L0.0.2"
+    kind: proved
+    title: "A std::unique_ptr has exactly one owner at a time, and the object is destroyed once, when that owner goes away or lets go"
+    plain_words: "A unique_ptr cannot be copied, only moved. After a move the old pointer is empty, so only one pointer can destroy the object, and it does so when it goes out of scope."
+    evidence: ["L0.0/unique-owner"]
+    source: null
+  - id: "L0.0.3"
+    kind: proved
+    title: "A std::shared_ptr destroys the object when the last owner lets go, and a std::weak_ptr observes without being an owner"
+    plain_words: "Every shared_ptr that points to the object adds one to a count and every one that goes away subtracts one. The object is destroyed when the count reaches zero. A weak_ptr is not counted, so it can point back at an owner without keeping a pair of objects alive for ever."
+    evidence: ["L0.0/shared-owners"]
+    source: null
+  - id: "L0.0.4"
+    kind: proved
+    title: "A small plain value is copied freely: each copy is independent and needs no owner"
+    plain_words: "A struct of a few numbers has no pointers, so copying it copies the numbers and nothing else. Changing the copy cannot change the original, and nothing has to be released."
+    evidence: ["L0.0/ex-2-point"]
+    source: null
+
+cards:
+  - id: raii
+    name: "RAII for a resource"
+    force: "A resource such as a file, a lock, a connection or memory must be released on every way out of a function, including early returns and exceptions."
+    decisive_property: "Acquiring the resource happens in a constructor and releasing it in the destructor of an object that cannot be copied, so the release is tied to the end of a scope and no exit path can skip it."
+    from_claim: "L0.0.1"
+    how_to_test: "List every way out of the function after the resource is acquired: each return and each call that can throw. If any of them skips the release, the property does not hold yet."
+    constraint_shapes:
+      - "A function with 3 return paths and 2 calls that can throw has 5 exits after the acquire; a hand-written release must be on all 5, and one more return added later makes it 6"
+    weak_signals:
+      - form: "The requirement says 'always close', 'never leak' or 'must be released even if something fails'"
+        shape: "At least 2 exits from the code between the acquire and the release (return paths plus calls that can throw)"
+      - form: "The code calls open and close, lock and unlock, or begin and end in pairs"
+        shape: "A branch or a call that can throw sits between the two halves of a pair"
+    kill_signals:
+      - "A 3-line function that opens a file, reads one number and closes it, with no early return and no call between that can throw: a wrapper class of about 15 lines is longer than the function it protects"
+      - "The resource must outlive the scope that created it and several parts of the program keep it: that is shared ownership (the card for choosing a pointer), not a scope guard"
+      - "The release can itself fail and the caller must hear about it (a flush that reports an error): a destructor cannot report, so the class also needs an explicit close() for that path"
+    in_action:
+      statement: "A function opens a socket, parses a header, and may throw halfway."
+      constraints: "Two calls between open and close can throw, plus 2 early returns: 4 exits after the open; the function is called 1000 times a minute"
+      budget: "A leaked socket per failed parse is up to 1000 a minute; the operating system allows about 1000 open sockets per process"
+      candidates:
+        - {tool: "Call close() at the end of the function and before each return", verdict: rejected, because: "It covers 2 of the 4 exits; the throws skip it, and a later extra return needs another copy."}
+        - {tool: "RAII: a Socket object whose destructor closes", verdict: chosen, because: "The destructor runs on all 4 exits and the code to close is written once."}
+      property_check: "Acquire in the constructor, release in the destructor, copying deleted. Yes."
+      decision: "A Socket class (about 15 lines) with a deleted copy and a move constructor, created at the top of the function."
+    examples:
+      positive:
+        - inline: {input: "A lock must be released on every return path of a 25-line function", answer: "RAII: a scoped hold on the lock", why: "Several exits, one release written once."}
+        - inline: {input: "A temporary file must be deleted whether the function succeeds, returns early or throws", answer: "RAII: a TempFile object", why: "The deletion is in the destructor."}
+      negative:
+        - inline: {input: "A 3-line function opens a file, reads a number and closes it; nothing between can throw or return", answer: "Nothing: open and close in order", why: "A wrapper class would be about 15 lines for a 3-line function."}
+          correct_tool: {simplest: "plain open and close in the function"}
+        - inline: {input: "Three widgets share one 40 MB image and any may outlive the others", answer: "Shared ownership", why: "No single scope owns it."}
+          correct_tool: {simplest: "std::shared_ptr"}
+    lookalikes: []
+    cost: "One small class per kind of resource (about 15 lines, written once), a rule that the object is not copied, and a destructor that cannot report a failure to release."
+
+  - id: ownership-pointer
+    name: "Choosing unique_ptr, shared_ptr or a plain reference"
+    force: "An object made with new needs an owner that destroys it exactly once, and code that only uses the object must not accidentally become a second owner."
+    decisive_property: "Exactly one of three holds: one owner (std::unique_ptr), several owners where the last one out destroys it (std::shared_ptr), or the user does not own it and the owner outlives the user (a reference)."
+    from_claim: "L0.0.2"
+    how_to_test: "Ask who destroys the object, and whether the code that uses it can outlive that owner. One answerable owner: unique_ptr. No single owner and an unknown order of release: shared_ptr. The user ends before the owner: a reference."
+    constraint_shapes:
+      - "One creator hands the object to one user: 1 owner. Three widgets that may each outlive the others: 3 owners, and the object dies when the third lets go"
+    weak_signals:
+      - form: "The requirement says a factory 'returns a new' object, or an object is 'given' to someone"
+        shape: "Exactly one holder afterwards, so the receiver is the sole owner"
+      - form: "The requirement says an object is 'shared between' parts, or 'any of which may outlive the others'"
+        shape: "At least 2 holders and no known order in which they finish"
+      - form: "The requirement says a function 'reads' or 'prints' something it is given"
+        shape: "The function keeps nothing after it returns, so it needs no ownership"
+    kill_signals:
+      - "shared_ptr for an object that has one owner: each pointer is 16 bytes against 8 for a unique_ptr, the count needs a second allocation unless make_shared is used, and nobody reads the count (measured on this machine: 16 against 8 bytes)"
+      - "A function that only reads its parameter and keeps nothing: a reference needs no ownership at all, and a shared_ptr parameter touches the count on every call"
+      - "Two objects that each hold a shared_ptr to the other: the counts never reach 0 and both leak; one side must be a weak_ptr"
+    in_action:
+      statement: "A cache hands out the same 40 MB decoded image to three widgets, any of which may outlive the others."
+      constraints: "3 holders, release order unknown, 40 MB each if copied (120 MB), the cache must not keep an image alive on its own"
+      budget: "Copying would use 3 x 40 MB = 120 MB; sharing uses 40 MB"
+      candidates:
+        - {tool: "One unique_ptr per widget, each with its own copy of the image", verdict: rejected, because: "3 copies of 40 MB: 120 MB, and the copies can drift apart."}
+        - {tool: "shared_ptr in the widgets and weak_ptr in the cache", verdict: chosen, because: "One 40 MB image, destroyed when the third widget lets go; the cache does not keep it alive."}
+      property_check: "Several owners with no known release order: the last one out destroys it. Yes."
+      decision: "Widgets hold std::shared_ptr<Image>; the cache holds std::weak_ptr<Image> and makes a new image when the old one is gone."
+    examples:
+      positive:
+        - inline: {input: "A factory builds a parser and gives sole ownership to its caller", answer: "std::unique_ptr, returned by value", why: "One owner, the caller."}
+        - inline: {input: "A cache hands out one 40 MB image to three widgets that finish in any order", answer: "std::shared_ptr", why: "No single owner; the last widget out destroys it."}
+      negative:
+        - inline: {input: "A helper prints a record it is given and keeps nothing", answer: "A const reference", why: "No ownership is involved."}
+          correct_tool: {simplest: "const reference parameter"}
+        - inline: {input: "A settings object created in main and used by 5 classes that all end before main does", answer: "A reference to the settings", why: "The owner outlives every user, so sharing ownership is not needed."}
+          correct_tool: {simplest: "plain reference"}
+    lookalikes: []
+    cost: "A unique_ptr costs nothing at run time beyond a plain pointer. A shared_ptr costs 8 more bytes per pointer, a counter that is updated on every copy, and the risk of cycles. A reference costs nothing but must not outlive its object."
+
+lookalike_pairs:
+  - a: "A function that closes a file on its last line"
+    b: "An object whose destructor closes the file"
+    a_tool: "Closing by hand at the end of the function"
+    b_tool: {topic: "L0.0", card: "raii"}
+    flipping_difference: "Both close the file when nothing goes wrong. Only the destructor closes it when an early return or an exception leaves the function first."
+    flipping_input: "A new early return is added in the middle of the function"
+  - a: "A factory that returns an object to a single caller"
+    b: "A cache that gives one object to three widgets"
+    a_tool: {topic: "L0.0", card: "ownership-pointer"}
+    b_tool: {topic: "L0.0", card: "ownership-pointer"}
+    flipping_difference: "The same card with different answers: one owner makes it a unique_ptr, several owners with an unknown release order makes it a shared_ptr."
+    flipping_input: "A second widget needs the object that the factory made"
+  - a: "A function that reads an object and keeps nothing"
+    b: "A class that stores the object it is given"
+    a_tool: {topic: "L0.0", card: "ownership-pointer"}
+    b_tool: {topic: "L0.0", card: "ownership-pointer"}
+    flipping_difference: "A parameter that is only read can be a reference. A class that stores the object must own it or be sure its owner outlives it, otherwise the stored reference dangles."
+    flipping_input: "The caller passes a temporary object to the class constructor"
+
+self_test:
+  - q: "A function opens a file, calls a parser that can throw, and closes the file on its last line. Which exits skip the close, and how does a destructor fix it?"
+    a: "The throw from the parser skips it, and so does any early return placed before the last line. A destructor runs on all of them, so the close is written once in the destructor of an object created right after the open."
+  - q: "What does the wrapper class for a resource cost, and when is it not worth it?"
+    a: "About 15 lines per kind of resource, a deleted copy, and a destructor that cannot report a failure. It is not worth it for a 3-line function with no early return and nothing between the open and the close that can throw."
+  - q: "Predict before running: a Connection is created and then moved into another Connection, and both go out of scope. How many closes are counted, and what would a copy have done?"
+    a: "One close: the moved-from object holds nothing. A copy would have two owners of one connection and close it twice."
+  - q: "A parent and child object each hold a shared_ptr to the other. Both go out of scope. Why do they leak, and what is the fix?"
+    a: "Each keeps the other's count at 1, so neither count reaches 0. Make the child's back pointer a weak_ptr, which is not counted."
+  - q: "A function prints a record it is given and keeps nothing. Which of unique_ptr, shared_ptr or a const reference, and why?"
+    a: "A const reference: the function does not own the record, so no smart pointer is needed, and a shared_ptr would update a count on every call for no reason."
+
+decision_map:
+  - weak_signal: "A resource that must be released on every exit of a function, including a throw"
+    choose: "RAII: an object whose destructor releases the resource"
+    when: "2 or more exits between the acquire and the release, or a call between them that can throw"
+    over:
+      - {card: "Closing by hand at the end of the function", because: "It is skipped by every early return and every throw (5 exits, 1 close)."}
+  - weak_signal: "An object that is created by one part of the code and given to exactly one other"
+    choose: "std::unique_ptr returned by value"
+    when: "One owner at a time and the owner is known"
+    over:
+      - {card: "A raw pointer returned from new", because: "The caller must remember to delete it, and an exception between can skip that."}
+  - weak_signal: "Several parts hold the same object and finish in an unknown order"
+    choose: "std::shared_ptr, with weak_ptr for pointers that must not own"
+    when: "No single owner can be named"
+    over:
+      - {topic: "L0.0", card: "ownership-pointer", because: "A unique_ptr per part would copy the object (3 x 40 MB = 120 MB) or leave one owner too early."}
+  - weak_signal: "A function that only reads or prints what it is given"
+    choose: "A const reference parameter"
+    when: "The function keeps nothing after it returns"
+    over:
+      - {topic: "L0.0", card: "ownership-pointer", because: "Taking a shared_ptr would add 1 count update per call for no ownership need."}
+
+glossary_added:
+  - "raii"
+  - "move semantics"
+  - "smart pointer"
+  - "unique_ptr"
+  - "shared_ptr"
+  - "weak_ptr"
+  - "destructor"
+  - "const reference"

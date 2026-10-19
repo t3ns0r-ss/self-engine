@@ -1,0 +1,168 @@
+id: "L0.2"
+track: lld
+
+uses:
+  - {topic: "L0.1", what: "Classes with private fields, constructors that check, const member functions, and exceptions as refusals"}
+
+claims:
+  - id: "L0.2.1"
+    kind: proved
+    title: "A call through a base reference runs the function of the object's real class, so a new class can be added without editing the code that calls through the base"
+    plain_words: "When a function is marked virtual, the call looks at the object that is really there and runs that class's version. The caller only knows the base type, so a third class added later works with the same caller."
+    evidence: ["L0.2/virtual-shapes", "L0.2/ex-2-codec-list"]
+    source: null
+  - id: "L0.2.2"
+    kind: proved
+    title: "Deleting a derived object through a base pointer runs the derived destructor only if the base destructor is virtual"
+    plain_words: "With a virtual destructor, delete on a base pointer first runs the derived class's cleanup and then the base's. Without it the program has undefined behaviour and the derived part is never cleaned up."
+    evidence: ["L0.2/virtual-destructor"]
+    source: null
+  - id: "L0.2.3"
+    kind: proved
+    title: "A virtual call is a read of one hidden pointer in the object, a look-up in that class's table of functions, and a call; it costs one pointer per object"
+    plain_words: "The compiler gives every object of a class with virtual functions a hidden pointer to a table. The call reads the pointer, finds the function in the table and calls it. A hand-written table behaves the same, and each object is one pointer bigger."
+    evidence: ["L0.2/manual-vtable", "L0.2/ex-1-logger"]
+    source: null
+  - id: "L0.2.4"
+    kind: proved
+    title: "A template can give the same answers as a virtual call with the choice made when the program is compiled, but all elements of a container must then have one type"
+    plain_words: "If the type is known when the program is built, a template calls the right function directly with no hidden pointer. If the list must hold different types chosen while the program runs, the template cannot do it and the virtual interface can."
+    evidence: ["L0.2/static-shapes"]
+    source: null
+
+cards:
+  - id: virtual-interface
+    name: "Interface with virtual functions"
+    force: "Callers must work with several classes that do the same job differently, and which class is used is decided while the program runs: from a setting, a configuration file, or a list that grows."
+    decisive_property: "There are at least two implementations (or one now and another expected), the caller needs only the shared operations, and the implementation is chosen at run time, so the caller cannot name the class in its code."
+    from_claim: "L0.2.1"
+    how_to_test: "List the implementations that exist or are planned. Ask: can the caller name the concrete class when the program is compiled? If there is more than one class and the answer is no, the property holds."
+    constraint_shapes:
+      - "A pipeline of 3 steps read from a configuration file: the file can name any of 10 step classes, and the loop that runs them must not change when an 11th class is added"
+    weak_signals:
+      - form: "The requirement says 'chosen from a setting', 'loaded from a list', 'plug in another' or 'a user can pick'"
+        shape: "The class is picked by data that arrives while the program runs"
+      - form: "The requirement says 'and later we may add' another kind of the same thing"
+        shape: "A second implementation is expected and the callers should not change when it arrives"
+    kill_signals:
+      - "One implementation and no second planned (a logger used everywhere): the interface adds a class, a file and an 8-byte hidden pointer per object, and changes no behaviour (measured: 24 against 32 bytes)"
+      - "The set of types is fixed when the program is compiled and the call is in a very hot loop: a template or a variant resolves the call with no look-up"
+      - "A test double is the only second implementation and a different cheap seam would do: see L0.8 before adding an interface only for a test"
+    in_action:
+      statement: "A report exporter must write PDF or CSV, chosen by a user setting read at start-up. More formats are expected."
+      constraints: "2 formats now, a third planned; the format name arrives as text from a settings file; 1 caller, `export_report`"
+      budget: "1 caller that must not change when a format is added, against a switch that every new format edits"
+      candidates:
+        - {tool: "A switch on the format name inside the caller", verdict: rejected, because: "Every new format edits the caller and its tests; 3 formats means 3 branches in one function."}
+        - {tool: "An `Exporter` interface with one class per format, chosen from the setting", verdict: chosen, because: "The caller sees only Exporter; a new format is a new class and one line that picks it."}
+      property_check: "More than one implementation; the caller needs only `write(report)`; the class is chosen from text at run time. Yes."
+      decision: "An abstract class `Exporter` with a virtual destructor, `PdfExporter` and `CsvExporter`, picked by name when the program starts."
+    examples:
+      positive:
+        - inline: {input: "A list of codecs named in a configuration file, applied in order", answer: "An interface with virtual functions", why: "Which classes run is decided by the file, not by the code (the codec-list unit)."}
+        - inline: {input: "A list of shapes of different kinds whose areas are summed", answer: "An interface with virtual functions", why: "One vector holds objects of several classes behind the base type (the Shape unit)."}
+      negative:
+        - inline: {input: "A logger class used by every module and never replaced", answer: "A concrete class", why: "One implementation: the interface would add a class and 8 bytes per object and change nothing."}
+          correct_tool: {simplest: "plain concrete class"}
+        - inline: {input: "A comparator chosen in the source code and called 10 million times in a loop", answer: "A template", why: "The type is known at compile time; the call can be resolved with no look-up."}
+          correct_tool: {topic: "L0.2", card: "static-polymorphism"}
+    lookalikes: []
+    cost: "One hidden pointer per object, an indirect call that the compiler usually cannot inline, a virtual destructor in every base, and objects that must be held by pointer or reference (a vector of the base type by value cuts the derived part off)."
+
+  - id: static-polymorphism
+    name: "Template instead of virtual"
+    force: "A function must work for several types that share an operation, the types are all known when the program is compiled, and the call is so hot, or the object so small, that a hidden pointer and an indirect call are not wanted."
+    decisive_property: "The type is fixed by the call site when the program is compiled, so no run-time look-up is needed, and each container holds one type."
+    from_claim: "L0.2.4"
+    how_to_test: "Ask: at the line that calls it, is the type known without running the program? Does any container need to hold two different types at once, chosen while running? If the first is yes and the second is no, the property holds."
+    constraint_shapes:
+      - "A loop of 10 million calls to a function that adds two numbers: through a virtual call each one reads a pointer and calls indirectly; a template version can be expanded in place"
+    weak_signals:
+      - form: "The requirement says 'the same algorithm for ints and doubles' or 'any type that has' an operation"
+        shape: "The types are listed in the source or come from the caller's own types"
+      - form: "The requirement says 'in the inner loop', 'called millions of times' or 'no allocation'"
+        shape: "A per-object hidden pointer or an indirect call is a measurable share of the work"
+    kill_signals:
+      - "The list of 4 shape types comes from a 20-line file read while running: a vector holds 1 type, and a template cannot choose the type after the program is built"
+      - "The number of types grows over time in separate files: a variant must be edited for each one, and every template instance adds compiled code (code size grows by the number of instances)"
+      - "The code is not hot and the types are few: a virtual call costs one pointer look-up, and the interface is easier to read and to test"
+    in_action:
+      statement: "A sorting routine takes a comparison function. It is called with comparators written in the source (by id, by name), inside a loop that runs 10 million times."
+      constraints: "3 comparators, all written in the source; no comparator is ever read from outside; the inner loop dominates the run time"
+      budget: "10 million calls; each virtual call reads 1 pointer and calls indirectly; the template version calls directly"
+      candidates:
+        - {tool: "An abstract `Comparator` with a virtual `less`", verdict: rejected, because: "10 million indirect calls and an 8-byte pointer per comparator for a choice the source already makes."}
+        - {tool: "A function template taking any type with `less`", verdict: chosen, because: "The type is known at each call site; the compiler calls it directly."}
+      property_check: "The type is fixed at the call site and no container mixes comparators. Yes."
+      decision: "A function template constrained by a concept `HasLess`."
+    examples:
+      positive:
+        - inline: {input: "A sum over a vector of one shape type in a tight loop", answer: "A template", why: "One type per container, resolved when compiled; the results equal the virtual version (the static-shapes unit)."}
+        - inline: {input: "The same algorithm for int, double and a user's Money type", answer: "A template", why: "Each type is named in the source."}
+      negative:
+        - inline: {input: "A plugin list loaded from a configuration file", answer: "An interface with virtual functions", why: "A vector holds one type; the file chooses the types while running."}
+          correct_tool: {topic: "L0.2", card: "virtual-interface"}
+        - inline: {input: "A helper used in one place with one type", answer: "A concrete function", why: "No second type: a template is extra syntax."}
+          correct_tool: {simplest: "plain function"}
+    lookalikes: []
+    cost: "Every type used makes its own copy of the compiled code; error messages from templates are long; containers cannot mix the types, and the header must show the whole template to every user."
+
+lookalike_pairs:
+  - a: "A pipeline of steps named in a configuration file"
+    b: "A sort that is called with comparators written in the source, in a hot loop"
+    a_tool: {topic: "L0.2", card: "virtual-interface"}
+    b_tool: {topic: "L0.2", card: "static-polymorphism"}
+    flipping_difference: "Both call 'the same operation on different classes'. In the pipeline the file chooses the classes while the program runs; in the sort the source chooses them when it is compiled."
+    flipping_input: "The comparators are now read from a user's settings file"
+  - a: "An Exporter interface with PDF and CSV classes"
+    b: "A Logger class used everywhere and never replaced"
+    a_tool: {topic: "L0.2", card: "virtual-interface"}
+    b_tool: "A plain concrete class"
+    flipping_difference: "Both are a class that several modules call. The exporter has two implementations chosen at run time; the logger has one."
+    flipping_input: "The requirement adds: write logs to the console in development and to a file in production"
+  - a: "A virtual call on a Shape reference"
+    b: "A function template called with a Rect"
+    a_tool: {topic: "L0.2", card: "virtual-interface"}
+    b_tool: {topic: "L0.2", card: "static-polymorphism"}
+    flipping_difference: "Both give the right area. The virtual call looks the function up in the object's table while running; the template names it when compiled."
+    flipping_input: "One vector must hold Rects, Squares and Triangles, filled by a loop that reads a file"
+
+self_test:
+  - q: "A class has `virtual long long area() const = 0;`. What does `= 0` do, and what can you not write because of it?"
+    a: "It makes the function pure virtual and the class abstract. You cannot create an object of the class itself, only of a class that overrides the function; you can still hold references and pointers to the base."
+  - q: "`Base* p = new Derived; delete p;` where `Base` has `~Base() {}` and `Derived` owns a 4096-byte buffer. What happens, and what is the one-word fix?"
+    a: "Only `~Base` runs, the derived part is never cleaned up, and the behaviour is undefined (the course flags refuse to compile it, and the address sanitizer reports a size mismatch if the warning is silenced). Mark `~Base` as `virtual`."
+  - q: "Predict before running: `struct Rect : Shape { long long area() { return w * h; } };` where the base has `virtual long long area() const`. What does `shape_ref.area()` return for Rect(3, 4), and what keyword would have told you?"
+    a: "The base answer (0 in the example), because the missing `const` makes a new function instead of overriding. Writing `override` makes the compiler refuse: 'marked override, but does not override'."
+  - q: "Write the virtual call `p->area()` in three plain steps."
+    a: "Read the hidden pointer stored in the object, find the `area` entry in the table that pointer points to (one table per class), and call the function found there with the object as its argument."
+  - q: "A pipeline's step classes are named in a settings file. A colleague proposes a template `run_all<S>(const std::vector<S>&)`. Why does it not fit?"
+    a: "A vector holds one type, and the file chooses the types while the program runs, so the compiler cannot know them. A `vector<unique_ptr<Step>>` behind an interface can hold any mix."
+
+decision_map:
+  - weak_signal: "Classes of one job picked by data that arrives while the program runs, or expected to grow"
+    choose: "An abstract class with virtual functions and a virtual destructor"
+    when: "At least two implementations, and the caller needs only the shared operations"
+    over:
+      - {card: "A switch on a tag inside the caller", because: "Every new kind edits the caller; with an interface a new kind is a new class."}
+  - weak_signal: "The same algorithm for several types, all named in the source, in a hot loop"
+    choose: "A function template with a concept"
+    when: "The type is known at each call site and no container mixes types"
+    over:
+      - {topic: "L0.2", card: "virtual-interface", because: "A virtual call adds a pointer per object and an indirect call that the compiler cannot expand in place."}
+  - weak_signal: "A class used by many modules, never replaced"
+    choose: "A plain concrete class"
+    when: "One implementation and no second planned"
+    over:
+      - {topic: "L0.2", card: "virtual-interface", because: "The interface would add a class, a file and an 8-byte pointer per object and change no behaviour."}
+
+glossary_added:
+  - "abstract class"
+  - "dynamic dispatch"
+  - "interface"
+  - "override"
+  - "pure virtual function"
+  - "static polymorphism"
+  - "virtual function"
+  - "virtual destructor"
+  - "vtable"

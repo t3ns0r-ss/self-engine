@@ -14,8 +14,8 @@ Next action: Saurabh runs the LeetCode snippet from the Profiles page (gate S4),
 | S0 API review (profile sync) | approved (Saurabh: "Done all 3 needs me part") | 2026-10-13 |
 | S2 Codeforces live (profile sync) | approved (same message) | 2026-10-13 |
 | S4 LeetCode live (profile sync) | waiting: run the snippet from the Profiles page once and confirm | 2026-10-13 |
-| DL1 L2.1 exemplar review (design tracks) | waiting: read /lld/phase-2/l2-1-strategy/ and say approved or list changes | 2026-10-18 |
-| DH1 H4.2 exemplar review (design tracks) | waiting: read /hld/phase-4/h4-2-quorums/ and run run.md once | 2026-10-18 |
+| DL1 L2.1 exemplar review (design tracks) | approved (Saurabh: "All good, just the images used aren't very good"; diagrams fixed 2026-10-19: Mermaid now an SVG image with a readable theme and dark mode) | 2026-10-19 |
+| DH1 H4.2 exemplar review (design tracks) | approved (same message; the run.md practicality check by Saurabh is not confirmed) | 2026-10-19 |
 | B0 pattern lists review | approved | 2026-10-02 |
 | M0 test deploy | changed to GitHub Pages (server unreachable); first publish succeeded (Pages run #3) | 2026-10-02 |
 | B1 spot-check | Saurabh said "Continue"; taken as go-ahead for B2 in the bank plan's default order. Spot-check notes still welcome in FEEDBACK.md | 2026-10-02 |

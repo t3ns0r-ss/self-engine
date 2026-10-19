@@ -66,7 +66,18 @@ export default defineConfig({
   markdown: {
     syntaxHighlight: { type: 'shiki', excludeLangs: ['mermaid'] },
     remarkPlugins: [remarkMath],
-    rehypePlugins: [rehypeKatex, [rehypeMermaid, { strategy: 'inline-svg' }]],
+    rehypePlugins: [rehypeKatex, [rehypeMermaid, {
+      // img-svg keeps the diagram's own styles with it. (inline-svg lost its <style> in MDX, so nodes and arrows
+      // came out black.) Dark mode inverts the image in custom.css.
+      strategy: 'img-svg',
+      mermaidConfig: {
+        theme: 'base',
+        fontFamily: 'Helvetica, Arial, sans-serif',
+        themeVariables: { primaryColor: '#e7effb', primaryTextColor: '#14213d', primaryBorderColor: '#3b6ea5', lineColor: '#44546a', secondaryColor: '#fdf3d7', tertiaryColor: '#eef6ee', fontSize: '15px', background: '#ffffff' },
+        flowchart: { htmlLabels: false, curve: 'linear', padding: 14, nodeSpacing: 40, rankSpacing: 50 },
+        sequence: { useMaxWidth: true, mirrorActors: false },
+      },
+    }]],
   },
   integrations: [
     starlight({

@@ -1,0 +1,169 @@
+id: "L0.4"
+track: lld
+
+uses:
+  - {topic: "L0.3", what: "Owned and referred parts (composition and aggregation), inheritance, and how each shows in the member declarations"}
+  - {topic: "L0.2", what: "An interface as an abstract class with a pure virtual function, and a class that implements it"}
+
+claims:
+  - id: "L0.4.1"
+    kind: proved
+    title: "The arrows of a class diagram can be read from the member declarations, and the lifetime of each object confirms them"
+    plain_words: "A member held by value or by std::unique_ptr is an owned part, a pointer or a reference is a part that is only referred to, and a base class is inheritance. Destroying the whole destroys exactly the parts the diagram draws with a filled diamond, and no others."
+    evidence: ["L0.4/shop-model"]
+    source: null
+  - id: "L0.4.2"
+    kind: proved
+    title: "A sequence diagram is correct when the calls recorded in each run are a path through it, in order"
+    plain_words: "If the code records every call between objects, a run is a list of calls. A diagram with an alt block is right when every run's list can be read off one of its paths, and wrong when a run has a call the diagram lacks or in another order."
+    evidence: ["L0.4/place-order-trace"]
+    source: null
+  - id: "L0.4.3"
+    kind: proved
+    title: "A diagram that a program compares with the headers cannot disagree with them without someone being told"
+    plain_words: "For the member forms the course uses, a checker that reads the headers reports a class that is added, removed or drawn with the wrong arrow, and a call that is missing, extra or out of order."
+    evidence: ["L0.4/drift-check"]
+    source: null
+  - id: "L0.4.4"
+    kind: proved
+    title: "Two programs can have the same class diagram and behave differently, because the order of calls is not in a class diagram"
+    plain_words: "A class diagram is made of classes and members. Swapping two lines inside one function changes what the program does and leaves every class and member the same."
+    evidence: ["L0.4/same-classes-different-order"]
+    source: null
+
+cards:
+  - id: class-diagram
+    name: "Class diagram for structure"
+    force: "Several people must agree on which classes exist, who owns whom, who only refers to whom and who derives from whom, and finding out from the headers takes minutes for every question."
+    decisive_property: "The question is about structure that does not change while the program runs, and the member declarations answer it: a part held by value or std::unique_ptr is owned, a pointer or reference is referred to, a base class is inheritance."
+    from_claim: "L0.4.1"
+    how_to_test: "Write the question you want the diagram to answer. If it is who owns an object, what a class holds, or who derives from whom, the member declarations answer it and a checker can compare the diagram with them. If it is the order of calls or what happens when a step fails, no member declaration answers it."
+    constraint_shapes:
+      - "The shop of the lesson has 8 classes and a 94-line header; its structure-only diagram is 17 lines, and each arrow is checked against the header by a program"
+    weak_signals:
+      - form: "The requirement says 'who owns', 'who deletes', 'what depends on what' or 'how the parts fit together'"
+        shape: "6 or more classes, and the answer to the question is a relationship that the headers state"
+      - form: "A new teammate must understand the model before the first change"
+        shape: "The relationships are in the code but spread over many files"
+    kill_signals:
+      - "A design of 2 classes with 1 relationship: the diagram is 2 lines and the sentence is 15 words, and the sentence says everything the diagram says (measured)"
+      - "A diagram that lists every method and member: 60 lines for 8 classes against 17 for the structure, close to the 94 lines of the header it summarises, and out of date at the next edit (measured)"
+      - "The question is about the order of calls or about a failure: two shops with the same 2 relationship lines behave differently, so the class diagram cannot answer it"
+    in_action:
+      statement: "A new developer must change how order confirmations are mailed and asks who owns the orders, who owns the mailer, and who deletes them."
+      constraints: "8 classes, 94 lines of header; the question must be answered in about 5 minutes; the answer must stay true when the code changes"
+      budget: "Reading all of the header: 94 lines. A structure-only diagram: 17 lines"
+      candidates:
+        - {tool: "Read the headers each time", verdict: rejected, because: "94 lines for every question, and each new reader repeats the work."}
+        - {tool: "A diagram of the structure only, checked against the headers by a program", verdict: chosen, because: "17 lines answer who owns what, and the check reports a drawing that no longer matches."}
+        - {tool: "A diagram with every method and member", verdict: rejected, because: "60 lines, nearly the length of the header, and it goes out of date at the next edit."}
+      property_check: "The question is about ownership, a fact that the member declarations state. Yes."
+      decision: "A class diagram of the structure only: one line per relationship, checked against the headers."
+    examples:
+      positive:
+        - inline: {input: "Explain who owns whom in a six-class model", answer: "A class diagram", why: "Ownership is stated by the members, and the diagram shows it in one view (the Shop model)."}
+        - inline: {input: "Show a new teammate which classes implement the Notifier interface", answer: "A class diagram", why: "Implementing an interface is a base-class relationship, drawn as one dashed arrow."}
+      negative:
+        - inline: {input: "A Car that owns its Engine, nothing else", answer: "One sentence", why: "Two classes and one relationship take 15 words; a diagram adds no information."}
+          correct_tool: {simplest: "one sentence"}
+        - inline: {input: "What happens, in order, when an order is placed and the card is declined", answer: "A sequence diagram", why: "It is a question about one run and its order, which the members do not state."}
+          correct_tool: {topic: "L0.4", card: "sequence-diagram"}
+    lookalikes: []
+    cost: "Time to draw it, and the risk that it goes stale; checking it against the headers by a program removes the risk for the forms the checker understands and costs a script."
+
+  - id: sequence-diagram
+    name: "Sequence diagram for a call"
+    force: "A behaviour involves several objects calling each other in a fixed order, including what happens when a step fails, and people disagree about the order or forget the failure path."
+    decisive_property: "The question is about one run: who calls whom, in what order, and which calls are skipped or undone when a step fails. Every arrow is a call that a test can record."
+    from_claim: "L0.4.2"
+    how_to_test: "Make the code record every call between objects, run each scenario, and compare each recorded list with the paths of the diagram, in order. The diagram is right when every recorded list is one of its paths."
+    constraint_shapes:
+      - "An order through 4 objects has 3 runs (paid, out of stock, declined), 4, 2 and 4 calls; one diagram with 2 alt blocks has all three as paths"
+    weak_signals:
+      - form: "The requirement says 'first', 'then', 'if the payment fails give the stock back' or 'what happens when'"
+        shape: "3 or more objects and an order that matters, with at least one failure branch"
+      - form: "Two people describe the same flow in a different order"
+        shape: "A run that crosses object boundaries several times"
+    kill_signals:
+      - "A function that calls 1 other object: 1 arrow and 1 sentence say the same thing"
+      - "A 40-call loop drawn arrow by arrow: the diagram is longer than the code it describes, and a loop block with 2 arrows shows it"
+      - "The question is who owns the objects: a sequence of 4 calls says nothing about who deletes any of the 4 objects"
+    in_action:
+      statement: "An order is placed: stock is reserved, the card charged and a mail sent. If the card is declined the stock must be given back. A new developer asks in what order, and what happens on a decline."
+      constraints: "4 objects, 3 runs, 2 failure paths; the order must be exact and testable"
+      budget: "Reading the 57 non-blank lines of the model: 57 lines. A sequence diagram with both failure paths: 15 lines"
+      candidates:
+        - {tool: "A class diagram", verdict: rejected, because: "It has the same 2 relationship lines for the correct order and for the wrong one."}
+        - {tool: "A paragraph of text", verdict: rejected, because: "Nothing checks the order or the failure path against the code."}
+        - {tool: "A sequence diagram with an alt block, checked against recorded runs", verdict: chosen, because: "Each run is a path through it, and a missing release call is reported."}
+      property_check: "The question is about the order of calls in a run, and a test can record the calls. Yes."
+      decision: "A sequence diagram with two nested alt blocks, checked against the three recorded runs."
+    examples:
+      positive:
+        - inline: {input: "Show how an undo request travels through three objects", answer: "A sequence diagram", why: "The order of the calls between the objects is the whole question."}
+        - inline: {input: "Show what happens, in order, when a user places an order and the stock is short", answer: "A sequence diagram", why: "The failure path (stop after the reserve) is a branch of one run (the place-order unit)."}
+      negative:
+        - inline: {input: "Who deletes the connection when the server stops", answer: "A class diagram", why: "It is about ownership, which the members state; a sequence shows calls, not lifetimes."}
+          correct_tool: {topic: "L0.4", card: "class-diagram"}
+        - inline: {input: "A function of two lines that calls no other object", answer: "No diagram", why: "There are no calls between objects to draw."}
+          correct_tool: {simplest: "the function itself"}
+    lookalikes: []
+    cost: "Time to draw it and to add a recorder to the code, and a long diagram if every internal call is drawn; draw the calls between objects only."
+
+lookalike_pairs:
+  - a: "Who owns the orders in the shop, and who only refers to them?"
+    b: "In what order does the shop reserve, charge and mail?"
+    a_tool: {topic: "L0.4", card: "class-diagram"}
+    b_tool: {topic: "L0.4", card: "sequence-diagram"}
+    flipping_difference: "Both are about the same 4 classes. One question is about what holds what, which the members state; the other is about the order inside one run, which the members do not state."
+    flipping_input: "The requirement adds: if the card is declined the stock must be given back"
+  - a: "A sequence diagram of an order placed through 4 objects"
+    b: "A sentence saying that the shop asks the mailer to confirm"
+    a_tool: {topic: "L0.4", card: "sequence-diagram"}
+    b_tool: "One sentence"
+    flipping_difference: "Both describe calls. With 2 objects and no failure path, one sentence holds all of it; with 4 objects and 2 failure branches the order is what people get wrong."
+    flipping_input: "A third object joins the call and the failure path needs a cleanup call"
+  - a: "A class diagram with one line per relationship"
+    b: "The header files themselves"
+    a_tool: {topic: "L0.4", card: "class-diagram"}
+    b_tool: "Read the headers"
+    flipping_difference: "The diagram answers ownership in 17 lines where the headers take 94; the headers answer exactly which parameters a function takes, which the diagram leaves out."
+    flipping_input: "A reviewer must know the type of the second parameter of release"
+
+self_test:
+  - q: "A header has `std::vector<std::unique_ptr<Order>> orders_;` and `Mailer& mailer_;` in `Shop`. Which arrow is each in a class diagram, and what does destroying a shop do to each?"
+    a: "`Shop *-- Order` (owned) and `Shop o-- Mailer` (referred to). Destroying the shop destroys its orders and leaves the mailer, which lives elsewhere."
+  - q: "A diagram says `Shop o-- Order` but the header holds `std::unique_ptr<Order>`. What can go wrong if you trust the diagram?"
+    a: "You believe someone else deletes the orders and delete one yourself, and the shop deletes it again: a double free (the mistake program, reported by the address sanitizer)."
+  - q: "Predict before running: the shop reserves stock, then the card is declined. Which calls does the recorded run contain, and which does the diagram need to show?"
+    a: "Test to Shop place_order, Shop to Inventory reserve, Shop to Payments charge, Shop to Inventory release. The diagram needs an alt block whose declined branch holds the release call and no mail."
+  - q: "Two shops have the same classes and members, and one mails before it reserves. How does the class diagram tell them apart?"
+    a: "It does not: both produce the same relationship lines. Only the order of the calls differs, and that is what a sequence diagram shows."
+  - q: "When is a diagram not worth drawing?"
+    a: "When the design has 2 classes and 1 relationship: the diagram is 2 lines and the sentence 15 words, and the sentence says it all. It is also not worth listing every method: 60 lines for 8 classes against 17 for the structure."
+
+decision_map:
+  - weak_signal: "A question about who owns whom, who derives from whom, or what depends on what, in a model of 6 or more classes"
+    choose: "A class diagram of the structure only, checked against the headers"
+    when: "The relationships are stated by the member declarations"
+    over:
+      - {topic: "L0.4", card: "sequence-diagram", because: "A sequence shows calls in one run, not what holds what."}
+  - weak_signal: "A question about the order of calls, or what happens when a step fails, across 3 or more objects"
+    choose: "A sequence diagram with an alt block for each failure path, checked against recorded runs"
+    when: "A test can record the calls between the objects"
+    over:
+      - {topic: "L0.4", card: "class-diagram", because: "Two programs with the same class diagram can call in a different order."}
+  - weak_signal: "Two classes and one relationship, or one function that calls nothing else"
+    choose: "One sentence"
+    when: "The sentence names both classes and the relationship in 25 words or fewer"
+    over:
+      - {topic: "L0.4", card: "class-diagram", because: "The diagram would be 2 lines and say what the sentence says."}
+  - weak_signal: "A question about the exact type of a parameter or the name of a function"
+    choose: "Read the header"
+    when: "The detail is in a declaration"
+    over:
+      - {topic: "L0.4", card: "class-diagram", because: "The structure diagram leaves parameters out; adding them makes it 60 lines against 17."}
+
+glossary_added:
+  - "class diagram"
+  - "sequence diagram"

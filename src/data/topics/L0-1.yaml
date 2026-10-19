@@ -1,0 +1,163 @@
+id: "L0.1"
+track: lld
+
+uses:
+  - {topic: "L0.0", what: "Constructors and destructors, scope, const, copying and moving, and std::shared_ptr"}
+
+claims:
+  - id: "L0.1.1"
+    kind: proved
+    title: "If a class's fields are private and every function that sets them checks the rule first, no object of the class can ever break the rule"
+    plain_words: "An object comes into existence through a constructor and changes only through the class's own functions. If the constructor refuses bad values and each function checks before it writes, there is no path by which a bad value gets in."
+    evidence: ["L0.1/money-invariant"]
+    source: null
+  - id: "L0.1.2"
+    kind: proved
+    title: "An operation that checks before it changes, and refuses with an exception, leaves the object exactly as it was"
+    plain_words: "If the checks come first and the writes come last, a refused operation never reaches a write, so the object is the same as before the call."
+    evidence: ["L0.1/seat-count"]
+    source: null
+  - id: "L0.1.3"
+    kind: proved
+    title: "An immutable value can be shared by any number of holders, and none of them can see a change made by another"
+    plain_words: "If nothing can change a value after it is built, a holder cannot change it for the others. A 'change' builds a new value and replaces only that holder's reference."
+    evidence: ["L0.1/shared-value", "L0.1/ex-2-coordinate"]
+    source: null
+  - id: "L0.1.4"
+    kind: proved
+    title: "Fields with no rule between them need no class: a plain struct already accepts exactly the valid combinations"
+    plain_words: "When every combination of values is valid, there is nothing for a constructor or a setter to check, so a struct with public fields does the whole job in fewer lines."
+    evidence: ["L0.1/ex-1-settings"]
+    source: null
+
+cards:
+  - id: class-invariant
+    name: "Class that protects an invariant"
+    force: "A value must never be in a state that breaks a rule that holds for its whole life: an amount is not negative, a start is not after an end, booked seats stay between 0 and the capacity."
+    decisive_property: "The rule involves only the object's own fields, can be checked cheaply at every change, and every way to change those fields goes through the class: private fields, a checking constructor, and checking operations."
+    from_claim: "L0.1.1"
+    how_to_test: "Write the rule as one sentence about the object's fields. List every way to create or change the object. If any of them can produce a state that breaks the sentence, the property does not hold yet."
+    constraint_shapes:
+      - "A Money with 1 constructor and 2 operations (add, subtract) has 3 places that can break 'cents >= 0'; with a public field every line of the program is a 4th place, and there can be hundreds"
+    weak_signals:
+      - form: "The requirement says 'must never', 'cannot be negative', 'always between' or 'should be impossible'"
+        shape: "A rule about the values of the object's own fields (one or two fields), checkable in a few comparisons"
+      - form: "The requirement says 'valid' or 'consistent' about a pair of fields (start and end, width and height)"
+        shape: "Changing one field can break the relation with another, so every change must look at both"
+    kill_signals:
+      - "Five display settings with no rule between them, any combination valid: a class with getters and setters is 21 non-blank lines against 9 for a struct, and protects nothing (measured)"
+      - "The rule needs data outside the object (a database lookup, another object's state): the class cannot enforce it alone, and a check at construction can be stale"
+      - "The rule is about 1 field and 1 place in the code that ever sets it: a check at that one place may be enough, and a class adds more code than it saves"
+    in_action:
+      statement: "A Percentage is used in discounts. It must never be below 0 or above 100, and bad values have been reaching the checkout from a form."
+      constraints: "One field, an integer; the rule is 0 to 100 inclusive; 6 places in the code build a Percentage from user input"
+      budget: "6 call sites each need the check (6 chances to forget it) against 1 check in a constructor"
+      candidates:
+        - {tool: "An int, with a check at each of the 6 call sites", verdict: rejected, because: "6 checks to keep in step; the 7th call site added next month will forget it."}
+        - {tool: "A Percentage class with a checking constructor and a private field", verdict: chosen, because: "1 check, and a Percentage that exists is valid."}
+      property_check: "The rule involves one field, is 2 comparisons, and the only way to create a Percentage is the constructor. Yes."
+      decision: "A class Percentage with a private int and a constructor that throws std::invalid_argument outside 0 to 100."
+    examples:
+      positive:
+        - inline: {input: "A bank balance that may never go below zero after any operation", answer: "A class that protects the invariant", why: "Every operation checks before it writes (lab: the Money unit)."}
+        - inline: {input: "A seat count that must stay between 0 and the capacity", answer: "A class that protects the invariant", why: "A refused booking changes nothing (the Seats unit)."}
+      negative:
+        - inline: {input: "A struct of unrelated display preferences, any combination valid", answer: "A plain struct", why: "No rule between the fields: a class of 21 lines would guard nothing."}
+          correct_tool: {simplest: "plain struct"}
+        - inline: {input: "A parse result returned once and only read", answer: "A plain struct", why: "Nothing changes it afterwards, so there is no later state to protect."}
+          correct_tool: {simplest: "plain struct"}
+    lookalikes: []
+    cost: "More code than a struct (about 15 lines for a class with one rule), a getter for every field that must be read, and a decision for every operation about what to refuse."
+
+  - id: immutable-value
+    name: "Immutable value object"
+    force: "A value is shared by several holders, copied into many places, or used as a key in a map, and a change made by one holder must not be seen by the others."
+    decisive_property: "All state is set in the constructor, nothing can change it afterwards, and a change is made by building a new value."
+    from_claim: "L0.1.3"
+    how_to_test: "Look for any function that writes a field after construction, and any function that returns a non-const reference to the inside. If there is none, and two holders can hold the same object, the property holds."
+    constraint_shapes:
+      - "One Address shared by 2 orders: a mutable address edited through one order shows in both; an immutable one cannot be edited, so 'a change' replaces the pointer in one order only"
+    weak_signals:
+      - form: "The requirement says 'shared between', 'used as a key', 'copied into logs' or 'must not change under the reader'"
+        shape: "At least 2 holders, or a container that depends on the value staying the same"
+      - form: "The requirement says 'a value' (an id, a coordinate, a date range, an address) rather than 'a thing that changes over time'"
+        shape: "Two such values with the same fields are interchangeable"
+    kill_signals:
+      - "A 4 KB object that is changed 1000 times a second: each 'change' would build a new 4 KB copy, 4 MB a second of copying, for one holder; a mutable object with one owner is cheaper"
+      - "A thing with identity that changes over time, such as a bank account whose balance moves: it is not a value, and two accounts with the same balance are not the same account"
+      - "One holder and no container that depends on it: nothing is shared, so nothing needs protecting from a change"
+    in_action:
+      statement: "Two orders share the delivery address of one customer. A clerk changes the street on one order, and the other order must keep the old one."
+      constraints: "2 orders now, up to 5 per customer; the address is 2 strings; changes happen about twice a year"
+      budget: "5 orders each with its own copy: 5 copies of 2 strings. One shared immutable address: 1 object"
+      candidates:
+        - {tool: "One mutable Address shared by the orders", verdict: rejected, because: "Editing the street through one order changes all 5."}
+        - {tool: "An immutable Address shared by pointer to const", verdict: chosen, because: "A change builds a new Address and replaces the pointer in one order; the others are untouched."}
+      property_check: "No setter, const members, with_street returns a new value. Yes."
+      decision: "An immutable Address held by std::shared_ptr<const Address>; changing the street builds a new Address."
+    examples:
+      positive:
+        - inline: {input: "A coordinate pair used as a key in a map", answer: "An immutable value", why: "A key that changes after insertion cannot be found again (the Coordinate unit)."}
+        - inline: {input: "A temperature reading copied into logs and shown by many screens", answer: "An immutable value", why: "Nobody can alter the reading another screen is showing."}
+      negative:
+        - inline: {input: "A bank balance that changes with every transaction", answer: "A mutable class with an invariant", why: "It is a thing with identity that changes over time, not a value."}
+          correct_tool: {simplest: "a mutable class that protects its invariant"}
+        - inline: {input: "A 4 KB buffer rewritten 1000 times a second by one owner", answer: "A mutable object", why: "Immutability would copy 4 KB a thousand times a second for nobody's benefit."}
+          correct_tool: {simplest: "plain mutable object with one owner"}
+    lookalikes: []
+    cost: "Every change allocates a new value (cheap for small values, expensive for big ones), and code that wants to change a field must be written as 'build a new one'."
+
+lookalike_pairs:
+  - a: "Money: private fields, a checking constructor and checked operations"
+    b: "Display settings: four unrelated fields in a plain struct"
+    a_tool: {topic: "L0.1", card: "class-invariant"}
+    b_tool: "A plain struct"
+    flipping_difference: "Both are bags of a few fields. Only Money has a rule that some values would break, so only Money needs a class to guard it."
+    flipping_input: "The requirement adds: the font size must be between 8 and 72"
+  - a: "A seat count that changes as people book and cancel"
+    b: "A date range that is built once and read many times"
+    a_tool: {topic: "L0.1", card: "class-invariant"}
+    b_tool: {topic: "L0.1", card: "immutable-value"}
+    flipping_difference: "The seat count has a life: it changes over time and the class protects the rule at each change. The date range is a value: a change builds a new one."
+    flipping_input: "Two reports must show the same date range while the user edits it in a form"
+  - a: "An address shared by pointer to const"
+    b: "A separate copy of the address in each order"
+    a_tool: {topic: "L0.1", card: "immutable-value"}
+    b_tool: "Copying the value into each holder"
+    flipping_difference: "Both stop one order's edit from showing in another. Sharing saves the copies; copying is simpler and right when the value is tiny and there are few holders."
+    flipping_input: "The address grows to a 50 KB record held by 10 000 orders"
+
+self_test:
+  - q: "A Money class has a public field `cents`. Which part of the program can make a negative Money, and which part can make one after the fix (private field, checking constructor, checked operations)?"
+    a: "With the public field, any line anywhere. After the fix only the constructor and the operations, and each of them checks, so none can."
+  - q: "What does a class that protects an invariant cost, and when is it not worth it?"
+    a: "About 15 lines per rule, a getter for each readable field, and a decision about what to refuse. It is not worth it when no combination of field values is invalid: four unrelated settings take 21 lines as a class and 9 as a struct (measured)."
+  - q: "Predict before running: `Seats s(5); s.book(3); s.book(3);` where the second call throws. What does `s.booked()` return afterwards, and what would it return if the class changed the count before checking?"
+    a: "3, because the check comes first and the refused call never reaches the write. If it added first, it would return 6, which is above the capacity of 5."
+  - q: "Two orders share one Address by `std::shared_ptr<const Address>`. A clerk edits the street of one order. How does the other stay unchanged?"
+    a: "The edit builds a new Address with `with_street` and replaces the pointer of the one order. The shared Address was never modified, so the other order still sees the old street."
+  - q: "A map is keyed by a `Coordinate` that has a public `x`. Someone sets `x` on a key that is already in the map. What goes wrong?"
+    a: "The map placed the key by its old value, so a lookup with the new value looks in the wrong place and cannot find the entry. An immutable Coordinate cannot be changed after insertion."
+
+decision_map:
+  - weak_signal: "A value that must never be negative, never out of range, or never inconsistent between two fields"
+    choose: "A class with private fields, a checking constructor and checked operations"
+    when: "The rule involves only the object's own fields and every way to change them is inside the class"
+    over:
+      - {card: "A plain struct with checks at each call site", because: "Every call site must remember the check (6 sites, 6 chances to forget); a class has 1."}
+  - weak_signal: "A value shared by several holders, or used as a map key"
+    choose: "An immutable value object: const state, a change builds a new value"
+    when: "Two or more holders, or a container that depends on the value staying the same"
+    over:
+      - {topic: "L0.1", card: "class-invariant", because: "A mutable class with checks still lets one holder change the value the others see."}
+  - weak_signal: "A handful of fields with no rule between them"
+    choose: "A plain struct"
+    when: "Every combination of values is valid"
+    over:
+      - {topic: "L0.1", card: "class-invariant", because: "A class would be 21 lines against 9 and guard nothing."}
+
+glossary_added:
+  - "class invariant"
+  - "encapsulation"
+  - "immutable object"
+  - "value object"

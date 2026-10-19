@@ -1,0 +1,130 @@
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <vector>
+
+#include "check.hpp"
+#include "kit.hpp"
+
+void the_engine_is_built_before_the_car_and_destroyed_after_it() {
+    events.clear();
+    {
+        Car car;
+        CHECK((events == std::vector<std::string>{"engine built", "car built"}));
+    }
+    CHECK((events == std::vector<std::string>{"engine built", "car built", "car destroyed", "engine destroyed"}));
+}
+void starting_the_car_starts_its_own_engine() {
+    Car a, b;
+    a.start();
+    CHECK(a.running());
+    CHECK(!b.running());
+}
+void a_part_held_by_value_costs_no_pointer() {
+    static_assert(sizeof(Car) == sizeof(Engine), "the engine must be a member held by value");
+    CHECK(sizeof(Car) == sizeof(Engine));
+}
+void a_car_in_a_unique_ptr_destroys_its_engine() {
+    events.clear();
+    { auto car = std::make_unique<Car>(); }
+    CHECK(events.size() == 4);
+    CHECK(events.back() == "engine destroyed");
+}
+
+static_assert(!CanAddTemporary<Team>, "a temporary Player would be gone before the team is used");
+
+void players_stay_valid_after_the_team_is_gone() {
+    Player ann("ann", 7), bo("bo", 5);
+    CHECK(live_players == 2);
+    {
+        Team t;
+        t.add(ann);
+        t.add(bo);
+        CHECK(t.size() == 2);
+        CHECK(t.total_score() == 12);
+    }
+    CHECK(live_players == 2);
+    CHECK(ann.name == "ann");
+    CHECK(bo.score == 5);
+}
+void the_team_sees_changes_made_to_a_player() {
+    Player ann("ann", 7);
+    Team t;
+    t.add(ann);
+    ann.score = 10;
+    CHECK(t.total_score() == 10);
+}
+void adding_a_player_copies_nothing() {
+    player_copies = 0;
+    Player ann("ann", 1), bo("bo", 2), cy("cy", 3);
+    Team t;
+    t.add(ann);
+    t.add(bo);
+    t.add(cy);
+    CHECK(player_copies == 0);
+    CHECK((t.names() == std::vector<std::string>{"ann", "bo", "cy"}));
+}
+void two_teams_can_refer_to_the_same_player() {
+    Player ann("ann", 4);
+    Team a, b;
+    a.add(ann);
+    b.add(ann);
+    ann.score = 9;
+    CHECK(a.total_score() == 9);
+    CHECK(b.total_score() == 9);
+}
+void an_empty_team_has_no_score() {
+    Team t;
+    CHECK(t.size() == 0);
+    CHECK(t.total_score() == 0);
+    CHECK(t.names().empty());
+}
+
+static_assert(!std::is_base_of_v<Rect, Square>, "a Square cannot keep the promises of a Rect, so it must not derive from it");
+
+void a_square_has_a_side_and_an_area() {
+    Square s(5);
+    CHECK(s.side() == 5);
+    CHECK(s.area() == 25);
+    CHECK(Square(0).area() == 0);
+}
+void scaling_builds_a_new_square() {
+    Square s(2);
+    Square t = s.scaled(3);
+    CHECK(s.side() == 2);
+    CHECK(t.side() == 6);
+    CHECK(t.area() == 36);
+}
+void a_square_becomes_a_rect_of_equal_sides() {
+    Rect r = Square(5).as_rect();
+    CHECK(r.width() == 5);
+    CHECK(r.height() == 5);
+    CHECK(r.area() == 25);
+}
+void the_rect_made_from_a_square_keeps_the_rect_promise() {
+    Rect r = Square(4).as_rect();
+    CHECK(keeps_rect_promise(r));
+    CHECK(r.area() == 35);               // the promise test left it 5 wide and 7 high
+}
+void a_plain_rect_keeps_its_promise() {
+    Rect r(3, 4);
+    CHECK(keeps_rect_promise(r));
+}
+
+int main() {
+    RUN(the_engine_is_built_before_the_car_and_destroyed_after_it);
+    RUN(starting_the_car_starts_its_own_engine);
+    RUN(a_part_held_by_value_costs_no_pointer);
+    RUN(a_car_in_a_unique_ptr_destroys_its_engine);
+    RUN(players_stay_valid_after_the_team_is_gone);
+    RUN(the_team_sees_changes_made_to_a_player);
+    RUN(adding_a_player_copies_nothing);
+    RUN(two_teams_can_refer_to_the_same_player);
+    RUN(an_empty_team_has_no_score);
+    RUN(a_square_has_a_side_and_an_area);
+    RUN(scaling_builds_a_new_square);
+    RUN(a_square_becomes_a_rect_of_equal_sides);
+    RUN(the_rect_made_from_a_square_keeps_the_rect_promise);
+    RUN(a_plain_rect_keeps_its_promise);
+    return check::report();
+}

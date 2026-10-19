@@ -1,0 +1,209 @@
+id: "L0.3"
+track: lld
+
+uses:
+  - {topic: "L0.1", what: "Private fields, constructors that check, const member functions, and an invariant that every operation keeps"}
+  - {topic: "L0.2", what: "Abstract classes with virtual functions, override, the virtual destructor, and holding objects by unique_ptr"}
+
+claims:
+  - id: "L0.3.1"
+    kind: proved
+    title: "A part held by value lives exactly as long as the whole: it is built before the whole and destroyed after it, with no pointer, no allocation and no way for another object to free it"
+    plain_words: "When a class has another object as a member, the member is built first and destroyed last, and it takes no extra space for a pointer. Nobody else can hold it, so nobody else can delete it."
+    evidence: ["L0.3/owned-engine", "L0.3/ex-1-document"]
+    source: null
+  - id: "L0.3.2"
+    kind: proved
+    title: "A whole that holds only a reference to a part never destroys it, so the part stays valid after the whole is gone; this is safe only while the part outlives every use of the whole"
+    plain_words: "If a class keeps the address of an object that someone else made, its own destructor leaves that object alone. Two such classes can look at the same object. The price is a rule the compiler cannot check: the object must still exist whenever the class is used."
+    evidence: ["L0.3/team-players", "L0.3/ex-1-document"]
+    source: null
+  - id: "L0.3.3"
+    kind: proved
+    title: "A derived class can stand in for its base only if it keeps every promise the base makes; one contract test, run on the base and on each derived class, finds the class that does not"
+    plain_words: "Code written for the base trusts what the base promises. If a derived class changes one of those promises, the code gives wrong answers for it. Writing the promises as a small test and running it on every derived class finds the broken one before anyone relies on it."
+    evidence: ["L0.3/square-rectangle", "L0.3/ex-2-birds"]
+    source: null
+  - id: "L0.3.4"
+    kind: proved
+    title: "A class that holds another as a private member offers only the operations written for it, so a rule about the whole cannot be broken through the part's other operations; a class that inherits from it offers all of them"
+    plain_words: "If a Stack is a vector, every vector operation is also a Stack operation, including ones that break the stack's rule. If a Stack has a vector inside, only the operations the Stack lists can reach it."
+    evidence: ["L0.3/stack-by-composition"]
+    source: null
+
+cards:
+  - id: owned-part
+    name: "Composition: a part owned by the whole"
+    force: "A thing exists only as part of another thing: it is created with it, belongs to nobody else, and must be gone when the whole is gone. The engine of a car and the lines of an order are the usual cases."
+    decisive_property: "The part's lifetime is exactly the whole's: it is built when the whole is built, destroyed when the whole is destroyed, and no other object holds it. In C++ the whole holds it as a member by value, or by std::unique_ptr when its type or presence varies."
+    from_claim: "L0.3.1"
+    how_to_test: "Ask three questions. Can the part exist before the whole? Can it outlive the whole? Does anything else hold it? Three answers of no mean the whole owns the part."
+    constraint_shapes:
+      - "An Order of 100 lines held as a vector of values: 1 allocation and one owner; with every line behind a shared pointer: 101 allocations and 16 bytes of pointer per line (measured)"
+    weak_signals:
+      - form: "The requirement says 'has a', 'consists of', 'is made of', or 'deleting the X deletes its Ys'"
+        shape: "The part has no meaning outside the whole and nothing else needs to find it"
+      - form: "The requirement says 'private to', 'belongs only to' or 'each X has its own Y'"
+        shape: "One owner per part, so the part can be a member"
+    kill_signals:
+      - "The part is also held by 3 other objects (one Player on 3 teams): the whole cannot own it; destroying it with one holder leaves 2 pointers dangling, so the relationship is a reference to an independent part"
+      - "Each of 100 order lines is held through a shared pointer although nothing else holds any of them: 101 allocations against 1 and 16 bytes of pointer per line against 0 (measured)"
+      - "A raw owning pointer in a class that is copied: the default copy copies the address, two cars delete one engine, and the program stops with a double free (measured); hold the part by value instead"
+    in_action:
+      statement: "An Order contains up to 50 line items. A line has no meaning outside its order, and deleting the order must delete its lines."
+      constraints: "1 owner per line; 50 lines at most; lines are never handed to another object; the order is copied when a draft is saved"
+      budget: "50 lines: a vector of values is 1 allocation; one shared pointer per line is 51 allocations and 800 bytes of pointers"
+      candidates:
+        - {tool: "A vector of shared pointers to lines", verdict: rejected, because: "Nothing else holds a line, so sharing buys nothing: 51 allocations instead of 1, and a copied order shares lines with its draft."}
+        - {tool: "A vector of Line values inside Order", verdict: chosen, because: "1 owner, 1 allocation; destroying the order destroys the lines and copying it copies them."}
+      property_check: "A line cannot exist before its order, cannot outlive it, and nothing else holds it. Yes."
+      decision: "Order holds std::vector<Line> as a private member."
+    examples:
+      positive:
+        - inline: {input: "A Car with an Engine that is built with the car and destroyed with it", answer: "Composition: the car owns the engine", why: "The engine is a member by value; the car is exactly the size of the engine, so there is no pointer (the Car unit)."}
+        - inline: {input: "An Order with its line items; deleting the order deletes them", answer: "Composition: the order owns its lines", why: "One owner, one allocation for 100 lines (the comparison program)."}
+      negative:
+        - inline: {input: "A Team with Players who also play for other teams", answer: "A reference to independent parts", why: "Deleting a team must not delete a player another team still uses."}
+          correct_tool: {topic: "L0.3", card: "referred-part"}
+        - inline: {input: "One Logger used by 3 classes, none of which creates it", answer: "A reference to an independent part", why: "Owning it in each class would give 3 loggers instead of 1."}
+          correct_tool: {topic: "L0.3", card: "referred-part"}
+    lookalikes: []
+    cost: "The whole is bigger by the size of the part, cannot be built without it, and is copyable only if the part is. A function that returns the part by non-const reference gives away the whole's protection (Section 7)."
+
+  - id: referred-part
+    name: "Aggregation: a whole that refers to an independent part"
+    force: "An object uses another that exists on its own and may be used by others too: the players of a team who also belong to other teams, a logger shared by every class, the songs in a playlist."
+    decisive_property: "The part is built and destroyed by someone else, is alive at every moment the whole can be used, and the whole never deletes it. In C++ the whole holds a reference, a pointer to const, or an id; never an owning pointer."
+    from_claim: "L0.3.2"
+    how_to_test: "Find who destroys the part. If it is not the whole, and the part is still alive whenever the whole can be called, the property holds. If there is an order of destruction in which the part dies first, the reference can dangle."
+    constraint_shapes:
+      - "One Logger used by 3 classes (Cart, Checkout, Mailer): 3 references to 1 object; if each class owned a logger there would be 3 objects, 3 files to configure and 3 sets of lines to merge"
+    weak_signals:
+      - form: "The requirement says 'uses', 'refers to', 'also belongs to', or 'the same X for all of them'"
+        shape: "More than one object needs the same part, or the part exists before and after the whole"
+      - form: "The requirement says the parts 'are managed elsewhere' or 'are loaded once'"
+        shape: "Another component creates and destroys the part"
+    kill_signals:
+      - "The whole can be used after the part is destroyed (1 delete is enough): a stored pointer dangles and the address sanitizer reports a heap-use-after-free (measured); give the whole ownership, or hold ids that are looked up and checked"
+      - "The part is used in only 1 function of the whole: pass it as an argument to that function; a stored reference adds a constructor parameter and a lifetime rule for 1 use"
+      - "4 holders and none of them can say it is the last user: neither a reference nor an owner works; shared ownership with std::shared_ptr is needed, at 16 bytes of pointer per holder"
+    in_action:
+      statement: "Cart, Checkout and Mailer each write lines to the program's log. The log is opened once at start-up and closed at exit, and tests want to read what was written."
+      constraints: "3 classes now, about 10 later; 1 log; the log lives for the whole run; a test needs its own log"
+      budget: "3 classes sharing 1 logger: 3 references and 0 allocations; 3 owned loggers: 3 objects and 3 files"
+      candidates:
+        - {tool: "Each class owns its own Logger member", verdict: rejected, because: "3 loggers and 3 files, and a test cannot see what the other classes wrote."}
+        - {tool: "Each class is built with a Logger& that it refers to", verdict: chosen, because: "1 logger, built and destroyed by main; a test passes its own and reads the lines."}
+      property_check: "The logger is built and destroyed by the caller and outlives every use of the 3 classes. Yes."
+      decision: "Cart, Checkout and Mailer each take a Logger& in their constructor and keep it; none of them can be built without one."
+    examples:
+      positive:
+        - inline: {input: "A Team that lists Players who also belong to other teams", answer: "A reference to independent parts", why: "Destroying the team leaves the players valid (the Team unit)."}
+        - inline: {input: "A Document that uses fonts kept in a font table built at start-up", answer: "A reference to independent parts", why: "Two documents point at one font object and the table survives both (the Document unit)."}
+      negative:
+        - inline: {input: "The paragraphs of a Document, which exist only inside it", answer: "Composition", why: "Nothing else holds a paragraph, and it must go with the document."}
+          correct_tool: {topic: "L0.3", card: "owned-part"}
+        - inline: {input: "A helper that one function uses once to format a number", answer: "A function argument", why: "No stored reference is needed for one use."}
+          correct_tool: {simplest: "pass it as an argument to the one function"}
+    lookalikes: []
+    cost: "A lifetime rule that the compiler does not check: the part must outlive every use of the whole. A stored reference cannot be pointed elsewhere, and a copy of the whole refers to the same part."
+
+  - id: true-subtype
+    name: "Inheritance for a true is-a"
+    force: "Code written for a base class must work, unchanged, with a derived class, and the derived class adds or specialises behaviour without breaking anything the base promises."
+    decisive_property: "Every promise the base makes also holds for the derived class (a contract test that passes for the base passes for the derived class), and callers use the derived class through the base."
+    from_claim: "L0.3.3"
+    how_to_test: "Write the base's promises as a function that takes a base reference and returns true or false. Run it on the base and on the proposed derived class. If it fails for the derived class, or a promise must be weakened to make it pass, do not derive."
+    constraint_shapes:
+      - "A Square derived from Rect: after set_width(10) on height 4 a Rect has area 40 and a Square has area 100 (measured); 1 of the 2 promises of Rect is broken"
+    weak_signals:
+      - form: "The requirement says 'is a kind of' and also 'can be used wherever an X is accepted'"
+        shape: "Existing code takes the base type and must keep working with the new class"
+      - form: "The requirement says 'a special case of X' where X has operations that change it"
+        shape: "Check every changing operation against the base's promises before deriving"
+    kill_signals:
+      - "The derived class would only reuse the base's code, not its promises (a Stack from std::vector inherits 5 operations such as erase and operator[] that break 'pop returns the last push'): hold the part instead (Claim L0.3.4)"
+      - "One derived class must throw or do nothing for an operation of the base (Penguin::fly throws and a loop over 2 birds ends the program): the base promised too much; put the operation in a narrower base"
+      - "Only 6 lines are shared: a free function shares them with no base class and no hidden pointer, 0 extra bytes per object against 8 (measured)"
+    in_action:
+      statement: "A zoo program has Sparrow and Penguin. Every bird eats. Sparrows fly south in autumn; penguins swim. One migrate function must accept every bird that flies."
+      constraints: "2 species now, about 10 later; 1 migrate function; some future birds will not fly"
+      budget: "1 base promise per operation that all 10 species can keep"
+      candidates:
+        - {tool: "fly() in Bird, with Penguin::fly throwing", verdict: rejected, because: "A loop over all birds ends the program at the first penguin (the mistake program)."}
+        - {tool: "Bird for what all birds do, FlyingBird below it for flying", verdict: chosen, because: "migrate takes a FlyingBird; a Penguin is a Bird that is not a FlyingBird, so it cannot be asked to fly."}
+      property_check: "Every derived class keeps every promise of the class it derives from. Yes, because fly lives only where every class below can keep it."
+      decision: "Bird with eat(); FlyingBird derived from it with fly(); Sparrow below FlyingBird; Penguin below Bird."
+    examples:
+      positive:
+        - inline: {input: "A SavingsAccount that keeps every rule of Account and only adds interest", answer: "Inheritance", why: "Any code that takes an Account works with it and nothing the base promises is weakened."}
+        - inline: {input: "Rect, Square and Triangle behind a Shape interface with area()", answer: "Inheritance from an interface", why: "Each class keeps the one promise of the base (the Shape unit of L0.2)."}
+      negative:
+        - inline: {input: "A Square that derives from a Rect with set_width and set_height", answer: "A separate class", why: "set_width on a square must change the height too, which breaks Rect's promise."}
+          correct_tool: {simplest: "a separate Square class with a conversion to Rect"}
+        - inline: {input: "A Stack that derives from std::vector to reuse its storage", answer: "Composition", why: "The vector is only storage; its erase and insert are not stack operations."}
+          correct_tool: {topic: "L0.3", card: "owned-part"}
+    lookalikes: []
+    cost: "The derived class is tied to its base for good: a change in the base reaches every derived class, the base's whole public interface is exposed, and the derived class cannot narrow it."
+
+lookalike_pairs:
+  - a: "A Car whose Engine is built and destroyed with it"
+    b: "A Team whose Players also play for other teams"
+    a_tool: {topic: "L0.3", card: "owned-part"}
+    b_tool: {topic: "L0.3", card: "referred-part"}
+    flipping_difference: "Both say 'has a'. The car owns its engine and nothing else holds it; the team only refers to players who are built and destroyed elsewhere."
+    flipping_input: "A guest checkout builds the customer inside the order and deletes it with the order"
+  - a: "A Stack that holds a vector as a private member"
+    b: "A Rect, Square and Triangle behind a Shape interface"
+    a_tool: {topic: "L0.3", card: "owned-part"}
+    b_tool: {topic: "L0.3", card: "true-subtype"}
+    flipping_difference: "Both put one class in terms of another. The stack uses the vector's storage and exposes only its own operations; the shapes are used wherever a Shape is expected, so they must keep Shape's promise."
+    flipping_input: "The Stack must be passed to an existing function that takes a std::vector<int>&"
+  - a: "An Order that holds its line items in a vector of values"
+    b: "An Order that refers to its Customer, who has other orders"
+    a_tool: {topic: "L0.3", card: "owned-part"}
+    b_tool: {topic: "L0.3", card: "referred-part"}
+    flipping_difference: "Both are fields of an Order. The lines are destroyed with the order; the customer is not."
+    flipping_input: "Deleting an order must now also delete its customer record"
+
+self_test:
+  - q: "A Car holds `Engine engine_;` as a member. In what order are the two objects built and destroyed, and what does `sizeof(Car) == sizeof(Engine)` tell you?"
+    a: "The engine is built first and destroyed last: engine built, car built, car destroyed, engine destroyed. Equal sizes mean the engine sits inside the car with no pointer and no separate allocation."
+  - q: "Predict before running: `Player* p = new Player{7}; team.add(*p); delete p; team.total();` where Team keeps `const Player*` pointers. What happens, and which rule did the code break?"
+    a: "The address sanitizer reports a heap-use-after-free, because total() reads the deleted player. The team refers to a part it does not own, so the part must outlive every use of the team."
+  - q: "A Square derives from Rect and overrides set_width to set both sides. `stretch(Rect& r)` sets the width to 10 and returns the area. What does it return for a Rect of height 4 and for a Square of side 4?"
+    a: "40 for the Rect (10 × 4) and 100 for the Square (10 × 10). The caller reasoned from Rect's promise that the height stays; the Square broke it, so a Square is not a true Rect."
+  - q: "Why is `class Stack : public std::vector<int>` weaker than a Stack with a private vector, and what does the private vector cost?"
+    a: "Every vector operation is public on the inheriting Stack, so a call such as erase on the middle breaks 'pop returns the last push'. The private vector exposes only the operations written, at the cost of writing a few forwarding functions (size, empty, clear)."
+  - q: "Cart, Checkout and Mailer all write to one logger. Should each own one, inherit from a base that has one, or be given a reference? Say why."
+    a: "Be given a reference. The logger exists on its own and all three use the same one, so it is a part they refer to. Owning gives three loggers; inheriting from a base for one member builds a hierarchy only for reuse; a reference lets a test pass its own logger and read the lines."
+
+decision_map:
+  - weak_signal: "A thing that exists only inside another, is created and deleted with it, and is held by nobody else"
+    choose: "A member held by value (or by unique_ptr when its type varies): composition"
+    when: "The part cannot exist before the whole, cannot outlive it, and nothing else holds it"
+    over:
+      - {topic: "L0.3", card: "referred-part", because: "A reference would leave the part to someone else to create and delete, and nobody would own it."}
+  - weak_signal: "A class that uses an object other code also uses, created and destroyed elsewhere"
+    choose: "A reference, a pointer to const or an id to the part: aggregation"
+    when: "The part outlives every use of the whole and the whole never deletes it"
+    over:
+      - {topic: "L0.3", card: "owned-part", because: "Owning it would delete a part that others still use, or copy it into each holder (3 loggers instead of 1)."}
+  - weak_signal: "A new class that must be accepted wherever an existing class is accepted"
+    choose: "Inheritance, after a contract test passes for the new class"
+    when: "Every promise of the base also holds for the derived class"
+    over:
+      - {topic: "L0.3", card: "owned-part", because: "Holding the base as a member would not let existing code take the new class."}
+  - weak_signal: "A class that wants only the code or the storage of another"
+    choose: "A private member (composition) or a free function"
+    when: "The new class does not need to be used where the old one is expected"
+    over:
+      - {topic: "L0.3", card: "true-subtype", because: "Inheriting exposes every operation of the base and ties the class to it for good (a Stack from vector can be erased from the middle)."}
+
+glossary_added:
+  - "aggregation"
+  - "association"
+  - "composition over inheritance"
+  - "is-a relationship"
+  - "object composition"
+  - "ownership"

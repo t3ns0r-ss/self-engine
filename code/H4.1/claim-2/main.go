@@ -1,5 +1,5 @@
 // Claim H4.1.2 check: in every execution of 3 processes with up to 6 events, comparing the vector
-// clocks of two events gives exactly the happened-before relation: Before when a happened before b,
+// clocks of two events gives exactly the happens-before relation: Before when a happened before b,
 // After when b happened before a, Concurrent when neither did.
 package main
 
@@ -35,7 +35,7 @@ func main() {
 			}
 		}
 	})
-	fmt.Printf("pairs where Compare disagrees with happened-before: %d\n", wrong)
+	fmt.Printf("pairs where Compare disagrees with happens-before: %d\n", wrong)
 	fmt.Printf("some pairs were concurrent, so the Concurrent answer was exercised: %t\n", concurrent > 0)
 	fmt.Printf("some pairs were checked: %t\n", pairs > 0)
 }

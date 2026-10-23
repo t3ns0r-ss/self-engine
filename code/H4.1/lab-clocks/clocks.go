@@ -231,7 +231,7 @@ type WallValue struct {
 }
 
 // WallRegister keeps the write with the highest wall-clock timestamp (last write wins).
-// It is the simple design that the happened-before card warns against.
+// It is the simple design that the card on cause and effect warns against.
 type WallRegister struct {
 	mu  sync.Mutex
 	cur WallValue

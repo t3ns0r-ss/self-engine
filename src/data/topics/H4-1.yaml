@@ -1,0 +1,184 @@
+id: "H4.1"
+track: hld
+
+uses:
+  - {topic: "H3.4", what: "Why ids and timestamps from different machines cannot be trusted to agree, and what a clock caveat is"}
+  - {topic: "H0.5", what: "Messages between machines take unpredictable time and can arrive out of order"}
+
+claims:
+  - id: "H4.1.1"
+    kind: proved
+    title: "If event a happened before event b, the Lamport time of a is smaller than the Lamport time of b; the converse is false"
+    plain_words: "Each message carries the sender's counter and the receiver jumps past it, so every step along a chain of causes increases the number. Two events that never heard of each other can still have ordered numbers, so a smaller number does not prove a cause."
+    evidence: ["H4.1/claim-1"]
+    source: null
+  - id: "H4.1.2"
+    kind: proved
+    title: "Comparing two vector clocks gives exactly the happened-before relation: before, after, or concurrent"
+    plain_words: "A vector clock counts the events seen from each process. One event is before another exactly when the second has seen everything the first saw; when each has seen something the other has not, they are concurrent."
+    evidence: ["H4.1/claim-2"]
+    source: null
+  - id: "H4.1.3"
+    kind: computed
+    title: "A vector clock for 20 writers is 160 bytes against 8 for a Lamport time, and skew above the gap between two writes can misorder them"
+    plain_words: "A vector clock holds one 8-byte counter per writer, so 20 writers cost 160 bytes on every value, 20 times a Lamport time. Two causally ordered writes 5 ms apart are misordered by wall clocks whenever the second machine's clock is more than 5 ms behind the first."
+    evidence: ["H4.1/calc-clock-sizes"]
+    source: null
+  - id: "H4.1.4"
+    kind: simulated
+    title: "With clocks off by up to 10 ms either way, wall-clock timestamps stamp a causally later write earlier in 28.125% of cases; a hybrid logical clock never does"
+    plain_words: "Give two machines clocks that are wrong by independent amounts up to 10 ms. A write made 5 ms after reading another gets the smaller timestamp in more than one case in four. A hybrid clock that also takes the larger of the received stamp never inverts the order."
+    evidence: ["H4.1/claim-4"]
+    source: null
+
+cards:
+  - id: logical-clocks
+    name: "Lamport and vector clocks"
+    need: "Order or compare events that happen on different machines without trusting their clocks: tell whether one update could have seen another, and keep both when neither did."
+    decisive_property: "Every event carries a counter (Lamport) or one counter per writer (vector) that is merged on every message received; the comparison rule is exact for vectors (before, after, concurrent) and only one-directional for Lamport times."
+    from_claim: "H4.1.2"
+    how_to_test: "List who can write. If you must know whether two writes were concurrent, you need a vector with one entry per writer; if you only need a total order that never contradicts cause and effect, a single Lamport counter is enough."
+    lab: {unit: "H4.1/lab-clocks", holds_test: "TestVectorClocksDetectConcurrentWrites", breaks_test: "TestLamportCannotTellConcurrent"}
+    capacity_table:
+      units: ["H4.1/calc-clock-sizes"]
+      threshold: "Needed when two machines can accept writes to the same item without talking to each other first and the system must know whether one write saw the other (more than one writer per item)."
+      price: "8 bytes per value for a Lamport time; 8 bytes per writer for a vector (160 bytes for 20 writers, 400 for 50), so 1 000 000 values carry 8 MB or 160 MB of metadata; every message must carry the stamp."
+    constraint_shapes:
+      - "20 writers can update the same item and the store must keep both versions of concurrent updates: a vector of 20 counters is 160 bytes per value, 160 MB for 1 000 000 values"
+    weak_signals:
+      - form: "The requirement says 'both sites can accept edits' and 'detect conflicting edits'"
+        shape: "More than one writer per item, no coordination before a write, and a need to tell concurrent from sequential"
+      - form: "The requirement says 'show messages in an order that never puts a reply before its question'"
+        shape: "A display order consistent with cause and effect is enough; concurrent ones may appear in either order (one 8-byte Lamport time per message)"
+    kill_signals:
+      - "One process writes the item: a sequence number (8 bytes) is a total order and also shows lost records; a vector with one entry adds nothing"
+      - "A chat log that only needs a display order, with 20 senders: a vector adds 160 bytes per message, 152 more than a Lamport time, 152 MB over 1 000 000 messages, for information nobody reads"
+      - "The number of writers is unbounded (every browser tab is a writer): the vector grows with the writers and without pruning rules it has no upper size"
+    in_action:
+      statement: "Two data centres accept edits to a customer profile. When the same profile is edited in both before they sync, the system must keep both edits for a person to merge."
+      constraints: "2 writers (one per data centre), 1 000 000 profiles, edits in both data centres within seconds of each other happen a few times a day"
+      budget: "A vector of 2 counters is 16 bytes per profile, 16 MB for 1 000 000 profiles. A Lamport time is 8 bytes and cannot say whether two edits were concurrent."
+      candidates:
+        - {tool: "Wall-clock timestamp, newest wins", verdict: rejected, because: "Clocks can be off by more than the seconds between edits; the causally later edit can lose (28.125% in the simulation at 10 ms skew and a 5 ms gap)."}
+        - {tool: "Vector clock with one entry per data centre", verdict: chosen, because: "Exact comparison: before, after, or concurrent, at 16 MB."}
+      property_check: "The set of writers is small and known (2), each message and stored value can carry the stamp, and the question asked is exactly whether one edit saw the other. All hold."
+      decision: "Store a 2-entry vector clock with each profile; keep both versions when the clocks are concurrent."
+    examples:
+      positive:
+        - inline: {input: "Two replicas accept writes to the same key and must tell whether one write saw the other", answer: "Vector clocks", why: "Compare gives concurrent when each clock has an entry the other lacks (lab: TestVectorClocksDetectConcurrentWrites)."}
+        - inline: {input: "A shared comment thread must never show a reply above the comment it answers; 12 senders", answer: "Lamport time", why: "Cause implies a smaller number (claim H4.1.1); 8 bytes per comment suffice."}
+      negative:
+        - inline: {input: "A log written by one service, 40 000 records a second, read in order", answer: "Sequence number", why: "One writer gives a total order; a vector or Lamport time adds nothing (lab: TestSingleWriterSequenceIsEnough)."}
+          correct_tool: {simplest: "a per-writer sequence number"}
+        - inline: {input: "Decide which of two concurrent edits happened first", answer: "The question has no answer", why: "Concurrent means neither could have seen the other; Lamport times only look ordered (lab: TestLamportCannotTellConcurrent)."}
+          correct_tool: {simplest: "an explicit rule chosen by the application"}
+    lookalikes: []
+    cost: "Every value and every message carries the stamp: 8 bytes for a Lamport time, 8 bytes per writer for a vector. Vector size grows with the number of writers, and removing a retired writer needs care."
+
+  - id: happened-before
+    name: "Happened-before and concurrency"
+    need: "Decide whether one event could have caused or seen another across machines, and stop using wall-clock timestamps to answer that when the clocks disagree by more than the gap between events."
+    decisive_property: "The order is defined by messages, not by clocks: a happened before b if they are in order at one process, or a was a send whose message b received, or by chaining those; anything not so related is concurrent. A hybrid clock keeps a physical part close to real time and adds a counter so the stamp order agrees with this relation."
+    from_claim: "H4.1.4"
+    how_to_test: "Ask for the largest clock difference between machines and the smallest gap between two writes that must be ordered. If the difference can exceed the gap, wall-clock order can contradict cause and effect."
+    lab: {unit: "H4.1/lab-clocks", holds_test: "TestHybridClockOrderAgreesWithCausality", breaks_test: "TestWallClockInvertsCausalOrder"}
+    capacity_table:
+      units: ["H4.1/calc-clock-sizes"]
+      threshold: "Wall clocks are unsafe when the clock difference can exceed the gap between causally ordered writes: skew of 5 ms or more misorders writes 5 ms apart."
+      price: "A hybrid stamp is 12 bytes (8 for the physical part, 4 for the counter) against 8 for a bare timestamp; it follows the physical clock to within the largest clock difference."
+    constraint_shapes:
+      - "Clocks off by up to 10 ms either way and a reply made 5 ms after the message it answers: a plain timestamp inverts them in 28.125% of cases"
+    weak_signals:
+      - form: "The requirement says 'the latest update wins' across machines"
+        shape: "Updates come from more than one machine, so the winner is chosen by comparing timestamps made by different clocks"
+      - form: "The requirement says 'order events from several servers by time'"
+        shape: "Events may be causally related and the clocks are only synchronised to within some milliseconds"
+    kill_signals:
+      - "All events come from one machine's own clock or one database's own sequence: no cross-machine comparison exists, so wall time is already a consistent order"
+      - "Ordering log lines for a human to read, where an error of 50 ms is invisible: a hybrid clock and its counter logic cost more than the problem is worth"
+      - "The requirement is to know whether two writes were concurrent: a hybrid timestamp still totally orders them; only a vector can answer that"
+    in_action:
+      statement: "A notes app lets one user edit from two devices. If a note is edited on the phone and then on the laptop after it synced, the laptop edit must win."
+      constraints: "2 devices, phone clock up to 30 ms behind the laptop clock, an edit on the laptop is made 5 ms or more after the sync arrives"
+      budget: "With a 30 ms spread and a 5 ms gap, wall-clock timestamps invert causally ordered edits whenever the laptop's clock is more than 5 ms behind, which happens often."
+      candidates:
+        - {tool: "Wall-clock timestamp from the device", verdict: rejected, because: "The spread (30 ms) exceeds the gap (5 ms)."}
+        - {tool: "Hybrid logical clock", verdict: chosen, because: "The stamp after receiving the sync is larger than the received one by construction, at 12 bytes per edit."}
+      property_check: "Every edit is stamped after the device has applied the hybrid clock's receive rule for each sync message; the order needed is consistent with cause and effect, not detection of concurrency. Holds."
+      decision: "Stamp each edit with a hybrid logical clock; the edit with the larger stamp wins."
+    examples:
+      positive:
+        - inline: {input: "Edits from two servers whose clocks differ by up to 50 ms, edits 5 ms apart that depend on each other", answer: "Hybrid logical clock", why: "Receive takes the larger of the received stamp and the local clock, so a reply is always after its cause (lab: TestHybridClockOrderAgreesWithCausality)."}
+        - inline: {input: "Merging logs from 8 servers into one view where a reply must never appear before its request", answer: "Lamport time", why: "Cause implies smaller time (claim H4.1.1)."}
+      negative:
+        - inline: {input: "Sorting the log lines of one machine by its own clock", answer: "The machine's own timestamp", why: "One clock cannot disagree with itself about the order of its own events."}
+          correct_tool: {simplest: "the local timestamp"}
+        - inline: {input: "Two edits 3 seconds apart on machines synchronised to within 5 ms", answer: "Wall-clock order is safe here", why: "The spread (5 ms) is far below the gap (3 000 ms); the order cannot invert (lab: TestWallClockInvertsCausalOrder needs spread above the gap)."}
+          correct_tool: {simplest: "the wall-clock timestamp"}
+    lookalikes:
+      - {description: "Detecting whether two writes were concurrent, not only ordering them", tool: {topic: "H4.1", card: logical-clocks}, flipping_difference: "A hybrid or Lamport stamp totally orders every pair, so it can never answer 'concurrent'; a vector clock can."}
+    cost: "A hybrid stamp is 12 bytes and must be updated on every message received. It makes the order agree with causality but still hides concurrency: two concurrent writes get an order that means nothing."
+
+lookalike_pairs:
+  - a: "Two writes at different machines made without hearing from each other"
+    b: "Two writes where the second machine had received the first write's message before writing"
+    a_tool: {topic: "H4.1", card: "logical-clocks"}
+    b_tool: {topic: "H4.1", card: "happened-before"}
+    flipping_difference: "Only the message makes the second write causally later. The vector clocks are concurrent in the first case (TestVectorClocksDetectConcurrentWrites) and ordered in the second."
+    flipping_input: "The second machine receives a message carrying the first write before it writes"
+  - a: "Lamport time as the order of messages in a shared thread"
+    b: "Vector clock as the way to detect conflicting edits"
+    a_tool: {topic: "H4.1", card: "logical-clocks"}
+    b_tool: {topic: "H4.1", card: "logical-clocks"}
+    flipping_difference: "The same card with different questions. A Lamport order cannot say 'concurrent' (TestLamportCannotTellConcurrent) but costs 8 bytes; a vector says it exactly but costs 8 bytes per writer."
+    flipping_input: "A requirement to keep both versions of concurrent edits"
+  - a: "Wall-clock timestamp to order writes of one machine"
+    b: "Wall-clock timestamp to order writes of several machines"
+    a_tool: "The machine's own timestamp"
+    b_tool: {topic: "H4.1", card: "happened-before"}
+    flipping_difference: "One clock agrees with itself. Several clocks differ by their skew, and the order inverts when the skew exceeds the gap (TestWallClockInvertsCausalOrder)."
+    flipping_input: "A second machine starts accepting writes to the same item"
+
+self_test:
+  - q: "A write on machine A has Lamport time 7 and a write on machine B has Lamport time 9. Can you conclude that A's write happened before B's? Why or why not?"
+    a: "No. Cause implies a smaller time, but a smaller time does not imply cause: the writes may be concurrent. TestLamportCannotTellConcurrent shows concurrent events with times 1 and 2."
+  - q: "How many bytes does a vector clock for 50 writers take with 8-byte counters, and how many bytes per value does that add over a Lamport time?"
+    a: "50 x 8 = 400 bytes, which is 392 more than the 8-byte Lamport time; for 1 000 000 values that is 400 MB against 8 MB."
+  - q: "Predict before running: A's clock is correct and B's runs 20 ms behind. A writes x=1, B receives that write 5 ms later and writes x=2. A last-write-wins register stamps with each machine's own clock. Which value does it keep?"
+    a: "x=1. B stamps x=2 at about -15 ms relative to A's x=1 (5 ms later in real time, 20 ms behind), so the causally later write loses. TestWallClockInvertsCausalOrder shows it."
+  - q: "When would you not use vector clocks even though two machines can write?"
+    a: "When only a display order consistent with cause and effect is needed (a Lamport time suffices at 8 bytes against 160 for 20 writers), or when one writer produces all the writes (a sequence number suffices)."
+  - q: "Two vector clocks are {A:2, B:1} and {A:1, B:2}. What is their relation, and what would a Lamport time have said?"
+    a: "Concurrent: each has an entry larger than the other's. Lamport times would give the events a numeric order that means nothing."
+  - q: "The hybrid clock on B receives a stamp whose physical part is 1050 ms while B's clock reads 1000 ms. What physical part does B's receive stamp get, and why?"
+    a: "1050 ms with the counter one higher than the received one, because taking the larger of the received stamp and the local clock keeps the receive after the send."
+
+decision_map:
+  - weak_signal: "Several writers can update the same item and conflicting updates must be detected"
+    choose: "Vector clock with one entry per writer"
+    when: "A small, known number of writers (20 writers is 160 bytes per value)"
+    over:
+      - {card: "Wall-clock timestamp, newest wins", because: "Clocks off by more than the gap between writes lose the causally later write (28.125% at 10 ms skew and 5 ms gap)."}
+  - weak_signal: "A shared log or thread must never show an effect before its cause"
+    choose: "Lamport time"
+    when: "No need to detect concurrency; 8 bytes per message"
+    over:
+      - {card: "Vector clock per message", because: "Same order guarantee at 160 bytes for 20 senders instead of 8; 152 MB extra per million messages."}
+  - weak_signal: "Latest write wins across machines whose clocks differ by more than the gap between writes"
+    choose: "Hybrid logical clock"
+    when: "The order only has to agree with cause and effect; 12 bytes per stamp"
+    over:
+      - {card: "Plain wall-clock timestamp", because: "A reply made after reading a message can get an earlier stamp when the skew exceeds the gap."}
+  - weak_signal: "One process writes everything"
+    choose: "A sequence number"
+    when: "Single writer; also shows lost records"
+    over:
+      - {topic: "H4.1", card: "logical-clocks", because: "No second writer exists, so there is no concurrency to detect; the vector would be one entry that equals the sequence number."}
+
+glossary_added:
+  - "happened-before"
+  - "Lamport clock"
+  - "vector clock"
+  - "concurrent events"
+  - "hybrid logical clock"
+  - "clock skew"

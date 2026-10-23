@@ -1,0 +1,452 @@
+topic: H4.1
+exercises:
+- id: rung-1
+  role: ladder
+  type: lab
+  title: Lamport clocks on three processes
+  prompt: 'Implement the Lamport clock and a Process that stamps its events. A local or send event adds 1; a receive sets the clock to the larger of its own value and the message''s, plus 1. There is no network: Send returns a message and the test hands it to Receive, in any order. The clock must be safe for many goroutines.'
+  card: logical-clocks
+  rung: 1
+  new_force: Lamport clocks on three processes
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.1/lab/rung-1
+  reference: reference/H4.1/lab/rung-1
+  alternatives:
+  - 'Use the machine''s wall clock as the timestamp: nothing to build, and enough when all events come from one machine.'
+  hints:
+  - 'Which two numbers does a receive compare, and what is added afterwards?'
+  - 'Send returns a Msg; the receiver calls Receive(m) and the process records an event with the new time.'
+  - 'Guard the counter and the log with a mutex, and let Log return a copy.'
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  clarifying:
+  - q: Is there a real network in this rung?
+    a: No. Send returns the message and the caller delivers it, so tests can reorder or drop messages.
+    critical: true
+  - q: What does a receive do to the clock?
+    a: It sets the clock to the larger of its own value and the message's value, then adds 1.
+    critical: true
+  - q: Can one process be used from many goroutines at once?
+    a: Yes. Every method must be safe to call concurrently.
+    critical: false
+  - q: Do events need real timestamps?
+    a: No, only the counter.
+    critical: false
+  run: Run the real three-process version from code/H4.1/lab-clocks/run.md and write in your attempt log the Lamport times of the five events.
+- id: rung-2
+  role: ladder
+  type: lab
+  title: Detect concurrent events
+  prompt: Add vector clocks. Add the type VC (a map from process id to counter), its methods Copy and Inc, the function Merge, and Compare returning Equal, Before, After or Concurrent. Every Stamp and Msg now also carries V. A receive merges the message's clock into the process's clock and then counts the receive. Clocks that were handed out must not change when the process moves on.
+  card: logical-clocks
+  rung: 2
+  new_force: Two writes may be concurrent, and the store must know
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.1/lab/rung-2
+  reference: reference/H4.1/lab/rung-2
+  alternatives:
+  - 'Keep only the Lamport time: 8 bytes instead of 8 per writer, and enough when nobody needs to tell concurrent from ordered.'
+  hints:
+  - 'Before means every entry of a is at most b''s and one is smaller; Concurrent means each has an entry larger than the other''s.'
+  - 'Merge takes the larger value for every process id that appears in either clock.'
+  - 'Copy maps before storing or sending them, so later changes cannot reach a clock someone else holds.'
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  run: Run the real three-process version from code/H4.1/lab-clocks/run.md and write in your attempt log which two writes were concurrent.
+- id: rung-3
+  role: ladder
+  type: lab
+  title: Wall-clock timestamps contradict the causal order
+  prompt: 'Add type Write {Node, TS (milliseconds), V} and three functions. Inversions(ws) returns every pair (i, j) where write i happened before write j by their vector clocks but TS of i is not smaller than TS of j. WallWinner(ws) returns the index with the highest TS (the lowest index among ties, -1 for an empty list). WinnerIsStale(ws) is true when the winner happened before another write.'
+  card: happened-before
+  rung: 3
+  new_force: Clock skew breaks wall-clock ordering
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.1/lab/rung-3
+  reference: reference/H4.1/lab/rung-3
+  alternatives:
+  - 'Trust the timestamps: nothing to build, and right when clocks are synchronised to a spread far below the gap between dependent writes.'
+  hints:
+  - 'A pair is a problem only when the vector clocks say Before; concurrent writes have no causal order to contradict.'
+  - 'Equal timestamps cannot say which write is later, so they count as an inversion.'
+  - 'WinnerIsStale compares the winner''s clock with every other write''s clock.'
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  run: Run the real three-process version from code/H4.1/lab-clocks/run.md and write in your attempt log what the vector clocks say about the two writes that were made without a message.
+- id: rung-4
+  role: ladder
+  type: lab
+  title: A hybrid logical clock
+  prompt: 'Add the hybrid logical clock. NewHLC takes a Clock (anything with Now() time.Time). Now() returns the physical time in nanoseconds with counter 0 when the clock moved past the last stamp, and the last stamp with the counter plus one otherwise. Receive(m) returns a stamp after both m and the last stamp: its physical part is the largest of the last stamp, m and the clock. HLCTime.Less orders by the physical part, then the counter.'
+  card: happened-before
+  rung: 4
+  new_force: Use a timestamp whose order agrees with causality
+  needs_new_structure: true
+  checkers:
+  - kind: kit
+    path: H4.1/lab/rung-4
+  reference: reference/H4.1/lab/rung-4
+  alternatives:
+  - 'Lamport time: 8 bytes, order agrees with causality, but it has no relation to real time, so a human cannot read it as a date.'
+  hints:
+  - 'When the physical part does not change, only the counter can make the new stamp larger.'
+  - 'In Receive there are four cases for the new physical part: equal to the last stamp, equal to the message, equal to both, or the clock is ahead of both.'
+  - 'Hold a mutex in both methods; the test calls Now from 20 goroutines.'
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  run: Run the real three-process version from code/H4.1/lab-clocks/run.md and write in your attempt log how far behind real time the slowest machine''s stamp would be after a receive.
+- id: rung-5
+  role: ladder
+  type: lab
+  title: One writer needs only a sequence number
+  prompt: 'One service writes all records. Add Seq with Next() returning 1, 2, 3, ... safely from many goroutines, the type Rec {Seq, Val}, InOrder(recs) returning the records sorted by Seq with duplicates removed (input unchanged), and Gaps(recs) returning the missing numbers from 1 up to the highest received. Nothing about clocks changes in this rung.'
+  card: null
+  rung: 5
+  new_force: Only one writer exists
+  needs_new_structure: false
+  checkers:
+  - kind: kit
+    path: H4.1/lab/rung-5
+  reference: reference/H4.1/lab/rung-5
+  alternatives:
+  - 'A vector clock with one entry: it gives the same order, with a map per value instead of one number, and cannot show a missing record.'
+  hints:
+  - 'A counter behind a mutex is the whole clock.'
+  - 'Remove duplicates with a set of numbers already seen, then sort.'
+  - 'Gaps walks from 1 to the highest sequence number received and reports numbers not seen.'
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  run: Run the real three-process version from code/H4.1/lab-clocks/run.md and write in your attempt log why the writes on one process need no vector.
+- id: est-1
+  role: ladder
+  type: estimate
+  title: Vector clock size for 20 writers
+  prompt: Each value in a store carries a vector clock with one 8-byte counter for each of 20 writers. How many bytes of clock does one value carry?
+  card: logical-clocks
+  rung: 6
+  new_force: Size the metadata of a vector clock
+  needs_new_structure: false
+  checkers:
+  - kind: numeric
+    calc: H4.1/calc-clock-sizes
+    key: vc_bytes_20_writers
+    unit: bytes
+    factor: 2
+  hints:
+  - Write the formula with units first.
+  - One counter per writer, 8 bytes each.
+  - Compare with the 8 bytes of a Lamport time to see the price.
+  alternatives: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: est-2
+  role: ladder
+  type: estimate
+  title: Skew that misorders two writes
+  prompt: Two writes, the second made after reading the first, are 5 ms apart in real time and are stamped by their own machines' wall clocks. How far behind the first machine's clock must the second machine's clock be, at least, before the second write gets the smaller timestamp, in milliseconds?
+  card: happened-before
+  rung: 7
+  new_force: Compare clock skew with the gap between writes
+  needs_new_structure: false
+  checkers:
+  - kind: numeric
+    calc: H4.1/calc-clock-sizes
+    key: skew_to_misorder_5ms
+    unit: ms
+    factor: 2
+  hints:
+  - Write the formula with units first.
+  - The second timestamp is the real gap plus its clock error.
+  - It is smaller than the first exactly when the error is below minus the gap.
+  alternatives: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: est-3
+  role: ladder
+  type: estimate
+  title: How often does skew misorder them
+  prompt: Two machines have clocks off by independent amounts, each evenly spread from -10 ms to +10 ms. A write on one is followed 5 ms later by a write on the other that read it. What is the probability that the later write gets the smaller timestamp?
+  card: happened-before
+  rung: 8
+  new_force: Turn a skew bound into a probability
+  needs_new_structure: false
+  checkers:
+  - kind: numeric
+    calc: H4.1/calc-clock-sizes
+    key: misorder_probability_skew10ms_gap5ms
+    unit: probability
+    factor: 2
+  hints:
+  - Write the formula with units first.
+  - The difference of the two offsets is spread over -20 to +20 ms, most likely near 0.
+  - The later write loses when that difference is below -5 ms; the probability is the area of the triangle below -5 divided by the whole area.
+  alternatives: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: ex-1
+  role: worked_example
+  type: estimate
+  title: Metadata for a million keys
+  prompt: A store keeps 1 000 000 items. Each can be written by 20 writers and carries a vector clock of 8-byte counters. How much memory do the vector clocks use, and is it worth it against a Lamport time per item?
+  card: logical-clocks
+  checkers:
+  - kind: numeric
+    calc: H4.1/calc-clock-sizes
+    key: vc_metadata_1m_keys_20_writers
+    unit: MB
+    factor: 2
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: ex-2
+  role: worked_example
+  type: recognise
+  title: Two devices editing one note
+  prompt: A notes app lets a user edit a note from a phone and a laptop. The phone clock can be 30 ms behind the laptop's. An edit made on the laptop right after a sync must replace the phone's edit. Edits arrive about 5 ms after the sync. Decide how to order the edits.
+  card: happened-before
+  answer:
+    kind: card
+    card: &id001
+      topic: H4.1
+      card: happened-before
+    property: The order needed must agree with cause and effect, and the clock spread (30 ms) exceeds the gap (5 ms).
+    why_others_fail: 'A plain timestamp inverts the edits when the laptop is behind; a vector would also work but costs 8 bytes per device and answers a question (concurrent or not) the app does not ask.'
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: r-1
+  role: drill
+  type: recognise
+  title: Calendar entries from two offices
+  prompt: A shared calendar is edited from two offices without a central server. If both offices change the same meeting before they sync, the app must show both changes to the owner, and if one office changed it after seeing the other's change the newer one silently replaces the older. Two writers per meeting.
+  answer:
+    kind: card
+    card: &id002
+      topic: H4.1
+      card: logical-clocks
+    property: A vector of two counters tells exactly whether one change saw the other or whether they were concurrent (16 bytes per meeting).
+    why_others_fail: 'A timestamp cannot tell concurrent from sequential and inverts causal order when clocks differ by more than the gap; a Lamport time orders everything and never says concurrent.'
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: r-2
+  role: drill
+  type: recognise
+  title: Support tickets from five regions
+  prompt: Tickets from five regional servers are merged into one list. A reply carries a timestamp from its server's clock. Clocks are synchronised to within 50 ms; a customer sometimes replies within 10 ms of an agent's message. The list sometimes shows a reply above the message it answers.
+  answer:
+    kind: card
+    card: *id001
+    property: The order must agree with cause and effect, and the clock spread (50 ms) is above the gap (10 ms).
+    why_others_fail: 'Sorting by the servers'' wall clocks is the cause of the symptom; a vector per ticket would work but costs 5 counters per message for a question nobody asks.'
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: r-3
+  role: drill
+  type: recognise
+  title: Audit log of one service
+  prompt: One billing service appends audit records to a file, 300 a second, and a reader needs them in write order. Nothing else writes to the file.
+  answer:
+    kind: none
+    simplest: A per-file sequence number
+    why: One writer already has a total order, and a sequence number also shows lost records; a clock of any kind adds bytes and no information.
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: r-4
+  role: drill
+  type: recognise
+  title: Orders from one database
+  prompt: Orders are inserted into one database and shown newest first. The table has an auto-incrementing key and a created-at column from the database server.
+  answer:
+    kind: none
+    simplest: Order by the database's own key or created-at
+    why: One database assigns both, so there are no clocks on different machines to disagree.
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: r-5
+  role: drill
+  type: recognise
+  title: Comment threads with 12 authors
+  prompt: A comment thread is replicated to 12 servers. Each server accepts comments; a reply must never be shown above the comment it replies to. Two unrelated comments may appear in either order. Threads have up to 5 000 comments.
+  answer:
+    kind: card
+    card: *id002
+    property: A Lamport time of 8 bytes per comment gives an order in which every effect follows its cause, and concurrent comments may take either order.
+    why_others_fail: 'A vector of 12 counters costs 96 bytes per comment for the ability to say concurrent, which this display does not use; wall clocks can invert a reply and its question.'
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: r-6
+  role: drill
+  type: recognise
+  title: Photo captions from a phone and a tablet
+  prompt: A user edits a photo caption on a phone, then on a tablet after the phone's change reached the tablet. The tablet's clock is 40 ms slow. Concurrent edits are not expected, but the later caption must win.
+  answer:
+    kind: card
+    card: *id001
+    property: The newest caption by cause and effect must win with a spread (40 ms) above the gap; a hybrid logical clock stamp is always larger than the stamp the tablet received.
+    why_others_fail: 'The tablet''s plain timestamp would be earlier than the phone''s; a vector would also work but the question is not whether edits were concurrent.'
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: r-7
+  role: drill
+  type: recognise
+  title: Daily report timestamps
+  prompt: Two servers each write a daily report row, hours apart. The rows are ordered by the hour on each row. The servers' clocks are synchronised to within 5 ms. Nothing in one row depends on the other.
+  answer:
+    kind: none
+    simplest: Order by the servers' timestamps
+    why: The gap (hours) is far above the clock spread (5 ms), so wall-clock order cannot invert and nothing needs detecting.
+  checkers: []
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: cp-1
+  role: checkpoint
+  type: deep_dive
+  title: Conflict detection for a shared shopping list
+  prompt: A family app keeps a shared shopping list. Up to 6 people edit the same list on phones, also offline, and changes sync later. Two people adding or removing the same item before syncing must not silently lose a change. Write a design for how edits are stamped and compared in 40 minutes. Choose a clock, justify it with sizes in bytes for 1 000 000 lists, say what the app does when two edits are concurrent, and cite at least one result from your own runs of the H4.1 lab (test names and what they showed).
+  card: logical-clocks
+  clarifying:
+  - q: How many lists are there and how large is an item?
+    a: About 1 000 000 lists with 30 items each.
+    critical: false
+  - q: Can phone clocks be wrong?
+    a: Yes, by seconds, and offline phones may not correct them for days.
+    critical: true
+  - q: Does the app need to know when two edits were made without seeing each other?
+    a: Yes, it shows both versions of an item and asks.
+    critical: true
+  - q: Is the set of people per list fixed?
+    a: Up to 6 people, added or removed rarely.
+    critical: true
+  - q: Is there a server that orders all edits?
+    a: No central order; phones sync with each other and a relay.
+    critical: false
+  checkers:
+  - kind: rubric
+    id: rubric-hld-deep-dive-v1
+  time_limit_minutes: 40
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+- id: rev-1-1
+  role: review
+  type: recognise
+  title: Two clocks, one question
+  prompt: Two vector clocks are {A:3, B:1} and {A:2, B:2}. Are the events concurrent, and what would Lamport times 5 and 4 have suggested?
+  card: logical-clocks
+  review_set: 1
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  answer:
+    kind: card
+    card: *id002
+    property: Each clock has an entry larger than the other's, so the events are concurrent.
+    why_others_fail: 'Lamport times 5 and 4 would order the events, which would be a claim about cause that the vectors show is false.'
+  checkers: []
+- id: rev-1-2
+  role: review
+  type: estimate
+  title: Vector clock size at another scale
+  prompt: A document store lets 50 collaborators write the same document. Each document carries a vector clock with 8-byte counters. How many bytes is the clock?
+  card: logical-clocks
+  review_set: 1
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  checkers:
+  - kind: numeric
+    calc: H4.1/calc-clock-sizes
+    key: vc_bytes_50_writers
+    unit: bytes
+    factor: 2
+- id: rev-1-3
+  role: review
+  type: recognise
+  title: Why not just wall-clock time
+  prompt: A team proposes ordering every update in a database cluster by the server clock, synchronised to within 20 ms. Updates that depend on each other can be 2 ms apart. Explain what can go wrong.
+  card: happened-before
+  review_set: 1
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  answer:
+    kind: card
+    card: *id001
+    property: The spread (20 ms) exceeds the gap (2 ms), so the later of two dependent updates can carry the earlier timestamp.
+    why_others_fail: 'Tighter synchronisation shrinks the spread but it must stay below the smallest gap; a stamp that takes the larger of the received stamp and the local clock removes the dependence on synchronisation.'
+  checkers: []
+- id: rev-2-1
+  role: review
+  type: recognise
+  title: Which rule on receive
+  prompt: A process has Lamport time 12 and receives a message stamped 20. A second process has time 30 and receives a message stamped 20. What are the new times and why?
+  card: logical-clocks
+  review_set: 2
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  answer:
+    kind: card
+    card: *id002
+    property: A receive sets the clock to the larger of the two values and adds 1, so 21 and 31; the clock never goes back.
+    why_others_fail: 'Taking the message value alone would set the second process back from 30 to 21 and break causality for its earlier events.'
+  checkers: []
+- id: rev-2-2
+  role: review
+  type: estimate
+  title: Metadata of Lamport times
+  prompt: A message log of 1 000 000 messages stamps each with an 8-byte Lamport time. How many megabytes of timestamps is that?
+  card: logical-clocks
+  review_set: 2
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  checkers:
+  - kind: numeric
+    calc: H4.1/calc-clock-sizes
+    key: lamport_metadata_1m_keys
+    unit: MB
+    factor: 2
+- id: rev-2-3
+  role: review
+  type: recognise
+  title: A queue with one consumer
+  prompt: One consumer reads a queue that one producer writes. The team wants to add vector clocks to the messages in case ordering questions come up later. There is no second producer planned.
+  card: logical-clocks
+  review_set: 2
+  techniques:
+  - H4.1
+  checked_on: '2026-10-23'
+  answer:
+    kind: none
+    simplest: A sequence number per message
+    why: With one producer the sequence number is the whole order and shows lost messages; a vector with one entry is the same number in a bigger package.
+  checkers: []

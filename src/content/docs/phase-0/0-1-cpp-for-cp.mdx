@@ -11,7 +11,9 @@ import Ladder from '../../../components/Ladder.astro';
 
 ## What this note covers
 
-Debugging in CP (competitive programming) → verdicts (CE, RTE, TLE, WA, MLE), kya kya cause hota hai har ek ka, aur test cases kaise banane hain jisse bug pakda jaye: extreme values, code coverage, common themes, stress testing. Uske saath tools: assert, sanitizers, debug macro.
+Debugging in CP (competitive programming) → the verdicts (CE, RTE, TLE, WA, MLE), the typical causes of each one, and how to build test cases that expose a bug: extreme values, code coverage, common themes, stress testing. Tools that help: assert, sanitizers, a debug macro.
+
+Why this matters: in a contest, most lost time is not spent on finding the idea. It is spent on a solution that is almost right and fails for a reason that cannot be seen at once. A fixed process for finding bugs turns that waiting time into a short, predictable routine.
 
 - Debugging: the 4 things
 - Verdicts
@@ -41,7 +43,7 @@ iii) Language → be better at the programming language. [Learn]
 
 iv) Thinking of good testcases [where the problem fails] [Practice]
 
-Process matlab random changes nahi karne. Ek loop follow karo, aur ek baar mein sirf ek cheez change karo.
+A process means no random changes. Follow one loop and change only one thing at a time. If two things change together and the verdict improves, we do not know which change helped. If the verdict gets worse, we do not know which change hurt.
 
 ![Debugging loop: read verdict, small failing input, find first wrong step, guess cause, fix one thing, re-test, submit](../../../assets/notes/0-1-cpp-for-cp/fig01_debug_loop.png)
 
@@ -68,7 +70,9 @@ A test case can come from two places: by yourself, or the computer.
 CE (Compilation Error) : easiest to solve.
 Some syntax error.
 
-Dekho, pehla error message padho aur wahi fix karo. Baaki errors aksar usi ke side effect hote hain. Compile with `-Wall` toh silly mistakes (unused variable, variable used before value) submit se pehle hi pakad mein aa jaate hain.
+Read the first error message and fix only that one. The later errors are often side effects of the first one: for example, a missing `;` can make the compiler report many wrong errors on the following lines.
+
+Compile with `-Wall` (a flag that turns on extra warnings). Then silly mistakes, such as an unused variable or a variable used before it has a value, are caught on your computer, before the submission.
 
 ## MLE
 
@@ -84,11 +88,13 @@ int → 4 bytes
 
 So 5x10^7 ints = 5x10^7 × 4 bytes = 200 MB. And 2x10^6 ints = 8 MB.
 
-Why inside func is so small? Local variables stack pe rehte hain. Stack chhota hota hai (Linux pe aksar 8 MB) aur function calls bhi usi mein jaate hain. Global alag, bada area hai.
+Why is the limit inside a function so small? Local variables live on the stack. The stack is a small region of memory (often 8 MB on Linux), and every function call also uses a part of it. Global variables live in a separate, much larger area.
 
-Note: ye numbers rule of thumb hain. Actual limit problem statement mein hoti hai, aur kuch judges stack bada dete hain.
+Note: these numbers are a rule of thumb. The real limit is written in the problem statement, and some judges give a bigger stack.
 
-Memory = no. of elements × size of one element. `long long` is 8 bytes, so 10^6 long longs = 8 MB.
+Memory = number of elements × size of one element. `long long` is 8 bytes, so 10^6 long longs = 8 MB.
+
+Example: the limit is 256 MB and we need an array of 10^7 `long long` values. That is 10^7 × 8 = 80 MB, which fits. A table of 10^4 × 10^4 `long long` values is 10^8 × 8 = 800 MB, which does not fit. Do this multiplication before writing the code.
 
 ## TLE
 
@@ -103,15 +109,15 @@ TLE (Time limit exceeded) ──> TC is beyond 10^8 limit
 - input not formatted correctly. [waits for input]
 - fast io & endl.
 
-Check 1: T.C. kitna hai? n = 10^5 pe $O(n^2)$ matlab 10^10 operations, infeasible. $O(n \log n)$ matlab ~1.7 x 10^6, easy.
+Check 1: what is the time complexity (T.C.)? For n = 10^5, $O(n^2)$ means 10^10 operations. A judge does roughly 10^8 simple operations per second, so this needs about 100 seconds: not possible. $O(n \log n)$ means about 1.7 x 10^6 operations (10^5 × 17), which is easy.
 
 ![n, n log n, n^2 against the 10^8 line](../../../assets/notes/0-1-cpp-for-cp/fig16_ops_vs_limit.png)
 
 *n, n log n, n^2 vs 10^8.*
 
-"Input not formatted correctly" → program zyada numbers padhne ki koshish karta hai jitne input mein hain, ya galat order mein padhta hai. Local pe terminal wait karta rehta hai.
+"Input not formatted correctly" → the program tries to read more numbers than the input has, or reads them in the wrong order. When we run it locally, the terminal keeps waiting for more input, and on a judge this becomes a time limit error.
 
-fast io & endl: `endl` newline bhi print karta hai aur buffer flush bhi karta hai (output turant bahar). Bahut baar kiya toh slow. `'\n'` sirf newline. Plus `cin`/`cout` by default C ke `scanf`/`printf` ke saath sync mein chalte hain, wo bhi time leta hai. Neeche wali function ek baar start mein call karo:
+fast io & endl: `endl` prints a newline and also flushes the buffer (the output is sent out at once). Doing this many times is slow: with 2·10^5 output lines, every line becomes a separate flush. `'\n'` prints only the newline. Also, `cin` and `cout` are kept in step with C's `scanf` and `printf` by default, and this also costs time. Call the function below once at the start:
 
 ```cpp
 // Problem: make cin/cout fast. Call this once at the start of main.
@@ -123,13 +129,13 @@ void fastIo() {
 }
 ```
 
-Aur print `'\n'` se karo. Tere files mein ye already ek line se ho jata hai, `#define endl "\n"`. A macro is text replacement before compiling, so every `endl` becomes `"\n"`. (Fabricator/Prefix-Partial-Sums/LRSumQuery.cpp)
+Print with `'\n'` instead of `endl`. The Fabricator solutions already do this with one line, `#define endl "\n"`. A macro is a text replacement made before compiling, so every `endl` becomes `"\n"`. (Fabricator/Prefix-Partial-Sums/LRSumQuery.cpp)
 
 ```cpp
 #define endl "\n"
 ```
 
-Note: `sync_with_stdio(false)` ke baad `cin/cout` aur `scanf/printf` mix mat karo.
+Note: after `sync_with_stdio(false)`, do not mix `cin/cout` with `scanf/printf`. The two kinds of input and output no longer share one buffer, so the order of the data can be wrong.
 
 ## RTE
 
@@ -145,11 +151,11 @@ RTE (Run time error)
 - stack overflow
 - improper datatype (inputs). [eg: take string in int].
 
-Out of bound: valid index 0 to n-1, `a[n]` galat hai. Note: ye hamesha crash nahi karta. Kabhi kabhi garbage padh leta hai aur WA aa jata hai. Sanitizer se dikhega (neeche).
+Out of bound: the valid indices of an array of size n are 0 to n-1, so `a[n]` is wrong. Note: this does not always crash. Sometimes the program reads a garbage value and the verdict is WA instead. A sanitizer shows it (see below).
 
-Stack overflow: recursion bahut deep, ya bada local array.
+Stack overflow: the recursion is very deep, or a local array is very big. Each call uses some stack memory, and when the stack is full the program is stopped.
 
-Improper datatype: "abc" ko int mein padho toh read fail ho jata hai. Value 0 ho jati hai, stream "failed" state mein chali jati hai, aur uske baad ke saare reads kuch nahi karte. Matlab aage ka program galat values pe chalega. Check `if (cin >> x)` or `cin.fail()`.
+Improper datatype: reading "abc" into an int fails. The value becomes 0, the stream goes into a "failed" state, and every later read does nothing. So the rest of the program runs on wrong values. Check with `if (cin >> x)` or `cin.fail()`.
 
 ## WA
 
@@ -171,9 +177,9 @@ edge case
 
 *WA: easy vs very hard to detect.*
 
-Hard wale sirf achhe test cases se pakde jaate hain, isliye aage ka sab test cases ke baare mein hai.
+The hard ones are found only by good test cases, so the rest of this lesson is about test cases.
 
-Overflow in MOD: `int` max 2147483647 hai. MOD = 10^9 + 7. Do numbers &lt; MOD multiply karo toh ~10^18, `int` mein nahi aayega. Fix → multiply se PEHLE 64 bit bana lo (`long long`).
+Overflow in MOD: the largest `int` is 2147483647. MOD = 10^9 + 7 is a number often used in problems: the answer is asked "modulo 10^9 + 7", which means the remainder after dividing by it. If we multiply two numbers that are both below MOD, the product is about 10^18, which does not fit in an `int`. Fix → make the numbers 64 bit (`long long`) BEFORE the multiplication.
 
 ```cpp
 // Problem: compute (a * b) % MOD for a, b < MOD = 10^9 + 7.
@@ -192,9 +198,9 @@ long long mulMod(long long a, long long b) {
 }
 ```
 
-Let's say a = b = MOD - 1. MOD - 1 is -1 mod MOD, toh answer (-1)(-1) = 1. `mulMod(MOD - 1, MOD - 1)` gives 1, and `mulModWrong(MOD - 1, MOD - 1)` gives 923446813. (Real `int` overflow is undefined behaviour, isliye `uint32_t` use kiya taaki wrap-around defined rahe.)
+Let's say a = b = MOD - 1. MOD - 1 is -1 modulo MOD, so the answer is (-1)(-1) = 1. `mulMod(MOD - 1, MOD - 1)` gives 1, and `mulModWrong(MOD - 1, MOD - 1)` gives 923446813. (A real `int` overflow is undefined behaviour, meaning the language gives no promise about the result. That is why `uint32_t` is used here: its wrap-around is defined.)
 
-Negative values ke saath bhi MOD ka dhyan: `-5 % MOD` negative aata hai C++ mein. Isliye `(x + MOD) % MOD`. Ye tere LRSumQuery mein hai, sample pe expected output `4556 999911007 999905655 ...` deta hai:
+Negative values need care with MOD too: in C++, `-5 % MOD` is negative. So write `(x + MOD) % MOD`. This is done in LRSumQuery, which gives the expected output `4556 999911007 999905655 ...` on its sample:
 
 ```cpp
 // Fabricator/Prefix-Partial-Sums/LRSumQuery.cpp
@@ -233,14 +239,14 @@ void solve() {
 }
 ```
 
-Garbage value: local variable ko starting value nahi di toh garbage.
+Garbage value: if a local variable is not given a starting value, it holds garbage (whatever was in that memory before).
 
 ```cpp
 int count;   // never given a value
 count++;     // reads garbage
 ```
 
-`-Wall` ye pakad leta hai (`'count' is used uninitialized`). Zero se start hone wale: global variables, `vector<int> v(3)` ke elements, `int x{}`, `int raw[3] = {}`. Plain local `int x;` nahi. Rule: local ko hamesha value do.
+`-Wall` catches this (`'count' is used uninitialized`). These start at zero: global variables, the elements of `vector<int> v(3)`, `int x{}`, `int raw[3] = {}`. A plain local `int x;` does not. Rule: always give a local variable a value.
 
 ## Test cases
 
@@ -272,11 +278,11 @@ cin >> n             }     n = 10^5
 vector<int> arr      }     vector<int> arr(10^5, 10^9);
 ```
 
-Note: C++ mein `^` XOR hota hai, power nahi. Toh `n = 100000` aur `arr(100000, 1000000000)` likhna hai.
+Note: in C++, `^` is XOR (exclusive or, a bit operation), not power. So `vector<int> arr(10^5, 10^9)` compiles but does not mean what it looks like. Write `n = 100000` and `arr(100000, 1000000000)`.
 
 Even if the answers of the extreme test cases is not known, just run the code on it, and just think if the output **looks** right or not.
 
-Example: array sum with this input. Real sum = 10^5 × 10^9 = 10^14. `int` mein rakha toh 32 bit mein wrap hoke 276447232 aata hai, ye clearly galat dikhta hai. `long long` mein 100000000000000. Time bhi dekho in inputs pe.
+Example: the sum of the array with this input. The real sum is 10^5 × 10^9 = 10^14. If it is stored in an `int`, it wraps around in 32 bits and gives 276447232, which looks wrong at once. In a `long long` it is 100000000000000. Also look at the running time on these inputs.
 
 ii) Code coverage:
 
@@ -307,11 +313,11 @@ else {
 
 But on submitting at some test case 'else' part ran & gave weird answer.
 
-Same idea function mein (answer n × m hona chahiye, bug copy kiya hai):
+The same idea as a function (the answer must be n × m; the bug is copied):
 
 ```cpp
 // Problem: visit every cell of an n x m grid and count the visits (answer: n * m).
-// The else branch copies his mistake: j goes up to n instead of m.
+// The else branch copies the original mistake: j goes up to n instead of m.
 long long countCellsBuggy(int n, int m) {
     long long visits = 0;
     if (n % 2) {
@@ -332,12 +338,12 @@ long long countCellsBuggy(int n, int m) {
 | (4, 4) | 16 | 16 |
 | (4, 6) | 16 | 24 |
 
-Notice that sirf last test mein n even hai AND n ≠ m, bas wahi bug pakadta hai.
+Notice that only the last test has n even AND n ≠ m, so only that test catches the bug.
 
 Rule: manually create test cases so that every line of code runs exist at least once.
 [also catches silly mistake]
 
-Kaunsi line nahi chali ye `gcov` batata hai (g++ ke saath aata hai). Test file mein sirf (3, 5) aur (5, 5) call kiye:
+The tool `gcov` (it comes with g++) tells which lines never ran. Here the test file calls only (3, 5) and (5, 5):
 
 ```bash
 g++ -std=c++17 -O0 --coverage coverage_odd.cpp -o cov_bin
@@ -353,7 +359,7 @@ grep -E "visits\+\+|for \(int" cells.inc.gcov
     #####:   10:            for (int j = 0; j < n; j++) visits++;  // BUG: should be j < m
 ```
 
-`#####` matlab line kabhi chali hi nahi → us path ka test missing hai. (Number = kitni baar chali.)
+`#####` means the line never ran → no test reaches that path. (A number is how many times the line ran.)
 
 iii) Common themes:
 
@@ -382,7 +388,7 @@ tree i/p:
 
 *Branched, linear, single node.*
 
-Kyu sorted? Sorted array kuch algorithms ko unke slowest case mein daal deta hai. Example: quicksort jo hamesha pehla element pivot (split karne wali value) lega. Sorted pe har split lopsided → ~ n(n-1)/2 comparisons.
+Why sorted? A sorted array pushes some algorithms into their slowest case. Example: a quicksort that always takes the first element as the pivot (the value that splits the array in two). On a sorted array every split is lopsided: one side is empty and the other has all the remaining elements. The comparisons add up to (n-1) + (n-2) + ... + 1 = n(n-1)/2.
 
 ```cpp
 // Problem: count the comparisons of a quicksort whose pivot (the value that
@@ -408,9 +414,9 @@ long long comparisonsFor(vector<int> a) {
 }
 ```
 
-n = 2000 → n(n-1)/2 = 1999000. Sorted: 1999000, reversed: 1999000, shuffled: 24540. Matlab ~80 times zyada.
+n = 2000 → n(n-1)/2 = 1999000. Sorted: 1999000, reversed: 1999000, shuffled: 24540. That is about 80 times more work. For n = 10^5 the sorted case would be about 5·10^9 comparisons, which is a time limit error.
 
-Kyu linear tree? Recursive DFS (depth first search: jitna deep ja sako jao) ki depth n ho jati hai. 10^5 nodes → 10^5 calls deep. Stack overflow ka risk, isliye full size pe test karo.
+Why a linear tree (a chain)? The depth of a recursive DFS (depth first search: go as deep as possible first) becomes n. With 10^5 nodes, the recursion is 10^5 calls deep, and there is a risk of stack overflow. So test at the full size.
 
 ```cpp
 // Problem: build test trees with nodes 1..n as lists of edges.
@@ -440,7 +446,7 @@ int heightDfs(int v, int parent, const vector<vector<int>>& adj) {
 }
 ```
 
-(`using Edges = ...` long type ko chhota naam deta hai.) `makeStar(5)` → edges 1-2, 1-3, 1-4, 1-5, height 1. `makePath(5)` → height 4. Single node → height 0. `makePath(100000)` → height 99999 (mere machine pe chal gaya, par judge ka stack chhota ho toh crash).
+(`using Edges = ...` gives a short name to a long type.) `makeStar(5)` → edges 1-2, 1-3, 1-4, 1-5, height 1. `makePath(5)` → height 4. A single node → height 0. `makePath(100000)` → height 99999 (it ran on the author's machine, but it can crash on a judge with a small stack).
 
 eg:
 n = 5
@@ -456,7 +462,7 @@ n = 5
 
 *1^2 + 2^2 = 5.*
 
-Note: array mein 5 elements hain, 1 + 4 = 5.
+Note: the array has 5 elements, and 1 + 4 = 5.
 
 ```
   1 1   0   1 1 1 1   0   1 1   0
@@ -489,13 +495,13 @@ overflow
 is one
 reason.
 
-Overflow kaise: 10^5 ones ek saath → cur = 10^5, `cur * cur` = 10^10 > 2147483647 (int max). 32 bit mein wrap hoke 1410065408 ban jata hai. `ans` aur `cur` dono `long long` chahiye.
+How the overflow happens: 10^5 ones in a row → cur = 10^5, and `cur * cur` = 10^10, which is more than 2147483647 (the largest int). In 32 bits it wraps around to 1410065408. Both `ans` and `cur` must be `long long`.
 
-Note: ek aur reason hai. Run tab add hota hai jab 0 aata hai. Agar array 1 pe khatam hua toh last run kabhi add nahi hoga. Array `1 1` pe trace karo: i=0 → cur=1, i=1 → cur=2, loop khatam, ans = 0 but answer 2^2 = 4. Loop ke baad `ans += cur * cur;` chahiye. Dhyan do, uske dono examples 0 pe khatam hote hain, isliye ye bug samples mein dikhta hi nahi.
+Note: there is one more reason. A run is added only when a 0 arrives. If the array ends with a 1, the last run is never added. Trace the array `1 1`: i=0 → cur=1, i=1 → cur=2, the loop ends, ans = 0, but the answer is 2^2 = 4. We need `ans += cur * cur;` after the loop. Notice that both of the examples above end with 0, so this bug does not show in them.
 
 ![trace on array 1 1: ans stays 0, cur ends at 2](../../../assets/notes/0-1-cpp-for-cp/fig13_missing_last_run.png)
 
-*Array 1 1: last run add hi nahi hua.*
+*Array 1 1: the last run is never added.*
 
 Fixed version, T.C. $O(n)$, extra memory $O(1)$:
 
@@ -546,12 +552,14 @@ iv) Stress testing:
 if we find different output then
 we find the test case where the solve() is wrong.
 
-Idea: brute force chhota aur simple likho (slow chalega, par obviously correct). Generator chhote random inputs banata hai (n ≤ 8, taaki failing case padhna easy ho). Same seed → same test, toh failure replay ho sakta hai.
+Idea: write a brute force that is short and simple (it may be slow, but it must be obviously correct). The generator makes small random inputs (n ≤ 8, so that a failing case is easy to read). The same seed gives the same test, so a failure can be replayed.
 
-Yaha pe solve() = uska original loop, aur brute = "string banao, har '0' pe kaato, har piece ka length square karo" (alag idea, toh same bug share nahi karega). `mt19937` is C++ ka standard random number engine. `stressTest` ko do function pointers milte hain (function pointer = aisa variable jo function hold kare, toh kisi bhi function ko pass kar sakte ho).
+Here solve() is the original loop, and brute is "build a string, cut it at every '0', and square the length of each piece". This is a different idea, so it does not share the same bug. `mt19937` is the standard random number engine of C++. `stressTest` receives two function pointers (a function pointer is a variable that holds a function, so any function with the right signature can be passed in).
+
+Why the small size matters: with n ≤ 8 there are only 2^8 = 256 binary arrays, so 1000 random tests almost surely contain the array that breaks the solution, and the failing array has at most 8 numbers, which can be traced by hand.
 
 ```cpp
-// Problem: his loop wrapped in a function, so the stress test can
+// Problem: the original loop wrapped in a function, so the stress test can
 // check it. The loop itself is unchanged.
 long long solveOriginal(const vector<int>& arr) {
     int n = arr.size();
@@ -624,9 +632,9 @@ DIFFERENT on test 1, array: 1 0 0 0 0 0 1 1
 solution says 1, brute says 5
 ```
 
-Last run (1 1) missing → 1 + 4 = 5. Wahi bug jo upar mila. Dono fix ke baad `stressTest(sumOfSquaredRuns, bruteSumOfSquaredRuns, 1000)` → `all 1000 tests passed`.
+The last run (1 1) is missing → 1 + 4 = 5. It is the same bug that was found above. After both fixes, `stressTest(sumOfSquaredRuns, bruteSumOfSquaredRuns, 1000)` → `all 1000 tests passed`.
 
-Contest mein usually alag programs hote hain: `gen` (seed lekar random input print kare), `sol`, `brute`. Loop (`cmp -s` do files quietly compare karta hai):
+In a contest we usually use separate programs: `gen` (takes a seed and prints a random input), `sol`, and `brute`. The loop below runs them (`cmp -s` compares two files quietly):
 
 ```bash
 for i in $(seq 1 1000); do
@@ -637,19 +645,19 @@ for i in $(seq 1 1000); do
 done
 ```
 
-Author wale solution ke saath ye `DIFFERENT on seed 2` pe rukta hai, input `4` / `0 0 1 1`.
+With the author's original solution, this loop stops at `DIFFERENT on seed 2`, with the input `4` / `0 0 1 1`.
 
-Bade n ka generator bhi chalao TLE ke liye, aur values ki range badlo (chhoti values → edge cases, bahut badi → overflow).
+Also run a generator with a large n to look for TLE, and change the range of the values (small values → edge cases, very large values → overflow).
 
 ## Finding the bug fast
 
-Binary search the bug: pura code dobara padhne ki jagah beech mein state print karo. Agar wahi galat hai → bug usse pehle. Sahi hai → bug uske baad. Phir range aadhi. 16 steps ke liye sirf ~4 prints.
+Binary search the bug: instead of reading the whole code again, print the state (the values of the variables) in the middle. If it is already wrong → the bug is before that point. If it is correct → the bug is after that point. The range is now half as long. For 16 steps, only about 4 prints are needed (16 → 8 → 4 → 2 → 1).
 
 ![16 steps: check 8, then 12, then 10 and 11, bug at step 11](../../../assets/notes/0-1-cpp-for-cp/fig15_binary_search_bug.png)
 
-*Step 8 sahi, 12 galat, 10 sahi, 11 galat → bug step 11.*
+*Step 8 correct, 12 wrong, 10 correct, 11 wrong → the bug is in step 11.*
 
-assert: `assert(cond)` false ho toh program line number ke saath ruk jata hai. Jo cheez hamesha true honi chahiye uspe lagao. Quiet wrong answer ki jagah bug ke paas hi loud error.
+assert: if `assert(cond)` has a false condition, the program stops and names the line. Use it on facts that must always be true. Then we get a loud error close to the bug, instead of a quiet wrong answer.
 
 ```cpp
 // Problem: sum of squared runs of 1s, with assert checks on what we believe.
@@ -669,9 +677,9 @@ long long sumOfSquaredRunsChecked(const vector<int>& arr) {
 }
 ```
 
-`sumOfSquaredRunsChecked({1, 0, 1, 1, 0})` → 5. `sumOfSquaredRunsChecked({1, 2, 1})` → stops with ``Assertion `x == 0 || x == 1' failed.`` (real message mein file, line, function bhi aata hai.)
+`sumOfSquaredRunsChecked({1, 0, 1, 1, 0})` → 5. `sumOfSquaredRunsChecked({1, 2, 1})` → stops with ``Assertion `x == 0 || x == 1' failed.`` (The real message also contains the file, the line and the function.)
 
-Sanitizers: compiler extra checking code daal deta hai. `-fsanitize=address,undefined` → AddressSanitizer out of bound memory pakadta hai, UndefinedBehaviorSanitizer signed overflow jaisi cheezein. `-D_GLIBCXX_DEBUG` → `vector` har index check karta hai. Slow hote hain, sirf local pe.
+Sanitizers: the compiler adds extra checking code to the program. `-fsanitize=address,undefined` → AddressSanitizer catches access to memory outside an array, and UndefinedBehaviorSanitizer catches things such as signed overflow. `-D_GLIBCXX_DEBUG` → `vector` checks every index. They make the program slow, so use them only on your own computer.
 
 ```cpp
 // Problem: two classic bugs that a plain build hides.
@@ -690,7 +698,7 @@ int addToIntMax(int extra) {
 }
 ```
 
-Ek chhoti test file mein inko call karo (`addToIntMax(2)` overflow wala hai):
+Call these in a small test file (`addToIntMax(2)` is the overflow one):
 
 ```bash
 g++ -std=c++17 -O2 -Wall test.cpp -o test_plain && ./test_plain
@@ -698,7 +706,7 @@ g++ -std=c++17 -O1 -g -Wall -fsanitize=address,undefined test.cpp -o test_san &&
 g++ -std=c++17 -O1 -g -Wall -D_GLIBCXX_DEBUG test.cpp -o test_dbg && ./test_dbg
 ```
 
-Plain build mein `writeOneTooFar()` chupchaap 0 return karta hai, jabki array ke bahar likh chuka hai. Checks ke saath (addresses shortened):
+In the plain build, `writeOneTooFar()` quietly returns 0, although it has already written outside the array. With the checks (addresses shortened):
 
 ```
 ERROR: AddressSanitizer: heap-buffer-overflow on address ...
@@ -709,9 +717,9 @@ Error: attempt to subscript container with out-of-bounds index 5, but
 container only holds 5 elements.
 ```
 
-Har message line batata hai.
+Each message names the line.
 
-Debug macro: tere files mein debug block already hai. Jo part yaha use hua (poora block mein set, map, queue ke printers bhi hain):
+Debug macro: the Fabricator files already contain a debug block. This is the part used here (the full block also has printers for set, map and queue):
 
 ```cpp
 // ================= DEBUGGING UTILITIES =================
@@ -744,13 +752,13 @@ template <class T> void _print(vector<T> v) {
 
 So basically:
 
-- `#x` argument ko text bana deta hai, toh `debug(n)` print karega `n = 5`.
-- `#ifndef ONLINE_JUDGE` = "agar ye naam defined nahi hai". Online judges compile karte time `ONLINE_JUDGE` define karte hain, toh judge pe `debug(x)` kuch nahi bana, aur local pe print hota hai.
-- `cerr` (error stream) pe print hota hai, toh asli output (`cout`) mein mix nahi hota.
-- `_print` alag alag parameter types ke saath kai baar likha hai (overloading). Compiler jo fit ho wo chunta hai. `template <class T>` wale kisi bhi element type ke liye chalte hain: vector har element ke liye `_print` dobara call karta hai.
-- `template <...> void _print(...);` jo `;` pe khatam hote hain wo forward declarations hain, promise ki function aage hai, taaki printers ek dusre ko call kar sake.
+- `#x` turns the argument into text, so `debug(n)` prints `n = 5`.
+- `#ifndef ONLINE_JUDGE` means "if this name is not defined". Online judges define `ONLINE_JUDGE` when they compile, so on the judge `debug(x)` becomes nothing, and on your computer it prints.
+- It prints to `cerr` (the error stream), so it does not mix with the real output (`cout`).
+- `_print` is written many times with different parameter types (this is called overloading). The compiler picks the one that fits. The `template <class T>` versions work for any element type: the vector version calls `_print` again for every element.
+- The lines `template <...> void _print(...);` that end with `;` are forward declarations: a promise that the function is defined later, so that the printers can call each other.
 
-`n = 5`, `arr = {1, 0, 1, 1, 0}`, `p = pair<int,string>(3, "x")` pe `debug(n)`, `debug(arr)`, `debug(p)`:
+With `n = 5`, `arr = {1, 0, 1, 1, 0}` and `p = pair<int,string>(3, "x")`, the calls `debug(n)`, `debug(arr)`, `debug(p)` print:
 
 ```
 n = 5
@@ -759,13 +767,13 @@ arr = [ 1 0 1 1 0 ]
 p = {3,"x"}
 ```
 
-Vector ke baad blank line vector printer ke `endl` aur macro ke `endl` dono se aati hai.
+The blank line after the vector comes from two `endl` calls: one in the vector printer and one in the macro.
 
-Note: macro mein kai statements hain. `if (cond) debug(x);` sirf pehle statement ko guard karega. Hamesha alag line pe ya braces mein likho.
+Note: the macro contains several statements. `if (cond) debug(x);` guards only the first statement. Always write it on a separate line or inside braces.
 
-Off-by-one checklist: loop `<` hai ya `<=`? Last valid index n-1? Empty / 1 element input chalta hai? `[l, r)` aur `[l, r]` mix toh nahi?
+Off-by-one checklist: is the loop `<` or `<=`? Is the last valid index n-1? Does an empty input or a one-element input work? Are `[l, r)` and `[l, r]` mixed up?
 
-Overflow checklist: sum/product 2 x 10^9 se upar jata hai? → `long long`. Multiply se pehle cast: `(long long)a * b`, `(long long)(a * b)` nahi.
+Overflow checklist: can a sum or product go above 2 x 10^9? → use `long long`. Cast before the multiplication: `(long long)a * b`, not `(long long)(a * b)`. In the second form the product is already computed in `int` and has already overflowed.
 
 | Symptom | Likely cause | First action |
 |---|---|---|
@@ -777,18 +785,19 @@ Overflow checklist: sum/product 2 x 10^9 se upar jata hai? → `long long`. Mult
 
 ## Quick revision
 
-- Debugging = process + time + language + good test cases.
-- CE (easiest) · RTE · TLE · WA (hardest) · MLE.
-- MLE: bytes = elements × size. int = 4 B, 10^7 ints = 40 MB. global ~5x10^7 ints (200 MB), local ~2x10^6.
-- TLE: T.C. > 10^8, inf loop/recursion, input mismatch, slow io (`'\n'`, fast io).
-- RTE: divide by 0, out of bound, NULL pointer, stack overflow, wrong input type.
-- WA: silly mistake, logic, edge case, garbage, overflow in MOD. Garbage + overflow easy; rest very hard.
-- Tests: extreme values (hard code, check output **looks** right) → coverage (every line once) → themes (sorted, reverse, branched, linear, single node) → stress (generator, solve(), brute).
-- Runs of 1s: `long long`, add last run after loop.
-- `^` is XOR → write 100000.
-- `(x + MOD) % MOD` for negatives; widen to 64 bit before multiply.
-- Tools: `-Wall`, `-fsanitize=address,undefined`, `-D_GLIBCXX_DEBUG`, `assert`, `debug(x)`, gcov.
-- Binary search the bug: print in middle, halve.
+- Debugging = process + time + language + good test cases. Change one thing at a time.
+- Verdicts: CE (easiest) · RTE · TLE · WA (hardest) · MLE.
+- CE: read the first error only; compile with `-Wall`.
+- MLE: bytes = elements × size of one element. int = 4 B, 10^7 ints = 40 MB. Global arrays up to about 5x10^7 ints (200 MB), local arrays about 2x10^6.
+- TLE: T.C. above 10^8 operations, infinite loop or recursion, input read in the wrong format, slow input and output (use `'\n'` and fast io).
+- RTE: divide by 0, index out of bound, NULL pointer, stack overflow, wrong input type.
+- WA: silly mistake, wrong logic, edge case, garbage value, overflow in MOD. Garbage and overflow are easy to detect; the rest are very hard.
+- Tests: extreme values (hard code them, check that the output **looks** right) → coverage (every line runs at least once) → common themes (sorted, reverse sorted, branched tree, linear tree, single node) → stress testing (generator, solve(), brute).
+- Sum of squared runs of 1s: use `long long`, and add the last run after the loop.
+- `^` is XOR, not power → write 100000.
+- Use `(x + MOD) % MOD` for negative values; widen to 64 bits before the multiplication.
+- Tools: `-Wall`, `-fsanitize=address,undefined`, `-D_GLIBCXX_DEBUG`, `assert`, `debug(x)`, `gcov`.
+- Binary search the bug: print the state in the middle, then halve the range.
 
 ## Practice problems
 

@@ -11,24 +11,38 @@ import Ladder from '../../../components/Ladder.astro';
 
 ## What this note covers
 
-Bade powers aur division ko mod ke andar handle karna. Isme:
+Handling huge powers and division inside a modulus. The problem: many tasks ask for a number that is far too large to store, such as $3^{1000000000}$ (about 477 million digits). The task then says "print the answer modulo $10^9+7$", meaning the remainder after dividing by $10^9+7$. All the techniques below keep every number small while we compute.
 
-→ Binary exponentiation (fast power: $a^b$ ko O(log b) me nikalna)
-→ Modular inverse (mod me division ki jagah multiply karne wala number), GP (geometric progression) sum under mod, binary multiplication
-→ Fermat's Little Theorem, Euler's Theorem (bade exponent ko chhota karna), inverse = $a^{p-2}$
+→ Binary exponentiation (fast power: compute $a^b$ in O(log b) steps)
+→ Modular inverse (the number we multiply by instead of dividing, under a modulus), geometric progression (GP) sum under a modulus, binary multiplication
+→ Fermat's Little Theorem and Euler's Theorem (shrink a huge exponent), inverse = $a^{p-2}$
 
-Totient ($\phi$) 2.1 me dekha tha, wahi yaha use hoga.
+The totient ($\phi$) was introduced in 2.1, and it is used again here.
 
 ## Table of contents
 
 - Binary exponentiation → fast power
 - Modulo arithmetic with division → modular inverse, GP sum, binary multiplication
-- Fermat's Little Theorem → $a^{p-1} \equiv 1$, exponent reduce karna
-- Euler's Theorem: (General version). → totient se exponent reduce karna
+- Fermat's Little Theorem → $a^{p-1} \equiv 1$, reducing the exponent
+- Euler's Theorem (general version) → reducing the exponent using the totient
 
 ## Binary exponentiation
 
-binpow = binary exponentiation. Idea: b ko binary mein likho, har bit pe base ka square, bit 1 ho toh result mein multiply. T.C. (time complexity) = O(log b). Example: $3^5$, 5 = 101 (binary) → $3^4 \cdot 3^1$.
+binpow = binary exponentiation. Idea: write b in binary. For every bit, square the base. If the bit is 1, multiply the result by the current base. Time complexity (T.C.) = O(log b). Example: $3^5$, 5 = 101 (binary) → $3^4 \cdot 3^1$.
+
+Why it is needed: the plain loop multiplies b times. For b = $10^9$ that is $10^9$ multiplications, about 10 seconds at $10^8$ per second. Binary exponentiation needs only about 30 steps, because $2^{30}$ is just over $10^9$ and b loses one bit per step.
+
+Why it works: every number is a sum of powers of two, and $a^{x+y} = a^x \cdot a^y$. So $3^5 = 3^{4+1} = 3^4 \cdot 3^1$. The values $3^1, 3^2, 3^4, 3^8, \dots$ come from repeated squaring, and we multiply into the result only those whose bit is 1.
+
+Dry run for $3^5$ (no modulus yet), reading the bits of 5 from the lowest:
+
+| pow (binary) | lowest bit | res | base after squaring |
+|---|---|---|---|
+| 101 | 1 | 1 · 3 = 3 | 3² = 9 |
+| 10 | 0 | 3 | 9² = 81 |
+| 1 | 1 | 3 · 81 = 243 | 81² = 6561 |
+
+The final res is 243 = $3^5$. Three steps were enough for exponent 5.
 
 ```cpp
 // Fabricator/Maths/Exponentiation.cpp
@@ -63,9 +77,19 @@ long long mpow(long long base, long long exp) {
 }
 ```
 
-(mpow mein mod fixed hai $10^9+7$.)
+(In mpow the modulus is fixed: MOD = $10^9+7$.)
+
+Common mistakes:
+
+- Taking the remainder only at the end. The intermediate numbers then grow without limit and overflow.
+- Using `int`. With a modulus near $10^9$, the product of two remainders is near $10^{18}$. This fits in `long long` (maximum about $9.2 \cdot 10^{18}$) but not in `int` (maximum about $2.1 \cdot 10^9$).
+- Forgetting `base %= mod` before the loop when the input base can be larger than the modulus.
+
+Cost: the loop runs once per bit of the exponent, so about $\log_2 b$ times (30 for $10^9$, 60 for $10^{18}$). Each run does at most two multiplications. Memory is O(1).
 
 ## Modulo arithmetic with division
+
+Why division needs a new idea: addition, subtraction and multiplication work directly under a modulus, because we may take the remainder after each operation. Division does not. For example, (6 / 3) % 7 = 2 is fine, but for (5 / 3) % 7 the ordinary quotient 1.666... is not an integer, and cutting it down would give a wrong answer. We need a number that behaves like "one third" inside the modulus.
 
 ### Modular inverse
 
@@ -99,19 +123,23 @@ x^-1 % 7: NA, 1, 4, 5, 2, 3, 6
 
 ![Inverses mod 7](../../../assets/notes/2-2-modular-arithmetic/figA03_inverse_mod7.png)
 
-*Har x ke liye x * x^-1 % 7 = 1. 0 ka inverse nahi.*
+*For every x, x * x^-1 % 7 = 1. The number 0 has no inverse.*
 
 **\*** Modulo inverses are only possible for prime modulis.
 
 **\*** Inverses are unique for every number & prime modulo.
 
-Note: exact condition gcd(a, m) = 1 hai. Prime m ho toh har non-zero number ka inverse milta hai. m = 10 ho toh 4 ka inverse nahi (4 aur 10 mein common factor 2).
+Note: the exact condition is gcd(a, m) = 1. If m is prime, every non-zero number has an inverse. If m = 10, then 4 has no inverse, because 4 and 10 share the common factor 2.
+
+Why: a remainder of 1 modulo 10 means the number is 1 + 10k for some k, which is always odd. But 4·x is always even, so it can never leave remainder 1 when divided by 10.
 
 Now $\left(\frac{a^b}{c}\right)$ % m = ($a^b \times c^{-1}$) % m
 
 = [binpow (a,b,m) * inv (c,m)] % m
 
 ### Finding inverses
+
+Searching x by trying all values takes O(m) time, which is too slow for m near $10^9$. Fermat's Little Theorem gives a formula instead.
 
 Fermat's Little Theorem:
 
@@ -129,7 +157,7 @@ Eg:  3^-1 % 7                       |  2^-1 % 7
                                     |       = 32 % 7
                                     |       = 4  ✓
 
-(a multiple of p ho toh ye theorem nahi chalta, matlab inverse hai hi nahi.)
+(If a is a multiple of p, the theorem does not apply. In that case no inverse exists at all, because a % p = 0 and 0 times anything is 0, never 1.)
 
 ```cpp
 // Fabricator/Maths/Modulo.cpp
@@ -140,7 +168,7 @@ int inv(int num){
 
 Checked: inv(3) = 333333336 and 3 * 333333336 % (10^9+7) = 1.
 
-(printing wala rule v) 0.4 me dekha tha, yaha wahi use ho raha hai.)
+(The rule about printing a non-negative remainder was seen in 0.4, and it is used again here.)
 
 Ques: $\left(A + \frac{(B-C)^D}{E} - F * G\right)$ % $(10^9+7)$
 
@@ -164,7 +192,9 @@ m = $10^9+7$
       - [(F % m) * (G % m)] % m] + m] % m.
 ```
 
-Apna solve():
+Why the extra "+ m": B - C can be negative, and in C++ the remainder of a negative number is negative or zero. Adding m before the last remainder moves the result into the range 0 to m-1.
+
+Our solve():
 
 ```cpp
 // Fabricator/Maths/Modulo.cpp
@@ -184,7 +214,7 @@ void solve() {
 }
 ```
 
-Note: logic sahi hai par `int` use hua hai, toh `num * den` aur `f * g` (~$10^{18}$) overflow ho jaate hain. Sample 5 3 10 3 2 4 6 pe ye 298690449 deta hai, sahi answer 499999813 (checked). `long long` karna padega.
+Note: the logic is correct, but `int` is used, so `num * den` and `f * g` (about $10^{18}$) overflow. On the sample 5 3 10 3 2 4 6 this gives 298690449, while the correct answer is 499999813 (checked). It must be changed to `long long`.
 
 ### GP sum under mod
 
@@ -196,6 +226,8 @@ Ques: F(x, m, n) = $(1 + x^1 + x^2 + x^3 + .... + x^n)$ % m
 
 $1 \le x, n, m \le 10^9$
 
+Why a formula is needed: adding n terms one by one takes up to $10^9$ steps, which is too slow. The formula needs only one fast power and one inverse.
+
 $1 + x + x^2 + ..... + x^n = \frac{(x^{n+1}-1)}{x-1}$
 
 [($x^{n+1}$ - 1) * inv ((x-1), m)] % m.
@@ -205,13 +237,13 @@ $1 + x + x^2 + ..... + x^n = \frac{(x^{n+1}-1)}{x-1}$
 if x == 1   then f(n) = (n+1) % m
             ↳ gp sum formula will fail.
 
-Note: x - 1 agar m ka multiple hai toh bhi fail hoga, yaani check `x % m == 1` hona chahiye.
+Note: the formula also fails if x - 1 is a multiple of m, because then x - 1 has no inverse. So the check must be `x % m == 1`.
 
 works for m prime.
 
 for m not prime:
 
-(inverse of (x-1) exist nahi karta, toh divide-and-conquer.)
+(the inverse of (x-1) may not exist, so we use divide and conquer.)
 
 f(x,n) = $1 + x + x^2 + x^3 + x^4 + x^5$       n % 2 == 1
 
@@ -229,13 +261,13 @@ f(x, n) = $1 + x + x^2 + x^3 + x^4$       n % 2 == 0.
 
 = $1 + x (f(x, n-1))$
 
-Dry run: x = 2, n = 5 → 6 terms (1+2+4+8+16+32 = 63). n odd → $(1 + 2^3) \cdot f(2, 2)$ = 9 × 7 = 63 ✓.
+Dry run: x = 2, n = 5 → 6 terms (1+2+4+8+16+32 = 63). n is odd → $(1 + 2^3) \cdot f(2, 2)$ = 9 × 7 = 63 ✓.
 
-Note: n odd matlab terms even (n+1), isliye half-half split. n even matlab terms odd, ek term nikalo.
+Note: n odd means the number of terms (n+1) is even, so we can split them into two equal halves. n even means the number of terms is odd, so we take one term out first.
 
-T.C. = O(log n) levels, har level pe binpow O(log n) → O(log² n).
+T.C. = O(log n) levels, and each level runs binpow in O(log n) → O(log² n).
 
-Apna code:
+Our code:
 
 ```cpp
 // Fabricator/Maths/Modulo.cpp
@@ -275,7 +307,7 @@ int f2(int x, int n, int m){
 }
 ```
 
-Note: is_prime galat hai, pehle hi `n % i` non-zero pe true return kar deta hai (9 aur 15 ko prime bolega, checked). f2 mein n == 0 ka base case nahi hai, toh recursion ruka nahi, f2(2, 5, 1000) segmentation fault deta hai (checked). f mein f2 declare hone se pehle use hua hai, aur mpow/MOD fixed hai (m ki jagah). Int products overflow: f(123456789, 3, MOD) = -903367421, sahi 117531387. Idea sahi hai, bas ye fix chahiye. Working version:
+Note: is_prime is wrong. It returns true as soon as `n % i` is non-zero, so it reports 9 and 15 as prime (checked). f2 has no base case for n == 0, so the recursion never stops, and f2(2, 5, 1000) gives a segmentation fault (checked). Also, f uses f2 before f2 is declared, and it uses the fixed mpow/MOD instead of m. Finally, the int products overflow: f(123456789, 3, MOD) = -903367421, while the correct value is 117531387. The idea is correct, and only these fixes are needed. Working version:
 
 ```cpp
 /*
@@ -302,7 +334,7 @@ long long gpAny(long long x, long long n, long long m) {
 }
 ```
 
-Checked: 20000 random cases each (any m ≤ 200, primes ≤ 101) vs plain loop, no mismatch. gpAny(2, 5, 1000) = 63.
+Checked: 20000 random cases each (any m up to 200, primes up to 101) against a plain loop, no mismatch. gpAny(2, 5, 1000) = 63.
 
 ### Binary multiplication
 
@@ -313,9 +345,13 @@ Calculate (A.B) % M.
 ↳ Ans = ((A % M) * (B % M)) % M
    ↳ mathematically correct but might overflow for M ~ $10^{18}$.
 
+Why it overflows: after the remainders, both factors can be near $10^{18}$, so the product is near $10^{36}$. A `long long` holds only about $9.2 \cdot 10^{18}$.
+
 Use binary multiplication [ Like binary exponentiation ].
 
-Idea: exponentiation mein "result × base" aur "base²" tha, yaha "result + a" aur "a + a" (double). Sab kuch &lt; M ≤ $10^{18}$, toh a + a ≤ $2 \times 10^{18}$ long long mein fit. T.C. = O(log B).
+Idea: exponentiation uses "result × base" and "base²". Here the operations are "result + a" and "a + a" (doubling). Everything stays below M ≤ $10^{18}$, so a + a ≤ $2 \times 10^{18}$ fits in `long long`. T.C. = O(log B).
+
+Tiny example: 6 × 5 with M = 7. Write 5 = 101 (binary). Bit 1: res = 0 + 6 = 6, a = 12 % 7 = 5. Bit 0: res stays 6, a = 10 % 7 = 3. Bit 1: res = 6 + 3 = 9 % 7 = 2. The answer 2 equals 30 % 7 = 2.
 
 ```cpp
 // Fabricator/Maths/BinaryMultiplication.cpp
@@ -333,7 +369,7 @@ long long bin_mul(long long a, long long b, long long mod){
 }
 ```
 
-Checked: 100000 random triples ≤ $10^{18}$ vs 128-bit, no mismatch. bin_mul(999999999999999999, 999999999999999989, 1000000000000000000) = 11. (GCC mein __int128 bhi hai: (__int128)a * b % m.)
+Checked: 100000 random triples up to $10^{18}$ against 128-bit arithmetic, no mismatch. bin_mul(999999999999999999, 999999999999999989, 1000000000000000000) = 11. (GCC also has the type __int128, so (__int128)a * b % m works too.)
 
 ## Fermat's Little Theorem
 
@@ -343,9 +379,13 @@ $a^{p-1} \equiv 1 \mod p$
 
 [$a^{p-1} \% p == 1$]
 
-(mod = remainder after dividing. Second form tab chalta hai jab p, a ko divide nahi karta. a = p ho toh remainder 0 aayega.)
+(mod = remainder after dividing. The second form holds when p does not divide a. If a = p, the remainder is 0.)
+
+Small check with p = 7: $2^6 = 64 = 63 + 1$, so $2^6$ % 7 = 1. Also $3^6 = 729 = 7 \cdot 104 + 1$, so $3^6$ % 7 = 1.
 
 for instance: $a^{b^c} \% p = a^{(b^c \% (p-1))} \% p$
+
+Why this is needed: in $a^{b^c}$ the exponent $b^c$ can have millions of digits, so we cannot even store it. The theorem lets us replace it by its remainder modulo p-1, which is small.
 
 $a^{3p+4} = a^{3(p-1)+7}$
 
@@ -355,7 +395,9 @@ $(a^{3(p-1)} . a^7) \% p$
    (under $a^{(p-1)} \% p$: "1")
 = $a^7 \% p$.
 
-Bas, har $(p-1)$ ka block exponent me 1 ban jata hai. Isliye exponent ko $p-1$ se mod kar do.
+So every block of $(p-1)$ in the exponent turns into 1. That is why we take the exponent modulo $p-1$.
+
+Numeric check: p = 7, a = 2, exponent 25. Since 25 % 6 = 1, the claim is $2^{25}$ % 7 = $2^1$ % 7 = 2. Directly: $2^3 = 8 \equiv 1$, and 25 = 24 + 1, so $2^{25} \equiv 2$. Both agree.
 
 Another use: $a \cdot a^{p-2} = a^{p-1} \equiv 1$, so $a^{p-2}$ = modular inverse of a (division under mod).
 
@@ -386,7 +428,7 @@ long long bin_pow(long long base, long long pow, long long mod){
 }
 ```
 
-$a^{b^c} \% p$ in code (same logic as AZExponentiation's solve, cout → return):
+$a^{b^c} \% p$ in code (same logic as AZExponentiation's solve, with each cout turned into a return):
 
 ```cpp
 /*
@@ -411,7 +453,13 @@ long long power_tower_mod(long long a, long long b, long long c, long long p){
 }
 ```
 
-(p = 1, b = 0, p | a ye special cases hain; p | a pe theorem apply nahi hota, answer 0. Tested: $5^{p} \% p = 5$, $5^{p-1} \% p = 1$ for $p = 10^9+7$, inv(3) = 333333336.)
+(p = 1, b = 0 and p dividing a are special cases. When p divides a, the theorem does not apply, and the answer is 0. Tested: $5^{p} \% p = 5$, $5^{p-1} \% p = 1$ for $p = 10^9+7$, inv(3) = 333333336.)
+
+Common mistakes:
+
+- Reducing the exponent modulo p instead of p-1.
+- Applying the reduction when p divides a.
+- Computing $b^c$ first as an ordinary number. It overflows, so $b^c$ must itself be computed modulo p-1.
 
 ## Euler's Theorem: (General version).
 
@@ -423,7 +471,11 @@ fermat's little theorem is direct implication of Euler's theorem.
  then $\phi(m) = m-1$
  ∴ $a^n \mod m = a^{n \% (m-1)} \mod m$.
 
-Note: gcd(a, m) = 1 nahi hai toh ye reduction seedha nahi chalta. Bahut bade n ke liye generalised form: $n \ge \log_2 m$ ho toh $a^n \equiv a^{(n \% \phi(m)) + \phi(m)} \pmod m$.
+Why we need it: Fermat works only when the modulus is prime. For a composite modulus such as 10, Euler's theorem says the powers of a (when a is co-prime to the modulus) repeat with a period that divides $\phi(m)$.
+
+Example: $3^{100}$ mod 10. Here gcd(3, 10) = 1 and $\phi(10) = 4$. Since 100 % 4 = 0, the answer is $3^0$ = 1. Check: $3^4 = 81 \equiv 1 \pmod{10}$, and 100 is a multiple of 4.
+
+Note: if gcd(a, m) is not 1, this reduction does not work directly. For a very large n there is a generalised form: if $n \ge \log_2 m$, then $a^n \equiv a^{(n \% \phi(m)) + \phi(m)} \pmod m$.
 
 ```cpp
 // needs bin_pow(base, pow, mod) from the Fermat section
@@ -450,16 +502,20 @@ long long euler_power(long long a, long long n, long long m){
 }
 ```
 
-(m = $10^6$, $\phi$ = 400000, direct power se compare kiya, match.)
+(For m = $10^6$, $\phi$ = 400000. The result was compared with the direct power and matched.)
+
+Cost: finding $\phi(m)$ by trial division takes O($\sqrt{m}$) steps (about 1000 for $m = 10^6$). The power itself takes O(log n).
 
 ## Quick revision
 
-- Inverse (m prime) = $a^{m-2}$ % m. Divide by c → multiply by inv(c). Inverse exist iff gcd(a, m) = 1.
-- inverses mod 7: 1→1, 2→4, 3→5, 4→2, 5→3, 6→6.
-- GP sum: m prime → $(x^{n+1}-1) \cdot inv(x-1)$, x % m == 1 → (n+1) % m. Any m → n odd: $(1 + x^{(n+1)/2}) \cdot f(n/2)$, n even: 1 + x·f(n-1).
-- (A·B) % M, M ≤ $10^{18}$ → binary multiplication (add + double).
-- Fermat: $a^{p-1} \equiv 1$ (p ∤ a) → exponent mod $(p-1)$; inverse = $a^{p-2}$.
-- Euler: gcd(a,m) = 1 → exponent mod $\phi(m)$.
+- Inverse (m prime) = $a^{m-2}$ % m. Divide by c → multiply by inv(c). The inverse exists if and only if gcd(a, m) = 1.
+- Inverses mod 7: 1→1, 2→4, 3→5, 4→2, 5→3, 6→6.
+- Binary exponentiation: square the base for every bit, multiply into the result when the bit is 1. O(log b) steps, and take the remainder at every step.
+- GP sum: m prime → $(x^{n+1}-1) \cdot inv(x-1)$, and if x % m == 1 the sum is (n+1) % m. Any m → n odd: $(1 + x^{(n+1)/2}) \cdot f(n/2)$, n even: 1 + x·f(n-1).
+- (A·B) % M with M ≤ $10^{18}$ → binary multiplication (add and double).
+- Fermat: $a^{p-1} \equiv 1$ (p does not divide a) → reduce the exponent modulo $(p-1)$; inverse = $a^{p-2}$.
+- Euler: gcd(a,m) = 1 → reduce the exponent modulo $\phi(m)$.
+- Use `long long` and keep results in the range 0 to m-1.
 
 ## Practice problems
 

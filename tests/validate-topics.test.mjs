@@ -69,3 +69,15 @@ test('exam covers every topic of the phase', () => expectError(run06((d, t) => {
   const i = t.problems.findIndex((p) => p.id === 'ac-abc129_d');
   t.problems.splice(i, 1);
 }), /phase exam has no problem from topic 0.3/));
+
+// Notes-format lessons (PLAN.md Section 6A).
+const asNotes = (d, t) => {
+  t.format = 'notes';
+  d.lessons['1.3'].text = '---\ntopic: "1.3"\n---\n\n## What this note covers\n\nUse binary search here.\n\n## Quick revision\n\n- window\n\n## Practice problems\n\n- [A](https://example.com)\n\n### Problem ladder\n';
+};
+test('notes lesson: own sections, later-topic words and any heading names are fine', () => assert.deepEqual(run(asNotes), []));
+test('notes lesson: needs Quick revision', () => expectError(run((d, t) => { asNotes(d, t); d.lessons['1.3'].text = d.lessons['1.3'].text.replace('## Quick revision', '## Summary'); }), /missing or out-of-order heading "## Quick revision"/));
+test('notes lesson: Practice problems is the last section', () => expectError(run((d, t) => { asNotes(d, t); d.lessons['1.3'].text += '\n## More\n'; }), /"## Practice problems" must be the last "## " heading/));
+test('headingsOf: a ~~~ line inside a ``` block does not end the block', () => {
+  assert.deepEqual(headingsOf('## A\n```\n~~~~\n## not a heading\n```\n## B\n'), ['## A', '## B']);
+});

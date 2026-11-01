@@ -22,6 +22,8 @@ export const LESSON_HEADINGS = [
   '## 14. Decision map update',
 ];
 // Topic 7.8 replaces Sections 4, 6, and 7 with a recap (PLAN.md Section 4 notes).
+// Notes-format lessons (PLAN.md Section 6A) keep the owner's own section order; only these two are required, in this order.
+export const NOTES_HEADINGS = ['## Quick revision', '## Practice problems'];
 const HEADINGS_78 = LESSON_HEADINGS.filter((h) => !/^## [467]\. /.test(h));
 
 export const WORKED_EXAMPLE_STEPS = [
@@ -39,10 +41,13 @@ export const checkpointMinutes = (phase) => (phase <= 1 ? 90 : phase <= 4 ? 120 
 /** Headings (outside fenced code) in the order they appear. */
 export function headingsOf(text) {
   const out = [];
-  let fence = false;
+  let fence = null; // the fence line that opened the current code block (a ~~~ line inside a ``` block does not close it)
   for (const line of text.split('\n')) {
-    if (/^\s*(```|~~~)/.test(line)) fence = !fence;
-    else if (!fence && /^#{2,4} /.test(line)) out.push(line.trimEnd());
+    const m = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (m) {
+      if (!fence) fence = m[1];
+      else if (m[1][0] === fence[0] && m[1].length >= fence.length && /^\s*(`+|~+)\s*$/.test(line)) fence = null;
+    } else if (!fence && /^#{2,4} /.test(line)) out.push(line.trimEnd());
   }
   return out;
 }
@@ -211,7 +216,7 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
       }
     }
 
-    if (isR2(tf)) validateR2({ tid, t, tf, lesson: lessons[tid], curriculum, byId, topics, patterns, bankById, F, err, fsx });
+    if (isR2(tf)) validateR2({ tid, t, tf, lesson: tf.format === 'notes' ? undefined : lessons[tid], curriculum, byId, topics, patterns, bankById, F, err, fsx });
 
     // Glossary terms.
     for (const term of tf.glossary_added) {
@@ -230,7 +235,8 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
     }
     if (!topics[tid]) err(lesson.path, `no data file src/data/topics/${fileId(tid)}.yaml`);
     const hs = headingsOf(lesson.text);
-    const required = tid === '7.8' ? HEADINGS_78 : LESSON_HEADINGS;
+    const isNotes = topics[tid]?.format === 'notes';
+    const required = isNotes ? NOTES_HEADINGS : tid === '7.8' ? HEADINGS_78 : LESSON_HEADINGS;
     let i = 0;
     for (const h of hs) if (i < required.length && h === required[i]) i++;
     if (i < required.length) err(lesson.path, `missing or out-of-order heading "${required[i]}"`);
@@ -238,6 +244,10 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
     for (const h of hs) {
       if (/^### Example \d+: /.test(h)) examples.push([]);
       else if (h.startsWith('#### ') && examples.length) examples.at(-1).push(h);
+    }
+    if (isNotes) {
+      if (hs.filter((h) => h.startsWith('## ')).at(-1) !== '## Practice problems') err(lesson.path, 'notes lesson: "## Practice problems" must be the last "## " heading');
+      continue;
     }
     examples.forEach((steps, k) => {
       if (steps.join('\n') !== WORKED_EXAMPLE_STEPS.join('\n')) err(lesson.path, `Example ${k + 1} must have exactly the six step headings in order`);

@@ -52,7 +52,7 @@ export type TopicProblem = {
   hints: string[] | null; editorial_url: string | null; review_set: 1 | 2 | 3 | null;
 };
 export type TopicFile = {
-  id: string; draft: boolean; cards: Card[]; problems: TopicProblem[];
+  id: string; draft: boolean; format: 'template' | 'notes'; cards: Card[]; problems: TopicProblem[];
   uses?: { topic: string; what: string }[];
   theorems?: { id: string; title: string; plain_words: string; code: string }[];
   drill: { problem: string; answer?: Ref; answer_card: string; answer_topic: string; property: string; why_others_fail: string }[];

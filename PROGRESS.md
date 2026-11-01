@@ -337,3 +337,8 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - **"Builds on" header line.** Revision 5 (Section 11.7) puts it back in the design `TopicHeader`; PLAN.md Revision 2.1 removed it for the CP track. Implemented as Revision 5 says, for design topics only.
 - **Plan fixes made while implementing** (Revision 5 text unchanged; tell me if you want it amended): (1) `labserver.sh` calls itself with `bash "$0"` (the plan's `"$0" sync` fails without an executable bit); (2) the `.env.labserver` DSN values are quoted, because the file is sourced by bash and `tcp(...)` is a syntax error unquoted; (3) the stack files take host ports from `LAB_*_PORT` variables so they can run beside existing services; (4) Appendix A's `tests.cpp` includes `shapes.hpp`, which the plan does not name as a file.
 - **Browser checks** need Chromium for Playwright. It was installed outside the repo (`/tmp/pw`); run `npm install --no-save playwright && npx playwright install chromium` in the repo to repeat `bash tests/e2e-design.sh`.
+
+
+## 2026-11-01: notes-format lessons
+
+At Saurabh's request the lessons for 0.1, 0.2, 0.4, 0.6, 1.2-1.7, 2.1-2.4 are written from his notebooks (PLAN.md Section 6A, `format: notes`). Imported with `scripts/import_note.mjs`. Open questions for Saurabh: the practice links of the Maths notebook were assigned to 0.4/2.1/2.2/2.3 by problem name (maang.in pages could not be opened), so a few may sit in the wrong topic; the Debugging notebook is attached to 0.1. Other topics still use the 14-section template until converted.

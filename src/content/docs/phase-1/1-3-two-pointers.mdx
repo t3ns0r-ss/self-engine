@@ -4,675 +4,1383 @@ sidebar:
   order: 9
 topic: "1.3"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="1.3" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. You are given $n$ positive integers $a_0, a_1, \dots, a_{n-1}$ and a number $K$. Find the length of the longest run of consecutive elements whose sum is at most $K$. The limits are $n \le 2 \cdot 10^5$ and $a_i \le 10^9$.
+Two Pointers (TP) + Sliding Window.
+- pointer = just an index in the array
+- subarray = continuous part of the array, subsequence = same order but gaps allowed
+- T.C. = time complexity, DS = data structure, BS = binary search, TLE = time limit exceeded
 
-The direct method tries every start $l$ and every end $r$. There are about $n^2 / 2 = 2 \cdot 10^{10}$ pairs. Even if each pair's sum takes one step (with the prefix sums of topic 1.2, Theorem 1.2.1), that is about 200 seconds at $10^8$ simple operations per second. The time limit is usually 1 or 2 seconds.
+Idea: instead of a nested loop, move two indices smartly, neither goes back → O(n).
 
-The key idea: if a run of elements has sum at most $K$, then every shorter run inside it also has sum at most $K$, because all values are positive and removing one can only lower the sum. So when we move the end of the run to the right, the best start for the new end is never to the left of the best start for the old end. We keep two indices, a left one and a right one, and both only ever move to the right. Each moves at most $n$ times, so the whole search costs about $2n$ steps instead of $n^2/2$.
+- Two pointers: where it comes from
+- Sliding window (fixed length, form 0)
+- Two pointers forms
+- Form 1: variable sized window
+  - flips problem
+  - ask, what, criteria, monotonic criteria
+  - brute force → snake
+  - data structure for the window
+  - why head = -1
+  - T.C.
+  - count subarrays with distinct ≤ k
+  - distinct == k and ≥ k
+  - shortest subarray with distinct ≥ k
+- Form 2: opposite direction
+  - container with most water
+  - 3-Sum
+- Form 3: separate sequences
+  - subsequence
+  - inverted index (search)
+  - matrix: minimise max - min
+- Quick revision
+- Practice problems
 
-This lesson turns that idea into proofs and templates, and shows the three other forms it takes: a window of fixed length, two indices moving towards each other in a sorted array, and two indices walking through two sorted lists.
+## Two Pointers
 
-## 2. Prerequisites and scope
+BS (binary search) has two kinds:
+- BS on Ans
+- BS on Every start → this class of problems can be optimally solved using TP.
 
-### What you need
+![BS splits into BS on answer and BS on every start; the second is solved optimally by TP](../../../assets/notes/1-3-two-pointers/fig01_bs_vs_tp.png)
 
-<WhatYouNeed topic="1.3" />
+*BS on every start → TP, O(n).*
 
-### What this topic does not cover
+TP patterns:
+- two pointers moving towards each other → classical
+- two pointers moving in same direction maintaining a window → medium/hard
 
-- For each start, finding the farthest end with binary search on the prefix sums. It costs $O(n \log n)$ and works in the same situations as Theorem 1.3.1. Covered in topic 1.4 (binary search).
-- The maximum or minimum of every window of fixed length in $O(n)$ total, using a monotonic deque. Here a `multiset` does it in $O(n \log n)$. Covered in topic 1.6.
-- Proving that a pairing such as "heaviest with lightest" is optimal by an exchange argument. The ladder problems that need such a pairing give the short argument in their hints; the general method is covered in topic 1.5 (greedy I).
+![Pattern 1: pointers at both ends moving inward. Pattern 2: tail and head moving right around a window](../../../assets/notes/1-3-two-pointers/fig02_tp_patterns.png)
 
-## 3. Definitions
+*Left: towards each other. Right: same direction with a window.*
 
-Indices start at 0. For an array $a$ of length $n$:
+Why is it fast? dono pointers sirf aage jaate hain, piche nahi. Each moves at most n steps → n + n = 2n → O(n).
 
-- A subarray $[l, r]$ is the run $a_l, \dots, a_r$ with both ends included (topic 1.2). Example: in $a = [3, 1, 2]$, the subarray $[1, 2]$ is $1, 2$.
-- A **window** is a subarray we are currently looking at, described by two indices $l$ and $r$. The **length** of $[l, r]$ is $r - l + 1$. We also allow the **empty window** $l = r + 1$, of length 0.
-- A **pointer** here means an integer variable holding an index into an array (not a C++ pointer type). **Two pointers** is the method of keeping two such indices and moving each in only one direction.
-- A **sliding window** is a window whose ends both move right as the algorithm runs.
-- A **validity condition** is a yes/no property of windows, decided by the problem. Example: "the sum is at most $K$". A window with the property is **valid**.
-- A **sub-window** of $[l, r]$ is any window $[l', r']$ with $l \le l'$ and $r' \le r$ (possibly empty). Example: $[2, 3]$ is a sub-window of $[1, 4]$.
-- A validity condition is **closed under shrinking** if every sub-window of a valid window is valid. Example: "sum at most $K$" with positive values is closed under shrinking. With values $[5, -4]$ and $K = 2$, the window $[0, 1]$ has sum 1 and is valid, but its sub-window $[0, 0]$ has sum 5 and is not, so with negative values the condition is not closed under shrinking.
-- A validity condition is **closed under extension** if every window that contains a valid window is valid. Example: "sum at least $S$" with positive values. A condition is closed under extension exactly when its opposite ("not valid") is closed under shrinking.
-- A **subsequence** of a sequence is what remains after deleting some elements, keeping the order of the rest. Example: `ace` is a subsequence of `abcde`; `aec` is not. Unlike a subarray, a subsequence may skip elements.
-- Non-decreasing (topic 1.1) is used for functions on indices too: $f$ is non-decreasing if $i < j$ implies $f(i) \le f(j)$.
-- Amortised analysis (topic 0.2, Theorem 0.2.4) bounds the total cost of a sequence of steps instead of each step alone. Example: one `while` loop inside a `for` loop can run many times for one value of `r`, but if each run moves `l` right and `l` never passes $n$, all runs together are at most $n$.
+## TP & sliding window
 
-## 4. Theory and proofs
+- → fixed length window. (easy)
+- → variable length window.
 
-Throughout, $n$ is the array length and indices run from 0 to $n - 1$.
+fixed length window matlab window ka size k hi rehta hai, ek step aage → left wala bahar, naya right wala andar. (this is "0-form" in the repo)
 
-### 4.1 Longest valid window
+![Window of length 3 sliding over an array, minimum of each window marked](../../../assets/notes/1-3-two-pointers/fig03_fixed_window.png)
 
-For each right end $r$, let $L(r)$ be the smallest $l$ such that $[l, r]$ is valid. Since the empty window $[r + 1, r]$ is valid (we assume this, and check it in each problem), $L(r)$ always exists and $L(r) \le r + 1$.
+*k = 3, slide by one, min of each window in green.*
 
-**Theorem 1.3.1 (shrinkable window).** Suppose the validity condition is closed under shrinking and the empty window is valid. Then:
-1. $L(r) \le L(r + 1)$ for every $r$ (the best left end never moves left);
-2. the loop below ends each iteration with `l` $= L(r)$, so `r - l + 1` is the length of the longest valid window ending at `r`;
-3. the loop runs at most $2n$ validity checks in total.
+Ques: given an array of size n and a window of size k. Find minimum of all subarrays of size k.
 
-```
-l = 0
-for r = 0 .. n-1:
-    add a[r] to the window
-    while window [l, r] is not valid:
-        remove a[l] from the window; l = l + 1
-    best = max(best, r - l + 1)
-```
+Brute force: for every window loop k elements → O(n·k).
 
-:::tip[In plain words]
-If every part of a valid window is valid too, then for each right end the best left end never moves left as the right end grows. One pass that moves both ends only forward finds the longest valid window.
-:::
+Better: keep a DS of the current window.
+- multiset (sorted, duplicates allowed): insert new, erase the element that left, min = first. O(n log k)
+- monotonic deque (queue we can pop from both ends): keep indices whose values are increasing, so front is always the min. Every index pushed once, popped once → O(n)
 
-**A tiny instance.** $a = [3, 1, 2, 1, 4, 1]$, $K = 5$, condition "sum at most $K$".
-
-| $r$ | $a_r$ | `l` before | `l` after | window sum | $r - l + 1$ | best |
-|---|---|---|---|---|---|---|
-| 0 | 3 | 0 | 0 | 3 | 1 | 1 |
-| 1 | 1 | 0 | 0 | 4 | 2 | 2 |
-| 2 | 2 | 0 | 1 | 3 | 2 | 2 |
-| 3 | 1 | 1 | 1 | 4 | 3 | 3 |
-| 4 | 4 | 1 | 3 | 5 | 2 | 3 |
-| 5 | 1 | 3 | 4 | 5 | 2 | 3 |
-
-At $r = 4$ the sum would be 8, so `l` moves twice (removing 1 and 2). `l` moved 4 times in total and `r` 6 times. The answer is 3 (the window $[1, 3]$ with values $1, 2, 1$).
-
-
-**Proof.**
-1. Part 1. The window $[L(r+1), r+1]$ is valid. Its sub-window $[L(r+1), r]$ is valid by closure under shrinking.
-2. $L(r)$ is the smallest left end that is valid with right end $r$, so $L(r) \le L(r+1)$.
-3. Part 2, by induction on $r$. Before the first iteration `l` $= 0 \le L(0)$. Assume `l` $\le L(r)$ when iteration $r$ starts (true for $r = 0$; for $r > 0$ the previous iteration ended with `l` $= L(r-1) \le L(r)$ by part 1).
-4. Every $l' < L(r)$ makes $[l', r]$ invalid, by the definition of $L(r)$, so the `while` loop keeps moving `l` while `l` $< L(r)$. When `l` $= L(r)$ the window is valid and the loop stops.
-5. Any valid window $[l', r]$ has $l' \ge L(r)$, so its length is at most $r - L(r) + 1$, and this length is reached.
-6. Part 3. Each check either ends a `while` loop (at most once per $r$, so $n$ times) or is followed by `l = l + 1`. `l` starts at 0 and never passes $n$, so it increases at most $n$ times. Total checks: at most $2n$. $\square$
-
-:::note[This proof needs]
-1. Validity is closed under shrinking: every sub-window of a valid window is valid.
-2. The empty window is valid.
-3. The window's validity can be checked after adding or removing one element (here, by keeping its sum or its counts up to date).
-:::
-
-<TheoremCode unit="1.3/thm-1" />
-
-The first example is the trace above; in the second no window has sum at most 4, so the answer is 0 (the empty window); in the third every window is valid.
-
-**Complexity.** $O(n)$ checks, adds, and removes. With a running sum each costs $O(1)$, so $O(n)$ in total. With a `map` of counts each costs $O(\log n)$, so $O(n \log n)$.
-
-**Shortest valid window.** Some problems ask for the shortest window with sum at least $S$. "Sum at least $S$" is closed under extension, not under shrinking. Its opposite, "sum less than $S$", is closed under shrinking, and the empty window has sum $0 < S$ when $S > 0$. Apply Theorem 1.3.1 to the opposite condition: after the `while` loop, `l` $= L(r)$ is the smallest left end with sum less than $S$, so if `l` $> 0$ the window $[L(r) - 1, r]$ is the shortest window ending at $r$ with sum at least $S$. In code this is usually written the other way round: move `l` right while the window still has sum at least $S$, recording the length before each move. Both forms run in $O(n)$.
-
-
-### 4.2 Counting valid windows
-
-**Theorem 1.3.2 (counting windows).** Under the same conditions as Theorem 1.3.1, for each $r$ the window $[l, r]$ is valid exactly when $L(r) \le l \le r + 1$. So the number of non-empty valid windows is
-$$\sum_{r=0}^{n-1} \bigl(r - L(r) + 1\bigr).$$
-
-:::tip[In plain words]
-When every part of a valid window is valid, the valid left ends for a fixed right end are all positions from the best one up to the right end itself, so each right end contributes one count to the number of valid windows.
-:::
-
-**A tiny instance.** On the same input ($a = [3, 1, 2, 1, 4, 1]$, $K = 5$) the values of $r - L(r) + 1$ in the table above are $1, 2, 2, 3, 2, 2$, so there are 12 windows with sum at most 5. Counting by hand over all 21 windows gives the same 12.
-
-
-**Proof.**
-1. If $l < L(r)$, the window $[l, r]$ is invalid by the definition of $L(r)$.
-2. If $L(r) \le l \le r + 1$, the window $[l, r]$ is a sub-window of the valid window $[L(r), r]$, so it is valid by closure under shrinking.
-3. Each non-empty valid window has exactly one right end $r$, and for that $r$ the possible left ends are $L(r), \dots, r$: that is $r - L(r) + 1$ of them. $\square$
-
-:::note[This proof needs]
-1. Validity is closed under shrinking.
-2. The empty window is valid (so $L(r)$ exists).
-:::
-
-<TheoremCode unit="1.3/thm-2" />
-
-The first example is the instance; when every window is valid ($K = 3$ on $1, 1, 1$) there are $3 + 2 + 1 = 6$.
-
-**Complexity.** The same loop as Theorem 1.3.1, adding `r - l + 1` instead of taking a maximum: $O(n)$ checks. The count can reach $n(n+1)/2 \approx 2 \cdot 10^{10}$ for $n = 2 \cdot 10^5$, so it needs `long long`.
-
-**Counting through the opposite.** To count windows with sum *at least* $S$, count the windows with sum less than $S$ (closed under shrinking) and subtract from $n(n+1)/2$.
-
-
-### 4.3 Windows of fixed length
-
-Sometimes every window of exactly length $k$ must be examined. There are $n - k + 1$ of them; recomputing each from scratch costs $O(k)$, so $O(nk)$ in total, which is about $10^{10}$ for $n = 2 \cdot 10^5$ and $k = 10^5$.
-
-**Theorem 1.3.3 (fixed window).** Suppose we keep a *summary* of a window (a sum, a table of counts, a `multiset` of values, …) with two operations: *add* an element and *remove* an element, where removing $x$ from the summary of a collection gives the summary of the collection without one copy of $x$. Then the loop below gives, at each `r` $\ge k - 1$, the summary of exactly $[r - k + 1, r]$:
-
-```
-for r = 0 .. n-1:
-    add a[r]
-    if r >= k: remove a[r - k]
-    if r >= k - 1: use the summary of [r - k + 1, r]
-```
-
-:::tip[In plain words]
-To look at every window of exactly k elements, add the element that enters and remove the one that leaves. This works whenever the summary of the window can undo an add, such as a sum, a table of counts or a multiset.
-:::
-
-**A tiny instance.** For $a = (3, 1, 2, 1, 4, 1)$ and $k = 3$ the windows are $[3, 1, 2], [1, 2, 1], [2, 1, 4], [1, 4, 1]$. The sums come from the previous one by one add and one remove: $6$, then $6 - 3 + 1 = 4$, then $4 - 1 + 4 = 7$, then $7 - 2 + 1 = 6$.
-
-**Proof.**
-1. By induction on $r$, after iteration $r$ the summary holds the elements $a_{\max(0,\,r-k+1)}, \dots, a_r$.
-2. Base case: for $r = 0$ it holds $a_0$.
-3. Step: going from $r - 1$ to $r$ adds $a_r$. If $r \ge k$ the previous window started at $r - k$, and removing $a_{r-k}$ leaves exactly $a_{r-k+1}, \dots, a_r$.
-4. If $r < k$, nothing is removed and the window starts at 0. $\square$
-
-:::note[This proof needs]
-1. Every window considered has the same length $k$.
-2. The summary supports removing one element exactly (undoing an add), not only adding.
-:::
-
-<TheoremCode unit="1.3/thm-3" />
-
-The sums are the instance; the maxima come from a `multiset`, because a single running maximum cannot remove.
-
-**Complexity.** $n$ adds and at most $n$ removes: $O(n)$ for a sum or an array of counts, $O(n \log n)$ for a `map` or `multiset`.
-
-**When the second condition fails.** A single variable holding "the maximum so far" cannot remove: if the maximum leaves the window, the variable does not know the second largest. Example: window $[5, 1, 2]$, maximum 5; after 5 leaves, the answer is 2, which was never stored. A `multiset` of the window's values supports removing one copy, so its largest element (`*s.rbegin()`) is the window maximum.
-
-
-### 4.4 Two pointers from opposite ends
-
-**Theorem 1.3.4 (opposite ends).** Let $a_0 \le a_1 \le \dots \le a_{n-1}$ be sorted, and $T$ a target. The loop below finds a pair $i < j$ with $a_i + a_j = T$ if one exists:
-
-```
-l = 0, r = n - 1
-while l < r:
-    if a[l] + a[r] == T: report (l, r); stop
-    if a[l] + a[r] <  T: l = l + 1
-    else:                r = r - 1
-report "none"
-```
-
-:::tip[In plain words]
-In a sorted array, if the smallest and largest of the remaining elements add to too little, the smallest can never be part of a solution; if they add to too much, the largest cannot. So the two ends can be moved inwards.
-:::
-
-**A tiny instance.** $a = [1, 2, 4, 6, 9]$, $T = 8$: $(l, r) = (0, 4)$ gives $1 + 9 = 10 > 8$, so `r` becomes 3; $(0, 3)$ gives $7 < 8$, so `l` becomes 1; $(1, 3)$ gives $2 + 6 = 8$, found.
-
-
-**Proof.**
-1. Invariant: if some pair $(i, j)$ with $i < j$ and $a_i + a_j = T$ exists, then one exists with $l \le i < j \le r$. It holds at the start.
-2. Suppose it holds and $a_l + a_r < T$. For every $j$ with $l < j \le r$, $a_l + a_j \le a_l + a_r < T$ because the array is sorted, so no solution inside $[l, r]$ uses index $l$; moving `l` keeps the invariant.
-3. The case $a_l + a_r > T$ is symmetric: for every $i$ with $l \le i < r$, $a_i + a_r \ge a_l + a_r > T$, so no solution uses $r$.
-4. When $l \ge r$ no pair is left inside $[l, r]$, so by the invariant no pair exists at all. $\square$
-
-:::note[This proof needs]
-1. The array is sorted, so when one pointer is fixed the pair's value only grows as the other pointer moves right (it is monotone in each pointer).
-2. In every step one of the two ends can be shown to belong to no remaining solution, so it can be discarded.
-:::
-
-<TheoremCode unit="1.3/thm-4" />
-
-The first example is the instance (positions 1 and 3); the third counts the pairs with sum at most 8 by the rule at the end of this section.
-
-**Complexity.** Each iteration moves `l` up or `r` down, so at most $n - 1$ iterations: $O(n)$ after an $O(n \log n)$ sort.
-
-The same discard reasoning works for other questions about pairs in a sorted array, as long as each step can rule out one end. Example: to count pairs with $a_i + a_j \le T$, when $a_l + a_r \le T$ every $j$ in $(l, r]$ pairs with $l$, so add $r - l$ and move `l`; otherwise $r$ pairs with nothing left, so move `r`.
-
-
-### 4.5 Walking two sorted sequences
-
-**Theorem 1.3.5 (forward-only walk).** Let $a_0 \le \dots \le a_{n-1}$ and $b_0 \le \dots \le b_{m-1}$ be sorted. For each $i$ let $p(i)$ be the number of elements of $b$ that are less than $a_i$. Then $p$ is non-decreasing, and the loop below computes every $p(i)$ with at most $n + m$ pointer moves:
-
-```
-j = 0
-for i = 0 .. n-1:
-    while j < m and b[j] < a[i]: j = j + 1
-    p[i] = j
-```
-
-:::tip[In plain words]
-When both lists are sorted, what each element of the first list needs from the second begins where the previous one stopped, so one pointer into the second list only moves forward. A subsequence check is the same walk.
-:::
-
-**A tiny instance.** $a = (2, 5, 5, 9)$ and $b = (1, 3, 5, 7)$: the pointer `j` is $1, 2, 2, 4$ after the four iterations, so $p = (1, 2, 2, 4)$; it moved 4 times in all, never back.
-
-**Proof.**
-1. Since $b$ is sorted, the elements less than $a_i$ are exactly $b_0, \dots, b_{p(i)-1}$, a prefix.
-2. If $i < i'$ then $a_i \le a_{i'}$, so every $b$ less than $a_i$ is also less than $a_{i'}$, and $p(i) \le p(i')$.
-3. By induction, when iteration $i$ starts, `j` $= p(i-1) \le p(i)$ (or 0 for $i = 0$); all of $b_{j}, \dots, b_{p(i)-1}$ are less than $a_i$, so the loop advances to $p(i)$ and stops at $b_{p(i)} \ge a_i$ (or at $m$).
-4. `j` only increases and stays at most $m$, so the `while` loop advances at most $m$ times overall. $\square$
-
-:::note[This proof needs]
-1. Both sequences are sorted in the same direction.
-2. What each element of $a$ needs from $b$ is a prefix (or the element just after a prefix) of $b$, so an element of $b$ that has been passed is never needed again.
-:::
-
-<TheoremCode unit="1.3/thm-5" />
-
-The second example has $b$ above all of $a$: the pointer stays at 0.
-
-**Complexity.** $O(n + m)$ after sorting. With $b_{p(i)}$ and $b_{p(i)-1}$ (the first element at least $a_i$ and the last element below it), the same walk gives the closest element of $b$ to each $a_i$, and merging two sorted lists into one is the same walk with output.
-
-
-**Theorem 1.3.6 (subsequence check).** A string $t$ is obtained from a string $s$ by deleting characters (that is, $t$ is a subsequence of $s$) if and only if the following walk ends with `j` $= |t|$:
-
-```
-j = 0
-for i = 0 .. |s|-1:
-    if j < |t| and s[i] == t[j]: j = j + 1
-```
-
-:::tip[In plain words]
-A string t is a subsequence of s exactly when scanning s once and matching the next character of t whenever it appears matches all of t. Matching early never hurts the later characters.
-:::
-
-**A tiny instance.** $s = $ `abcde`, $t = $ `ace`: the walk matches `a` at position 0, `c` at 2 and `e` at 4, so `j` ends at 3 $= |t|$. For $t = $ `aec`: `a` at 0, `e` at 4, and `c` never appears after it, so `j` ends at 2.
-
-**Proof.**
-1. If the walk ends with `j` $= |t|$, the positions $i$ where `j` increased spell out $t$ in order, so $t$ is a subsequence.
-2. Conversely, suppose $t$ is a subsequence, matched at positions $q_0 < q_1 < \dots < q_{|t|-1}$ of $s$. Let $g_k$ be the position where the walk matches $t_k$. We show $g_k \le q_k$ by induction.
-3. Base case: the walk matches $t_0$ at the first $i$ with $s_i = t_0$, and $s_{q_0} = t_0$, so $g_0 \le q_0$.
-4. Step: if $g_k \le q_k$, then $q_{k+1} > q_k \ge g_k$ and $s_{q_{k+1}} = t_{k+1}$, so the walk, which looks for $t_{k+1}$ from $g_k + 1$ on, finds it at some $g_{k+1} \le q_{k+1}$. So all $|t|$ characters are matched. $\square$
-
-:::note[This proof needs]
-1. Matching each character of $t$ at its earliest possible position never hurts later characters, because later characters only need positions further right.
-:::
-
-<TheoremCode unit="1.3/thm-6" />
-
-The empty string is a subsequence of every string, since `j` $= 0 = |t|$ from the start.
-
-**Complexity.** One pass over $s$: $O(|s|)$.
-
-**Common thread.** In all six theorems, some index that an answer depends on moves in only one direction as the outer loop advances: $L(r)$ in Theorems 1.3.1 and 1.3.2, the window's left end in 1.3.3, the ends in 1.3.4, $p(i)$ in 1.3.5, and the match position in 1.3.6. Because each pointer moves at most $n$ times, the total work is linear even though the inner loops look nested.
-
-
-## 5. Recognition Cards
-
-Each card names one form of the method. The **decisive property** is the precondition of the card's theorem, restated in problem language: check it before you write code. **Weak signals** are surface features that make the card worth considering; **kill signals** rule it out.
-
-<Cards topic="1.3" />
-
-## 6. Templates
-
-Nine short functions, one for each mechanism in Section 4. Each reads a small made-up problem from standard input, so it can be tested on its own. In a contest you copy the loop, not the whole program.
-
-All nine start with `#include <bits/stdc++.h>` (one line that includes the whole standard library) and `using namespace std;` (so `vector` can be written instead of `std::vector`). Topic 0.1 explains both. They read numbers with `cin >> x` and write with `cout << x << "\n"`.
-
-### Longest window (Theorem 1.3.1)
-
-<CodeSnippet unit="1.3/longest-window" />
-
-**How it works.** `sum` always equals $a_l + \dots + a_r$. For each `r`, the new element is added to `sum`. While the window is invalid (`sum > K`), its first element is removed and `l` moves right. After the loop, `[l, r]` is the longest valid window ending at `r` (Theorem 1.3.1, part 2), so `r - l + 1` is a candidate for `best`. If even $a_r$ alone exceeds $K$, the loop empties the window (`l = r + 1`) and the candidate is 0.
-
-**Alternative formulation (non-shrinking window).** Replace `while (sum > K)` with `if (sum > K)`. The window then moves right by one place when it is invalid, instead of shrinking, and its length never decreases. The answer is still `best` (equivalently, the final `r - l + 1`), but the window itself may be invalid at the end.
-
-*Proof.* Let $B(r)$ be the length of the longest valid window inside $[0, r]$, and let $w$ be the window length after iteration $r - 1$; assume $w = B(r-1)$ (true before the first iteration with $w = 0$). Iteration $r$ first makes the window $[r - w, r]$, of length $w + 1$.
-- If it is valid, $B(r) \ge w + 1$. Also $B(r) \le w + 1$: any valid window of length $L$ ending at $r$ has the valid sub-window of length $L - 1$ ending at $r - 1$ (closure under shrinking), so $L - 1 \le B(r - 1) = w$. The window is kept, with length $w + 1 = B(r)$.
-- If it is invalid, no valid window ending at $r$ has length $w + 1$ or more, because each such window contains $[r - w, r]$ and would make it valid by closure under shrinking. So $B(r) = w$, and the `if` removes one element, leaving length $w$. $\square$
-
-The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in complexity, but you will meet it in other people's code, and Section 7 explains why changing `while` to `if` is *not* a bug here.
-
-### Shortest window (Theorem 1.3.1, opposite condition)
-
-<CodeSnippet unit="1.3/shortest-window" />
-
-**How it works.** After adding $a_r$, the `while` loop runs as long as the window still reaches $S$. Each pass records the current length (a window ending at `r` that reaches $S$) and then removes $a_l$. When the loop stops, `sum` $< S$, so `l` is the smallest left end whose window falls short (Theorem 1.3.1 applied to "sum less than $S$"), and the last length recorded, for the window starting at `l - 1`, is the shortest one ending at `r` that reaches $S$. `best` starts at `n + 1`, a value no real answer can have, so "nothing found" can be told apart.
-
-**Alternative formulation.** Use the shape of Theorem 1.3.1 directly: keep a `while (sum - a[l] >= S)` loop that drops the first element only while the rest still reaches $S$, then record `r - l + 1` if `sum >= S`. It keeps the window valid instead of stepping one past it. Both are correct by the same theorem (the variant was also stress-tested on 5000 inputs). The first element is never dropped from a one-element window, because then `sum - a[l]` is 0, which is less than $S \ge 1$.
-
-### Counting windows (Theorem 1.3.2)
-
-<CodeSnippet unit="1.3/count-windows" />
-
-**How it works.** The validity condition is "at most $k$ distinct values", which is closed under shrinking (removing elements cannot add new values), and the empty window has 0 distinct values. `cnt` maps each value in the window to how many times it occurs, so `cnt.size()` is the number of distinct values. A value whose count drops to 0 is erased, so it no longer counts. After the `while` loop, `l` $= L(r)$, and Theorem 1.3.2 says the valid windows ending at `r` are exactly those starting at `l, l + 1, …, r`: `r - l + 1` of them.
-
-**Alternative formulation.** For "exactly $k$ distinct values", which is not closed under shrinking, count "at most $k$" minus "at most $k - 1$". Every window with exactly $k$ distinct values is counted by the first and not by the second.
-
-### Fixed-size window (Theorem 1.3.3)
-
-<CodeSnippet unit="1.3/fixed-window" />
-
-**How it works.** The summary is the map of counts. At step `r`, `a[r]` enters; from `r = k` on, `a[r - k]` leaves, so the window is always the last `k` elements (Theorem 1.3.3). From `r = k - 1` on, the window is complete and its number of distinct values, `cnt.size()`, is a candidate.
-
-**Alternative formulation.** When the summary is a sum, prefix sums (Theorem 1.2.1) give each window's sum as $P_{r+1} - P_{r-k+1}$ with no add or remove at all. Counts of distinct values have no such formula, which is why the sliding update is needed here.
-
-### Maximum of each fixed-size window (Theorem 1.3.3 with a multiset)
-
-<CodeSnippet unit="1.3/window-max" />
-
-**How it works.** A single "maximum so far" variable cannot remove an element (Section 4.3), so the window's values are kept in a `multiset`, a sorted collection that keeps duplicates. Adding is `insert`; removing the leaving element is `erase` of *one* copy; the maximum is the last element.
-
-**Alternative formulation.** Topic 1.6 gives an $O(n)$ method. Within this topic the `multiset` is the natural choice; $O(n \log k)$ is fast enough for $n \le 2 \cdot 10^5$.
-
-### Pair with a given sum (Theorem 1.3.4)
-
-<CodeSnippet unit="1.3/pair-sum" />
-
-**How it works.** After sorting, `l` and `r` start at the two ends. If the sum is too small, no partner inside `[l, r]` can help `a[l]` (all are at most `a[r]`), so `l` moves in; if too large, `a[r]` is discarded the same way. The loop stops when the pointers meet, so an element is never paired with itself.
-
-**Alternative formulation.** Scan the array once, keeping a `set` of the values seen so far; for each $a_j$, the answer is YES if $T - a_j$ is already in the set. Correct because a pair $i < j$ is found exactly when $a_j$ is scanned. It costs $O(n \log n)$ too, needs no sort, and also works when the original positions must be reported. The two-pointer version needs only $O(1)$ extra memory after sorting.
-
-### Counting pairs with sum at most T (Theorem 1.3.4, counting form)
-
-<CodeSnippet unit="1.3/pairs-at-most" />
-
-**How it works.** If `a[l] + a[r] <= T`, then `a[l]` plus any element between them is also at most $T$ (the array is sorted), so all `r - l` pairs $(l, j)$ with $l < j \le r$ count, and `l` is finished. Otherwise `a[r]` plus even the smallest remaining element is too big, so `r` is finished. Each pair $(i, j)$ is counted once: when its left index $i$ is finished.
-
-**Alternative formulation.** Counting pairs $(i, j)$ with $a_i + a_j \le T$ is the same as counting, for each $i$, the elements at most $T - a_i$. With a second pointer walking down as $a_i$ grows, this is the forward-only walk of Theorem 1.3.5 run in the opposite direction; the code is the same loop written differently.
-
-### Walking two sorted lists (Theorem 1.3.5)
-
-<CodeSnippet unit="1.3/two-sorted" />
-
-**How it works.** Both lists are sorted. For each `a[i]` in increasing order, `j` advances past every `b` value smaller than `a[i]`; afterwards `j` is $p(i)$, the number of such values, so `pairs += j` counts them. The closest `b` value to `a[i]` is either `b[j]` (the first that is at least `a[i]`) or `b[j - 1]` (the last below it), whichever exists. `j` never moves back because `a` is sorted (Theorem 1.3.5).
-
-**Alternative formulation.** Merge the two sorted lists into one, remembering which list each value came from; the closest pair across the lists is then adjacent in the merged order (topic 1.1, self-test question 7). This is the same forward-only walk, with output.
-
-### Subsequence check (Theorem 1.3.6)
-
-<CodeSnippet unit="1.3/subsequence" />
-
-**How it works.** `j` counts how many characters of `t` are matched. Each character of `s` is compared with the next unmatched character `t[j]`; if they are equal, it is matched at this earliest possible position. Theorem 1.3.6 shows that earliest matching never loses a solution.
-
-**Alternative formulation.** For many queries $t$ against the same $s$, store for each letter the sorted list of its positions in $s$ and jump to the next position after the current one. That needs a faster lookup than a forward walk and is left to topic 1.4.
-
-## 7. Bug catalogue
-
-Each bug below was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy, which compares it with the brute force on random inputs. The input shown is the one the script found (or, for crashes, the first failing input of the same generator).
-
-### Bug: answer recorded before shrinking
-
-Template: longest window. The wrong line is added just after `sum += a[r];`:
+Dry run with `2 1 5 1 3 2 8 1`, k = 3 → mins `1 1 1 1 2 1`. Both functions give the same.
 
 ```cpp
-best = max(best, r - l + 1);  // window may still be invalid here
+// Fabricator/TwoPointers/0-Form/SlidingWindow.cpp
+/*
+Given an array of size n and a window of size k.
+Find minimum of all subarray of size k in the array.
+*/
+
+vector<int> minValueInKLengthWindows_UsingMonotonicDeque(vector<int> &arr, int n, int k){
+    vector<int> ans;
+
+    deque<int> dq;
+    for(int i=0; i<n; i++){
+        while(!dq.empty() && dq.front() <= (i-k)){
+            dq.pop_front();
+        }
+
+        while(!dq.empty() && arr[dq.back()] >= arr[i]){
+            dq.pop_back();
+        }
+
+        dq.push_back(i);
+
+        if(i >= k - 1){
+            ans.push_back(arr[dq.front()]);
+        }
+    }
+
+    return ans;
+}
+
+vector<int> minValueInKLengthWindows(vector<int> &arr, int n, int k){
+    vector<int> ans;
+
+    multiset<int> ms;
+    for(int i=0; i<n; i++){
+        ms.insert(arr[i]);
+
+        if(ms.size() > k){
+            ms.erase(ms.find(arr[i - k]));
+        }
+
+        if(!ms.empty() && i >= k-1){
+            ans.push_back(*(ms.begin()));
+        }
+    }
+
+    return ans;
+}
 ```
 
-Input:
+## Two pointers forms:
+
+| Form | level | what |
+|---|---|---|
+| form 1 | medium/hard | maintain a variable sized window; subarray based prob, gap based prob → minimise/max gap |
+| form 2 | medium | pointers moving in opposite direction |
+| form 3 | easy | pointers on separate sequence moving in a direction |
+
+![Form 1 window with tail and head, form 2 pointers moving inward, form 3 one pointer on each of two sequences](../../../assets/notes/1-3-two-pointers/fig04_three_forms.png)
+
+*Three forms.*
+
+## Form 1:
+
+Ques: Given an array of 0s & 1s and k. You can flip k elements at most. Find the longest subarray of all 1s with atmost k flips.
+
+`[0, 1, 0, 1, 0, 0, 1, 1, 0]` | k=2
+
+Flip the two zeros at index 4 and 5 → `[0, 1, 0, 1, 1, 1, 1, 1, 0]` → 5 ans.
+
+![The array before and after flipping two zeros, bracket under five 1s](../../../assets/notes/1-3-two-pointers/fig05_flip_example.png)
+
+*k = 2, flip index 4 and 5, answer 5.*
+
+3 parts of the questions.
+- i) longest → ask
+- ii) subarray → what
+- iii) all 1s with atmost k flips → criteria.
+
+for form 1 mostly two whats → subarray, gaps (max-min)
+
+ask → longest, shortest, count, sum of length
+
+criteria → monotonic criteria.
+
+[These will be asking for two pointers form 1.]
+
+![ask, what and criteria of a form 1 problem](../../../assets/notes/1-3-two-pointers/fig06_ask_what_criteria.png)
+
+*ask / what / criteria.*
+
+longest subarray of all 1s with atmost k flips
+- subarray → [L,R]
+- all 1s with atmost k flips → [# of 0s in [L,R] ≤ k]
+- we have to check → monotonic criteria
+
+monotonic criteria
+- → means if something is true for a subarray
+  - → its also true for its part.
+
+If true for [L,R]
+⇒ also true for [L+1,R] & [L,R-1]
+
+eg: outer window has # of 0s ≤ 2 → the part inside it also has # of 0s ≤ 2.
+
+![An outer window with at most 2 zeros and a smaller window inside it, also at most 2 zeros](../../../assets/notes/1-3-two-pointers/fig07_monotonic.png)
+
+*Inner part of a good window is also good.*
+
+∴ the criteria is monotonic criteria.
+
+\*\* If the criteria is not monotonic then it can't be solved using two pointers.
+
+Brute force: for every L, keep on trying the next points to find the optimal subarray end point.
 
 ```
-6 7
-5 9 4 4 2 2
+for (L = (0,N))                  for every L we can keep
+  for (R = (L,N))                on trying next points to
+    check (L,R)                  find optimal subarray
+    ans = (L,R)                  end point.
+                                 O(n²) → (TLE)
+```
+- → we can try checking all sub arrays of the questions.
+
+![For one fixed L, every end R is tried](../../../assets/notes/1-3-two-pointers/fig08_brute_force_ranges.png)
+
+*Fixed L, try every R → O(N²).*
+
+k=2, array `1 1 0 1 0 1 0`: start at the first 1, end → this is optimal bcz k=2 & next element is 0.
+
+![Start at the first element, end before the last zero](../../../assets/notes/1-3-two-pointers/fig09_optimal_end.png)
+
+*2 zeros used, next is 0 → stop here.*
+
+for next element while starting why to start of next element while we know that those points upto end will be possible.
+Why not begin checking from 'end'.
+↳ bcz if [start,end] → true ⇒ [start+1,end] → true.
+
+Observation: head ko piche lane ki zaroorat hi nahi. Tail moves 1 step → window sirf chhoti hui, so best head for new tail ≥ old head. Head only goes right.
+
+Now pseudo code changes:
+
+```
+for (L: (0,N))
+  for (R: (last R, N))        → start checking
+    check (L,R)                  from last
+    ans = (L,R).                 'end'.
 ```
 
-Wrong output `3`, correct output `2`. At `r = 5` the window is $4, 2, 2$ with sum 8, which is more than 7, but its length 3 is recorded before the `while` loop removes the 4.
+Template:
 
-**Fix:** record the answer only after the `while` loop, because only then is `[l, r]` known to be valid (Theorem 1.3.1, part 2).
+Think of a snake, start eating elements till the condition allows, k=2 means we can eat atmost 2 zeros.
 
-### Bug: `>=` instead of `>` in the shrink condition
+tail = back of the snake, head = front. [tail, head] = best possible length for this tail.
 
-Template: longest window.
+After this move tail one step forward. Then head again eats max elements.
+
+We keep on doing this.
+- i) Eat as many as you can
+- ii) stopping, update answer.
+- iii) move tail 1 step forward & repeat.
+
+![Nine rows, one per tail, showing window, head and length; best is 5 at tail 3](../../../assets/notes/1-3-two-pointers/fig10_snake_trace.png)
+
+*Dry run, k=2: lengths 4 4 3 5 4 4 3 2 1 → ans 5.*
+
+we frequently have to check the next element after head and decide if we have to take it or not.
+
+for this we maintain a DS for the range. providing functionalities
+- → check next
+- → insert
+- → remove
+
+for current question we can use frequency of 0s.
+
+![Window with tail, head and the next element, and a DS box with check next, insert, remove](../../../assets/notes/1-3-two-pointers/fig11_ds_window.png)
+
+*DS answers: can I eat next?*
+
+Code in Subarrays With K flips.cpp.
+
+we had written `int tail =0, head = -1;`
+
+Why head = -1 ?
+
+`0 0 0 1`, k=0. head=-1, tail=0.
+
+head = -1 so that we try eating even the first element. ("check & proceed")
+
+We can't even eat a single element.
+If head would have been 0 then it would have eaten one element which is invalid because k=0.
+
+also, we have
+ans = max (ans, head - tail +1)
+
+head - tail +1 will spit correct length for head = -1 which is 0
+⇒ we can't even create more than 0 len sub arr.
+
+```
+if (tail <= head){
+   :
+}
+else {
+   tail++ ;
+   head = (tail - 1);
+}
+```
+
+This will be triggered here.
+
+tail will be 1
+& head will be put at tail-1 = 0.
+
+check length again: head - tail + 1
+0 - 1 + 1 = 0
+which is correct again.
+because we can't even eat 1 element.
+
+∴ head = -1 because we want to start with 0 length subarray.
+
+![Array 0 0 0 1 with k = 0: head = -1 gives length 0, head = 0 wrongly eats a zero, else-branch gives tail 1 head 0](../../../assets/notes/1-3-two-pointers/fig12_head_start.png)
+
+*head = -1 → empty window to start.*
+
+TC: for both pointers, we perform constant work.
+
+- head → traverses n elements
+- tail → traverses n elements.
+
+O(n) + O(n) → O(2n) → O(n).
+
+In general we have TC as:
+
+O(N * (H + A + T)).
+
+- H → complexity to check/validate & move the head.
+- A → complexity to update the answer.
+- T → complexity to move the tail.
+
+Here H, A, T all O(1) → O(N).
+
+Code (order of writing: tp stuff → ans → data structure):
 
 ```cpp
-while (sum >= K) {
+// Fabricator/TwoPointers/1-Form/SubarraysWithKFlips.cpp
+/*
+Given an array of 1s and 0s and k.
+In k moves you can flip one number, either 0 to 1 or 1 to 0.
+
+Find the largest subarray you can create with all 1s with k moves.
+*/
+
+void solve() {
+    int n, k;
+    cin>>n>>k;
+
+    int arr[n];
+    for(auto &x: arr) cin>>x;
+    
+    // order of writing -> tp stuff -> ans -> data structure
+    // ds - 3
+    int count_of_zeros = 0;
+    // ans - 2
+    int ans = 0;
+    // tp stuff - 1
+    int tail = 0, head = -1; // set to zero length subarray
+    while(tail < n){
+        // keep eating as many as possible
+        while((head + 1) < n && (/*can eat next elemet?*/ (count_of_zeros + 1 - arr[head + 1]) <= k)){ // also correct -> (count_of_zeros < k || (count_of_zeros == k && arr[head + 1] == 1))
+            head++;
+
+            // insert(arr[head])
+            if(arr[head] == 0) count_of_zeros++;
+        }
+
+        // update answer
+        ans = max(ans, head - tail + 1);
+        // move tail 1 step forward
+        if(tail <= head){
+            // remove(arr[tail])
+            if(arr[tail] == 0) count_of_zeros--;
+            tail++;
+        }
+        else{ // tail running ahead of the head
+            tail++;
+            head = tail - 1; // reset to zero length subarray
+        }
+    }
+
+    cout<<ans<<endl;
+}
 ```
 
-Input:
+Dry run: `1 0 1 0 1`, k=1 → 3. `0 1 0 1 0 0 1 1 0`, k=2 → 5. `0 0 0 1`, k=0 → 1.
 
-```
-3 2
-2 2 2
-```
+Note: BS on every start version is also possible here. Prefix count of zeros never decreases, so for every L binary search the farthest R → O(n log n). TP does it in O(n), isliye TP better.
 
-Wrong output `0`, correct output `1`. A window with sum exactly 2 is valid ("at most $K$"), but this loop removes it.
+### Distinct elements
 
-**Fix:** the loop condition must be exactly "the window is invalid", here `sum > K`. Write the validity condition first, then negate it for the loop.
+Ques: find the # of subarrays with # of distinct element ≤ k.
 
-### Bug: window sum kept in an `int`
+Detection:
 
-Template: longest window.
+- 1 biggest hint : subarray → might be TP.
+- 2nd : count
+- 3rd : criteria → # of distinct elem ≤ k.
+  - check monotonicity.
+
+(L,R) ⇒ (L+1,R) ✓
+∴ criteria is monotonic.
+
+![Outer window with 4 distinct and inner window with 3 distinct, k = 4](../../../assets/notes/1-3-two-pointers/fig13_distinct_monotonic.png)
+
+*Outer 4 ≤ 4, inner 3 ≤ 4 (k = 4).*
+
+All three conditions fine. ⇒ TP form 1.
+
+Think about data structure.
+
+DS requirement → insert(), check(), remove()
+
+- set → can't remove from set. (remove one copy and it forgets how many were there)
+- map → good / can be used.
+- freq map + count
+  - low overhead
+  - faster
+  - easy to handle.
+
+for small values we can use array as the freq map.
+
+![set fails, map works, freq map plus distinct count is best](../../../assets/notes/1-3-two-pointers/fig14_ds_choice.png)
+
+*freq map + distinct count.*
+
+Count: no. of subarrays starting at tail = length of max valid subarray starting at tail.
+
+`1 2 1 3`, k=2
+- tail=0 → [1 2 1] → 3
+- tail=1 → [2 1] → 2
+- tail=2 → [1 3] → 2
+- tail=3 → [3] → 1
+
+3+2+2+1 = 8.
+
+![Array 1 2 1 3 with the longest valid window for each tail](../../../assets/notes/1-3-two-pointers/fig15_count_windows.png)
+
+*Window length per tail, add them up → 8.*
+
+Sum of length of all subarrays starting at tail = len x (len+1) / 2.
+
+![Lines of length 1, 2, 3 up to len below a window](../../../assets/notes/1-3-two-pointers/fig16_triangular.png)
+
+*1 + 2 + ... + len.*
+
+Note: yaha pe hume sum of lengths nahi, sirf len chahiye (count of subarrays starting at tail = len). len(len+1)/2 tab kaam aata hai jab "sum of length" pucha ho.
+
+\*\* If question was twisted like
+find # of subarrays such that # of distincts == k.
+
+or
+
+\# of distincts >= k.
+
+- for == k → (find for ≤ k) - (find for ≤ k-1)
+- for >= k → (find for ≤ n) - (find for ≤ k-1).
+  - (find for ≤ n) = n x (n+1) / 2.
+
+The code below does ≤ k, == k and ≥ k. container = DS (struct = a bundle of data + functions).
 
 ```cpp
-int sum = 0;  // sum of a[l..r]
+// Fabricator/TwoPointers/SubarraysWithKDistinctElements.cpp
+struct container{
+    int freq[100100];
+    int distinct_elements;
+
+    void init(){
+        memset(freq, 0, sizeof(freq));
+        distinct_elements = 0;
+    }
+
+    void insert(int x){
+        if(freq[x] == 0){
+            distinct_elements++;
+        }
+
+        freq[x]++;
+    }
+
+    void remove(int x){
+        freq[x]--;
+
+        if(freq[x] == 0){
+            distinct_elements--;
+        }
+    }
+
+    bool check(int x, int k){
+        if(distinct_elements < k || (distinct_elements == k && freq[x] > 0)){
+            return true;
+        }
+        
+        return false;
+    }
+};
+
+long long find_subrarrys_with_distinct_less_than(int n, int arr[], int k){
+    // ds
+    container ds;
+    ds.init();
+
+    // ans
+    long long ans = 0;
+
+    // tp stuff
+    int tail = 0, head = -1;
+    while(tail < n){
+        while(head + 1 < n && ds.check(arr[head + 1], k)){
+            head++;
+
+            ds.insert(arr[head]);
+        }
+
+        ans += (head - tail + 1);
+
+        if(tail <= head){
+            ds.remove(arr[tail]);
+            tail++;
+        }
+        else{
+            tail++;
+            head = tail - 1;
+        }
+    }
+
+    return ans;
+}
+
+void solve() {
+    int n, k;
+    cin>>n>>k;
+
+    int arr[n];
+    for(auto &x: arr) cin>>x;
+    
+    // distincts <= k 
+    cout<<find_subrarrys_with_distinct_less_than(n, arr, k)<<endl;
+
+    // distincts == k
+    cout<<find_subrarrys_with_distinct_less_than(n, arr, k) - find_subrarrys_with_distinct_less_than(n, arr, k - 1)<<endl;
+
+    // distincts >= k
+    cout<<find_subrarrys_with_distinct_less_than(n, arr, n) - find_subrarrys_with_distinct_less_than(n, arr, k - 1)<<endl;
+    //cout<<n * (n + 1) / 2 - find_subrarrys_with_distinct_less_than(n, arr, k - 1)<<endl;
+}
 ```
 
-Input:
+Dry run: `1 2 1 3`, k=2 → ≤k: 8, ==k: 4, ≥k: 6 (10 total subarrays, 4 have only 1 distinct → 10 - 4 = 6).
 
-```
-8 2772667053
-400000000 900000000 200000000 500000000 700000000 400000000 800000000 100000000
-```
-
-Wrong output `8`, correct output `6`. The full sum is $4 \cdot 10^9$, more than the largest `int` (about $2.1 \cdot 10^9$). The addition overflows to a negative number, so the whole array looks valid.
-
-**Fix:** `long long sum`. Any sum of up to $2 \cdot 10^5$ values of size $10^9$ needs 64 bits. (This bug passed 5000 tests at first, because the generator only made values up to 10. A deliberate bug that passes random tests usually means the generator is too weak, so the generator now makes values up to $10^9$ in one case of five, and the bug is caught.)
-
-### Bug: count left at zero instead of erased
-
-Template: counting windows.
+Ques: find the # of subarrays with sum ≤ k (non-negative numbers). Same thing, DS is just the running sum. Monotonic kyuki number hatane se sum sirf kam hoga. Note: negative numbers aaye toh monotonic nahi rahega, TP fail.
 
 ```cpp
---cnt[a[l]];  // the key stays in the map with count 0
-```
+// Fabricator/TwoPointers/SubarraysWithSumAtLeastK.cpp
+/*
+https://maang.in/problems/Number-of-Subarray-with-sum-at-most-K-59
+Given an array of N integers, find the number of subarrays with a sum less than or equal to K.
 
-Input:
+i/p:
+5
+3 5
+1 2 3
+3 6
+3 2 1
+5 0
+2 1 0 4 5
+7 6
+1 2 3 0 1 5 2
+10 10
+1 0 1 1 10 2 3 7 5 9
 
-```
-5 2
--1 -3 -1 2 -2
-```
-
-Wrong output: the program crashes with a *segmentation fault* (it read memory outside the array). Correct output `10`. At `r = 3` the map holds $-1, -3, 2$, so `cnt.size()` is 3. Removing elements lowers counts but never removes keys, so `cnt.size()` stays 3, the `while` loop never stops, and `l` runs past the end of the array.
-
-**Fix:** erase a key when its count reaches 0, so `cnt.size()` is the number of distinct values *in the window*. A loop whose exit depends on a summary must have that summary match the window exactly.
-
-### Bug: `erase(value)` removes every copy
-
-Template: maximum of each fixed-size window.
-
-```cpp
-if (r >= k) window.erase(a[r - k]);
-```
-
-Input:
-
-```
-2 1
--3 -3
-```
-
-Wrong output: the program crashes. Correct output `-3 -3`. At `r = 1` the multiset holds two copies of $-3$; `erase(-3)` removes both, the multiset is empty, and reading `*window.rbegin()` from an empty multiset is *undefined behaviour*: the C++ standard does not say what happens, and here the program crashed.
-
-**Fix:** `window.erase(window.find(a[r - k]))`, which removes exactly one copy. The leaving element appears once in the window's history, so exactly one copy must go (Theorem 1.3.3, condition 2).
-
-### Bug: wrong element leaves the window
-
-Template: fixed-size window.
-
-```cpp
-if (--cnt[a[r - k + 1]] == 0) cnt.erase(a[r - k + 1]);
-```
-
-Input:
-
-```
-6 3
-1 2 2 2 3 2
-```
-
-Wrong output `3`, correct output `2`. The element at `r - k + 1` is the first element of the *new* window, so it stays; the one that leaves is at `r - k`. With the wrong index, the summary drifts away from the window and reports 3 distinct values where no window of length 3 has more than 2.
-
-**Fix:** remove `a[r - k]`. Check index arithmetic on a tiny case: with $k = 3$ and $r = 3$ the window is $[1, 3]$, so index $0 = r - k$ leaves.
-
-### Bug: pointers allowed to meet
-
-Template: pair with a given sum.
-
-```cpp
-while (l <= r) {
-```
-
-Input:
-
-```
-1 -4
--2
-```
-
-Wrong output `YES`, correct output `NO`. With one element, `l = r = 0` and $a_0 + a_0 = -4$ matches the target, but a pair needs two different positions.
-
-**Fix:** `while (l < r)`. In Theorem 1.3.4 the range $[l, r]$ holds a pair only while it has at least two indices.
-
-### Bug: walking past equal values
-
-Template: walking two sorted lists.
-
-```cpp
-while (j < m && b[j] <= a[i]) j++;
-```
-
-Input:
-
-```
-1 4
+o/p:
+5
+6
 1
-0 0 1 1
+18
+18
+*/
+
+void solve() {
+    int n, k;
+    cin>>n>>k;
+
+    vector<int> v(n);
+    for(auto &x: v) cin>>x;
+
+    long long ans = 0;
+    int tail = 0, head = -1;
+    long long total = 0;
+    while(tail < n){
+        while(head + 1 < n && (total + v[head + 1] <= k)){
+            head++;
+
+            total += v[head];
+        }
+
+        ans += (head - tail + 1);
+
+        if(tail <= head){
+            total -= v[tail];
+            tail++;
+        }
+        else{
+            tail++;
+            head = tail - 1;
+        }
+    }
+
+    cout<<ans<<endl;
+}
 ```
 
-Wrong output `4` and `0`, correct output `2` and `0`. The pair count should include only $b$ values *less than* $a_i = 1$, but `<=` also counts the two 1s. The closest distance is still right, which is why a test that checks only one output line can miss this bug.
+Note: file name says "AtLeast" but code counts sum ≤ K.
 
-**Fix:** use the comparison that matches the definition of $p(i)$ in Theorem 1.3.5: strictly less. When a problem says "at most" or "less than", decide which one before writing the loop.
+### Shortest with ≥ k distinct
 
-### Not a bug: `if` instead of `while`
+Ques: find the shortest subarray with # of distinct elements >= k.
 
-Changing `while (sum > K)` to `if (sum > K)` in the longest-window template passes all 5000 random tests. This is not a weak generator: the variant is correct, and Section 6 proves it (the non-shrinking window). It is a bug only when you need the window itself to be valid, for example to print it.
+`[2 3 2] (5) 2`, k = 3
 
-## 8. Worked examples
+>= k → not monotonic hence check for &lt; k. (annotation: "monotonic")
+- ↳ find largest starting at tail with distinct &lt; k.
 
-Each example follows the routine from the Method page: budget first, then candidate tools, then the property that decides between them, and only then code.
+After this if the next element exists and we can't pick it for &lt; k then (head - tail + 1 + 1) is the length. with >= k distinct elements.
 
-### Example 1: Playlist
+`{ [2 3 2] 5 }` → will be valid for >= k, `[2 3 2]` → valid part for &lt; k i-e ≤ (k-1)
 
-[CSES 1141 Playlist](https://cses.fi/problemset/task/1141) (CSES is the Code Submission Evaluation System problem set). In short: given $n$ song ids, find the longest run of consecutive songs in which no song repeats.
+shortest with >= k → means == k. to keep its shortest
 
-#### Step 1: Constraints → budget
+`2 [3 2] (5) 2` → 5 fails here for &lt; k
 
-$n \le 2 \cdot 10^5$ and ids up to $10^9$. Checking every run is about $n^2/2 = 2 \cdot 10^{10}$ pairs, far too slow. We need about $O(n \log n)$: at most a few million operations, each possibly a `map` lookup.
+∴ len = head - tail + 1 + 1
+= 2 - 1 + 1 + 1 = (3)
 
-#### Step 2: Question form → candidate tools
+![Two rows of 2 3 2 5 2 with k = 3, windows for tail 0 and tail 1 with the refused 5](../../../assets/notes/1-3-two-pointers/fig17_shortest_distinct.png)
 
-"Longest run of consecutive elements with a property" is the weak signal for a shrinkable window (Theorem 1.3.1). Other candidates: prefix sums (Theorem 1.2.1), but the property is not a sum; trying every start with a `set` (topic 0.6), which is $O(n^2 \log n)$ in the worst case.
+*Window + refused element = k distinct. Best = 3.*
 
-#### Step 3: Property check → decision
+\*\* If question flips don't change eating process or any other part.
+- ↳ only answer updation changes
+- ↳ or we can use some counting strategy like +,-
+(like we used for # of subarrays with distinct == k or # distinct >= k)
 
-Validity is "no id repeats inside the window". Take a valid window and remove its first or last song: the remaining songs are still all different, so validity is closed under shrinking. The empty window is valid. When song $k_r$ enters, the window can be rechecked by looking at the count of $k_r$ alone, since every other song was already unique. All three conditions of Theorem 1.3.1 hold, so we use the shrinkable window. Prefix sums do not apply, and the per-start `set` is too slow.
+for shortest subarray we'll change answer updation:
 
-#### Step 4: Proof for this problem
+```cpp
+if (head+1 < n) {
+    len = head - tail +1+1;
+}
+ans = min (ans, len);
+```
 
-By Theorem 1.3.1, after the `while` loop for right end $r$, `l` is the smallest left end such that $k_l, \dots, k_r$ are all different, so `r - l + 1` is the longest valid run ending at $r$. The answer is the largest of these over all $r$. The loop condition `cnt[k[r]] > 1` is the same as "the window is invalid" because before $k_r$ entered, the window $[l, r-1]$ was valid (it was $[L(r-1), r-1]$, and $l$ has not moved since), so the only possible repeat is $k_r$.
+```cpp
+// Fabricator/TwoPointers/1-Form/ShortestSubarrayWithAtLeastK.cpp
+struct container{
+    int freq[100100];
+    int distinct_count;
 
-Each pointer moves at most $n$ times, and each move does one `map` operation, so the total is $O(n \log n)$.
+    void init(){
+        distinct_count = 0;
+        memset(freq, 0, sizeof(freq));
+    }
 
-#### Step 5: Code
+    void insert(int x){
+        if(freq[x] == 0){
+            distinct_count++;
+        }
 
-<CodeSnippet unit="1.3/example-1" />
+        freq[x]++;
+    }
 
-#### Step 6: Alternative approach
+    void remove(int x){
+        freq[x]--;
 
-Instead of counts, store for each id its last position, `last[id]`. When $k_r$ arrives, if `last[k[r]] >= l`, jump `l` straight to `last[k[r]] + 1`; then set `last[k[r]] = r`. This is the same window with the left end moved in one step instead of one element at a time. It is correct for the same reason: every left end before the earlier copy of $k_r$ gives an invalid window, and the window starting just after it is valid.
+        if(freq[x] == 0){
+            distinct_count--;
+        }
+    }
 
-### Example 2: Enough Array
+    bool check(int x, int k){
+        if((distinct_count < k) || (distinct_count == k && freq[x] > 0)){
+            return true;
+        }
 
-[AtCoder Beginner Contest (ABC) 130, problem D: Enough Array](https://atcoder.jp/contests/abc130/tasks/abc130_d). In short: given $N$ positive integers and $K$, count the contiguous subarrays whose sum is at least $K$.
+        return false;
+    }
+};
 
-#### Step 1: Constraints → budget
+void solve() {
+    int n, k;
+    cin>>n>>k;
 
-$N \le 10^5$, $a_i \le 10^5$, $K \le 10^{10}$. There are about $5 \cdot 10^9$ subarrays, so they cannot be listed; the answer itself can be that large, so it needs `long long`. We need $O(N)$ or $O(N \log N)$.
+    vector<int> arr(n);
+    for(auto &x: arr) cin>>x;
 
-#### Step 2: Question form → candidate tools
+    // ds
+    container ds;
+    ds.init();
 
-"Count the subarrays satisfying a condition" is the weak signal for counting windows (Theorem 1.3.2). Other candidates: prefix sums (Theorem 1.2.1), which give each subarray's sum in $O(1)$ but still leave $5 \cdot 10^9$ subarrays to check; and the shrinkable window, which finds one best window rather than counting all of them.
+    // ans
+    int ans = 0;
 
-#### Step 3: Property check → decision
+    // tp stuff
+    int tail = 0, head = -1;
 
-"Sum at least $K$" is closed under *extension*, not under shrinking: removing an element of a valid window can drop its sum below $K$. Its opposite, "sum less than $K$", is closed under shrinking because all values are positive, and the empty window (sum 0) satisfies it because $K \ge 1$. So Theorem 1.3.2 counts the windows with sum less than $K$, and the answer is $N(N+1)/2$ minus that count. Prefix sums alone are too slow.
+    while(tail < n){
+        // move head: eat as much as possible
+        if((head + 1 < n) && ds.check(arr[head + 1], k-1)){
+            cout<<tail<<"-"<<head<<endl;
+            head++;
+            // insert into ds
+            ds.insert(arr[head]);
+        }
+        // update answer
+        if(head + 1 < n){
+            ans = max(ans, head - tail + 1 + 1);
+        }
+        
 
-#### Step 4: Proof for this problem
+        // move tail by one position
+        if(tail <= head){
+            // remove from ds
+            ds.remove(arr[tail]);
+            tail++;
+        }
+        else{
+            tail++;
+            head = tail - 1;
+        }
+    }
 
-Apply Theorem 1.3.2 to the condition "sum less than $K$". After the `while` loop for right end $r$, `l` $= L(r)$ is the smallest left end with sum less than $K$, and the windows ending at $r$ with sum less than $K$ are exactly those starting at $L(r), \dots, r$, so `r - l + 1` of them. Adding over all $r$ counts every window with sum less than $K$ exactly once. Every one of the $N(N+1)/2$ non-empty windows has sum either less than $K$ or at least $K$, so subtracting gives the answer. The loop does $O(N)$ steps in total.
+    cout<<ans<<endl;
+}
+```
 
-#### Step 5: Code
+Note: this one gives 2 for `2 3 2 5 2`, k=3 (should be 3). Head move is `if`, should be `while` (eat as many as you can), and ans should start at a big value with min, not 0 with max. Working version:
 
-<CodeSnippet unit="1.3/example-2" />
+```cpp
+/*
+  Problem: shortest subarray with at least k distinct values (-1 if none).
+  Corrected version of the idea: eat while the window has fewer than k
+  distinct values, then the next element (if any) completes k distinct values.
+*/
+int shortest_with_at_least_k_distinct(const vector<int>& a, int k) {
+    int n = a.size();
+    unordered_map<int, int> freq;               // value -> copies inside the window
+    int distinct = 0;                           // number of values with freq > 0
+    int tail = 0, head = -1;
+    int ans = INT_MAX;
+    while (tail < n) {
+        // eat while we stay below k distinct values (a value already inside is always fine)
+        while (head + 1 < n && (freq[a[head + 1]] > 0 || distinct < k - 1)) {
+            head++;
+            if (freq[a[head]]++ == 0) distinct++;
+        }
+        if (head + 1 < n) ans = min(ans, head - tail + 1 + 1);  // only the answer update changes
+        if (tail <= head) {
+            if (--freq[a[tail]] == 0) distinct--;
+            tail++;
+        } else {
+            tail++;
+            head = tail - 1;
+        }
+    }
+    return ans == INT_MAX ? -1 : ans;
+}
+```
 
-#### Step 6: Alternative approach
+Dry run: `2 3 2 5 2`, k=3 → 3. `1 1 1`, k=2 → -1 (none). `1 1 1 2`, k=2 → 2.
 
-Count the valid windows directly. For each right end $r$, let $g(r)$ be the largest left end with $a_{g(r)} + \dots + a_r \ge K$ (if any). Because validity is closed under extension, every left end $0, \dots, g(r)$ works, giving $g(r) + 1$ windows, and $g(r)$ never decreases as $r$ grows. In code: after adding $a_r$, move `l` right while the window *without* $a_l$ still reaches $K$; then, if the window reaches $K$, add `l + 1`. Both versions are $O(N)$; the complement version is easier to get right because its loop is exactly the template from Section 6.
+## Form 2:
 
-### Example 3: Container With Most Water
+Ques:
+Arr → N → [1, 8, 6, 2, 5, 4, 8, 3, 7].
 
-[LeetCode Container With Most Water](https://leetcode.com/problems/container-with-most-water/). In short: given $n$ heights, choose two positions $i < j$ to maximise $(j - i) \cdot \min(h_i, h_j)$.
+f(i,j) = min (arr[i], arr[j]) * abs (i-j)
 
-#### Step 1: Constraints → budget
+find max value of f(i,j). Or find the indices.
 
-$n \le 10^5$, heights up to $10^4$. All pairs is about $5 \cdot 10^9$, too slow. We need $O(n)$ or $O(n \log n)$. The largest area is at most $10^5 \cdot 10^4 = 10^9$, which fits in `int`, but only just.
+Brute force → O(N²).
 
-#### Step 2: Question form → candidate tools
+Trap: looks like max of min → might think BS, but the expression isn't a minimum. it uses a min * some number.
 
-"Best pair of positions" suggests opposite ends (Theorem 1.3.4). Other candidates: a sliding window (topics so far), but the two chosen lines are not a window with a property, they are its two ends; and sorting (topic 1.1), since the shorter of the two lines decides the height.
+f(i,j) = (min)( arr[i], arr[j]) * (abs(i-j))
+- min → overall trying to decrease the value
+- gap abs(i-j) → this will increase the value for wide selection.
 
-#### Step 3: Property check → decision
+![f(i,j) split into the min part and the abs(i-j) part](../../../assets/notes/1-3-two-pointers/fig18_container_expr.png)
 
-The array is not sorted, and sorting would destroy the positions that give the width, so Theorem 1.3.4 does not apply as stated. But its second condition can be checked directly: start with $l = 0$, $r = n - 1$ and ask whether one end can be ruled out. Suppose $h_l \le h_r$. Any container that uses line $l$ with another line $j$, $l < j < r$, has width $j - l < r - l$ and height $\min(h_l, h_j) \le h_l = \min(h_l, h_r)$. So it is no better than the container $(l, r)$ we just measured, and line $l$ can be discarded. The symmetric argument discards $r$ when $h_r < h_l$. The discard property holds, so opposite ends works without sorting.
+*min pulls down, gap pushes up.*
 
-#### Step 4: Proof for this problem
+`[1, 8, 6, 2, 5, 4, 8, 3, 7]`
 
-Invariant: some optimal pair either has already been measured or lies inside $[l, r]$. It holds at the start. In each step we measure $(l, r)$ and discard the shorter end; by Step 3, every pair using the discarded end inside $[l, r]$ is no better than $(l, r)$, which is now measured. So the invariant holds after the step. When $l = r$ no pairs remain inside, so the best measured area is optimal. There are $n - 1$ steps, so $O(n)$.
+gap = abs(i-j) ∈ 8
 
-#### Step 5: Code
+gap = 8 → options (i=0, j=8)
+- ↳ only one option possible
 
-<CodeSnippet unit="1.3/example-3" />
+![Bars of the array with L at index 0 and R at index 8](../../../assets/notes/1-3-two-pointers/fig19_container_bars.png)
 
-#### Step 6: Alternative approach
+*gap = 8, only (0, 8).*
 
-Sort the positions by height, from tallest to shortest, keeping each position with its height (Theorem 1.1.4). Process them in that order, keeping the smallest and largest position seen so far. When position $p$ is processed, every line seen so far is at least as tall, so if $p$ is the shorter line of the best container, its partner is the seen position farthest from $p$: either the smallest or the largest. The area is $h_p \cdot \max(p - \text{smallest}, \text{largest} - p)$. Taking the best over all $p$ gives the answer in $O(n \log n)$. It is a correct alternative, but longer than the two-pointer version.
+![Trace table: gap, L, R, min val, best f(L,R) till now for gaps 8 to 5](../../../assets/notes/1-3-two-pointers/fig20_container_table.png)
 
-## 9. Problem ladder
+*"a → b" = index → height. min val must increase for better answer.*
 
-Twenty problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Each card starts with a warm-up and ends with its hardest problem. Before opening a hint, spend the struggle budget shown on each problem, and write down the budget, the candidate tools, and the property you verified.
+At gap 5 both heights are 8, both same → can change any.
 
-Problems from the practice bank that are not in the ladder are listed under "More practice" for extra repetitions.
+We move l, r to maximise min val.
+as we are decreasing the gap we should increase the min value to achieve the largest possible function val.
+
+\* Above problem: leetcode: container with most water
+
+We start iterating from both ends using l & r and move the smaller pointers..
+And, in the end, we'll have the max ans.
+
+Why smaller one? Let's say left bar is shorter. Is bar ke saath koi bhi aur right end lo (andar wala) → gap chhota, height still ≤ left bar → pehle wale se better nahi ho sakta. So left bar ko hamesha ke liye hata do. Taller ko hilaoge toh height wahi limited rahegi aur gap kam hoga, bas.
+
+```cpp
+// Fabricator/TwoPointers/2-Form/ContainerWithMostWater.cpp
+/*
+https://leetcode.com/problems/container-with-most-water/description/
+*/
+
+void solve() {
+    int n;
+    cin>>n;
+
+    vector<int> v(n);
+    for(auto &x: v) cin>>x;
+
+    long long ans = 0;
+    int l = 0, r = n - 1;
+    
+    while(l < r){
+        long long curr_ans = min(v[l], v[r]) * (r - l);
+
+        if(v[l] < v[r]){
+            l++;
+        }
+        else{
+            r--;
+        }
+
+        ans = max(ans, curr_ans);
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Dry run: example gives 49. T.C. O(n), memory O(1).
+
+Note: `min(v[l], v[r]) * (r - l)` is int * int, overflow ho sakta hai badi values pe. Use 1LL * ...
+
+### 3-Sum
+
+Ques: 3-Sum.
+Given an array of n-elements, and a target, T.
+
+- find one soln
+- find if a soln exist
+- find all soln
+- find # of soln.
+
+\} s.t. arr[i]+arr[j] +arr[k] = T.
+↳ 0 ≤ i&lt;j&lt;k&lt;n
+
+We can sort the array because the order of the elements doesn't matter.
+- ↳ O(nlogn).
+
+`[ 2 | 3 | 5 | 5 | 7 | 9 | 9 | 13 | 15 | 20 ]`
+T = 21
+
+Brute force soln (no sorting required) → O(n³)
+
+```
+for (i → (0, n-1))
+  for (j → (i+1, n-1))
+    for (k → (j+1, n-1))
+      if (arr[i]+arr[j]+arr[k]) cnt++;
+```
+
+Note: condition should be `arr[i]+arr[j]+arr[k] == T`.
+
+if we iterate on the sorted array using j. we need one soln from left & One from right.
+
+such that x+y+z = T. (x = one from left, y = A[j], z = one from right)
+
+x+z = T-y. → we need to find two values with a sum equals (T-y)
+
+This reduces the problem from 3 sum → 2sum.
+
+![Array with i on the left, j in the middle, k on the right, x from the left part and z from the right part](../../../assets/notes/1-3-two-pointers/fig21_threesum_split.png)
+
+*j in the middle, x on its left, z on its right.*
+
+`[1 | 3 | 4 | 5 | (6) | 7 | 8 | 10 | 12 | 19]`      T = 20
+
+At point in time A[j] = 6
+Now we need to find i & k s.t.
+A[i] + A[k] = 20 - A[j] = 20 - 6 = 14.
+
+1 + 19 = 20 > 14 ⇒ k needs to be moved.
+1 + 12 = 13 &lt; 14 ⇒ i needs to be moved.
+3 + 12 = 15 > 14 ⇒ k moves.
+3 + 10 = 13 &lt; 14 → i moves.
+4 + 10 = 14 == 14 → One soln.
+- works for checking soln. or finding one soln.
+
+![Five rows of i and k on the sorted array with sums compared to 14](../../../assets/notes/1-3-two-pointers/fig22_threesum_trace.png)
+
+*Sum too big → k moves left, too small → i moves right.*
+
+Why? sum > need → is k ke saath koi bhi i (aage wala) aur bada hi dega, so k bekaar → k--. sum &lt; need → is i ke saath koi bhi k (peeche wala) aur chhota dega, so i bekaar → i++.
+
+```
+for (j → (0, n-1))                → O(n²).
+  (──────────────)
+      O(n) for finding i & k.
+```
+
+For all solns & # of solns we need to work more.
+
+`[3 | 3 | 5 | 7 | 7 | 7]` → all solns → 6 (T = 15)
+
+But how do we move the ptrs?
+
+Convert this → same numbers with freq.
+
+`[ (3) | (5) | (7) ]` → 2 x 1 x 3 = 6, freq (2) (1) (3), pointers i j k.
+
+![Boxes of value and frequency: 3 x2, 5 x1, 7 x3, with i, j, k](../../../assets/notes/1-3-two-pointers/fig23_threesum_dups.png)
+
+*value with freq → 2 x 1 x 3 = 6.*
+
+we can also move i & k and count same element & calculate the count.
+
+j is the middle index → har triple exactly ek baar count hota hai. Match pe itemp, ktemp equal values skip karte hain, (itemp - i) * (k - ktemp) = left copies x right copies.
+
+```cpp
+// Fabricator/TwoPointers/2-Form/ThreeSum.cpp
+void solve() {
+    int n, target;
+    cin>>n>>target;
+
+    vector<int> v(n);
+    for(auto &x: v) cin>>x;
+
+    sort(v.begin(), v.end());
+    int cnt = 0;
+
+    for(int j = 0; j < n; j++){
+        int i=0, k = n-1;
+        while(i < j && j < k){
+            int curr_total = v[i] + v[j] + v[k];
+            if(curr_total == target){
+                int itemp = i;
+                int ktemp = k;
+
+                while(itemp < j && v[itemp] == v[i]){
+                    itemp++;
+                }
+                
+                while(ktemp > j && v[ktemp] == v[k]){
+                    ktemp--;
+                }
+
+                cnt += (itemp - i) * (k - ktemp);
+                i = itemp;
+                k = ktemp;
+            }
+            else if(curr_total < target){
+                i++;
+            }
+            else{
+                k--;
+            }
+        }
+    }
+}
+```
+
+Dry run: T=21 on the sorted example → 7. `3 3 5 7 7 7`, T=15 → 6. The `1 3 4 ... 19` array, T=20 → 5.
+
+Note: this function never prints cnt, add `cout<<cnt<<endl;` at the end. Also cnt is int, use long long if count is big.
+
+Variant: closest sum to target. Same loop, match pe rukna nahi hai, bas min of abs(sum - target) rakho. sum > target → k--, else i++.
+
+```cpp
+// Fabricator/TwoPointers/2-Form/ThreeSumAZ.cpp
+void solve() {
+    long long n, target;
+    cin>>n>>target;
+
+    vector<int> v(n);
+    for(auto &x: v) cin>>x;
+
+    sort(v.begin(), v.end());
+
+    long long ans = INT64_MAX;
+
+    for(int j=0; j<n; j++){
+        int i = 0, k = n-1;
+        while(i < j && j < k){
+            long long curr_sum = 1LL * v[i] + v[j] + v[k];
+            ans = min(ans, abs(curr_sum - target));
+            if(curr_sum > target){
+                k--;
+            }
+            else{
+                i++;
+            }
+        }
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Dry run: sorted example, T=100 → 59 (max triple sum 10+12+19 = 41). T=21 on the first example → 0. It prints the smallest distance, not the sum.
+
+## Form 3:
+
+Ques: Given a string s & a string t.
+Check if t is subsequence of s.
+
+```
+ ↓ → move always.
+s = a b a c c a b a d a b a
+t = b d a
+    ↑ → move only if matches
+```
+
+```
+while (i → (0, s.length-1) &&
+       j → (0, t.length-1))
+    check if s[i] == t[j] { i++ ; j++; }
+    else {i++;}
+```
+
+![String s with matched letters green and lines to b, d, a of t](../../../assets/notes/1-3-two-pointers/fig24_subsequence.png)
+
+*b at 1, d at 8, a at 9 → yes subsequence.*
+
+Dekho, t ke saare letters mil gaye (j == t.length) toh yes. Repo me 3-Form abhi khaali hai, so function:
+
+```cpp
+/*
+  Problem: check whether t is a subsequence of s (t's letters appear in s in
+  the same order, not necessarily next to each other).
+*/
+bool is_subsequence(const string& s, const string& t) {
+    size_t i = 0, j = 0;
+    while (i < s.size() && j < t.size()) {
+        if (s[i] == t[j]) { i++; j++; }         // match: both pointers move
+        else i++;                               // no match: only the pointer on s moves
+    }
+    return j == t.size();                       // did we match every letter of t?
+}
+```
+
+Dry run: `abaccabadaba` with `bda` → true, with `dbd` → false. T.C. O(|s|).
+
+Practical use of form 3: [ Information Retrieval ]
+
+- D1 = "Vivek has been coding DSA"
+- D2 = "Algozenith teaches DSA and CP".
+- D3 = "Algozenith also covers DEV now"
+- D4 = "Vivek is the founder of Algozenith".
+- D5 = "Algozenith is the best DSA cover available."
+
+Query = (Vivek AND Algozenith)
+Query should return D4.
+Query = (DSA AND Algozenith) ⇒ D2 & D5
+
+The issue is not very easy.
+The documents can be thousands.
+Document length is also affecting the search.
+What data structure could handle this?
+- ↳ New documents could be added easily.
+- ↳ Deletion should be easy.
+- ↳ Search should be fast.
+
+Queries are small → few words.
+No. of docs can be large & docs themselves can be large.
+
+We build inverted index: (for every word).
+
+```
+Vivek → [1, 4]
+Algozenith → [2, 3, 4, 5]        } maintained as
+DSA → [1, 2, 5].                 } skip list.
+```
+
+skip list = sorted list with extra "express" links to jump ahead, so search / insert / delete are fast.
+
+Note: word → docs list is the inverted index. TF-IDF (term frequency - inverse document frequency) is a score to rank the docs, it sits on top of this.
+
+![Documents on the left, inverted index with sorted lists on the right](../../../assets/notes/1-3-two-pointers/fig25_inverted_index.png)
+
+*word → sorted list of docs.*
+
+So on query of DSA AND Algozenith, we fetch both the lists. of DSA & algozenith.
+
+[2, 3, 4, 5] AND [1, 2, 5]    | & find their intersection.
+(AND → intersection.)
+
+Both sorted, so: values match → take it, move both. Not matching → move the one with the smaller value (bada wala wait karega). Result [2, 5].
+
+![Five steps on the lists [2,3,4,5] and [1,2,5], matches at 2 and 5](../../../assets/notes/1-3-two-pointers/fig26_intersect.png)
+
+*match (move), not matching (move smaller).*
+
+So, this form 3 can be used to find intersection & union of two sorted list.
+
+```cpp
+/*
+  Problem: given two sorted lists, return their intersection (the values that
+  appear in both). This is what an AND query does on two posting lists.
+*/
+vector<int> intersect_sorted(const vector<int>& a, const vector<int>& b) {
+    vector<int> out;
+    size_t i = 0, j = 0;
+    while (i < a.size() && j < b.size()) {
+        if (a[i] == b[j]) { out.push_back(a[i]); i++; j++; }   // match: take it, move both
+        else if (a[i] < b[j]) i++;              // a[i] is too small to be in b
+        else j++;                               // b[j] is too small to be in a
+    }
+    return out;
+}
+```
+
+```cpp
+/*
+  Problem: given two sorted lists, return their union (every value once).
+  This is what an OR query does on two posting lists.
+*/
+vector<int> union_sorted(const vector<int>& a, const vector<int>& b) {
+    vector<int> out;
+    size_t i = 0, j = 0;
+    while (i < a.size() || j < b.size()) {
+        int x;
+        if (j == b.size() || (i < a.size() && a[i] < b[j])) x = a[i++];   // a has the smaller value
+        else if (i == a.size() || b[j] < a[i]) x = b[j++];                // b has the smaller value
+        else { x = a[i]; i++; j++; }                                      // equal: take it once
+        out.push_back(x);
+    }
+    return out;
+}
+```
+
+Dry run: Vivek AND Algozenith → [4]. DSA AND Algozenith → [2, 5]. DSA OR Algozenith → [1, 2, 3, 4, 5]. T.C. O(a + b).
+
+Ques:
+Given an n x m matrix, choose one element from each row and minimise the (max chosen - min chosen).
+
+```
+ | 1 | 4 | 9 | → 1
+ | 2 | 4 | 7 | → 7
+ | 5 | 8 | 3 | → 3
+```
+(max-min) = (7-1) = 6
+↳ minimise this.
+
+```
+ | 1 |(4)| 9 | → 4
+ | 2 |(4)| 7 | → 4
+ | 5 | 8 |(3)| → 3
+```
+(max-min) = (4-3) = 1
+Seems best possible.
+
+![The same matrix twice: choice 1, 7, 3 gives 6 and choice 4, 4, 3 gives 1](../../../assets/notes/1-3-two-pointers/fig27_matrix_choice.png)
+
+*6 vs 1.*
+
+Sort the org. (each row)
+
+```
+ 1  4  9
+ 2  4  7
+ 3  5  8
+```
+
+- ask → minimum
+- what → max-min
+- criteria →
+
+SOL-1
+
+One pointer in every row. Choose the set → calc ans → move min to next pos.
+
+- Step 1: (1,2,3) → calc ans (2) → move min (1) to next pos
+- Step 2: (4,2,3) → choose the set, calc ans (2) → max min to next pos (2 moves)
+- Step 3: (4,4,3) → choose the set, calc ans (1) → then move min to next pos (3 moves)
+- Step 4: (4,4,5) → ans 1, keep going
+
+Keep going like this, until we are on last column.
+
+![Four snapshots of the sorted matrix with the chosen element per row and the min in green](../../../assets/notes/1-3-two-pointers/fig28_matrix_sol1.png)
+
+*Step 1 → 4, min pointer moves.*
+
+Why min? max kabhi kam nahi hoga jab koi pointer aage jaye. Sirf min ko hilane se hi max - min chhota ho sakta hai.
+
+```cpp
+/*
+  Problem: choose one element from every row of an n x m matrix so that
+  (largest chosen - smallest chosen) is as small as possible. Return it.
+  Solution 1: one pointer per row; always move the pointer holding the minimum.
+*/
+int min_range_one_per_row(vector<vector<int>> g) {
+    int n = g.size(), m = g[0].size();
+    for (auto& row : g) sort(row.begin(), row.end());
+    // a min-heap (smallest on top) of (value, row) for the current choice of every row
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<pair<int, int>>> current;
+    vector<int> column(n, 0);                   // chosen column of every row
+    int current_max = INT_MIN;
+    for (int r = 0; r < n; r++) {
+        current.push({g[r][0], r});
+        current_max = max(current_max, g[r][0]);
+    }
+    int ans = INT_MAX;
+    while (true) {
+        auto [smallest, row] = current.top();   // structured binding: unpack the pair into two names
+        current.pop();
+        ans = min(ans, current_max - smallest);
+        if (++column[row] == m) break;          // that row has no next element: no better set exists
+        current.push({g[row][column[row]], row});
+        current_max = max(current_max, g[row][column[row]]);
+    }
+    return ans;
+}
+```
+
+priority_queue with `greater<...>` = min-heap (smallest on top). Dry run: example → 1 (diffs 2 2 1 1 5 4 2). `2 10 / 3 9 / 8 15` → 2. T.C. O(nm log n).
+
+SOL -2
+
+Create a vector [ (val / row) ... ]
+
+`[ (1/1) (4/1) (9/1) (2/2) (4/2) (7/2) (5/3) (8/3) (3/3) ]`
+
+Next sort above:
+
+`[ (1/1) (2/2) (3/3) (4/1) (4/2) (5/3) (7/2) (8/3) (9/1) ]`
+
+Form 1:
+Keep eating until we have at least one element from each row.
+
+If tail was at (4/2), we'll have to keep eating till last to the end to have at least one element from each row. (min = 4, max = 9)
+
+Calculate (max-min)
+Move tail one step ahead.
+
+![Unsorted (value, row) list, sorted list with best window green, window from (4, row 2) to the end](../../../assets/notes/1-3-two-pointers/fig29_matrix_sol2.png)
+
+*sort (val, row), then window with all rows.*
+
+How form 1?
+
+- ask → shortest
+- what → subarray
+- criteria → with at least k distinct value.
+  - here value is row no.
+
+Same trick as before: window with ≤ n-1 distinct rows, next element completes all n rows → ans = vals[head+1].first - vals[tail].first.
+
+```cpp
+// Fabricator/TwoPointers/MinimiseMaxMinDifferenceGoogleOA.cpp
+/*
+Given an n*m matrix, choose one element from each row such that the (max chosen element - min chosen element) is minimum.
+Find the minimum value possible.
+
+i/p:
+2
+3 3
+1 4 9
+2 4 7
+5 8 3
+3 2
+2 10
+3 9
+8 15
+
+o/p:
+1
+2
+*/
+
+struct container{
+    int _distinct;
+    map<int, int> _freq;
+
+    void init(){
+        _distinct = 0;
+        _freq.clear();
+    }
+
+    bool check(int val, int k){
+        return _distinct < k || ((_distinct == k) && (_freq[val] > 0));
+    }
+
+    void insert(int val){
+        if(_freq[val] == 0){
+            _distinct++;
+        }
+
+        _freq[val]++;
+    }
+
+    void remove(int val){
+        _freq[val]--;
+
+        if(_freq[val] == 0){
+            _distinct--;
+        }
+    }
+};
+
+void solve() {
+    int n, m;
+    cin>>n>>m;
+
+    vector<pair<int, int>> vals;
+    for(int i=1; i<=n; i++){
+        for(int j=0; j<m; j++){
+            int x;
+            cin>>x;
+            vals.push_back({x, i});
+        }
+    }
+
+    sort(vals.begin(), vals.end());
+    
+    long long tail = 0, head = -1, max_range = (1ll * n) * m;
+    int ans = INT32_MAX;
+    container ds;
+    ds.init();
+
+    while(tail < max_range){
+        while(head + 1 < max_range && ds.check(vals[head + 1].second, n-1)){
+            head++;
+            ds.insert(vals[head].second);
+        }
+
+        if(head + 1 < max_range){
+            ans = min(ans, vals[head + 1].first - vals[tail].first);
+        }
+
+        if(tail <= head){
+            ds.remove(vals[tail].second);
+            tail++;
+        }
+        else{
+            tail++;
+            head = tail - 1;
+        }
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Dry run: samples give 1 and 2. T.C. O(nm log(nm)) for the sort.
+
+Note: INT32_MAX needs `<cstdint>`.
+
+## Quick revision
+
+- TP → two indices, never move back → O(n)
+- patterns → towards each other | same direction + window
+- form 1 → ask (longest/shortest/count/sum of len), what (subarray/gaps), criteria (monotonic)
+- monotonic → true for [L,R] ⇒ true for [L+1,R] & [L,R-1]. Not monotonic → no TP
+- template → tail = 0, head = -1; eat max → update ans → move tail (empty window: tail++, head = tail-1)
+- DS → check next, insert, remove. Distinct → freq map + count, set can't remove
+- T.C. → O(N * (H + A + T))
+- count subarrays starting at tail = len; sum of lengths = len(len+1)/2
+- == k → f(≤k) - f(≤k-1); ≥ k → n(n+1)/2 - f(≤k-1)
+- shortest ≥ k → eat for &lt; k, len = head - tail + 1 + 1 if next exists
+- form 2 → ends inward. Container → move smaller. 3-Sum → sort, j middle, 2-sum (too big k--, too small i++), dups → freq product
+- form 3 → one pointer per sequence. Subsequence: s always, t on match. Sorted lists → intersection / union, inverted index
+- matrix min(max-min) → SOL-1 move min pointer (heap), SOL-2 sort (val,row) + form 1
+
+## Practice problems
+
+- [Container With Most Water](https://leetcode.com/problems/container-with-most-water/description/)
+- [Number of Subarray with at most K distinct](https://maang.in/problems/Number-of-Subarray-with-at-most-K-distinct-60)
+- [Number of Subarray with sum at most K](https://maang.in/problems/Number-of-Subarray-with-sum-at-most-K-59)
+
+### Problem ladder
 
 <Ladder topic="1.3" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which tool it needs. Choose a card from the list (it includes cards and patterns from earlier topics), write the property you checked, then reveal the answer. Some items are meant to look like windows but need an earlier tool. Do not solve the problems here: deciding the tool is the exercise.
-
-<Drill topic="1.3" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the answer to the property check.
-
-<LookalikePairs topic="1.3" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer. They need no code.
-
-<SelfTest topic="1.3" />
-
-## 13. Checkpoint
-
-Three problems in 90 minutes, one problem for each of three cards. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 drill items in Section 10. After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="1.3" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen against the tools you already have. The same entries appear in the Recognition Handbook, grouped by weak signal across all topics.
-
-<DecisionMapUpdate topic="1.3" />

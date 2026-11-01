@@ -35,14 +35,17 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml') && /^\
     await p.goto(lesson);
     // Topic 7.8 teaches no new tool: it has no cards and no ladder (PLAN.md Section 4 notes).
     const hasLadder = tf.problems.some((x) => x.role === 'ladder');
-    await p.waitForSelector(hasLadder ? '.ladder' : '.drill');
+    await p.waitForSelector(hasLadder || tf.format === 'notes' ? '.ladder' : '.drill');
     const T = `[${tf.id}]`;
     check(await p.locator('.katex-error').count() === 0, `${T} no KaTeX errors`);
     check(await p.locator('.draft-note').count() === (tf.draft ? 1 : 0), `${T} draft notice matches the data file`);
-    check(await p.locator('.recognition-card').count() === tf.cards.length, `${T} ${tf.cards.length} recognition cards`);
+    const notesFormat = tf.format === 'notes';
+    // Notes-format lessons (PLAN.md Section 6A) show the owner's note, then the ladder; no cards or drill on the page.
+    if (!notesFormat) check(await p.locator('.recognition-card').count() === tf.cards.length, `${T} ${tf.cards.length} recognition cards`);
+    else check(await p.locator('main h2:has-text("Quick revision")').count() === 1 && await p.locator('main h2:has-text("Practice problems")').count() === 1, `${T} notes lesson has Quick revision and Practice problems`);
     const ladderCards = new Set(tf.problems.filter((x) => x.role === 'ladder').map((x) => x.card));
     check(await p.locator('.ladder-group').count() === ladderCards.size, `${T} ${ladderCards.size} ladder groups`);
-    check(await p.locator('.drill li').count() === tf.drill.length, `${T} ${tf.drill.length} drill items`);
+    if (!notesFormat) check(await p.locator('.drill li').count() === tf.drill.length, `${T} ${tf.drill.length} drill items`);
 
     if (hasLadder) {
       // First ladder problem: hint 1 behind the struggle-budget reminder.
@@ -63,6 +66,8 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml') && /^\
       check(await p.locator('.ladder-group').first().locator('text=/1 \\/ \\d+ solved/').isVisible(), `${T} progress bar counts the solve`);
 
     }
+
+    if (notesFormat) { await p.close(); continue; } // no drill or checkpoint on a notes lesson page
 
     // Drill: answer every item with its correct card, then check the score.
     const items = p.locator('.drill li');

@@ -4,428 +4,1304 @@ sidebar:
   order: 2
 topic: "0.2"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="0.2" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. Given $N \le 10^{12}$, list all positive divisors of $N$.
+Solution sahi hai ya nahi, ye toh correctness hai. Ye note efficiency ke baare me hai: T.C. (time complexity) and M.C. (memory complexity).
 
-The obvious program tries every $d$ from 1 to $N$ and keeps those with $N \bmod d = 0$. It is correct, but for $N = 10^{12}$ it makes $10^{12}$ checks. A judge's computer does roughly $10^8$ simple steps per second, so this takes about $10^4$ seconds, close to three hours. The time limit is 2 seconds.
+- steps of solving a problem, counting instructions
+- O, Theta, Omega
+- loops: sequence / nesting
+- how big can n be for TL (time limit) = 1 sec
+- amortized complexity
+- memory layout
+- Master Theorem
+- classic loop Ques
+- online judge verdicts
+- subarray / subsequence counting, contribution technique, palindrome anagram queries
 
-You need to know this *before* writing the program. The constraints in the statement are not decoration: they tell you how many steps you may spend. Here, the trick is that divisors come in pairs $d$ and $N/d$, and one of each pair is at most $\sqrt{N} = 10^6$; trying $d$ up to $10^6$ takes a millisecond.
+## Table of contents
 
-This topic teaches you to count the steps a program takes, to compare that count with the time limit before coding, and to recognise three common ways a step count that *looks* too large is actually small: a formula replacing a loop, a total that is bounded even though loops are nested, and loops over multiples whose lengths shrink like $n/1, n/2, n/3, \dots$
+- Steps of solving a problem
+- Time complexity
+- Counting instructions → asymptotic analysis
+- Order notations
+- Loops: nesting and sequence
+- Limits on input size
+- Amortized complexity
+- Memory complexity
+- Dominant term, NP
+- Master Theorem
+- Loop Ques (sqrt, log, harmonic, power)
+- Online judges
+- Subsequence vs subarray
+- Sum of all subarray sums, contribution technique
+- Sum of all subsequence sums
+- Property maintenance while scanning
+- Stable sorting
+- Comparing strings with a+b &lt; b+a
+- Palindrome anagram queries
+- Quick revision
+- Practice problems
 
-## 2. Prerequisites and scope
+---
 
-### What you need
+## Steps of solving a problem
 
-<WhatYouNeed topic="0.2" />
+i) Read
+ii) Understand
+iii) Ideate
+iv) Implement
+v) Debug
+vi) Get AC (Accepted, judge ne bola solution sahi hai)
 
-### What this topic does not cover
+![Flow of the six problem solving steps, with Ideate branching into correctness and efficiency](../../../assets/notes/0-2-complexity/fig01_problem_steps.png)
+*read → understand → ideate → implement → debug → AC. efficiency wala part ideate me aata hai.*
 
-- Turning a long description of a process into code step by step (simulation). Covered in topic 0.3.
-- Divisibility, GCD (greatest common divisor), and the Euclidean algorithm. Covered in topic 0.4.
-- Marking the multiples of each prime to find all primes up to $N$ (the sieve of Eratosthenes), which uses the same harmonic bound as Section 4.5. Covered in topic 2.1.
-- Moving two indices through an array, each only forward (two pointers), whose cost is bounded by the same argument as Theorem 0.2.4. Covered in topic 1.3.
+First three steps = finding a solution idea that'll solve the problem. We need to think about following:
 
-## 3. Definitions
+- Correctness of soln
+- Efficiency of soln
 
-- A **step** is one simple operation: an arithmetic operation, a comparison, an array access, an assignment. We count steps instead of measuring seconds, because the count does not depend on the computer.
-- The **running time** of a program on an input is its number of steps. We care about the largest running time over all inputs allowed by the constraints.
-- For functions $f$ and $g$ of $n$, we write $f(n) = O(g(n))$ (read "big-O of $g$", the **big-O** notation) if there are constants $c > 0$ and $n_0$ such that $f(n) \le c \cdot g(n)$ for every $n \ge n_0$. It says "$f$ grows at most as fast as $g$, up to a constant factor". Example: $3n^2 + 5n + 7 = O(n^2)$, since $3n^2 + 5n + 7 \le 4n^2$ for $n \ge 7$.
-- A **complexity class** is the $g$ in such a bound: $O(1)$ (constant), $O(\log n)$, $O(\sqrt n)$, $O(n)$ (linear), $O(n \log n)$, $O(n^2)$ (quadratic), $O(2^n)$ (exponential), $O(n!)$.
-- The **budget** of a problem is the number of steps that fit in its time limit: about $10^8$ simple steps per second. This is a rule of thumb, accurate to a factor of about 3 either way, depending on the steps.
-- A **closed form** of a sum is a formula that gives its value without adding the terms one by one. Example: $1 + 2 + \dots + n = n(n+1)/2$.
-- An **amortised analysis** bounds the total cost of many steps together instead of each step alone. Example: a loop inside a loop can still make only $n$ steps in total.
-- The **harmonic sum** is $H_n = 1 + \frac12 + \frac13 + \dots + \frac1n$.
-- A **divisor** of a positive integer $N$ is a positive integer $d$ with $N \bmod d = 0$. Example: the divisors of 12 are 1, 2, 3, 4, 6, 12.
+Here is where time & memory complexity used.
 
-## 4. Theory and proofs
+---
 
-### 4.1 Counting steps and reading constraints
+## Time complexity
 
-**Theorem 0.2.1 (step counts of loops).**
-1. If a loop runs at most $m$ times and its body takes at most $s$ steps each time, the loop takes at most $m \cdot s$ steps. In particular, $k$ nested loops that run at most $m_1, \dots, m_k$ times do at most $m_1 m_2 \cdots m_k$ innermost steps.
-2. Code that runs one part after another takes the sum of their steps.
-3. If $f(n) = O(g(n))$ and $g(n) \le B$ for the largest allowed $n$, then $f(n) \le c \cdot B$ for that $n$, where $c$ is the constant of the big-O bound.
+→ we generally count the no. of instructions.
 
-:::tip[In plain words]
-Count the steps of a program by multiplying how many times each nested loop runs; about 10^8 simple steps fit in one second. Plug in the largest input the constraints allow before writing any code.
-:::
+Type of case:
 
-**A tiny instance.** Two nested loops of 5000 iterations each, with a body of one step, take $5000 \cdot 5000 = 25 \cdot 10^6$ steps. A third part that loops 5000 times afterwards adds to it: $25\,005\,000$ steps.
+- Best case → i/p case which runs most efficiently
+- Average case → i/p case that runs avg.
+- Worst case → i/p that take most time to run.
 
-**Proof.**
-1. Part 1. The loop runs its body at most $m$ times and each run costs at most $s$ steps, so the loop costs at most $m s$ steps.
-2. For $k$ nested loops apply this from the innermost loop outward: the innermost loop costs at most $m_k s$, the loop around it at most $m_{k-1} m_k s$, and so on up to $m_1 m_2 \cdots m_k s$.
-3. Part 2. Consecutive parts of code run one after the other, so their steps add.
-4. Part 3. $f(n) = O(g(n))$ says $f(n) \le c \cdot g(n)$ for every $n \ge n_0$. At the largest allowed $n$ (large enough that $n \ge n_0$) this reads $f(n) \le c \cdot g(n) \le c \cdot B$. $\square$
+![Tree from Types of case to best, average and worst case with their meanings](../../../assets/notes/0-2-complexity/fig02_cases.png)
+*best / avg / worst. worst pe sabse jaada dhyaan.*
 
-:::note[This proof needs]
-1. A bound on how many times each loop runs, in terms of the input sizes given in the constraints.
-2. The largest input the constraints allow, plugged into the count.
-:::
+Worst case → we need to think about this the most.
 
-<TheoremCode unit="0.2/thm-1" />
+Kyu? Dekho, agar worst input bhi TL ke andar chala gaya toh baaki sab inputs toh chal hi jayenge.
 
-The first and third example are the table's rows for $n = 5000$ and $n = 500$; the second shows what the same check says for $n = 2 \cdot 10^5$: no.
+Small example: array me v dhundna left se right.
+- best: v first pe mila → 1 check
+- worst: v last pe ya hai hi nahi → n checks
+- avg: lagbhag n/2 checks (assuming v kahin bhi ho sakta hai)
 
-**From constraints to complexity.** With about $10^8$ steps per second and a constant factor between 1 and 10, these are the usual limits for a 1–2 second time limit:
+---
 
-| largest $n$ | complexity that fits | example |
+## Counting instructions → asymptotic analysis
+
+Eg:
+
+```cpp
+cnt = 0;
+for (int i = 0; i<N; i++) {          // i=0 -> 1, i<N -> N : "1+N"
+    for (j = 0; j<i; j++) {          // j=0 -> 1 ; j<i -> i
+        cnt++;                       // 1+2+3+......N
+    }
+}
+```
+
+Instruction by instruction:
+
+- `cnt++` → $1+2+3+\dots+N = \frac{N(N+1)}{2}$
+- `j++` → $\frac{N(N+1)}{2}$
+- `j=0` and `i++` → $N + N$
+- `i=0` → $1$
+
+$\frac{N(N+1)}{2} + \frac{N(N+1)}{2} + N + N + 1$
+
+$N^2 + 3N + 1$ ← cumbersome to calculate.
+
+Hence we use asymptotic analysis based on input.
+
+$O(f(n))$
+
+We check how the time taken changes with size of i/p.
+
+means $c \cdot f(n) + $ some lower order terms
+
+$N^2 + 3N + 1$ ⟩ $N^2$ grows faster than others.
+
+Note: exact count of `cnt++` is $0+1+\dots+(N-1) = \frac{N(N-1)}{2}$ (j &lt; i, so i=0 pe zero baar chalta hai). Thoda sa farak hai, but dono $\approx N^2/2$ → order same.
+
+![Staircase grid showing cnt++ runs 0,1,2,3,4,5 times for N = 6](../../../assets/notes/0-2-complexity/fig03_nested_loop_count.png)
+*N = 6: shaded cell = ek cnt++. 0+1+2+3+4+5 = 15 = N(N-1)/2.*
+
+Maine N = 10, 100, 1000, 10000 pe chala ke dekha, cnt = N(N-1)/2 exactly aaya:
+
+| N | cnt |
+|---|---|
+| 10 | 45 |
+| 100 | 4950 |
+| 1000 | 499500 |
+| 10000 | 49995000 |
+
+N 10x hua toh work ~100x. Matlab $O(N^2)$.
+
+Growth rates ka feel lene ke liye:
+
+![Growth curves for O(1), O(log n), O(n), O(n log n), O(n^2) and O(2^n), linear and log scale](../../../assets/notes/0-2-complexity/fig04_growth_curves.png)
+*left: zoomed in. right: same curves, log scale.*
+
+$1 < \log n < \sqrt{n} < n < n \log n < n^2 < n^3 < 2^n < n! < n^n$
+
+---
+
+## Order notations
+
+$O(N^2)$ is big-oh notation.
+↳ means $cN^2 + \dots$ (some lower order terms)
+
+→ Order Notations:
+
+$O(f(n))$      $g(n) \le cf(n)$ \} $n \to \infty$
+$\Theta(f(n))$     $c_1 f(n) \le g(n) \le c_2 f(n)$
+$\Omega(f(n))$     $c f(n) \le g(n)$
+
+Here g(n) = actual cost, f(n) = simple function (like $n^2$), c = some constant.
+
+O →  $\forall x > x_0$,  $cf(n) \ge g(n)$.
+
+Θ →  $\forall x > x_0$,  $c_1 f(n) \le g(n) \le c_2 f(n)$.
+
+Ω →  $\forall x > x_0$,  $c f(n) \le g(n)$.
+
+![Three graphs: Big-O with g(n) under c f(n), Theta with g(n) between c1 f(n) and c2 f(n), Omega with g(n) above c f(n)](../../../assets/notes/0-2-complexity/fig05_order_notations.png)
+*O: g(n) neeche c·f(n) ke, x0 ke baad. Θ: dono ke beech. Ω: g(n) upar. (g = n²+3n+1, f = n²)*
+
+$N^2 + N \to O(N^2)$   $2N^2$
+↳ $O(N^3)$ (ye bhi sahi hai, upper bound hi toh hai, bas tight nahi)
+
+$N^3 + N^2 \to O(N^3)$
+$\quad\quad\quad\ \ \to \Omega(N^2)$
+$\quad\quad\quad\ \ \to \Theta(N^3)$
+
+$O \to$ upper bound
+$\Omega \to$ lower bound.
+$\Theta \to$ exact class.
+
+$aN^c + B(\dots)$
+↳ $O(N^c)$ , $O(N^{c+1})$
+↳ $\Omega(N^c)$, $\Omega(N^{c-1})$
+↳ $\Theta(N^c)$ ✓
+
+CP me jab "O(n²)" bolte hain toh usually tightest bound matlab hota hai (jo technically Θ hai).
+
+---
+
+## Loops: nesting and sequence
+
+i)
+```cpp
+for (i=1; i <= 2*n+7; i++) {
+    // constant work.
+}
+```
+$2 \times n + 7$ times → $(2 \times n + 7) \times k$
+↳ for all jobs.
+(assignment, comparison)
+
+$[(2k) \times n + (7k)]$
+↳ $O(n)$.
+
+ii)
+```cpp
+for (i=0; i<n; i++)
+{
+    for (j=0; j<n; j++)
+    {
+        // constant work.
+    }
+}
+```
+inner loop → $O(n)$, whole nested block → $O(n^2)$.
+
+```cpp
+for (i=0; i < 2*n+5; i++) {     // → O(n)
+    // O(1).
+}
+```
+
+$O(n^2) + O(n) = O(n^2)$.
+
+nesting → multiply
+sequence → addition
+
+![Nesting means multiply, sequence means add](../../../assets/notes/0-2-complexity/fig06_nesting_sequence.png)
+*nesting ↓ multiply. sequence ↓ addition.*
+
+iii)
+```
+for (i → 1 to N)
+    for (j → 1 to N)          ] O(N^2)
+        O(1)
+
+for (i → 1 to N)
+    for (j → 1 to M)          ] O(M)
+        O(1)                  ] O(N.M)
+```
+
+$O(N^2 + NM) = O(N(N+M))$.
+
+![Two loop nests with brackets O(N^2) and O(N M), combined O(N^2 + N M) = O(N(N+M))](../../../assets/notes/0-2-complexity/fig07_two_loop_nests.png)
+*N aur M alag variables hain, dono rakhne hain.*
+
+Maine steps count karke check kiya: (i) n=10 → 27 = 2n+7, (ii) n=10 → 100 = n², (iii) N=10, M=3 → 130 = N(N+M).
+
+Common galtiyaan:
+- nested me add mat karna, multiply.
+- sequence me multiply mat karna, add.
+- $O(N \cdot M)$ ko $O(N^2)$ mat bana dena jab tak pata na ho M ≤ N.
+- loop kaisa dikhta hai usse matlab nahi, kitne round chalta hai wo dekho.
+
+---
+
+## Limits on input size
+
+$O(f(n,m))$          $n \le 10^5$
+                     TL = 1 sec
+$O(n^2)$
+
+n = 10^5 pe $O(n^2)$ → $10^{10}$ steps. Way too much.
+
+if $O(f(n,m)) \le 10^8$ → pass
+
+$\le 5 \times 10^7$ → safer.
+
+$\ge 10^9$ → TLE (Time Limit Exceeded).
+
+| Input size | Complexity |
+|---|---|
+| $n \le 10$ | $O(n!)$, $O(n^7)$, $O(n^6)$ |
+| $n \le 20$ | $O(2^n \cdot n)$, $O(n^5)$ |
+| $n \le 80$ | $O(n^4)$ |
+| $n \le 400$ | $O(n^3)$ |
+| $n \le 7500$ | $O(n^2)$ |
+| $n \le 10^5$ | $O(n\sqrt{n})$ |
+| $n \le 5 \times 10^5$ | $O(n \log n)$ |
+| $n \le 5 \times 10^6$ | $O(n)$ |
+| $n \le 10^{12}$ | $O(\sqrt{n})$, $O(\sqrt{n} \log n)$ |
+| $n \le 10^{18}$ | $O(\log^2 n)$, $O(1)$, $O(\log n)$ |
+
+![Table of input sizes and the complexity that fits in about one second](../../../assets/notes/0-2-complexity/fig08_input_limits.png)
+*input size → kaunsi complexity chalegi.*
+
+Ye table aise kaam karta hai, last n pe steps nikalo (log base 2):
+
+| Row | steps |
+|---|---|
+| $n=10$, $n!$ | 3.6 million |
+| $n=10$, $n^7$ | 10 million |
+| $n=20$, $2^n \cdot n$ | 21 million |
+| $n=20$, $n^5$ | 3.2 million |
+| $n=80$, $n^4$ | 41 million |
+| $n=400$, $n^3$ | 64 million |
+| $n=7500$, $n^2$ | 56 million |
+| $n=10^5$, $n\sqrt{n}$ | 32 million |
+| $n=5\times10^5$, $n \log n$ | 9.5 million |
+| $n=5\times10^6$, $n$ | 5 million |
+| $n=10^{12}$, $\sqrt{n}$ | 1 million |
+| $n=10^{12}$, $\sqrt{n}\log n$ | 40 million |
+| $n=10^{18}$, $\log^2 n$ | ~3600 |
+
+Sab $10^8$ ke andar. Isliye problem padhte hi limits dekho → row dhundo → idea slow hai toh code mat likho, better idea socho.
+
+Note: ye rule of thumb hai. Asli speed judge ki machine aur har step kitna heavy hai usspe depend karti hai. Constants bhi matter karte hain ($5n$ aur $500n$ dono $O(n)$ hain).
+
+---
+
+## Amortized complexity
+
+```cpp
+int ans = 0;
+int i = 0;
+while (i<N) {                          // i<N
+    while (i<N && arr[i] != v) i++;    // i<N
+    if (i<N) {                         // i<N.
+        ans++;
+        i++;
+    }
+}
+```
+arr[] → size N.
+The inner while, the if (O(1)) and the outer while all check i&lt;N — Looks $O(N^2)$ but its not.
+
+Every thing runs only if i&lt;N.
+In every iteration of outer while the value of i increases, & i&lt;N.
+
+i keeps going forward.
+
+![Array with arrows hopping forward showing that i only moves forward](../../../assets/notes/0-2-complexity/fig09_amortized_pointer.png)
+*i sirf aage jaata hai → total moves ≤ N.*
+
+Total no. of execution inner while & if can have is $O(N)$
+↳ because i can increase only upto N.
+Surely i is incremented in every iteration.
+
+The code is nothing but a linear count.
+↳ count # of v.
+
+Looks $O(N^2)$ but the instruction run count is $O(N)$
+↳ This is called amortization.
+
+Dry run: arr = \{4, 7, 4, 1, 4, 4, 9, 2, 4, 5\}, v = 4, N = 10.
+i 0 se 10 tak ek hi baar jaata hai. Har move ya toh "non-v skip kiya" ya "v count karke aage badh gaye". ans = 5, total moves of i = 10 = N. (chala ke dekha, yahi aaya)
+
+Aur kaha dikhta hai amortized:
+- two pointers / sliding window → har pointer sirf aage
+- `push_back` → ek push kabhi slow hota hai (vector grow), but average $O(1)$
+- monotonic stack → har element ek baar push, max ek baar pop
+
+→ Memory Complexity:
+
+---
+
+## Memory complexity
+
+![Memory layout: stack grows down, heap grows up, static/global data, text](../../../assets/notes/0-2-complexity/fig10_memory_layout.png)
+*stack ↓, heap ↑, static/global, text.*
+
+- stack → local variables, function calls
+- heap → `new`, `malloc`, vector ka data
+- static/global → global variables
+- text → program ka code
+
+We use same order notation.
+
+arr [n][n]
+$N^2$ cells.
+M.C. → $O(N^2)$
+
+Size of variables is TC
+↳ this should be dependent on n.
+
+(matlab jo memory n pe depend kare wahi count karni hai)
+
+int arr[$10^8$]
+↳ safe.
+
+$5 \times 10^7$ → Safer. → be in this limit.
+
+Note: ye cells ki limit hai, bytes nahi. memory = cells × bytes per cell. `int` = 4 bytes → $10^8$ ints ≈ 381 MB, jo normal 256 MB ML (memory limit) se zyada hai. $5 \times 10^7$ ints ≈ 191 MB, ye fit hota hai. Problem ki apni ML dekhna.
+
+| Container | Size |
+|---|---|
+| `int` array $10^8$ | 381.47 MB |
+| `int` array $5 \times 10^7$ | 190.74 MB |
+| `long long` array $5 \times 10^7$ | 381.47 MB |
+| `char` array $10^8$ | 95.37 MB |
+| `int` grid $5000 \times 5000$ | 95.37 MB |
+
+Hidden memory:
+- recursion stack leta hai. n level deep → $O(n)$ stack, chahe koi array declare na ho.
+- bahut deep recursion ($10^5$, $10^6$) → stack overflow → RTE.
+- bade local arrays stack pe jaate hain, bade arrays global ya `vector` (heap) me rakho.
+- `vector` / `string` ki copy = double memory. Pass by reference.
+
+---
+
+## Dominant term, NP
+
+$f(n) = 2^n + \log n + n^2 + n^n + c$
+
+$O(f(n)) = O(2^n + \log n + n^2 + n^n + c)$
+$= O(n^n)$.
+
+NP-Hard:
+↳ non-polynomial. | NP-Completeness.
+
+Note: NP ka full form "nondeterministic polynomial time" hai. NP-hard wo problems jinke liye koi polynomial solution nahi pata (jaise $2^n$, $n!$), isliye "non-polynomial" yaad rakhna chalta hai.
+
+---
+
+## Master Theorem
+
+```cpp
+fib (n)
+    if (n==0 || n==1)
+        return 1;                     // O(1)
+    return fib(n-1) + fib(n-2)  → ??
+```
+
+![Recursion tree of fib(5) with 15 calls](../../../assets/notes/0-2-complexity/fig11_fib_tree.png)
+*fib(5) → 15 calls. Har level pe calls ~double.*
+
+Note: fib Master Theorem me fit nahi hota, kyuki size divide nahi ho raha, subtract ho raha hai (n-1, n-2). T.C. ≈ $1.618^n$ ($\Theta(\varphi^n)$, $\varphi$ = golden ratio), jo $O(2^n)$ se thoda kam hai. M.C. = $O(n)$ (recursion depth). n = 30 pe calls = 2,692,537. $2^{30} \approx 10^9$.
+
+$T(n) = a\, T\left(\frac{n}{b}\right) + c$
+
+- a → kitne sub-problems
+- b → size kitna shrink (sub-problem size n/b)
+- c → recursive calls ke bahar ka extra kaam
+
+Merge sort:
+$T(n) = 2\, T\left(\frac{n}{2}\right) + O(N)$
+
+![Merge sort levels: each level does O(n) work, there are log n levels](../../../assets/notes/0-2-complexity/fig12_merge_sort_levels.png)
+*har level pe total O(n) kaam, log2(n) levels.*
+
+Master theorem → applicable on a lot of problems but not all.
+
+Step 1: Note down a, b, c
+Step 2: Calc. $\left(n^{\log_b a},\ c\right)$.
+Step 3: If $O(n^{\log_b a})$ & c are same
+            ans = c logn
+        else if $O(n^{\log_b a}) > c$
+            then ans = $O(n^{\log_b a})$
+        else
+            ans = $O(c)$
+
+![Flow chart of the three Master Theorem steps and the three results](../../../assets/notes/0-2-complexity/fig13_master_theorem_steps.png)
+*compare karo n^(log_b a) vs c.*
+
+$T(n) = a\,(T(\frac{n}{b})) + c$.
+a=2 b=2
+c=O(n)
+$(O(n^{\log_2 2}), O(n))$
+$O(n), O(n)$.
+T.C. = $O(n \log n)$.
+
+Eg:- i) $T(n) = 27 \times T\left(\frac{n}{3}\right) + O(n^3)$
+
+$a = 27,\ b = 3,\ c = O(n^3)$
+
+$O(n^{\log_3 27}) = O(n^{3\log_3 3}) == c$
+
+$\therefore$ T.C. = $O(n^3 \log n)$.
+
+ii) $T(n) = 2 \times T\left(\frac{n}{2}\right) + O(n^2)$.
+
+$a=2,\ b=2,\ c = O(n^2)$
+
+$O(n^{\log_2 2}) = O(n) < c$.
+
+$\therefore$ T.C. = $O(n^2)$.
+
+iii) $T(n) = 8\, T\left(\frac{n}{2}\right) + O\left(\frac{n^3}{\log n}\right)$.
+
+$a = 8,\ b = 2,\ c = O\left(\frac{n^3}{\log n}\right)$.
+
+$O(n^{\log_2 8}) = O(n^3) > O\left(\frac{n^3}{\log n}\right)$
+
+** Master theorem ignores logn.
+** Either say master theorem doesn't apply.
+   ↳ doesn't apply on non-poly.
+** If we really need to compute with non-poly part then ignore the non-poly part
+
+$O(n^3) == O\left(\frac{n^3}{\log n}\right)$ → logn ignored
+T.C. = $O(n^3 \log n)$
+
+Note: ye $O(n^3 \log n)$ sahi upper bound hai but tight nahi. Exact $\Theta(n^3 \log\log n)$ hai. Dekho, level k pe kaam $n^3/(\log n - k)$ hai, toh total $n^3 (\frac{1}{\log n} + \frac{1}{\log n - 1} + \dots + \frac{1}{1})$ → harmonic sum ≈ $n^3 \ln(\log n)$. Recurrence directly chala ke bhi dekha ($n = 2^p$):
+
+| $p$ | $T(n)/n^3$ | $\ln p$ |
 |---|---|---|
-| $n \le 10$ | $O(n!)$ | all orderings ($10! \approx 3.6 \cdot 10^6$) |
-| $n \le 20$ | $O(2^n \cdot n)$ | all subsets ($2^{20} \cdot 20 \approx 2 \cdot 10^7$) |
-| $n \le 500$ | $O(n^3)$ | three nested loops ($1.25 \cdot 10^8$) |
-| $n \le 5000$ | $O(n^2)$ | all pairs ($2.5 \cdot 10^7$) |
-| $n \le 2 \cdot 10^5$ to $10^6$ | $O(n \log n)$ | sorting ($2 \cdot 10^5 \cdot 18 \approx 3.6 \cdot 10^6$) |
-| $n \le 10^7$ to $10^8$ | $O(n)$ | one pass |
-| $n \le 10^{12}$ | $O(\sqrt n)$ | divisors ($10^6$) |
-| $n \le 10^{18}$ | $O(\log n)$ or $O(1)$ | a formula |
+| 20 | 4.60 | 3.00 |
+| 40 | 5.28 | 3.69 |
 
-Read the table in both directions. Given $n$, it says which complexity to aim for. Given an idea, it says whether to write it or think more. The constant factor matters near the boundaries: $n = 5000$ with $O(n^2)$ is safe for simple loop bodies, but not if each step is a costly operation such as a `map` lookup.
+Ratio 0.68 badha, $\ln p$ 0.69 badha → $\ln\log n$ jaisa badh raha hai, $\log n$ jaisa nahi (wo toh 20 badhta).
 
-**Memory.** A typical memory limit of 256 MB (megabytes, millions of bytes) holds about $6 \cdot 10^7$ `int` values or $3 \cdot 10^7$ `long long` values.
-
-
-### 4.2 Divisors up to the square root
-
-**Theorem 0.2.2 (divisor pairs).** Let $N \ge 1$. For every divisor $d$ of $N$, $N/d$ is also a divisor, and at least one of $d$ and $N/d$ is at most $\sqrt N$. So trying every $d$ with $d \cdot d \le N$, and recording both $d$ and $N/d$ when $d$ divides $N$, finds every divisor; at most $\lfloor \sqrt N \rfloor$ values of $d$ are tried.
-
-:::tip[In plain words]
-If d divides N then N/d divides N too, and one of the two is at most the square root of N. So it is enough to try d up to the square root and record both d and N/d.
-:::
-
-**A tiny instance.** $N = 12$: the values $d = 1, 2, 3$ satisfy $d \cdot d \le 12$ and all divide 12, with partners $12, 6, 4$; together $1, 2, 3, 4, 6, 12$. $N = 36$: $d = 6$ is its own partner and is recorded once.
-
-**Proof.**
-1. If $d \cdot e = N$, then both $d$ and $e$ divide $N$; in particular $N/d$ is a divisor whenever $d$ is.
-2. Suppose both $d > \sqrt N$ and $e > \sqrt N$. Then $d \cdot e > \sqrt N \cdot \sqrt N = N$, a contradiction.
-3. So the smaller of a pair $(d, N/d)$ is at most $\sqrt N$ and is tried; the larger is recorded as $N/d$.
-4. The tried values are $1, 2, \dots, \lfloor \sqrt N \rfloor$, which is at most $\lfloor \sqrt N \rfloor$ values. $\square$
-
-:::note[This proof needs]
-1. The objects come in pairs $(d, N/d)$ whose product is fixed, so the smaller one is at most $\sqrt N$.
-2. When $d = N/d$ (a perfect square), the pair has one element, recorded once.
-:::
-
-<TheoremCode unit="0.2/thm-2" />
-
-The loop condition `d * d <= n` avoids computing a square root and its rounding problems (Theorem 0.1.5). The same argument works for anything that pairs up with a fixed product: all ways to write $N = a \cdot b$, or all rectangles of area $N$.
-
-### 4.3 Closed forms
-
-**Theorem 0.2.3 (arithmetic sums).** For integers $n \ge 1$, $a$, and $d$:
-$$a + (a + d) + (a + 2d) + \dots + (a + (n-1)d) = \frac{n \bigl(2a + (n-1)d\bigr)}{2}.$$
-In particular $1 + 2 + \dots + n = n(n+1)/2$, and the number of pairs $i < j$ among $n$ items is $n(n-1)/2$.
-
-:::tip[In plain words]
-Adding n numbers that grow by the same step each time takes one formula instead of a loop; write the sum forwards and backwards and every pair adds to the same value.
-:::
-
-**A tiny instance.** $a = 3$, $d = 2$, $n = 4$: the terms are $3, 5, 7, 9$, with sum $24$. Forwards and backwards, $3 + 9 = 5 + 7 = 12$ in every pair, and $4 \cdot 12 / 2 = 24$.
-
-**Proof.**
-1. Write the sum $S$ forwards, and below it backwards. The $k$-th terms are $a + kd$ and $a + (n-1-k)d$.
-2. Each such pair of terms adds to $2a + (n-1)d$, whatever $k$ is.
-3. There are $n$ pairs, so $2S = n(2a + (n-1)d)$, which is the formula.
-4. Among $n$ items, item $j$ (counting from 0) forms a pair with each of the $j$ items before it, so the number of pairs is $0 + 1 + \dots + (n-1)$, the sum with $a = 0$, $d = 1$, which is $(n-1)n/2$. $\square$
-
-:::note[This proof needs]
-1. Consecutive terms differ by the same amount $d$ (the loop adds a fixed step).
-2. The product $n(2a + (n-1)d)$ is computed before dividing by 2, since it is always even but its halves may not be whole.
-:::
-
-<TheoremCode unit="0.2/thm-3" />
-
-A loop that adds $n$ terms of an arithmetic progression takes $n$ steps; the formula takes one. When $n$ is $10^{18}$, only the formula fits the budget. Watch the size of the product (Theorem 0.1.1): $n(n+1)$ for $n = 2 \cdot 10^9$ is $4 \cdot 10^{18}$, near the `long long` limit.
-
-**Periodic patterns.** If a quantity repeats with period $p$, the sum over $n$ steps is (number of full periods) $\times$ (sum of one period) + (sum of the leftover part): $\lfloor n/p \rfloor$ full periods and $n \bmod p$ leftover steps. That replaces $n$ steps with about $p$ steps.
-
-
-### 4.4 Amortised totals
-
-**Theorem 0.2.4 (bounded total work).** Suppose a program has an outer loop, and inside it an inner loop each of whose iterations increases a counter `j` by at least 1. If `j` starts at 0, never decreases, and never exceeds $n$, then the inner loop runs at most $n$ times *in total*, over all iterations of the outer loop.
-
-:::tip[In plain words]
-If every inner iteration moves an index forward and the index never goes back, the inner loop runs at most n times in total, however many times the outer loop starts it.
-:::
-
-**A tiny instance.** The string `aabccc` ($n = 6$) has blocks `aa`, `b`, `ccc`. The inner loop runs 2, then 1, then 3 times, 6 in all: exactly $n$, although it sits inside the outer loop.
-
-**Proof.**
-1. Each inner iteration increases `j` by at least 1.
-2. `j` starts at 0, never goes down, and ends at most $n$.
-3. So the increases add up to at most $n$, and there are at most $n$ inner iterations in all. $\square$
-
-:::note[This proof needs]
-1. Every inner iteration moves a counter forward by at least one.
-2. The counter never moves back and has a bounded range ($0$ to $n$).
-:::
-
-<TheoremCode unit="0.2/thm-4" />
-
-The three examples are the block lengths; the inner loop ran once per character each time. **Example: maximal runs.** To split a string into maximal blocks of equal characters, an outer loop starts a block at position $i$ and an inner loop advances $j$ while $s_j = s_i$; then the outer loop continues from $j$. The two loops look like $O(n^2)$, but the index only moves forward, so the total is $O(n)$ by Theorem 0.2.4. Section 6 has the code.
-
-
-### 4.5 Loops over multiples
-
-**Theorem 0.2.5 (harmonic loops).** The loop
-
-```
-for i = 1 .. n:
-    for j = i, 2i, 3i, ... while j <= n:
-        (one step)
-```
-
-makes $\sum_{i=1}^{n} \lfloor n/i \rfloor \le n \cdot H_n \le n (1 + \ln n)$ steps. So it is $O(n \log n)$.
-
-:::tip[In plain words]
-For each i the loop visits only n/i numbers, and n/1 + n/2 + n/3 + ... adds up to about n times the natural logarithm of n, far less than n squared.
-:::
-
-**A tiny instance.** $n = 10$: the inner loop visits $10, 5, 3, 2, 2, 1, 1, 1, 1, 1$ numbers for $i = 1, \dots, 10$, which is $27$ steps, below $10 (1 + \ln 10) \approx 33$.
-
-**Proof.**
-1. For a fixed $i$, the multiples of $i$ up to $n$ are $i, 2i, \dots, \lfloor n/i \rfloor i$, so the inner loop runs $\lfloor n/i \rfloor \le n/i$ times.
-2. Summing over $i$ gives at most $n (1 + \frac12 + \dots + \frac1n) = n H_n$.
-3. For $k \ge 2$, $\frac1k \le \int_{k-1}^{k} \frac{dx}{x}$, because $\frac1x \ge \frac1k$ on that interval.
-4. Adding these for $k = 2, \dots, n$ gives $H_n - 1 \le \int_1^n \frac{dx}{x} = \ln n$, so $n H_n \le n(1 + \ln n)$. $\square$
-
-:::note[This proof needs]
-1. The inner loop for $i$ visits only the multiples of $i$ up to $n$ (it steps by $i$, not by 1).
-2. Each visit costs $O(1)$.
-:::
-
-<TheoremCode unit="0.2/thm-5" />
-
-**Numbers.** For $n = 10^7$ the exact count is $162\,725\,364$ steps (the bound $n(1 + \ln n)$ gives $1.7 \cdot 10^8$): about one to two seconds of simple steps. For $n = 10^6$ it is $13\,970\,034$. Compare with checking every pair $(i, j)$, which is $n^2 = 10^{14}$ for $n = 10^7$.
-
-**Typical use.** Loops over multiples answer questions about all numbers up to $n$ at once: the number of divisors of every $k \le n$ (add 1 to each multiple of each $i$), or the number of pairs $(a, b)$ with $a \cdot b \le n$ (for each $a$, there are $\lfloor n/a \rfloor$ choices of $b$).
-
-
-## 5. Recognition Cards
-
-Each card names one way of fitting a solution into the budget. The **decisive property** is the precondition of the card's theorem in problem language; **weak signals** suggest the card, **kill signals** rule it out.
-
-<Cards topic="0.2" />
-
-## 6. Templates
-
-Four short functions, one for each way of fitting the budget in Section 4.
-
-### Divisors up to the square root (Theorem 0.2.2)
-
-<CodeSnippet unit="0.2/divisors" />
-
-**How it works.** `d` runs while `d * d <= n`, that is up to $\lfloor \sqrt n \rfloor$, at most $10^6$ values for $n \le 10^{12}$. Each divisor `d` found there is the smaller half of a pair; its partner `n / d` goes into `large`. The partner equals `d` exactly when $n = d^2$, and is then skipped, so a square root is printed once. `small` comes out increasing and `large` decreasing, so printing `large` backwards gives the whole list in order.
-
-**Alternative formulation.** Collect all divisors in one vector and sort it (topic 1.1). It is shorter, costs an extra $O(k \log k)$ for $k$ divisors (at most a few thousand), and is equally correct.
-
-### Maximal runs (Theorem 0.2.4)
-
-<CodeSnippet unit="0.2/runs" />
-
-**How it works.** `i` is the start of the current block. The inner loop moves `j` forward while the character equals `s[i]`, so `s[i..j-1]` is a maximal block. Then `i` jumps to `j`. Since `j` only moves forward through the string, the two loops together take $O(n)$ steps (Theorem 0.2.4). A block of length $L$ contains $L(L+1)/2$ substrings that use one repeated character (Theorem 0.2.3: one of length $L$, two of length $L - 1$, …).
-
-**Alternative formulation.** Use one loop and compare each character with the previous one: when they differ, a new block starts; keep the current block length in a counter. It is the same $O(n)$ pass, written without the inner loop.
-
-### Divisor counts of all numbers up to n (Theorem 0.2.5)
-
-<CodeSnippet unit="0.2/divisor-counts" />
-
-**How it works.** Instead of finding the divisors of each `k`, the loop turns the question around: for each `i`, it visits every multiple `j` of `i` and records that `i` divides `j`. After all `i`, `cnt[k]` holds the number of divisors of `k`. The inner loop for `i` runs about $n/i$ times, so the total is at most $n(1 + \ln n)$ (Theorem 0.2.5).
-
-**Alternative formulation.** For each $k$, count its divisors with Theorem 0.2.2 ($\sqrt k$ steps each). The total is about $\frac23 n^{3/2} \approx 2 \cdot 10^{10}$ for $n = 10^7$, too slow; it is fine only up to about $n = 10^5$.
-
-### Arithmetic sum (Theorem 0.2.3)
-
-<CodeSnippet unit="0.2/arith-sum" />
-
-**How it works.** The formula of Theorem 0.2.3 replaces the loop over $n$ terms. The product is computed before the division by 2, because $n(2a + (n-1)d)$ is always even while $n/2$ alone may not be a whole number.
-
-**Alternative formulation.** $n \cdot a + d \cdot \frac{(n-1)n}{2}$: the sum of $n$ copies of $a$ plus $d$ times $0 + 1 + \dots + (n-1)$. Here $(n-1)n$ is even, so dividing it by 2 first is safe.
-
-## 7. Bug catalogue
-
-Each bug was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy. The input shown is the first one the script found.
-
-### Bug: a square root recorded twice
-
-Template: divisors up to the square root.
+Steps 1-3 ko ek function me daal diya ($c = n^k$ ke liye, plain power):
 
 ```cpp
-large.push_back(n / d);  // without the check d != n / d
+/*
+   Master Theorem for T(n) = a*T(n/b) + n^k, returns the answer as text.
+   e = log base b of a. Compare e with k.
+*/
+string masterTheoremCase(double a, double b, double k) {
+    double e = log(a) / log(b);
+    auto pretty = [](double x) {   // lambda = small unnamed function; cuts trailing zeros of to_string
+        string s = to_string(x);
+        while (s.back() == '0') s.pop_back();
+        if (s.back() == '.') s.pop_back();
+        return s;
+    };
+    if (fabs(e - k) < 1e-9) return "n^" + pretty(k) + " * log n";  // same → c * log n
+    if (e > k) return "n^" + pretty(e);                            // sub-problems win
+    return "n^" + pretty(k);                                       // c wins
+}
 ```
 
-Input: `57600` (which is $240^2$).
+Output: $2T(n/2)+n$ → `n^1 * log n`, $27T(n/3)+n^3$ → `n^3 * log n`, $2T(n/2)+n^2$ → `n^2`, $T(n/2)+1$ → `n^0 * log n`, $2T(n/2)+1$ → `n^1`, $4T(n/2)+n$ → `n^2`.
 
-Wrong output: the list contains `240 240`; correct output: `240` once (the rest of the 81-divisor list is the same). For $d = 240$ the partner $n/d$ is $240$ again, and it is pushed as a second divisor.
-
-**Fix:** push the partner only when `d != n / d` (Theorem 0.2.2, condition 2).
-
-### Bug: stopping strictly below the square root
-
-Template: divisors up to the square root.
+fib ko fast kaise banaye? Brute force: plain recursion, $\approx 1.618^n$. Better: loop, $O(n)$ time, $O(1)$ memory.
 
 ```cpp
-for (long long d = 1; d * d < n; d++)
+// fib(0) = fib(1) = 1, same as above
+long long fibIterative(int n) {
+    long long a = 1, b = 1;
+    for (int i = 2; i <= n; i++) {
+        long long next = a + b;
+        a = b;
+        b = next;
+    }
+    return b;
+}
 ```
 
-Input: `57600`.
+fibIterative(30) = 1346269 (same as recursion, bas 2.7 million calls nahi lage). fibIterative(40) = 165580141.
 
-Wrong output: the list has no `240`; correct output: it has. When $n$ is a perfect square, its root $d$ satisfies $d \cdot d = n$, and `<` stops one step too early.
+---
 
-**Fix:** `d * d <= n`. Every divisor at most $\sqrt n$ must be tried, including $\sqrt n$ itself.
+## Loop Ques (sqrt, log, harmonic, power)
 
-### Bug: the next block starts one character later instead of at `j`
+Ques:
+```cpp
+for (i=0; i*i <= N; i++) {
+    // O(1)
+}
+```
+$i^2 \le N$
+$i \le \sqrt{N}$
+↳ $O(\sqrt{N})$
 
-Template: maximal runs.
+Ques:
+```cpp
+for (i=1; i*i <= N; i++) {        // i^2 <= N, i <= sqrt(N)
+    for (j=1; j<=i; j++) {        // → O(i).
+        // O(1)
+    }
+}
+```
+↳ $O(1) + O(2) + O(3) + \dots + O(\sqrt{N})$.
+
+$O(1+2+\dots+\sqrt{N})$.
+
+$O\left(\frac{\sqrt{N}(\sqrt{N}+1)}{2}\right) = O(N)$.
+
+Ques:
+```cpp
+for (int i=1; i<=N; i++) {
+    for (int j=1; j<=i; j*=2) {
+        // O(1)
+    }
+}
+```
+inner j: 1 → 2 → 4 → 8 → 16...
+$O(\log i)$.
+
+![Row of cells 1 to 20 with the visited values 1, 2, 4, 8, 16 highlighted](../../../assets/notes/0-2-complexity/fig14_doubling_loop.png)
+*i = 20 → j: 1, 2, 4, 8, 16. ~log2(i)+1 rounds.*
+
+$\sum_{i=1}^{N} O(\log i)$     $O(\log i) \le O(\log N)$.
+
+$\therefore \sum_{i=1}^{N} O(\log i) \le \sum_{i=1}^{N} O(\log N)$   (Big O we focus on **upper bound**.)
+
+$= O(\log N) \sum_{i=1}^{N} 1$
+
+$= O(N \log N)$ ✓
+
+Ques:
+```cpp
+for (int i=1; i<=N; i++) {
+    for (int j=i; j<=N; j+=i) {
+        // O(1)
+    }
+}
+```
+
+Inner:
+```
+    1  2  3  4  ...... N
+AP { 2  4  6  8  ...... N
+    3  6  9  12 ...... N.
+```
+$a = i,\ l = N,\ d = i$
+
+$n = \left(\frac{l-a}{d} + 1\right) = \left(\frac{N-i}{i} + 1\right)$
+$O\left(\frac{N}{i}\right)$     $= \left(\frac{N}{i} - 1 + 1\right)$
+
+![Grid for N = 12 showing which numbers the inner loop visits for each i](../../../assets/notes/0-2-complexity/fig15_harmonic_grid.png)
+*N = 12: row i → multiples of i. Total 35 ≈ N·ln N.*
+
+Outer: $\sum_{i=1}^{N} O\left(\frac{N}{i}\right)$
+
+$= O\left(\frac{N}{1}\right) + O\left(\frac{N}{2}\right) + \dots\dots + O\left(\frac{N}{N}\right)$
+
+$= O\left(N\left(1 + \frac{1}{2} + \dots\dots + \frac{1}{N}\right)\right)$
+
+$= O(N \log N)$
+
+** Summation of harmonics are approximated by $O(\log n)$.
+Summation of type $1 + \frac{1}{2} + \frac{1}{3} + \dots\dots + \frac{1}{n}$.
+
+Chaaron loops ko chala ke count kiya:
+
+| Loop | N = 1000 | N = 100000 | predicted |
+|---|---|---|---|
+| `i*i <= N` | 32 | 317 | $\sqrt{N}$ = 31.6, 316.2 |
+| nested till $\sqrt{N}$ | 496 | 50086 | $N/2$ = 500, 50000 |
+| `j *= 2` | 8987 | 1568946 | $N \log_2 N$ = 9965, 1660964 |
+| `j += i` | 7069 | 1166750 | $N \ln N$ = 6907, 1151292 |
+
+Ye $\sqrt{N}$ wale loops number theory me har jagah aate hain. Tere repo me:
 
 ```cpp
-i++;  // instead of i = j
+// Fabricator/Maths/PrimalityCheck.cpp
+bool is_prime(long long x){
+    for(long long i=2; i*i<=x; i++){
+        if(x % i == 0){
+            return false;
+        }
+    }
+
+    return true;
+}
 ```
 
-Input: `babaacbbbac`.
-
-Wrong output `11 3 20`, correct output `8 3 15`. Starting again at `i + 1` inside a block counts the rest of the block as new blocks: `aa` becomes two blocks, `bbb` three. The answer is wrong, and the running time also becomes quadratic, because the inner loop rescans the same characters (Theorem 0.2.4 needs the index to continue from `j`).
-
-**Fix:** `i = j`.
-
-### Bug: a number not counted as its own divisor
-
-Template: divisor counts of all numbers up to $n$.
+T.C. = $O(\sqrt{x})$. $x = 10^{12}$ → loop $10^6$ baar (exactly 1,000,000 round count kiya), isliye limits table me $10^{12}$ ke saamne $O(\sqrt{n})$ hai. is_prime(1000000007) → true, is_prime(1000000008) → false.
 
 ```cpp
-for (int j = 2 * i; j <= n; j += i)
+// Fabricator/Maths/Divisors.cpp (loop from solve(), n is the input)
+vector<long long> div;
+for(long long i=1; i*i<=n; i++){
+    if(n % i == 0){
+        div.push_back(i);
+        if(i*i != n){
+            div.push_back(n/i);
+        }
+    }
+}
+// number of divisors = div.size()
 ```
 
-Input: `146`.
-
-Wrong output `608 15`, correct output `754 16`. Starting at `2 * i` skips `j = i`, so no number counts itself: every count is one too small, and the total is short by exactly $n = 146$.
-
-**Fix:** start at `j = i`. (Starting at `2 * i` is right in other loops, for example when marking the proper multiples of a number; know which one you need.)
-
-### Bug: halving before multiplying
-
-Template: arithmetic sum.
+Divisors pairs me aate hain (i aur n/i), isliye $\sqrt{n}$ tak hi dekhna hai. 12 → 6, 5 → 2, 9 → 3.
 
 ```cpp
-long long sum = n / 2 * (2 * a + (n - 1) * d);
+// Fabricator/Maths/SieveOfEratosthenes.cpp
+vector<bool> sieve_of_eratosthenes(){
+    vector<bool> is_prime(DEF_ARR_SIZE, true);
+    is_prime[0] = is_prime[1] = false;
+    for(int i=2; i<DEF_ARR_SIZE; i++){
+        if(is_prime[i]){
+            for(long long j=1ll*i*i; j<DEF_ARR_SIZE; j+=i){
+                is_prime[j] = false;
+            }
+        }
+    }
+
+    return is_prime;
+}
 ```
 
-Input: `7 8 9` (nine terms $7, 15, \dots, 71$).
+`DEF_ARR_SIZE` = `1'000'100` (repo ka constant, `'` bas digit separator hai). Do nested loops hain toh $n^2$ lag raha hoga, par har prime i ke sirf multiples cross hote hain → harmonic idea (upar wala `j += i`). Chala ke dekha: 78504 primes below 1000100, inner loop total 2,122,257 baar for $n \approx 10^6$ → ~2 steps per element. ($O(n \log\log n)$ known result hai, maine sirf count kiya hai, prove nahi kiya.)
 
-Wrong output `312`, correct output `351`. For odd $n = 9$, `n / 2` is 4, not 4.5, so the result is short by half of $2a + (n-1)d = 78$, that is by 39.
+Ques:
+```cpp
+int power (int a, int b){
+    if (!b) return 1;
+    int temp = power (a, b/2) * power (a, b/2);
+    if (b%2 == 1) temp *= a;
+    return temp;
+}
+```
+$T(b) \Longrightarrow$ power (a, b).
 
-**Fix:** multiply first, then divide: the full product $n(2a + (n-1)d)$ is always even (Theorem 0.2.3, condition 2).
+$T(b) = 2T\left(\frac{b}{2}\right) + O(1)$.
 
-## 8. Worked examples
+A=2          c = O(1)
+B=2
 
-### Example 1: Number Spiral
+$\left(b^{\log_B A}\right) = \left(b^{\log_2 2}\right) = b$.
 
-[CSES 1071 Number Spiral](https://cses.fi/problemset/task/1071) (CSES is the Code Submission Evaluation System problem set). In short: an infinite grid is filled with $1, 2, 3, \dots$ along a fixed spiral pattern shown on the page; answer $t \le 10^5$ queries "which number is in row $y$, column $x$?" with $y, x \le 10^9$.
+$O(b) > O(1)$  $\therefore$ T.C. = $O(b)$.
 
-#### Step 1: Constraints → budget
+Ques:
+```cpp
+int power (int a, int b) {
+    if (!b) return 1;
+    int temp = power (a, b/2);
+    temp *= temp;
+    if (b%2 == 1) temp *= a;
+    return temp;
+}
+```
 
-$t = 10^5$ queries and coordinates up to $10^9$. Filling the grid up to the queried cell would take up to $10^{18}$ steps per query. Even $O(\sqrt{10^{18}}) = 10^9$ per query is too slow. We need $O(1)$ per query: a formula. The answer reaches about $10^{18}$, so it needs `long long`.
+$T(b) = T\left(\frac{b}{2}\right) + O(1)$
+A=1, B=2 , c = O(1)
 
-#### Step 2: Question form → candidate tools
+$\left(b^{\log_B A}\right) = b^{\log_2 1} = b^0 = 1$
 
-A value defined by a long but regular process suggests a closed form (Theorem 0.2.3). The alternative, building the grid step by step, is ruled out by the budget.
+$O\left(b^{\log_2 1}\right) = O(1) = c = O(1)$
 
-#### Step 3: Property check → decision
+$\therefore$ T.C. = $O(1 \cdot \log b)$
 
-Look at the pattern. Call $m = \max(y, x)$ the *layer* of the cell: layer $m$ is the set of cells in row $m$ or column $m$ with both coordinates at most $m$, which is $2m - 1$ cells. Layers $1, \dots, m - 1$ form an $(m-1) \times (m-1)$ square and use the numbers $1, \dots, (m-1)^2$, so layer $m$ holds $(m-1)^2 + 1, \dots, m^2$. In the picture on the page, an even layer runs down column $m$ and then left along row $m$; an odd layer runs right along row $m$ and then up column $m$. Each half is an arithmetic progression with difference $\pm 1$, so its values have a formula. Decision: closed form.
+![Call trees for b = 8: two calls per level give 31 calls, one call per level gives 5 calls](../../../assets/notes/0-2-complexity/fig16_power_call_trees.png)
+*left: do calls → 31. right: ek call → 5. (b = 8)*
 
-#### Step 4: Proof for this problem
+Dekho, farak sirf itna hai ki pehle version me power(a, b/2) do baar compute ho raha hai, doosre me ek baar aur answer reuse.
 
-Take an even layer $m$. Its first cell is $(1, m)$ with value $(m-1)^2 + 1$, and going down column $m$ adds 1 per row, so cell $(y, m)$ holds $(m-1)^2 + y$; the last cell of the column is $(m, m)$ with $(m-1)^2 + m$. Then row $m$ is walked to the left, ending at $(m, 1)$ with value $m^2$; going back one column subtracts 1, so $(m, x)$ holds $m^2 - x + 1$. For odd $m$ the roles of row and column swap: $(m, x)$ holds $(m-1)^2 + x$ and $(y, m)$ holds $m^2 - y + 1$. The two formulas agree at the corner $(m, m)$ ($(m-1)^2 + m = m^2 - m + 1$), so the corner can go to either case. Each query costs $O(1)$; all values are at most $10^{18}$.
+Calls count kiye:
 
-#### Step 5: Code
+| b | two-call | one-call |
+|---|---|---|
+| 10 | 31 | 5 |
+| 20 | 63 | 6 |
+| 30 | 63 | 6 |
+| 40 | 127 | 7 |
 
-<CodeSnippet unit="0.2/example-1" />
+power(3, 13) = 1594323 dono me.
 
-#### Step 6: Alternative approach
+Note: `int` jaldi overflow hota hai ($3^{25}$ already 32 bit me nahi aata). `long long` ya mod use karo. Complexity same rehti hai.
 
-Walk the spiral cell by cell until reaching $(y, x)$: correct, but $O(m^2)$ per query, about $10^{18}$ steps in the worst case. There is no other natural approach within the budget; the formula is the solution.
+```cpp
+// Fabricator/Maths/Exponentiation.cpp
+long long bin_exp(long long base, long long pow, long long mod){
+    if(base == 1 || pow == 0) return 1;
 
-### Example 2: Count xxx
+    long long res = 1;
+    while(pow){
+        if(pow & 1){
+            res = (res * base) % mod;
+        }
 
-[AtCoder Beginner Contest (ABC) 329, problem C: Count xxx](https://atcoder.jp/contests/abc329/tasks/abc329_c). In short: count the *different* strings that occur in $S$ ($|S| \le 2 \cdot 10^5$) as substrings and consist of one repeated letter.
+        base = (base * base) % mod;
+        pow >>= 1;
+    }
 
-#### Step 1: Constraints → budget
+    return res;
+}
+```
 
-$N = 2 \cdot 10^5$. Listing all $N(N+1)/2 \approx 2 \cdot 10^{10}$ substrings is too slow; storing them in a set even more so. We need $O(N)$ or $O(N \log N)$.
+Same $O(\log b)$ time, par recursion nahi hai toh $O(1)$ memory. `pow & 1` → last bit 1 hai ya nahi, `pow >>= 1` → pow ko half. bin_exp(3, 13, 1000000007) = 1594323, aur exponent $10^{12}$ ke liye bhi ~40 rounds hi lagte hain.
 
-#### Step 2: Question form → candidate tools
+---
 
-"Substrings made of one repeated letter" points at maximal blocks (the card "Bounded total work", Theorem 0.2.4). A second candidate: put every such substring into a `set` and count it (fine for tiny $N$, far too slow here).
+## Online judges
 
-#### Step 3: Property check → decision
+OJs check our soln against tests.
 
-A string of $k$ copies of letter $c$ occurs in $S$ exactly when some block of $c$ in $S$ has length at least $k$. So the different strings for letter $c$ are $c, cc, \dots, c^L$ where $L$ is the length of the *longest* block of $c$: exactly $L$ strings. The answer is the sum over the 26 letters of their longest block lengths, and the blocks can be found in one pass. Decision: scan maximal blocks.
+![Tree of verdicts AC, WA, TLE, RTE, MLE, CE with descriptions](../../../assets/notes/0-2-complexity/fig17_verdicts.png)
+*verdicts.*
 
-#### Step 4: Proof for this problem
+Verdicts:
+- AC
+- WA → incorrect logic/implementation
+- TLE → slow soln.
+- RTE (Runtime) → divide by 0 / out of bound access on array
+- MLE → more than allowed memory usage
+- CE (Compile) → syntax.
 
-Every substring made of one letter lies inside one maximal block, so $c^k$ occurs if and only if some block of $c$ has length at least $k$, that is $k \le L_c$, the longest block of $c$. Strings for different letters are different, so the total is $\sum_c L_c$. The scan visits each position once (Theorem 0.2.4), so it is $O(N)$.
+Test suite → Test file → Test cases.
 
-#### Step 5: Code
+```
+T
+N
+1 2 .... N
+```
 
-<CodeSnippet unit="0.2/example-2" />
+Test file:
+```
+2
+4
+1 2 3 4
+3
+1 2 3
+```
+`4 / 1 2 3 4` → ek Test case.
 
-#### Step 6: Alternative approach
+![Input format on the left and a test file with two test cases on the right](../../../assets/notes/0-2-complexity/fig18_test_file.png)
+*T = no. of test cases. highlighted part = ek test case.*
 
-Keep a `set` of pairs (letter, length) and insert $(c, 1), \dots, (c, L)$ for every block. It gives the same count with more work; for a block of length $L$ it inserts $L$ pairs, so the total is $O(N \log N)$, which also fits.
+Collection of test files → test suite.
 
-## 9. Problem ladder
+* The time limit given in the question is for the test file.
+All test files will be given (n) seconds.
+  ↳ Given time limit.
 
-Twenty problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Before coding each one, write down the step count of your idea with the largest input plugged in. Before opening a hint, spend the struggle budget shown on the problem.
+Matlab agar file me T test cases hain toh saare T ka kaam milake TL me aana chahiye, har ek ka alag nahi. Isliye statement me aksar "sum of N over all test cases ≤ ..." hota hai. Wo line padhna.
 
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+---
+
+## Subsequence vs subarray
+
+Ques: Given an array. find # of subsequences.
+
+n=3        arr = [1, 2, 5]
+
+```
+1
+2
+5
+1 2
+1 5
+1 2 5
+2 5
+```
+
+$2^n - 1$
+
+(har element ya toh lo ya mat lo → $2^n$, minus empty = $2^n - 1$)
+
+![The 7 non-empty subsequences of [1, 2, 5]](../../../assets/notes/0-2-complexity/fig19_subsequences.png)
+*yellow = liya hua element. order original hi rehta hai.*
+
+subsequence ≠ subset
+    ↓              ↓
+  ordered       unordered.
+
+** Subsequence → any sequence of elements that can be generated by deleting some elements.
+
+Ye generate kaise karein? Har element pe do choice: take / not take. Repo me ye recursion hai:
+
+```cpp
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Generate-Subset.cpp
+int n;
+vector<int> v;
+vector<int> subsequence;
+
+void rec(int level){
+    if(level == n){
+        _print(subsequence);
+        return;
+    }
+
+    // take
+    subsequence.push_back(v[level]);
+    rec(level + 1);
+    subsequence.pop_back();
+
+    // not take
+    rec(level + 1);
+}
+```
+
+`_print` tera debug printer hai (vector print karta hai). Note: ye empty subsequence bhi print karta hai, toh [1, 2, 5] ke liye 8 lines aati hain ($2^3$), 7 nahi.
+
+Mask wala version:
+
+```cpp
+// Fabricator/BitManipulation/SubSets.cpp (loop from solve(), arr has n elements)
+for(int mask = 0; mask < (1 << n); mask++){
+    for(int bit=0; bit<n; bit++){
+        if(mask & (1<<bit)){
+            cout<<arr[bit]<<" ";
+        }
+    }
+
+    cout<<endl;
+}
+```
+
+mask ka har bit batata hai ki element liya ya nahi. $2^n$ masks, har ek pe $n$ kaam → $O(2^n \cdot n)$, isliye ye $n \le 20$ pe hi chalta hai (limits table dekho). mask = 0 empty wala hai.
+
+Note: subsequences position se count hote hain, value se nahi. [2, 2] me do alag single-2 subsequences hain.
+
+Ques: Given an array. find # of subarrays.
+
+n=5
+```
+| 1 | 3 | 2 | 5 | 7 |
+```
+
+```
+2 ✓
+3 2 5 ✓
+1 3 2 5 7 ✓
+```
+
+3 5 ✗ → not a subarray.
+
+** Subarray → continuous piece of the sequence.
+
+![Array 1 3 2 5 7: [3 2 5] is a subarray, [3, 5] is not](../../../assets/notes/0-2-complexity/fig21_subarray_vs_not.png)
+*[3, 5] me 2 skip hua → subarray nahi, subsequence hai.*
+
+![Staircase of subarrays starting at 1, 3, 2, 5 and 7 with 5, 4, 3, 2 and 1 subarrays](../../../assets/notes/0-2-complexity/fig20_subarrays.png)
+*start at 1 → 5, at 3 → 4, at 2 → 3, at 5 → 2, at 7 → 1.*
+
+$5 + 4 + 3 + 2 + 1$
+$\frac{n \times (n+1)}{2}$.
+
+Note: $n \times (n-1)/2$ nahi, wo n=5 pe 10 deta hai, jabki 15 subarrays hain. Sahi formula $n(n+1)/2$.
+
+In other way we have:
+```
+5 sub arrays of 1 len
+4  "      "    2 len
+3  "      "    3 len
+2  "      "    4 len
+1  "      "    5 len.
+```
+
+Ek aur tarika: $n+1$ vertical lines (borders). Choose any two lines and we'll get a subarray b/w them.
+
+![Six cells with seven lines; any two lines choose a subarray](../../../assets/notes/0-2-complexity/fig22_boundary_lines.png)
+*7 lines, 6 cells. line 1 aur 4 chuni → cells 1, 2, 3.*
+
+$^{N+1}C_2 = \frac{(N+1) \times N}{2}$ ✓
+
+---
+
+## Sum of all subarray sums, contribution technique
+
+Ques: Given an array of size n. find sum of all subarray sums.
+
+n=3 , arr = | 1 | 3 | 2 |
+
+```
+1                          → 1
+      3                    → 3
+          2                → 2
+1  3                       → 4
+      3   2                → 5
+1  3  2                    → 6
+                           ----
+                            21
+```
+
+![All six subarrays of [1, 3, 2] with their sums and the total 21](../../../assets/notes/0-2-complexity/fig23_subarray_sums.png)
+*saare 6 subarrays aur unke sums. total 21.*
+
+Cases:  n ≤ 100
+        n ≤ 1000
+        n ≤ $10^5$
+
+Every subarray have an start & end.
+Brute force:
+    Iterate over all subarrays & find the sum.
+
+```cpp
+for (int st=0; st <n; st++)
+    for (int en = st; en <n; en++){
+        int sum = 0;
+        for (int i = st; i<=en; i++)
+            sum += arr[i];
+    }
+```
+$O(n^3)$
+
+Note: yaha `sum` nikal raha hai par kahin add nahi kar raha. `ans += sum;` innermost loop ke baad lagana padega. Is version ko [1, 3, 2] pe chalaya → 21.
+
+A bit optimized:
+
+```cpp
+for (int st = 0; st <n; st++){
+    int curr_sum = 0;
+    for (int en = st; en <n; en++){
+        curr_sum += arr[en];
+        ans += curr_sum;
+    }
+}
+```
+for every st. we keep checking new ends as we go.
+$O(n^2)$.
+
+(sum of [st..en] = pichla sum + ek element, isliye)
+
+Contribution Technique:
+
+![Each element of [1, 3, 2] shown in the subarrays that contain it: 3, 4 and 3 subarrays, giving 1x3 + 3x4 + 2x3 = 21](../../../assets/notes/0-2-complexity/fig24_contribution_grid.png)
+*1 → 3 subarrays me, 3 → 4 me, 2 → 3 me. 1x3 + 3x4 + 2x3 = 21.*
+
+Idea: har subarray ka sum nikalne ki jagah ye pucho ki har element final answer me kitna add karta hai.
+
+6 subarrays contain 4.
+
+Any subarray that starts before 4 & ends after 4 contains 4 in it.
+
+![Array with 4 in the second cell: 2 start choices and 3 end choices](../../../assets/notes/0-2-complexity/fig25_start_end_choices.png)
+*2 start choices × 3 end choices.*
+
+Total subarray = 2x3 = 6
+
+![Array of size 10 with index 4 marked: i+1 start choices, n-i end choices](../../../assets/notes/0-2-complexity/fig26_contribution_formula.png)
+*start: 0..i → i+1. end: i..n-1 → n-i.*
+
+for i = $(i+1) \times (n-i)$.
+
+```cpp
+for (int i=0; i<n; i++){
+    ans += arr[i] * (i+1) * (n-i);
+}
+```
+$O(n)$.
+
+Note: arr[i], i+1, n-i teeno int hain toh product overflow ho sakta hai. n = $10^5$ aur values $10^9$ tak ho toh `(long long)arr[i] * (i+1) * (n-i)` likhna.
+
+Check: $1 \cdot (0+1)(3-0) + 3 \cdot (1+1)(3-1) + 2 \cdot (2+1)(3-2) = 3 + 12 + 6 = 21$. Har subarray har element me ek hi baar count hota hai, isliye ye sahi hai. Teeno versions ko [1, 3, 2] pe (21) aur 300 random arrays (negative numbers ke saath) pe chalaya, teeno same aaye.
+
+Contribution technique tere repo me bhi hai. Sum of $|a_i - a_j|$ over all pairs: sort karne ke baad index i wala element `i` pairs me bada hai aur `n-i-1` pairs me chhota.
+
+```cpp
+// Fabricator/ContributionTechnique/SumOfDifference.cpp (loop from solve(), after sort)
+sort(arr_sorted, arr_sorted + n);
+
+long long sol = 0;
+for(int i=0; i<n; i++){
+    long long smaller_than_current = i;
+    long long larger_than_current = n - i - 1;
+
+    sol += (smaller_than_current - larger_than_current) * (long long)(arr_sorted[i]);
+}
+```
+
+\{1, 3, 2\} → 4 (2+1+1), \{4, 1, 7\} → 12 (3+6+3). 300 random arrays pe brute force se match.
+
+---
+
+## Sum of all subsequence sums
+
+Ques: Given an array. find sum of all subsequence sum.
+
+```
+| 1 | 3 | 2 |
+
+1                 → 1
+    3             → 3
+        2         → 2
+1   3             → 4
+    3   2         → 5
+1       2         → 3
+1   3   2         → 6
+                  ----
+                   24
+```
+
+Note: total 24 hai (1+3+2+4+5+3+6), 27 nahi. Neeche wala reasoning bhi 24 hi deta hai.
+
+![All 7 non-empty subsequences of [1, 3, 2] with sums, total 24](../../../assets/notes/0-2-complexity/fig27_subsequence_sums.png)
+*har element 4 subsequences me. 4 × (1+3+2) = 24.*
+
+$1 \times 4 + 3 \times 4 + 2 \times 4$
+$4\,(1+3+2)$
+$2^{n-1} \times (\sum arr[i])$.
+
+![Element i always taken, each other element has 2 choices (take or skip)](../../../assets/notes/0-2-complexity/fig28_choose_or_skip.png)
+*baaki n-1 elements pe 2-2 choice.*
+
+for $i^{th}$ element, we can choose/not choose other elements.
+$(n-1)$ elements
+↳ $2^{n-1}$
+
+$2^{n-1} * \left(\sum arr[i]\right)$.
+
+```cpp
+/*
+   Sum of the sums of all non-empty subsequences.
+   Every element is in 2^(n-1) subsequences, so answer = 2^(n-1) * (sum of arr).
+   O(n). For big n the answer is huge, usually asked modulo 10^9+7.
+*/
+long long sumOfSubsequenceSums(const vector<int>& a) {
+    long long total = 0;
+    for (int x : a) total += x;
+    return (1LL << (a.size() - 1)) * total;     // 1LL << k = 2^k as long long
+}
+```
+
+\{1, 3, 2\} → 24, \{5, -2, 7, 1, 4\} → 240. Brute force (saare masks) se 300 random arrays pe match.
+
+---
+
+## Property maintenance while scanning
+
+** Seen till now property:
+
+We go through an array and maintain some property (variables, info, data structure) and extend the property when we move ahead and see new element.
+
+![A long array with info kept for everything seen so far, extended when the new element is met](../../../assets/notes/0-2-complexity/fig29_scan_and_maintain.png)
+*maintain some info for this, probably a data structure. new element aaya toh info extend.*
+
+Is note me: `curr_sum` (subarray code), pointer `i` (amortized), prefix parity mask (neeche).
+
+Aur jagah: running max/min, prefix sums, frequency table / set of seen elements.
+
+---
+
+## Stable sorting
+
+** Go through sorting algo and check if they are stable or not. (Hacker earth).
+
+Stable matlab: equal elements apni original order me rehte hain. Eg: pairs ko score se sort karo; (2,"a") input me (2,"c") se pehle tha toh stable sort me a, c se pehle hi rahega.
+
+| Sort | Stable? |
+|---|---|
+| Bubble | yes |
+| Insertion | yes |
+| Merge | yes |
+| Selection | no (usual version) |
+| Quick | no (usual version) |
+| Heap | no |
+
+C++ me `std::sort` stable nahi hai, `std::stable_sort` hai. \{2a, 1b, 2c, 1d, 2e\} ko score pe `stable_sort` karne pe `1b 1d 2a 2c 2e` aata hai.
+
+---
+
+## Comparing strings with a+b &lt; b+a
+
+** 
+```cpp
+bool cmp (string a, string b){
+    return a+b < b+a;
+}
+```
+This used to compare strings where the sizes of a & b are different & logically we can't compare them.
+
+Idea: a ko b se pehle rakho agar text `a+b` chhota hai `b+a` se.
+
+Eg: 3, 30, 34, 5, 9. `"3"+"30" = "330"`, `"30"+"3" = "303"`. `"303" < "330"` → 30, 3 se pehle. Poora sort karke jodo toh smallest string milti hai: `3033459` (chala ke dekha).
+
+Note: `cmp` strings ko by value leta hai → har call me copy. `const string&` se copy bachti hai. Aur `a+b` ek nayi string banata hai → ek comparison $O(|a|+|b|)$.
+
+```cpp
+// Fabricator/STL/SmallestStringConcatenation.cpp (sort and glue from solve(), v has n strings)
+sort(v.begin(), v.end(), cmp);
+
+string ans = "";
+for(int i=0; i<n; i++){
+    ans += v[i];
+}
+```
+
+`ans += v[i]` in-place append hai, sasta. `ans = ans + v[i]` har baar poori string copy karta.
+
+Largest number chahiye toh comparison ulta (`a+b > b+a`): \{3, 30, 34, 5, 9\} → `9534330`.
+
+---
+
+## Palindrome anagram queries
+
+Ques: Given a string s and q queries. containing l & r. For each query print if s[l......r] is anagram to some palindrome
+
+s = " a b c a b a c a "   (first "abcab" underlined)
+
+q=1 , l=1, r=5 → yes.
+
+i) n, q ≤ $10^3$
+ii) n, q ≤ $10^5$
+iii) per q → O(1).
+
+![String abcabaca with positions 1 to 8 and the first five letters highlighted](../../../assets/notes/0-2-complexity/fig30_palindrome_query.png)
+*abcab → a=2, b=2, c=1. sirf c odd → yes (abcba).*
+
+Observation: palindrome ban sakta hai toh at most ek letter ka odd count. Kyuki palindrome me har letter ki jodi hoti hai dono side, bas beech wala akela ho sakta hai.
+
+i) $n, q \le 10^3$ → har query me s[l..r] ke letters directly count karo. $O(n)$ per query, total $10^6$.
+ii) $n, q \le 10^5$ → $n \cdot q = 10^{10}$, TLE. Prefix counts: `freq[i][c]` = first i letters me letter c kitni baar. Query me do rows subtract. 26 steps per query, constant.
+iii) per q $O(1)$ → sirf odd/even chahiye, toh 26 counts ki jagah ek integer me 26 bits (bitmask), XOR (`^`, bit flip karta hai).
+
+Tere repo wala (prefix counts). Tera code l, r 0-indexed leta hai, toh upar wala l=1, r=5 yaha l=0, r=4 hoga.
+
+```cpp
+// Fabricator/STL/PalindromeAnagramQuery.cpp (from solve(), s is the string)
+int n = s.size();
+vector<vector<int>> freq(n+1, vector<int>(26, 0));
+for(int i=0; i<n; i++){
+    for (int c = 0; c < 26; ++c) {
+        freq[i + 1][c] = freq[i][c];
+    }
+    freq[i + 1][s[i] - 'a']++;
+}
+```
+
+aur har query ke liye:
+
+```cpp
+// Fabricator/STL/PalindromeAnagramQuery.cpp (per query, l and r read from input)
+int odd_count = 0;
+
+for (int c = 0; c < 26; ++c) {
+    int cnt = freq[r + 1][c] - freq[l][c];
+    if (cnt % 2 != 0) {
+        odd_count++;
+    }
+}
+
+if(odd_count <= 1){
+    cout<<"YES\n";
+}
+else{
+    cout<<"NO\n";
+}
+```
+
+Memory $O(26 \cdot n)$ → $n = 10^5$ pe $2.6 \times 10^6$ ints.
+
+Bitmask version, memory $O(n)$:
+
+```cpp
+/*
+   prefix[i] has bit c set if letter c appears odd number of times in first i letters.
+   O(n) build.
+*/
+vector<int> buildPrefixParity(const string& s) {
+    vector<int> prefix(s.size() + 1, 0);
+    for (size_t i = 0; i < s.size(); i++)
+        prefix[i + 1] = prefix[i] ^ (1 << (s[i] - 'a'));   // flip this letter's bit
+    return prefix;
+}
+
+/*
+   Query with 1-based l, r. XOR of two prefixes keeps only letters with odd count inside [l, r].
+   mask & (mask - 1) clears the lowest set bit → result 0 iff mask has 0 or 1 bits set.
+   O(1) per query.
+*/
+bool canFormPalindrome(const vector<int>& prefix, int l, int r) {
+    int mask = prefix[r] ^ prefix[l - 1];
+    return (mask & (mask - 1)) == 0;
+}
+```
+
+s = "abcabaca", dono methods same answer: (1,5) abcab → YES, (1,3) abc → NO, (2,8) bcabaca → YES, (1,8) abcabaca → YES, (4,4) a → YES.
+
+---
+
+## Quick revision
+
+- steps: read, understand, ideate, implement, debug, AC. complexity → ideate me (correctness + efficiency)
+- T.C. = no. of instructions. worst case pe sabse jaada dhyaan
+- $N^2 + 3N + 1 \to O(N^2)$, bada term rakho, constants hatao
+- O → upper, Ω → lower, Θ → exact. $aN^c + \dots$ → $\Theta(N^c)$
+- $1 < \log n < \sqrt n < n < n\log n < n^2 < n^3 < 2^n < n! < n^n$
+- nesting → multiply, sequence → add. N, M alag rakho
+- $\le 10^8$ pass, $5 \times 10^7$ safer, $\ge 10^9$ TLE
+- limits: 10 → $n!$, 20 → $2^n n$, 80 → $n^4$, 400 → $n^3$, 7500 → $n^2$, $10^5$ → $n\sqrt n$, $5\times10^5$ → $n\log n$, $5\times10^6$ → $n$, $10^{12}$ → $\sqrt n$, $10^{18}$ → $\log n$
+- amortized: pointer sirf aage → nested dikhne wala loop bhi $O(N)$
+- memory: stack ↓, heap ↑, static/global, text. cells × bytes ($10^8$ ints ≈ 381 MB). recursion depth = stack
+- Master: $T(n) = aT(n/b) + c$ → compare $n^{\log_b a}$ vs c. same → c log n, warna bada wala
+- merge sort $O(n\log n)$. power do calls $O(b)$, ek call $O(\log b)$. fib naive ≈ $1.618^n$
+- `i*i <= N` → $O(\sqrt N)$. nested till $\sqrt N$ → $O(N)$. `j *= 2` → $O(N\log N)$. `j += i` → $O(N\log N)$ (harmonic)
+- verdicts: AC, WA, TLE, RTE, MLE, CE. TL test file ka hota hai
+- subsequences: $2^n - 1$. subarrays: $n(n+1)/2$
+- sum of subarray sums: $\sum arr[i] (i+1)(n-i)$. subsequence sums: $2^{n-1} \sum arr[i]$ ([1,3,2] → 24)
+- contribution technique: har element kitni baar use hota hai
+- a+b &lt; b+a se different length strings compare
+- palindrome anagram: at most ek odd count letter. prefix parity mask → $O(1)$ per query
+- stable: merge, insertion, bubble. `stable_sort` stable, `sort` nahi
+
+---
+
+## Practice problems
+
+Codeforces
+- [The Smallest String Concatenation (632C)](https://codeforces.com/problemset/problem/632/C)
+
+CSES
+- [Exponentiation](https://cses.fi/problemset/task/1095)
+
+AtCoder
+- [ABC186 D, Sum of Difference](https://atcoder.jp/contests/abc186/tasks/abc186_d)
+
+LeetCode
+- [Total Appeal of A String](https://leetcode.com/problems/total-appeal-of-a-string/)
+- [Count Unique Characters of All Substrings of a Given String](https://leetcode.com/problems/count-unique-characters-of-all-substrings-of-a-given-string/)
+
+maang.in
+- [Number of Divisors](https://maang.in/problems/Number-of-Divisors-AZ101-322)
+- [Prime Check](https://maang.in/problems/Prime-Check-AZ101-323)
+- [Exponentiation](https://maang.in/problems/Exponentiation-AZ101-387)
+- [Inefficient Program](https://maang.in/problems/Inefficient-Program-80)
+- [Primes from 1 to n](https://maang.in/problems/Primes-from-1-to-n-1208)
+- [Sieve of Eratosthenes Revisited](https://maang.in/problems/Sieve-of-Eratosthenes-Revisited-234)
+- [Count Distinct Char in Substrings](https://maang.in/problems/Count-Distinct-Char-in-Substrings-62)
+- [Count Unique Char in Substrings](https://maang.in/problems/Count-Unique-Char-in-Substrings-63)
+
+### Problem ladder
 
 <Ladder topic="0.2" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card (the list includes earlier topics' cards), write the property you checked, then reveal the answer. Do not solve the problems here: deciding is the exercise.
-
-<Drill topic="0.2" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the decision.
-
-<LookalikePairs topic="0.2" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer.
-
-<SelfTest topic="0.2" />
-
-## 13. Checkpoint
-
-Three problems in 90 minutes. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 9 drill items in Section 10. After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="0.2" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen against the tools you already have. The same entries appear in the Recognition Handbook, grouped by weak signal across all topics.
-
-<DecisionMapUpdate topic="0.2" />

@@ -4,564 +4,796 @@ sidebar:
   order: 1
 topic: "0.1"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="0.1" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. Read $n$ integers $a_1, \dots, a_n$ with $n \le 2 \cdot 10^5$ and $1 \le a_i \le 10^9$, and print their sum.
+Debugging in CP (competitive programming) → verdicts (CE, RTE, TLE, WA, MLE), kya kya cause hota hai har ek ka, aur test cases kaise banane hain jisse bug pakda jaye: extreme values, code coverage, common themes, stress testing. Uske saath tools: assert, sanitizers, debug macro.
 
-The idea is a single loop, and it is correct. Yet a program that keeps the sum in an `int` prints a wrong answer: the sum can reach $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$, and an `int` cannot hold numbers above about $2.1 \cdot 10^9$. If the same program reads its input with default settings and the input has a million numbers, it can also run out of time before the loop even matters.
+- Debugging: the 4 things
+- Verdicts
+- CE
+- MLE
+- TLE
+- RTE
+- WA
+- Test cases
+- i) Extreme values
+- ii) Code coverage
+- iii) Common themes
+- iv) Stress testing
+- Finding the bug fast (binary search, assert, sanitizers, debug macro)
+- Quick revision
+- Practice problems
 
-Most early failures in **competitive programming (CP)**, solving well-defined problems under time and memory limits, are of this kind: the idea is right, but a number does not fit its type, a division rounds the wrong way, or the input is read too slowly. This topic covers the parts of C++ that decide whether a correct idea is accepted: how a judge runs your program, how big each integer type is, how C++ divides and rounds, how to read many test cases from one input, and how to read and write quickly. Every later topic assumes them.
+## Debugging: the 4 things
 
-## 2. Prerequisites and scope
+→ Debugging:
 
-### What you need
+i) Process → need to have a process to debug. [Learn]
 
-Basic programming in any language (variables, `if`, loops, functions, arrays) and a C++ compiler. Every program on this site compiles with `g++ -std=c++17 -O2 -Wall -Wextra`, the settings most judges use.
+ii) Time → check for time left in the contest. [exp]
 
-<WhatYouNeed topic="0.1" />
+iii) Language → be better at the programming language. [Learn]
 
-### What this topic does not cover
+iv) Thinking of good testcases [where the problem fails] [Practice]
 
-- Estimating whether an algorithm is fast enough from the constraints (big-O notation, operations per second). Covered in topic 0.2.
-- Turning a long description of a process into code (simulation). Covered in topic 0.3.
-- Divisibility, GCD (greatest common divisor), and arithmetic modulo a number. Covered in topic 0.4.
-- The containers of the C++ standard library beyond `vector` and `string` (`set`, `map`, `priority_queue`, …). Covered in topic 0.6.
+Process matlab random changes nahi karne. Ek loop follow karo, aur ek baar mein sirf ek cheez change karo.
 
-## 3. Definitions
+![Debugging loop: read verdict, small failing input, find first wrong step, guess cause, fix one thing, re-test, submit](../../../assets/notes/0-1-cpp-for-cp/fig01_debug_loop.png)
 
-- A **compiler** turns your C++ source file into a program the computer can run. If the source breaks a rule of the language, it reports a **compile error** and makes no program.
-- An **online judge** is a website that compiles your source, runs it on hidden tests, and compares its output with the expected output. Codeforces, AtCoder, CSES, and LeetCode are judges.
-- **Standard input** is the text a program reads (with `cin`); **standard output** is the text it writes (with `cout`). Judges feed the test through standard input and read your answer from standard output, so programs must not print anything else (no "Enter n:").
-- A **verdict** is the judge's result for a submission:
-  - **Accepted (AC)**: correct on every test.
-  - **Wrong Answer (WA)**: some output differs from the expected one.
-  - **Time Limit Exceeded (TLE)**: the program ran longer than allowed (usually 1–2 seconds).
-  - **Memory Limit Exceeded (MLE)**: it used more memory than allowed.
-  - **Runtime Error (RE)**: it crashed, for example by reading outside an array or dividing by zero.
-  - **Compilation Error (CE)**: it did not compile.
-- A **test case** is one complete input instance. When one input file contains several, the first number is usually their count $t$, and the program answers each in turn: this is a **multiple-test** input.
-- A **bit** is a binary digit, 0 or 1. An integer type with $b$ bits has $2^b$ possible values.
-- A **signed type** holds negative and positive values; an **unsigned** type holds only values $\ge 0$. `int` is a 32-bit signed type, `long long` a 64-bit signed type, and `unsigned long long` a 64-bit unsigned type.
-- **Overflow** happens when the exact result of an arithmetic step does not fit in its type. Example: in `int`, $50000 \cdot 50000 = 2.5 \cdot 10^9$ does not fit.
-- **Integer division** `a / b` in C++, for integers, gives an integer; the **remainder** `a % b` satisfies `a == (a / b) * b + a % b`. Example: `7 / 2 == 3`, `7 % 2 == 1`.
-- The **floor** $\lfloor x \rfloor$ of a real number $x$ is the largest integer $\le x$; the **ceiling** $\lceil x \rceil$ is the smallest integer $\ge x$. Example: $\lfloor -3.5 \rfloor = -4$, $\lceil -3.5 \rceil = -3$, $\lfloor 3.5 \rfloor = 3$.
-- A **floating-point number** (C++ `double`) stores a real number approximately, as a binary fraction with 53 significant bits times a power of two.
-- The **integer square root** of $x \ge 0$ is $\lfloor \sqrt{x} \rfloor$. Example: the integer square root of 10 is 3.
+*Debugging loop. One change at a time.*
 
-## 4. Theory and proofs
+## Verdicts
 
-### 4.1 How big an integer type is
+After submitting we get a verdict.
 
-**Theorem 0.1.1 (integer ranges).** A $b$-bit signed type as used by C++ compilers holds exactly the integers from $-2^{b-1}$ to $2^{b-1} - 1$, and a $b$-bit unsigned type the integers from $0$ to $2^b - 1$. In particular:
+![verdict with arrows to CE, RTE, TLE, WA, MLE](../../../assets/notes/0-1-cpp-for-cp/fig02_verdicts.png)
 
-| type | bits | largest value | about |
-|---|---|---|---|
-| `int` | 32 | $2^{31} - 1 = 2\,147\,483\,647$ | $2.1 \cdot 10^9$ |
-| `long long` | 64 | $2^{63} - 1 = 9\,223\,372\,036\,854\,775\,807$ | $9.2 \cdot 10^{18}$ |
-| `unsigned long long` | 64 | $2^{64} - 1$ | $1.8 \cdot 10^{19}$ |
+*5 bad verdicts.*
 
-:::tip[In plain words]
-A 32-bit int stops at about 2.1 billion and a 64-bit long long at about 9.2 quintillion; a result above the limit is not stored correctly, so the type must be chosen from the largest value any step can reach.
-:::
+CE = Compilation Error, RTE = Run Time Error, TLE = Time Limit Exceeded, WA = Wrong Answer, MLE = Memory Limit Exceeded.
 
-**A tiny instance.** A signed type with $b = 3$ bits (smaller than any real one) has $2^3 = 8$ patterns, which stand for $-4, -3, -2, -1, 0, 1, 2, 3$: the smallest is $-2^{2} = -4$ and the largest $2^{2} - 1 = 3$.
+A test case can come from two places: by yourself, or the computer.
 
-**Proof.**
-1. A $b$-bit type has $2^b$ bit patterns, so it holds at most $2^b$ different values.
-2. An unsigned type uses the patterns for $0, 1, \dots, 2^b - 1$. That is $2^b$ values, so its largest value is $2^b - 1$.
-3. A signed type uses *two's complement*: the $2^{b-1}$ patterns whose top bit is 1 stand for the negative numbers $-2^{b-1}, \dots, -1$.
-4. The $2^{b-1}$ patterns whose top bit is 0 stand for $0, \dots, 2^{b-1} - 1$.
-5. Together these are all $2^b$ patterns, so no other value fits and the largest signed value is $2^{b-1} - 1$.
-6. Substituting $b = 32$ and $b = 64$ gives the table. $\square$
+![test case with arrows to by yourself and computer](../../../assets/notes/0-1-cpp-for-cp/fig03_test_sources.png)
 
-:::note[This proof needs]
-1. Every intermediate value of the computation, not only the final answer, lies within the type's range.
-2. The type of each step is the type C++ computes it in: `int * int` is computed in `int` even when the result is then stored in a `long long`.
-:::
+*Test case: by yourself / computer.*
 
-<TheoremCode unit="0.1/thm-1" />
+## CE
 
-The first two examples are the table. The third multiplies in 64 bits: written as `1LL * a * b`, the first operand is a `long long`, so the whole product is computed in 64 bits and $10^{10}$ is stored correctly.
+CE (Compilation Error) : easiest to solve.
+Some syntax error.
 
-**Consequences.** A product of two values up to $10^9$ is at most $10^{18}$: it fits `long long` but not `int`. A product of three such values ($10^{27}$) fits no built-in type. A sum of $2 \cdot 10^5$ values up to $10^9$ needs `long long`. When a signed type overflows, C++ does not promise any result (the behaviour is *undefined*); in practice the value usually wraps around to a large negative number.
+Dekho, pehla error message padho aur wahi fix karo. Baaki errors aksar usi ke side effect hote hain. Compile with `-Wall` toh silly mistakes (unused variable, variable used before value) submit se pehle hi pakad mein aa jaate hain.
 
-**The type of an expression.** In `long long x = a * b;` with `int a, b`, the multiplication happens in `int`, overflows, and only the broken result is copied into `x`. Write `1LL * a * b` or `(long long)a * b`. `1LL` is the number 1 as a `long long`.
+## MLE
 
-**Theorem 0.1.2 (checking a product without overflow).** Let $a \ge 0$, $b \ge 1$, and $L \ge 0$ be integers. Then $a \cdot b > L$ if and only if $a > \lfloor L / b \rfloor$.
+MLE (Memory limit exceeded) : array size /
+collection of data structure size
 
-:::tip[In plain words]
-To ask whether a times b is above a limit L, ask whether a is above L divided by b (rounded down). The product itself, which might not fit, is never computed.
-:::
+![max array size: global 5x10^7 [200 MB], inside func 2x10^6 ints](../../../assets/notes/0-1-cpp-for-cp/fig04_array_size.png)
 
-**A tiny instance.** $b = 7$ and $L = 34$, so $\lfloor L / b \rfloor = 4$. For $a = 5$: $5 \cdot 7 = 35 > 34$ and $5 > 4$. For $a = 4$: $4 \cdot 7 = 28 \le 34$ and $4 \le 4$.
+*Max array size.*
 
-**Proof.**
-1. Write $q = \lfloor L / b \rfloor$, so $q \cdot b \le L < (q + 1) \cdot b$.
-2. If $a > q$, then $a \ge q + 1$ because $a$ is an integer, so $a \cdot b \ge (q + 1) \cdot b > L$.
-3. If $a \le q$, then $a \cdot b \le q \cdot b \le L$.
-4. So $a \cdot b > L$ exactly when $a > q$. $\square$
+int → 4 bytes
+10^7 ints → 40 mb.
 
-:::note[This proof needs]
-1. $a \ge 0$ and $b \ge 1$ (for $b = 0$ the product is 0 and needs no check).
-2. $L$ itself fits the type, so $\lfloor L / b \rfloor$ can be computed exactly.
-:::
+So 5x10^7 ints = 5x10^7 × 4 bytes = 200 MB. And 2x10^6 ints = 8 MB.
 
-<TheoremCode unit="0.1/thm-2" />
+Why inside func is so small? Local variables stack pe rehte hain. Stack chhota hota hai (Linux pe aksar 8 MB) aur function calls bhi usi mein jaate hain. Global alag, bada area hai.
 
-The first two examples sit on the border: $10^9 \cdot 10^9$ equals the limit and is not above it, one more is. To multiply many numbers and stop once the product passes $L = 10^{18}$, test `prod > L / x` *before* computing `prod * x`; the product itself never leaves the range.
+Note: ye numbers rule of thumb hain. Actual limit problem statement mein hoti hai, aur kuch judges stack bada dete hain.
 
-### 4.2 Many test cases in one input
+Memory = no. of elements × size of one element. `long long` is 8 bytes, so 10^6 long longs = 8 MB.
 
-**Theorem 0.1.3 (cost of inputs with many tests).** Suppose an input has $t$ test cases of sizes $n_1, \dots, n_t$ and the statement promises $n_1 + \dots + n_t \le N$. If a program spends at most $c \cdot n_i$ steps on test $i$, it spends at most $c \cdot N$ steps in total. If instead it spends $c \cdot M$ steps on every test for some fixed $M$ (for example, clearing a global array of size $M$), the total is $c \cdot t \cdot M$.
+## TLE
 
-:::tip[In plain words]
-If every test costs time proportional to its own size, all tests together cost time proportional to the sum of the sizes. If every test costs time proportional to the largest possible size, the cost is multiplied by the number of tests.
-:::
+TLE (Time limit exceeded) ──> TC is beyond 10^8 limit
 
-**A tiny instance.** Three tests of sizes $3, 5, 2$ and $M = 200\,000$: working on each test's own array takes $3 + 5 + 2 = 10$ steps, clearing the global array in every test takes $3 \cdot 200\,000 = 600\,000$.
+![TLE: TC beyond 10^8, inf loop/recursion, input not formatted correctly, fast io & endl](../../../assets/notes/0-1-cpp-for-cp/fig05_tle_causes.png)
 
-**Proof.**
-1. Add the per-test bounds: $c n_1 + \dots + c n_t = c (n_1 + \dots + n_t)$.
-2. The promise says $n_1 + \dots + n_t \le N$, so the total is at most $c N$.
-3. In the second case each of the $t$ tests costs $c M$, so the total is $c t M$. $\square$
+*TLE causes.*
 
-:::note[This proof needs]
-1. The statement bounds the *sum* of the sizes over all tests (not just each size).
-2. The work for a test depends only on that test's size, never on the largest possible size.
-:::
+- TC (time complexity) is beyond 10^8 limit
+- inf loop/recursion
+- input not formatted correctly. [waits for input]
+- fast io & endl.
 
-<TheoremCode unit="0.1/thm-3" />
+Check 1: T.C. kitna hai? n = 10^5 pe $O(n^2)$ matlab 10^10 operations, infeasible. $O(n \log n)$ matlab ~1.7 x 10^6, easy.
 
-The second example is the one to remember: with $t \le 10^4$ tests of total size $2 \cdot 10^5$, the loops over each test's own array cost $2 \cdot 10^5$ steps, but clearing a global array of $2 \cdot 10^5$ entries in every test costs $2 \cdot 10^9$, which is too slow. Creating a `vector<int> a(n)` inside the test loop avoids both the clearing and the leftovers from the previous test.
+![n, n log n, n^2 against the 10^8 line](../../../assets/notes/0-1-cpp-for-cp/fig16_ops_vs_limit.png)
 
-### 4.3 Division and rounding
+*n, n log n, n^2 vs 10^8.*
 
-C++ integer division of $a$ by $b \ne 0$ *truncates toward zero*: it drops the fractional part. So `7 / 2 == 3` but `-7 / 2 == -3`, while $\lfloor -3.5 \rfloor = -4$. The remainder takes the sign of $a$: `-7 % 2 == -1`.
+"Input not formatted correctly" → program zyada numbers padhne ki koshish karta hai jitne input mein hain, ya galat order mein padhta hai. Local pe terminal wait karta rehta hai.
 
-**Theorem 0.1.4 (floor and ceiling division).** Let $a$ and $b$ be integers with $b > 0$.
-1. If $a \ge 0$, then `a / b` $= \lfloor a/b \rfloor$ and `(a + b - 1) / b` $= \lceil a/b \rceil$.
-2. For any sign of $a$: $\lfloor a/b \rfloor$ equals `a / b` when `a % b == 0` or $a > 0$, and `a / b - 1` otherwise; and $\lceil a/b \rceil = -\lfloor -a/b \rfloor$.
-
-:::tip[In plain words]
-C++ division cuts off the fraction, which rounds toward zero. For non-negative numbers that is rounding down; for a negative number that is not an exact multiple it rounds up, so one must be subtracted to get the floor.
-:::
-
-**A tiny instance.** $a = 7, b = 2$: `7 / 2` is 3, the floor is 3, the ceiling is 4 $= (7 + 2 - 1) / 2$. $a = -7, b = 2$: `-7 / 2` is $-3$, but the floor is $-4$ and the ceiling is $-3$. $a = -6, b = 4$: the ceiling is $-1$, but `(-6 + 4 - 1) / 4` is `-3 / 4 = 0`, so the shortcut fails for negative $a$.
-
-**Proof.**
-1. Part 1. Write $a = qb + r$ with $0 \le r < b$ (division with remainder). Then $\lfloor a/b \rfloor = q$, which is what truncation gives for $a \ge 0$.
-2. If $r = 0$, then $a + b - 1 = qb + (b - 1)$ with $b - 1 < b$, so truncation gives $q = \lceil a/b \rceil$.
-3. If $r \ge 1$, then $a + b - 1 = (q + 1) b + (r - 1)$ with $0 \le r - 1 < b$, so truncation gives $q + 1 = \lceil a/b \rceil$. This proves part 1.
-4. Part 2, floor. When $a/b$ is a whole number or positive, truncation and floor agree.
-5. When $a < 0$ and $b$ does not divide $a$, $a/b$ lies strictly between two integers and truncation rounds it *up* (toward zero), so the floor is one less.
-6. Part 2, ceiling. $\lceil x \rceil = -\lfloor -x \rfloor$ for every real $x$: negating reverses the order, so "smallest integer $\ge x$" becomes "largest integer $\le -x$".
-7. With $x = a/b$ this gives $\lceil a/b \rceil = -\lfloor -a/b \rfloor$. $\square$
-
-:::note[This proof needs]
-1. $b > 0$ (for $b < 0$, divide $-a$ by $-b$ instead, which gives the same quotient).
-2. For the shortcut `(a + b - 1) / b`: $a \ge 0$, and $a + b - 1$ fits the type.
-:::
-
-<TheoremCode unit="0.1/thm-4" />
-
-The second and third examples are the ones where truncation and floor differ. For a negative $a$ use $\lceil a/b \rceil = -\lfloor -a/b \rfloor$, as `ceilDiv` does, never the shortcut.
-
-### 4.4 Floating-point numbers and square roots
-
-**Theorem 0.1.5 (exact integers in a `double`, and a safe integer square root).**
-1. A `double` stores every integer $x$ with $|x| \le 2^{53} \approx 9 \cdot 10^{15}$ exactly, but not every integer above $2^{53}$.
-2. For an integer $0 \le x \le 10^{18}$, start from any guess $r \ge 0$ (for example the rounded `sqrtl(x)`), then decrease $r$ while $r^2 > x$ and increase it while $(r+1)^2 \le x$. The result is $\lfloor \sqrt{x} \rfloor$.
-
-:::tip[In plain words]
-A double holds integers exactly only up to about 9·10^15, so the square root of a large integer computed in floating point can be off by one. Check the guess with integer comparisons and move it down or up until it fits.
-:::
-
-**A tiny instance.** $x = 10$: the guess is 3, and $3^2 = 9 \le 10 < 16 = 4^2$, so neither loop moves. $x = 10^{18} - 1$: converting to `double` rounds it to $10^{18}$, so the guess is $10^9$; then $r^2 = 10^{18} > x$, the first loop lowers it to $999\,999\,999$.
-
-**Proof.**
-1. Part 1. A `double` has 53 significant bits, so every integer that needs at most 53 bits is stored as is.
-2. The integer $2^{53} + 1$ needs 54 bits; the nearest values a `double` can hold are $2^{53}$ and $2^{53} + 2$, so it is rounded to one of them.
-3. Part 2. Let $s = \lfloor \sqrt{x} \rfloor$, the unique integer with $s^2 \le x < (s+1)^2$.
-4. If $r > s$, then $r^2 \ge (s+1)^2 > x$, so the first loop decreases $r$; it stops at the first $r$ with $r^2 \le x$, which is $s$.
-5. If $r < s$, then $(r+1)^2 \le s^2 \le x$, so the second loop increases $r$ until $(r+1)^2 > x$, which first happens at $r = s$.
-6. If $r = s$, neither loop moves. Each product fits a `long long` because $r$ stays at most about $10^9 + 1$. $\square$
-
-:::note[This proof needs]
-1. $x \ge 0$, and $x$ small enough that $(r+1)^2$ fits the type ($x \le 10^{18}$ is safe in `long long`).
-2. All comparisons are done on integers, never on the floating-point square root itself.
-:::
-
-<TheoremCode unit="0.1/thm-5" />
-
-**Why the correction is needed.** For $x = 10^{18} - 1$ the true answer is $999\,999\,999$, but `(long long)sqrt((double)x)` gives $1\,000\,000\,000$. The rule that follows: *if every quantity in a problem is an integer, compute with integers*. Use floating point only when the answer itself is a real number.
-
-### 4.5 Fast input and output
-
-C++ streams are kept in step with C's `printf` and `scanf` by default, and `cin` empties `cout`'s buffer before every read. Both make reading a million numbers take several seconds. Two lines at the start of `main` turn this off:
+fast io & endl: `endl` newline bhi print karta hai aur buffer flush bhi karta hai (output turant bahar). Bahut baar kiya toh slow. `'\n'` sirf newline. Plus `cin`/`cout` by default C ke `scanf`/`printf` ke saath sync mein chalte hain, wo bhi time leta hai. Neeche wali function ek baar start mein call karo:
 
 ```cpp
-ios::sync_with_stdio(false);  // stop synchronising with printf/scanf
-cin.tie(nullptr);             // stop flushing cout before every cin read
-```
-
-After them, do not mix `cin`/`cout` with `scanf`/`printf` in the same program. Also end lines with `"\n"` rather than `endl`: `endl` writes a newline *and* forces the output to be sent immediately (a *flush*), which is slow when done $10^6$ times. Every program on this site that reads large input starts with these two lines. The skeleton of such a program is:
-
-```cpp
-#include <bits/stdc++.h>  // the whole standard library in one line
-using namespace std;       // write cin and vector instead of std::cin and std::vector
-
-int main() {
+// Problem: make cin/cout fast. Call this once at the start of main.
+// sync_with_stdio(false): stop keeping C++ streams in step with C's scanf/printf.
+// cin.tie(nullptr): do not flush cout every time cin is used.
+void fastIo() {
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
-    // read the input, call the function, print the answer
 }
 ```
 
-From here on, the lessons show only the function that does the work.
-
-**Rule, not a card.** Fast input and output is not a decision you make per problem; always include the two lines. That is why this topic has no Recognition Card for it.
-
-## 5. Recognition Cards
-
-Each card names one decision to make while reading a problem. The **decisive property** is the precondition of the card's theorem, restated in problem language: check it before you write code. **Weak signals** are surface features that make the card worth considering; **kill signals** rule it out.
-
-<Cards topic="0.1" />
-
-## 6. Templates
-
-Five short functions, one for each mechanism in Section 4. Each sits in a small program that reads a made-up problem from standard input; only the function is shown.
-
-### A large sum (Theorem 0.1.1)
-
-<CodeSnippet unit="0.1/big-sum" />
-
-**How it works.** The sum lives in a `long long`, because $2 \cdot 10^5$ values of size $10^9$ add up to $2 \cdot 10^{14}$. The values are stored as `long long` too, so the addition `sum += x` happens entirely in 64 bits.
-
-**Alternative formulation.** None needed: a sum has one natural loop. The point of the template is the type of `sum`.
-
-### Product with a limit (Theorem 0.1.2)
-
-<CodeSnippet unit="0.1/capped-product" />
-
-**How it works.** A zero anywhere makes the product 0, even if an earlier part of the product was already above $10^{18}$, so zeros are handled first. Then the loop multiplies one value at a time, but only after checking `prod > LIMIT / x`; by Theorem 0.1.2 that is exactly the case where `prod * x` would exceed $10^{18}$. So `prod` never goes above $10^{18}$ and the multiplication never overflows.
-
-**Alternative formulation.** With `__int128` you could multiply first and compare after, since $10^{18} \cdot 10^{18}$ fits in 128 bits. It is not standard C++ and not every judge supports it; the division check works everywhere.
-
-### Many test cases (Theorem 0.1.3)
-
-<CodeSnippet unit="0.1/multi-test" />
-
-**How it works.** `while (t--)` repeats the body $t$ times. Everything a test needs is created inside the loop: the vector `a` of exactly `n` elements and the variables `sum` and `count`. The work per test is a constant times its own $n$, so by Theorem 0.1.3 the total is bounded by the sum of $n$. To compare an element with the average without dividing (the average may not be a whole number), the code compares `x * n` with `sum`; both are at most $2 \cdot 10^{14}$.
-
-**Alternative formulation.** Some people declare arrays once, globally, with the maximum size, and reset only the first `n` entries per test. It is correct when the reset really covers everything used, and Theorem 0.1.3 shows it is fast only if the reset is sized by `n`, not by the maximum. The local `vector` makes both mistakes impossible.
-
-### Floor and ceiling division (Theorem 0.1.4)
-
-<CodeSnippet unit="0.1/floor-ceil" />
-
-**How it works.** `floorDiv` first makes the divisor positive (dividing $-a$ by $-b$ gives the same real quotient). C++'s `a / b` then truncates toward zero; for a negative `a` that is not a multiple of `b`, truncation rounded up, so the code subtracts one. `ceilDiv` uses $\lceil a/b \rceil = -\lfloor -a/b \rfloor$.
-
-**Alternative formulation.** For $a \ge 0$ and $b > 0$ only, the shortcut `(a + b - 1) / b` gives the ceiling (Theorem 0.1.4, part 1). It is shorter but breaks for negative $a$ (Section 7).
-
-### Integer square root (Theorem 0.1.5)
-
-<CodeSnippet unit="0.1/isqrt" />
-
-**How it works.** `sqrtl` computes a square root in `long double`, a floating-point type usually more precise than `double`. Its result is only a guess, so the two loops correct it until $r^2 \le x < (r+1)^2$, which by Theorem 0.1.5 makes `r` the exact answer.
-
-**Alternative formulation.** Start from $r = 0$ and increase while $(r+1)^2 \le x$. It needs no floating point at all and is correct by the same loop argument, but it takes up to $10^9$ steps for $x = 10^{18}$; it is fine only when $x$ is small (up to about $10^{12}$, so $10^6$ steps).
-
-## 7. Bug catalogue
-
-Each bug was made by changing one part of a template from Section 6 and running `scripts/stress.sh` on the broken copy, which compares it with the brute force on random inputs. The input shown is the first one the script found (for crashes, the first failing input of the same generator; for multi-query inputs, the failing query alone, rechecked on its own).
-
-### Bug: sum kept in an `int`
-
-Template: program skeleton and a large sum.
+Aur print `'\n'` se karo. Tere files mein ye already ek line se ho jata hai, `#define endl "\n"`. A macro is text replacement before compiling, so every `endl` becomes `"\n"`. (Fabricator/Prefix-Partial-Sums/LRSumQuery.cpp)
 
 ```cpp
-int sum = 0;
+#define endl "\n"
 ```
 
-Input:
+Note: `sync_with_stdio(false)` ke baad `cin/cout` aur `scanf/printf` mix mat karo.
 
-```
-6
-93770123 -994696634 -999508737 -449709687 298508491 -709153661
-```
+## RTE
 
-Wrong output `1534177191`, correct output `-2760790105`. The true sum is below $-2.1 \cdot 10^9$, the smallest `int`, so it wraps around to a positive number.
+RTE (Run time error)
 
-**Fix:** `long long sum = 0;`. The sum of up to $2 \cdot 10^5$ values of size $10^9$ needs 64 bits (Theorem 0.1.1).
+![RTE: divide by 0, out of bound, NULL access in pointer, stack overflow, improper datatype](../../../assets/notes/0-1-cpp-for-cp/fig06_rte_causes.png)
 
-### Bug: multiplying first, checking after
+*RTE causes.*
 
-Template: product with a limit.
+- divide by 0
+- out of bound
+- NULL access in pointer
+- stack overflow
+- improper datatype (inputs). [eg: take string in int].
+
+Out of bound: valid index 0 to n-1, `a[n]` galat hai. Note: ye hamesha crash nahi karta. Kabhi kabhi garbage padh leta hai aur WA aa jata hai. Sanitizer se dikhega (neeche).
+
+Stack overflow: recursion bahut deep, ya bada local array.
+
+Improper datatype: "abc" ko int mein padho toh read fail ho jata hai. Value 0 ho jati hai, stream "failed" state mein chali jati hai, aur uske baad ke saare reads kuch nahi karte. Matlab aage ka program galat values pe chalega. Check `if (cin >> x)` or `cin.fail()`.
+
+## WA
+
+WA → hardest to debug.
+
+i) silly mistake
+ii) logic is wrong.
+iii) 1-2 edge case
+iv) garbage value
+v) overflow in MOD.
+
+overflow & garbage → easy to detect.
+
+silly mistake
+logic          \} very hard to detect.
+edge case
+
+![WA causes: garbage value and overflow easy to detect; silly mistake, logic, edge case very hard](../../../assets/notes/0-1-cpp-for-cp/fig07_wa_causes.png)
+
+*WA: easy vs very hard to detect.*
+
+Hard wale sirf achhe test cases se pakde jaate hain, isliye aage ka sab test cases ke baare mein hai.
+
+Overflow in MOD: `int` max 2147483647 hai. MOD = 10^9 + 7. Do numbers &lt; MOD multiply karo toh ~10^18, `int` mein nahi aayega. Fix → multiply se PEHLE 64 bit bana lo (`long long`).
 
 ```cpp
-if (prod * x > LIMIT) {
+// Problem: compute (a * b) % MOD for a, b < MOD = 10^9 + 7.
+const int MOD = 1000000007;
+
+// Wrong: the product (about 10^18) does not fit in 32 bits.
+// uint32_t (unsigned 32-bit number) is used so the wrap-around is well defined.
+uint32_t mulModWrong(int a, int b) {
+    uint32_t product = (uint32_t)a * (uint32_t)b;
+    return product % MOD;
+}
+
+// Right: widen to 64 bits BEFORE multiplying, then take the remainder.
+long long mulMod(long long a, long long b) {
+    return a * b % MOD;
+}
 ```
 
-Input:
+Let's say a = b = MOD - 1. MOD - 1 is -1 mod MOD, toh answer (-1)(-1) = 1. `mulMod(MOD - 1, MOD - 1)` gives 1, and `mulModWrong(MOD - 1, MOD - 1)` gives 923446813. (Real `int` overflow is undefined behaviour, isliye `uint32_t` use kiya taaki wrap-around defined rahe.)
 
-```
-4
-1000000001 238117800350661441 1448941 231951276716096835
-```
-
-Wrong output `-2442754943246816057`, correct output `-1`. The product $1\,000\,000\,001 \cdot 238\,117\,800\,350\,661\,441$ is about $2.4 \cdot 10^{26}$; computing it overflows before the comparison can see it, and the wrapped value happens to be small enough to pass.
-
-**Fix:** compare `prod > LIMIT / x`, which never computes the large product (Theorem 0.1.2).
-
-### Bug: zero not handled first
-
-Template: product with a limit. The loop that looks for a zero is removed.
-
-Input:
-
-```
-3
-1081043 0 500000000000000000
-```
-
-Wrong output: the program crashes ("Floating point exception", which on Linux is the message for an integer division by zero). Correct output `0`. When `x` is 0, `LIMIT / x` divides by zero.
-
-**Fix:** handle zeros before the loop. A zero also makes the answer 0 even when the product of the values before it was already over the limit, so the check must look at all values first, not stop at the first overflow.
-
-### Bug: values stored as `int`, multiplied by `n`
-
-Template: many test cases.
+Negative values ke saath bhi MOD ka dhyan: `-5 % MOD` negative aata hai C++ mein. Isliye `(x + MOD) % MOD`. Ye tere LRSumQuery mein hai, sample pe expected output `4556 999911007 999905655 ...` deta hai:
 
 ```cpp
-for (int x : a)
-    if (x * n > sum) count++;
+// Fabricator/Prefix-Partial-Sums/LRSumQuery.cpp
+/*
+Given an array of N integers and Q queries.
+In each query two integers L, R are given,
+you have to find the value of (A[L]+A[L+1]+A[L+2]+...+A[R])%10^9+7.
+*/
+const int MOD = 1000000007;
+
+void solve() {
+    long long n, q;
+    cin>>n>>q;
+
+    vector<long long> arr(n);
+    for(auto &ele: arr) cin>>ele;
+
+    vector<long long> pref(n);
+    pref[0] = arr[0];
+    for(int i=1; i<n; i++){
+        pref[i] = pref[i-1] + arr[i];
+
+        pref[i] = (pref[i] + MOD) % MOD;
+    }
+
+    while(q--){
+        int l, r;
+        cin>>l>>r;
+
+        long long ans = l == 1 ? pref[r-1] : pref[r-1] - pref[l-2];
+
+        ans = (ans + MOD) % MOD;
+
+        cout<<ans<<endl;
+    }
+}
 ```
 
-Input:
-
-```
-2
-4
-999999993 999999991 999999995 999999991
-1
-999999991
-```
-
-Wrong output `0` and `0`, correct output `2` and `0`. `x * n` multiplies two `int` values, about $4 \cdot 10^9$, which overflows to a negative number, so no element looks above the average. The comparison with the `long long` `sum` happens only after the overflow.
-
-**Fix:** keep the values in `long long`, or write `1LL * x * n`. The type of `x * n` is decided by `x` and `n`, not by `sum` (Section 4.1). (This bug first passed 5000 tests in a version that still read the values back as `long long`; the version above, with `int` in both places, fails.)
-
-### Bug: sum declared once, outside the test loop
-
-Template: many test cases.
+Garbage value: local variable ko starting value nahi di toh garbage.
 
 ```cpp
-long long sum = 0;  // declared once, before the tests
-while (t--) {
+int count;   // never given a value
+count++;     // reads garbage
 ```
 
-Input:
+`-Wall` ye pakad leta hai (`'count' is used uninitialized`). Zero se start hone wale: global variables, `vector<int> v(3)` ke elements, `int x{}`, `int raw[3] = {}`. Plain local `int x;` nahi. Rule: local ko hamesha value do.
+
+## Test cases
+
+- Test cases
+
+i) Extreme values.
+
+eg:
+n → size                          1 ≤ N ≤ 10^5
+arr = [      ]                    1 ≤ arr[i] ≤ 10^9
 
 ```
-3
-4
-1 1 1 2
-6
-2 1 5 2 5 1
-6
-1 3 1 2 1 3
+  1  |  10^5
+  1  |  1  1  1 ......  1 } → 10^5 1s.
+
+  1  |  10^5
+ 10^9|  10^9 10^9 10^9 ...... 10^9 } 10^5 10^9s
 ```
 
-Wrong output `1 2 0` (one per line), correct output `1 2 3`. The second test still carries the first test's sum (5), and the third test carries both (21). The second answer happens to be right, which is why a single sample can hide this bug.
+![two extreme inputs: n = 10^5 with 10^5 ones, and n = 10^5 with 10^5 copies of 10^9](../../../assets/notes/0-1-cpp-for-cp/fig08_extreme_inputs.png)
 
-**Fix:** declare every per-test variable inside the loop (Theorem 0.1.3, condition 2).
+*Extreme inputs: all 1s, all 10^9.*
 
-### Bug: truncation used as the floor
-
-Template: floor and ceiling division. The line `if (a % b != 0 && a < 0) q--;` is removed.
-
-Input:
-
-```
-1
-372899666868390665 717947711864209419
-```
-
-Wrong output `0 0`, correct output `0 1`. The floor of a positive value is still right, but the ceiling is computed as $-\lfloor -a/b \rfloor$, and $-a$ is negative, so the missing correction breaks it: $-a/b \approx -0.52$ truncates to $0$ instead of flooring to $-1$.
-
-**Fix:** keep the correction. Truncation equals the floor only for non-negative results or exact multiples (Theorem 0.1.4, part 2).
-
-### Bug: `(a + b - 1) / b` for every sign
-
-Template: floor and ceiling division. `ceilDiv` is replaced by the shortcut.
-
-Input:
-
-```
-1
--6 6
-```
-
-Wrong output `-1 0`, correct output `-1 -1`. $-6/6 = -1$ exactly, so the ceiling is $-1$, but $(-6 + 5) / 6 = -1/6$ truncates to $0$.
-
-**Fix:** use the shortcut only for $a \ge 0$ (Theorem 0.1.4, part 1); otherwise use $-\lfloor -a/b \rfloor$.
-
-### Bug: floating-point square root without correction
-
-Template: integer square root.
+** Hard code the inputs.
 
 ```cpp
-long long r = sqrt((double)x);
+int n                      int n
+cin >> n             }     n = 10^5
+vector<int> arr      }     vector<int> arr(10^5, 10^9);
 ```
 
-Input:
+Note: C++ mein `^` XOR hota hai, power nahi. Toh `n = 100000` aur `arr(100000, 1000000000)` likhna hai.
+
+Even if the answers of the extreme test cases is not known, just run the code on it, and just think if the output **looks** right or not.
+
+Example: array sum with this input. Real sum = 10^5 × 10^9 = 10^14. `int` mein rakha toh 32 bit mein wrap hoke 276447232 aata hai, ye clearly galat dikhta hai. `long long` mein 100000000000000. Time bhi dekho in inputs pe.
+
+ii) Code coverage:
+
+```cpp
+if (n % 2) {
+    for (i<n)
+        for (j<m)
+}
+else {
+    for (i<n)
+        for (j<n)      // mistake here  (the second "n" is circled)
+}
+```
 
 ```
-1
-19659989632387224
+  i/p:      m
+          ┌────┐
+        n │    │
+          └────┘
 ```
 
-Wrong output `140214085`, correct output `140214084`. $x$ is just below $140\,214\,085^2$, but it is larger than $2^{53}$, so converting it to `double` rounds it to a nearby value at or above that square.
+![grid n=4, m=6: intended 24 cells vs buggy 16 cells](../../../assets/notes/0-1-cpp-for-cp/fig09_coverage_grid.png)
 
-**Fix:** correct the guess with integer comparisons (Theorem 0.1.5, part 2).
+*n = 4, m = 6: bug visits only 16 of 24.*
 
-## 8. Worked examples
+- may be the input in test case only had equal n & m as input.
+- may be it only had odd n.
 
-Each example follows the routine from the Method page: limits first, then candidate approaches, then the property that decides, and only then code. In this topic the "property" is almost always the size of a value or the sign in a division.
+But on submitting at some test case 'else' part ran & gave weird answer.
 
-### Example 1: Weird Algorithm
+Same idea function mein (answer n × m hona chahiye, bug copy kiya hai):
 
-[CSES 1068 Weird Algorithm](https://cses.fi/problemset/task/1068) (CSES is the Code Submission Evaluation System problem set). In short: starting from $n$, halve it when even and replace it by $3n + 1$ when odd, until it reaches 1, printing every value.
+```cpp
+// Problem: visit every cell of an n x m grid and count the visits (answer: n * m).
+// The else branch copies his mistake: j goes up to n instead of m.
+long long countCellsBuggy(int n, int m) {
+    long long visits = 0;
+    if (n % 2) {
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < m; j++) visits++;
+    } else {
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < n; j++) visits++;  // BUG: should be j < m
+    }
+    return visits;
+}
+```
 
-#### Step 1: Constraints → budget
+| (n, m) | countCellsBuggy | n × m |
+|---|---|---|
+| (3, 5) | 15 | 15 |
+| (5, 5) | 25 | 25 |
+| (4, 4) | 16 | 16 |
+| (4, 6) | 16 | 24 |
 
-$n \le 10^6$. The process is known to reach 1 for every such $n$, after at most a few hundred steps, so the number of steps is no concern. The question is how large the values get.
+Notice that sirf last test mein n even hai AND n ≠ m, bas wahi bug pakadta hai.
 
-#### Step 2: Question form → candidate tools
+Rule: manually create test cases so that every line of code runs exist at least once.
+[also catches silly mistake]
 
-"Repeat a rule and print the values" needs a plain loop. The candidates are about types: an `int` for $n$, or a `long long` (Theorem 0.1.1).
+Kaunsi line nahi chali ye `gcov` batata hai (g++ ke saath aata hai). Test file mein sirf (3, 5) aur (5, 5) call kiye:
 
-#### Step 3: Property check → decision
+```bash
+g++ -std=c++17 -O0 --coverage coverage_odd.cpp -o cov_bin
+./cov_bin > /dev/null
+gcov cov_bin-coverage_odd > /dev/null
+grep -E "visits\+\+|for \(int" cells.inc.gcov
+```
 
-Starting below $10^6$, the values can climb far above the start: for $n = 113\,383$ the sequence reaches $2\,482\,111\,348$, above the largest `int` ($2\,147\,483\,647$). Since every value is below about $6 \cdot 10^{10}$ for starts up to $10^6$ (checked by running all of them), `long long` is enough. Decision: `long long n`.
+```
+       10:    6:        for (int i = 0; i < n; i++)
+       48:    7:            for (int j = 0; j < m; j++) visits++;
+    #####:    9:        for (int i = 0; i < n; i++)
+    #####:   10:            for (int j = 0; j < n; j++) visits++;  // BUG: should be j < m
+```
 
-#### Step 4: Proof for this problem
+`#####` matlab line kabhi chali hi nahi → us path ka test missing hai. (Number = kitni baar chali.)
 
-The loop applies the rule exactly as stated and prints each value, so the output is correct as long as no value overflows. Every value fits in `long long` by the check in Step 3, so no step overflows (Theorem 0.1.1, condition 1). With `int`, $3n + 1$ for $n = 827\,370\,449$ (a value the sequence from $113\,383$ passes through) would overflow.
+iii) Common themes:
 
-#### Step 5: Code
+array i/p: → sorted array
+           → reverse sorted array.
 
-<CodeSnippet unit="0.1/example-1" />
+tree i/p:
 
-#### Step 6: Alternative approach
+```
+        o
+   /  / | \  \
+  o  o  o  o  o   } branched
+```
 
-`unsigned long long` would also work, since all values are positive. There is no meaningfully different algorithm: the statement asks for every value, so the program must produce them one by one.
+```
+   o
+   |
+   o
+   |
+   o        } linear          o } single node.
+   |
+   o
+```
 
-### Example 2: Multi Test Cases
+![branched tree, linear chain, single node](../../../assets/notes/0-1-cpp-for-cp/fig10_tree_shapes.png)
 
-[AtCoder Beginner Contest (ABC) 284, problem B: Multi Test Cases](https://atcoder.jp/contests/abc284/tasks/abc284_b). In short: for each of $T$ tests, count the odd numbers among the $N$ given.
+*Branched, linear, single node.*
 
-#### Step 1: Constraints → budget
+Kyu sorted? Sorted array kuch algorithms ko unke slowest case mein daal deta hai. Example: quicksort jo hamesha pehla element pivot (split karne wali value) lega. Sorted pe har split lopsided → ~ n(n-1)/2 comparisons.
 
-$T \le 100$ and $N \le 100$, so at most $10^4$ numbers in total. Values are up to $10^9$, which fits in `int`.
+```cpp
+// Problem: count the comparisons of a quicksort whose pivot (the value that
+// splits the array in two) is always the FIRST element of the range.
+// Sorted input makes every split lopsided: about n*(n-1)/2 comparisons.
+void quickSortCount(vector<int>& a, int lo, int hi, long long& comparisons) {
+    if (lo >= hi) return;
+    int pivot = a[lo];
+    int mid = lo;  // a[lo+1..mid] hold values smaller than the pivot
+    for (int i = lo + 1; i <= hi; i++) {
+        comparisons++;
+        if (a[i] < pivot) swap(a[++mid], a[i]);
+    }
+    swap(a[lo], a[mid]);
+    quickSortCount(a, lo, mid - 1, comparisons);
+    quickSortCount(a, mid + 1, hi, comparisons);
+}
 
-#### Step 2: Question form → candidate tools
+long long comparisonsFor(vector<int> a) {
+    long long comparisons = 0;
+    quickSortCount(a, 0, (int)a.size() - 1, comparisons);
+    return comparisons;
+}
+```
 
-"An input file contains multiple test cases" is the weak signal for the card "Many test cases in one input" (Theorem 0.1.3). The alternatives are about structure: read all tests first and then answer, or answer each test as soon as it is read.
+n = 2000 → n(n-1)/2 = 1999000. Sorted: 1999000, reversed: 1999000, shuffled: 24540. Matlab ~80 times zyada.
 
-#### Step 3: Property check → decision
+Kyu linear tree? Recursive DFS (depth first search: jitna deep ja sako jao) ki depth n ho jati hai. 10^5 nodes → 10^5 calls deep. Stack overflow ka risk, isliye full size pe test karo.
 
-The tests are independent and each needs only its own numbers, so each test can be answered as soon as it is read, with a counter that starts at 0 for every test. Nothing has to be cleared, because nothing is kept between tests.
+```cpp
+// Problem: build test trees with nodes 1..n as lists of edges.
+using Edges = vector<pair<int, int>>;
 
-#### Step 4: Proof for this problem
+// Star (branched): node 1 is joined to every other node.
+Edges makeStar(int n) {
+    Edges edges;
+    for (int v = 2; v <= n; v++) edges.push_back({1, v});
+    return edges;
+}
 
-For each test, the loop reads exactly $N$ numbers and adds 1 to `odd` for each one with remainder 1 when divided by 2, which is exactly the odd ones (all values are positive, so the remainder is 0 or 1). `odd` is declared inside the test loop, so it starts at 0 for every test. The total work is the total count of numbers, at most $10^4$ (Theorem 0.1.3).
+// Path (linear): 1 - 2 - 3 - ... - n.
+Edges makePath(int n) {
+    Edges edges;
+    for (int v = 2; v <= n; v++) edges.push_back({v - 1, v});
+    return edges;
+}
 
-#### Step 5: Code
+// Height = number of edges on the longest path down from v.
+// Recursive DFS (depth first search: go as deep as possible first).
+int heightDfs(int v, int parent, const vector<vector<int>>& adj) {
+    int best = 0;
+    for (int next : adj[v])
+        if (next != parent) best = max(best, 1 + heightDfs(next, v, adj));
+    return best;
+}
+```
 
-<CodeSnippet unit="0.1/example-2" />
+(`using Edges = ...` long type ko chhota naam deta hai.) `makeStar(5)` → edges 1-2, 1-3, 1-4, 1-5, height 1. `makePath(5)` → height 4. Single node → height 0. `makePath(100000)` → height 99999 (mere machine pe chal gaya, par judge ka stack chhota ho toh crash).
 
-#### Step 6: Alternative approach
+eg:
+n = 5
 
-Read every test into a `vector<vector<int>>` first and answer afterwards (the brute force does this). It is correct and uses more memory; answering immediately is simpler.
+```
+  1  0  1  1  0         Σ (run length of 1)^2
+  ‿     ‿‿
+  1^2   2^2
+        = 5
+```
 
-### Example 3: Between a and b ...
+![array 1 0 1 1 0 with runs 1^2 and 2^2 giving 5](../../../assets/notes/0-1-cpp-for-cp/fig11_runs_example1.png)
 
-[AtCoder Beginner Contest (ABC) 48, problem B: Between a and b ...](https://atcoder.jp/contests/abc048/tasks/abc048_b). In short: count the integers in $[a, b]$ divisible by $x$, with $0 \le a \le b \le 10^{18}$ and $1 \le x \le 10^{18}$.
+*1^2 + 2^2 = 5.*
 
-#### Step 1: Constraints → budget
+Note: array mein 5 elements hain, 1 + 4 = 5.
 
-$b - a$ can be $10^{18}$, so checking every integer is impossible: even $10^9$ steps would take seconds. The answer needs a formula, and all values need `long long`.
+```
+  1 1   0   1 1 1 1   0   1 1   0
+  ‿‿        ‿‿‿‿‿‿‿       ‿‿
+  2^2        4^2           2^2    = 24
+```
 
-#### Step 2: Question form → candidate tools
+![array with runs 2, 4, 2 giving 4 + 16 + 4 = 24](../../../assets/notes/0-1-cpp-for-cp/fig12_runs_example2.png)
 
-"How many multiples of $x$ in a range" suggests a floor division (the card "Exact integer rounding", Theorem 0.1.4). Another candidate: compute $a / x$ and $b / x$ as `double` values and round them; Theorem 0.1.5 rules that out, because values near $10^{18}$ are not exact in a `double`.
+*2^2 + 4^2 + 2^2 = 24.*
 
-#### Step 3: Property check → decision
+```cpp
+int ans = 0;
+int cur = 0;
 
-The multiples of $x$ in $[0, v]$ are $0, x, 2x, \dots, \lfloor v / x \rfloor x$, so there are $\lfloor v / x \rfloor + 1$ of them for $v \ge 0$. The count in $[a, b]$ is the count in $[0, b]$ minus the count in $[0, a - 1]$. The only trap is $a = 0$: then $a - 1 = -1$, and C++ would compute `-1 / x` as 0, not $\lfloor -1/x \rfloor = -1$. Handle it separately: there are no multiples in $[0, -1]$. All quantities are non-negative integers below $10^{18}$, so plain `/` is the floor.
+for (int i=0 ; i<n; i++){
+    if (arr[i] == 1) {
+        cur++;
+    }
+    else {
+        ans += cur * cur;
+        cur = 0;
+    }
+}
+```
 
-#### Step 4: Proof for this problem
+might give WA
+─────────
+overflow
+is one
+reason.
 
-For $v \ge 0$, the multiples of $x$ in $[0, v]$ are $kx$ with $0 \le k \le \lfloor v/x \rfloor$, a total of $\lfloor v/x \rfloor + 1$. The integers in $[a, b]$ are those in $[0, b]$ that are not in $[0, a-1]$, so subtracting the two counts gives the answer. For $a = 0$ the second count is 0. Every intermediate value is at most $10^{18} + 1$, which fits `long long`.
+Overflow kaise: 10^5 ones ek saath → cur = 10^5, `cur * cur` = 10^10 > 2147483647 (int max). 32 bit mein wrap hoke 1410065408 ban jata hai. `ans` aur `cur` dono `long long` chahiye.
 
-#### Step 5: Code
+Note: ek aur reason hai. Run tab add hota hai jab 0 aata hai. Agar array 1 pe khatam hua toh last run kabhi add nahi hoga. Array `1 1` pe trace karo: i=0 → cur=1, i=1 → cur=2, loop khatam, ans = 0 but answer 2^2 = 4. Loop ke baad `ans += cur * cur;` chahiye. Dhyan do, uske dono examples 0 pe khatam hote hain, isliye ye bug samples mein dikhta hi nahi.
 
-<CodeSnippet unit="0.1/example-3" />
+![trace on array 1 1: ans stays 0, cur ends at 2](../../../assets/notes/0-1-cpp-for-cp/fig13_missing_last_run.png)
 
-#### Step 6: Alternative approach
+*Array 1 1: last run add hi nahi hua.*
 
-Count with the ceiling instead: the first multiple at least $a$ is $\lceil a/x \rceil x$, the last at most $b$ is $\lfloor b/x \rfloor x$, so the answer is $\lfloor b/x \rfloor - \lceil a/x \rceil + 1$, computed with `(a + x - 1) / x` for the ceiling (safe since $a \ge 0$ and $a + x - 1 < 2 \cdot 10^{18}$). It needs no special case for $a = 0$.
+Fixed version, T.C. $O(n)$, extra memory $O(1)$:
 
-## 9. Problem ladder
+```cpp
+// Problem: sum of (length of each run of 1s)^2 in a binary array.
+// Fix 1: long long, because cur * cur can reach 10^10.
+// Fix 2: add the last run after the loop, in case the array ends with a 1.
+long long sumOfSquaredRuns(const vector<int>& arr) {
+    long long ans = 0;
+    long long cur = 0;  // length of the current run of 1s
+    for (int x : arr) {
+        if (x == 1) {
+            cur++;
+        } else {
+            ans += cur * cur;
+            cur = 0;
+        }
+    }
+    ans += cur * cur;
+    return ans;
+}
+```
 
-Sixteen problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. The ideas are easy; the point is to get every type, division and test loop right the first time. Before opening a hint, spend the struggle budget shown on each problem, and write down the largest value each variable can reach.
+| array | original loop | fixed |
+|---|---|---|
+| 1 0 1 1 0 | 5 | 5 |
+| 1 1 0 1 1 1 1 0 1 1 0 | 24 | 24 |
+| 1 1 | 0 (expected 4) | 4 |
+| 10^5 ones | wraps (overflow) | 10000000000 |
 
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+iv) Stress testing:
+
+```
+                       (eg. arr)
+                      ┌──────────┐
+               ┌─────>│ solve()  │────> output
+ ┌───────────┐ │      └──────────┘         │
+ │ Generator │─┤                    Compare these
+ └───────────┘ │      ┌──────────┐         ↑
+               └─────>│  brute   │────> output
+                      └──────────┘
+```
+
+![Generator feeds same input to solve() and brute, compare outputs](../../../assets/notes/0-1-cpp-for-cp/fig14_stress_testing.png)
+
+*Stress testing.*
+
+if we find different output then
+we find the test case where the solve() is wrong.
+
+Idea: brute force chhota aur simple likho (slow chalega, par obviously correct). Generator chhote random inputs banata hai (n ≤ 8, taaki failing case padhna easy ho). Same seed → same test, toh failure replay ho sakta hai.
+
+Yaha pe solve() = uska original loop, aur brute = "string banao, har '0' pe kaato, har piece ka length square karo" (alag idea, toh same bug share nahi karega). `mt19937` is C++ ka standard random number engine. `stressTest` ko do function pointers milte hain (function pointer = aisa variable jo function hold kare, toh kisi bhi function ko pass kar sakte ho).
+
+```cpp
+// Problem: his loop wrapped in a function, so the stress test can
+// check it. The loop itself is unchanged.
+long long solveOriginal(const vector<int>& arr) {
+    int n = arr.size();
+    int ans = 0;
+    int cur = 0;
+    for (int i = 0; i < n; i++) {
+        if (arr[i] == 1) {
+            cur++;
+        } else {
+            ans += cur * cur;
+            cur = 0;
+        }
+    }
+    return ans;
+}
+
+// Brute force: slowest and simplest idea. Build a string, cut it at every
+// '0', and square the length of each piece. (A different idea from the
+// solution above, so it does not share its bug.)
+long long bruteSumOfSquaredRuns(const vector<int>& arr) {
+    string s;
+    for (int x : arr) s += char('0' + x);
+    long long ans = 0;
+    size_t start = 0;
+    while (true) {
+        size_t zero = s.find('0', start);  // next '0', or npos if none
+        size_t end = (zero == string::npos) ? s.size() : zero;
+        long long len = (long long)(end - start);
+        ans += len * len;
+        if (zero == string::npos) break;
+        start = zero + 1;
+    }
+    return ans;
+}
+
+// Generator: a random binary array of length 1..maxN. A fixed seed gives
+// the same test again, so a failure can be replayed.
+vector<int> randomBinaryArray(mt19937& rng, int maxN) {
+    int n = uniform_int_distribution<int>(1, maxN)(rng);
+    vector<int> arr(n);
+    for (int& x : arr) x = uniform_int_distribution<int>(0, 1)(rng);
+    return arr;
+}
+
+// Stress test. `solve` and `brute` are function pointers: variables that hold
+// a function, so we can pass either function in. Prints the first array on
+// which they disagree and returns false; returns true if all tests agree.
+bool stressTest(long long (*solve)(const vector<int>&),
+                long long (*brute)(const vector<int>&), int tests) {
+    mt19937 rng(12345);
+    for (int t = 1; t <= tests; t++) {
+        vector<int> arr = randomBinaryArray(rng, 8);
+        long long got = solve(arr), expected = brute(arr);
+        if (got != expected) {
+            cout << "DIFFERENT on test " << t << ", array:";
+            for (int x : arr) cout << ' ' << x;
+            cout << "\nsolution says " << got << ", brute says " << expected << "\n";
+            return false;
+        }
+    }
+    cout << "all " << tests << " tests passed\n";
+    return true;
+}
+```
+
+`stressTest(solveOriginal, bruteSumOfSquaredRuns, 1000)` prints:
+
+```
+DIFFERENT on test 1, array: 1 0 0 0 0 0 1 1
+solution says 1, brute says 5
+```
+
+Last run (1 1) missing → 1 + 4 = 5. Wahi bug jo upar mila. Dono fix ke baad `stressTest(sumOfSquaredRuns, bruteSumOfSquaredRuns, 1000)` → `all 1000 tests passed`.
+
+Contest mein usually alag programs hote hain: `gen` (seed lekar random input print kare), `sol`, `brute`. Loop (`cmp -s` do files quietly compare karta hai):
+
+```bash
+for i in $(seq 1 1000); do
+  ./gen $i > in.txt
+  ./sol < in.txt > out_sol.txt
+  ./brute < in.txt > out_brute.txt
+  cmp -s out_sol.txt out_brute.txt || { echo "DIFFERENT on seed $i"; cat in.txt; break; }
+done
+```
+
+Author wale solution ke saath ye `DIFFERENT on seed 2` pe rukta hai, input `4` / `0 0 1 1`.
+
+Bade n ka generator bhi chalao TLE ke liye, aur values ki range badlo (chhoti values → edge cases, bahut badi → overflow).
+
+## Finding the bug fast
+
+Binary search the bug: pura code dobara padhne ki jagah beech mein state print karo. Agar wahi galat hai → bug usse pehle. Sahi hai → bug uske baad. Phir range aadhi. 16 steps ke liye sirf ~4 prints.
+
+![16 steps: check 8, then 12, then 10 and 11, bug at step 11](../../../assets/notes/0-1-cpp-for-cp/fig15_binary_search_bug.png)
+
+*Step 8 sahi, 12 galat, 10 sahi, 11 galat → bug step 11.*
+
+assert: `assert(cond)` false ho toh program line number ke saath ruk jata hai. Jo cheez hamesha true honi chahiye uspe lagao. Quiet wrong answer ki jagah bug ke paas hi loud error.
+
+```cpp
+// Problem: sum of squared runs of 1s, with assert checks on what we believe.
+// assert(cond) stops the program and names the line if cond is false.
+// Compile with -DNDEBUG to switch asserts off (only for the final submit).
+long long sumOfSquaredRunsChecked(const vector<int>& arr) {
+    long long ans = 0, cur = 0;
+    for (int x : arr) {
+        assert(x == 0 || x == 1);  // input check: the array must be binary
+        if (x == 1) cur++;
+        else { ans += cur * cur; cur = 0; }
+    }
+    ans += cur * cur;
+    long long n = arr.size();
+    assert(ans >= 0 && ans <= n * n);  // a run of length L adds L*L, total <= n*n
+    return ans;
+}
+```
+
+`sumOfSquaredRunsChecked({1, 0, 1, 1, 0})` → 5. `sumOfSquaredRunsChecked({1, 2, 1})` → stops with ``Assertion `x == 0 || x == 1' failed.`` (real message mein file, line, function bhi aata hai.)
+
+Sanitizers: compiler extra checking code daal deta hai. `-fsanitize=address,undefined` → AddressSanitizer out of bound memory pakadta hai, UndefinedBehaviorSanitizer signed overflow jaisi cheezein. `-D_GLIBCXX_DEBUG` → `vector` har index check karta hai. Slow hote hain, sirf local pe.
+
+```cpp
+// Problem: two classic bugs that a plain build hides.
+// 1) off-by-one: i == 5 writes outside a vector of size 5.
+int writeOneTooFar() {
+    vector<int> a(5, 0);
+    for (int i = 0; i <= 5; i++) a[i] = i;
+    return a[0];
+}
+
+// 2) signed overflow: INT_MAX + extra does not fit in an int.
+int addToIntMax(int extra) {
+    int x = INT_MAX;
+    x += extra;
+    return x;
+}
+```
+
+Ek chhoti test file mein inko call karo (`addToIntMax(2)` overflow wala hai):
+
+```bash
+g++ -std=c++17 -O2 -Wall test.cpp -o test_plain && ./test_plain
+g++ -std=c++17 -O1 -g -Wall -fsanitize=address,undefined test.cpp -o test_san && ./test_san
+g++ -std=c++17 -O1 -g -Wall -D_GLIBCXX_DEBUG test.cpp -o test_dbg && ./test_dbg
+```
+
+Plain build mein `writeOneTooFar()` chupchaap 0 return karta hai, jabki array ke bahar likh chuka hai. Checks ke saath (addresses shortened):
+
+```
+ERROR: AddressSanitizer: heap-buffer-overflow on address ...
+WRITE of size 4 at ... thread T0
+    #0 ... in writeOneTooFar() oob.inc:5
+oob.inc:12:7: runtime error: signed integer overflow: 2 + 2147483647 cannot be represented in type 'int'
+Error: attempt to subscript container with out-of-bounds index 5, but
+container only holds 5 elements.
+```
+
+Har message line batata hai.
+
+Debug macro: tere files mein debug block already hai. Jo part yaha use hua (poora block mein set, map, queue ke printers bhi hain):
+
+```cpp
+// ================= DEBUGGING UTILITIES =================
+#ifndef ONLINE_JUDGE
+    #define debug(x) cerr << #x << " = "; _print(x); cerr << endl;
+#else
+    #define debug(x)
+#endif
+
+void _print(int t) { cerr << t; }
+void _print(long long t) { cerr << t; }
+void _print(string t) { cerr << "\"" << t << "\""; }
+void _print(char t) { cerr << "'" << t << "'"; }
+void _print(double t) { cerr << t; }
+void _print(bool t) { cerr << (t ? "true" : "false"); }
+
+template <class T, class V> void _print(pair<T, V> p);
+template <class T> void _print(vector<T> v);
+
+template <class T, class V> void _print(pair<T, V> p) {
+    cerr << "{"; _print(p.first); cerr << ","; _print(p.second); cerr << "}";
+}
+template <class T> void _print(vector<T> v) {
+    cerr << "[ "; for (T i : v) { _print(i); cerr << " "; } cerr << "]"; cerr << endl;
+}
+// =======================================================
+```
+
+(Fabricator/Prefix-Partial-Sums/LRSumQuery.cpp)
+
+So basically:
+
+- `#x` argument ko text bana deta hai, toh `debug(n)` print karega `n = 5`.
+- `#ifndef ONLINE_JUDGE` = "agar ye naam defined nahi hai". Online judges compile karte time `ONLINE_JUDGE` define karte hain, toh judge pe `debug(x)` kuch nahi bana, aur local pe print hota hai.
+- `cerr` (error stream) pe print hota hai, toh asli output (`cout`) mein mix nahi hota.
+- `_print` alag alag parameter types ke saath kai baar likha hai (overloading). Compiler jo fit ho wo chunta hai. `template <class T>` wale kisi bhi element type ke liye chalte hain: vector har element ke liye `_print` dobara call karta hai.
+- `template <...> void _print(...);` jo `;` pe khatam hote hain wo forward declarations hain, promise ki function aage hai, taaki printers ek dusre ko call kar sake.
+
+`n = 5`, `arr = {1, 0, 1, 1, 0}`, `p = pair<int,string>(3, "x")` pe `debug(n)`, `debug(arr)`, `debug(p)`:
+
+```
+n = 5
+arr = [ 1 0 1 1 0 ]
+
+p = {3,"x"}
+```
+
+Vector ke baad blank line vector printer ke `endl` aur macro ke `endl` dono se aati hai.
+
+Note: macro mein kai statements hain. `if (cond) debug(x);` sirf pehle statement ko guard karega. Hamesha alag line pe ya braces mein likho.
+
+Off-by-one checklist: loop `<` hai ya `<=`? Last valid index n-1? Empty / 1 element input chalta hai? `[l, r)` aur `[l, r]` mix toh nahi?
+
+Overflow checklist: sum/product 2 x 10^9 se upar jata hai? → `long long`. Multiply se pehle cast: `(long long)a * b`, `(long long)(a * b)` nahi.
+
+| Symptom | Likely cause | First action |
+|---|---|---|
+| Samples pass, WA on test 2 | edge case or overflow | n = 1, all equal, biggest values |
+| RTE only on big tests | stack overflow / array too small | linear tree, biggest n |
+| TLE only on some tests | worst case (sorted, all equal) | sorted and reverse sorted |
+| Different answers each run | uninitialised variable | `-Wall`, starting values |
+| Many test cases in one input | globals not reset | reset arrays/counters per case |
+
+## Quick revision
+
+- Debugging = process + time + language + good test cases.
+- CE (easiest) · RTE · TLE · WA (hardest) · MLE.
+- MLE: bytes = elements × size. int = 4 B, 10^7 ints = 40 MB. global ~5x10^7 ints (200 MB), local ~2x10^6.
+- TLE: T.C. > 10^8, inf loop/recursion, input mismatch, slow io (`'\n'`, fast io).
+- RTE: divide by 0, out of bound, NULL pointer, stack overflow, wrong input type.
+- WA: silly mistake, logic, edge case, garbage, overflow in MOD. Garbage + overflow easy; rest very hard.
+- Tests: extreme values (hard code, check output **looks** right) → coverage (every line once) → themes (sorted, reverse, branched, linear, single node) → stress (generator, solve(), brute).
+- Runs of 1s: `long long`, add last run after loop.
+- `^` is XOR → write 100000.
+- `(x + MOD) % MOD` for negatives; widen to 64 bit before multiply.
+- Tools: `-Wall`, `-fsanitize=address,undefined`, `-D_GLIBCXX_DEBUG`, `assert`, `debug(x)`, gcov.
+- Binary search the bug: print in middle, halve.
+
+## Practice problems
+
+- [LR Sum Query](https://maang.in/problems/LR-Sum-Query-18)
+
+### Problem ladder
 
 <Ladder topic="0.1" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card, write the property you checked (the largest value, the rounding, or the test structure), then reveal the answer. Do not solve the problems here: deciding is the exercise.
-
-<Drill topic="0.1" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but fail for different reasons. The *flipping difference* is the detail that changes which trap you must avoid.
-
-<LookalikePairs topic="0.1" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer.
-
-<SelfTest topic="0.1" />
-
-## 13. Checkpoint
-
-Three problems in 90 minutes, one for each card. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 drill items in Section 10 (here, all eight). After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="0.1" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen. These are the first entries of the Recognition Handbook; later topics add to them.
-
-<DecisionMapUpdate topic="0.1" />

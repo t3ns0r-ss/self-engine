@@ -4,430 +4,571 @@ sidebar:
   order: 12
 topic: "1.6"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="1.6" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. For each of $n = 2 \cdot 10^5$ daily temperatures, find how many days you wait until a warmer day.
+Stack ko aise use karna ki andar ka order sorted rahe (monotonic stack). Isse next smaller / greater element (NSE / NGE), largest rectangle in histogram aur sum of subarray minimums, sab O(n) me ho jaate hain.
 
-The direct method scans forward from each day until it meets a larger value. On a decreasing sequence every scan runs to the end: about $n^2 / 2 = 2 \cdot 10^{10}$ steps, some 200 seconds (topic 0.2). But look at what the scans have in common. Once a day $j$ meets a warmer day $i$, $j$ is finished. And while $j$ is still waiting, every day between $j$ and today that is also waiting is at most as warm as $j$ (otherwise it would have finished $j$). So the waiting days form a pile whose values never increase from bottom to top, and a new day finishes waiting days from the top of the pile down, stopping at the first one at least as warm. Every day enters the pile once and leaves it at most once: $O(n)$ in total.
+- Stack topics
+- Largest rectangle in histogram
+- Dry run of the histogram stack
+- Next Smaller Element (NSE)
+- Sum of subarray minimums (A2, super minimum sum)
+- Better way for NSE and PSE
+- Elements not distinct
+- Other three directions (NGE, PGE)
+- Number of rectangles in histogram
+- Bracketting
+- Min of every window of size k (monotone deque)
+- Quick revision
+- Practice problems
 
-That pile is a monotonic stack. This topic covers it and its uses: the nearest greater or smaller element on either side, the stretch of a subarray in which an element is the minimum (for sums over all subarrays and for the largest rectangle under a histogram), and its two-ended version, the monotonic deque, which keeps the maximum of a sliding window in $O(1)$ per step.
+## Stack topics
 
-## 2. Prerequisites and scope
+→ Stack:
+- i) Monotonic stack
+- ii) NGE/NSE (Next Greater Element / Next Smaller Element)
+- iii) Bracketting
 
-### What you need
+Quick definitions before we start:
+- **Stack** = last in, first out (LIFO). Push on top, pop from top.
+- **Monotonic** = only goes one way. Monotonic stack: values (bottom → top) never decrease (or never increase).
+- Before pushing a new element, pop everything that breaks the order. Jo pop hua, usko uska answer mil gaya: the new element.
+- Stack me **indices** rakhte hain, values nahi. Index se value bhi mil jaati hai (`arr[idx]`) aur position bhi.
+- T.C. (time complexity) = O(n). Each element is pushed once and popped at most once. (Amortised: kabhi ek step me bahut pops, but total pops ≤ total pushes.)
 
-<WhatYouNeed topic="1.6" />
+## Largest rectangle in histogram
 
-### What this topic does not cover
+**Ques:** Largest rectangle in histogram.
 
-- The minimum or maximum of arbitrary ranges given as queries (sparse table, range minimum query). Covered in topic 5.1; a monotonic stack answers only questions about the nearest smaller or larger element.
-- Changing arrays with range queries (segment tree). Covered in topic 5.3.
-- Using a monotonic deque to speed up a recurrence over all previous positions (dynamic programming optimisation). Covered in Phase 3 and topic 7.3.
+Histogram = bars side by side, each bar has width 1. Heights here: 2, 1, 5, 6, 2, 3.
 
-## 3. Definitions
+![Histogram with six bars of heights 2, 1, 5, 6, 2, 3](../../../assets/notes/1-6-monotonic-stack/fig01_histogram.png)
 
-- For a position $i$ of an array $a$, the **next greater element** is the nearest position $j > i$ with $a_j > a_i$; the **previous greater element** is the nearest $j < i$ with $a_j > a_i$. "Next smaller" and "previous smaller" are defined the same way with $<$, and variants with $\ge$ or $\le$ are used to break ties. Example: in $(2, 5, 3, 4)$, the next greater element of position 2 (value 3) is position 3 (value 4); position 1 (value 5) has none.
-- A **monotonic stack** is a stack whose values, read from bottom to top, only decrease (or only increase). Example: $(9, 6, 6, 2)$ is a non-increasing stack.
-- The **span** of position $i$ (for minima) is the longest subarray containing $i$ in which $a_i$ is a minimum: it stretches from just after the previous smaller element to just before the next smaller element.
-- A **monotonic deque** is a deque (topic 0.6) whose values from front to back only decrease (or only increase); elements are added at the back and removed from both ends.
-- In a window that moves right, an element is **dominated** if a later element of the window is at least as large; a dominated element can never again be the maximum of a window.
-- The **rightmost minimum** of a subarray is the last position that holds its smallest value. Example: in $(2, 1, 3, 1)$ it is position 3.
-- A **histogram** is a row of bars of width 1 with heights $h_0, \dots, h_{n-1}$. A **rectangle under the bars** covers the bars $l..r$ and has a height of at most the lowest of them, so its largest area is $\min(h_l, \dots, h_r) \cdot (r - l + 1)$. Example: for heights $(3, 1, 2)$, the rectangle over all three bars has area $1 \cdot 3 = 3$.
+*histogram: 2 1 5 6 2 3*
 
-## 4. Theory and proofs
+Another problem:
+find no. of rectangles in histogram.
 
-### 4.1 The next greater element
+Observation: rectangle ki height = sabse chhoti bar ki height jo uske andar aati hai. So har bar ke liye dekhna hai: left aur right me kitna door tak jaa sakte hain jab tak koi chhoti bar na mile.
 
-**Theorem 1.6.1 (monotonic stack).** Scan $i = 0, 1, \dots, n - 1$ and keep a stack of positions. At step $i$, pop every position $j$ on top with $a_j < a_i$ and record $\text{next}[j] = i$; then push $i$. After the scan, the positions still on the stack have no next greater element. Then:
-1. The values on the stack never increase from bottom to top.
-2. Each recorded $\text{next}[j]$ is the next greater element of $j$.
-3. Just after the pops at step $i$, the top of the stack (if any) is the previous greater-or-equal element of $i$: the nearest $j < i$ with $a_j \ge a_i$.
-4. The whole scan takes $O(n)$ time.
+an array:
+1 3 5 7 4
 
-:::tip[In plain words]
-Keep a pile of positions whose values never go up from bottom to top. A new value removes everything smaller from the top of the pile, and each removed position has just found its next greater element.
-:::
+monotone stack
 
-**A tiny instance.** $a = (2, 1, 4, 3, 5)$, positions $0..4$:
+![Stack box holding 1 3 5 7 and the next element 4 arriving](../../../assets/notes/1-6-monotonic-stack/fig03_increasing_stack.png)
 
-| step $i$ | $a_i$ | popped (next = $i$) | stack after (values) |
-|---|---|---|---|
-| 0 | 2 | none | 2 |
-| 1 | 1 | none | 2, 1 |
-| 2 | 4 | 1, then 0 | 4 |
-| 3 | 3 | none | 4, 3 |
-| 4 | 5 | 3, then 2 | 5 |
+*stack: 1 3 5 7, then 4 comes*
 
-So $\text{next} = (2, 2, 4, 4, \text{none})$. For part 3: at step 1 (value 1) the top is position 0 (value 2), and at step 3 (value 3) the top is position 2 (value 4); each is the nearest earlier value at least as large.
+![Histogram with bars 1, 3, 5, 7, 4. Arrow from bar 7: we would want to choose the max height possible](../../../assets/notes/1-6-monotonic-stack/fig02_histogram_1_3_5_7_4.png)
 
-**Proof.** The proof uses positions $0..n-1$, and "step $i$" is the loop iteration that reads $a_i$.
-1. Part 1. An empty stack has no pair of neighbours to break the rule. At step $i$ the pops stop at a top $t$ with $a_t \ge a_i$ (or at an empty stack), and then $i$ is pushed on top of $t$, so every push keeps the values from rising.
-2. Part 2, a popped position. Let $j$ be popped at step $i$, so $a_j < a_i$. No position $k$ with $j < k < i$ has $a_k > a_j$. If one had, then at step $k$ every position above $j$ on the stack has a value at most $a_j$ (step 1), hence less than $a_k$; so all of them are popped, and then $j$ is popped at step $k$, not at step $i$.
-3. By step 2, $i$ is the first position after $j$ with a larger value. This proves part 2 for every popped position.
-4. Part 2, a position never popped. If some later position were larger than $a_j$, the first such position would pop $j$, by the argument of step 2. So $j$ has no next greater element, and it stays on the stack.
-5. Part 3. Let $t$ be the top after the pops at step $i$, or $t = -1$ if the stack is empty. Popping stopped at $t$, so $a_t \ge a_i$.
-6. Suppose some position lies strictly between $t$ and $i$, and let $k$ be one with the largest value (the leftmost if tied). Nothing lies above $t$, so $k$ is not on the stack; some step $m$ with $k < m \le i$ popped it, and $a_m > a_k$.
-7. If $m < i$, then $m$ lies between $t$ and $i$ with a value larger than $a_k$, which contradicts the choice of $k$. So $m = i$ and $a_k < a_i$. Every position strictly between $t$ and $i$ has a value at most $a_k$, so less than $a_i$; with step 5, $t$ is the nearest earlier position with a value at least $a_i$.
-8. Part 4. Each position is pushed once and popped at most once, so all pops together are at most $n$ (Theorem 0.2.4), and everything else takes constant time per step. This shows parts 1 to 4. $\square$
+*we would want to choose the **max height possible***
 
-:::note[This proof needs]
-1. The question is about the *nearest* greater (or smaller) element in one direction, not about a range given in advance.
-2. The comparison used to pop decides the tie rule: popping on $a_j < a_i$ gives "next strictly greater"; popping on $a_j \le a_i$ gives "next greater or equal".
-3. Scanning from the right gives the same answers in the other direction.
-:::
+pushing till the element matches/exceeds the height is better.
 
-<TheoremCode unit="1.6/thm-1" />
+Kyuki jab tak bars badh rahi hain, kisi bar ki right boundary nahi mili, toh rectangle abhi fix nahi kar sakte. Stack sorted rehta hai.
 
-The first example is the table of Section 4.1: the value 4 at position 2 pops positions 1 and 0 (steps 2 and 3 of the proof), so their next greater position is 2. The second example has a repeated value: the second 3 does not pop the first, so its previous greater-or-equal element is position 0 (part 3).
+When 4 appears → we need to potentially try to calculate contribution of all rectangles that can be made at 7.
 
-**Complexity.** $O(n)$ time and $O(n)$ memory: each position is pushed once and popped at most once.
+with 7 as max height we can make a rectangle of width 1.
 
-### 4.2 The span of a minimum
+we include contri of 7 & then remove 7 from the stack.
 
-**Theorem 1.6.2 (contribution of each minimum).** For each $i$ let $L_i$ be the previous position with $a_{L_i} < a_i$ (or $-1$) and $R_i$ the next position with $a_{R_i} \le a_i$ (or $n$). Then:
-1. The subarrays $[l, r]$ with $L_i < l \le i \le r < R_i$ are exactly those in which $i$ is the rightmost position of the minimum value. There are $(i - L_i)(R_i - i)$ of them, and every subarray is counted for exactly one $i$.
-2. Hence the sum of the minima of all subarrays is $\sum_i a_i (i - L_i)(R_i - i)$, computed in $O(n)$ with two monotonic stacks.
-3. For bars of heights $h_i$, the largest rectangle under the bars has area $\max_i h_i (R'_i - L_i - 1)$, where $R'_i$ is the next position with $h < h_i$.
+we do not remove the bar actually, meaning we cannot use the height 7.
 
-:::tip[In plain words]
-Every subarray has one rightmost smallest element. The subarrays that a given element decides are those that start after the nearest smaller element on its left and end before the nearest smaller-or-equal element on its right, so their number is a product of two distances.
-:::
+next height we can use is of 5 & width 2.
 
-**A tiny instance.** $a = (3, 1, 2)$, $n = 3$:
+[we will keep track of 7 .somehow].
 
-| $i$ | $a_i$ | $L_i$ | $R_i$ | $(i - L_i)(R_i - i)$ | $a_i$ times that |
-|---|---|---|---|---|---|
-| 0 | 3 | −1 | 1 | 1 | 3 |
-| 1 | 1 | −1 | 3 | 4 | 4 |
-| 2 | 2 | 1 | 3 | 1 | 2 |
+Somehow = stack ka new top. 7 pop hone ke baad top 5 hai, aur 5 ke left me jo wall hai (3) wo bhi stack me nikalte hi pata chalti hai. Isliye 7 ko yaad rakhne ki zarurat nahi, bas width calculate hoti hai.
 
-The counts add up to 6, the number of subarrays, and the contributions to 9. Directly, the subarrays $(3), (1), (2), (3, 1), (1, 2), (3, 1, 2)$ have minima $3 + 1 + 2 + 1 + 1 + 1 = 9$. For part 3 with bars $(3, 1, 2)$, the best rectangle has area 3.
+![Histogram 1 3 5 7 4 with a rectangle of height 5 over the bars 5 and 7, width 2](../../../assets/notes/1-6-monotonic-stack/fig04_height5_width2.png)
 
-**Proof.**
-1. Fix $i$ and a subarray $[l, r]$ that contains $i$. Position $i$ is the rightmost minimum of $[l, r]$ exactly when every element of $[l, i-1]$ is at least $a_i$ and every element of $[i+1, r]$ is greater than $a_i$.
-2. The first condition says that no position of $[l, i-1]$ has a value below $a_i$. By the definition of $L_i$ (the nearest such position to the left) this is the same as $l > L_i$. Likewise the second condition is the same as $r < R_i$.
-3. So the subarrays decided by $i$ are exactly those with $L_i < l \le i \le r < R_i$. There are $i - L_i$ choices of $l$ and $R_i - i$ choices of $r$, independent of each other, which gives the product.
-4. Every subarray has exactly one rightmost minimum, so it is counted for exactly one $i$. Part 1 is shown.
-5. Part 2. A subarray decided by $i$ has minimum $a_i$, so the sum of all minima is $\sum_i a_i (i - L_i)(R_i - i)$. Both $L$ and $R$ are nearest-element questions, so Theorem 1.6.1 (with the comparisons reversed to "smaller") gives them in $O(n)$.
-6. Part 3. Take a best rectangle, covering bars $l..r$, and let $i$ be a lowest bar in it. Its height is at most $h_i$, and every bar in $l..r$ has height at least $h_i$, so $L_i < l$ and $r < R'_i$, where $L_i$ is the previous bar strictly lower than $h_i$.
-7. So the rectangle's width is at most $R'_i - L_i - 1$, and its area is at most $h_i (R'_i - L_i - 1)$. That candidate is itself a valid rectangle, since every bar strictly between $L_i$ and $R'_i$ has height at least $h_i$.
-8. Hence the best area equals the largest candidate over all $i$. This shows part 3. $\square$
+*height 5, width 2. left wall 3, right wall 4*
 
-:::note[This proof needs]
-1. The quantity summed over subarrays is the minimum (or maximum); its value is decided by one element, and the subarrays where that element decides form a rectangle of choices $l \times r$.
-2. Ties are broken on exactly one side (strict on one side, non-strict on the other), or subarrays with repeated minima are counted twice.
-3. Counts reach $n^2/4$ and sums $10^9 \cdot n^2 / 4$: `long long`, and often a modulus.
-:::
+width can be calculated by checking incoming and previous element.
 
-<TheoremCode unit="1.6/thm-2" />
+→ This width is decided by the previous & next smaller elements.
 
-The first example is the table above: the contributions $3 + 4 + 2$ add up to 9. In $(2, 2)$ the tie rule matters: position 0 counts only the subarray $[0, 0]$, because $R_0 = 1$ is the equal value next to it, and position 1 counts the two subarrays that end at 1, so the total is $2 \cdot 1 + 2 \cdot 2 = 6$.
+3 ≤ 5 ✗ 4
 
-**Complexity.** $O(n)$ with two stack scans, one for $L$ and one for $R$ (Theorem 1.6.1).
+Dekho: left me 3 chhota hai 5 se, right me incoming 4 bhi chhota hai 5 se. Dono walls. Beech ki bars (5, 7) ke upar 5 height ka rectangle ban sakta hai:
 
-### 4.3 The maximum of a sliding window
+width = (index of next smaller) − (index of previous smaller) − 1
 
-**Theorem 1.6.3 (monotonic deque).** For the windows $[i - k + 1, i]$ of a fixed length $k$, keep a deque of positions. At step $i$: pop from the back every position $j$ with $a_j \le a_i$, push $i$ at the back, and pop the front if it is $\le i - k$ (outside the window). Then the front is a position of the window's maximum. Each step is $O(1)$ amortised, $O(n)$ in total.
+for every bar we find the contribution of the height with the max width available.
 
-:::tip[In plain words]
-In a window that moves right, an element followed by a larger or equal one can never be the maximum again. A deque that keeps only the elements not dominated this way has the window maximum at its front.
-:::
+So, we can use either monotonic stack or nge/nse.
 
-**A tiny instance.** $a = (1, 3, -1, -3, 5)$, $k = 3$. Windows: $(1, 3, -1)$ has maximum 3, $(3, -1, -3)$ has 3, and $(-1, -3, 5)$ has 5. The deque holds positions, shown here with their values:
+\*\* We have added sentinel values in the beginning and end of the array. sentinel value = 0 here.
 
-| step $i$ | action | deque after (values) | window maximum |
-|---|---|---|---|
-| 0 | push 0 | 1 | none yet |
-| 1 | pop 0 (1 ≤ 3), push 1 | 3 | none yet |
-| 2 | push 2 | 3, −1 | 3 |
-| 3 | push 3; front 1 is still inside $[1, 3]$ | 3, −1, −3 | 3 |
-| 4 | pop 3, 2, 1, push 4 | 5 | 5 |
-
-**Proof.** Call position $j$ *dominated* in a window if a later position of the window has a value at least $a_j$. Let $W_i$ be the window after step $i$ (the positions $\max(0, i - k + 1)..i$). *Claim:* after step $i$, the deque holds exactly the non-dominated positions of $W_i$ in increasing order of position, and their values strictly decrease from front to back.
-1. Before step 0 the window is empty and so is the deque: the claim holds.
-2. Assume the claim after step $i - 1$. Because the values strictly decrease from front to back, the positions with $a_j \le a_i$ form a suffix of the deque, and the loop pops exactly that suffix. These are the positions that $i$ dominates; they stay dominated in every later window that contains them, since such a window also contains $i$.
-3. A position dominated in $W_{i-1}$ is still dominated in $W_i$, because its dominator lies to its right and leaves the window later than it does. Position $i$ is not dominated, since nothing follows it. After pushing $i$, the deque holds exactly the non-dominated positions of $W_{i-1} \cup \{i\}$, and the values still strictly decrease: the position below $i$ has a value greater than $a_i$.
-4. The window then loses at most one position, $i - k$, and only if it was in the window. It is the leftmost position, so it can only be the front. Removing the leftmost position changes nobody else's status, since dominators lie to the right. This proves the claim after step $i$.
-5. The front is the maximum. Take any position of $W_i$ not in the deque. It is dominated by a later position of the window with a value at least as large; if that one is dominated too, follow its dominator, and so on. The chain moves right, so it ends at a non-dominated position in the deque, and the values never decrease along it. The front has the largest value in the deque, so it is at least the value of every position of $W_i$.
-6. Each position enters the deque once and leaves at most once, so all pops together are at most $n$ (Theorem 0.2.4). This shows the front is a window maximum, with $O(n)$ total time. $\square$
-
-:::note[This proof needs]
-1. The window moves only to the right, so a dominated element never becomes useful again.
-2. Only the maximum (or minimum) is needed; other order statistics, such as the median, need a `multiset` (topic 0.6).
-3. Before reading the front, the deque must not be empty and its front must be inside the window.
-:::
-
-<TheoremCode unit="1.6/thm-3" />
-
-The first example is the trace of the table above: at $i = 4$ the value 5 removes all of 3, −1, −3 (step 3 of the proof). The second has a repeated maximum: the later 4 removes the earlier one, which can never be the answer again.
-
-**Complexity.** $O(n)$ in total: each position enters and leaves the deque once.
-
-The same deque works for windows whose left end moves irregularly, as in the shrinkable windows of topic 1.3: when the left end passes the front's position, pop the front. Two deques, one for the maximum and one for the minimum, give a window's spread $\max - \min$ in $O(1)$, which decides conditions like "max − min ≤ k" while both ends move.
-
-## 5. Recognition Cards
-
-<Cards topic="1.6" />
-
-## 6. Templates
-
-Five short functions: Theorem 1.6.1, the two uses of Theorem 1.6.2, the sliding-window maximum of Theorem 1.6.3, and a window with two deques whose left end moves as in topic 1.3. Every brute force scans every position or subarray directly, in $O(n^2)$.
-
-### Next greater and previous greater-or-equal (Theorem 1.6.1)
-
-<CodeSnippet unit="1.6/next-greater" />
-
-**How it works.** The stack holds the positions still waiting for a greater value; their values never increase from bottom to top. At position $i$, every waiting position with a smaller value has found its next greater element. These positions are all on top, so they are popped. What remains on top, if anything, is the nearest earlier position whose value is at least $a_i$ (part 3 of the theorem). It is recorded before $i$ is pushed, so one scan gives both answers.
-
-**Alternative formulation.** Scan from the right instead. Keep a stack of candidates and pop every candidate $\le a_i$ (for every position further left, $a_i$ hides them); the top is then $i$'s next greater element. Both directions are $O(n)$. The left-to-right version finds an element's answer when the element is popped, the right-to-left version when it is pushed.
-
-### Sum of subarray minima (Theorem 1.6.2, parts 1–2)
-
-<CodeSnippet unit="1.6/subarray-min-sum" />
-
-**How it works.** The first scan finds $L_i$, the previous strictly smaller position: it pops everything $\ge a_i$, so the top that remains is $< a_i$. The second scan, from the right, finds $R_i$, the next smaller-or-equal position: it pops only what is $> a_i$. Position $i$ is then the rightmost minimum of exactly $(i - L_i)(R_i - i)$ subarrays, and the answer adds $a_i$ times that count.
-
-**Alternative formulation.** The sum of maxima uses the same code with every comparison reversed. The sum of $\max - \min$ over all subarrays is the difference of the two sums.
-
-### Largest rectangle in a histogram (Theorem 1.6.2, part 3)
-
-<CodeSnippet unit="1.6/histogram" />
-
-**How it works.** For each bar, the two scans find the nearest strictly lower bar on each side. The widest rectangle of height $h_i$ that contains bar $i$ covers every bar strictly between them, $R_i - L_i - 1$ bars, and the best rectangle is one of these $n$ candidates. Ties need no care here. Equal bars that share a rectangle each produce the same candidate, and a maximum is not changed by repeats.
-
-**Alternative formulation.** One scan is enough. When bar $j$ is popped by bar $i$, its right boundary is $i$ and its left boundary is the new top. A final bar of height 0 at the end empties the stack.
-
-### Sliding-window maximum (Theorem 1.6.3)
-
-<CodeSnippet unit="1.6/window-max" />
-
-**How it works.** The deque holds the window's positions that are not dominated, with values decreasing from front to back. The new position first removes from the back every position it dominates, then joins. If the front has slid out of the window, it is removed. Only the front can be outside the window, because positions are in increasing order and the window moves by one. The front is then the maximum.
-
-**Alternative formulation.** For the minimum, reverse the comparison (`>=`). For windows of a fixed length only, you can also cut the array into blocks of $k$ and use prefix and suffix maxima inside each block (the prefix idea of topic 1.2). The deque is simpler and also works when the window's length changes.
-
-### Longest window with a bounded spread (Theorem 1.6.3 with topic 1.3)
-
-<CodeSnippet unit="1.6/spread-window" />
-
-**How it works.** This is the shrinkable window of topic 1.3: if a window has $\max - \min \le K$, so does every window inside it. For each right end $r$, the left end $l$ moves right until the condition holds, and $[l, r]$ is then the longest valid window ending at $r$. Two deques give the maximum and the minimum while both ends move. When $l$ passes a front's position, that front is popped.
-
-**Alternative formulation.** A `multiset` of the window's values (topic 0.6) gives the maximum and minimum in $O(\log n)$ each. It is easier to write, and $O(n \log n)$ overall is fast enough for $n = 2 \cdot 10^5$.
-
-## 7. Bug catalogue
-
-Monotonic-stack bugs are mostly one character: `<` against `<=` in a pop condition, a default value one off, a front checked at the wrong distance. The code still runs in $O(n)$ and gives plausible answers, so only a brute force finds them. Each bug was made by changing one line of a template from Section 6 and running `scripts/stress.sh` on the broken copy. The input shown is the shortest failing input among the first 2000 random seeds.
-
-### Bug: popping equal values
-
-Template: next greater and previous greater-or-equal.
+Sentinel = fake element at the ends so that we don't write special cases. 0 sabse chhota hai, isliye end wala 0 stack me bacha sab kuch pop kar deta hai, aur front wala 0 kabhi pop nahi hota (so stack never empty).
 
 ```cpp
-while (!st.empty() && a[st.back()] <= a[i]) {
+/*
+Largest rectangle in histogram.
+arr[1..n] = bar heights, arr[0] = arr[n+1] = 0 (sentinels).
+*/
+// Fabricator/STL/Stack/RectangleInHistogram.cpp
+void solve() {
+    int n;
+    cin>>n;
+
+    vector<int> arr(n+2);
+    for(int i=1; i<=n; i++) cin>>arr[i];
+    arr[0] = arr[n+1] = 0;
+
+    //monotonic stack
+    vector<int> st;
+    st.push_back(0);
+
+    int ans = 0;
+    for(int i=1; i<n+2; i++){
+        while(arr[i] < arr[st.back()]){
+            // arr[st.back()] has found both ends
+            // hence we can find its contribution
+            int pos = st.back();
+            st.pop_back();
+
+            int height = arr[pos];
+            int width = i - st.back() - 1;
+
+            ans = max(ans, height * width);
+        }
+
+        st.push_back(i);
+    }
+
+    cout<<ans<<endl;
+}
 ```
 
-Input: `2`, then `0 0`.
+`2 1 5 6 2 3` → 10 and `1 3 5 7 4` → 12 (both tested).
 
-Wrong output `2 0` / `0 0`, correct output `0 0` / `0 1`. The second 0 pops the first and records itself as its "next greater" element, though it is only equal. With the first 0 gone, the second finds no previous greater-or-equal element either.
+Note: `height * width` is int. Bade constraints me `long long` karna padega.
 
-**Fix:** decide for each answer whether ties count, and make the pop condition say exactly that: pop while strictly smaller for "next strictly greater" (Theorem 1.6.1). Test with repeated values.
+Note: `5 × 2 = 10` is just one rectangle on the way. For `1 3 5 7 4` the best is 12 (height 3 over 4 bars, or height 4 over 3 bars).
 
-### Bug: the same tie rule on both sides
+![Histogram 2 1 5 6 2 3 with the best rectangle of area 10](../../../assets/notes/1-6-monotonic-stack/fig15_largest_rectangle_answer.png)
 
-Template: sum of subarray minima. The right scan also pops equal values, so $R_i$ becomes the next strictly smaller position.
+*2 1 5 6 2 3 → best = 5 × 2 = 10*
+
+## Dry run of the histogram stack
+
+`1 3 5 7 4` with sentinel 0 at both ends. Box = height, small number = index in the array with sentinels (0 to 6).
+
+![Table of stack states for each step while processing 1 3 5 7 4 with sentinels](../../../assets/notes/1-6-monotonic-stack/fig05_histogram_stack_trace.png)
+
+*stack after every step*
+
+- 4 aaya: pop 7 → left wall 5, width = 5 − 3 − 1 = 1, area 7. Pop 5 → left wall 3, width 2, area 10. Ab top = 3, 3 > 4 nahi hai, stop. Push 4.
+- last 0 aaya: pop 4 → left wall 3, width = 6 − 2 − 1 = 3, area 12. Pop 3 → left wall 1, width 4, area 12. Pop 1 → left wall = first 0, width 5, area 5.
+- ans = 12.
+
+For `2 1 5 6 2 3` pops are (height, width, area): (2,1,2) (6,1,6) (5,2,10) (3,1,3) (2,4,8) (1,6,6). ans = 10.
+
+## Next Smaller Element (NSE)
+
+→ Next Smaller Element (NSE):
+
+For each element, index of the first element on its right which is smaller. Sentinel -1 at the end (sabse chhota, so sabko answer mil jaata hai).
+
+![Array 4 5 2 7 8 3 and sentinel -1 with arrows to the next smaller element, nse 2 2 6 5 5 6](../../../assets/notes/1-6-monotonic-stack/fig06_nse_arrows.png)
+
+*arr: [4 5 2 7 8 3 | -1], nse: [2 2 6 5 5 6]*
+
+sentinel value (-1 at idx 6).
+
+nse: indices of next smaller elements.
+
+arr: 4 5 2 7 8 3
+idx: 0 1 2 3 4 5
+
+st: [0 1]   (values 4 5)     nse: [ ]
+
+∴ 2 &lt; 5
+
+we pop 5 [index of 5 here] & in nse place 2 as nse of 5.
+
+again 2 &lt; 4
+
+∴ we repeat
+
+push 2 now & continue.
+
+st: [2 3 4]   (values 2 7 8)
+
+we encounter 3.   3 &lt; 8
+
+Pop 4 and 3 (8 and 7), dono ka nse = 5. 3 &lt; 2 nahi hai, stop. Push 5. st: [2 5]. nse = [2 2 _ 5 5 _].
+
+we encounter -1 :
+
+-1 chhota hai 3 aur 2 dono se, dono pop, nse = 6. st: []. nse = [2 2 6 5 5 6].
+
+add -1 at idx 6, in org arr.
+
+![Step by step: stack and the nse array being filled](../../../assets/notes/1-6-monotonic-stack/fig07_nse_stack_trace.png)
+
+*stack + nse after every step*
+
+Same loop in your repo. Yaha array 1-based hai aur sentinel 0 hai dono ends pe, isliye saare answers +1 aate hain. Ek hi loop me pse bhi mil jaata hai (pop hone pe jo naya top hai wahi previous smaller).
 
 ```cpp
-while (!st.empty() && a[st.back()] >= a[i]) st.pop_back();
+/*
+Next smaller element (nse) and previous smaller element (pse) of every index.
+arr[1..n] = input, arr[0] = arr[n+1] = 0 (sentinels). 0 in the answer = none.
+*/
+// Fabricator/STL/Stack/NSE.cpp
+void solve() {
+    int n;
+    cin>>n;
+
+    int arr[n+2];
+    for(int i=1; i<=n; i++) cin>>arr[i];
+
+    arr[0] = arr[n+1] = 0;
+
+    // next smaller element
+    // previous smaller element
+    vector<int> nse(n+2);
+    vector<int> pse(n+2);
+    vector<int> st;
+    st.push_back(0);
+
+    for(int i=1; i<(n+2); i++){
+        while(arr[i] < arr[st.back()]){
+            int pos = st.back();
+            st.pop_back();
+
+            nse[pos] = i;
+            pse[pos] = st.back();
+        }
+
+        st.push_back(i);
+    }
+
+    _print(nse);
+    _print(pse);
+}
 ```
 
-Input: `2`, then `2 2`.
+`4 5 2 7 8 3` → nse = `3 3 7 6 6 7` (−1 each → `2 2 6 5 5 6`), pse = `0 1 0 3 4 3`.
 
-Wrong output `8`, correct output `6`. The subarray $(2, 2)$ has two minima, and with strict comparisons on both sides each of them counts it: $2 \cdot 2 + 2 \cdot 2$ instead of $2 + 2 + 2$.
+Note: pop sirf tab hota hai jab naya element **strictly** chhota ho. Equal elements stack me rehte hain, so ye pse actually "previous smaller **or equal**" hai. Aage kaam aayega.
 
-**Fix:** strict on one side, non-strict on the other, so that every subarray is counted for exactly one minimum, its rightmost (Theorem 1.6.2, part 1).
+## Sum of subarray minimums (A2, super minimum sum)
 
-### Bug: a missing value is one position short
+**Ques:** A2 → super minimum sum.
 
-Template: sum of subarray minima. With no smaller-or-equal element to the right, $R_i$ is set to $n - 1$ instead of $n$.
+Given an array A of size N. All elements are distinct.
+
+find sum of the minimum of all possible subarrays of array A.
+
+(subarray = continuous part of the array.)
+
+1 ≤ t ≤ 10  |  1 ≤ N ≤ 10^5  |  1 ≤ A_i ≤ 10^6
+
+Sounds like contribution technique.
+
+(contribution technique = har subarray ko dekhne ki jagah, har element dekho ki wo answer me kitna add karta hai.)
+
+We need to find minimums for all subarrays & sum them up.
+
+Brute force: all subarrays, min of each → O(N²) subarrays. N = 10^5 pe infeasible.
+
+![All six subarrays of 1 2 3 with minimums 1 2 3 1 2 1 and total 10](../../../assets/notes/1-6-monotonic-stack/fig08_subarray_minimums.png)
+
+*A = 1 2 3: minimums 1 2 3 1 2 1, sum = 10*
+
+So, we check , how many times each element become minimum in the subarrays.
+
+1 → becomes minimum 3 times
+
+2 → 2 times
+
+3 → 1 time
+
+1×3 + 2×2 + 3 = 10
+
+We need to think for how many subarrays A[i] is min.
+
+![Array with positions a, i, b; cells at a and b are smaller than x](../../../assets/notes/1-6-monotonic-stack/fig09_contribution_range.png)
+
+*a &lt; i &lt; b*
+
+A[a] → previous smaller | A[b] → next smaller
+
+∴ A[i] must be min in all subarrays [a+1 , b-1].
+
+Let's say subarray ke andar i hona chahiye. Start kahin se bhi ho sakta hai `a+1 ... i` → `i − a` choices. End kahin bhi `i ... b−1` → `b − i` choices. So:
+
+no. of subarrays = (i − a) × (b − i), contribution = A[i] × (i − a) × (b − i)
+
+1 5 (3) 4 2
+
+for 3 to be min: subarray must start after 1 and must end before 2.
+
+a=0       b= 4
+
+![Array 1 5 3 4 2 with 3 highlighted, walls at index 0 and index 4](../../../assets/notes/1-6-monotonic-stack/fig10_example_1_5_3_4_2.png)
+
+*starts: 1, 2. ends: 2, 3. so 2 × 2 = 4 subarrays*
+
+Yaha 3 ki contribution = 3 × 2 × 2 = 12 (subarrays: [5 3], [5 3 4], [3], [3 4]).
+
+Answer can go up to ~ 10^6 × (10^5)² / 2 ≈ 5 × 10^15, so `long long`.
+
+Full code after we fix the duplicates case (neeche). Pehle NSE / PSE ka better way.
+
+## Better way for NSE and PSE
+
+\* Better way for NSE:
 
 ```cpp
-R[i] = st.empty() ? n - 1 : st.back();
+vector <int> nse(n);
+
+for (int i=n-1; i>=0; i--) {
+    nse[i] = i+1;
+    while (nse[i]<n && arr[nse[i]] >= arr[i])
+        nse[i] = nse[nse[i]];
+}
 ```
 
-Input: `1`, then `1`.
+Idea: i+1 se start karo. Agar wo chhota nahi hai, toh uske nse pe jump karo. Kyuki beech ke saare elements `arr[i+1]` se bade/equal the, aur `arr[i+1]` khud `arr[i]` se chhota nahi tha, toh beech me koi answer ho hi nahi sakta.
 
-Wrong output `0`, correct output `1`. The only element has $R_0 = 0$, so its count $(0 - (-1)) \cdot (0 - 0)$ is 0.
+![Array 1 6 4 7 5 2 with nse arrows and nse 6 2 5 4 5 6](../../../assets/notes/1-6-monotonic-stack/fig11_nse_jump_chain.png)
 
-**Fix:** "none" must be the position just outside the array, $-1$ on the left and $n$ on the right, so that the formulas $i - L_i$ and $R_i - i$ count the elements up to the end.
+*[1 6 4 7 5 2] → nse [6 2 5 4 5 6]. i=2: 3 → nse[3]=4 → nse[4]=5, stop*
 
-### Bug: the stack is not cleared between scans
+T.C. = O(n) amortised, same as the stack. Jump chain wahi hai jo stack ke andar hota. Jo elements skip hue, wo dobara kabhi nahi dekhe jaate.
 
-Template: largest rectangle in a histogram. The `st.clear()` between the two scans is removed.
-
-Input: `2`, then `0 2`.
-
-Wrong output `0`, correct output `2`. The right-to-left scan starts with the positions left over from the first scan. For bar 1 it finds position 0 as the "next lower bar to the right", which is in fact to its left; the width becomes $0 - 0 - 1 = -1$ and the real rectangle of area 2 is lost.
-
-**Fix:** every scan starts with an empty stack. Write it as `st.clear()`, or declare a new stack for each scan.
-
-### Bug: equal bars stop the rectangle
-
-Template: largest rectangle in a histogram. Both scans pop only strictly higher bars, so $L_i$ and $R_i$ are the nearest bars of height at most $h_i$.
+For Previous Smaller Element:
 
 ```cpp
-while (!st.empty() && h[st.back()] > h[i]) st.pop_back();
+vector <int> pse (n);
+for (int i=0; i<n; i++) {
+    pse[i] = i-1;
+    while (pse[i] >= 0 && arr[pse[i]] >= arr[i])
+        pse[i] = pse[pse[i]];
+}
 ```
 
-Input: `2`, then `3 3`.
+`[1 6 4 7 5 2]` → pse = `[-1 0 0 2 2 0]` (−1 = none). Both pieces tested on this array.
 
-Wrong output `3`, correct output `6`. Each bar stops at its equal neighbour, so no candidate covers both bars.
+Note: `>=` ka matlab equal wale bhi skip, so ye **strictly** smaller deta hai.
 
-**Fix:** a rectangle of height $h_i$ extends over every bar at least as high, so it stops only at strictly lower bars: pop everything $\ge h_i$ (Theorem 1.6.2, part 3). Unlike in the sum of minima, using the same rule on both sides is correct here, because a maximum is not affected by repeats.
+Now, using those NSE & PSE we can find the solution for the previous problem, in that we had all elements of the array as distinct.
 
-### Bug: the window is one too wide
+## Elements not distinct
 
-Template: sliding-window maximum.
+But what if the elements are not distinct?
+
+![1 1 1 with nse 3 3 3 and pse -1 -1 -1](../../../assets/notes/1-6-monotonic-stack/fig12_duplicates_wrong.png)
+
+*1 1 1: nse [3 3 3], pse [-1 -1 -1]*
+
+using these to calculate the contributions will lead to wrong result.
+
+Dekho: teeno 1 ko lagta hai ki puri array uski hai. (i−a)(b−i) = 3, 4, 3 → 10. Sahi answer 6 (6 subarrays, har ek ka min 1). Ek subarray multiple baar count ho gaya.
+
+Instead, the idea we use is that in a subarray we found a min. then it is the first ever occurrence of it. Then we add its contribution, else not.
+
+means we need to find the previous smaller or equal element.
+so that we can count from that.
+
+psee [-1   0   1]  \}  we calculate
+nse  [ 3   3   3]  \}  the contribution
+                      using these.
+
+![1 1 1 with psee -1 0 1 and nse 3 3 3, counts 3 2 1](../../../assets/notes/1-6-monotonic-stack/fig13_duplicates_fixed.png)
+
+*psee [-1 0 1], nse [3 3 3] → 3 + 2 + 1 = 6*
+
+(psee = previous smaller or equal element.) Check: `1×(0−(−1))×(3−0) = 3`, `1×(1−0)×(3−1) = 2`, `1×(2−1)×(3−2) = 1` → 6.
+
+Left pe "or equal", right pe strictly. Dono side strict ya dono side "or equal" → galat. Ek side strict, ek side equal.
 
 ```cpp
-if (dq.front() < i - k) dq.pop_front();
+/*
+Ques: sum of the minimum of all subarrays of A (elements can repeat).
+Left side: previous smaller OR equal (psee). Right side: next strictly smaller (nse).
+*/
+/*
+Ques: sum of the minimum of all subarrays of A (elements can repeat).
+Left side: previous smaller OR equal (psee). Right side: next strictly smaller (nse).
+*/
+long long sumOfSubarrayMinimums(const vector<int>& A) {
+    int n = A.size();
+    vector<int> nse(n), psee(n);
+    for (int i = n - 1; i >= 0; i--) {
+        nse[i] = i + 1;
+        while (nse[i] < n && A[nse[i]] >= A[i]) nse[i] = nse[nse[i]];
+    }
+    for (int i = 0; i < n; i++) {
+        psee[i] = i - 1;
+        while (psee[i] >= 0 && A[psee[i]] > A[i]) psee[i] = psee[psee[i]];  // > : equal is not skipped
+    }
+    long long total = 0;
+    for (int i = 0; i < n; i++)
+        total += (long long)A[i] * (i - psee[i]) * (nse[i] - i);
+    return total;
+}
 ```
 
-Input: `2 1`, then `4 1`.
+`{1,2,3}` → 10, `{1,1,1}` → 6, `{1,5,3,4,2}` → 34, `{3,1,2,4}` → 17 (tested).
 
-Wrong output `4 4`, correct output `4 1`. The window ending at $i$ is $[i - k + 1, i]$, so position $i - k$ is already outside it, but the check keeps it.
+![Worked example 3 1 2 4: ranges owned by each element, total 17](../../../assets/notes/1-6-monotonic-stack/fig16_contribution_ranges.png)
 
-**Fix:** write the window's first position, $i - k + 1$, and remove every position before it: `dq.front() < i - k + 1`, which is `dq.front() <= i - k`.
+*3 1 2 4: 3 + 6 + 4 + 4 = 17*
 
-### Bug: reading the back of the deque
+## Other three directions (NGE, PGE)
 
-Template: sliding-window maximum.
+Same cheez, bas comparison ulta kar do. Right/left aur smaller/greater ke 4 combinations:
+
+![Four small pictures for next smaller, next greater, previous smaller and previous greater on 4 2 5 1 3](../../../assets/notes/1-6-monotonic-stack/fig14_four_variants.png)
+
+*4 2 5 1 3, four variants*
+
+| Query | Look | Pop while (stack of indices) |
+|---|---|---|
+| Next smaller | right | `a[top] > a[i]` |
+| Next greater | right | `a[top] < a[i]` |
+| Previous smaller | left | `a[top] >= a[i]` |
+| Previous greater | left | `a[top] <= a[i]` |
+
+Next wale me popped element ko answer `i` milta hai. Previous wale me pop ke baad jo top bacha wahi answer hai. Equal ka kya karna hai, wo `>` / `>=` se decide hota hai (upar duplicates wali baat).
+
+Results on `4 2 5 1 3` (checked against brute force): next smaller `1 3 3 5 5`, next greater `2 2 5 4 5`, previous smaller `-1 -1 1 -1 3`, previous greater `-1 0 -1 2 2`.
+
+## Number of rectangles in histogram
+
+Ye wahi "find no. of rectangles in histogram" wala problem hai. Floor pe khade, integer sides wale rectangles. Bars `l..r` ke upar height `1` se `min(h[l..r])` tak kuch bhi chalega. So us range me exactly `min(h[l..r])` rectangles.
+
+All ranges add → **sum of subarray minimums**. Wahi function. `1 3 5 7 4` → 46 (brute force se bhi 46).
+
+## Bracketting
+
+Har opening bracket ka matching closing bracket sahi order me hona chahiye. Stack: opening push, closing aaye toh top uska partner hona chahiye, end me stack empty.
+
+Map: opening → +x, closing → −x. `st.top() + val == 0` matlab match.
 
 ```cpp
-if (i >= k - 1) out.push_back(a[dq.back()]);
+/*
+Given a string of brackets, check if all the brackets are balanced
+*/
+// Fabricator/STL/BalancedBrackets.cpp
+void solve(){
+    string s;
+    getline(cin, s);
+    map<char, int> mp;
+    mp['('] = 1;
+    mp[')'] = -1;
+    mp['{'] = 2;
+    mp['}'] = -2;
+    mp['['] = 3;
+    mp[']'] = -3;
+
+    bool is_balanced = true;
+    stack<int> st;
+    for(auto c: s){
+        int val = mp[c];
+        if(val > 0){
+            st.push(val);
+        }
+        else{
+            if(!st.empty() && (st.top() + val == 0)){
+                st.pop();
+            }
+            else{
+                is_balanced = false;
+                break;
+            }
+        }
+    }
+
+    if(!st.empty()) is_balanced = false;
+
+    if(is_balanced) cout<<"Is Balanced\n";
+    else cout<<"Not Balanced\n";
+}
 ```
 
-Input: `2 2`, then `2 1`.
+`()[]{}` ✓, `{[]}` ✓, `(]` ✗, `([)]` ✗, `((` ✗ (tested).
 
-Wrong output `1`, correct output `2`. The back is always the newest position $i$; the maximum is at the front, where values are largest.
+## Min of every window of size k (monotone deque)
 
-**Fix:** the deque's values decrease from front to back, so the maximum is the front (Theorem 1.6.3). Writing that invariant in a comment next to the deque prevents this bug.
+Monotonic stack ka hi cousin. Deque (dono ends se push/pop) rakhte hain, front me hamesha window ka min.
 
-### Bug: only one front is checked
+```cpp
+/*
+Given an array of size n, find minimum of every window of size k.
+*/
+// Fabricator/STL/MinInKWindow-MonotoneDequeue.cpp
+struct monotone_deque{
+    deque<int> dq;
+    void insert(int x){
+        while(!dq.empty() && dq.back() > x)
+            dq.pop_back();
 
-Template: longest window with a bounded spread. The line that pops the minimum deque's front is removed.
+            dq.push_back(x);
+    }
 
-Input: `3 1`, then `0 3 3`.
+    void erase(int x){
+        if(!dq.empty() && dq.front() == x)
+            dq.pop_front();
+    }
 
-Wrong output `1`, correct output `2`. At $r = 1$ the window $[0, 1]$ has spread 3, so $l$ moves to 1. But the minimum deque still has position 0 at its front, so the spread still reads as 3, and $l$ keeps moving, past $r$, until the maximum deque is empty. Reading an empty deque's front is undefined behaviour: here it printed a wrong answer, and on other inputs it crashed.
+    int get_min(){
+        return dq.front();
+    }
+};
 
-**Fix:** after every step of $l$, check the front of every deque that describes the window.
+void solve(){
+    int n, k;
+    cin>>n>>k;
+    int arr[n];
+    for(auto &x: arr) cin>>x;
 
-## 8. Worked examples
+    monotone_deque mt;
+    for(int i=0; i<n; i++){
+        mt.insert(arr[i]); // O(1) --> Amortized
+        if((i-k) > 0) mt.erase(arr[i-k]); // O(1)
+        if(i >= (k-1)) cout<<mt.get_min()<<" "; // O(1)
+    }
+}
+```
 
-### Example 1: Buildings
+Note: `if((i-k) > 0)` should be `>= 0`. Jab `i == k`, `arr[0]` window se bahar jaata hai par erase nahi hota. `1 5 6 7`, k = 2 pe ye `1 1 1` deta hai, sahi `1 5 6` hai. (`4 2 5 1 3`, k = 3 pe sahi `2 1 1` aata hai, isliye bug chhup jaata hai.)
 
-[AtCoder Beginner Contest (ABC) 372, problem D: Buildings](https://atcoder.jp/contests/abc372/tasks/abc372_d). In short: $N \le 2 \cdot 10^5$ buildings in a row with distinct heights; for each building $i$, count the buildings $j > i$ such that no building strictly between $i$ and $j$ is taller than $j$.
+## Quick revision
 
-#### Step 1: Constraints → budget
+- Monotonic stack: indices store, order sorted, pop jo order tode. T.C. = O(n).
+- NSE: pop while `a[top] > a[i]`, popped ko answer `i`. Leftover → n (ya sentinel).
+- PSE: pop ke baad top = answer.
+- Histogram: width = nse − pse − 1, area = height × width, sentinel 0 dono ends.
+- no. of rectangles in histogram = sum of subarray minimums.
+- Contribution of A[i] as min = A[i] × (i − a) × (b − i).
+- Distinct: strict dono side. Equal allowed: left psee (smaller or equal), right nse (strict). `1 1 1` → 6, not 10.
+- Jump trick: `nse[i] = i+1; while (nse[i] < n && arr[nse[i]] >= arr[i]) nse[i] = nse[nse[i]];`
+- `long long` for sums and areas.
+- Brackets: opening push, closing pe top match, end me empty.
 
-$N = 2 \cdot 10^5$: $O(N)$ or $O(N \log N)$. Checking every pair is $O(N^2) = 4 \cdot 10^{10}$, far too slow. The counts are at most $N$: `int`.
+## Practice problems
 
-#### Step 2: Question form → candidate tools
+Contribution technique (same idea as sum of minimums):
 
-Brute force: for each pair $(i, j)$, check the buildings between them (topic 0.5), $O(N^3)$. The condition says that building $j$ is taller than everything between $i$ and $j$; read from position $i + 1$ to the right, the counted buildings are the new records (each taller than all before it). That is a question about the nearest taller building, the shape of Theorem 1.6.1. A second reading: building $j$ is counted for every $i$ from its previous taller building up to $j - 1$, so the counts are range additions (difference array, topic 1.2).
+- [Count Unique Characters of All Substrings of a Given String](https://leetcode.com/problems/count-unique-characters-of-all-substrings-of-a-given-string/)
+- [Total Appeal of A String](https://leetcode.com/problems/total-appeal-of-a-string/)
+- [Count Unique Char in Substrings](https://maang.in/problems/Count-Unique-Char-in-Substrings-63)
+- [Count Distinct Char in Substrings](https://maang.in/problems/Count-Distinct-Char-in-Substrings-62)
+- [AtCoder ABC186 D, Sum of Difference](https://atcoder.jp/contests/abc186/tasks/abc186_d)
 
-#### Step 3: Property check → decision
-
-Process $i$ from right to left, keeping the records of the suffix $i + 1, \dots, N$ on a stack, the nearest on top. Their heights increase from top to bottom, and $c_i$ is their number. To move to $i - 1$, building $i$ joins the suffix: it is a record (nothing before it), and an old record stays a record exactly when it is taller than $h_i$. The old records that are shorter are all on top, so popping them and pushing $i$ gives the new stack. Decision: one right-to-left scan, $c_i$ = stack size before building $i$ is added.
-
-#### Step 4: Proof for this problem
-
-Invariant: before step $i$ (0-based, from $N - 1$ down to 0), the stack holds exactly the $j > i$ with $h_j > h_k$ for all $i < k < j$, from the nearest at the top to the farthest at the bottom, with increasing heights. It holds before step $N - 1$ (empty stack, no $j$). At step $i$, the answer $c_i$ is the stack size, by the invariant. For step $i - 1$ the counted set becomes: $i$ itself (no building lies between $i - 1$ and $i$), plus those $j$ of the old set that are also taller than $h_i$. Since heights increase from top to bottom, the old elements shorter than $h_i$ form the top of the stack, and the loop pops exactly them; pushing $i$ puts the nearest element on top, and its height is smaller than all heights below it. Each building is pushed and popped at most once: $O(N)$ (Theorem 0.2.4).
-
-#### Step 5: Code
-
-<CodeSnippet unit="1.6/example-1" />
-
-#### Step 6: Alternative approach
-
-Compute $P_j$, the previous taller building of each $j$ (Theorem 1.6.1, scanning left to right). Building $j$ is counted exactly for $i = \max(P_j, 0), \dots, j - 1$ (with $P_j = -1$ when there is none), so add 1 on that range with a difference array and take prefix sums (Theorem 1.2.3). It is also $O(N)$, and it separates the stack step from the counting.
-
-### Example 2: Maximum Subarray Sum II
-
-[CSES 1644 Maximum Subarray Sum II](https://cses.fi/problemset/task/1644). In short: an array of $n \le 2 \cdot 10^5$ integers with $|x_i| \le 10^9$; print the largest sum of a subarray whose length is between $a$ and $b$.
-
-#### Step 1: Constraints → budget
-
-$n = 2 \cdot 10^5$: $O(n)$ or $O(n \log n)$. All pairs of ends is $O(n^2)$ when $b - a$ is large. Sums reach $2 \cdot 10^{14}$ in absolute value: `long long`.
-
-#### Step 2: Question form → candidate tools
-
-Brute force over both ends (topic 0.5). A subarray sum is a difference of prefix sums, $p_r - p_l$ (topic 1.2). For a fixed right end $r$, the best start is the $l$ with the smallest $p_l$ among $r - b \le l \le r - a$. As $r$ grows, that range of allowed starts moves right by one: a sliding window over $p$, whose minimum Theorem 1.6.3 maintains.
-
-#### Step 3: Property check → decision
-
-Theorem 1.6.3 needs a window whose ends only move to the right, and only its minimum. Both hold: at step $r$, start $r - a$ joins and start $r - b - 1$ leaves. The window of starts is never empty, since $r - a \ge r - b$ and $r \ge a$. Decision: prefix sums, then one pass over $r$ with a deque of starts whose prefix sums increase from front to back.
-
-#### Step 4: Proof for this problem
-
-The subarrays with right end $r$ (prefix positions, $1 \le r \le n$) and an allowed length are exactly those $(l, r]$ with $\max(0, r - b) \le l \le r - a$, and their sums are $p_r - p_l$. For fixed $r$, the largest sum uses the smallest $p_l$ in that range. By Theorem 1.6.3, with the comparisons reversed for the minimum, the deque's front is a position of that minimum, provided every start of the range has been pushed and the front is not below $r - b$. At step $r$ the program pushes $r - a$, so all starts up to $r - a$ have been pushed, and the range's lower end moves by at most one per step, so popping at most one front is enough. The answer is the maximum over all $r$. Each start enters and leaves the deque once: $O(n)$.
-
-#### Step 5: Code
-
-<CodeSnippet unit="1.6/example-2" />
-
-#### Step 6: Alternative approach
-
-Keep the allowed prefix sums $p_l$ in a `multiset` (topic 0.6): insert $p_{r - a}$, erase $p_{r - b - 1}$, and read the smallest with `begin()`. It is $O(n \log n)$ and fast enough here; the deque is shorter and $O(n)$.
-
-## 9. Problem ladder
-
-Thirteen problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Before coding each one, write down which nearest element or window extreme you need, how ties are broken, and what the stack or deque holds (positions, with values in which order). Before opening a hint, spend the struggle budget shown on the problem.
-
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+### Problem ladder
 
 <Ladder topic="1.6" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card (the list includes earlier topics' cards), write the property you checked, then reveal the answer. Do not solve the problems here: deciding is the exercise. Four items are answered by the cards of topics 1.3, 1.4 and 1.5.
-
-<Drill topic="1.6" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the decision.
-
-<LookalikePairs topic="1.6" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer.
-
-<SelfTest topic="1.6" />
-
-## 13. Checkpoint
-
-Three problems in 90 minutes. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 8 drill items in Section 10. After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="1.6" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen against the tools you already have. The same entries appear in the Recognition Handbook, grouped by weak signal across all topics.
-
-<DecisionMapUpdate topic="1.6" />

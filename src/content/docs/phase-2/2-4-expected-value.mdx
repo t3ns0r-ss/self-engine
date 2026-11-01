@@ -4,424 +4,712 @@ sidebar:
   order: 17
 topic: "2.4"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="2.4" />
 
-## 1. Why this topic exists
-
-Here is a small problem. A random permutation of $n = 10^5$ people is chosen, all $n!$ equally likely. On average, how many people stay in their own place?
-
-The direct method lists all $n!$ permutations: impossible beyond $n = 12$ or so. Even a clever count of "permutations with exactly $k$ fixed points" needs inclusion–exclusion for every $k$ (topic 2.3). But the question has a one-line answer. For each person $i$, the chance of staying in place is $\frac1n$. An average of a sum is the sum of the averages, *even though the events depend on each other*, so the expected number of fixed points is $n \cdot \frac1n = 1$.
-
-This topic is about that rule, linearity of expectation, and its consequences. An expected count is a sum of probabilities, one per event. A total over all subarrays, subsets or pairs is a sum over elements of value times the number of configurations in which the element counts (the contribution technique, the same idea without the averaging). And waiting times and maxima have formulas of their own: $\frac1p$ trials until a success, and $E[X] = \sum_x P(X \ge x)$.
-
-## 2. Prerequisites and scope
-
-### What you need
-
-<WhatYouNeed topic="2.4" />
-
-### What this topic does not cover
-
-- Expected values found by a recurrence over states ("from state $s$, the expected remaining time is …"), which needs a table of answers. Covered in Phase 3 (dynamic programming).
-- Variance, conditional expectation as a topic of its own, Markov chains and continuous distributions. They are not part of this course.
-
-## 3. Definitions
-
-- A **(finite) probability space** is a finite set $\Omega$ of outcomes, each with a probability $P(\omega) \ge 0$, adding up to 1. Often all outcomes are equally likely: $P(\omega) = \frac{1}{|\Omega|}$. An **event** is a set of outcomes, and $P(A) = \sum_{\omega \in A} P(\omega)$. Example: for a fair die, $P(\text{even}) = \frac36$.
-- A **random variable** $X$ gives a number $X(\omega)$ to each outcome. Its **expected value** is $E[X] = \sum_{\omega} X(\omega) P(\omega)$, the average value weighted by probability. Example: for a die, $E[X] = \frac{1 + \dots + 6}{6} = 3.5$.
-- The **indicator** $\mathbb{1}_A$ of an event $A$ is 1 on the outcomes of $A$ and 0 elsewhere.
-- Two events are **independent** if $P(A \cap B) = P(A) P(B)$; repeated dice rolls and coin flips are independent.
-- The **contribution technique** computes a total over many configurations element by element: each element's value times the number of configurations in which it counts (Theorem 2.4.3).
-
-## 4. Theory and proofs
-
-### 4.1 Linearity of expectation
-
-**Theorem 2.4.1 (linearity of expectation).** For random variables $X, Y$ on the same space and a constant $c$: $E[X + Y] = E[X] + E[Y]$ and $E[cX] = c E[X]$. Hence $E[X_1 + \dots + X_n] = E[X_1] + \dots + E[X_n]$. No independence is needed.
-
-:::tip[In plain words]
-The average of a sum is the sum of the averages, even when the parts depend on each other. So an average over a huge set of outcomes can be found by averaging each part separately.
-:::
-
-**A tiny instance.** Two dice. $E[\text{sum}] = 3.5 + 3.5 = 7$, without listing the 36 outcomes.
-
-**Proof.**
-1. $E[X + Y] = \sum_\omega (X(\omega) + Y(\omega)) P(\omega)$.
-2. Split the sum in two: $\sum_\omega X(\omega) P(\omega) + \sum_\omega Y(\omega) P(\omega) = E[X] + E[Y]$.
-3. The constant factor comes out of the sum the same way.
-4. Induction gives $n$ terms. $\square$
-
-:::note[This proof needs]
-1. All variables are defined on the same outcomes (the same random experiment).
-2. Nothing about independence: the variables may depend on each other in any way. Products are different: $E[XY] = E[X] E[Y]$ needs independence.
-3. For a finite space the sums are finite. (Infinite cases such as waiting times use Theorem 2.4.4.)
-:::
-
-<TheoremCode unit="2.4/thm-1" />
-
-
-
-### 4.2 Indicator variables
-
-**Theorem 2.4.2 (expected counts).** $E[\mathbb{1}_A] = P(A)$. So if $X$ counts how many of the events $A_1, \dots, A_n$ happen, $E[X] = P(A_1) + \dots + P(A_n)$.
-
-:::tip[In plain words]
-The expected number of events that happen is the sum of their probabilities, because each event is a 0-or-1 variable whose average is its probability. The events may depend on each other.
-:::
-
-**A tiny instance.** Fixed points of a random permutation: $P(i \text{ stays}) = \frac1n$, so $E = n \cdot \frac1n = 1$. Inversions: each pair $i < j$ is inverted with probability $\frac12$ (by symmetry, swapping the two values), so $E = \binom{n}{2} \cdot \frac12$; for $n = 3$ that is $1.5$, and indeed the six permutations have $0 + 1 + 1 + 2 + 2 + 3 = 9$ inversions in total.
-
-**Proof.**
-1. $E[\mathbb{1}_A] = \sum_{\omega \in A} 1 \cdot P(\omega) + \sum_{\omega \notin A} 0 = P(A)$.
-2. A count is a sum of indicators, $X = \mathbb{1}_{A_1} + \dots + \mathbb{1}_{A_n}$.
-3. Apply linearity (Theorem 2.4.1). $\square$
-
-:::note[This proof needs]
-1. The quantity is a count (or a weighted count $\sum w_i \mathbb{1}_{A_i}$, which gives $\sum w_i P(A_i)$).
-2. Each single probability $P(A_i)$ can be computed, often by symmetry.
-:::
-
-<TheoremCode unit="2.4/thm-2" />
-
-
-
-### 4.3 Contributions
-
-**Theorem 2.4.3 (contribution technique).** Let $\mathcal C$ be a finite set of configurations and $f(c) = \sum_i v_i \cdot [\text{element } i \text{ counts in } c]$. Then
-$\sum_{c \in \mathcal C} f(c) = \sum_i v_i \cdot N_i$,
-where $N_i$ is the number of configurations in which element $i$ counts. With all configurations equally likely, the expected value is this total divided by $|\mathcal C|$.
-
-:::tip[In plain words]
-A total over many configurations is a sum over elements of the element's value times the number of configurations in which it counts. Swapping the order of the two sums means the configurations never have to be listed.
-:::
-
-**A tiny instance.** The sum of the sums of all subarrays of $(1, 2, 3)$ is $1 \cdot 1 \cdot 3 + 2 \cdot 2 \cdot 2 + 3 \cdot 3 \cdot 1 = 20$ (element $i$ lies in $(i + 1)(n - i)$ subarrays); listing them, $1 + 2 + 3 + 3 + 5 + 6 = 20$. The sum of the maxima of all non-empty subsets of a sorted array $a_0 \le \dots \le a_{n-1}$ (distinct) is $\sum_i a_i 2^i$: $a_i$ is the maximum of exactly the subsets that contain it and only smaller elements.
-
-**Proof.**
-1. Exchange the order of the two sums: $\sum_c \sum_i v_i [i \text{ counts in } c] = \sum_i v_i \sum_c [i \text{ counts in } c]$.
-2. The inner sum is $N_i$, so the total is $\sum_i v_i N_i$.
-3. Dividing by $|\mathcal C|$ is linearity with $P(c) = \frac{1}{|\mathcal C|}$. $\square$
-
-:::note[This proof needs]
-1. The quantity per configuration is a sum over elements of a value times a condition on that element (a minimum, a maximum, "this pair is in the subarray").
-2. $N_i$ can be counted for each element: by positions (subarrays containing index $i$: $(i + 1)(n - i)$ with 0-based $i$), by sorting (subsets where $a_i$ is the maximum: $2^i$ after sorting), or by nearest greater elements (topic 1.6).
-3. Totals grow fast: use `long long` or a modulus.
-:::
-
-<TheoremCode unit="2.4/thm-3" />
-
-
-
-### 4.4 Tail sums
-
-**Theorem 2.4.4 (tail sum).** If $X$ takes values in $\{0, 1, 2, \dots\}$, then $E[X] = \sum_{x \ge 1} P(X \ge x)$. In particular, for independent $X_1, \dots, X_k$ with values in $\{1, \dots, m\}$, $P(\max X_i \le x) = \prod_i P(X_i \le x)$, so $E[\max] = \sum_{x=1}^{m} \left(1 - \prod_i P(X_i \le x - 1)\right)$.
-
-:::tip[In plain words]
-The expected value of a non-negative integer is the sum over x ≥ 1 of the probability that it is at least x. For a maximum of independent draws, the probability that it is at most x is a product, so it is easy to find.
-:::
-
-**A tiny instance.** The larger of two dice. $P(\max \le x) = \left(\frac x6\right)^2$, so $E[\max] = \sum_{x=1}^{6} \left(1 - \left(\frac{x - 1}{6}\right)^2\right) = 6 - \frac{0 + 1 + 4 + 9 + 16 + 25}{36} = \frac{161}{36} \approx 4.47$.
-
-**Proof.**
-1. Write $X = \sum_{x \ge 1} [X \ge x]$: a value $v$ is counted once for each $x = 1, \dots, v$.
-2. Take expectations; for a finite range this is linearity. (For values without an upper bound, the same exchange of sums holds because all terms are non-negative.)
-3. For the maximum: $\max \le x$ exactly when every $X_i \le x$, and independence turns the probability of all of them into the product. $\square$
-
-:::note[This proof needs]
-1. Non-negative integer values. For other values, sum $P(X \ge x)$ over the distinct values with the gaps as weights.
-2. For a maximum or minimum, independence of the $X_i$ (dice, separate draws). With dependent values, $P(\max \le x)$ needs a count of its own.
-:::
-
-<TheoremCode unit="2.4/thm-4" />
-
-
-
-### 4.5 Waiting times
-
-**Theorem 2.4.5 (waiting times).**
-1. If independent trials each succeed with probability $p > 0$, the expected number of trials up to and including the first success is $\frac1p$.
-2. If a process passes through stages $1, \dots, k$ in order, and in stage $j$ each independent trial ends the stage with probability $p_j > 0$, the expected total number of trials is $\frac{1}{p_1} + \dots + \frac{1}{p_k}$.
-3. (Coupon collector.) Drawing uniformly from $n$ kinds until every kind has appeared takes $n \left(1 + \frac12 + \dots + \frac1n\right)$ draws on average.
-
-:::tip[In plain words]
-Repeating independent trials with success probability p until the first success takes 1/p trials on average. A process made of stages one after another takes the sum of the stage times, which gives the coupon collector's n·(1 + 1/2 + … + 1/n).
-:::
-
-**A tiny instance.** Rolling a die until a 6 takes 6 rolls on average. Seeing all six faces takes $6 \left(1 + \frac12 + \dots + \frac16\right) = 14.7$ rolls on average.
-
-**Proof.**
-1. Part 1. The first success comes after trial $t - 1$ exactly when the first $t - 1$ trials fail: $P(T \ge t) = (1 - p)^{t - 1}$.
-2. By Theorem 2.4.4, $E[T] = \sum_{t \ge 1} (1 - p)^{t-1} = \frac{1}{1 - (1 - p)} = \frac1p$ (geometric series).
-3. Part 2. The total is the sum of the stage lengths; apply part 1 to each and add (linearity).
-4. Part 3. After $j$ kinds have been seen, a draw shows a new kind with probability $\frac{n - j}{n}$, so stage $j$ takes $\frac{n}{n - j}$ draws on average; add over $j = 0, \dots, n - 1$. $\square$
-
-:::note[This proof needs]
-1. Independent trials with a fixed success probability within each stage.
-2. The stages come one after another; if the probability changes with more than the stage number (for example with the history), a recurrence over states is needed (Phase 3).
-:::
-
-<TheoremCode unit="2.4/thm-5" />
-
-**Printing an expected value modulo a prime.** When the answer is a fraction $\frac PQ$, compute every probability as a residue modulo the prime (Theorem 2.2.4); the sums and products above stay valid, so the residue of the exact expected value comes out.
-
-
-## 5. Recognition Cards
-
-<Cards topic="2.4" />
-
-## 6. Templates
-
-Five short functions: one for indicators, two for contributions, one for tail sums and one for waiting times. The brute forces list every outcome or configuration, or use a different formula.
-
-### Expected inversions of a random order (Theorem 2.4.2)
-
-<CodeSnippet unit="2.4/expected-inversions" />
-
-**How it works.** The number of inversions is a sum of indicators, one per pair of positions. A pair holding two different values is inverted with probability $\frac12$ (swapping the two values maps the orders where it is inverted to those where it is not); a pair of equal values never is. So the expectation is half the number of pairs with different values.
-
-**Alternative formulation.** Count, for each value, the pairs with a strictly smaller value after sorting; the number of unequal pairs is the same, computed in $O(n \log n)$.
-
-### Distinct values over all subarrays (Theorem 2.4.3)
-
-<CodeSnippet unit="2.4/distinct-in-subarrays" />
-
-**How it works.** Let a value count in a subarray at the first position where it appears there. The occurrence at position $i$ is that first position exactly when the subarray starts after the previous occurrence `prev` and at most at $i$, and ends at $i$ or later: $(i - \text{prev}) \cdot (n - i)$ subarrays. Adding over all positions counts every distinct value of every subarray once.
-
-**Alternative formulation.** Count, per value, the subarrays that contain *no* copy of it (the gaps between its occurrences give $\sum \frac{g(g+1)}{2}$), and subtract from the number of all subarrays; adding over the values gives the same total.
-
-### Max − min over all subsets (Theorem 2.4.3)
-
-<CodeSnippet unit="2.4/subset-widths" />
-
-**How it works.** After sorting, $a_i$ is the maximum of the subsets made of $a_i$ and any subset of the $i$ elements before it ($2^i$ of them), and the minimum of $2^{n-1-i}$ subsets. So the sum of all maxima minus the sum of all minima is $\sum_i a_i (2^i - 2^{n-1-i})$.
-
-**Alternative formulation.** Compute the sum of maxima and the sum of minima separately; the minima are the maxima of the negated array.
-
-### Expected maximum of independent draws (Theorem 2.4.4)
-
-<CodeSnippet unit="2.4/expected-max" />
-
-**How it works.** $P(\max \ge x) = 1 - P(\text{all } < x) = 1 - \left(\frac{x - 1}{m}\right)^k$ by independence, and the tail sum adds these for $x = 1, \dots, m$. Every probability is a residue modulo the prime (Theorem 2.2.4).
-
-**Alternative formulation.** $E[\max] = \sum_x x \cdot P(\max = x)$ with $P(\max = x) = \left(\frac xm\right)^k - \left(\frac{x-1}{m}\right)^k$; it is the same sum regrouped.
-
-### The coupon collector (Theorem 2.4.5)
-
-<CodeSnippet unit="2.4/coupon-collector" />
-
-**How it works.** With $j$ kinds owned, a draw is new with probability $\frac{n - j}{n}$, so this stage takes $\frac{n}{n - j}$ draws on average; the stages from $j = c$ to $n - 1$ come one after another and their expectations add.
-
-**Alternative formulation.** Write $E_j$ for the expected remaining draws with $j$ kinds owned: $E_j = 1 + \frac{j}{n} E_j + \frac{n - j}{n} E_{j+1}$, and solve for $E_j$ from $j = n - 1$ down. It reaches the same sum.
-
-## 7. Bug catalogue
-
-Expected values printed modulo a prime are hard to check by eye: a wrong fraction looks like any other residue. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds; the residues are translated back into fractions.
-
-### Bug: counting pairs of equal values
-
-Template: expected inversions of a random order. The line that removes pairs of equal values is deleted.
-
-Input: `2`, then `1 1`.
-
-Wrong output `499122177` (that is, $\frac12$), correct output `0`. Two equal values are never inverted, whatever the order; the symmetry argument "inverted with probability $\frac12$" only holds for different values.
-
-**Fix:** check the probability of each indicator separately (Theorem 2.4.2); equal values give probability 0.
-
-### Bug: forgetting the probability
-
-Template: expected inversions of a random order.
-
-```cpp
-cout << pairs % MOD << "\n";
+## What this note covers
+
+Contribution technique → instead of building every big object, dekho ki har chhota piece answer me kitna add karta hai. Bas wahi add karna hai.
+
+Words I use:
+- subarray = continuous part of array, like `arr[2..5]` (substring = same for strings)
+- T.C. (time complexity) = how time grows with n. TLE = time limit exceeded
+- pivot = one position we fix (mostly the end of a range) and then look at everything around it
+- DS = data structure (map, set, ...)
+- nCr = no. of ways to choose r things out of n, order doesn't matter. e.g. nC2 = n(n-1)/2
+
+Contents:
+- Contribution technique (the map)
+- Atomic item contribution: triplets
+- Atomic item contribution: inversions of all subarrays
+- Contribution at pivot: Extension
+- Contribution at pivot: DS usage
+- Atomic item again: distinct characters in all substrings
+- Quick revision
+- Practice problems
+
+## Contribution technique
+
+→ Contribution Technique: Always applicable whenever we count, sum or even optimize
+
+```
+Contribution Technique
+ ├─→ Atomic item contribution
+ └─→ Contribution at pivot (mostly end)
+       ├─→ Extension      ──→ Extend contr. of prev thing into next thing
+       └─→ DS usage.
 ```
 
-Input: `2`, then `1 2`.
+![Tree: contribution technique splits into atomic item contribution and contribution at pivot; pivot splits into extension and DS usage.](../../../assets/notes/2-4-expected-value/fig01_technique_map.png)
+*Two branches. Atomic = one small item. Pivot = fix the end.*
 
-Wrong output `1`, correct output `499122177` (that is, $\frac12$). The program counted the pairs that *can* be inverted but forgot that each one is inverted only half the time.
+## Atomic item contribution
 
-**Fix:** an expected count is a sum of probabilities, not of possibilities. Multiply by the inverse of 2.
+Q: Given an array of n elements, choose all triplets (i,j,k) such that (0 ≤ i &lt; j &lt; k ≤ n-1) and calculate their sum. mod $10^9+7$
 
-### Bug: the previous position defaults to 0
-
-Template: distinct values over all subarrays.
-
-```cpp
-long long prev = last.count(a) ? last[a] : 0;
-```
-
-Input: `1`, then `3`.
-
-Wrong output `0`, correct output `1`. With no earlier copy, the start of the subarray may be anywhere from 0 to $i$, which is $i + 1$ choices: the "previous position" must be $-1$, not 0.
-
-**Fix:** use $-1$ for "no previous occurrence", exactly as for nearest greater elements in topic 1.6.
-
-### Bug: the end of the subarray off by one
-
-Template: distinct values over all subarrays.
+Brute force:
 
 ```cpp
-total += (i - prev) * (n - i - 1);
+for (0 ≤ i < n)
+    for (i < j ≤ n)
+        for (j < k ≤ n)
+            ans += arr[i] + arr[j] + arr[k];
 ```
 
-Input: `1`, then `3`.
+→ O(n^3) → TLE.
 
-Wrong output `0`, correct output `1`. The subarray may end at $i$ itself; with 0-based positions the ends are $i, \dots, n - 1$, which is $n - i$ choices.
+Note: j and k loops should stop at `< n`, last index is n-1.
 
-**Fix:** count both ranges of ends inclusively and check the formula on $n = 1$ (Theorem 2.4.3, note 2).
+Let's take 4 elements a, b, c, d and write all triplets.
 
-### Bug: contributions before sorting
+```
+a b c
+a   c d
+a b   d
+  b c d
+-----------------
+3×a + 3b + 3c + 3d = ans
+```
 
-Template: max − min over all subsets. The `sort` is removed.
+![Array a b c d with its four triplets highlighted; each element is picked 3 times.](../../../assets/notes/2-4-expected-value/fig02_triplets_four.png)
+*4 triplets, har element 3 baar.*
 
-Input: `2`, then `5 4`.
+Notice that every element comes exactly 3 times. Kyu? Because
 
-Wrong output `1000000006` (that is, $-1$), correct output `1`. "The $i$-th element is the maximum of $2^i$ subsets" is true only when the elements before it are smaller. In input order, 5 is treated as the minimum of the pair.
+When we choose any number, then we have to choose other 2 numbers out of **n-1** nos.
 
-**Fix:** sort first; the count of configurations in which an element contributes depends on its rank.
+```
+a  ( ) ( )
+    ~~~~
+    2 places to fill out of (n-1) options.
+```
 
-### Bug: forgetting the minima
+a × $^{n-1}C_2$
 
-Template: max − min over all subsets.
+![a[x] with two empty slots, shown for the three positions of a[x].](../../../assets/notes/2-4-expected-value/fig03_roles.png)
+*a[x] fixed, baaki 2 jagah n-1 me se.*
+
+The contribution of any element of the array thus becomes
+
+a[x] * $^{n-1}C_2$ → choose two out of (n-1) elements without any order.
+
+ans = $\sum_{i=0}^{n-1} (a[i] \times {}^{n-1}C_2)$
+
+ans = $^{n-1}C_2 \times \sum_{0}^{n-1} a[i]$ &nbsp; (Sum of ele of array.)
+
+Check with a,b,c,d = 1,2,3,4 → $^{3}C_2 = 3$, sum = 10, ans = 30. Brute force bhi 30 deta hai.
+
+T.C. = O(n) (just one pass for the sum), memory O(1). Edge cases: n < 3 → no triplet, ans = 0. Use long long, `(n-1)*(n-2)/2` is big. Negative values → `((x % mod) + mod) % mod`.
 
 ```cpp
-long long c = pw[i];
+/*
+  Problem: given n numbers, look at every triplet of positions (i, j, k)
+  with 0 &lt;= i &lt; j &lt; k &lt;= n-1. Return the sum of arr[i] + arr[j] + arr[k]
+  over all triplets, modulo 1e9+7.
+  Idea: every element is in exactly C(n-1, 2) triplets, so
+  answer = C(n-1, 2) * (sum of the array).
+*/
+long long tripletSum(const vector&lt;long long>& arr) \{
+    const long long MOD = 1000000007;
+    long long n = arr.size();
+    if (n &lt; 3) return 0;                               // no triplet exists
+    long long ways = ((n - 1) * (n - 2) / 2) % MOD;    // C(n-1, 2)
+    long long total = 0;
+    for (long long v : arr) total = ((total + v) % MOD + MOD) % MOD;  // keeps it in [0, MOD)
+    return ways * total % MOD;
+\}
 ```
 
-Input: `1`, then `2`.
+Why ordering doesn't matter?
 
-Wrong output `2`, correct output `0`. The program adds every subset's maximum but never subtracts its minimum. A single element is both.
+```
+|__| a[x] |__|        If we have to choose this way then a[x] is j
 
-**Fix:** a difference of two terms gives two contributions per element: $+2^i$ as a maximum and $-2^{n-1-i}$ as a minimum.
+|__|__| a[x]    →     a[x] is k
 
-### Bug: the tail sum shifted by one
+a[x] |__|__|    →     a[x] is i.
+```
 
-Template: expected maximum of independent draws.
+Matlab jo bhi 2 positions choose karo, a[x] ka role (i, j ya k) apne aap fix ho jata hai. Ek set of 3 positions = ek hi triplet. So order ka tension nahi.
+
+Same thinking, another problem (Fabricator/ContributionTechnique/SumOfDifference.cpp): sum of |arr[i] - arr[j]| over all pairs i < j. Sorting doesn't change this sum. After sorting, element at index i is bigger in `i` pairs (all before it) and smaller in `n-i-1` pairs (all after it). So contribution = (i - (n-i-1)) × value. T.C. = O(n log n) because of sort.
 
 ```cpp
-long long allBelow = power(x, k) * invMk % MOD;
+// Fabricator/ContributionTechnique/SumOfDifference.cpp (input reading removed, loop is same)
+/*
+  Problem: for an array, return the sum of |arr[i] - arr[j]| over all pairs
+  i &lt; j. Sorting does not change this sum. In sorted order the element at
+  index i is the bigger one in i pairs and the smaller one in (n-i-1) pairs,
+  so its contribution is (i - (n-i-1)) * value.
+*/
+long long sumOfDifferences(vector&lt;int> arr) \{
+    int n = arr.size();
+    vector&lt;int> arr_sorted(arr);
+    sort(arr_sorted.begin(), arr_sorted.end());
+    long long sol = 0;
+    for(int i=0; i&lt;n; i++)\{
+        long long smaller_than_current = i;
+        long long larger_than_current = n - i - 1;
+        sol += (smaller_than_current - larger_than_current) * (long long)(arr_sorted[i]);
+    \}
+    return sol;
+\}
 ```
 
-Input: `2 6`.
+### Inversions
 
-Wrong output `15597569` (that is, $\frac{63}{64}$), correct output `15597570` (that is, $\frac{127}{64}$). $P(\max \ge x)$ is 1 minus the probability that all draws are *below* $x$, that is at most $x - 1$. Using "at most $x$" computes $P(\max > x)$, and the sum loses exactly 1.
+Q: inversion of an array = # pairs (i, j) such that ( i < j , arr[i] > arr[j] )
 
-**Fix:** $E[X] = \sum_{x \ge 1} P(X \ge x)$ with $P(X \ge x) = 1 - P(\text{all} \le x - 1)$ (Theorem 2.4.4). Check $m = 1$: the answer must be 1.
+```
+ 4 , 2 , 1 , 3
+ # inv = 4
+```
 
-### Bug: ignoring the coupons already owned
+![Array 4 2 1 3 with arcs joining the 4 inversion pairs.](../../../assets/notes/2-4-expected-value/fig04_inversions.png)
+*(4,2) (4,1) (4,3) (2,1) → 4 inversions.*
 
-Template: the coupon collector.
+n, arr is given &nbsp; n ≤ 1000
+
+Find sum of ((# inv) of all subarray) of the array.
+
+```
+4 , 2 , 1 , 3
+
+[4,2        ] = 1        [  2, 1, 3] = 1
+[   2, 1    ] = 1        [4, 2, 1, 3] = 4
+[      1, 3 ] = 0
+[4, 2, 1    ] = 3
+
+Ans = 10
+```
+
+![All subarrays of 4 2 1 3 with at least 2 elements and their inversion counts.](../../../assets/notes/2-4-expected-value/fig05_subarray_inversions.png)
+*1 + 1 + 0 + 3 + 1 + 4 = 10. Size-1 subarrays have 0 inv.*
+
+Here, we are required to count contribution of each atomic item, and here each atomic item is an inversion pair
+
+Atomic item = (i, j) &nbsp; (inv. pair)
+
+```
+4 2 → 3 times
+2 1 → 4 times
+4 3 → 1
+4 1 → 2
+------
+10 ✓
+```
+
+![The 4 inversion pairs highlighted with the number of subarrays containing each.](../../../assets/notes/2-4-expected-value/fig06_pair_counts.png)
+*3 + 4 + 1 + 2 = 10.*
+
+We need to find no. of subarrays that contain the pair (i,j).
+
+**Note**
+
+```
+(i+1) ways to start the subarray
+|____|_i_|____|__________|
+              (n-i) ways to end the array.
+```
+
+⇒ Total (i+1) × (n-i) subarrays can contain a[i] ✓
+
+For the pair, start can be anything ≤ i → (i+1) ways. End can be anything ≥ j → (n-j) ways.
+
+⇒ # subarrays = (i+1) × (n-j)
+
+![Start zone gives i+1 ways, end zone gives n-j ways.](../../../assets/notes/2-4-expected-value/fig07_start_end_zones.png)
+*Start left of i, end right of j.*
 
 ```cpp
-for (long long j = 0; j < n; j++) {
+ans = 0
+for (i = 0 ... n)
+    for (j = i+1 ... n)
+        if (arr[i] > arr[j])
+            ans += 1 * (i+1) * (n-j)
 ```
 
-Input: `4 3`.
+O(n²)
 
-Wrong output `332748126` (that is, $\frac{25}{3}$), correct output `4`. With 3 of the 4 kinds owned, only the last stage remains: $\frac{4}{1} = 4$ draws. The program adds the stages for $j = 0, 1, 2$ too, giving $4 \left(1 + \frac12 + \frac13 + \frac14\right) = \frac{25}{3}$.
+Note: loops go till `< n` in real code. Check: (4,2) → i=0, j=1 → 1×3 = 3 ✓, (2,1) → i=1, j=2 → 2×2 = 4 ✓.
 
-**Fix:** sum only the stages that are still ahead (Theorem 2.4.5, part 2).
+Observation: middle elements lie in more subarrays than the corner ones. For n = 7, (i+1)(n-i) = 7, 12, 15, 16, 15, 12, 7.
 
-## 8. Worked examples
+![Bars of (i+1)(n-i) for n = 7.](../../../assets/notes/2-4-expected-value/fig20_subarrays_per_index.png)
+*Subarrays containing index i, n = 7.*
 
-### Example 1: Revenge of "The Salary of AtCoder Inc."
+What if n is large, like 10^5? O(n²) is too slow. Then pivot on j: for each j we need the sum of (i+1) over earlier i with arr[i] > arr[j]. That is a "sum over earlier bigger elements" → Fenwick tree (BIT, binary indexed tree: point update, prefix sum, both O(log n)). T.C. = O(n log n). That is the DS usage branch below.
 
-[AtCoder Beginner Contest (ABC) 326, problem E: Revenge of "The Salary of AtCoder Inc."](https://atcoder.jp/contests/abc326/tasks/abc326_e). In short: start with $x = 0$ and roll a fair $N$-sided die repeatedly; while the roll $y$ exceeds $x$, pay $A_y$ and set $x = y$; stop at the first roll $y \le x$. Print the expected total pay modulo $998\,244\,353$ ($N \le 3 \cdot 10^5$).
+## Contribution at pivot [Extension]
 
-#### Step 1: Constraints → budget
+Q.
 
-$N = 3 \cdot 10^5$: $O(N)$ or $O(N \log N)$. The process is random and can follow exponentially many paths, so they cannot be listed. All arithmetic modulo the prime.
+```
+[1   3   2]
+[1        ] → 1
+[    3    ] → 3
+[        2] → 2
+[1   3    ] → 3
+[    3   2] → 6
+[1   3   2] → 6
+              --
+              21
+```
 
-#### Step 2: Question form → candidate tools
+multiply elements of subarrays & sum them.
 
-The pay is a sum: $\sum_y A_y \cdot \mathbb{1}[A_y \text{ is paid}]$. By linearity (Theorem 2.4.2) the expected pay is $\sum_y A_y \cdot P(A_y \text{ is paid})$, even though the events are far from independent. So the whole problem reduces to one probability per value $y$: the "Expected counts from indicators" card.
+![All subarrays of [1 3 2] with products 1, 3, 2, 3, 6, 6.](../../../assets/notes/2-4-expected-value/fig08_subarray_products.png)
+*Sum = 21.*
 
-#### Step 3: Property check → decision
+Find sum of product of ele of all subarrays of an array.
+n → n ≤ $10^5$
 
-The card needs each single probability to have a formula. $A_y$ is paid exactly when, at some moment, $x < y$ and the next roll is $y$. Since $x$ only increases, this happens exactly when the rolls so far form an increasing sequence ending at $y$: some increasing values $t_1 < t_2 < \dots < t_j < y$, then $y$. Decision: compute $P(A_y \text{ is paid})$ in closed form and add $A_y$ times it.
+\*\* Here using Atomic Contribution is very difficult
+generally used for sum of sum
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for sum of count.
 
-#### Step 4: Proof for this problem
+Kyu difficult? Product of a subarray is not a sum of small independent pieces. So instead pivot on the end.
 
-Fix $y$ and a set $T \subseteq \{1, \dots, y - 1\}$ of size $j$. The event "the first $j + 1$ rolls are the elements of $T$ in increasing order, then $y$" has probability $\left(\frac1N\right)^{j+1}$, since the rolls are independent. These events are disjoint for different $T$, and their union is exactly "$A_y$ is paid" (Step 3). By the sum rule and the binomial theorem ($\sum_j \binom{y-1}{j} z^j = (1 + z)^{y - 1}$, from Theorem 2.3.6's proof),
-$P(A_y \text{ is paid}) = \sum_{j=0}^{y-1} \binom{y-1}{j} \frac{1}{N^{j+1}} = \frac1N \left(1 + \frac1N\right)^{y-1}$.
-So $E[\text{pay}] = \sum_{y=1}^{N} A_y \cdot \frac1N \left(1 + \frac1N\right)^{y-1}$, a fraction whose residue Theorem 2.2.4 lets us compute step by step. Time: $O(N)$ after one inverse.
+```
+  1        3        2
+  ——]     
+    ———]            Some subarrays end here
+         ———]
+          ———]      There will be some subarrays that'll end here
+```
 
-#### Step 5: Code
+Let's see subarrays ending at 3: `[1×3]` and `[3]`. These are just the subarray ending at 1 (`[1]`) with 3 multiplied, plus the new `[3]`. Similarly ending at 2: `[1×3×2]`, `[3×2]`, `[2]` = (old ones) × 2 + `[2]`.
 
-<CodeSnippet unit="2.4/example-1" />
+```
+ 1 ]        3 ]         2 ]
+[1] --repeated--> [1×3]  --repeated--> [1×3×2]
+                  [  3]                [  3×2]
+                                       [    2]
 
-#### Step 6: Alternative approach
+cur = cur × arr[i]          → cur × arr[i]
+      + arr[i]                  + arr[i]
+```
 
-Let $q_y$ be the probability that the process ever reaches $x = y$. Then $q_y = \frac1N \sum_{x < y} q_x$ with $q_0 = 1$, a running sum that gives the same values. It is a recurrence over states, the Phase 3 method; here the closed form makes it unnecessary.
+Note: this update is for `cur` (subarrays ending at i), not the final ans. ans just adds cur at each i.
 
-### Example 2: Cell Distance
+![Subarrays ending at 1, 3, 2 with products; cur = 1, 6, 14.](../../../assets/notes/2-4-expected-value/fig09_extension_products.png)
+*cur: 1 → 6 → 14. ans = 1 + 6 + 14 = 21.*
 
-[AtCoder Beginner Contest (ABC) 127, problem E: Cell Distance](https://atcoder.jp/contests/abc127/tasks/abc127_e). In short: on an $N \times M$ grid ($NM \le 2 \cdot 10^5$), add up, over all ways to choose $K$ cells, the sum of the Manhattan distances between all pairs of chosen cells, modulo $10^9 + 7$.
+```
+a  b  c  d
+                      e
+d      after 'e' →   d e
+c d                  c d e
+b c d                b c d e
+a b c d              a b c d e
+```
 
-#### Step 1: Constraints → budget
+![Subarrays ending at d, and after adding e the subarrays ending at e.](../../../assets/notes/2-4-expected-value/fig10_extension_abcde.png)
+*Har purane subarray me e lag gaya + naya [e].*
 
-$\binom{NM}{K}$ choices: astronomically many. $O(NM)$ or $O((N + M) \cdot \text{something small})$ is the budget, plus a factorial table up to $NM$.
+Suppose a new element 'e' is added to the array. Can we recompute the value.
 
-#### Step 2: Question form → candidate tools
+← we simply add e or extend 'e' to previous result.
 
-A total over all configurations, where each configuration's value is a sum over its pairs of cells: exchange the sums (Theorem 2.4.3). Each *pair of cells* contributes its distance times the number of configurations that contain both cells. That number is a binomial coefficient (topic 2.3): the "Totals by contribution" card.
+```cpp
+int ans = 0
+int cur = 0
+for (int i=0; i&lt;n; i++)\{
+    cur = cur * arr[i] + arr[i];
+    ans += cur;
+\}
+```
 
-#### Step 3: Property check → decision
+Note: int will overflow, products grow fast. Use long long + mod. T.C. = O(n), memory O(1). Dry run [1,3,2]: cur = 1, then 1×3+3 = 6, then 6×2+2 = 14. ans = 21 ✓.
 
-The contribution technique needs the per-pair count: a fixed pair is in every choice of the remaining $K - 2$ cells among the other $NM - 2$, that is, $\binom{NM - 2}{K - 2}$ configurations, the same for every pair. So the answer is $\binom{NM-2}{K-2}$ times the sum of the distances over all pairs of cells. That sum splits into rows and columns again: two cells whose rows differ by $d$ add $d$, and there are $(N - d) M^2$ such pairs. Decision: two loops over $d$ and one binomial coefficient.
+Q: Find sum of all subarrays.
+Now, lets use this technique in sum of all subarrays.
 
-#### Step 4: Proof for this problem
+```
+ 1 ]        3 ]          2 ]
+[1] ──→  [1+3]  ──→  [1+3+2]
+         [  3]        [  3+2]
+                      [    2]
 
-By Theorem 2.4.3, the total equals $\sum_{\text{pairs } \{u, v\}} \operatorname{dist}(u, v) \cdot N_{uv}$ with $N_{uv}$ the number of $K$-sets containing $u$ and $v$, which is $\binom{NM - 2}{K - 2}$ (choose the others). The Manhattan distance is $|r_u - r_v| + |c_u - c_v|$, so the sum over pairs splits into a row part and a column part. Unordered pairs of cells with row difference $d \ge 1$: choose the upper row ($N - d$ ways) and a column for each cell ($M^2$ ways), and each such pair is counted once. So the row part is $\sum_{d=1}^{N-1} d (N - d) M^2$, and symmetrically the column part is $\sum_{d=1}^{M-1} d (M - d) N^2$. Time: $O(NM)$ for the factorials and $O(N + M)$ for the sums.
+         cur          cur + arr[i] × (i+1)
+```
 
-#### Step 5: Code
+Why (i+1)? Subarrays ending at i → start can be 0..i → (i+1) of them. Each gets arr[i] more. Dry run: cur = 1, then 1 + 3×2 = 7, then 7 + 2×3 = 13. ans = 1 + 7 + 13 = 21.
 
-<CodeSnippet unit="2.4/example-2" />
+![Sums of subarrays ending at 1, 3, 2: cur = 1, 7, 13.](../../../assets/notes/2-4-expected-value/fig11_extension_sums.png)
+*cur + arr[i] × (i+1).*
 
-#### Step 6: Alternative approach
+Q: Find the largest sum of any contiguous subarray.
 
-Sum the distances over pairs of cells by brute force over row differences and column differences together: $\sum_{dr, dc} (dr + dc) \cdot (\text{number of pairs with those differences})$. It counts the same pairs in $O(NM)$ instead of $O(N + M)$.
+```
+ -1     3     -2     4
 
-## 9. Problem ladder
+     sum of -2                                  To extend to 4 we use extension.
+        ↖ ---- -2 ----- -2
+  1 ●━━━━━━━━━━━━━━━━●     |4
+  0 ━━━━━━━━━━━━━━━━━━━━━━ |
+```
 
-Thirteen problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Before coding each one, write the random quantity (or the total) as a sum over small pieces, and check that each piece's probability (or count) has a formula; for maxima and minima, write P(X ≥ x) first. Before opening a hint, spend the struggle budget shown on the problem.
+cur = max (cur + arr[i], arr[i])
+ans = max (ans, cur)
 
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+(Best subarray ending at -2 is [3,-2] = 1. For 4: either extend it → 1+4 = 5, or start fresh → 4. Max = 5.) This is Kadane's algorithm.
+
+![Bars of arr[i] and cur for -1, 3, -2, 4; cur is -1, 3, 1, 5.](../../../assets/notes/2-4-expected-value/fig12_kadane.png)
+*cur = -1, 3, 1, 5 → ans = 5.*
+
+Note: start cur and ans with arr[0], not 0. Otherwise all-negative array gives 0 (empty subarray, not allowed). T.C. = O(n).
+
+```cpp
+/*
+  Problem: return the sum of the sums of all subarrays, modulo 1e9+7.
+  Idea (extension): cur = sum of sums of subarrays that end at i.
+  There are i+1 such subarrays and each one gains arr[i]:
+  cur_new = cur_old + arr[i] * (i+1).
+*/
+long long sumOfSubarraySums(const vector&lt;long long>& arr) \{
+    const long long MOD = 1000000007;
+    long long ans = 0, cur = 0;
+    for (int i = 0; i &lt; (int)arr.size(); i++) \{
+        long long xm = ((arr[i] % MOD) + MOD) % MOD;
+        cur = (cur + xm * (i + 1)) % MOD;
+        ans = (ans + cur) % MOD;
+    \}
+    return ans;
+\}
+
+/*
+  Problem: return the largest sum of a non-empty contiguous subarray
+  (Kadane's algorithm). The array must have at least one element.
+  Idea (extension): cur = best sum of a subarray ending at i. Either extend
+  the best one ending at i-1, or start fresh at i.
+*/
+long long maxSubarraySum(const vector&lt;long long>& arr) \{
+    long long cur = arr[0], ans = arr[0];             // start from the first element, not from 0
+    for (int i = 1; i &lt; (int)arr.size(); i++) \{
+        cur = max(cur + arr[i], arr[i]);
+        ans = max(ans, cur);
+    \}
+    return ans;
+\}
+```
+
+\*\* Simply put, if we know ans of this
+
+```
+ (____←____)___)
+```
+
+then we can extend the current ans to next end.
+
+## Contribution at pivot [Using Data Structure]
+
+Q: 2 sum
+
+```
+n, arr   |   | | |   | | |
+              i       j
+```
+
+arr[i] + arr[j] == X
+
+Count (i,j) satisfying ↑
+
+**Note** \*\* Whenever we are given a set that has to satisfy a given condition & we have to count then it might be contribution problem.
+
+Like: Given (i,j) such they satisfy f(i,j) then
+
+```
+|_________________||_|
+                    j   → we mark j as pivot
+```
+& find all (i) that satisfy f(i,j).
+
+Above f(i,j) ⇒ arr[i] + arr[j] == X.
+
+We pivot on j & find all i's.
+
+Now, we pivot on j.
+
+∴ arr[i] == X - arr[j]
+&nbsp;&nbsp;↳ All i satisfying this will be ans.
+
+```
+      1 , 2 , 3 , 4        (i,j) = 5
+idx=  0   1   2   3
+
+(1, 2)
+(0, 3)
+```
+
+![Array 1 2 3 4 with arcs for the pairs that sum to 5.](../../../assets/notes/2-4-expected-value/fig13_two_sum_pairs.png)
+*X = 5: (1,2) and (0,3).*
+
+```
+[|_______________________||__|_____]
+  i &lt; j                   j
+```
+
+we need to count arr[i]
+we create a freq map.
+
+```cpp
+map&lt;int, int> freq;
+for(int i=0; i&lt;n; i++)\{
+    int val = X - arr[i];
+    ans += freq[val];
+    freq[arr[i]]++;
+\}
+```
+
+Note: here the loop `i` is the pivot j. Query first, then insert arr[i], otherwise element pairs with itself. `ans` should be long long. T.C. = O(n log n) with map, O(n) average with unordered_map.
+
+![Trace of the frequency map on 1 2 3 4 with X = 5.](../../../assets/notes/2-4-expected-value/fig14_freq_trace.png)
+*Trace: total goes 0, 0, 1, 2.*
+
+Q: Given an array, find smallest (arr[i]+arr[j]), i≠j also arr[i]+arr[j] ≥ k.
+
+n, arr
+
+```
+| 1 | 4 | 5 | 2 | 2 |    k = 4.
+```
+
+```
+                j
+                ↓
+| 1 | 4 | 5 | 2 | 2 |
+  ↑
+valid i
+```
+arr[i] + a2 ≥ 4
+arr[i] ≥ 2.
+
+```
+                    j
+                    ↓
+| 1 | 4 | 5 | 2 | 2 |
+              ↑
+           valid i
+```
+arr[i] ≥ 2
+
+this seems like use case of lower bound.
+
+Hence, we can use set & binary search.
+
+(lower_bound(v) = first element ≥ v in the set. Smallest valid arr[i] → smallest sum. For j = 3: need ≥ 2 among {1,4,5} → 4 → sum 6. For j = 4: need ≥ 2 among {1,4,5,2} → 2 → sum 4. Answer = 4.)
+
+![k = 4: for j = 3 and j = 4, the valid earlier values and the smallest one.](../../../assets/notes/2-4-expected-value/fig15_lower_bound.png)
+*j = 3 → 4 (sum 6). j = 4 → 2 (sum 4).*
+
+```cpp
+int ans = INF;
+set&lt;int> allVal;
+
+for (int j=0; j&lt;n; j++)\{
+    int val = k-arr[i]
+    auto it = allVal.lower_bound(val);
+    if (it != allVal.end())\{
+        ans = min(ans, arr[j] + *it);
+    \}
+    allVal.insert(arr[j]);
+\}
+```
+
+Note: `k-arr[i]` should be `k-arr[j]`, there is no i here. INF = INT_MAX, and if ans is still INF at the end → no pair. T.C. = O(n log n).
+
+Pivot idea in Fabricator/ContributionTechnique/ContainerWithMostWater.cpp: pick 2 walls i < j, maximize min(h[i], h[j]) × (j - i). Pivot = the shorter wall of the best pair. Sort walls by height, go from tallest down. Walls seen so far are all at least as tall as the current one, so min_idx and max_idx are the leftmost and rightmost of them. Every value it tries is a real container, and when the shorter wall of the best pair comes, both its walls are already seen. T.C. = O(n log n).
+
+```cpp
+// Fabricator/ContributionTechnique/ContainerWithMostWater.cpp
+int maxArea(vector&lt;int>& height) \{
+    int n = height.size();
+    vector&lt;pair&lt;int, int>> idx_val;
+    for(int i=0; i&lt;n; i++)\{
+        idx_val.push_back(make_pair(height[i], i));
+    \}
+    sort(idx_val.begin(), idx_val.end());
+    int min_idx = idx_val[n-1].second;
+    int max_idx = idx_val[n-1].second;
+    int ans = INT32_MIN;
+    for(int i=n-2; i>=0; i--)\{
+        min_idx = min(min_idx, idx_val[i].second);
+        max_idx = max(max_idx, idx_val[i].second);
+        int val = min(height[min_idx], height[max_idx]) * abs(max_idx - min_idx);
+        ans = max(ans, val);
+    \}
+    return ans;
+\}
+```
+
+## Atomic item again: distinct characters
+
+Q: find sum of total no. of distinct characters in all the substrings of a string
+
+abbca → 'a','b','b','c','a' → 5.
+
+```
+'ab', 'bb', 'bc', 'ca' → 7
+  2     1     2     2
+
+'abb', 'bbc', 'bca' → 7
+   2      2      3
+
+'abbc', 'bbca' → 6
+   3       3
+
+'abbca' → 3
+          --
+ Sol:    28
+```
+
+![Substrings of abbca by length with distinct counts, total 28.](../../../assets/notes/2-4-expected-value/fig16_distinct_table.png)
+*5 + 7 + 7 + 6 + 3 = 28.*
+
+If this subarray has distinct 3 ⇒ it must be having 3 different alphabets.
+
+[ # of subarrays that contain 'a' ] → in all these subarrays no. of distinct will be ++.
+&nbsp;&nbsp;⋮
+similarly for all alphabets.
+
+```
+a (- - -) a → no. of subarrays that contain 'a'
+    3        = total - no. of subarrays that don't contain 'a'.
+```
+↳ $^6C_2 - {}^4C_2$ = 15 - 6 = 9
+&nbsp;&nbsp;&nbsp;&nbsp;↳ all of these subarrays will have 1 extra distinct elements because 'a' is present in them.
+
+```
+_ bb _ _   →   ⁶C₂ - ²C₂ - ³C₂
+               = 15 - 1 - 3 = 11
+```
+
+For 'c': parts without c are "abb" (3) and "a" (1) → 15 - 6 - 1 = 8. Total = 9 + 11 + 8 = 28 ✓ matches.
+
+![Rows for a, b, c in abbca with the gap formula and contribution 9, 11, 8.](../../../assets/notes/2-4-expected-value/fig17_gaps_abbca.png)
+*9 + 11 + 8 = 28.*
+
+\*\* No. of subarrays that don't contain x:
+
+```
+(__) x (___) x (_____) x (___)
+   \      \      /      /
+    these parts & their subarrays won't be containing x.
+```
+= $^{13}C_2$ - $^2C_2$ - $^3C_2$ - $^4C_2$ - $^4C_2$ ✓
+
+![12 cells with three x splitting them into parts of length 1, 2, 3, 3.](../../../assets/notes/2-4-expected-value/fig18_gaps_general.png)
+*x ke beech wale parts me x nahi hota.*
+
+\*\* No. of subarrays of on n length array = $^{n+1}C_2$.
+
+Note: part of length L has $^{L+1}C_2$ = L(L+1)/2 subarrays. Also the last part (after last x) and first part (before first x) count, even if length 0.
+
+```
+a  b  a                                  Contribution from char.
+                                            a    b
+a            ───────  a      —  1  =    1
+   b                  b      —  1  =         1
+      a               a      —  1  =    1
+a  b                  a, b   —  2  =    1  +  1
+   b  a                a, b   —  2  =    1  +  1
+a  b  a                a, b   —  2  =    1  +  1
+                                  --
+                                   9
+```
+
+![Substrings of aba with the contribution of a and b; totals 5, 4, sum 9.](../../../assets/notes/2-4-expected-value/fig19_aba_table.png)
+*a gives 5, b gives 4 → 9.*
+
+We calculate contribution of each character. & sum them.
+
+✓ Contri of a char = total - # of subarrays that don't have that char.
+
+Here, the char is the atomic item that contributes.
+
+\*\* Whatever increases the ans is the atomic item.
+
+Code (T.C. = O(26·n), memory O(1)):
+
+```cpp
+// Fabricator/ContributionTechnique/TotalAppealOfString.cpp
+// Contribution - Atomic
+long long appealSum_v2(string s)\{
+    long long sol = 0;
+    long long int n = s.size();
+    for(char ch='a'; ch &lt;= 'z'; ch++)\{
+        int last = -1;
+        long long contri = (n * (n+1))/2;
+        for(int i=0; i&lt;n; i++)\{
+            if(s[i] == ch)\{
+                long long len = i - last - 1;
+                if(len > 0)\{
+                    contri -= (len * (len + 1))/2;
+                \}
+                last = i;
+            \}
+        \}
+        long long len = n - last - 1;
+        if(len > 0)\{
+            contri -= (len * (len + 1))/2;
+        \}
+        sol += contri;
+    \}
+    return sol;
+\}
+```
+
+Same problem, other way (extension): let i be the end. Subarrays ending at i where s[i] is new (first time in that subarray) → start can be anything after the last occurrence of s[i] → (i - last) choices. `curr` = total distinct of all subarrays ending at i, so `curr += i - last`, `sol += curr`. T.C. = O(n).
+
+```cpp
+// Fabricator/ContributionTechnique/TotalAppealOfString.cpp
+// Contribution - Extended/Incremental
+long long appealSum(string s) \{
+    vector&lt;int> last_seen(256, -1);
+    long long sol = 0;
+    long long curr = 0;
+    for(int i=0; i&lt;s.size(); i++)\{
+        int idx = s[i] - 'a';
+        curr += (i - last_seen[idx]);
+        sol += curr;
+        last_seen[idx] = i;
+    \}
+    return sol;
+\}
+```
+
+Note: both assume lowercase letters, and `appealSum` compares int with `s.size()` (compiler warning only). abbca → 28 from both ✓.
+
+Count unique chars (char counts only if it appears exactly once in the substring): same pivot + gaps thinking, `(pos[i] - pos[i-1]) * (pos[i+1] - pos[i])` for each occurrence. See Fabricator/ContributionTechnique/UniqueCharactersInString.cpp.
+
+## Quick revision
+
+- Contribution = who adds to the ans? (atomic item) / what ends here? (pivot)
+- Triplets: each element in $^{n-1}C_2$ triplets → ans = $^{n-1}C_2$ × sum(arr). n < 3 → 0
+- Subarrays containing i: (i+1)(n-i). Containing pair (i, j): (i+1)(n-j)
+- Inversions of all subarrays: add (i+1)(n-j) for each pair arr[i] > arr[j]. O(n²), Fenwick → O(n log n)
+- no. of subarrays of length n = $^{n+1}C_2$
+- Extension (pivot = end):
+  - product: cur = cur × arr[i] + arr[i]; ans += cur
+  - sum: cur = cur + arr[i] × (i+1); ans += cur
+  - max sum (Kadane): cur = max(cur + arr[i], arr[i]); ans = max(ans, cur)
+- DS usage: f(i,j) → pivot j, find i among earlier ones
+  - exact value → freq map (query first, then insert)
+  - ≥ / ≤ value → set + lower_bound
+- Distinct chars in all substrings: for each char, total - (sum of $^{L+1}C_2$ over gaps without it)
+- Watch out: overflow (long long, mod), negative % mod, `< n` in loops
+
+## Practice problems
+
+- [AtCoder ABC186 D: Sum of Difference](https://atcoder.jp/contests/abc186/tasks/abc186_d)
+- [LeetCode: Total Appeal of a String](https://leetcode.com/problems/total-appeal-of-a-string/)
+- [LeetCode: Count Unique Characters of All Substrings of a Given String](https://leetcode.com/problems/count-unique-characters-of-all-substrings-of-a-given-string/)
+- [maang.in: Count Distinct Char in Substrings](https://maang.in/problems/Count-Distinct-Char-in-Substrings-62)
+- [maang.in: Count Unique Char in Substrings](https://maang.in/problems/Count-Unique-Char-in-Substrings-63)
+
+### Problem ladder
 
 <Ladder topic="2.4" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card (the list includes earlier topics' cards), write the property you checked, then reveal the answer. Do not solve the problems here: deciding is the exercise. Seven of the ten items look like totals over many terms but are answered by the cards of topics 0.2, 0.3, 0.6, 1.2 and 2.1.
-
-<Drill topic="2.4" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the decision.
-
-<LookalikePairs topic="2.4" />
-
-## 12. Self-test questions
-
-<SelfTest topic="2.4" />
-
-## 13. Checkpoint
-
-<Checkpoint topic="2.4" />
-
-## 14. Decision map update
-
-<DecisionMapUpdate topic="2.4" />

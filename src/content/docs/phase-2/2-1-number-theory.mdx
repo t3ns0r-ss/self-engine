@@ -4,490 +4,1159 @@ sidebar:
   order: 14
 topic: "2.1"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="2.1" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. Count the primes up to $N = 10^7$.
+Numbers ko unke factors se samajhna: prime (jo sirf 1 aur khud se divide ho), divisors (jo number ko exactly divide kare), prime factorisation (number = primes ka product). Isme:
 
-The direct method tests each number $k$ by trying every divisor $d$ with $d^2 \le k$ (Theorem 0.2.2). Composite numbers stop early, but each prime $p$ needs all $\sqrt p$ trials: about $1.7 \cdot 10^9$ divisions in total, several seconds. The other way round is much faster. Instead of asking each number for a divisor, let each prime $p$ cross off its multiples. Every number left uncrossed is a prime. For $N = 10^7$ that is $2.3 \cdot 10^7$ crossings, well under a second.
+→ Primality test, divisors nikalna, prime factorisation (sab $\sqrt{N}$ tak loop)
+→ Sieve of Eratosthenes (prime nikalne ka tareeka), segmented sieve, fast factorization, divisors ka count / sum
+→ Euler totient (1 se n tak kitne numbers n ke coprime hain), product of divisors
+→ N! me kisi number ki power, $\frac1a + \frac1b = \frac1n$, aur harmonic lemma (floor(N/x) ke sirf $2\sqrt{N}$ distinct values)
 
-This topic is about the prime structure of integers and how to compute with it. The same crossing-off loop can record each number's smallest prime factor, and then any number up to $N$ splits into its prime factors in a few steps. One large number up to $10^{12}$ splits by trying divisors up to its square root. Many questions about divisors and GCDs of all numbers up to $N$ become loops over multiples. And the Euclidean algorithm of topic 0.4 does more than compute $\gcd(a, b)$: it writes it as $ax + by$, which decides which equations $ax + by = c$ have integer solutions.
+Jaha mod wali fast power chahiye, wo 2.2 me detail me aayegi.
 
-## 2. Prerequisites and scope
+## Table of contents
 
-### What you need
+- Primality Test → prime hai ya nahi, $\sqrt{N}$ tak loop
+- Finding divisors → saare divisors, pairs (i, N/i)
+- Prime factorisation → N = primes ka product
+- Sieve of Eratosthenes → n tak ke saare primes
+- Segmented Sieve → range [a, b] ke primes
+- Fast Factorization → smallest prime factor array
+- Sieve Applications → divisors ka count aur sum
+- Euler Totient function → coprime numbers ka count
+- Product of divisors → saare divisors ka product
+- Power of a number in N! → N! me x ki highest power, trailing zeros
+- 1/a + 1/b = 1/n → integer solutions ginna
+- Harmonic Lemma based summation optimisation → floor(N/x) ke blocks
 
-<WhatYouNeed topic="2.1" />
+## Primality Test
 
-### What this topic does not cover
+Check if a given number N is a prime?
 
-- Powers, division and inverses modulo a number (modular inverse, Fermat's little theorem). Covered in topic 2.2, which uses the extended Euclidean algorithm from this topic.
-- Counting by inclusion–exclusion over sets of prime factors. Covered in topic 2.3.
-- The Möbius function, Euler's totient function as a topic of its own, the Chinese remainder theorem, fast primality tests for numbers up to $10^{18}$ (Miller–Rabin) and fast factorisation of such numbers (Pollard's rho). They are not part of this course.
+Brute force:
+  Check from 2 to (N-1) to check if any number divides N.
 
-## 3. Definitions
+Optimised:
+  Assuming N is not prime:
 
-- An integer $p \ge 2$ is **prime** if its only positive divisors are 1 and $p$. An integer $n \ge 2$ that is not prime is **composite**: it has a divisor $d$ with $1 < d < n$. 1 is neither. Example: 2, 3, 5, 7, 11 are prime; $9 = 3 \cdot 3$ is composite.
-- The **prime factorisation** of $n \ge 2$ is $n = p_1^{e_1} p_2^{e_2} \cdots p_k^{e_k}$ with primes $p_1 < p_2 < \dots < p_k$ and exponents $e_i \ge 1$. Example: $360 = 2^3 \cdot 3^2 \cdot 5$.
-- $d(n)$ is the number of positive divisors of $n$, and $\sigma(n)$ is their sum. Example: the divisors of 12 are 1, 2, 3, 4, 6, 12, so $d(12) = 6$ and $\sigma(12) = 28$.
-- The **sieve of Eratosthenes** finds all primes up to $N$ by crossing off the multiples of each prime (Theorem 2.1.1).
-- The **smallest prime factor** $\operatorname{spf}(x)$ of $x \ge 2$ is its smallest prime divisor. Example: $\operatorname{spf}(45) = 3$, $\operatorname{spf}(13) = 13$.
-- **Trial division** factorises one number $n$ by trying the divisors $d = 2, 3, \dots$ while $d^2 \le n$ (Theorem 2.1.5).
-- The **extended Euclidean algorithm** computes $g = \gcd(a, b)$ together with integers $x, y$ such that $ax + by = g$ (Theorem 2.1.2). Such $x, y$ are called **Bézout coefficients**. Example: $240 \cdot (-9) + 46 \cdot 47 = 2 = \gcd(240, 46)$.
+  $N = p_1^{\alpha_1} \, p_2^{\alpha_2} \, p_3^{\alpha_3} .....$
 
-## 4. Theory and proofs
+  $N = p_1^{\alpha} (D)$ ⇒ $p_1 \mid N$.
 
-### 4.1 Primes and the sieve
-
-**Theorem 2.1.1 (primes and the sieve).**
-1. Every integer $n \ge 2$ has a prime divisor: its smallest divisor greater than 1 is prime.
-2. If $n \ge 2$ is composite, its smallest prime divisor $p$ satisfies $p^2 \le n$.
-3. Start with the numbers $2, \dots, N$ unmarked. For $p = 2, 3, \dots$ while $p^2 \le N$: if $p$ is unmarked, mark $p^2, p^2 + p, p^2 + 2p, \dots$ up to $N$. Afterwards the unmarked numbers are exactly the primes up to $N$, and at most $N (1 + \ln N)$ marks were made.
-
-:::tip[In plain words]
-Every composite number has a prime divisor no larger than its square root, so crossing off the multiples of each prime p, starting at p·p, removes every composite number up to N and nothing else. What is left are the primes, after about N log log N crossings.
-:::
-
-**A tiny instance.** The primes up to 30: only $p = 2, 3, 5$ have $p^2 \le 30$, and crossing off from $4, 9, 25$ leaves $2, 3, 5, 7, 11, 13, 17, 19, 23, 29$.
-
-**Proof.**
-1. Part 1. Let $d$ be the smallest divisor of $n$ with $d > 1$ (it exists, since $n$ itself is one). If $d$ had a divisor $e$ with $1 < e < d$, then $e$ would also divide $n$, contradicting the choice of $d$. So $d$ is prime.
-2. Part 2. Write $n = p \cdot m$ with $p$ the smallest prime divisor. Since $n$ is composite, $m \ge 2$, and $m$ has a prime divisor $q$ (part 1) that also divides $n$, so $q \ge p$.
-3. Then $m \ge q \ge p$ and $n = p \cdot m \ge p^2$.
-4. Part 3. No prime is marked: every marked number is $p \cdot k$ with $k \ge p \ge 2$, so it has the divisor $p$ with $1 < p < pk$.
-5. Every composite $n \le N$ is marked: its smallest prime divisor $p$ satisfies $p^2 \le n \le N$ (part 2), so the loop reaches $p$.
-6. At that moment $p$ is unmarked (it is prime), and $n$ is a multiple of $p$ with $n \ge p^2$, so $n$ is marked.
-7. The loop for $p$ makes at most $N / p$ marks, so the total is at most $\sum_{p=2}^{N} N/p \le N H_N \le N (1 + \ln N)$ (Theorem 0.2.5). $\square$
-
-:::note[This proof needs]
-1. An array of $N + 1$ flags fits in memory: $10^7$ `char` values take 10 MB.
-2. $p^2$ is compared with $N$ without overflow: write `(long long)p * p <= N`, or `p <= N / p`.
-3. Starting at $p^2$ instead of $2p$ only saves work. Correctness needs that every composite number is marked by its smallest prime divisor, and that numbers are processed in increasing order.
-:::
-
-<TheoremCode unit="2.1/thm-1" />
-
-**Numbers.** For $N = 10^7$ the sieve makes $22\,850\,051$ marks and finds $664\,579$ primes; there are $78\,498$ primes up to $10^6$. The bound $N(1 + \ln N)$ is far from tight: the true count grows like $N \ln \ln N$ (a known result that this course does not prove), because only primes cross off their multiples.
-
-
-### 4.2 The extended Euclidean algorithm
-
-**Theorem 2.1.2 (extended Euclid and Bézout).** Let $a, b \ge 0$, not both 0, and $g = \gcd(a, b)$.
-1. The recursive function $\text{ext}(a, b)$ in the implementation below returns $g$ and integers $x, y$ with $ax + by = g$, after as many calls as the loop of Theorem 0.4.5 makes steps.
-2. **(Bézout's identity.)** The integers of the form $ax + by$, with $x, y$ integers, are exactly the multiples of $g$. So the equation $ax + by = c$ has an integer solution exactly when $g$ divides $c$.
-3. **(Euclid's lemma.)** If $m$ divides $e f$ and $\gcd(m, e) = 1$, then $m$ divides $f$. In particular, if a prime $p$ divides $ef$, then $p$ divides $e$ or $p$ divides $f$.
-4. Let $a, b \ge 1$. If $(x_0, y_0)$ is one solution of $ax + by = c$, then the solutions are exactly $x = x_0 + k \cdot \frac{b}{g}$, $y = y_0 - k \cdot \frac{a}{g}$ for integers $k$.
-
-:::tip[In plain words]
-The Euclidean algorithm can carry along two numbers x and y with a·x + b·y = gcd(a, b). Then a·x + b·y = c has integer solutions exactly when gcd(a, b) divides c, and once you have one solution the others are spaced b/g and a/g apart.
-:::
-
-**A tiny instance.** $240x + 46y = 10$. The function gives $240 \cdot (-9) + 46 \cdot 47 = 2$, and $2$ divides $10$, so multiply by 5: $(x_0, y_0) = (-45, 235)$. With $b/g = 23$ and $a/g = 120$, all solutions are $(-45 + 23k,\ 235 - 120k)$. For $k = 2$: $(1, -5)$, and $240 - 230 = 10$.
-
-**Proof.**
-1. Part 1, by induction on the number of calls. If $b = 0$, then $g = a$ and $a \cdot 1 + 0 \cdot 0 = a$.
-2. If $b > 0$, let $q = \lfloor a/b \rfloor$ and $r = a - qb$. By Theorem 0.4.5, $\gcd(b, r) = g$, and by induction $b x' + r y' = g$.
-3. Substituting $r$: $b x' + (a - qb) y' = a y' + b (x' - q y') = g$, which is the returned pair $(y', x' - q y')$.
-4. Part 2. $g$ divides $a$ and $b$, so it divides every $ax + by$. Conversely, part 1 gives $ax + by = g$, so $a (tx) + b (ty) = tg$ for every integer $t$.
-5. Part 3. By part 2 there are $u, v$ with $mu + ev = 1$. Multiply by $f$: $f = m u f + (e f) v$. Both terms are multiples of $m$, so $m$ divides $f$. If a prime $p$ does not divide $e$, then $\gcd(p, e) = 1$, so $p$ divides $f$.
-6. Part 4. Each listed pair is a solution: $a (x_0 + kb/g) + b (y_0 - ka/g) = c + k (ab/g - ba/g) = c$.
-7. Conversely, let $(x, y)$ be a solution. Subtracting gives $a (x - x_0) = b (y_0 - y)$. Divide by $g$: $a' = a/g$ and $b' = b/g$ are coprime (a common divisor $t > 1$ would make $tg$ a common divisor of $a$ and $b$).
-8. From $a' (x - x_0) = b' (y_0 - y)$, $a'$ divides $b' (y_0 - y)$, so by part 3 it divides $y_0 - y$: $y_0 - y = k a'$. Then $x - x_0 = k b'$. $\square$
-
-:::note[This proof needs]
-1. To solve $ax + by = c$, multiply the coefficients by $c/g$. The products can overflow: with $a, b \le 10^9$ the coefficients are below $10^9$, but $c/g$ may be up to $10^{18}$. Reduce $x$ modulo $b/g$ first, or use `__int128`.
-2. The smallest non-negative $x$ is $x \bmod (b/g)$, taken non-negative: `((x % m) + m) % m` with $m = b/g$ (topic 0.4). Then $y = (c - ax)/b$.
-3. Negative $a$ or $b$: solve with $|a|$ and $|b|$, then flip the sign of the matching coefficient.
-:::
-
-<TheoremCode unit="2.1/thm-2" />
-
-The first line is the instance; the second line is one solution and the next one with $k = 2$.
-
-
-### 4.3 Prime factorisation and divisors
-
-**Theorem 2.1.3 (prime factorisation).**
-1. Every $n \ge 2$ has a prime factorisation $n = p_1^{e_1} \cdots p_k^{e_k}$, and it is unique.
-2. The divisors of $n$ are exactly the numbers $p_1^{f_1} \cdots p_k^{f_k}$ with $0 \le f_i \le e_i$. So
-   $d(n) = (e_1 + 1)(e_2 + 1) \cdots (e_k + 1)$ and $\sigma(n) = \prod_{i=1}^{k} (1 + p_i + p_i^2 + \dots + p_i^{e_i})$.
-3. Write $a, b \ge 1$ over the same primes, allowing exponent 0: $a = \prod p_i^{\alpha_i}$, $b = \prod p_i^{\beta_i}$. Then $\gcd(a, b) = \prod p_i^{\min(\alpha_i, \beta_i)}$ and $\operatorname{lcm}(a, b) = \prod p_i^{\max(\alpha_i, \beta_i)}$.
-
-:::tip[In plain words]
-Every number is a product of primes in exactly one way. Its divisors are the products that take each prime at most as often as the number does, so the divisor count is the product of (exponent + 1), and the GCD and LCM take the smallest and the largest exponent of each prime.
-:::
-
-**A tiny instance.** $360 = 2^3 \cdot 3^2 \cdot 5$ has $d(360) = 4 \cdot 3 \cdot 2 = 24$ divisors, with sum $\sigma(360) = 15 \cdot 13 \cdot 6 = 1170$. And $\gcd(360, 84)$, with $84 = 2^2 \cdot 3 \cdot 7$, is $2^2 \cdot 3 = 12$, while $\operatorname{lcm}(360, 84) = 2^3 \cdot 3^2 \cdot 5 \cdot 7 = 2520$.
-
-**Proof.**
-1. Existence, by induction on $n$: if $n$ is prime, it is its own factorisation. Otherwise $n = p \cdot m$ with $p$ prime (Theorem 2.1.1) and $2 \le m < n$; factorise $m$ and add $p$.
-2. Uniqueness: suppose $n = p_1 \cdots p_s = q_1 \cdots q_t$ with all factors prime. Then $p_1$ divides $q_1 \cdot (q_2 \cdots q_t)$, and by Euclid's lemma (Theorem 2.1.2, part 3), applied repeatedly, $p_1$ divides some $q_j$, so $p_1 = q_j$ (a prime has no divisor but 1 and itself).
-3. Cancel it from both sides and apply the induction to $n / p_1$.
-4. Part 2. A product $p_1^{f_1} \cdots p_k^{f_k}$ with $f_i \le e_i$ times $p_1^{e_1 - f_1} \cdots p_k^{e_k - f_k}$ gives $n$, so it is a divisor. Conversely, if $n = d \cdot m$, the factorisations of $d$ and $m$ multiply to $n$'s by uniqueness, so $d$ uses each $p_i$ at most $e_i$ times.
-5. Each $f_i$ is chosen independently from $e_i + 1$ values, and different choices give different numbers (uniqueness): this is $d(n)$. Expanding the product for $\sigma(n)$ gives one term for each divisor.
-6. Part 3. A common divisor has exponent at most $\alpha_i$ and at most $\beta_i$ at each prime, and the largest takes the minimum at every prime. A common multiple has exponent at least both, and the smallest takes the maximum. $\square$
-
-:::note[This proof needs]
-1. $n \ge 2$; the number 1 has the empty factorisation, $d(1) = 1$.
-2. The formulas need the factorisation first; Sections 4.4 and 4.5 compute it.
-3. Divisor counts stay small: at most 240 for $n \le 10^6$, 1344 for $n \le 10^9$, 6720 for $n \le 10^{12}$ and 103680 for $n \le 10^{18}$. So listing all divisors of one number is cheap once it is factorised.
-:::
-
-<TheoremCode unit="2.1/thm-3" />
-
-
-
-### 4.4 The smallest prime factor table
-
-**Theorem 2.1.4 (smallest prime factor table).**
-1. Set $\operatorname{spf}[x] = 0$ for $2 \le x \le N$. For $p = 2, \dots, N$: if $\operatorname{spf}[p] = 0$, set $\operatorname{spf}[p] = p$, and for $j = p^2, p^2 + p, \dots \le N$ set $\operatorname{spf}[j] = p$ wherever it is still 0. Afterwards $\operatorname{spf}[x]$ is the smallest prime factor of every $x \le N$, after at most $N (1 + \ln N)$ steps.
-2. For $2 \le x \le N$, replacing $x$ by $x / \operatorname{spf}[x]$ until $x = 1$ divides out the primes of the factorisation of $x$ in increasing order, with at most $\log_2 x$ divisions.
-
-:::tip[In plain words]
-The sieve can also write the smallest prime factor of every number up to N into a table. Then any x up to N splits into primes by dividing by the table entry again and again, in at most log2(x) steps.
-:::
-
-**A tiny instance.** $\operatorname{spf}$ gives $360 \to 180 \to 90 \to 45 \to 15 \to 5 \to 1$, dividing by $2, 2, 2, 3, 3, 5$: six divisions, below $\log_2 360 \approx 8.5$.
-
-**Proof.**
-1. When the loop reaches $p$, exactly as in Theorem 2.1.1, $\operatorname{spf}[p] = 0$ exactly when $p$ is prime. A prime $p$ gets the value $p$, which is right.
-2. A composite $j$ gets its value from the first prime $q$ that reaches it, the smallest prime with $q \mid j$ and $q^2 \le j$. Its smallest prime factor $p$ satisfies $p^2 \le j$ (Theorem 2.1.1, part 2), so $q = p$. The step count is the one of Theorem 2.1.1.
-3. Part 2. Each step divides $x$ by a prime factor of it, so the primes divided out multiply to the original $x$; by uniqueness (Theorem 2.1.3) they are its factorisation.
-4. If $p = \operatorname{spf}[x]$, every prime factor of $x / p$ divides $x$, so it is at least $p$: the primes come out in increasing order.
-5. Each step at least halves $x$, so after $k$ steps $x \le x_0 / 2^k$, and $k \le \log_2 x_0$. $\square$
-
-:::note[This proof needs]
-1. Every number to factorise is at most $N$, and an `int` array of size $N + 1$ fits: $4 \cdot 10^7$ bytes for $N = 10^7$. Larger numbers need trial division (Section 4.5).
-2. As in the sieve, $p^2$ must not overflow: start the inner loop at `(long long)p * p`.
-3. Equal primes come out one after another, so the exponent of $p$ is the length of the run of $p$.
-:::
-
-<TheoremCode unit="2.1/thm-4" />
-
-
-
-### 4.5 Trial division for one large number
-
-**Theorem 2.1.5 (trial division).** Let $n \ge 2$. Run: for $d = 2, 3, 4, \dots$ while $d^2 \le n$: while $d$ divides $n$, record $d$ and replace $n$ by $n / d$. At the end, if $n > 1$, record $n$. The recorded numbers are the primes of the factorisation of the original $n$, in increasing order, and at most $\sqrt{n_0}$ values of $d$ are tried, where $n_0$ is the original $n$.
-
-:::tip[In plain words]
-To factorise one number n, try d = 2, 3, 4, … while d·d ≤ n and divide out each d completely. Whatever is left above 1 at the end is a prime. That is at most the square root of n tries, which is 10^6 for n = 10^12.
-:::
-
-**A tiny instance.** $n = 360$. $d = 2$ divides three times ($360 \to 45$), $d = 3$ twice ($45 \to 5$), and $d = 4$ stops the loop since $16 > 5$. The leftover 5 is recorded: $2, 2, 2, 3, 3, 5$. Listing all divisors of one number (Theorem 0.2.2) is the same loop without the dividing out.
-
-**Proof.**
-1. Invariant: when the loop reaches $d$, the recorded numbers times the current $n$ equal $n_0$, and the current $n$ has no prime factor smaller than $d$ (each one was divided out completely when the loop passed it).
-2. So if $d$ divides the current $n$, then $d$ is prime: a prime factor of $d$ smaller than $d$ would divide $n$.
-3. When the loop stops, $d^2 > n$. If the remaining $n$ were composite, its smallest prime factor $p$ would satisfy $p \ge d$ (invariant) and $p^2 \le n < d^2$ (Theorem 2.1.1, part 2), a contradiction.
-4. So the remaining $n$ is 1 or a prime, and that prime is at least $d$, larger than every recorded one.
-5. The current $n$ never grows, so $d$ only runs while $d^2 \le n_0$. $\square$
-
-:::note[This proof needs]
-1. The leftover $n > 1$ after the loop is a prime factor too, possibly larger than $\sqrt{n_0}$. Forgetting it is the most common bug here.
-2. $\sqrt{n_0}$ trials fit the budget for one number up to about $10^{12}$ ($10^6$ trials). For many numbers up to $10^{12}$, try only the primes up to $10^6$ from a sieve: $78\,498$ trials each.
-3. `d * d <= n` must be computed in `long long` when $n$ can exceed about $2 \cdot 10^9$.
-:::
-
-<TheoremCode unit="2.1/thm-5" />
-
-In the second example the leftover after the loop is the whole number, which is prime.
-
-
-### 4.6 Work over all multiples
-
-**Theorem 2.1.6 (sums over multiples).** Let $a_1, \dots, a_n$ be integers with $1 \le a_i \le M$, and let $\operatorname{cnt}[v]$ be the number of $i$ with $a_i = v$.
-1. For every $d \le M$, the number of elements divisible by $d$ is $c[d] = \sum_{k \ge 1,\, kd \le M} \operatorname{cnt}[kd]$, and all of them together take $O(M \log M)$ steps.
-2. Let $E[d]$ be the number of pairs $i < j$ with $\gcd(a_i, a_j) = d$ exactly. Then
-   $E[d] = \frac{c[d] (c[d] - 1)}{2} - \sum_{k \ge 2,\, kd \le M} E[kd]$,
-   so computing $E[d]$ for $d = M, M - 1, \dots, 1$ takes $O(M \log M)$ steps.
-3. More generally, if $F(d) = \sum_{k \ge 1,\, kd \le M} G(kd)$ for every $d \le M$, then $G(d) = F(d) - \sum_{k \ge 2,\, kd \le M} G(kd)$, computed from $d = M$ down to 1.
-
-:::tip[In plain words]
-For every d up to M, the number of elements divisible by d is found by adding the counts of d, 2d, 3d, …, about M log M steps in all. Counting pairs with GCD exactly d then follows by subtracting the pairs whose GCD is 2d, 3d, … from the pairs both divisible by d, taking d from large to small.
-:::
-
-**A tiny instance.** $a = (2, 4, 6, 3)$, $M = 6$. Then $c[1] = 4$, $c[2] = 3$, $c[3] = 2$, $c[4] = 1$, $c[5] = 0$, $c[6] = 1$. From the top: $E[6] = E[5] = E[4] = 0$, $E[3] = 1 - E[6] = 1$ (the pair 6, 3), $E[2] = 3 - E[4] - E[6] = 3$ (2, 4; 2, 6; 4, 6), and $E[1] = 6 - E[2] - E[3] - E[4] - E[5] - E[6] = 2$ (2, 3 and 4, 3).
-
-**Proof.**
-1. Part 1. An element is divisible by $d$ exactly when its value is one of $d, 2d, \dots$, so summing $\operatorname{cnt}$ over these values counts each such element once.
-2. The loop for $d$ makes $\lfloor M/d \rfloor$ steps, $O(M \log M)$ in total (Theorem 0.2.5).
-3. Part 2. $d$ divides both $a_i$ and $a_j$ exactly when $d$ divides $\gcd(a_i, a_j)$, that is, when the GCD is $kd$ for some $k \ge 1$ (and $kd \le M$).
-4. So the $\frac{c[d](c[d]-1)}{2}$ pairs of elements divisible by $d$ split into the pairs with GCD exactly $d, 2d, 3d, \dots$: $\frac{c[d](c[d]-1)}{2} = \sum_{k \ge 1} E[kd]$.
-5. Move the terms with $k \ge 2$ to the other side. When $d$ is processed, every $kd > d$ already has its value. Part 3 is the same rearrangement with $F$ and $G$. $\square$
-
-:::note[This proof needs]
-1. The values are bounded by an array size $M$ (about $10^6$ to $10^7$); the arrays are indexed by value, not by position.
-2. "Divisible by $d$" is easy to count and "GCD exactly $d$" is not, but the second follows from the first by subtracting the multiples, from large $d$ to small.
-3. Pair counts reach $n^2/2$: `long long`.
-:::
-
-<TheoremCode unit="2.1/thm-6" />
-
-
-
-## 5. Recognition Cards
-
-<Cards topic="2.1" />
-
-## 6. Templates
-
-Five short functions, one for each card. The brute forces test every candidate divisor directly, or try every pair.
-
-### Primes in ranges (Theorem 2.1.1)
-
-<CodeSnippet unit="2.1/prime-count" />
-
-**How it works.** The sieve marks every composite number up to $N$; the unmarked numbers from 2 on are the primes. `cnt[x]` counts the primes up to $x$, so a range $[l, r]$ is a difference of two prefix counts (topic 1.2).
-
-**Alternative formulation.** Mark from $2p$ instead of $p^2$ and run $p$ up to $N$: same result, about twice the work. To list the primes instead of counting them, push every unmarked $x$ into a vector.
-
-### An integer equation $ax + by = c$ (Theorem 2.1.2)
-
-<CodeSnippet unit="2.1/linear-equation" />
-
-**How it works.** `ext` returns $g = \gcd(a, b)$ and coefficients with $ax + by = g$. If $g$ does not divide $c$ there is no solution (Bézout's identity). Otherwise $x \cdot (c/g)$ is a solution for $x$, and by part 4 of the theorem all solutions for $x$ are congruent modulo $m = b/g$, so the smallest non-negative one is $x \cdot (c/g) \bmod m$. Then $y = (c - ax)/b$.
-
-**Alternative formulation.** An iterative version keeps two rows $(r, x, y)$ with $r = ax + by$ and repeats the Euclidean step on them; it avoids recursion and gives the same coefficients.
-
-### Factorising one large number (Theorem 2.1.5)
-
-<CodeSnippet unit="2.1/factorise" />
-
-**How it works.** The loop tries $d = 2, 3, \dots$ while $d^2 \le n$ and divides each one out completely; by Theorem 2.1.5 every $d$ that divides is prime, and a leftover $n > 1$ is the last prime. The divisor count and sum come from the exponents (Theorem 2.1.3).
-
-**Alternative formulation.** Try $d = 2$, then only odd $d$: half the trials. For many numbers, sieve the primes up to $10^6$ once and try only them.
-
-### Divisor counts with the smallest prime factor table (Theorem 2.1.4)
-
-<CodeSnippet unit="2.1/spf-divisors" />
-
-**How it works.** The table is built once, up to the largest input. Each number is then split by its smallest prime factor; the inner `while` takes the whole run of equal primes, whose length is the exponent $e$, and the divisor count multiplies by $e + 1$.
-
-**Alternative formulation.** To get $d(x)$ for every $x \le N$ rather than for given numbers, add 1 to each multiple of each $d$ (Theorem 0.2.5); it is $O(N \log N)$ and needs no factorisation.
-
-### Pairs with a given GCD (Theorem 2.1.6)
-
-<CodeSnippet unit="2.1/gcd-pairs" />
-
-**How it works.** For each $d$ from the largest value down, `c` counts the elements divisible by $d$, and `E[d]` starts as the number of pairs among them. Subtracting the pairs whose GCD is $2d, 3d, \dots$, already known, leaves the pairs with GCD exactly $d$. The largest GCD of a pair is the largest $d$ that divides at least two elements.
-
-**Alternative formulation.** For the largest GCD alone, no subtraction is needed: scan $d$ downward and stop at the first one that divides two elements.
-
-## 7. Bug catalogue
-
-Number theory bugs often pass the samples: they only show up on squares of primes, on large prime factors, or on equations whose GCD is not 1. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
-
-### Bug: stopping the sieve before $p^2 = N$
-
-Template: primes in ranges.
+One of the multiplier must be $\le \sqrt{N}$.
+as if both were $\ge \sqrt{N}$ then $(\ge\sqrt{N}) \times (\ge\sqrt{N})$ will give $> N$. (which is not valid).
 
 ```cpp
-for (int p = 2; (long long)p * p < N; p++) {
+bool is_prime (long long x){          // O(√N).
+    for (long long i=2; i*i <= x; i++) {
+        if (x%i == 0)
+            return 0;
+    }
+    return 1;
+}
 ```
 
-Input: `4 1`, then the range `2 4`.
-
-Wrong output `3`, correct output `2`. With $N = 4$, the loop needs $p = 2$ to mark 4, but $2 \cdot 2 < 4$ is false, so nothing is marked and 4 is counted as a prime. The same happens to every $N = p^2$ with $p$ prime.
-
-**Fix:** the loop must reach every $p$ with $p^2 \le N$ (Theorem 2.1.1, part 2: the smallest prime factor of a composite $n$ may be exactly $\sqrt n$).
-
-### Bug: marking from $p$ instead of $p^2$
-
-Template: primes in ranges.
+Note: x = 0 and x = 1 return 1 (true) here but they are not prime → handle `x > 1` outside, like `if(n > 1 && is_prime(n))` in PrimalityCheck.cpp. `i*i <= x` instead of sqrt(x) → no floating point issues. For N ≈ 10^9 → about 3×10^4 steps only.
 
 ```cpp
-for (int j = p; j <= N; j += p) composite[j] = 1;
+// Fabricator/Maths/PrimalityCheck.cpp
+bool is_prime(long long x){
+    for(long long i=2; i*i<=x; i++){
+        if(x % i == 0){
+            return false;
+        }
+    }
+
+    return true;
+}
 ```
 
-Input: `7 1`, then the range `1 7`.
+## Finding divisors
 
-Wrong output `3`, correct output `4`. The inner loop starts at $p$ itself, so 2 marks itself as composite; only 3, 5 and 7 remain.
+find all the divisors of a number N.
 
-**Fix:** start at $p^2$, or at $2p$. Never at $p$: the prime itself must stay unmarked.
+12 = 1, 2, 3, 4, 6, 12
 
-### Bug: no check that the GCD divides $c$
+Brute force → iterate over (1→N) check for each number.
 
-Template: an integer equation $ax + by = c$. The test `if (c % g != 0)` is removed.
+N → d_1 × d_2
 
-Input: `1`, then `8 62 275`.
+```
+   ①                  ②
+ L____________| |L____________|
+ 1 to √N          √N+1 .... N
+```
 
-Wrong output `11 3`, correct output `-1`. Here $g = 2$ does not divide 275, so there is no solution: $8x + 62y$ is always even. The program still divides, and integer division silently rounds: $8 \cdot 11 + 62 \cdot 3 = 274$, not 275.
+for every element in group ② there is a divisor in ① & vice-versa.
 
-**Fix:** test $g \mid c$ first (Bézout's identity, Theorem 2.1.2, part 2). Then check a few outputs by computing $ax + by$ back.
+N → can have atmost $2\sqrt{N}$ divisors.
 
-### Bug: reducing $x$ modulo $b$ instead of $b/g$
+![numbers 1 to 12 split into two groups with divisor pairs joined](../../../assets/notes/2-1-number-theory/figB15_divisor_pairs.png)
+*12 → (1,12) (2,6) (3,4). Loop only group 1.*
 
-Template: an integer equation $ax + by = c$.
+(2√N is just an upper bound. Real max is far less: 1344 divisors for N ≤ 10^9, 103680 for N ≤ 10^18.)
 
 ```cpp
-long long m = b;
+vector <long long> divisors (long long x){
+    vector <long long> div;
+    for (long long i=1; i*i <= x; i++){
+        if (x%i == 0) {
+            div.push_back(i);
+            if (i*i != n) {
+                div.push_back(n/i);
+            }
+        }
+    }
+    return div;
+}
 ```
+O(√n) T.C.
 
-Input: `1`, then `6 33 840`.
-
-Wrong output `19 22`, correct output `8 24`. Both pairs are solutions ($114 + 726 = 48 + 792 = 840$), but the solutions for $x$ repeat every $b/g = 11$, not every 33 (Theorem 2.1.2, part 4). Reducing modulo 33 can leave a value that is not the smallest: $19 - 11 = 8$.
-
-**Fix:** reduce modulo $b/g$. When $g = 1$ the two are the same, which is why tests with coprime $a$ and $b$ do not find this bug.
-
-### Bug: a negative remainder
-
-Template: an integer equation $ax + by = c$.
+Note: parameter is `x` but body uses `n` → won't compile as it is, should be `x` in both places. `i*i != x` so 6 for x=36 is pushed once. Result unsorted.
 
 ```cpp
-long long xm = x % m, cm = (c / g) % m;
+// Problem:
+// All divisors of x in O(sqrt(x)); every divisor i <= sqrt(x) comes with its
+// partner x / i.
+vector<long long> divisors_of(long long x) {
+    vector<long long> result;
+    for (long long i = 1; i * i <= x; i++) {
+        if (x % i == 0) {
+            result.push_back(i);
+            if (i * i != x) result.push_back(x / i);   // skip when i == x / i
+        }
+    }
+    return result;
+}
 ```
 
-Input: `1`, then `14 5 928`.
+## Prime factorisation
 
-Wrong output `-3 194`, correct output `2 180`. The extended Euclidean algorithm gives $14 \cdot (-1) + 5 \cdot 3 = 1$. In C++, $-1 \bmod 5$ is $-1$, not 4, so the "smallest non-negative" $x$ comes out as $-3$.
+Find prime factorisation of N.
 
-**Fix:** `((x % m) + m) % m` (topic 0.4). Coefficients from `ext` are often negative.
+$N = p_1^{\alpha_1} \, p_2^{\alpha_2} \, p_3 ......$
 
-### Bug: losing the last prime factor
+Only one prime can be $> \sqrt{N}$.
 
-Template: factorising one large number. The line `if (n > 1) f.push_back({n, 1});` is removed.
-
-Input: `7`.
-
-Wrong output: an empty factorisation and `1 1`; correct output `7^1`, then `2 8`. For a prime $n$, the loop tries only $d = 2$ ($4 \le 7$) and stops at $d = 3$ ($9 > 7$), and $n$ itself is never recorded. The same loss happens for every number with one prime factor above its square root, such as $2 \cdot 7 = 14$.
-
-**Fix:** after the loop, a leftover $n > 1$ is a prime factor (Theorem 2.1.5).
-
-### Bug: `d * d < n` in trial division
-
-Template: factorising one large number.
+Idea: divide out each i ≤ √N fully, jo bacha (if > 1) wahi ek bada prime hai.
 
 ```cpp
-for (long long d = 2; d * d < n; d++) {
+vector<pair<long long, long long>> prime_factor (long long x){
+    vector<pair<long long, long long>> fact;
+    for(long long i=2; i*i <= x; i++) {
+        if (x%i == 0) {
+            int cnt = 0;
+            while (x%i == 0){
+                cnt++;
+                x/=i;
+            }
+            fact.push_back ({i, cnt});
+        }
+    }
+    if (x>1) {
+        fact.push_back ({x,1});
+    }
+    return fact;
+}
 ```
+O(√N) → T.C.
 
-Input: `9`.
+Dry run x = 360: i=2 → 360→180→90→45, push (2,3). i=3 → 45→15→5, push (3,2). i=4 → 16 > 5 stop. x=5 > 1 → push (5,1). So 360 = 2³·3²·5. For prime 97 → loop kuch nahi karta, last `if` push (97,1). (He crossed out an early `return fact;` before the `if`, wo big prime miss kar deta.)
 
-Wrong output `9^1` and `2 10`, correct output `3^2` and `3 13`. The loop stops before $d = 3$ because $3 \cdot 3 < 9$ is false, and the leftover 9 is recorded as if it were prime.
-
-**Fix:** `d * d <= n`. As with the sieve, squares of primes are the inputs that break a strict comparison; test them on purpose.
-
-### Bug: subtracting multiples in the wrong order
-
-Template: pairs with a given GCD.
+What if many queries (n ≤ 10^6)? Trial division har baar √N. Better: sieve se smallest prime factor `sp[i]` store karo, then factorise in O(log N) by dividing with sp[n].
 
 ```cpp
-for (int d = 1; d <= M; d++) {
+// Fabricator/Maths/FastFactorization.cpp
+int sp[DEF_ARR_SIZE];
+
+void precompute_sp(){
+    for(int i=2; i<DEF_ARR_SIZE; i++){
+        sp[i] = i;
+    }
+
+    for(int i=2; i<DEF_ARR_SIZE; i++){
+        if(sp[i] == i){
+            for(int j=2*i; j<DEF_ARR_SIZE; j+=i){
+                if(sp[j] == j){
+                    sp[j] = i;
+                }
+            }
+        }
+    }
+}
+
+vector<int> prime_factors(int n){
+    vector<int> factors;
+    while(n > 1){
+        factors.push_back(sp[n]);
+        n /= sp[n];
+    }
+
+    return factors;
+}
 ```
 
-Input: `2`, then `9 6`.
+```cpp
+// Fabricator/Maths/HowManySolutions.cpp
+map<long long, long long> prime_factors_with_pow(long long n){
+    map<long long, long long> val;
+    for(long long i=2ll; i*i<=n; i++){
+        if(n % i == 0){
+            long long cnt = 0;
+            while(n % i == 0){
+                cnt++;
+                n /= i;
+            }
 
-Wrong output `1 3`, correct output `0 3`. The pair $(9, 6)$ has GCD 3. Processing $d = 1$ first subtracts $E[2], E[3], \dots$ while they are all still 0, so the pair is counted as coprime.
+            val[i] = cnt;
+        }
+    }
 
-**Fix:** go from large $d$ to small, so that every $E[kd]$ with $k \ge 2$ is final before $E[d]$ uses it (Theorem 2.1.6, part 2).
+    if(n > 1){
+        val[n] = 1;
+    }
 
-## 8. Worked examples
+    return val;
+}
+```
 
-### Example 1: Coprime
+Note: `DEF_ARR_SIZE` is `1'000'100` in the repo. Checked 360 → 2 2 2 3 3 5 and 600851475143 = 71 · 839 · 1471 · 6857.
 
-[AtCoder Beginner Contest (ABC) 177, problem E: Coprime](https://atcoder.jp/contests/abc177/tasks/abc177_e). In short: given $N \le 10^6$ integers up to $10^6$, decide whether every pair of them is coprime ("pairwise coprime"), or else whether the GCD of all of them is 1 ("setwise coprime"), or neither.
+## Sieve of Eratosthenes
 
-#### Step 1: Constraints → budget
+finding all primes $\le 10^7$.
 
-$N = 10^6$ numbers: $O(N \log N)$ at most, and the input itself is large, so read it quickly. All values are at most $10^6$, small enough for an array indexed by value. `int` everywhere.
+Brute force:
+Loop over [1, 10^7]
+Add is prime for each      \} O(n√n).
 
-#### Step 2: Question form → candidate tools
+Sieve:
 
-Brute force (topic 0.5) checks every pair: $5 \cdot 10^{11}$ GCDs, far too slow. The setwise part is just the GCD of the whole array (topic 0.4). For the pairwise part, two numbers fail to be coprime exactly when some prime divides both. So the question becomes: does any prime divide two of the numbers? That needs the primes of each number, for a million numbers up to $10^6$: the "Factorising many numbers with a table" card (Theorem 2.1.4).
+we loop from 2.... N;
+we mark all the multiples of current prime as not prime.
+we skip every non-prime number.
 
-#### Step 3: Property check → decision
+![is_prime array 2 to 10 before and after](../../../assets/notes/2-1-number-theory/figB16_sieve_array.png)
+*2 → cross 4,6,8,10. 3 → cross 6,9. 4 skip. 5, 7 stay.*
 
-The card's property holds: every number to factorise is at most $10^6$, so a table of smallest prime factors fits ($4 \cdot 10^6$ bytes), and each number then splits in at most 20 divisions. Decision: build the table up to $10^6$, factorise every $A_i$, count for each prime how many elements it divides, and report "pairwise" when no count reaches 2; otherwise compare the overall GCD with 1.
+Code:
+```cpp
+for (int i=2; i<=N; i++) is_prime[i] = 1;
+for (int i=2; i<=N; i++){
+    if (is_prime[i]) {
+        for (int j=2*i; j<=N; j+=i){
+            is_prime[j] = 0;
+        }
+    }
+}
+```
 
-#### Step 4: Proof for this problem
+Optimised:
 
-$\gcd(A_i, A_j) > 1$ exactly when some prime $p$ divides both: a GCD $g > 1$ has a prime divisor (Theorem 2.1.1, part 1), which divides both numbers, and conversely a common prime is a common divisor. The program factorises each $A_i$ correctly (Theorem 2.1.4) and adds 1 to `used[p]` once for each distinct prime $p$ of $A_i$, so after all elements `used[p]` is the number of elements divisible by $p$. Some pair shares a prime exactly when some `used[p]` reaches 2. If no pair shares a prime, the answer is "pairwise coprime" (when $N \ge 2$, this also forces the overall GCD to be 1). Otherwise the overall GCD decides between "setwise" and "not". Time: $O(M \log \log M)$ for the table with $M = 10^6$, plus at most 20 divisions per element.
+```cpp
+for (int i=2; i<=N; i++) is_prime[i] = 1;
+for (int i=2; i<=N; i++){
+    if (is_prime[i]) {
+        for (long long j= 1ll*i*i; j<=N; j+=i){
+            is_prime[j] = 0;
+        }
+    }
+}
+```
 
-#### Step 5: Code
+We can start from **i\*i**
 
-<CodeSnippet unit="2.1/example-1" />
+This number has i as factor.  → i ... (p*i) ... i*i
 
-#### Step 6: Alternative approach
+(p*i) &lt; i*i
+p &lt; i
+↳ this prime must have striked off all multiples &lt; **i\*i**.
 
-Use the "Work over all multiples" card instead (Theorem 2.1.6, part 1): count how many elements each $d \ge 2$ divides by summing `cnt` over the multiples of $d$; the set is pairwise coprime exactly when every count is at most 1. It is $O(M \log M)$ and needs no factorisation, but more steps than the table.
+![multiples of 7 below 49 already crossed by 2, 3, 5](../../../assets/notes/2-1-number-theory/figB17_sieve_start_i_squared.png)
+*i = 7 → 14..42 already gone. First new one = 49.*
 
-### Example 2: 9 Divisors
+`1ll*i*i` → long long, so i*i int me overflow na kare.
 
-[AtCoder Beginner Contest (ABC) 383, problem D: 9 Divisors](https://atcoder.jp/contests/abc383/tasks/abc383_d). In short: count the integers from 1 to $N$ that have exactly 9 positive divisors, for $N \le 4 \cdot 10^{12}$.
+No. of times inner loop runs:
 
-#### Step 1: Constraints → budget
+$\lfloor \frac{N}{2} \rfloor + \lfloor \frac{N}{3} \rfloor + \lfloor \frac{N}{5} \rfloor + \lfloor \frac{N}{7} \rfloor + ......$
 
-$N = 4 \cdot 10^{12}$: no loop over all numbers. $\sqrt N = 2 \cdot 10^6$, so anything up to about $10^7$ steps per prime-sized object is fine. `long long` for $N$ and the counts.
+$= \sum_{\substack{p \in prime \\ p \le N}} \lfloor \frac{N}{p} \rfloor \approx O(n \log \log n)$
 
-#### Step 2: Question form → candidate tools
+Measured for N = 10^7: 664579 primes, simple version = 29,465,738 inner runs, i*i version = 22,850,051 (N·ln ln N ≈ 27.8 million, formula sahi andaza deta hai).
 
-Testing each number up to $N$ (topic 0.5) with trial division is hopeless. The divisor count depends only on the exponents of the prime factorisation (Theorem 2.1.3, part 2): $d(n) = (e_1 + 1) \cdots (e_k + 1)$. So "exactly 9 divisors" is a statement about exponents, and the numbers to count are built from primes. Which primes? Those that can appear, at most $\sqrt N$: the sieve card (Theorem 2.1.1).
+![grid 2 to 50, primes outlined, others coloured by smallest prime](../../../assets/notes/2-1-number-theory/figB18_sieve_grid.png)
+*only 2, 3, 5, 7 (≤ √50) needed to strike all composites ≤ 50.*
 
-#### Step 3: Property check → decision
+Memory: int array 10^7 = 40 MB, char = 10 MB, vector&lt;bool> ≈ 1.25 MB.
 
-Write $9$ as a product of factors $e_i + 1 \ge 2$: either $9$ (one prime, $n = p^8$) or $3 \cdot 3$ (two primes, $n = p^2 q^2$ with $p < q$). In both cases every prime involved is at most $\sqrt N \le 2 \cdot 10^6$, which a sieve covers. And $p^2 q^2 \le N$ exactly when $pq \le s$, where $s = \lfloor \sqrt N \rfloor$. Decision: sieve up to $s$ with a prefix count of primes (topic 1.2); count the primes with $p^8 \le N$, and for each prime $p$ the primes $q$ with $p < q \le \lfloor s/p \rfloor$.
+```cpp
+// Fabricator/Maths/SieveOfEratosthenes.cpp
+vector<bool> sieve_of_eratosthenes(){
+    vector<bool> is_prime(DEF_ARR_SIZE, true);
+    is_prime[0] = is_prime[1] = false;
+    for(int i=2; i<DEF_ARR_SIZE; i++){
+        if(is_prime[i]){
+            for(long long j=1ll*i*i; j<DEF_ARR_SIZE; j+=i){
+                is_prime[j] = false;
+            }
+        }
+    }
 
-#### Step 4: Proof for this problem
+    return is_prime;
+}
+```
 
-By Theorem 2.1.3, $d(n) = 9$ exactly when the exponents of $n$ satisfy $\prod (e_i + 1) = 9$. Each factor is at least 2 and divides 9, so the factors are $(9)$ or $(3, 3)$: $n = p^8$, or $n = p^2 q^2$ with primes $p < q$. Different such choices give different $n$ by uniqueness, so counting choices counts numbers. For $n = p^2 q^2$: $(pq)^2 \le N$ exactly when $pq \le s$, because $s$ is the largest integer with $s^2 \le N$. For a fixed $p$ the valid $q$ are the primes in $(p, \lfloor s/p \rfloor]$, numbering $\operatorname{cnt}[\lfloor s/p \rfloor] - \operatorname{cnt}[p]$ when $\lfloor s/p \rfloor > p$. Every prime in either form is at most $s$, so the sieve up to $s$ sees all of them. Time: $O(s \log \log s)$ for the sieve and $O(s)$ for the loop.
+Note: `DEF_ARR_SIZE` is `1'000'100` in the repo. Primes below 1,000,100 = 78504.
 
-#### Step 5: Code
+## Segmented Sieve
 
-<CodeSnippet unit="2.1/example-2" />
+Ques: find the primes in the range [a,b] where $0 < a \le b \le 10^{12}$ and $b-a \le 10^6$
 
-#### Step 6: Alternative approach
+Building sieve up to $10^{12}$ is not possible. (array of size $10^{12}$, memory hi nahi hogi)
 
-Collect the primes up to $s$ in a list and count the pairs with $pq \le s$ by two pointers (topic 1.3): as $p$ increases, the largest allowed $q$ only decreases. It replaces the prefix count array by a list and is the same $O(s)$ after the sieve.
+Checking each no. b/w (b-a) → $O(\sqrt{b})$ per number → $O(10^{12})$ X (infeasible)
 
-## 9. Problem ladder
+Idea: To check for any number N to be prime or not, we need to check only the primes &lt;= sqrt(N).
 
-Twenty problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Before coding each one, write down the largest number you will factorise or test for primality, and from it which tool fits: a sieve or table when it fits in an array, trial division when only a few numbers are involved, a loop over multiples when the question is about divisibility for every $d$, extended Euclid for an equation $ax + by = c$. Before opening a hint, spend the struggle budget shown on the problem.
+Why? Let's say N is not prime, so $p_1 \cdot k = N$ ($p_1$ → prime, k → some int > 1). Dono me se ek toh $\le \sqrt{N}$ hoga hi (agar dono $> \sqrt{N}$ hote toh product $> N$ ho jata).
 
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+- If $p_1 \le \sqrt{N}$ then it proves.
+- If $k \le \sqrt{N}$ then it'll be composed of some other prime that'll be $\le \sqrt{N}$ (aur wo prime N ko bhi divide karega).
+
+Phase 1: We need to find primes in the range [1, sqrt(b)] to check numbers till b.
+
+$\sqrt{b} \to 10^6$ → sieve can be used to find the primes.
+
+Phase 2: Sieve the range [a,b] using the primes found in the range [1, sqrt(b)].
+
+Matlab array ka slot `x - a` number `x` ko represent karega. Size sirf $b-a+1 \le 10^6$.
+
+Example: a = 28, b = 36. $\sqrt{36} = 6$, so phase 1 runs on [1,6] (1 → prime, 0 → not prime).
+
+![Segmented sieve for a = 28, b = 36: phase 1 flags and the range array](../../../assets/notes/2-1-number-theory/figC01_segsieve.png)
+*phase 1 gives 2, 3, 5. After phase 2 only 29, 31 are left.*
+
+Iterate over phase 1 primes & mark all no. that are multiples of the prime.
+
+![Multiples crossed out by 2, 3 and 5 in [28, 36]](../../../assets/notes/2-1-number-theory/figC02_segsieve_rows.png)
+*2 → 28 30 32 34 36, 3 → 30 33 36, 5 → 30 35. First multiple = ceil(28/p) * p.*
+
+29 and 31 are primes in range [28, 36].
+
+```cpp
+for (prime : [1, sqrt(b)]) {
+    long long curMul = ((a+prime-1) / prime) * prime;
+    while (curMul <= b) {
+        is_prime [curMul-a] = 0;
+        curMul += prime;
+    }
+}
+```
+
+add check curMul ≠ prime
+
+`((a+prime-1)/prime)*prime` → a ko round up karke first multiple of prime nikalta hai (ceil trick). Check kyu? Agar prime khud [a,b] me aa gaya (e.g. a = 1 ya a = 2) toh loop usko bhi cut kar dega. Isliye `curMul != prime`.
+
+Your version, with that check:
+
+```cpp
+// Fabricator/Maths/SegmentedSieve.cpp
+vector<int> sieve_of_eratosthenes(int n){
+    vector<bool> is_prime(n, true);
+    is_prime[0] = is_prime[1] = false;
+    for(int i=2; i<n; i++){
+        if(is_prime[i]){
+            for(long long j=1ll*i*i; j<n; j+=i){
+                is_prime[j] = false;
+            }
+        }
+    }
+
+    vector<int> primes;
+    for(int i=0; i<n; i++){
+        if(is_prime[i]){
+            primes.push_back(i);
+        }
+    }
+
+    return primes;
+}
+
+vector<long long> segmented_sieve(long long a, long long b){
+    int n = sqrt(b);
+    vector<int> base_primes = sieve_of_eratosthenes(n);
+    vector<bool> is_prime(b-a+1, true);
+    for(auto prime: base_primes){
+        long long curr_mul = ((a + prime - 1)/prime) * prime;
+        while(curr_mul <= b){
+            if(curr_mul != prime){
+                is_prime[curr_mul-a] = false;
+            }
+
+            curr_mul += prime;
+        }
+    }
+
+    vector<long long> primes;
+    for(int i=0; i<b-a+1; i++){
+        if(is_prime[i] && (a+i) >= 2){
+            primes.push_back(a + i);
+        }
+    }
+
+    return primes;
+}
+```
+
+Note: `sieve_of_eratosthenes(n)` returns primes strictly less than `n`. If $\lfloor \sqrt{b} \rfloor$ is itself prime (e.g. b = 49 or 50) toh $7^2 = 49$ cut hi nahi hoga. Phase 1 ko `n + 1` pe call karna chahiye. (Tested: [24, 50] me 49 galat se prime aa raha tha. [28,36], [1,100], [90,120] aur $10^{12}$ ke paas ki range sahi aayi.)
+
+Also `a = 1`: 1 ko koi prime cut nahi karta, isliye `(a+i) >= 2` wala check.
+
+T.C:
+
+No. of primes [0-N] ~ $\frac{N}{\log N}$
+
+No. of times marking happens in [a,b] = $\Sigma \lceil \frac{(b-a+1)}{P} \rceil$ ← for each prime $\le \sqrt{b}$.
+
+$O((b-a) \log \log b)$
+
+Using same formula/relation as in sieve of eratosthenes. (Phase 1 ka $O(\sqrt{b} \log\log b)$ iske saamne chhota hai.)
+
+Note: `long long` use karna, $i*i$ ya $b$ int me overflow karega.
+
+## Fast Factorization
+
+Ques: find the prime factorization of all numbers from 1 - $10^6$.
+
+60 = 2.2.3.5
+
+Brute force: har number ke liye $\sqrt{n}$ tak trial division. Query bahut ho toh slow.
+
+Idea of pre-computation.
+
+Store something for each number that will help us factorise the numbers easily.
+
+No. of prime factors a no. can have $O(\log N)$.
+
+Proof:
+Suppose a number is made of entirely 2.
+2 . 2 . 2 .... c times = N
+$2^c = N$ ⇒ $c = \log_2 (N)$
+Similar for all primes (bade prime se aur kam factors milenge).
+
+We'll be compiling the smallest prime factor for all numbers.
+
+![sp array, smallest prime factor of 2 to 13](../../../assets/notes/2-1-number-theory/figC03_spf_array.png)
+*sp[n] for n = 2..13. Green → n is prime (sp[n] = n).*
+
+8 → 2. ( ) ↳ pf of 8/2 = 4
+
+8 → 2. (2. ) ↳ pf of 4/2 = 2
+
+8 → (2 . 2 . 2 )
+
+✓ $pf(n) = sp(n) . pf\left(\frac{n}{sp(n)}\right)$.
+
+(pf = prime factors.) Bas ek ek karke sp(n) nikalte jao aur n me se divide karte jao, jab tak n = 1.
+
+![60 broken down using sp](../../../assets/notes/2-1-number-theory/figC04_spf_chain.png)
+*60 → 30 → 15 → 5 → 1, sp = 2, 2, 3, 5.*
+
+- Creating sp array:
+
+```cpp
+for (int i= 2; i<=N; i++) {
+    sp[i] = i; // → assuming each no. is prime.
+}
+for (int i= 2; i<=N; i++) {
+    if (sp [i] == i) { // i is prime.
+        for (int j= 2*i; j<=N; j+= i) {
+            if (sp[j] == j) {
+                sp[j] = i;
+            }
+        }
+    }
+}
+```
+
+$O(N \log \log N)$.
+
+`sp[j] == j` matlab abhi tak kisi chhote prime ne j ko claim nahi kiya. Primes increasing order me aate hain, toh jo pehle pahunchega wahi smallest prime factor hoga.
+
+- Using sp [] for fast factorisation:
+
+```cpp
+vector <int> prime_fact ( int n) {
+    vector <int> ans;
+    while ( n > 1) {
+        ans.push_back (sp[n]);
+        n /= sp[n];
+    }
+    return ans;
+}
+```
+
+T.C:
+$O(\log n)$
+
+Same thing from your repo:
+
+```cpp
+// Fabricator/Maths/FastFactorization.cpp
+const int DEF_ARR_SIZE = 1'000'100;
+int sp[DEF_ARR_SIZE];
+void precompute_sp(){
+    for(int i=2; i<DEF_ARR_SIZE; i++){
+        sp[i] = i;
+    }
+
+    for(int i=2; i<DEF_ARR_SIZE; i++){
+        if(sp[i] == i){
+            for(int j=2*i; j<DEF_ARR_SIZE; j+=i){
+                if(sp[j] == j){
+                    sp[j] = i;
+                }
+            }
+        }
+    }
+}
+
+vector<int> prime_factors(int n){
+    vector<int> factors;
+    while(n > 1){
+        factors.push_back(sp[n]);
+        n /= sp[n];
+    }
+
+    return factors;
+}
+```
+
+Agar sirf distinct primes chahiye (each prime once), toh power nikaal do:
+
+```cpp
+// Fabricator/Maths/Coprime.cpp (needs sp[] from above)
+vector<int> prime_factors(int n){
+    vector<int> factors;
+    while(n > 1){
+        factors.push_back(sp[n]);
+        int curr_fact = sp[n];
+        while(n % curr_fact == 0) n /= curr_fact;
+    }
+
+    return factors;
+}
+```
+
+Note: sp array $O(N)$ memory leta hai, $10^6$ ke liye ~4 MB. Single bahut bada number ($10^{12}$) ho toh trial division $O(\sqrt{n})$ hi karo.
+
+## Sieve Applications
+
+$N = p_1^{\alpha_1} p_2^{\alpha_2} \dots p_n^{\alpha_n}$
+
+$S_0$ → No. of divisors.
+
+every prime factor has $(1+\alpha_i)$ options. (divisor me $p_i$ ki power $0, 1, \dots, \alpha_i$ kuch bhi ho sakti hai, aur alag primes ke choices independent hain.)
+
+No. of divisors of N = $(1+\alpha_1)(1+\alpha_2) \dots (1+\alpha_n)$
+
+e.g. $60 = 2^2 \cdot 3 \cdot 5$ → $3 \cdot 2 \cdot 2 = 12$.
+
+$S_1$ → sum of divisors.
+
+Sum = $\left(\frac{p_1^{\alpha_1+1} - 1}{p_1 - 1}\right) . \left(\frac{p_2^{\alpha_2+1} - 1}{p_2 - 1}\right) + \dots$
+
+Note: dots ke beech product aata hai, plus nahi. Think of it as: $(1 + p_1 + \dots + p_1^{\alpha_1})(1 + p_2 + \dots)\dots$ expand karo toh har term ek divisor hai. e.g. 60 → $(1+2+4)(1+3)(1+5) = 7 \cdot 4 \cdot 6 = 168$.
+
+Using sp[] both are easy to get:
+
+```cpp
+/*
+  Problem: for n <= 10^6 return {number of divisors, sum of divisors}.
+  Uses the sp[] array (smallest prime factor) from above.
+*/
+pair<long long, long long> divisor_count_and_sum(int n){
+    long long count = 1, sum = 1;
+    while(n > 1){
+        int p = sp[n];
+        int alpha = 0;
+        long long p_pow = 1;       // p^alpha so far
+        long long term_sum = 1;    // 1 + p + ... + p^alpha
+        while(n % p == 0){
+            n /= p;
+            alpha++;
+            p_pow *= p;
+            term_sum += p_pow;
+        }
+
+        count *= (alpha + 1);
+        sum *= term_sum;
+    }
+
+    return {count, sum};
+}
+```
+
+(Checked for every n up to $10^6$ against a divisor sieve. 60 → 12 divisors, sum 168.)
+
+## Euler Totient function
+
+Let $f(n)$ = count of numbers in [1,x] such that gcd (x,a) = 1 ← coprime numbers.
+
+(gcd = greatest common divisor. Coprime matlab gcd = 1.)
+
+6 → 1, 5 \} $f(n) = 2$.
+
+let $X = p_1^2 . p_2^3$
+
+1  2 . . . . . x
+in this we can't take multiples of $p_1$ & $p_2$
+
+Excluding multiples of $p_1$ & $p_2$
+
+$x - \frac{x}{p_1} - \frac{x}{p_2} + \frac{x}{p_1 \cdot p_2}$
+
+($\frac{x}{p_1}$ → no. of multiples of $p_1$, $\frac{x}{p_2}$ → no. of multiples of $p_2$. Dono ke common multiples do baar minus ho gaye, isliye ek baar wapas add.)
+
+![Venn picture: multiples of p1 and p2 inside 1..x](../../../assets/notes/2-1-number-theory/figC05_totient_venn.png)
+*subtract both circles, add the overlap back once.*
+
+$= x\left(1 - \frac{1}{p_1}\right) - \frac{x}{p_2}\left(1 - \frac{1}{p_1}\right)$
+
+$= x \left(1 - \frac{1}{p_1}\right)\left(1 - \frac{1}{p_2}\right)$
+
+So, without loosing the generality:
+
+$f(n) = x . \left(1 - \frac{1}{p_1}\right)\left(1 - \frac{1}{p_2}\right)\left(1 - \frac{1}{p_3}\right) + \dots$
+$\phi(n)$ ↗
+Totient of n
+
+Note: yaha bhi product hai (plus nahi), $p_i$ = distinct primes of n.
+
+![Numbers 1 to 12, green = coprime to 12](../../../assets/notes/2-1-number-theory/figC06_coprime12.png)
+*phi(12) = 12 · (1/2) · (2/3) = 4 → 1, 5, 7, 11.*
+
+```cpp
+for (int i= 1; i<=N; i++) {
+    phi[i] = i;
+}
+for (int i= 2; i<=N ; i++) {
+    if (is_prime [i]) {
+        for (int j= i; j<=N; j+= i) {
+            phi [j] -= phi [j]/i ;
+        }
+    }
+}
+```
+
+phi [j] -= phi [j] / i
+⇒ $x - \frac{x}{i} = x\left(1 - \frac{1}{i}\right)$     i → is new prime factor of j
+
+The inner loop calculates
+$x\left(1 - \frac{1}{i}\right)$ for all multiples of i.
+↳ It will add contri of $\left(1 - \frac{1}{i}\right)$ to all the multiples of j.
+
+(contri = contribution. Division exact hai kyuki phi[j] abhi bhi i se divisible hai. T.C: $O(N \log \log N)$. Brute force gcd se compare kiya n ≤ 3000 tak, sab match.)
+
+Single number ka totient chahiye toh (from your repo):
+
+```cpp
+// Fabricator/Maths/Totient.cpp
+vector<long long> prime_factors(long long n){
+    vector<long long> facts;
+    for(long long i=2; i<=n; i++){
+        if(n % i == 0){
+            facts.push_back(i);
+            while(n % i == 0){
+                n /= i;
+            }
+        }
+    }
+
+    return facts;
+}
+```
+
+```cpp
+// Fabricator/Maths/Totient.cpp (inside solve, n is the input, facts = prime_factors(n))
+    long long totient = n;
+    for(auto fact: facts){
+        totient /= fact;
+        totient *= (fact - 1);
+    }
+```
+
+Pehle divide phir multiply, taaki number exact rahe. 6 → 2, $10^6$ → 400000.
+
+Note: yaha `prime_factors` me `i<=n` tak loop hai, toh prime n ke liye $O(n)$. `i*i<=n` tak karo toh $O(\sqrt{n})$.
+
+| $n$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| $\phi(n)$ | 1 | 1 | 2 | 2 | 4 | 2 | 6 | 4 | 6 | 4 | 10 | 4 |
+
+Properties of $\phi(n)$:
+
+i) $\phi(p) = p-1$ → p → prime.
+ii) $\phi(p^k) = p^k - p^{k-1}$
+iii) $\phi(a.b) = \phi(a) . \phi(b)$ if gcd (a,b) == 1.
+→ multiplicative property.
+
+proofs:
+i) $\phi(p) = p\left(1 - \frac{1}{p}\right) = (p-1)$ ✓
+ii) $\phi(p^k) = p^k\left(1 - \frac{1}{p}\right) = p^k - p^{k-1}$ ✓
+iii) $\phi(p_1 . p_2)$ = $p_1 p_2 \left(1 - \frac{1}{p_1}\right)\left(1 - \frac{1}{p_2}\right)$ ✓
+   $= (p_1 - 1)(p_2 - 1)$
+
+(coprime numbers ke primes alag alag hote hain, isliye yahi grouping kisi bhi coprime a, b ke liye chalti hai.)
+
+## Product of divisors
+
+Let $X = (p_1^2 \; p_2^3 \; p_3^1)$
+
+Some divisors will have $p_1^0$, some $p_1^1$ & some $p_1^2$
+
+In product of all divisors, lets see the power of $p_1$ in that product.
+
+No. of divisors with $p_1^0$ = no. of divisors of $p_1^0 p_2^3 p_3^1$
+= $1 \times (3+1) \times (1+1)$
+= 8.
+
+for $p_1^1$ = $2 \times 4 \times 2$
+for $p_1^2$ = $3 \times 4 \times 2$
+
+∴ for all power of $p_1$ = $1 \times 4 \times 2 + 2 \times 4 \times 2 + 3 \times 4 \times 2$
+= $\frac{2 \times (2+1)}{2} \times (3+1) \times (1+1)$
+
+Note: $p_1^1$ wale divisors bhi $4 \times 2 = 8$ hi hain (p2, p3 ke choices same). Toh power ka hisaab (0+1+2) × 8 = 24, aur $\frac{2 \times (2+1)}{2} \times 4 \times 2 = 24$ ✓. Final formula wahi rehta hai.
+
+![Three groups of 8 divisors, by power of p1](../../../assets/notes/2-1-number-theory/figC07_proddiv_groups.png)
+*har power ke liye 8 divisors → (0+1+2) × 8 = 24.*
+
+for $p_2$ = $\frac{3 \times (3+1)}{2} \times (2+1) \times (1+1)$
+
+for $p_3$ = $\frac{1 \times (1+1)}{2} \times (2+1) \times (3+1)$
+
+Product of all divisors = $\frac{2 \times (2+1)}{2} (3+1) \times (1+1) \times$
+$\frac{3 \times (3+1)}{2} (2+1) \times (1+1) \times$
+$\frac{1 \times (1+1)}{2} (2+1)(3+1)$ ✓
+
+for $p_1^{a_1} p_2^{a_2} \dots p_k^{a_k}$
+
+Product of all divisors = $\prod p_i^{\left(\frac{a_i \times (a_i+1)}{2}\right) \times \left(\frac{\#D}{a_i + 1}\right)}$
+
+#D → no. of divisors.
+
+Product of all divisors = $\prod p_i^{\left(\frac{a_i \times \#D}{2}\right)}$
+
+Observation: divisors pair hote hain $(d, X/d)$, product $X$. $\#D/2$ pairs → product = $X^{\#D/2}$. Wahi formula hai. $\#D$ odd ho toh X perfect square hai aur saare $a_i$ even, toh $a_i \cdot \#D$ hamesha even.
+
+Code ke liye factorisation with exponents and power function from your repo:
+
+```cpp
+// Fabricator/Maths/HowManySolutions.cpp
+map<long long, long long> prime_factors_with_pow(long long n){
+    map<long long, long long> val;
+    for(long long i=2ll; i*i<=n; i++){
+        if(n % i == 0){
+            long long cnt = 0;
+            while(n % i == 0){
+                cnt++;
+                n /= i;
+            }
+
+            val[i] = cnt;
+        }
+    }
+
+    if(n > 1){
+        val[n] = 1;
+    }
+
+    return val;
+}
+```
+
+```cpp
+// Fabricator/Maths/Exponentiation.cpp (MOD = 1000000007)
+long long mpow(long long base, long long exp) {
+    base %= MOD;
+    long long result = 1;
+    while (exp > 0) {
+        if (exp % 2 == 1) result = (result * base) % MOD;
+        base = (base * base) % MOD;
+        exp /= 2;
+    }
+    return result;
+}
+```
+
+↳ mpow / bin_pow = fast power (binary exponentiation, $a^b$ ko O(log b) me nikalna), yeh 2.2 me detail me dekhenge.
+
+```cpp
+/*
+  Problem: product of all divisors of n (n up to 10^12), modulo 10^9+7.
+  Formula: product of p^(a * D / 2) over the prime powers p^a of n, D = number of divisors.
+  Uses prime_factors_with_pow and mpow from your repo (shown below).
+*/
+long long product_of_divisors(long long n){
+    map<long long, long long> factors = prime_factors_with_pow(n);
+    long long d = 1;                       // number of divisors
+    for(auto pr: factors){
+        d *= (pr.second + 1);
+    }
+
+    long long ans = 1;
+    for(auto pr: factors){
+        // a * D is always even: if D is odd, every exponent a is even
+        long long exponent = pr.second * d / 2;
+        ans = (ans * mpow(pr.first, exponent)) % MOD;
+    }
+
+    return ans;
+}
+```
+
+(Brute force se check kiya n ≤ 3000. Product of divisors of 12 = 1728 = $12^3$.)
+
+## Power of a number in N!
+
+find largest power of x in N!     $N \le 10^{18}$
+                                  $X \le 10^{12}$
+
+find largest a such that
+$x^a | N!$ and $x^{a+1} \nmid N!$
+
+$x^a$ divides N! & $x^{a+1}$ does not divide N!
+
+Eg. N = 5, x = 6 ⇒ a = 1.
+
+($5! = 120 = 6 \cdot 20$ but $36 \nmid 120$.)
+
+Power of prime p in N!
+
+$\left\lfloor \frac{N}{p} \right\rfloor + \left\lfloor \frac{N}{p^2} \right\rfloor + \left\lfloor \frac{N}{p^3} \right\rfloor + \dots\dots + \left\lfloor \frac{N}{p^k} \right\rfloor$
+
+Intuition: $\lfloor N/p \rfloor$ numbers me kam se kam ek p hai. Unme se $\lfloor N/p^2 \rfloor$ me doosra p bhi hai, aur aise hi aage. Har level ek aur p add karta hai.
+
+![1 to 25, multiples of 5 and the extra 5 from 25](../../../assets/notes/2-1-number-theory/figC09_legendre25.png)
+*N = 25, p = 5 → 5 + 1 = 6 fives.*
+
+for instance if x = 10
+then we need $10^y | N!$
+↳ same as finding no. of zeroes in N!
+
+$10^y = 2^y 5^y$  |  $2^y | N!$ & $5^y | N!$
+
+We need to find largest y that satisfy both $2^y | N!$ and $5^y | N!$
+
+# of 2s in N! > # of 5s in N!
+So, 5s are the restriction here.
+Ans = largest power of 5 in N!
+
+Coming back to our problem
+$x^a | N!$ & $x^{a+1} \nmid N!$
+
+Lets $X = 2 . 3^3 = 54$
+
+$54^a | N!$
+
+![54^a divides N! splits into 2^a and (3^3)^a](../../../assets/notes/2-1-number-theory/figC08_split54.png)
+*har prime power ek bound deta hai a pe.*
+
+$f(N,p) = \left\lfloor \frac{N}{p} \right\rfloor + \left\lfloor \frac{N}{p^2} \right\rfloor + \dots\dots$
+
+$a \le f(N,2)$
+
+$3a \le f(N,3)$
+$a \le \left\lfloor \frac{f(N,3)}{3} \right\rfloor$
+
+∵ $f(N,3) \le f(N,2)$
+∴ $\left\lfloor \frac{f(N,3)}{3} \right\rfloor \le f(N,2)$
+        ↳ In this case this is the answer, but it'll not be always true for largest prime factor.
+
+Eg: $X = 2^4 . 3^3$
+
+$a \le \frac{f(N,2)}{4}$
+$a \le \frac{f(N,3)}{3}$
+
+We must always go through all the prime factors.
+$X = \prod p_i^{a_i}$
+
+$y = \min_i \left(\left\lfloor \frac{f(N, p_i)}{a_i} \right\rfloor\right)$ ✓
+
+$f(N,p) = \left\lfloor \frac{N}{p} \right\rfloor + \left\lfloor \frac{N}{p^2} \right\rfloor + \left\lfloor \frac{N}{p^3} \right\rfloor + \dots\dots$
+
+T.C = no. of non-zero terms in f(N,p) (terminates at first zero).
+
+first terms where we get zero:
+$p^y \ge N$
+$y \ge \log_p N$        T.C = $O(\log_p N)$
+
+T.C of $y = \min_i \left(\left\lfloor \frac{f(N, p_i)}{a_i} \right\rfloor\right)$
+
+Steps:
+Need to find prime factorization of x.   ↗ $O(\sqrt{x})$
+for each prime factor we comput f(N,p)
+We min of all     ↳ $O(\log_p N)$
+
+No. of prime factors = log x.
+$O(\sqrt{x} + \log x . \log N)$
+
+Code: $p^k$ directly nahi nikalna (overflow ho sakta hai). N ko baar baar p se divide karo, kyuki $\lfloor \lfloor N/p \rfloor / p \rfloor = \lfloor N/p^2 \rfloor$. Factorisation `prime_factors_with_pow` (product of divisors wale section me), `INF = 1e18`:
+
+```cpp
+/*
+  Problem: power of the prime p in n! (n up to 10^18): n/p + n/p^2 + n/p^3 + ...
+  Dividing n again and again avoids computing p^k, which could overflow.
+*/
+long long power_of_prime_in_factorial(long long n, long long p){
+    long long total = 0;
+    while(n > 0){
+        n /= p;
+        total += n;
+    }
+
+    return total;
+}
+
+/*
+  Problem: largest a such that x^a divides n!  (n <= 10^18, 2 <= x <= 10^12).
+  For every prime power p^k in x we need k * a <= power of p in n!, so take the minimum.
+*/
+long long largest_power_in_factorial(long long n, long long x){
+    map<long long, long long> factors = prime_factors_with_pow(x);
+    long long best = INF;
+    for(auto pr: factors){
+        best = min(best, power_of_prime_in_factorial(n, pr.first) / pr.second);
+    }
+
+    return best;
+}
+```
+
+(100! → 24 zeros ✓. N = 5, x = 6 → 1. N = $10^{18}$, x = 54 → 166666666666666660. Brute force check N ≤ 60, x ≤ 200 ✓. x = 1 ke liye koi largest a nahi hota.)
+
+## 1/a + 1/b = 1/n
+
+Ques: find no. of solutions of
+$\frac{1}{a} + \frac{1}{b} = \frac{1}{n}$        $n \in I - \{0\}$
+$1 \le n \le 10^6$                              $a,b \in I$.
+
+$\frac{1}{a} + \frac{1}{b} = \frac{1}{n}$
+
+⇒ $\frac{a+b}{ab} = \frac{1}{n}$
+
+⇒ $ab - na - nb = 0$
+
+$ab - na - nb + n^2 = n^2$
+
+$(a-n)(b-n) = n^2$
+  x      y      z
+
+$x | z$ & $y | z$
+x → divisors of Z.
+
+$a-n = d$   (some divisor d of Z)
+$a = d+n$
+$b = \left(\frac{n^2}{d} + n\right)$
+
+We compute divisors of $n^2$
+∵ $n^2 \le 10^{12}$ → its feasible. $O(\sqrt{n})$.
+We iterate over all divisors. & compute a & b and count integer soln.
+∵ a & b are I, -ive divisors should also be considered.
+
+Note: $d = -n$ pe $a = 0$ aur $b = 0$ dono aate hain, $\frac{1}{0}$ valid nahi. Wo ek solution hata do. Toh positive pairs = $D(n^2)$ aur all integer pairs = $2 D(n^2) - 1$. Aur $n = \prod p_i^{\alpha_i}$ toh $D(n^2) = \prod (2\alpha_i + 1)$ (har exponent double).
+
+Divisors nikalne ka sqrt wala loop (from your repo):
+
+```cpp
+// Fabricator/Maths/CreamPuff.cpp (num is the number)
+    vector<long long> divisors;
+    for(long long i=1; i*i<=num; i++){
+        if(num % i == 0){
+            divisors.push_back(i);
+            if(i * i != num){
+                divisors.push_back(num/i);
+            }
+        }
+    }
+```
+
+Counting with the formula above:
+
+```cpp
+/*
+  Problem: count integer pairs (a, b), a != 0, b != 0, with 1/a + 1/b = 1/n.
+  (a - n)(b - n) = n^2, so every divisor d of n^2 gives one pair; n^2 has prod(2*alpha + 1) divisors.
+  positive_only = true counts a, b > 0. Otherwise negative divisors count too, except d = -n (a = b = 0).
+*/
+long long count_reciprocal_solutions(long long n, bool positive_only){
+    map<long long, long long> factors = prime_factors_with_pow(n);
+    long long divisors_of_square = 1;
+    for(auto pr: factors){
+        divisors_of_square *= (2 * pr.second + 1);
+    }
+
+    return positive_only ? divisors_of_square : 2 * divisors_of_square - 1;
+}
+```
+
+(n = 2: $(a-2)(b-2) = 4$ → positive $(3,6), (4,4), (6,3)$ = 3, negatives $d = -1, -4$ → 2, $d = -2$ invalid. Total 5. n = 1, 2, 4, 6, 12 → positive 1, 3, 5, 9, 15. Brute force scan n ≤ 12 me match. n = $10^6$ → 169 positive.)
+
+Your `HowManySolutions.cpp` is the same idea (exponents double, multiply (exp+1), `2*ans - 1`) with the decimal-digit variant.
+
+## Harmonic Lemma based summation optimisation
+
+Find $\left\lfloor \frac{N}{1} \right\rfloor^3 + \left\lfloor \frac{N}{2} \right\rfloor^3 + \left\lfloor \frac{N}{3} \right\rfloor^3 + \dots\dots + \left\lfloor \frac{N}{N} \right\rfloor^3$
+
+$N \le 10^{12}$
+Brute for $O(N)$ → iterate over all N & compute the terms.
+
+for. eg: N = 12
+
+$\left\lfloor \frac{12}{1} \right\rfloor = 12$   $\left\lfloor \frac{12}{2} \right\rfloor = 6$   $\left\lfloor \frac{12}{3} \right\rfloor = 4$   $\left\lfloor \frac{12}{4} \right\rfloor = 3$
+
+$\left\lfloor \frac{12}{5} \right\rfloor = 2$   $\left\lfloor \frac{12}{6} \right\rfloor = 2$   $\left\lfloor \frac{12}{7} \right\rfloor = 1$   $\left\lfloor \frac{12}{8} \right\rfloor = 1$
+
+$\left\lfloor \frac{12}{9} \right\rfloor = 1$   $\left\lfloor \frac{12}{10} \right\rfloor = 1$   $\left\lfloor \frac{12}{11} \right\rfloor = 1$   $\left\lfloor \frac{12}{12} \right\rfloor = 1$
+
+No. of distinct values = 6.
+$f(x) = \left\lfloor \frac{N}{x} \right\rfloor$ → no. of values
+
+Notice: values repeat ho rahi hain (2, 2 aur phir saare 1). Toh ek ek term compute karne ki jagah, same value wale poore block ko ek saath handle kar sakte hain.
+
+![Staircase of floor(12/x), 6 blocks](../../../assets/notes/2-1-number-theory/figC10_staircase12.png)
+*floor(12/x) → 12, 6, 4, 3, 2, 1. Har rang ka block = same value.*
+
+Harmonic Lemma: The no. of values $\lfloor \frac{N}{x} \rfloor$ can take is bounded by $2\sqrt{N}$ & $O(\sqrt{N})$.
+
+Proof (intuition):
+- $x \le \sqrt{N}$ → at most $\sqrt{N}$ choices of x, so at most $\sqrt{N}$ values.
+- $x > \sqrt{N}$ → value $\lfloor N/x \rfloor < \sqrt{N}$, so values sirf $0..\sqrt{N}$ me, again at most $\sqrt{N}$.
+
+Total $\le 2\sqrt{N}$.
+
+![Distinct values of floor(N/x) vs 2 sqrt(N)](../../../assets/notes/2-1-number-theory/figC12_distinct_vs_2sqrtN.png)
+*count hamesha 2 sqrt(N) ke just neeche.*
+
+To iterate efficiently over the distinct values of $\lfloor \frac{N}{x} \rfloor$ for any i we need to find max j such that
+$\lfloor \frac{N}{i} \rfloor = \lfloor \frac{N}{j} \rfloor$      j → max value.
+
+$j = \left\lfloor \frac{n}{\left\lfloor \frac{n}{i} \right\rfloor} \right\rfloor$
+
+(Why: $q = \lfloor n/i \rfloor$ ho toh sabse bada x jiske liye $\lfloor n/x \rfloor \ge q$ wo $\lfloor n/q \rfloor$ hai.)
+
+```cpp
+for (int i= 1, la; i <= n ; i= la+1) {
+    la= n/ (n/i) ;
+    // process range i <= x <= la
+}
+```
+
+value of $\lfloor \frac{n}{i} \rfloor$ remains same in [i, la]
+$O(\sqrt{n})$
+as the loop iterates over distinct $\lfloor \frac{n}{i} \rfloor$ values.
+And there are $O(\sqrt{n})$ distinct values possible.
+
+![Blocks for N = 12: i = 7 gives la = 12, i = 5 gives la = 6](../../../assets/notes/2-1-number-theory/figC11_blocks12.png)
+*top row x, neeche floor(12/x). Equal values = ek loop step.*
+
+code of org' problem:
+```cpp
+ans = 0;
+for (int i= 1, la; i <= n; i= la+1) {
+    la= n/ (n/i);
+    ans += (cube (n/i)) * (la-i+1);
+}
+```
+
+Note: $n$ up to $10^{12}$ hai toh `i`, `la` `long long` hone chahiye. Aur answer bahut bada hai (pehla term hi $10^{36}$), toh mod $10^9+7$ karna padega.
+
+Your version, `m` = power (m = 3 for cubes):
+
+```cpp
+// Fabricator/Maths/HardFloor.cpp
+long long bin_pow(long long base, long long exp){
+    long long ans = 1;
+
+    base = base % MOD;
+
+    while(exp){
+        if(exp & 1){
+            ans = (ans * base) % MOD;
+        }
+
+        base = (base * base) % MOD;
+        exp >>= 1;
+    }
+
+    return ans;
+}
+```
+
+↳ mpow / bin_pow = fast power (binary exponentiation, $a^b$ ko O(log b) me nikalna), yeh 2.2 me detail me dekhenge.
+
+```cpp
+// Fabricator/Maths/HardFloor.cpp (inside solve, n and m already read)
+    long long ans = 0;
+    for(long long i=1, la; i<=n; i=la+1){
+        long long val = n/i;
+        la = n/val;
+
+        long long calc_val = ((((la - i) + MOD) % MOD) + 1) % MOD;
+        calc_val = (calc_val * bin_pow(val, m)) % MOD;
+        ans = (ans + calc_val) % MOD;
+    }
+```
+
+Har block pe (block length) × (value)$^m$. Sample (4, 2) → 22, ($10^{11}$, $10^8$) → 728180943 ✓. m = 3 pe brute force se n ≤ 3000 tak match. N = 12 → 6 iterations, $N = 10^{12}$ → ~$2 \times 10^6$ iterations.
+
+## Quick revision
+
+- Prime test: factor ≤ √N → O(√N), handle N &lt; 2.
+- Divisors: loop i ≤ √N, push i and N/i (not twice if i*i == N). At most 2√N.
+- Prime factorisation: divide out i ≤ √N, leftover > 1 is prime. Many queries → sp[] sieve.
+- Sieve: mark multiples of each prime, start from i*i, O(n log log n).
+- Segmented sieve: phase 1 primes ≤ $\sqrt{b}$, phase 2 cut multiples in [a,b], slot `x-a`, first multiple = $\lceil a/p \rceil p$, skip p itself, 1 not prime. T.C: $O((b-a)\log\log b)$.
+- sp[n] = smallest prime factor → $pf(n) = sp(n) \cdot pf(n/sp(n))$. Build $O(N\log\log N)$, query $O(\log n)$.
+- #divisors = $\prod (1+\alpha_i)$, sum = $\prod \frac{p_i^{\alpha_i+1}-1}{p_i-1}$ (product!).
+- $\phi(n) = n \prod (1-1/p)$; $\phi(p) = p-1$; $\phi(p^k) = p^k - p^{k-1}$; multiplicative if gcd = 1. Sieve: `phi[j] -= phi[j]/p`.
+- Product of divisors = $\prod p_i^{a_i \cdot \#D/2}$ = $X^{\#D/2}$.
+- Power of x in N!: $f(N,p) = \sum \lfloor N/p^k \rfloor$, answer $\min_i \lfloor f(N,p_i)/a_i \rfloor$. Trailing zeros → p = 5. T.C: $O(\sqrt{x} + \log x \log N)$.
+- $\frac1a + \frac1b = \frac1n$ → $(a-n)(b-n) = n^2$ → divisors of $n^2$ ($D = \prod(2\alpha_i+1)$), all integer pairs $2D - 1$.
+- $\lfloor N/x \rfloor$ has ≤ $2\sqrt{N}$ values; `for (i=1; i<=n; i=la+1) la = n/(n/i);` (long long, mod).
+
+## Practice problems
+
+**AtCoder**
+
+- [ABC144 C](https://atcoder.jp/contests/abc144/tasks/abc144_c)
+- [ABC170 D](https://atcoder.jp/contests/abc170/tasks/abc170_d)
+- [ABC177 E](https://atcoder.jp/contests/abc177/tasks/abc177_e)
+- [ABC180 C](https://atcoder.jp/contests/abc180/tasks/abc180_c)
+- [ABC215 D](https://atcoder.jp/contests/abc215/tasks/abc215_d)
+
+**Codeforces**
+
+- [Codeforces 230B](https://codeforces.com/contest/230/problem/B)
+
+**Maang (AlgoZenith)**
+
+- [Eulers Phi Function](https://maang.in/problems/Eulers-Phi-Function-227)
+- [Hard Floor](https://maang.in/problems/Hard-Floor-235)
+- [How Many Solutions](https://maang.in/problems/How-Many-Solutions-237)
+- [Number of Divisors AZ101](https://maang.in/problems/Number-of-Divisors-AZ101-322)
+- [Paired Cubes](https://maang.in/problems/Paired-Cubes-229)
+- [Prime Check AZ101](https://maang.in/problems/Prime-Check-AZ101-323)
+- [Sieve of Eratosthenes Revisited](https://maang.in/problems/Sieve-of-Eratosthenes-Revisited-234)
+
+### Problem ladder
 
 <Ladder topic="2.1" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card (the list includes earlier topics' cards), write the property you checked, then reveal the answer. Do not solve the problems here: deciding is the exercise. Four items are answered by the cards of topics 0.4, 1.3, 1.4 and 1.5.
-
-<Drill topic="2.1" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the decision.
-
-<LookalikePairs topic="2.1" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer.
-
-<SelfTest topic="2.1" />
-
-## 13. Checkpoint
-
-Three problems in 120 minutes. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items in Section 10. After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="2.1" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen against the tools you already have. The same entries appear in the Recognition Handbook, grouped by weak signal across all topics.
-
-<DecisionMapUpdate topic="2.1" />

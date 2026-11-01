@@ -45,12 +45,20 @@ text = text.replace(/!\[(.*?)\]\(([^)\s]+)\)/g, (m, alt, src) => {
 text = text.replace(/^# .*\n+/, '');
 // Markdown reads `A[i](i-L+1)` as a link. Outside code fences and math, put a multiplication dot between the two.
 let inFence = false;
+let inMath = false;
 text = text
   .split('\n')
   .map((line) => {
     if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
     if (inFence) return line;
-    return line.replace(/\[([^\][]{1,16})\]\((?!https?:|#|\.\.\/|\/)([^)]*)\)/g, '[$1]·($2)');
+    if (/^\s*\$\$\s*$/.test(line)) { inMath = !inMath; return line; }
+    if (inMath) return line;
+    line = line.replace(/\[([^\][]{1,16})\]\((?!https?:|#|\.\.\/|\/)([^)]*)\)/g, '[$1]·($2)');
+    // MDX reads { } and a bare < as code. Escape them in prose; leave inline code and $math$ alone.
+    return line
+      .split(/(`[^`\n]*`|\$\$[^\n]*?\$\$|\$[^$\n]*\$)/)
+      .map((part, i) => (i % 2 ? part : part.replace(/\{/g, '\\{').replace(/\}/g, '\\}').replace(/<(?![/a-zA-Z!])/g, '&lt;').replace(/<(?=[a-zA-Z])/g, '&lt;')))
+      .join('');
   })
   .join('\n');
 if (!/^## Practice problems/m.test(text)) text = `${text.trimEnd()}\n\n## Practice problems\n`;

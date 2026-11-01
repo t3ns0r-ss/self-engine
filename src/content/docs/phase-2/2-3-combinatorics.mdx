@@ -4,502 +4,1227 @@ sidebar:
   order: 16
 topic: "2.3"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="2.3" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. On a grid, walk from the corner $(0, 0)$ to $(1000, 1000)$ with steps one unit right or one unit up. How many different walks are there, modulo $10^9 + 7$?
+Counting: kitne tareeko se kuch ho sakta hai, aur answer mod ke saath. Isme:
 
-Brute force (topic 0.5) lists the walks one by one, but there are about $2 \cdot 10^{600}$ of them. Counting needs an argument instead of a list. Every walk has exactly 2000 steps, 1000 of them up, and a walk is fixed by choosing *which* of the 2000 steps go up. So the number of walks is the number of ways to choose 1000 positions out of 2000, the binomial coefficient $\binom{2000}{1000}$. Modulo $10^9 + 7$ it is $72\,475\,738$, computed from a table of factorials and the modular inverses of topic 2.2.
+→ Counting rules (sum / product), permutations (order matter karta hai), combinations (order nahi), nCr ($^nC_r$ = n me se r choose karna)
+→ Lines, circles, chessboard wale counting problems
+→ Inclusion-Exclusion Principle (overlap ko ek hi baar ginna), stars and bars (linear equation ke solutions ginna)
+→ nCr ko code karna (factorials, Pascal table, inverse factorials mod p ke saath)
+→ Derangement (koi bhi apni original jagah pe nahi)
 
-This topic is about counting without listing. Independent choices multiply and separate cases add. Choosing positions gives binomial coefficients, which a precomputed table answers in $O(1)$ each. Splitting identical items among people is a choice of positions for separators. When the objects must avoid several bad properties at once, an alternating sum over the bad properties counts them exactly. And when the objects look complicated, a one-to-one correspondence with a simpler set (a bijection) often turns them into one binomial coefficient.
+Inverse aur fast power 2.2 me dekh chuke ho, nCr coding me wahi use hoga.
 
-## 2. Prerequisites and scope
+## Table of contents
 
-### What you need
+- Combinatorics → sum rule, product rule
+- Permutations → order matter karta hai
+- Combinations → nCr, Pascal rule
+- Lines, circles and chessboard → geometry counting
+- Inclusion-Exclusion Principle → overlap sets ki counting
+- Counting solutions for Linear Equations → stars and bars
+- Coding math stuff → factorials, nCr tables, inverse factorials
+- Derangement → koi apni jagah pe nahi
 
-<WhatYouNeed topic="2.3" />
+## Combinatorics
 
-### What this topic does not cover
+Counting Principles:
 
-- Expected values and probability as a sum over outcomes (linearity of expectation). Covered in topic 2.4.
-- Counting with a table of partial answers built step by step (dynamic programming). Covered in Phase 3.
-- Lucas's theorem (binomial coefficients modulo a small prime), Catalan numbers in general, Burnside's lemma and generating functions. They are not part of this course.
+Rules of sum & products
+         OR        AND
 
-## 3. Definitions
+Eg: Class : 4 girls & 7 boys.
 
-- The **product rule** and the **sum rule** are the two basic counting principles of Theorem 2.3.1: independent choices multiply, disjoint cases add.
-- The **factorial** $n! = 1 \cdot 2 \cdots n$, with $0! = 1$, counts the permutations of $n$ different elements (topic 0.5).
-- The **binomial coefficient** $\binom{n}{r}$ ("$n$ choose $r$") is the number of subsets of size $r$ of a set of $n$ elements, for $0 \le r \le n$; it is 0 for $r < 0$ or $r > n$. Example: $\binom{5}{2} = 10$.
-- The **multinomial coefficient** $\binom{n}{c_1, \dots, c_k} = \frac{n!}{c_1! \cdots c_k!}$, with $c_1 + \dots + c_k = n$, counts the arrangements of a list with $c_i$ copies of value $i$. Example: MISSISSIPPI has $\frac{11!}{1!\,4!\,4!\,2!} = 34\,650$ arrangements.
-- **Stars and bars** counts the ways to split $n$ identical items into $k$ distinct groups (Theorem 2.3.5).
-- **Inclusion–exclusion** counts the objects with none of several properties by an alternating sum over the sets of properties (Theorem 2.3.6).
-- A **bijection** between two sets is a correspondence that pairs every element of one with exactly one element of the other; two sets in bijection have the same size. A **lattice path** is a walk on integer points with unit steps right or up.
+i) Choose one CR:
 
-## 4. Theory and proofs
-
-### 4.1 Product and sum rules
-
-**Theorem 2.3.1 (product and sum rules).**
-1. If an object is built by a sequence of $k$ choices, and the $i$-th choice always has $m_i$ options whatever the earlier choices were, then there are $m_1 m_2 \cdots m_k$ objects (each from exactly one sequence of choices).
-2. If a set is split into disjoint parts, its size is the sum of the sizes of the parts.
-3. Consequences: there are $m^k$ sequences of length $k$ over $m$ symbols; $n!$ orders of $n$ different elements; and $n (n-1) \cdots (n-r+1) = \frac{n!}{(n-r)!}$ ordered selections of $r$ different elements out of $n$.
-
-:::tip[In plain words]
-When an object is built by a sequence of choices and each choice has the same number of options whatever came before, multiply the numbers of options. When a set splits into separate cases, add their sizes.
-:::
-
-**A tiny instance.** Strings of length 3 over $\{a, b, c\}$ with no two equal neighbours: $3 \cdot 2 \cdot 2 = 12$.
-
-**Proof.**
-1. Part 1, by induction on $k$. For $k = 1$ there are $m_1$ objects.
-2. For $k > 1$, split the objects by their first choice (sum rule): each of the $m_1$ first choices is followed by $m_2 \cdots m_k$ completions, by induction.
-3. So the total is $m_1 \cdot m_2 \cdots m_k$.
-4. Part 2. Each element is counted in exactly one part.
-5. Part 3. Apply part 1: $m$ options at each of $k$ positions; $n, n-1, \dots, 1$ options for the first, second, … element; and $n, \dots, n - r + 1$ for the first $r$. $\square$
-
-:::note[This proof needs]
-1. The *number* of options at each step must not depend on earlier choices, even if the options themselves do. "Choose a different colour from the previous one" is fine (always $m - 1$); "choose a colour not used before by anyone" is fine; "choose a colour that keeps the total even" may not be.
-2. Each object must come from exactly one sequence of choices. If the same object can be built in two orders, the product counts it twice.
-:::
-
-<TheoremCode unit="2.3/thm-1" />
-
-The first line is the instance; the second line shows the other consequences of part 3.
-
-
-### 4.2 Binomial coefficients
-
-**Theorem 2.3.2 (binomial coefficients).** For $0 \le r \le n$:
-1. $\binom{n}{r} = \frac{n!}{r!\,(n-r)!}$.
-2. $\binom{n}{r} = \binom{n}{n-r}$.
-3. (Pascal's rule) $\binom{n}{r} = \binom{n-1}{r-1} + \binom{n-1}{r}$ for $1 \le r \le n - 1$.
-4. $\binom{n}{0} + \binom{n}{1} + \dots + \binom{n}{n} = 2^n$.
-
-:::tip[In plain words]
-The number of ways to choose r of n different items is n! / (r! (n − r)!). It is symmetric in r and n − r, each entry is the sum of the two above it in Pascal's triangle, and a row sums to 2^n.
-:::
-
-**A tiny instance.** $\binom{6}{3} = \frac{720}{6 \cdot 6} = 20 = \binom{5}{2} + \binom{5}{3} = 10 + 10$.
-
-**Proof.**
-1. Part 1. Count the ordered selections of $r$ elements in two ways. By Theorem 2.3.1 there are $\frac{n!}{(n-r)!}$ of them.
-2. Each subset of size $r$ gives exactly $r!$ ordered selections (its orders), so $\binom{n}{r} \cdot r! = \frac{n!}{(n-r)!}$.
-3. Part 2. Choosing the $r$ elements to take is the same as choosing the $n - r$ to leave.
-4. Part 3. Split the subsets of size $r$ by whether they contain element $n$ (sum rule): those that do are an element $n$ plus $r - 1$ of the other $n - 1$; those that don't are $r$ of the other $n - 1$.
-5. Part 4. Every subset has some size $r$; there are $2^n$ subsets in all (Theorem 0.5.2). $\square$
-
-:::note[This proof needs]
-1. $0 \le r \le n$; outside that range define $\binom{n}{r} = 0$ and test the range before using the formula.
-2. The elements are distinguishable. Choosing $r$ of $n$ *identical* items has only one outcome.
-:::
-
-<TheoremCode unit="2.3/thm-2" />
-
-
-
-### 4.3 Binomial coefficients modulo a prime
-
-**Theorem 2.3.3 (factorial tables).** Let $p$ be a prime and $N < p$. Compute $f_i = i! \bmod p$ for $0 \le i \le N$, then $g_N = f_N^{\,p-2} \bmod p$ and $g_{i-1} = g_i \cdot i \bmod p$ for $i = N, \dots, 1$. Then $g_i = (i!)^{-1} \bmod p$, and for $0 \le r \le n \le N$,
-$\binom{n}{r} \equiv f_n \, g_r \, g_{n-r} \pmod p$.
-The tables take $O(N + \log p)$ steps, and each binomial coefficient then takes $O(1)$.
-
-:::tip[In plain words]
-Modulo a prime p larger than N, build the factorials and their inverses up to N once. Every binomial coefficient is then three table reads and two multiplications.
-:::
-
-**A tiny instance.** $\binom{2000}{1000} \bmod (10^9 + 7) = f_{2000} \, g_{1000} \, g_{1000} = 72\,475\,738$.
-
-**Proof.**
-1. Since $N < p$, no factor of $i!$ is a multiple of $p$, so $p \nmid i!$ (Euclid's lemma) and the inverse exists (Theorem 2.2.3).
-2. $g_N$ is that inverse, by Fermat's formula.
-3. For the step down: $(i-1)! = i! / i$, so $((i-1)!)^{-1} = (i!)^{-1} \cdot i$.
-4. Then $\binom{n}{r} = n! \cdot (r!)^{-1} \cdot ((n-r)!)^{-1}$ is a fraction with denominator not divisible by $p$, so Theorem 2.2.4 gives its residue. $\square$
-
-:::note[This proof needs]
-1. $p$ is prime and every $n$ used is below $p$. With $n \ge p$, $n!$ is a multiple of $p$ and the formula breaks (that case needs Lucas's theorem, outside this course).
-2. The tables fit in memory: $N$ up to a few million.
-3. For one coefficient with a huge $n$ and a small $r$ (say $n = 10^9$, $r \le 10^6$), use $\binom{n}{r} = \frac{n (n-1) \cdots (n-r+1)}{r!}$ with $r$ factors and one inverse.
-:::
-
-<TheoremCode unit="2.3/thm-3" />
-
-The second example is checked against Pascal's triangle for all $n \le 200$.
-
-
-### 4.4 Arrangements with repeated values
-
-**Theorem 2.3.4 (multinomial coefficients).** A list of $n$ items with $c_i$ copies of value $i$ ($c_1 + \dots + c_k = n$) has $\frac{n!}{c_1! \, c_2! \cdots c_k!}$ different arrangements. Equivalently, it is $\binom{n}{c_1} \binom{n - c_1}{c_2} \cdots$.
-
-:::tip[In plain words]
-A list with c1 copies of the first value, c2 of the second, and so on, can be arranged in n! / (c1! c2! …) different ways, since swapping equal copies changes nothing.
-:::
-
-**A tiny instance.** The arrangements of AAB are AAB, ABA, BAA: $\frac{3!}{2!\,1!} = 3$. MISSISSIPPI has $\frac{11!}{1!\,4!\,4!\,2!} = 34\,650$.
-
-**Proof.**
-1. Label the copies so that all $n$ items differ: $n!$ arrangements.
-2. Each arrangement of the unlabelled list comes from exactly $c_1! \cdots c_k!$ labelled ones (permute the labels within each value), so the count is $n!$ divided by that product.
-3. For the second form, choose the $c_1$ positions of value 1, then $c_2$ of the remaining positions for value 2, and so on (product rule). $\square$
-
-:::note[This proof needs]
-1. Copies of a value are indistinguishable, and different values are distinguishable.
-2. Modulo a prime, divide with inverse factorials (Theorem 2.3.3): $n < p$.
-:::
-
-<TheoremCode unit="2.3/thm-4" />
-
-
-
-### 4.5 Stars and bars
-
-**Theorem 2.3.5 (stars and bars).** Let $n \ge 0$ and $k \ge 1$.
-1. The number of solutions of $x_1 + \dots + x_k = n$ in integers $x_i \ge 0$ is $\binom{n + k - 1}{k - 1}$.
-2. With $x_i \ge 1$ for all $i$ (and $n \ge k$), it is $\binom{n - 1}{k - 1}$.
-3. With lower bounds $x_i \ge l_i$, substitute $y_i = x_i - l_i$: it is $\binom{n - L + k - 1}{k - 1}$ with $L = l_1 + \dots + l_k$ (0 if $n < L$).
-
-:::tip[In plain words]
-Splitting n identical items among k labelled groups is placing k − 1 bars among n stars, which is a choice of positions, so there are C(n + k − 1, k − 1) ways. Lower bounds are subtracted first.
-:::
-
-**A tiny instance.** 7 identical candies for 3 children: $\binom{9}{2} = 36$ ways, or $\binom{6}{2} = 15$ if every child gets at least one.
-
-**Proof.**
-1. Write a solution as a row of $n$ stars and $k - 1$ bars: $x_1$ stars, a bar, $x_2$ stars, a bar, …, $x_k$ stars.
-2. Every row of $n + k - 1$ symbols with exactly $k - 1$ bars arises from exactly one solution, and back: this is a bijection.
-3. The rows are fixed by the positions of the bars, $\binom{n + k - 1}{k - 1}$ choices. This is part 1.
-4. Part 2. Substitute $y_i = x_i - 1 \ge 0$, a bijection onto solutions of $y_1 + \dots + y_k = n - k$; apply part 1.
-5. Part 3. The same substitution with $y_i = x_i - l_i$. $\square$
-
-:::note[This proof needs]
-1. The items are identical and the groups are distinguishable (labelled). Identical groups (partitions of a number) are a different, harder count.
-2. Only lower bounds shift away. Upper bounds $x_i \le u_i$ need inclusion–exclusion (Section 4.6).
-:::
-
-<TheoremCode unit="2.3/thm-5" />
-
-
-
-### 4.6 Inclusion–exclusion
-
-**Theorem 2.3.6 (inclusion–exclusion).** Let $U$ be a finite set and $A_1, \dots, A_m$ subsets of it ("bad properties"). For $S \subseteq \{1, \dots, m\}$ let $N(S)$ be the number of elements in every $A_i$ with $i \in S$ (with $N(\emptyset) = |U|$). Then the number of elements in none of the $A_i$ is
-$\sum_{S} (-1)^{|S|} N(S)$,
-the sum over all $2^m$ sets $S$. For two sets this is $|U| - |A_1| - |A_2| + |A_1 \cap A_2|$.
-
-:::tip[In plain words]
-To count the objects with none of several bad properties, start with all of them, subtract those with each property, add back those with two, subtract those with three, and so on. Each object with exactly t bad properties is then counted once if t = 0 and zero times otherwise.
-:::
-
-**A tiny instance.** Among $1, \dots, 100$, the numbers divisible by 2, 3 or 5 are $50 + 33 + 20 - 16 - 10 - 6 + 3 = 74$ (each $N(S)$ is $\lfloor 100 / \operatorname{lcm} \rfloor$, Theorem 0.4.2), so 26 are divisible by none. And the permutations of 4 elements with no fixed point: $\sum_{j=0}^{4} (-1)^j \binom{4}{j} (4 - j)! = 24 - 24 + 12 - 4 + 1 = 9$.
-
-**Proof.**
-1. Take an element $x$ that lies in exactly $t$ of the sets. It is counted in $N(S)$ exactly when $S$ is a subset of those $t$ indices.
-2. So its total contribution is $\sum_{j=0}^{t} (-1)^j \binom{t}{j}$.
-3. For $t = 0$ this is 1.
-4. For $t \ge 1$ it is $(1 - 1)^t = 0$, by the binomial expansion of $(1 + y)^t = \sum_j \binom{t}{j} y^j$ with $y = -1$; the expansion itself follows from choosing, in each of the $t$ factors, either $1$ or $y$ (product rule).
-5. So exactly the elements in none of the sets are counted, once each. $\square$
-
-:::note[This proof needs]
-1. $N(S)$ must be computable for every set $S$ of properties, usually by a formula (multiples of a product, stars and bars with some lower bounds raised).
-2. $2^m$ terms: $m$ up to about 20 (bitmasks, topic 0.5), or fewer distinct values of $N(S)$ when it depends only on $|S|$ (then the sum is over $j = |S|$ with $\binom{m}{j}$ sets each).
-3. Signs alternate; modulo $p$ add $p$ before reducing a subtraction.
-:::
-
-<TheoremCode unit="2.3/thm-6" />
-
-
-
-### 4.7 Counting by a bijection
-
-**Theorem 2.3.7 (lattice paths).** The number of lattice paths from $(0, 0)$ to $(a, b)$ with $a, b \ge 0$, using steps $(1, 0)$ and $(0, 1)$, is $\binom{a + b}{a}$. Paths from $(x_1, y_1)$ to $(x_2, y_2)$ number $\binom{(x_2 - x_1) + (y_2 - y_1)}{x_2 - x_1}$ when both differences are non-negative, and 0 otherwise.
-
-:::tip[In plain words]
-A path with a steps right and b steps up is fixed by choosing which of its a + b steps go right, so there are C(a + b, a) of them. This is a bijection between paths and subsets.
-:::
-
-**A tiny instance.** From $(0, 0)$ to $(2, 2)$: $\binom{4}{2} = 6$ paths (RRUU, RURU, RUUR, URRU, URUR, UURR).
-
-**Proof.**
-1. Every such path has exactly $a + b$ steps, $a$ of them to the right.
-2. Map a path to the set of positions (among $1, \dots, a + b$) of its right steps.
-3. Different paths give different sets, and every set of $a$ positions comes from the path that steps right exactly there: a bijection with the subsets of size $a$.
-4. Shifting the start to the origin gives the second form. $\square$
-
-:::note[This proof needs]
-1. Only the two step types allowed, each of length 1. Paths that must avoid cells need inclusion–exclusion over the forbidden cells, or a step-by-step table (Phase 3).
-2. The general method: find a bijection between the objects and a set you can count, and prove both directions (every object maps somewhere, and every target comes from exactly one object).
-:::
-
-<TheoremCode unit="2.3/thm-7" />
-
-
-
-## 5. Recognition Cards
-
-<Cards topic="2.3" />
-
-## 6. Templates
-
-Five short functions, one for each card. The brute forces list the objects one by one (by recursion, topic 0.5) or use Pascal's rule on small values.
-
-### Binomial coefficients from factorial tables (Theorem 2.3.3)
-
-<CodeSnippet unit="2.3/binom-table" />
-
-**How it works.** `fact[i]` is $i! \bmod p$ and `inv[i]` its inverse. Only `inv[N]` needs Fermat's formula; the others follow from $((i-1)!)^{-1} = (i!)^{-1} \cdot i$, walking down. Each query is then three table reads and two multiplications.
-
-**Alternative formulation.** For a single coefficient, multiply $n (n-1) \cdots (n-r+1)$ and divide by $r!$ with one inverse: $O(r)$ and no tables, which also works when $n$ is huge but $r$ is small.
-
-### Distinct values under upper limits (Theorem 2.3.1)
-
-<CodeSnippet unit="2.3/distinct-limits" />
-
-**How it works.** Sort the limits and fill the positions from the smallest limit up. When position $i$ (0-based) is filled, the $i$ values already used are all at most $c_i$ (their limits were smaller), so exactly $c_i - i$ values remain: the number of options does not depend on *which* values were used, and the product rule applies.
-
-**Alternative formulation.** Without sorting, the number of options at a position would depend on which earlier values fall below its limit, and the product rule would not apply. Sorting is what makes the count of options fixed.
-
-### Stars and bars with lower bounds (Theorem 2.3.5)
-
-<CodeSnippet unit="2.3/stars-bars" />
-
-**How it works.** Subtracting the lower bounds leaves $n - L$ identical items for $k$ groups without bounds, so the answer is $\binom{n - L + k - 1}{k - 1}$, or 0 when $L > n$.
-
-**Alternative formulation.** Count the groups one at a time with a table indexed by the number of items used so far; that also handles upper bounds, but it is the Phase 3 method and costs $O(nk)$.
-
-### Numbers divisible by none of a list (Theorem 2.3.6)
-
-<CodeSnippet unit="2.3/none-divisible" />
-
-**How it works.** For every set $S$ of the given numbers (a bitmask), the numbers in $[1, N]$ divisible by all of them are the multiples of their LCM, $\lfloor N / \operatorname{lcm}(S) \rfloor$ (Theorem 0.4.2). Adding these with the sign $(-1)^{|S|}$ counts the numbers divisible by none.
-
-**Alternative formulation.** Recurse over the numbers, carrying the current LCM and sign, and stop a branch as soon as the LCM exceeds $N$; it does the same sum but skips the sets whose terms are 0.
-
-### Lattice paths through a point (Theorem 2.3.7)
-
-<CodeSnippet unit="2.3/paths-through" />
-
-**How it works.** A path through $(x, y)$ is a path from $(0, 0)$ to $(x, y)$ followed by a path from $(x, y)$ to $(a, b)$, and every pair of halves gives one such path: by the product rule the count is $\binom{x + y}{x} \cdot \binom{(a - x) + (b - y)}{a - x}$. `paths` returns 0 when a difference is negative.
-
-**Alternative formulation.** The paths that *avoid* $(x, y)$ are the total minus the paths through it; with several points to avoid, inclusion–exclusion over the points sorted by position gives the count.
-
-## 7. Bug catalogue
-
-Counting bugs give numbers that look plausible, and small samples often hide them. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
-
-### Bug: the inverse factorial step multiplies by $i - 1$
-
-Template: binomial coefficients from factorial tables.
-
-```cpp
-for (int i = N; i >= 1; i--) inv[i - 1] = inv[i] * (i - 1) % MOD;
+```
+        G → 4 ways
+CR <    or            + (OR)    4+7 = 11
+        B → 7 ways
 ```
 
-Input: `1`, then `3 0`.
+![Sum rule: one CR](../../../assets/notes/2-3-combinatorics/figA06_sum_rule.png)
 
-Wrong output `0`, correct output `1`. The step from $(i!)^{-1}$ to $((i-1)!)^{-1}$ multiplies by $i$, not $i - 1$; with $i - 1$ the last step writes $\operatorname{inv}[0] = \operatorname{inv}[1] \cdot 0 = 0$, and every $\binom{n}{0}$ and $\binom{n}{n}$ becomes 0.
+*Girl OR boy → add.*
 
-**Fix:** $(i - 1)! = i! / i$, so its inverse is $(i!)^{-1} \cdot i$ (Theorem 2.3.3). Test $\binom{n}{0}$ and $\binom{n}{n}$ explicitly.
+ii) Choose one head boy & one head girl.
 
-### Bug: filling the positions in input order
+One head boy → 7 options.
+(AND)
+One head girl → 4 options
 
-Template: distinct values under upper limits. The `sort` is removed.
+7 x 4 = 28 ways.
 
-Input: `2`, then `7 3`.
+![All boy-girl pairs](../../../assets/notes/2-3-combinatorics/figA07_product_grid.png)
 
-Wrong output `14`, correct output `18`. Taking the limit 7 first gives 7 options, but the number of options for the second position (limit 3) now depends on whether the first value was at most 3: it is 2 or 3. The program assumes 2 every time, $7 \cdot 2 = 14$. Sorted, the counts are $3 \cdot 6 = 18$.
+*Har box ek pair. 7 columns × 4 rows = 28.*
 
-**Fix:** sort so that every used value lies below the current limit; then the number of options is the same for every earlier choice (Theorem 2.3.1, note 1).
+Eg:
 
-### Bug: counting the current position as used
+Box mein balls: blue 1-4, red 1-3, yellow 1-2.
 
-Template: distinct values under upper limits.
+i) # of ways to select 1 ball.
 
-```cpp
-long long options = c[i] - (i + 1);
+```
+      B → 4
+1 <  (OR) R → 3      → 4+3+2 = 9
+      (OR) Y → 2
 ```
 
-Input: `1`, then `4`.
+ii) # of ways to select 1 blue & 1 yellow.
 
-Wrong output `3`, correct output `4`. Before position $i$ (0-based) is filled, only $i$ values are taken.
+one B → 4
+& (AND).             4 x 2 = 8
+one Y → 2
 
-**Fix:** with 0-based indices, $c_i - i$ options. Check the formula on a single position.
+![Balls in a box](../../../assets/notes/2-3-combinatorics/figA08_balls.png)
 
-### Bug: choosing $k$ bars instead of $k - 1$
+*Ek ball → add. Ek blue AND ek yellow → multiply.*
 
-Template: stars and bars with lower bounds.
+Eg: find # of license plates that can be made where each plate contains two distinct English letters, followed by 3 different digits, where first digit is not 0.
 
-```cpp
-long long ans = top < k ? 0 : fact[top] * power(fact[k], MOD - 2) % MOD * power(fact[top - k], MOD - 2) % MOD;
+26 x 25 x 9 x 9 x 8
+
+(26 options, 25 options (pehle wale ko chhodke), 9 (1 se 9), 9 (10 digits minus used one, yaha 0 allowed hai), 8.) = 421200.
+
+![License plate slots](../../../assets/notes/2-3-combinatorics/figA09_plate.png)
+
+*Har slot ek by ek, count multiply.*
+
+Eg: Find # of 5 lettered palindromes which can be formed using english letters. What about N lettered palindrome?
+
+```
+ ___  ___  ___  ___  ___
+ 26   26   26    1    1        | 26 x 26 x 26 x 1 x 1
+                               | = 26^3
 ```
 
-Input: `8 1`, then `2`.
+(4th = 2nd, 5th = 1st, toh forced.)
 
-Wrong output `6`, correct output `1`. With one group there is one solution ($x_1 = 8$). $k$ groups need $k - 1$ bars, and the program chose $\binom{6}{1} = 6$ positions for one bar that should not exist.
-
-**Fix:** $\binom{n + k - 1}{k - 1}$ (Theorem 2.3.5). Check $k = 1$ (answer 1) and $n = 0$ (answer 1).
-
-### Bug: forgetting to shift the lower bounds
-
-Template: stars and bars with lower bounds.
-
-```cpp
-long long top = n + k - 1;
+```
+For N  ->  even -> 26^(N/2)
+       ->  odd  -> 26^((N+1)/2)
 ```
 
-Input: `5 2`, then `1 0`.
+$(26)^{\lceil N/2 \rceil}$    $\lceil \frac{N}{2} \rceil$ → ceil value of N/2.
 
-Wrong output `6`, correct output `5`. The program counts all $x_1 + x_2 = 5$ with $x_i \ge 0$ (6 solutions), including $x_1 = 0$, which the bound $x_1 \ge 1$ forbids.
+![Palindrome slots](../../../assets/notes/2-3-combinatorics/figA10_palindrome.png)
 
-**Fix:** substitute $y_i = x_i - l_i$ and count solutions with total $n - L$ (Theorem 2.3.5, part 3).
+*Sirf aadha (ceil) free, baaki copy.*
 
-### Bug: the product instead of the LCM
+HW Eg: How many 5 digit numbers can be made with odd digits, such that no two consecutive digits are same? What about N digit number?
 
-Template: numbers divisible by none of a list.
-
-```cpp
-if ((__int128)l * a[i] > N) l = N + 1;
-else l = l * a[i];
+```
+ ___  ___  ___  ___  ___
+  5  &  4  &  4  &  4  &  4.        5 x 4^4
 ```
 
-Input: `84 2`, then `7 21`.
+N → 5 x $4^{(N-1)}$
 
-Wrong output `68`, correct output `72`. A number divisible by 7 and by 21 is a multiple of $\operatorname{lcm}(7, 21) = 21$, not of $7 \cdot 21 = 147$. The program finds no multiple of 147 up to 84, so it adds back 0 instead of 4.
+(Pehla digit 5 options, uske baad har digit pichle wale ko chhodke 4 = 1280 for N = 5.) Checked by listing all 5^5 strings: 1280. Palindromes bhi 3-letter alphabet pe N = 7 ke liye list karke dekha: 81 = 3^4. Plates bhi loop se: 421200.
 
-**Fix:** multiples of all numbers in $S$ are the multiples of their LCM (Theorem 0.4.6). The product works only for pairwise coprime numbers.
+![Odd-digit slots](../../../assets/notes/2-3-combinatorics/figA11_odd_digits.png)
 
-### Bug: the signs reversed
+*Pehla 5, baaki 4-4-4-4.*
 
-Template: numbers divisible by none of a list.
+## Permutations
 
-```cpp
-count += (__builtin_popcount(S) % 2 == 1) ? term : -term;
+\{1, 2, 3\} → permutations → no. of ways you can reorder its elements.
+
+```
+1,2,3
+1 3 2
+2 1 3
+2 3 1
+3 1 2
+3 2 1
+```
+6 ways
+
+To count the permutations we can take all places & put an and b/w all the possibilities.
+
+Eg:   \{1, 2, 3, 4\}
+
+4 x 3 x 2 x 1
+   ↓
+no. of permutations.
+
+![Four slots 4,3,2,1](../../../assets/notes/2-3-combinatorics/figA12_perm4.png)
+
+*Har place ke baad ek option kam.*
+
+**\*** For n sized array → n! permutations possible.
+
+Eg: No. of 5 digit passwords you can create, using english alphabets, if repitition is not allowed.
+
+26 x 25 x 24 x 23 x 22
+
+↳ In other words we need to choose 5 and place in 5 digit places out of 26 alphabets.
+
+26 P5 → permute 5 elements from 26
+
+![Password slots 26 to 22](../../../assets/notes/2-3-combinatorics/figA13_password.png)
+
+*26 se shuru, har baar ek kam. 26P5 = 7893600.*
+
+$^nP_r$ = n x (n-1) x (n-2) x ..... (n-r+1)
+
+```
+n x (n-1) x (n-2) x ..... x (n-r+1) x (n-r) x (n-r-1) x
+                                                  ..... (1)
+-------------------------------------------------------------
+        (n-r) x (n-r-1) x ..... (1)
 ```
 
-Input: `47 1`, then `2`.
+$^nP_r$ = $\frac{n!}{(n-r)!}$
 
-Wrong output `-24`, correct output `24`. The empty set must be added ($+47$, all numbers) and single properties subtracted ($-23$, the even ones). Reversed, the answer is $23 - 47$.
+- What if there are duplicates?
 
-**Fix:** the sign is $(-1)^{|S|}$: plus for even sizes, starting with $+N$ for the empty set (Theorem 2.3.6). A negative count is a sure sign of this bug.
+\{A, A, B, C\}. 4! permutation.
 
-### Bug: adding the two halves of a path
+\{A, A, B\} 3! perm.
 
-Template: lattice paths through a point.
-
-```cpp
-cout << (paths(x, y) + paths(a - x, b - y)) % MOD << "\n";
+```
+AAB  <-- [ A1 A2 B
+ABA  <-- [ A2 A1 B
+BAA  <-- [ A1 B  A2
+           A2 B  A1
+           B  A1 A2
+           B  A2 A1
 ```
 
-Input: `5 3 1`, then `3 3`.
+Duplicates are fused in one because they are same.
 
-Wrong output `56` and `21`, correct output `56` and `20`. A path through $(3, 3)$ is a choice of first half ($\binom{6}{3} = 20$) *and* a second half ($\binom{2}{2} = 1$): $20 \cdot 1 = 20$. Adding gives 21.
+![A1 A2 pairs fuse into one word](../../../assets/notes/2-3-combinatorics/figA14_duplicates.png)
 
-**Fix:** "and" multiplies (product rule), "or" adds (sum rule, for disjoint cases).
+*6 labelled orders, 3 alag words (6 / 2!).*
 
-## 8. Worked examples
+This is called internal permutations, which happens b/w same elements → which we need to ignore.
 
-### Example 1: Knight
+Divide by no. of same element fact.
 
-[AtCoder Beginner Contest (ABC) 145, problem D: Knight](https://atcoder.jp/contests/abc145/tasks/abc145_d). In short: a piece starts at $(0, 0)$ and moves by $(+1, +2)$ or $(+2, +1)$. Count the move sequences that reach $(X, Y)$, for $X, Y \le 10^6$, modulo $10^9 + 7$.
+```
+A1       A2        A3  ......   AN
+↳ B1 times  ↳ B2 times  ↳ B3     ↳ BN times
+```
 
-#### Step 1: Constraints → budget
+$\frac{(B_1 + B_2 + B_3 + ..... + B_N)!}{B_1! \; B_2! \; B_3! \; ..... \; B_N!}$
 
-$X, Y \le 10^6$: about $10^6$ moves. Listing sequences is exponential, and a table over all $10^{12}$ cells is too large. $O(X + Y)$ is the budget.
+removes all permutations of A1
 
-#### Step 2: Question form → candidate tools
+Eg: There are 3 identical As, 4 identical Bs, 6 identical Cs. What is the total # of perm?
 
-Brute force (topic 0.5) tries both moves at every step: $2^{(X+Y)/3}$ sequences. But only the *numbers* of each move matter for where the piece ends: $a$ moves of the first kind and $b$ of the second reach $(a + 2b, 2a + b)$, whatever the order. Fixed counts of two kinds of steps: the bijection card (Theorem 2.3.7).
+Total = 3+4+6 = 13
 
-#### Step 3: Property check → decision
+# of perms = $\frac{13!}{3! \; 4! \; 6!}$
 
-From $a + 2b = X$ and $2a + b = Y$: $a = \frac{2Y - X}{3}$ and $b = \frac{2X - Y}{3}$. These must be non-negative integers, otherwise the answer is 0. Then a sequence of $a + b$ moves is fixed by which positions hold the first kind of move: a bijection with the subsets of size $a$ of $a + b$ positions. Decision: check divisibility and signs, then print $\binom{a + b}{a} \bmod (10^9 + 7)$ from factorials (Theorem 2.3.3).
+= 6227020800 / 103680 = 60060. (13! long long mein aa jaata hai. 20! tak fit hota hai, 21! overflow.)
 
-#### Step 4: Proof for this problem
+Code (nPr, nCr for small n, and the multiset formula as product of binomials):
 
-A sequence with $a$ moves $(1, 2)$ and $b$ moves $(2, 1)$ ends at $(a + 2b, 2a + b)$, by adding the moves. The system $a + 2b = X$, $2a + b = Y$ has the unique solution above (subtract twice one equation from the other), so every valid sequence has exactly those counts, and any sequence with those counts is valid. If they are not non-negative integers, no sequence exists. Otherwise map each sequence to the set of positions of its $(1, 2)$ moves: different sequences give different sets and every set of $a$ positions among $a + b$ gives one sequence, so the count is $\binom{a + b}{a}$ (Theorem 2.3.2). Time: $O(X + Y)$ for the factorials.
+```cpp
+/*
+  Problem: nPr = n * (n-1) * ... * (n-r+1)
+*/
+long long nPr(int n, int r) {
+    long long result = 1;
+    for (int i = 0; i < r; i++) result *= (n - i);
+    return result;
+}
 
-#### Step 5: Code
+/*
+  Problem: nCr for small n (multiply then divide, division is exact every step)
+*/
+long long binomialExact(int n, int r) {
+    if (r < 0 || r > n) return 0;
+    long long result = 1;
+    for (int i = 1; i <= r; i++) result = result * (n - r + i) / i;
+    return result;
+}
 
-<CodeSnippet unit="2.3/example-1" />
+/*
+  Problem: arrangements when letter k appears counts[k] times
+  = (sum of counts)! / (counts[0]! * counts[1]! * ...)
+  Place first letter's copies, then second's among the rest, ...
+*/
+long long multisetPermutations(const vector<int>& counts) {
+    int used = 0;
+    long long result = 1;
+    for (int c : counts) {
+        used += c;
+        result *= binomialExact(used, c);
+    }
+    return result;
+}
+```
 
-#### Step 6: Alternative approach
+Checked: nPr(26, 5) = 7893600, multisetPermutations(\{3, 4, 6\}) = 60060; AABBBCC ko next_permutation se list karke 210 mile, wahi formula ka answer. binomialExact multiply-then-divide karta hai, toh chhote n (~40) ke liye hi safe.
 
-Count the ways to reach every cell from the ways to reach the two cells it can come from, row by row: a table that would be too large here ($10^{12}$ cells), but works for small grids and for grids with blocked cells (the Phase 3 method).
+## Combinations
 
-### Example 2: Count Ways to Make Array With Product
+No. of ways you can choose R objects out of N objects.
+↳ Order doesn't matter.
 
-[LeetCode 1735: Count Ways to Make Array With Product](https://leetcode.com/problems/count-ways-to-make-array-with-product/). In short: for up to $10^4$ queries $(n, k)$ with $n, k \le 10^4$, count the arrays of $n$ positive integers whose product is $k$, modulo $10^9 + 7$.
+\{1 2 3 4 5\} → 5 objects.
 
-#### Step 1: Constraints → budget
+we need to choose 3 objects.
 
-$10^4$ queries, each with $n, k \le 10^4$. Per query, $O(\sqrt k)$ for factorising (100 steps) and $O(1)$ per prime is plenty. The factorial table needs values up to $n$ plus the largest exponent, about $10^4 + 13$.
+```
+{1 2 4}
+ 1 3 5          | Denoted as:
+  :             |   nCr  or  (n r)
+ 1 2 4 <=> 2 1 4
+ Same choice.
+```
 
-#### Step 2: Question form → candidate tools
+![All 10 choices of 3 from 5](../../../assets/notes/2-3-combinatorics/figA16_subsets.png)
 
-Listing arrays is hopeless: for $n = 10^4$ there are astronomically many. Look at the primes of $k$ instead (Theorem 2.1.3): the product of the array is $k$ exactly when, for every prime $p$ of $k$, the exponents of $p$ in the entries add up to $p$'s exponent $e$ in $k$. So each prime is "$e$ identical copies of $p$ split among $n$ labelled entries": the stars-and-bars card (Theorem 2.3.5), once per prime, and the product rule (Theorem 2.3.1) across primes.
+*C(5,3) = 10. Har choice 6 orders mein likh sakte hain, par choice ek hi.*
 
-#### Step 3: Property check → decision
+$^nC_r$ formula derivation using perm:
 
-Stars and bars needs identical items and labelled groups: the copies of one prime are identical, and the entries are positions in the array, hence labelled. Different primes are independent: any split of the 2s combines with any split of the 3s, and the entries are recovered uniquely from their exponents (unique factorisation). Decision: factorise $k$ by trial division and multiply $\binom{e + n - 1}{n - 1}$ over its primes.
+$^nC_r$ = $\frac{n!}{(n-r)! \, r!}$ = $\frac{^nP_r}{r!}$
 
-#### Step 4: Proof for this problem
+After dividing by r! the order of r objects becomes irrelevant.
 
-Map an array $(x_1, \dots, x_n)$ with product $k$ to the list of its exponent vectors: for each prime $p$ of $k$, the exponents $(v_p(x_1), \dots, v_p(x_n))$. Since the product is $k$, each vector sums to $p$'s exponent $e_p$ in $k$, and no entry has a prime outside $k$. Conversely, given one such vector per prime, the entries $x_i = \prod_p p^{v_p(x_i)}$ form an array with product $k$, and by unique factorisation (Theorem 2.1.3) this is the only array with those vectors. So arrays correspond one-to-one to choices of a vector per prime. The vectors for $p$ are the solutions of $y_1 + \dots + y_n = e_p$ with $y_i \ge 0$: $\binom{e_p + n - 1}{n - 1}$ of them (Theorem 2.3.5). The choices for different primes are independent, so the product rule multiplies them. Time: $O(\sqrt k)$ per query after an $O(N)$ table.
+(Check: 5P3 = 60, 60 / 3! = 10.)
 
-#### Step 5: Code
+Another pov to understand $^nC_r$
 
-<CodeSnippet unit="2.3/example-2" />
+\{1 2 3 4 5 6\}
+$^6C_3$          ↓ permute this.
+\{5 2 4 6 1 3\}
+Choose first three items for selection.
 
-#### Step 6: Alternative approach
+\{ 5 2 4   6 1 3 \}          $\frac{n!}{r! \, (n-r)!}$
+  ---     -----
+   r       n-r             Ordering of neither group matters.
 
-Precompute the smallest prime factor of every $k \le 10^4$ (Theorem 2.1.4) and factorise each query in $O(\log k)$ steps; with $10^4$ queries the trial division is already fast enough, so the table only matters for larger limits.
+![Permutation split into r and n-r](../../../assets/notes/2-3-combinatorics/figA15_choose_split.png)
 
-## 9. Problem ladder
+*Dono groups ke andar order matter nahi karta → r! aur (n-r)! se divide.*
 
-Twenty problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Before coding each one, write down what fixes one object (a set of positions, a sequence of choices, a split of identical items), check on a tiny case that every object is counted exactly once, and only then write the formula. Before opening a hint, spend the struggle budget shown on the problem.
+i.e. $^nC_r$ = $^{n-1}C_{r-1}$ + $^{n-1}C_r$ (boxed)
 
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+(1) (2) (3) (4) (5) (6)
+
+Choose 3 items:
+
+Suppose we choose (1). then we'll need to choose 2 items from remaining 5.
+$^5C_2$
+& If we don't choose (1) then we'll need to choose 3 items from remaining 5
+$^5C_3$
+
+$^6C_3$ = $^5C_2$ + $^5C_3$
+
+![Pick 1 or skip 1](../../../assets/notes/2-3-combinatorics/figA17_pascal_rule.png)
+
+*Har 3-wali choice mein ya toh 1 hai ya nahi. 10 + 10 = 20.*
+
+Isse Pascal's triangle banta hai, har entry = upar wali do entries ka sum:
+
+![Pascal's triangle](../../../assets/notes/2-3-combinatorics/figA18_pascal_triangle.png)
+
+*20 = 10 + 10.*
+
+Mod non-prime ho (ya n chhota, n ≤ $10^3$) toh isi rule se table banao, sirf additions, T.C. = O(n²):
+
+```cpp
+// Fabricator/Maths/nCr.cpp
+// mod is non-prime, n<=10^3 and r<=n
+// Pascal's Triangle
+// O(n^2)
+long long ncr[1001][1001];
+long long nCr_tabular(long long n, long long r, long long mod){
+    ncr[0][0] = 1;
+    
+    for(long long i=1; i<=n; i++){
+        for(long long j=0; j<=i; j++){
+            if(j == 0) {
+                ncr[i][j] = ncr[i-1][j] % mod;
+            }
+            else{
+                ncr[i][j] = (ncr[i-1][j] + ncr[i-1][j-1]) % mod;
+            }
+        }
+    }
+
+    return ncr[n][r];
+}
+```
+
+Checked: nCr_tabular(10, 3, MOD) = 120. Bina mod ke C(62, 31) = 465428353255261088 tak long long mein aata hai.
+
+Ek value chahiye ho toh:
+
+```cpp
+// Fabricator/Maths/nCr.cpp
+// If n<=10^9 and r<=20
+// O(min(n-r, r))
+long long nCr_single(long long n, long long r){
+    long long num = 1;
+    long long den = 1;
+    long long lim = min(n-r, r);
+    for(long long i=1; i<=lim; i++){
+        num = (num * (n - i + 1)) % MOD;
+        den = (den * i) % MOD;
+    }
+
+    return (num * inverse(den)) % MOD;
+}
+
+// n<=40 and r<=n
+// O(r)
+long long nCr_basic(long long n, long long r){
+    long long ncr = 1;
+    for(long long i=1; i<=r; i++){
+        ncr *= (n - i + 1);
+        ncr /= i;
+    }
+
+    return ncr;
+}
+```
+
+nCr_basic(40, 20) = 137846528820 (checked), har step pe division exact hota hai kyuki partial result khud ek binomial hai. nCr_single `inverse` use karta hai:
+
+```cpp
+// Fabricator/Maths/nCr.cpp
+long long inverse(long long num){
+    return (num, MOD - 2);
+}
+```
+
+Note: ye `(num, MOD - 2)` comma operator hai, `num` ignore hoke MOD - 2 return hota hai. inverse(3) = 1000000005 aata hai (checked), isliye nCr_single(10, 3) = 999998567 aata hai, 120 nahi. `return mpow(num, MOD - 2);` hona chahiye.
+
+Bahut queries (n, r ≤ $10^6$): factorial aur inverse factorial ek baar precompute, phir O(1) per query. nCr = n! · (r!)⁻¹ · ((n-r)!)⁻¹, aur inv_fact peeche se banta hai: $(i-1)!^{-1} = i!^{-1} \cdot i$.
+
+```cpp
+// Fabricator/Maths/BinomialCoefficients.cpp
+long long bin_pow(long long base, long long exp){
+    long long ans = 1;
+    while(exp){
+        if(exp & 1){
+            ans = (ans * base) % MOD;
+        }
+        
+        base = (base * base) % MOD;
+        exp >>= 1;
+    }
+
+    return ans;
+}
+
+long long inverse(long long x){
+    return bin_pow(x, MOD - 2);
+}
+
+long long fact[DEF_ARR_SIZE];
+long long inv_fact[DEF_ARR_SIZE];
+void factorial_inverse(){
+    fact[0] = fact[1] = 1;
+    for(long long i=2; i<DEF_ARR_SIZE; i++){
+        fact[i] = (fact[i-1] * i) % MOD;
+    }
+
+    inv_fact[DEF_ARR_SIZE - 1] = inverse(fact[DEF_ARR_SIZE - 1]);
+    for(long long i=DEF_ARR_SIZE - 1; i>0; i--){
+        inv_fact[i-1] = (inv_fact[i] * i) % MOD;
+    }
+}
+
+void solve() {
+    long long a, b;
+    cin>>a>>b;
+
+    long long num = fact[a];
+    long long den = (inv_fact[b] * inv_fact[a-b]) % MOD;
+    
+    num = (num * den) % MOD;
+
+    cout<<num<<endl;
+}
+```
+
+Checked: `10 3` pe 120.
+
+Eg: A committee of 6 is to be formed out of 8 men & 5 women. In how many ways can this be done, when:
+
+i) 2 men & 4 women are included
+ii) atleast 3 women are included.
+iii) atmost 3 women are included.
+
+i)  8 men → $^8C_2$
+    5 women → $^5C_4$         → $^8C_2 \cdot ^5C_4$
+
+ii)
+```
+     3 → 5C3 . 8C3
+6 <  or
+     4 → 5C4 . 8C2
+     or
+     5 → 5C5 . 8C1
+```
+
+$^5C_3 \cdot ^8C_3 + ^5C_4 \cdot ^8C_2 + ^5C_5 \cdot ^8C_1$
+
+iii)
+```
+     1 → 5C1 . 8C5
+6 <  or
+     2 → 5C2 . 8C4
+     or
+     3 → 5C3 . 8C3
+     0 → 5C0 . 8C6
+```
+
+$^5C_0 \cdot ^8C_6 + ^5C_1 \cdot ^8C_5 + ^5C_2 \cdot ^8C_4 + ^5C_3 * ^8C_3$
+
+Numbers: (i) 28 × 5 = 140, (ii) 560 + 140 + 8 = 708, (iii) 28 + 280 + 700 + 560 = 1568. Sanity: total C(13, 6) = 1716 = 1568 + 140 + 8 ✓.
+
+![Committees by number of women](../../../assets/notes/2-3-combinatorics/figA19_committee.png)
+
+*Har bar ek term. 3 women dono (ii) aur (iii) mein.*
+
+```cpp
+/*
+  Problem: committees of `seats` people from `men` men and `women` women,
+  number of women between loWomen and hiWomen (both included).
+*/
+long long committeeWays(int men, int women, int seats, int loWomen, int hiWomen) {
+    long long total = 0;
+    for (int w = loWomen; w <= hiWomen; w++)
+        total += binomialExact(women, w) * binomialExact(men, seats - w);
+    return total;
+}
+```
+
+Checked: (4,4) → 140, (3,5) → 708, (0,3) → 1568, aur 13-bit masks (six 1-bits) pe brute force se same.
+
+## Lines, circles and chessboard
+
+Eg: Find maximum no. of points of intersection for 8 lines & 4 circles.
+
+Type of intersections:
+
+```
+ o    C+C  → 2 [4C2]
+(or)  C+L  → 2 x [4C1 . 8C1]
+(or)  L+L  → 1 x 8C2
+ +
+```
+
+$2 [^4C_2] + 2 [^4C_1 \cdot ^8C_1] + [^8C_2]$
+
+= 12 + 64 + 28 = 104. (Max ke liye general position maano: koi do lines parallel nahi, teen cheezein ek point pe nahi milti.)
+
+![Three kinds of intersections](../../../assets/notes/2-3-combinatorics/figA20_intersection_types.png)
+
+*C+C → 2, C+L → 2, L+L → 1.*
+
+Chhota example: 2 circles + 3 lines → 2 + 12 + 3 = 17 points (figure computed, 17 hi aaye).
+
+![2 circles and 3 lines, all points](../../../assets/notes/2-3-combinatorics/figA21_circles_lines.png)
+
+*Red: C+C, green: C+L, orange: L+L.*
+
+Eg: Find total # of squares on a N x N chess board
+
+Lets try an easier version:
+total no. of subarrays in an array of size N.
+
+Way 1: 6 + 5 + 4 + .... 1 → count subarrays of size 1,2,3.... N.
+↳ $\frac{6 \times (6+1)}{2}$
+
+Way 2:
+
+→ for any subarray there is a start & end.
+
+If we choose any two walls there is subarray b/w them.
+
+${}^7C_2$ → no. of subarrays.
+
+(N = 6 → 7 walls, 7C2 = 21 = 6·7/2 ✓. Brute loop se bhi 21.)
+
+![Walls around array cells](../../../assets/notes/2-3-combinatorics/figA22_subarray_walls.png)
+
+*Wall 1 aur wall 4 → subarray [1..3].*
+
+Find no. of rectangles in n×n chess
+
+↓ n+1 choices. ${}^{n+1}C_2$
+
+→ n+1 choices → ${}^{n+1}C_2$
+
+${}^{n+1}C_2 \cdot {}^{n+1}C_2$ → no. of rectangles.
+
+(N = 4 → 10 × 10 = 100.)
+
+![Choosing 2 horizontal + 2 vertical lines](../../../assets/notes/2-3-combinatorics/figA23_grid_lines.png)
+
+*h1, h3, v1, v3 → shaded rectangle.*
+
+No. of squares?
+
+size 1 → $n^2$
+size 2 → $(n-1)^2$
+size 3 → $(n-2)^2$
+⋮
+$n^2$ → 1
+
+(Size k ka top-left corner (n-k+1) rows aur (n-k+1) columns mein ho sakta hai, isliye $(n-k+1)^2$.)
+
+$1^2 + 2^2 + 3^2 + .... + n^2$
+= $\frac{n(n+1)(2n+1)}{6}$
+
+![Squares of each size, 4 x 4](../../../assets/notes/2-3-combinatorics/figA24_squares_by_size.png)
+
+*4×4 → 16 + 9 + 4 + 1 = 30.*
+
+Note: page 22 pe jo pehla try tha (2[nC1 . nC1] jaisa kuch) wo cut hai aur clear nahi, size-wise sum hi final hai. N = 1 se 8 tak rectangles aur squares dono formula brute force se match (N = 4: 100 aur 30).
+
+## Inclusion-Exclusion Principle
+
+Idea: jab kisi cheez ko "at least one of the groups" me count karna ho, toh jo cheez do groups me hai wo do baar count hoti hai. So add the groups, subtract the overlap. That's all.
+
+\{1, 2, 3, 4, 5, 6\}
+
+Count of no. that are odd and divisible by 3.
+
+odd → \{1, 3, 5\}, divisible by 3 → \{3, 6\}. Common → \{3\}.
+
+![Venn diagram of odd and divisible by 3 inside 1 to 6, overlap is 3](../../../assets/notes/2-3-combinatorics/figB04_venn_odd_div3.png)
+*overlap = \{3\}, 2 and 4 are outside both. ans = \{3\}.*
+
+$n(A \cup B) = n(A) + n(B) - n(A \cap B)$
+
+(or) under ∪, (and) under ∩
+
+Notice that: $n(A)$ and $n(B)$ both counted the common elements, isliye ek baar minus.
+
+### Dice problem
+
+Eg: Dice is rolled 4 times, the numbers are listed. Find the # of different throws, such that largest no. appearing in the list is not 4.
+
+S = \{ ___ ___ ___ ___ \} each blank → [1,6]
+
+Think of it as: count the opposite, then subtract from total.
+
+$n(\text{not 4 as max}) = \text{total} - n(\text{max as 4})$
+$= 6^4 - [4^4 - 3^4]$
+
+Total → every blank has [1,6] → $6^4$ options.
+
+To make 4 the max → let every blank be [1,4] → $4^4$ options.
+
+↳ But this could lead in wrong choices.
+
+By allowing the range [1,4] we also allow \{ 1 3 2 3 \} → max is 3, not 4. Wrong choice.
+
+Hence, we remove [1,3] choices → $3^4$.
+
+$[4^4 - 3^4]$ → max as 4.
+
+ans = $6^4 - (4^4 - 3^4) = 1296 - 175 = 1121$
+
+![Three rows of four blanks with ranges 1 to 6, 1 to 4 and 1 to 3](../../../assets/notes/2-3-combinatorics/figB05_dice_ranges.png)
+*max exactly 4 = (all in 1..4) - (all in 1..3).*
+
+### Letters problem
+
+Eg: Find # of permutations of letters a,b,c,d,e,f,g taken all together, such that neither 'cad' nor 'beg' appear.
+
+We want the region outside both circles.
+
+$n(S) - n(\text{cad} \cup \text{beg})$
+
+$n(S) = 7!$
+
+$7! - (n(\text{cad}) + n(\text{beg}) - n(\text{cad} \cap \text{beg}))$
+
+$7! - (5! + 5! - 3!)$ ✓
+
+Side calculation:
+
+- [cad] b,e,f,g → 5! (glue c-a-d into ONE item, toh 5 items bache)
+- [beg] a c d f → 5!
+- [cad] [beg] f → 3!
+
+$= 5040 - (120 + 120 - 6) = 5040 - 234 = 4806$
+
+![Venn diagram of cad and beg inside S with 5 factorial, 5 factorial and 3 factorial in the overlap](../../../assets/notes/2-3-combinatorics/figB06_venn_cad_beg.png)
+*good ones = outside both circles (red).*
+
+### Three sets
+
+Eg:- find # of integers b/w 1 & 1000, which are divisible by at least of \{2,3,5\}.
+
+Optional: what would happen if the set contains numbers that are not co-prime?
+
+$n(A \cup B \cup C) = n(A) + n(B) + n(C) - n(A \cap B) - n(B \cap C) - n(A \cap C) + n(A \cap B \cap C)$
+
+$n(A) = \frac{1000}{2} = 500$
+
+$n(B) = \lfloor \frac{1000}{3} \rfloor = 333$
+
+$n(C) = \lfloor \frac{1000}{5} \rfloor = 200$
+
+$- n(A \cap B) = \lfloor \frac{1000}{6} \rfloor = 166$
+
+$- n(B \cap C) = \lfloor \frac{1000}{15} \rfloor = 66$
+
+$- n(A \cap C) = \lfloor \frac{1000}{10} \rfloor = 100$
+
+$+ n(A \cap B \cap C) = \lfloor \frac{1000}{30} \rfloor = 33$
+
+ans = $500 + 333 + 200 - 166 - 66 - 100 + 33 = 734$
+
+![Three-circle Venn diagram for 2, 3 and 5 with the size of each region](../../../assets/notes/2-3-combinatorics/figB07_venn_2_3_5.png)
+*region sizes (exactly those groups), sum = 734.*
+
+Optional part: not co-prime? Dekho, "divisible by 2 and 3" = divisible by 6 = 2×3, ye tab chalta hai jab co-prime ho. If not co-prime then use lcm instead of product.
+
+Eg: \{4, 6\} → divisible by both = divisible by lcm(4,6) = 12 (not 24). So up to 1000: $250 + 166 - 83 = 333$.
+
+For any set of size k → loop over all $2^k - 1$ non-empty subsets (bitmask). Odd size → add, even size → subtract. T.C. (time complexity) = $O(2^k \cdot k)$. If lcm crosses the limit, term = 0, break early (overflow se bachne ke liye).
+
+```cpp
+// Problem:
+// Count the integers in [1, limit] divisible by at least one number of the set
+// d (the numbers do NOT have to be coprime).
+// Inclusion-exclusion over every non-empty subset: the count divisible by all
+// numbers of the subset is limit / lcm(subset); add for odd-sized subsets,
+// subtract for even-sized ones.
+long long count_divisible_by_any(long long limit, const vector<long long>& d) {
+    int k = d.size();
+    long long total = 0;
+    for (int mask = 1; mask < (1 << k); mask++) {      // each mask = one subset
+        long long l = 1;
+        bool too_big = false;
+        for (int i = 0; i < k; i++) {
+            if (!(mask >> i & 1)) continue;
+            l = l / __gcd(l, d[i]) * d[i];             // lcm, dividing first avoids overflow
+            if (l > limit) { too_big = true; break; }  // no number fits, term is 0
+        }
+        if (too_big) continue;
+        long long term = limit / l;
+        if (__builtin_popcount(mask) % 2 == 1) total += term;
+        else total -= term;
+    }
+    return total;
+}
+```
+
+## Counting solutions for Linear Equations
+
+(Using the stars and bars method).
+
+$x_1 + x_2 + x_3 + ...... + x_r = n$
+
+$0 \le x_1, x_2, x_3, ......, x_r \le n$     find # of soln.
+
+$x_1 + x_2 + x_3 = 5$
+
+```
+1 + 2 + 2
+1 + 1 + 3
+5 + 0 + 0
+    :
+```
+
+Draw [5 + (no. of var) - 1] stars/cross: 5 + 3 - 1 = 7
+
+```
+x  x  x  x  x  x  x
+```
+
+Choose any 2 cross & we have our soln.
+
+- 4th and 6th chosen → groups 3, 1, 1 → (3, 1, 1)
+- 2nd and 5th chosen → groups 1, 2, 2 → (1, 2, 2)
+
+→ These are values of variables
+
+![Seven crosses with two circled as dividers, groups 3 1 1 and 1 2 2](../../../assets/notes/2-3-combinatorics/figB08_stars_and_bars.png)
+*circled = dividers. choose 2 of 7 = 21.*
+
+${}^{n+r-1}C_{r-1}$ (boxed) → Gives total no. of soln.
+
+so basically: r variables ko alag karne ke liye r-1 dividers chahiye, and total positions = n + r - 1. For n=5, r=3 → ${}^{7}C_{2} = 21$.
+
+### Another variation
+
+What if:
+
+$1 \le x_1, x_2, x_3, ...., x_r \le n$
+
+Previously it was 0.
+
+$x_1 + x_2 + x_3 + .... x_r = N$
+
+$x_i = y_i + 1$    ($x_i$: 1...N, $y_i$: 0...N-1)
+
+Substitute
+
+$y_1 + 1 + y_2 + 1 + ...... + y_r + 1 = N$
+
+$\sum y_i + r = N$
+
+$\sum y_i = N - r$
+
+$0 \le y_i \le N - r$
+
+Now it is the same as before with n = N - r:
+
+${}^{n+r-1}C_{r-1}$ → ${}^{N-r+r-1}C_{r-1}$ → ${}^{N-1}C_{r-1}$
+
+Note: it should be $r-1$ at the bottom (dividers are r-1 only). Check N=5, r=3 → ${}^{4}C_{2} = 6$: (1,1,3) (1,3,1) (3,1,1) (1,2,2) (2,1,2) (2,2,1). With $r$ at the bottom we'd get ${}^{4}C_3 = 4$, wrong.
+
+(Code for this = just nCr, see below.)
+
+## Coding math stuff
+
+### i) factorials
+
+We can use recurrence relation:
+
+```
+fact (n) = n * fact (n-1);      } Call recursively
+f(0) = 1 → base case.           } with base case
+```
+
+↳ This is good only when we need a factorial only once.
+
+What if we need multiple factorials? or factorials multiple times?
+
+We build a factorial array & precompute its values.
+
+![fact array indices 0 to 6 with values 1 1 2 6 24 120 720](../../../assets/notes/2-3-combinatorics/figB09_fact_array.png)
+*values might grow large. Use mod if given in ques.*
+
+~~Use~~ simply use fact[i] wherever and whenever needed.
+
+Build = O(n) once, lookup = O(1). 21! already overflows long long, toh mod zaroor.
+
+```cpp
+// Fabricator/Maths/nCr.cpp
+long long factorial(long long n){
+    long long fact = 1;
+    for(long long i=2; i<=n; i++){
+        fact = (fact * i) % MOD;
+    }
+
+    return fact;
+}
+
+const int DEF_SIZE = 1000100;
+long long fact[DEF_SIZE];
+void factorial_precomputed(long long n){
+    fact[0] = fact[1] = 1;
+    for(long long i=2; i<DEF_SIZE; i++){
+        fact[i] = (fact[i-1] * i) % MOD;
+    }
+}
+```
+
+Note: Factorial.cpp has `int fact[]` → `fact[i-1] * i` overflows int from 13! onwards. Use the long long one above.
+
+### ii) nCr
+
+↳ $\frac{n!}{(n-r)!\, r!}$
+
+**Case I:** r is small ($r \le 30$), n is large
+
+$\frac{n!}{(n-r)!\, r!}$ → most of numerators will be cancelled out by $(n-r)!$
+
+We can directly compute the following,
+
+$\frac{n \times (n-1) \times (n-2) \times .... \times (n-r+1)}{1 \times 2 \times 3 \times .... \times r}$
+
+```cpp
+ans = 1
+for (i = 0; i<r; i++){
+    ans *= (n-i);
+    ans /= (i+1);
+}
+```
+
+Always yields integer.
+
+THEOREM : Product of x consecutive numbers is always divisible by x!
+
+Why division exact? After step i, ans = ${}^{n}C_{i+1}$ (an integer). E.g. ${}^{5}C_2$: 1·5/1 = 5, then 5·4/2 = 10.
+
+Note: `ans *= (n-i)` happens before the division, so for big n it can overflow even if the answer fits. Also use min(r, n-r) iterations.
+
+```cpp
+// Fabricator/Maths/nCr.cpp
+// n<=40 and r<=n
+// O(r)
+long long nCr_basic(long long n, long long r){
+    long long ncr = 1;
+    for(long long i=1; i<=r; i++){
+        ncr *= (n - i + 1);
+        ncr /= i;
+    }
+
+    return ncr;
+}
+```
+
+**Case II:** Table method
+
+${}^nC_r = {}^{n-1}C_{r-1} + {}^{n-1}C_r$
+
+${}^3C_2 = {}^2C_1 + {}^2C_2$ → sum of these.
+
+![Pascal table n and r from 0 to 5, C(3,2) from the two cells above it](../../../assets/notes/2-3-combinatorics/figB10_pascal_table.png)
+*cell = above + above-left. yellow add up to green.*
+
+- mod can be used easily.
+- mod doesn't need to be prime [because we don't need inv]
+- We can easily build a 1000x1000 matrix. [Staying in mem lim]
+
+T.C. = O(n²), 1001 × 1001 long long ≈ 8 MB.
+
+```cpp
+// Fabricator/Maths/nCr.cpp
+// Pascal's Triangle
+// O(n^2)
+long long ncr[1001][1001];
+long long nCr_tabular(long long n, long long r, long long mod){
+    ncr[0][0] = 1;
+    
+    for(long long i=1; i<=n; i++){
+        for(long long j=0; j<=i; j++){
+            if(j == 0) {
+                ncr[i][j] = ncr[i-1][j] % mod;
+            }
+            else{
+                ncr[i][j] = (ncr[i-1][j] + ncr[i-1][j-1]) % mod;
+            }
+        }
+    }
+
+    return ncr[n][r];
+}
+```
+
+**Case III:** factorial precalculate:
+
+$fact[i] = (i! \;\%\; mod)$.
+
+${}^nC_r = \frac{n!}{(n-r)!\, r!}$          $n, r \le 10^6$
+
+↙ all values can be fetched from the array & easily inverses can also be computed.
+
+${}^nC_r = n! * inv((n-r)!) * (r!)^{-1}$
+
+T.C. = log (mod).   [ factorial precomp not included ]
+
+What is inv? Inverse of x mod p = y such that $x \cdot y \equiv 1 \pmod p$. Divide karne ki jagah y se multiply. For prime p → $y = x^{p-2}$ (Fermat), computed by fast power in log p. Isliye Case III needs prime mod (and n &lt; p), Case II doesn't.
+
+Even better: store inv_fact[] also → one inverse only, rest by `inv_fact[i-1] = inv_fact[i] * i`. Then each query = O(1).
+
+```cpp
+// Fabricator/Maths/BinomialCoefficients.cpp
+long long bin_pow(long long base, long long exp){
+    long long ans = 1;
+    while(exp){
+        if(exp & 1){
+            ans = (ans * base) % MOD;
+        }
+        
+        base = (base * base) % MOD;
+        exp >>= 1;
+    }
+    return ans;
+}
+
+long long inverse(long long x){
+    return bin_pow(x, MOD - 2);
+}
+
+long long fact[DEF_ARR_SIZE];
+long long inv_fact[DEF_ARR_SIZE];
+
+void factorial_inverse(){
+    fact[0] = fact[1] = 1;
+    for(long long i=2; i<DEF_ARR_SIZE; i++){
+        fact[i] = (fact[i-1] * i) % MOD;
+    }
+
+    inv_fact[DEF_ARR_SIZE - 1] = inverse(fact[DEF_ARR_SIZE - 1]);
+    for(long long i=DEF_ARR_SIZE - 1; i>0; i--){
+        inv_fact[i-1] = (inv_fact[i] * i) % MOD;
+    }
+}
+```
+
+```cpp
+// Fabricator/Maths/nCr.cpp
+// n, q, r <= 10^6
+// O(log MOD)
+// Use for queries, answer from precomputed values
+long long nCr_fact(long long n, long long r){
+    long long num = fact[n];
+    long long den = (fact[n-r] * fact[r]) % MOD;
+
+    return (num * inverse(den)) % MOD;
+}
+
+// n,q,r<=10^6
+// O(1)
+// Use for queries, answer from precomputed values
+long long nCr_fact_inv(long long n, long long r){
+    long long num = fact[n];
+    long long den = (inv_fact[n-r] * inv_fact[r]) % MOD;
+
+    return (num * den) % MOD;
+}
+```
+
+Note: nCr.cpp's own `inverse` is `return (num, MOD - 2);` (comma operator → returns MOD-2 only). Use the `inverse` from BinomialCoefficients.cpp above.
+
+Which one when?
+
+| Case | limits | T.C. per query | mod |
+|---|---|---|---|
+| I direct loop | r ≤ 30, n huge | O(r) | none |
+| II table | n ≤ 1000 | O(1) after O(n²) | any |
+| III factorials | n ≤ 10^6 | O(log p) / O(1) | prime |
+
+For stars and bars (above) → ans is just nCr, use whichever case fits n + r - 1.
+
+## Derangement
+
+→ Derangement:
+
+↳ A permutation where no element appears in its original position
+
+↳ no fixed point permutation.
+
+```
+A  B  C   →   C  A  B   ✓ valid
+1  2  3       1  2  3     derangement.
+
+C  B  A   ✗ → B at same as
+1  2  3         original.
+```
+
+![C A B marked valid, C B A marked invalid](../../../assets/notes/2-3-combinatorics/figB11_derangement_abc.png)
+*CAB ok. CBA not ok, B didn't move.*
+
+How many ways to derange n objects?
+
+formula:
+
+N ele → (A, B, ...... E)
+
+$N! - ( {}^NC_1 (N-1)! ) + {}^NC_2 (N-2)! - {}^NC_3 (N-3)! ...$
+
+↳ ≥1 is at same place.
+
+(choose which one stays, permute rest → then inclusion-exclusion fixes the double counting.)
+
+${}^NC_i (N-i)! = \frac{N!}{(N-i)!\, i!} \times (N-i)! = \frac{N!}{i!}$
+
+$N! - \frac{N!}{1!} + \frac{N!}{2!} - \frac{N!}{3!} \; ...... \; \frac{N!}{N!}$
+
+Last term has sign $(-1)^N$.
+
+Ques: No. of ways the letters of word "SWORD" can be arranged such that no letter is in its original position.
+
+$D(5) = 5! - \frac{5!}{1!} + \frac{5!}{2!} - \frac{5!}{3!} + \frac{5!}{4!} - \frac{5!}{5!}$
+
+$= 5 \times 4 \times 3 - 5 \times 4 + 5 - 1$
+
+$= 60 - 20 + 5 - 1$
+
+$= 44$
+
+Ques: five balls of different colors, and 5 boxes of same colors as balls. No. of ways such that no ball goes in the box of the same color.
+
+$D(5) = 44$. (same problem, bas naam alag)
+
+Ques: 6 cards and 6 envelopes both numbered 1,2,3,4,5,6. No. of ways such that no card is placed in an envelope with same number. Also, card 1 will always be placed in envelope 2.
+
+![cards 1 to 6 over envelopes 1 to 6, card 1 to envelope 2](../../../assets/notes/2-3-combinatorics/figB12_cards_envelopes.png)
+*card 1 → env 2 fixed. Case I: 9, Case II: 44.*
+
+Case - I: 2 goes in 1 & we derange remaining 4. → D(4)
+
+Case - II: 2 cannot go in 1 → D(5)   (now card 2 also has one banned envelope, just like the other 4 cards → same as derangement of 5)
+
+$sol(n) = D(4) + D(5) = 9 + 44 = 53$   (brute force check bhi kiya, 53 hi aaya)
+
+→ Using above example as reference:
+
+N  [ a_1   a_2   a_3  ......  a_n ]
+
+   [ O     O     O    ......   O  ]
+
+a_1 → N-1 options to go.
+Let say a_1 goes to x.
+Two cases arise.
+  ↳ a_x goes to 1 → D(N-2)
+  ↳ a_x doesn't go to 1 → D(N-1)
+
+∴ Total derangements = (N-1) [ D(N-2) + D(N-1) ]
+
+$D(N) = (N-1) [\, D(N-1) + D(N-2) \,]$ ✓
+
+![a1 goes to position x and the two cases](../../../assets/notes/2-3-combinatorics/figB13_derangement_recurrence.png)
+*a1 has N-1 choices, then 2 cases.*
+
+$D(0) = 1$
+$D(1) = 0$
+
+| $D(2) = 1$
+| $D(3) = 2 \times (1+0) = 2$
+| $D(4) = 3 \times (1+2) = 9$
+| $D(5) = 4 \times (9+2) = 44$
+
+another $D(N) = N \times D(N-1) + (-1)^N$
+
+check: $D(5) = 5 \times 9 - 1 = 44$ ✓
+
+Also D(N) = nearest integer to N!/e. E.g. D(10) = 1334961.
+
+```cpp
+// Fabricator/Maths/Derangement.cpp
+// Derange (Recursvie)
+// O(2^n) TC
+long long derange_rec(long long n){
+    if(n == 1) return 0;
+    if(n == 2) return 1;
+
+    return (n-1) * (derange_rec(n-2) + derange_rec(n-1));
+}
+
+// Derange (Precomputation)
+// O(n) TC and SC
+long long der[DEF_ARR_SIZE];
+
+void derange_pre(){
+    der[0] = 1;
+    der[1] = 0;
+
+    for(long long i=2; i<DEF_ARR_SIZE; i++){
+        der[i] = (i - 1) * (der[i-1] + der[i-2]);
+    }
+}
+
+// Derange with modulo (Precomputation)
+// O(n) TC and SC
+long long der_mod[DEF_ARR_SIZE];
+
+void derange_mod_pre(){
+    der_mod[0] = 1;
+    der_mod[1] = 0;
+
+    for(long long i=2; i<DEF_ARR_SIZE; i++){
+        long long previous_der = (der_mod[i-1] + der_mod[i-2]) % MOD;
+        der_mod[i] = ((i-1) * previous_der) % MOD;
+    }
+}
+
+// Derange with modulo (Precomputation)
+// O(n)
+long long der_mod2[DEF_ARR_SIZE];
+
+void derange_mod_pre2(){
+    der_mod2[0] = 1;
+    der_mod2[1] = 0;
+
+    for(long long i=2; i<DEF_ARR_SIZE; i++){
+        der_mod2[i] = (i * der_mod2[i-1]) % MOD;
+        long long shift = (i & 1) ? -1 : 1;
+
+        der_mod2[i] = (der_mod2[i] + shift) % MOD;
+    }
+}
+```
+
+```cpp
+// Fabricator/Maths/ChristmasParty.cpp
+long long derange(long long num){
+    if(num == 0){
+        return 1;
+    }
+
+    long long der_prev = 1;
+    long long der = 0;
+    for(long long i=2; i<=num; i++){
+        der_prev = (der_prev + der) % MOD;
+        long long temp = der;
+        der = ((i-1) * der_prev) % MOD;
+        der_prev = temp;
+    }
+
+    return der;
+}
+```
+
+Note: derange_rec(0) never stops (base cases only 1 and 2) and is exponential. derange_pre has no mod → overflows after N ≈ 20. All versions give 0 1 2 9 44 265 1854 14833 133496 1334961 for N = 1..10.
+
+## Quick revision
+
+- Sum → OR → add. Product → AND → multiply.
+- Plate: 26·25·9·9·8 = 421200. Palindrome: $26^{\lceil N/2 \rceil}$. Odd digits no equal neighbours: 5·$4^{N-1}$.
+- n! orderings. nPr = n!/(n-r)!. Duplicates → divide by factorial of each repeat count (13!/(3!4!6!) = 60060).
+- nCr = n!/(r!(n-r)!) = nPr/r!. nCr = (n-1)C(r-1) + (n-1)Cr.
+- at least / at most → case-wise add (committee: 140, 708, 1568).
+- 8 lines + 4 circles: 2·4C2 + 2·4C1·8C1 + 8C2 = 104.
+- Subarrays: (N+1)C2. Rectangles: ((N+1)C2)². Squares: n(n+1)(2n+1)/6.
+- n(A ∪ B) = n(A) + n(B) - n(A ∩ B); 3 sets: + singles - pairs + triple. Not co-prime → use lcm.
+- Dice max not 4 → $6^4 - (4^4 - 3^4) = 1121$. cad/beg → $7! - (5!+5!-3!) = 4806$. 1..1000 by 2,3,5 → 734.
+- Stars and bars: $x_1 + ... + x_r = n$, $x_i \ge 0$ → ${}^{n+r-1}C_{r-1}$. $x_i \ge 1$ → ${}^{N-1}C_{r-1}$.
+- fact[] precompute with mod. nCr: small r → loop (exact), n ≤ 1000 → Pascal table (any mod), n ≤ 10^6 → fact + inv_fact (prime mod).
+- Derangement: $D(N) = N! \sum (-1)^i / i!$; $D(N) = (N-1)(D(N-1) + D(N-2))$; $D(N) = N D(N-1) + (-1)^N$; D(0)=1, D(1)=0, 0 1 2 9 44 265.
+
+## Practice problems
+
+**CSES**
+
+- [CSES task 1079](https://cses.fi/problemset/task/1079)
+- [CSES task 1717](https://cses.fi/problemset/task/1717)
+
+**Codeforces**
+
+- [Codeforces 844B](https://codeforces.com/contest/844/problem/B)
+- [Codeforces 1096B](https://codeforces.com/problemset/problem/1096/B)
+- [Codeforces 1272C](https://codeforces.com/problemset/problem/1272/C)
+- [Codeforces 131C](https://codeforces.com/problemset/problem/131/C)
+- [Codeforces 1328B](https://codeforces.com/problemset/problem/1328/B)
+- [Codeforces 1674B](https://codeforces.com/problemset/problem/1674/B)
+- [Codeforces 1840C](https://codeforces.com/problemset/problem/1840/C)
+- [Codeforces 459B](https://codeforces.com/problemset/problem/459/B)
+- [Codeforces 476B](https://codeforces.com/problemset/problem/476/B)
+- [Codeforces 478B](https://codeforces.com/problemset/problem/478/B)
+- [Codeforces 610A](https://codeforces.com/problemset/problem/610/A)
+- [Codeforces 630C](https://codeforces.com/problemset/problem/630/C)
+
+**HackerRank**
+
+- [ncr table](https://www.hackerrank.com/challenges/ncr-table/problem)
+- [euler001](https://www.hackerrank.com/contests/projecteuler/challenges/euler001/problem)
+
+**Maang (AlgoZenith)**
+
+- [Divide the Piles](https://maang.in/problems/Divide-the-Piles-67)
+- [Number of Diagonals](https://maang.in/problems/Number-of-Diagonals-68)
+- [Number of Intersecting Diagonals](https://maang.in/problems/Number-of-Intersecting-Diagonals-69)
+- [Number of Parts in Convex Polygon](https://maang.in/problems/Number-of-Parts-in-Convex-Polygon-70)
+- [Number of Ways to Reach B](https://maang.in/problems/Number-of-Ways-to-Reach-B-71)
+- [Solve the Equation](https://maang.in/problems/Solve-the-Equation-73)
+
+### Problem ladder
 
 <Ladder topic="2.3" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card (the list includes earlier topics' cards), write the property you checked, then reveal the answer. Do not solve the problems here: deciding is the exercise. Three items are answered by the cards of topics 0.2, 1.4 and 1.5.
-
-<Drill topic="2.3" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the decision.
-
-<LookalikePairs topic="2.3" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer.
-
-<SelfTest topic="2.3" />
-
-## 13. Checkpoint
-
-Three problems in 120 minutes. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items in Section 10. After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="2.3" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen against the tools you already have. The same entries appear in the Recognition Handbook, grouped by weak signal across all topics.
-
-<DecisionMapUpdate topic="2.3" />

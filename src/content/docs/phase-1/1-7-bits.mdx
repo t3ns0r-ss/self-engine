@@ -4,438 +4,1384 @@ sidebar:
   order: 13
 topic: "1.7"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="1.7" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. Given $n = 2 \cdot 10^5$ numbers below $2^{30}$, find the sum of $a_i \oplus a_j$ (exclusive or) over all pairs $i < j$.
+→ operators, sign bit, 2's complement, sets as bitmasks, x^th bit tricks, counting set bits, then the bit application problems (contribution technique, extending end, k^th one in binary sequence, pair xor) and functions to remember.
 
-The direct method computes every pair: $n^2 / 2 = 2 \cdot 10^{10}$ operations, about 200 seconds (topic 0.2). But exclusive or works on each binary digit separately: bit $b$ of $a_i \oplus a_j$ is 1 exactly when one of the two numbers has bit $b$ and the other does not. If $c_b$ of the numbers have bit $b$, then exactly $c_b (n - c_b)$ pairs have bit $b$ set in their XOR, and each of them adds $2^b$. So the answer is $\sum_b 2^b \, c_b (n - c_b)$: 30 counts, $O(30 n)$ in total.
+- Operators
+- Two's complement (sign bit, -10 + 10, overflow)
+- Sets as bitmasks (union, intersection, all subsets)
+- X^th bit: check / set / unset / flip
+- Counting set bits
+- Bit application: sum of all subarray ANDs (atomic item, extending end)
+- ORs and XORs
+- No. of distinct AND values
+- Ques: index of k^th 1 in binary sequence
+- Ques: sum of all pair xor
+- Some functions to remember
+- Quick revision
+- Practice problems
 
-This topic is about such arguments: operations that act on each bit separately, and what follows from that. XOR cancels equal values, so XORs over ranges come from prefix values just as sums do (topic 1.2). Sums over pairs or subarrays split into one count per bit. And since bit $b$ is worth more than all lower bits together, the best value is decided from the highest bit down.
+Short forms used: T.C. = time complexity, MSB = most significant bit (leftmost), LSB = least significant bit (rightmost), LC = LeetCode, B.S. = binary search, TLE = time limit exceeded, CP = competitive programming. Set bit = bit which is 1. Subarray = continuous part of the array.
 
-## 2. Prerequisites and scope
+## Operators
 
-### What you need
+→ Bit Manipulation :
 
-<WhatYouNeed topic="1.7" />
+Operators : `~, |, &, ^, >>, <<, -`
 
-### What this topic does not cover
+logical operators : `&&, ||, !`
 
-- The largest XOR of a value with any element of a changing set, using a binary tree of bits (binary trie). Covered in topic 6.3; here the same question is answered offline, bit by bit.
-- Dynamic programming over subsets stored as bitmasks. Covered in topic 3.7.
-- Prefix sums of an array that changes, organised by the bits of the positions (Fenwick tree). Covered in topic 5.2.
-- Linear algebra over bits (the XOR basis of a set of numbers). It is not part of this course.
+| op | meaning | e.g. (5 = 101, 3 = 011) |
+|---|---|---|
+| `~` | flip every bit | `~5 = -6` |
+| `\|` | 1 if any bit is 1 | `5 \| 3 = 7` |
+| `&` | 1 if both bits are 1 | `5 & 3 = 1` |
+| `^` | 1 if bits are different | `5 ^ 3 = 6` |
+| `<<` | shift left, x2 per step | `5 << 1 = 10` |
+| `>>` | shift right, /2 per step | `5 >> 1 = 2` |
 
-## 3. Definitions
+Note: logical operators look at the whole number as true / false. `6 && 1` is true but `6 & 1 = 0`. Don't mix them.
 
-- The **bitwise operators** apply a rule to each bit position separately. For integers $x$ and $y$: bit $b$ of $x \,\&\, y$ (AND) is 1 when both bits are 1; of $x \mid y$ (OR) when at least one is 1; of $x \oplus y$ (exclusive or, XOR, written `x ^ y` in C++) when exactly one is 1; `~x` (NOT) flips every bit. Example: $12 = 1100_2$ and $10 = 1010_2$ give $12 \,\&\, 10 = 8$, $12 \mid 10 = 14$, $12 \oplus 10 = 6$.
-- We write $x_b$ for bit $b$ of $x$, so $x = \sum_b x_b 2^b$; in C++, `(x >> b) & 1`.
-- The **prefix XOR** of an array $a_1, \dots, a_n$ is $P_0 = 0$, $P_i = a_1 \oplus \dots \oplus a_i$. Example: for $(3, 5, 6)$ it is $(0, 3, 6, 0)$.
-- The **popcount** of $x \ge 0$ is the number of 1 bits in it: `__builtin_popcount(x)` for `int`, `__builtin_popcountll(x)` for `long long`. Example: the popcount of $13 = 1101_2$ is 3.
-- The **lowest set bit** of $x > 0$ is $2^b$ for the smallest $b$ with $x_b = 1$; it equals `x & -x`. Example: for $12 = 1100_2$ it is $4$.
+## Two's complement
 
-## 4. Theory and proofs
+Leftmost bit is the **sign bit**. 1 → negative, 0 → positive (or zero).
 
-### 4.1 XOR as addition without carries
+![8-bit box with the leftmost bit marked as sign bit](../../../assets/notes/1-7-bits/fig01_sign_bit.png)
 
-**Theorem 1.7.1 (XOR identities).** For all integers $x, y, z \ge 0$:
-1. $x \oplus y = y \oplus x$ and $(x \oplus y) \oplus z = x \oplus (y \oplus z)$, so a XOR of many values does not depend on their order or grouping.
-2. $x \oplus 0 = x$ and $x \oplus x = 0$.
-3. $x \oplus y = z$ exactly when $x = y \oplus z$.
-4. The XOR of a list of values equals the XOR of the values that appear in it an odd number of times.
+*sign bit has weight -128 in 8 bits.*
 
-:::tip[In plain words]
-XOR of several numbers is the same in any order, XOR with 0 changes nothing, and XOR of a number with itself is 0. So in a list every value that appears twice cancels, and the XOR of the list is the XOR of the values that appear an odd number of times.
-:::
+Two's complement :
 
-**A tiny instance.** In $(4, 7, 4, 2, 7)$ every value except 2 appears twice, so the XOR of the list is 2. A useful consequence, checked by the four cases of $n \bmod 4$: the XOR $0 \oplus 1 \oplus \dots \oplus n$ is $n$, $1$, $n + 1$ or $0$ when $n \bmod 4$ is $0$, $1$, $2$ or $3$.
+```
+5 → 0 0 0 0 0 1 0 1
 
-**Proof.**
-1. Each statement concerns each bit separately: bit $b$ of a XOR of several values is 1 exactly when an odd number of them have bit $b$ set, that is, it is the sum of their bits modulo 2 (topic 0.4).
-2. Sums modulo 2 do not depend on order or grouping, which gives part 1.
-3. Adding 0 changes nothing, and $x_b + x_b = 2 x_b$ is even, which gives part 2.
-4. For part 3, XOR both sides of $x \oplus y = z$ with $y$: by parts 1 and 2, $x \oplus y \oplus y = x \oplus 0 = x$, so $x = z \oplus y$; the converse is the same step.
-5. For part 4, reorder the list by part 1 so that equal values stand together; each pair of equal values gives 0 by part 2, and 0 changes nothing. $\square$
+1's comple → ~5 → 1 1 1 1 1 0 1 0
 
-:::note[This proof needs]
-1. The values are combined with XOR only. AND and OR have no inverse: from $x \mid y$ and $y$ you cannot recover $x$.
-2. For signed types, negative values have their highest bit set; the identities still hold bit by bit, but comparisons and sums of such values need care. Use non-negative values (or `unsigned`) when bits are the point.
-:::
+2's comple → (1's comple +1)
 
-<TheoremCode unit="1.7/thm-1" />
-
-The first example is the instance above; the other lines show the XOR of $0..n$ for $n \bmod 4 = 0, 1, 2, 3$.
-
-
-### 4.2 Prefix XOR
-
-**Theorem 1.7.2 (prefix XOR).** Let $P$ be the prefix XOR of $a_1, \dots, a_n$. Then:
-1. The XOR of $a_l, \dots, a_r$ is $P_r \oplus P_{l-1}$, for $1 \le l \le r \le n$.
-2. That XOR equals $k$ exactly when $P_{l-1} = P_r \oplus k$. So the number of subarrays with XOR $k$ is the number of pairs $i < j$ with $P_i = P_j \oplus k$, counted in one pass with a map from prefix values to their counts, in $O(n \log n)$.
-
-:::tip[In plain words]
-Keep the running XOR of the array. The XOR of any range is the running XOR at its end combined with the running XOR just before its start, because the common part cancels. Counting subarrays with a given XOR is then counting pairs of prefix values.
-:::
-
-**A tiny instance.** For $(1, 2, 3, 4)$ the prefix XORs are $(0, 1, 3, 0, 4)$, and the XOR of $a_2 \oplus a_3 = 2 \oplus 3 = 1$ is $P_3 \oplus P_1 = 0 \oplus 1 = 1$.
-
-**Proof.**
-1. $P_r = P_{l-1} \oplus (a_l \oplus \dots \oplus a_r)$ by grouping (Theorem 1.7.1, part 1).
-2. XOR both sides with $P_{l-1}$: since $P_{l-1} \oplus P_{l-1} = 0$, the XOR of the range is $P_r \oplus P_{l-1}$. This is part 1.
-3. By part 3 of Theorem 1.7.1, $P_r \oplus P_{l-1} = k$ exactly when $P_{l-1} = P_r \oplus k$.
-4. Each subarray $[l, r]$ corresponds to the pair $(i, j) = (l - 1, r)$ with $0 \le i < j \le n$, and back.
-5. The counting is the same as Theorem 1.2.2 with $\oplus$ in place of $-$: process $j = 0, 1, \dots, n$, add the count of $P_j \oplus k$ seen so far, then record $P_j$. $\square$
-
-:::note[This proof needs]
-1. $P_0 = 0$ is part of the prefix list; forgetting it loses every subarray that starts at position 1.
-2. The condition is on the XOR of the subarray, equal to a fixed $k$. For "XOR at most $k$", prefix values have no order that helps; that needs the bit tree of topic 6.3.
-3. The count can reach $n(n+1)/2$: `long long`.
-:::
-
-<TheoremCode unit="1.7/thm-2" />
-
-Prefix XOR values stay below $2^{30}$ when the inputs do, so when the values are small (for example bitmasks of a few letters) an array indexed by value can replace the map. A related use: a string's letters have even counts in a substring exactly when the XOR of the bitmasks (bit $c$ for letter $c$) over the substring is 0, so "every letter an even number of times" is a pair of equal prefix masks.
-
-
-### 4.3 One bit at a time
-
-**Theorem 1.7.3 (per-bit contribution).** Let $a_1, \dots, a_n$ be non-negative and let $c_b$ be the number of them with bit $b$ set. Then:
-1. $\sum_{i < j} (a_i \oplus a_j) = \sum_b 2^b \, c_b (n - c_b)$.
-2. Writing $\binom{m}{2} = m(m-1)/2$ for the number of pairs among $m$ items, $\sum_{i < j} (a_i \,\&\, a_j) = \sum_b 2^b \binom{c_b}{2}$, and $\sum_{i < j} (a_i \mid a_j) = \sum_b 2^b \left(\binom{n}{2} - \binom{n - c_b}{2}\right)$.
-3. More generally, for any quantity that is a sum of $2^b$ times a condition on bit $b$ alone, the total over pairs, subarrays or subsets is the sum over $b$ of $2^b$ times the number of them that meet the condition at bit $b$.
-
-:::tip[In plain words]
-When each bit of a result depends only on the same bit of the inputs, the total over many pairs is a sum over the bits of the bit's weight times how many pairs have that bit set, and that count needs only how many inputs have the bit.
-:::
-
-**A tiny instance.** $a = (1, 2, 3)$. Bit 0 is set in 1 and 3 ($c_0 = 2$), bit 1 in 2 and 3 ($c_1 = 2$). The XOR sum is $1 \cdot 2 \cdot 1 + 2 \cdot 2 \cdot 1 = 6$; directly, $1 \oplus 2 + 1 \oplus 3 + 2 \oplus 3 = 3 + 2 + 1 = 6$.
-
-**Proof.**
-1. Write each term as $\sum_b 2^b t_b$, where $t_b$ is bit $b$ of the term; for a bitwise operator, $t_b$ depends only on the operands' bits $b$.
-2. Exchange the order of the two sums: the total is $\sum_b 2^b \cdot (\text{number of terms with } t_b = 1)$. This is part 3.
-3. For XOR, $t_b = 1$ when exactly one of the two numbers has bit $b$: $c_b (n - c_b)$ pairs.
-4. For AND, both have it: $\binom{c_b}{2}$ pairs.
-5. For OR, all pairs except those where neither has it: $\binom{n}{2} - \binom{n - c_b}{2}$. $\square$
-
-:::note[This proof needs]
-1. The operation acts on each bit separately (AND, OR, XOR, NOT, shifts by a fixed amount are fine). Addition is not bitwise: carries move between bits, so $\sum (a_i + a_j)$ is computed directly, not per bit.
-2. Each bit's count is computed from information about that bit only, such as how many numbers have it.
-3. The totals reach $2^{30} \cdot n^2 / 4 \approx 10^{19}$ for $n = 2 \cdot 10^5$: check the bound against `long long` ($9.2 \cdot 10^{18}$), or take the modulus the problem asks for (topic 0.4).
-:::
-
-<TheoremCode unit="1.7/thm-3" />
-
-
-
-### 4.4 Highest bit first
-
-**Theorem 1.7.4 (the highest differing bit decides).** For integers $0 \le x, y < 2^B$ with $x \ne y$, let $b$ be the highest bit where they differ. Then $x > y$ exactly when $x_b = 1$. Consequently, among a set of candidates described bit by bit, the largest is found by deciding bits from $B - 1$ down to 0: set bit $b$ to 1 if some candidate agrees with the bits already decided and has bit $b$ equal to 1, otherwise set it to 0.
-
-:::tip[In plain words]
-Of two different numbers the larger is the one with a 1 at the highest bit where they differ, because that bit is worth more than all the lower bits together. So a best value can be built from the top bit down, keeping each bit that some valid choice still allows.
-:::
-
-**A tiny instance.** The largest AND of two numbers from $(5, 6, 3)$, that is $101_2, 110_2, 011_2$. Bit 2: two numbers (5 and 6) have it, so it can be 1; keep only them. Bit 1: among 5 and 6 only 6 has it, so it is 0. Bit 0: only 5 has it, so it is 0. Answer $100_2 = 4 = 5 \,\&\, 6$.
-
-**Proof.**
-1. Above $b$ the two numbers agree, so $x - y = \sum_{j \le b} (x_j - y_j) 2^j$.
-2. If $x_b = 1$ and $y_b = 0$, this is $2^b + \sum_{j < b} (x_j - y_j) 2^j \ge 2^b - (2^b - 1) = 1 > 0$. The case $x_b = 0$ is symmetric.
-3. For the greedy: suppose the bits above $b$ are decided as in the largest candidate $m$.
-4. If some candidate agreeing with those bits has bit $b$ equal to 1, then $m_b = 1$, because otherwise that candidate would be larger than $m$ by the first part. If none has, $m_b = 0$.
-5. By induction from the top bit, the decided bits are those of $m$. $\square$
-
-:::note[This proof needs]
-1. All candidates are compared as non-negative numbers below the same $2^B$; choose $B$ large enough (31 for `int`, 61 for values up to $2 \cdot 10^{18}$).
-2. At each bit you can decide whether some candidate with the decided prefix has that bit, usually by counting or by building the candidate.
-3. For the smallest value, the same greedy sets a bit to 0 whenever possible.
-:::
-
-<TheoremCode unit="1.7/thm-4" />
-
-
-
-### 4.5 Sums and bits
-
-**Theorem 1.7.5 (sum identities).** For integers $a, b \ge 0$:
-1. $a + b = (a \oplus b) + 2 (a \,\&\, b)$, and $a \mid b = (a \oplus b) + (a \,\&\, b)$.
-2. $x \,\&\, (x - 1)$ is $x$ with its lowest set bit cleared, for $x > 0$. So $x > 0$ is a power of two exactly when $x \,\&\, (x - 1) = 0$.
-3. `x & -x` is the lowest set bit of $x > 0$, for the two's-complement integers that C++ uses.
-
-:::tip[In plain words]
-Adding two numbers gives their XOR plus twice the bits they have in common, because the common bits carry. This lets a sum and a XOR be turned back into the two numbers, and x & (x − 1) and x & −x work on the lowest set bit.
-:::
-
-**A tiny instance.** $a = 6 = 110_2$, $b = 3 = 011_2$. Then $a \oplus b = 101_2 = 5$ and $a \,\&\, b = 010_2 = 2$, and indeed $6 + 3 = 5 + 2 \cdot 2 = 9$ and $6 \mid 3 = 7 = 5 + 2$.
-
-**Proof.**
-1. For each bit, $a_j + b_j = (a_j \oplus b_j) + 2 (a_j \,\&\, b_j)$: check the four cases ($0+0$, $0+1$, $1+0$, $1+1 = 0+2$). Multiply by $2^j$ and sum over $j$.
-2. Similarly $a_j \mid b_j = (a_j \oplus b_j) + (a_j \,\&\, b_j)$ bit by bit, and at each bit at most one of the two terms is 1, so no carries arise.
-3. Part 2. Let $2^k$ be the lowest set bit. Then $x - 1$ has the same bits as $x$ above $k$, a 0 at $k$, and 1s below $k$, where $x$ has 0s. The AND keeps the bits above $k$ and clears the rest.
-4. A power of two has only one set bit, so it becomes 0; any other $x > 0$ keeps a higher bit.
-5. Part 3. In two's complement, $-x$ is $\sim x + 1$. The NOT turns the trailing 0s below $k$ into 1s and bit $k$ into 0; adding 1 carries through those 1s and stops at bit $k$.
-6. So $-x$ agrees with $x$ at bit $k$ and below and is opposite above it, and the AND leaves only bit $k$. $\square$
-
-:::note[This proof needs]
-1. Part 1 holds for every pair of non-negative integers; to recover $a$ and $b$ from $s = a + b$ and $x = a \oplus b$, the carries $(s - x)/2$ must be a non-negative integer with no bit in common with $x$.
-2. Part 3 uses the signed type of $x$ (or unsigned negation); for `long long` values write `x & -x` with `x` a `long long`, not an `int`.
-:::
-
-<TheoremCode unit="1.7/thm-5" />
-
-
-
-## 5. Recognition Cards
-
-<Cards topic="1.7" />
-
-## 6. Templates
-
-Five short functions, one for each theorem. The brute forces loop over every value, pair or subarray directly.
-
-### The XOR of a range of integers (Theorem 1.7.1)
-
-<CodeSnippet unit="1.7/xor-range" />
-
-**How it works.** The XOR of $0, 1, \dots, n$ repeats with period 4: it is $n$, $1$, $n + 1$ or $0$ (Section 4.1). The XOR of $0, \dots, R$ is the XOR of $0, \dots, L - 1$ followed by the XOR of $L, \dots, R$. XOR-ing it with the first part cancels that part (Theorem 1.7.1, part 2), and what remains is the answer.
-
-**Alternative formulation.** Compute the answer bit by bit: bit $b$ of the XOR is the parity of the number of integers in $[L, R]$ with bit $b$ set, which can be counted with a formula for each bit (Theorem 1.7.3). It is longer, but it works for any per-bit count, not only for XOR.
-
-### Counting subarrays with XOR k (Theorem 1.7.2)
-
-<CodeSnippet unit="1.7/subarray-xor" />
-
-**How it works.** The loop keeps `P`, the prefix XOR up to the current position $j$. The subarrays that end at $j$ and have XOR $k$ start just after the earlier prefixes $P_i$ with $P_i = P_j \oplus k$. The map counts the earlier prefixes by value, so their number is one lookup. Then $P_j$ is recorded for later positions. `seen[0] = 1` stands for $P_0 = 0$.
-
-**Alternative formulation.** With an `unordered_map` (topic 0.6), each lookup is $O(1)$ on average. When the values are below $2^{20}$, a `vector<int>` of size $2^{20}$ indexed by the prefix value is faster still.
-
-### Sums over all pairs, bit by bit (Theorem 1.7.3)
-
-<CodeSnippet unit="1.7/pair-sums" />
-
-**How it works.** For each bit $b$, `c` counts the values that have it. Of the $\binom{n}{2}$ pairs, $c (n - c)$ have exactly one value with bit $b$ (XOR), $\binom{c}{2}$ have both (AND), and all but the $\binom{n - c}{2}$ pairs with neither have at least one (OR). Each such pair adds $2^b$.
-
-**Alternative formulation.** Count all bits in one pass while reading, into an array `c[30]` (`c[b] += (x >> b) & 1` for every bit of every value), then apply the same formulas. The array of values is then not needed at all.
-
-### The largest AND of a pair (Theorem 1.7.4)
-
-<CodeSnippet unit="1.7/max-and-pair" />
-
-**How it works.** `ans` holds the bits decided so far, from the top. For bit $b$, the program asks whether at least two values contain all decided bits and bit $b$: then their AND has them all, and bit $b$ can be kept. Otherwise no pair with the decided higher bits has bit $b$, and it stays 0. By Theorem 1.7.4, this gives the largest AND.
-
-**Alternative formulation.** Instead of counting over all values at every bit, keep only the values that contain `want` once a bit is kept; the list shrinks, and the result is the same.
-
-### Rebuilding a and b from their sum and XOR (Theorem 1.7.5)
-
-<CodeSnippet unit="1.7/sum-and-xor" />
-
-**How it works.** By Theorem 1.7.5, $s = x + 2c$ with $c = a \,\&\, b$. So a solution needs $s \ge x$ and $s - x$ even, and then $c = (s - x)/2$. A bit cannot be both common to $a$ and $b$ and in exactly one of them, so also $c \,\&\, x = 0$. When all of this holds, $a = c$ and $b = c \mid x$ work: they share exactly the bits of $c$ and differ exactly at the bits of $x$. Every solution contains all bits of $c$ in $a$, so $a = c$ is the smallest.
-
-**Alternative formulation.** Decide $a$ and $b$ bit by bit from the lowest bit, tracking the carry: at each bit, the bits of $s$ and $x$ and the incoming carry force the two bits or show there is no solution. It is the same reasoning written as a loop over bits.
-
-## 7. Bug catalogue
-
-Bit bugs hide well: the program runs, and its answers are numbers of the right size. Each bug below was made by changing one line of a template from Section 6. Seven of them were caught by `scripts/stress.sh`, and the input shown is the shortest failing input among the first 2000 random seeds. One was stopped by the compiler warnings before any test ran.
-
-### Bug: subtracting one prefix too many
-
-Template: the XOR of a range of integers.
-
-```cpp
-long long below = xorUpTo(L);
+→ 1 1 1 1 1 0 1 1
 ```
 
-Input: `1`, then the range `2 9`.
+![5, then ~5, then +1 gives -5](../../../assets/notes/1-7-bits/fig02_twos_complement_5.png)
 
-Wrong output `2`, correct output `0`. `xorUpTo(L)` includes $L$ itself, so XOR-ing it out removes $L = 2$ from the range: the program returns $3 \oplus \dots \oplus 9 = 2$ instead of $2 \oplus 3 \oplus \dots \oplus 9 = 0$.
+*5 → flip all → add 1 → -5.*
 
-**Fix:** the part to cancel is $0, \dots, L - 1$, exactly as with prefix sums: $P_r \oplus P_{l-1}$ (Theorem 1.7.2).
+```
+10 → 0 0 0 0 1 0 1 0
 
-### Bug: the empty prefix is missing
+1's → 1 1 1 1 0 1 0 1
 
-Template: counting subarrays with XOR k. The line `seen[0] = 1;` is removed.
-
-Input: `1 2`, then `2`.
-
-Wrong output `0`, correct output `1`. The only subarray, $(2)$, has XOR 2. It starts at position 1, so its pair of prefixes is $(P_0, P_1) = (0, 2)$, and $P_0 = 0$ was never recorded.
-
-**Fix:** record $P_0 = 0$ before the loop (Theorem 1.7.2, note 1).
-
-### Bug: recording the prefix before the lookup
-
-Template: counting subarrays with XOR k. `seen[P]++` moves above the lookup.
-
-Input: `1 0`, then `1`.
-
-Wrong output `1`, correct output `0`. With $k = 0$, the lookup searches for $P_j \oplus 0 = P_j$ itself, and finds the entry just recorded: the pair $(j, j)$, an empty subarray.
-
-**Fix:** look up first, then record; the pairs must have $i < j$.
-
-### Bug: counting ordered pairs and self-pairs for AND
-
-Template: sums over all pairs, bit by bit.
-
-```cpp
-sa += w * (c * c);
+2's → 1 1 1 1 0 1 1 0
 ```
 
-Input: `1`, then `3`.
+Note: first bit of 1's comple of 10 is 1 (flip of 0), not 0.
 
-Wrong output `0 3 0`, correct output `0 0 0`. With one value there are no pairs, but $c^2 = 1$ counts the "pair" of the value with itself, at bits 0 and 1: $1 + 2 = 3$.
+![10, ~10, and -10](../../../assets/notes/1-7-bits/fig03_twos_complement_10.png)
 
-**Fix:** the pairs $i < j$ among $c$ values are $\binom{c}{2} = c(c - 1)/2$ (Theorem 1.7.3, part 2). The XOR count $c(n - c)$ needs no such fix, because a value is never paired with itself there.
+*carry here goes 2 places, last two bits change.*
 
-### Bug: missing parentheses around a bit test
+Why does it work? Say 8 bits. Total patterns = 256. Flipping all bits of x gives 255 - x. Add 1 → 256 - x. So x + (-x) = 256, and 256 doesn't fit in 8 bits, toh bas 0 bacha. Isliye machine same adder se plus aur minus dono kar leti hai.
 
-Template: the largest AND of a pair.
-
-```cpp
-if (x & want == want) c++;
-```
-
-`==` binds more strongly than `&`, so this is `x & (want == want)`, that is, `x & 1`. With `-Wall -Wextra`, g++ warns twice ("suggest parentheses", "self-comparison always evaluates to true"), and `stress.sh` treats warnings as errors, so the broken copy never ran.
-
-**Fix:** put parentheses around every bitwise operation inside a comparison: `(x & want) == want`. Read compiler warnings: they catch this bug before any test does.
-
-### Bug: checking each bit alone
-
-Template: the largest AND of a pair. The test checks only bit $b$, not the bits already decided.
+Range for 8 bits: -128 to 127. For int (32 bit): $-2^{31}$ to $2^{31}-1$.
 
 ```cpp
-if ((x >> b) & 1) c++;
+/*
+Problem: show how a computer stores a negative number with 8 bits.
+Take the 1's complement (flip every bit), then add 1. Keep only 8 bits.
+*/
+// Needs <bitset> and <string>.
+string bits8(unsigned char v){
+    return bitset<8>(v).to_string();   // e.g. 5 -> "00000101"
+}
+
+unsigned char ones_complement_8bit(unsigned char v){
+    return (unsigned char)(~v);        // ~v is an int, the cast keeps the low 8 bits
+}
+
+unsigned char twos_complement_8bit(unsigned char v){
+    return (unsigned char)(ones_complement_8bit(v) + 1);   // the carry out of bit 7 is dropped
+}
 ```
 
-Input: `3`, then `9 8 5`.
+Output for 5 → `00000101 11111010 11111011`, for 10 → `00001010 11110101 11110110`.
 
-Wrong output `9`, correct output `8`. Bit 3 is in 9 and 8, and bit 0 is in 9 and 5, so the program keeps both. But no single pair has both bits: $9 \,\&\, 8 = 8$, $9 \,\&\, 5 = 1$. The answer 9 is not the AND of any pair.
+### -10 + 10
 
-**Fix:** a lower bit can be kept only by a pair that also keeps all the higher bits already chosen: count the values that contain all of `want` (Theorem 1.7.4).
+Machine stores (-10) as 10's 2's comple.
 
-### Bug: an odd difference
+```
+(-10)   1 1 1 1 0 1 1 0
+(+10)   0 0 0 0 1 0 1 0
++      ------------------
+ (1)    0 0 0 0 0 0 0 0   → gives zero on bit
+ ¯¯¯                         by bit addition.
+```
 
-Template: rebuilding a and b from their sum and XOR. The check that $s - x$ is even is removed.
+![-10 + 10 gives all zeros, carry out is dropped](../../../assets/notes/1-7-bits/fig04_minus10_plus10.png)
 
-Input: `1`, then `19 0`.
+*9^th bit (carry) is thrown away.*
 
-Wrong output `9 9`, correct output `-1`. $x = 0$ means $a = b$, so $a + b$ is even and cannot be 19. The program halves 19 and prints $9 + 9 = 18$.
+INT_MAX → for 8-bit it is 0 1 1 1 1 1 1 1 (= 127). (For 32 bit it is $2^{31}-1$.)
 
-**Fix:** $s - x = 2(a \,\&\, b)$ is always even (Theorem 1.7.5); when it is odd there is no solution.
+```
+→   0 1 1 1 1 1 1 1  ┐
++   0 1 1 1 1 1 1 1  ┘ INT_MAX
+   -----------------      (for 8-bit)
+    1 1 1 1 1 1 1 0  → -ive no.
+```
 
-### Bug: no check that the common bits and the XOR are disjoint
+Which negative number? Take 2's comple again :
 
-Template: rebuilding a and b from their sum and XOR. The check `c & x` is removed.
+```
+    1 1 1 1 1 1 1 0
+1's 0 0 0 0 0 0 0 1
+       +          1
+   -----------------
+    0 0 0 0 0 0 1 0  → 2
+```
 
-Input: `1`, then `48 2`.
+so INT_MAX + INT_MAX = -2 (overflow, wrapped around).
 
-Wrong output `23 23`, correct output `-1`. Here $c = 23 = 10111_2$ and $x = 2 = 10_2$ share bit 1: that bit would have to be in both numbers and in exactly one of them. The printed pair has $23 \oplus 23 = 0 \ne 2$.
+![127 + 127 = 11111110 which is -2](../../../assets/notes/1-7-bits/fig05_overflow_127.png)
 
-**Fix:** check that $c \,\&\, x = 0$, and test a few outputs by computing $a + b$ and $a \oplus b$ back.
+*overflow: sum becomes negative.*
 
-## 8. Worked examples
+Note: 8-bit is only to understand. In C++ `int` overflow is undefined behaviour, so use `long long` when sum can be big.
 
-### Example 1: Red Scarf
+```
+X ──────────→ -X ──────────→ X
+   2's comple     2's comple
+```
 
-[AtCoder Beginner Contest (ABC) 171, problem E: Red Scarf](https://atcoder.jp/contests/abc171/tasks/abc171_e). In short: $N$ cats ($N$ even, $N \le 2 \cdot 10^5$) each have a hidden integer $x_i$; you are given $a_i$, the XOR of all hidden integers except $x_i$. Print the hidden integers.
+![X to -X to X with 2's complement on each arrow](../../../assets/notes/1-7-bits/fig06_negate_twice.png)
 
-#### Step 1: Constraints → budget
+*2's comple twice → back to X.*
 
-$N = 2 \cdot 10^5$: $O(N)$ or $O(N \log N)$. Values up to $10^9 < 2^{30}$: `int`.
+## Sets as bitmasks
 
-#### Step 2: Question form → candidate tools
+```
+arr = { 2 , 3 , 5 , 7 }
+        0   1   2   3
+```
 
-Brute force over the hidden values (topic 0.5) is hopeless: each has $10^9$ choices. Computing each $a_i$ from scratch would be $O(N^2)$ even if the $x$ were known. The data are all XORs of almost everything, and XOR cancels repeated values ("XOR cancellation" card, Theorem 1.7.1). The unknown that ties them together is $X$, the XOR of all hidden values.
+6 = (0 1 1 0) = {3,5}
+                3 2 1 0
 
-#### Step 3: Property check → decision
+10 = (1 0 1 0) = {3,7}    (for unions we can take OR)
 
-"All except $x_i$" is $X$ with $x_i$ removed, and removing a value from a XOR is XOR-ing it again: $a_i = X \oplus x_i$. So $x_i = a_i \oplus X$ (Theorem 1.7.1, part 3), and everything reduces to finding $X$. XOR all the $a_i$: each $x_j$ appears in every $a_i$ except $a_j$, that is $N - 1$ times, an odd number because $N$ is even. Decision: $X = a_1 \oplus \dots \oplus a_N$, then $x_i = a_i \oplus X$.
+{3,5} U {3,7} = {3,5,7} = 6 | 10
 
-#### Step 4: Proof for this problem
+```
+6 | 10 =
+  0 1 1 0
+  1 0 1 0
+ ---------
+ {1 1 1 0}   = {3,5,7}
+ {3 2 1 0}
+```
 
-Let $X = x_1 \oplus \dots \oplus x_N$. By Theorem 1.7.1, parts 1 and 2, $a_i = X \oplus x_i$, because XOR-ing $x_i$ into $X$ cancels it. Then $a_1 \oplus \dots \oplus a_N$ is a XOR in which each $x_j$ appears $N - 1$ times (once in every $a_i$ with $i \ne j$). By part 4, only values that appear an odd number of times remain, and $N - 1$ is odd, so the XOR of all $a_i$ is $X$. Finally $x_i = a_i \oplus X$ by part 3. The values found satisfy every equation and are the only possible ones. Two passes: $O(N)$.
+U → OR  `|`    ∩ → AND  `&`
 
-#### Step 5: Code
+![masks 6 and 10 as subsets, their union and intersection](../../../assets/notes/1-7-bits/fig07_subset_masks.png)
 
-<CodeSnippet unit="1.7/example-1" />
+*bit i = 1 matlab arr[i] is inside the set. 6 & 10 = 2 = {3}.*
 
-#### Step 6: Alternative approach
+{ 2,3,5 } → 2^3 → 8 subsets
+loop over (0 - 7) to generate all subsets.
 
-Work with differences: $a_i \oplus a_j = x_i \oplus x_j$, since $X$ cancels. So once $x_1$ is known, $x_j = x_1 \oplus a_1 \oplus a_j$. Substituting these into $a_1 = x_2 \oplus \dots \oplus x_N$ gives $N - 1$ (an odd number of) copies of $x_1 \oplus a_1$, so $a_1 = x_1 \oplus a_1 \oplus a_2 \oplus \dots \oplus a_N$, that is, $x_1 = a_2 \oplus \dots \oplus a_N$. It reaches the same formula with more algebra.
+Think of it as: every number from 0 to $2^n - 1$ is one choice of "take / don't take" for each element. mask = 5 = 101 → take arr[0] and arr[2]. T.C. = $O(2^n \cdot n)$.
 
-### Example 2: Masked Popcount
+```cpp
+// Fabricator/BitManipulation/SubSets.cpp
+void solve() {
+    int n;
+    cin>>n;
 
-[AtCoder Beginner Contest (ABC) 356, problem D: Masked Popcount](https://atcoder.jp/contests/abc356/tasks/abc356_d). In short: given $N$ and $M$ below $2^{60}$, print the sum of $\text{popcount}(k \,\&\, M)$ over $k = 0, 1, \dots, N$, modulo $998244353$.
+    vector<int> arr(n);
+    for(auto &ele: arr) cin>>ele;
 
-#### Step 1: Constraints → budget
+    for(int mask = 0; mask < (1 << n); mask++){
+        for(int bit=0; bit<n; bit++){
+            if(mask & (1<<bit)){
+                cout<<arr[bit]<<" ";
+            }
+        }
 
-$N$ up to $2^{60} \approx 10^{18}$: even $O(N)$ is impossible. Only about 60 bits exist, so $O(60)$ or $O(60^2)$ is the budget. `long long` for $N$, $M$ and the counts.
+        cout<<endl;
+    }
+}
+```
 
-#### Step 2: Question form → candidate tools
+For {2,3,5} it prints: (empty), `2`, `3`, `2 3`, `5`, `2 5`, `3 5`, `2 3 5`.
 
-A sum over many terms of a bitwise result, and popcount just counts set bits: the "One bit at a time" card (Theorem 1.7.3). Each term's popcount is the number of bits $b$ set in $k \,\&\, M$. Exchanging the two sums turns the total into a count per bit.
+## X^th bit
 
-#### Step 3: Property check → decision
+```
+X^th bit ─┬→ check → n & (1<<x)
+          ├→ set   → n | (1<<x)
+          ├→ unset → n & (~(1<<x))
+          └→ flip  → n ^ (1<<x)
+```
 
-Bit $b$ of $k \,\&\, M$ is 1 exactly when $M$ has bit $b$ and $k$ has bit $b$: a condition on bit $b$ alone. So the answer is the sum, over the bits $b$ of $M$, of the number of $k \in [0, N]$ with bit $b$ set. That count has a formula: counting up from 0, bit $b$ is $2^b$ zeros, then $2^b$ ones, repeating with period $2^{b+1}$. Decision: for each bit of $M$, count the full periods in the $N + 1$ numbers and the ones in the partial period.
+`1<<x` is the **mask**, a number with only x^th bit on. Everything else is just AND / OR / XOR with this mask.
 
-#### Step 4: Proof for this problem
+![check, set, unset, flip on n = 10](../../../assets/notes/1-7-bits/fig08_bit_operations.png)
 
-$\sum_k \text{popcount}(k \,\&\, M) = \sum_k \sum_b [\text{bit } b \text{ of } k \,\&\, M] = \sum_b \#\{k \le N : k_b = 1 \text{ and } M_b = 1\}$, by exchanging the sums (Theorem 1.7.3, part 3, with weight 1 for every bit instead of $2^b$). For a bit $b$ of $M$: bit $b$ of $k$ is $\lfloor k / 2^b \rfloor \bmod 2$, so as $k$ runs through $0, 1, 2, \dots$ it takes the value 0 for $2^b$ consecutive numbers, then 1 for $2^b$, and so on. The $N + 1$ numbers $0, \dots, N$ contain $q = \lfloor (N + 1) / 2^{b+1} \rfloor$ full periods, each with $2^b$ ones, and a partial period of $r = (N + 1) \bmod 2^{b+1}$ numbers, whose ones are the last $\max(0, r - 2^b)$. Adding these counts modulo $998244353$ gives the answer in $O(60)$.
+*n = 10 (1010), once with a 0 bit (x = 2), once with a 1 bit (x = 1).*
 
-#### Step 5: Code
+Note: check gives non-zero, not exactly 1. Compare with `!= 0` or use `(n >> x) & 1`. For `long long` use `1ll << x`, plain `1 << x` is int.
 
-<CodeSnippet unit="1.7/example-2" />
+Repo version (queries on a 64 bit number: 1 check, 2 set, 3 unset, 4 flip, 5-7 popcount checks, 8 popcount, 9 print n):
 
-#### Step 6: Alternative approach
+```cpp
+// Fabricator/BitManipulation/BitMagic1.cpp
+void solve() {
+    long long n = 0;
+    int q;
+    cin>>q;
 
-Count bit by bit from the top of $N$: for each bit where $N$ has a 1, the numbers below $N$ that agree with it above that bit and have 0 there form a block in which all lower bits take every value equally often. It gives the same counts, written as a walk over the bits of $N$ (Theorem 1.7.4 style). The period formula above is shorter.
+    while(q--){
+        int t, i;
+        cin>>t;
+        switch (t)
+        {
+            case 1:
+            cin>>i;
+            cout<<((n >> i) & 1ll)<<endl;
+            break;
 
-## 9. Problem ladder
+            case 2:
+            cin>>i;
+            n = n | (1ll << i);
+            break;
 
-Nineteen problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Before coding each one, write down which property of the bits you use (cancellation, prefix values, one bit at a time, the highest bit first, or a sum identity), and check it by hand on two small numbers written in binary. Before opening a hint, spend the struggle budget shown on the problem.
+            case 3:
+            cin>>i;
+            n = n & (~(1ll << i));
+            break;
 
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+            case 4:
+            cin>>i;
+            n = n ^ (1ll << i);
+            break;
+
+            case 5:
+            cout<<(__builtin_popcountll(n) == 60)<<endl;
+            break;
+
+            case 6:
+            cout<<(__builtin_popcountll(n) > 0)<<endl;
+            break;
+
+            case 7:
+            cout<<(__builtin_popcountll(n) == 0)<<endl;
+            break;
+
+            case 8:
+            cout<<__builtin_popcountll(n)<<endl;
+            break;
+
+            case 9:
+            cout<<n<<endl;
+            break;
+        
+            default:
+            break;
+        }
+    }
+}
+```
+
+## Counting set bits
+
+Counting set bits :
+
+`__builtin_popcount (x);`   ← internal function.
+
+```cpp
+cnt = 0;
+while(n) {
+    if(n & 1) {
+        cnt++;
+    }
+    n = n >> 1;
+}
+```
+
+(doesn't work on -ive nums.)
+
+Why? For negative `int`, `>>` keeps pushing the sign bit 1 from left, so n never becomes 0 → infinite loop.
+
+```cpp
+count (n){
+    if(n==0)
+        return 0;
+    return count(n/2)
+        + (n&1);
+}
+```
+
+Note: it needs types (`int count(int n)`). Also wrong for -ive, `count(-1)` gives 1 (n/2 rounds towards 0), real answer is 32.
+
+\* for -ive numbers use `__builtin_popcount()`.
+
+```cpp
+int count2 (int n){
+    if (n==0) return 0;
+    return count2 (n & (n-1)) + 1;
+}
+```
+
+works for the -ive number as well.
+
+Note: for `INT_MIN`, `n-1` overflows. Use `unsigned` to be safe.
+
+```
+x = 3        x = 12        x = 16
+  1 1          1 1 0 0       1 0 0 0 0
+  1 0          1 0 1 1       0 1 1 1 1
+ -----        ---------     -----------
+  1 0          1 0 0 0       0 0 0 0 0
+```
+
+![x AND x-1 for 3, 12, 16](../../../assets/notes/1-7-bits/fig09_n_and_n_minus_1.png)
+
+*x-1 → lowest 1 becomes 0, zeros below it become 1. AND kills that 1.*
+
+[ n & (n-1) ] → flips the first set bit.
+
+Note: precisely, it turns **off** the lowest set bit. So count2 counts how many times we can remove a bit before n becomes 0. T.C. = O(no. of set bits).
+
+`__builtin_popcountll()` → for long long integers.
+
+| way | T.C. | -ive numbers |
+|---|---|---|
+| shift loop | O(bits) | infinite loop |
+| recursion n/2 | O(bits) | wrong |
+| n & (n-1) | O(set bits) | works |
+| builtin | O(1) | works |
+
+## Bit application
+
+→ Bit Application :
+
+Ques :  arr : [3, 2, 7, 1]
+
+Find sum of all (subarray &) of an array.
+
+[ sum of all (subarray) ]  } Contribution technique
+
+Contribution technique: don't compute each subarray's AND. Instead ask "how much does each small piece add to the final answer?".
+
+```
+contribution technique
+ ┌→ atomic item     }  can be solved
+ └→ extending end   }  using both.
+        └ → pivot.
+```
+
+Brute force: all subarrays, AND each → $O(n^2)$ with running AND. Better: use contribution technique, T.C. = O(32 n).
+
+### Atomic item contri
+
+Write numbers in binary, one row per bit position (MSB on top, LSB at bottom).
+
+```
+      3  2  7  1
+MSB   0  0  1  0
+ │    1  1  1  0
+ ↓    1  0  1  1
+LSB
+```
+
+![bits of 3, 2, 7, 1 row by row](../../../assets/notes/1-7-bits/fig10_bit_columns.png)
+
+*each column = one number, each row = one bit position.*
+
+```
+      3    2    7    R[2]
+   [ (0)  (0)  (1) ]   0     ← These bits
+      1    1    1      1        will always
+      1    0    1      0        interact within
+                                their range.
+```
+
+These bits will always interact within their range (inside their own row). A bit position is 1 in AND of a subarray only if **all** elements of that subarray have 1 there.
+
+```
+3  2  7  1
+0  0  1  0  ]→ 1
+1  1  1  0
+1  0  1  1
+```
+
+How many subarray will have 1 bit at their respective position
+
+Row `0 0 1 0` → only one subarray will have this position bit as 1.
+Row `1 1 1 0` → 6 sub arrays.
+Row `1 0 1 1` → 4.
+
+```
+3  2  7  1
+0  0  1  0  →  1 x 2^2 = 4
+1  1  1  0  →  6 x 2^1 = 12   }  20
+1  0  1  1  →  4 x 2^0 = 4
+```
+
+![runs of ones per bit row and the sum 20](../../../assets/notes/1-7-bits/fig11_runs_per_bit.png)
+
+*run of ones → count subarrays inside it, multiply by 2^bit.*
+
+Another example, arr = [1, 3, 2]:
+
+```
+1  3  2
+0  1  1  →
+1  1  0
+```
+
+Writing all the subarray &s :
+```
+ 1     3     2    1 2 3   3 & 2   1 2 3 2 2
+(0) + (1) + (1) + (0) + (1) + (0)
+(1)   (1)   (0)   (1)   (0)   (0)
+```
+1 + 3 + 2 + 1 + 2 + 0 = 9
+
+(2^0) + (2^0 + 2^1) + 2^1 + 2^0 + 2^1 + 0
+
+Note: the six subarrays are [1], [3], [2], [1,3], [3,2], [1,3,2] with ANDs 1, 3, 2, 1, 2, 0.
+
+![all six subarray ANDs of 1, 3, 2](../../../assets/notes/1-7-bits/fig12_all_subarray_ands.png)
+
+*sum = 9.*
+
+We are counting no. of 2^0's, 2^1's, 2^2's ... when we are counting number of subarrays with 1 bit after anding.
+
+```
+[2^1 2^0]
+  0   1
+  1   1
+  1   0
+  0   1
+  1   0
+ ------
+ 3x2^1  3x2^0  =
+```
+
+![bit table of the six ANDs, three 1s in each column](../../../assets/notes/1-7-bits/fig13_bit_tally_of_ands.png)
+
+*3 ones in each column.*
+
+Hence, we are calculating the positional values via bits & powers of 2s.
+
+3x2^1 + 3x2^0
+6 + 3 = (9)
+
+Now, the question boils down to finding no. of subarrays with positional bit as 1.
+
+```
+[ 1  1  1  0 ] → how many
+  ¯¯¯¯¯¯¯¯¯      Subarrays
+   4C2
+```
+
+```
+[ 1  0  1  1 ]
+  ¯     ¯¯¯¯
+ 2C2  +  3C2
+```
+
+Observation: run of L ones has $\frac{L(L+1)}{2}$ subarrays (choose start and end, or pick 2 cut points out of L+1 gaps = (L+1)C2). So run of 3 → 4C2 = 6, run of 1 → 2C2 = 1, run of 2 → 3C2 = 3.
+
+Code (atomic item). `cnt_subarrays_with_1` counts exactly this for one bit row; `solve` loops over all 32 bits:
+
+```cpp
+// Fabricator/BitManipulation/BitContributionTechnique-AtomicItem.cpp
+long long cnt_subarrays_with_1(vector<int> &temp){
+    long long cnt = 0;
+    long long curr = 0;
+    for(int i=0; i<temp.size(); i++){
+        if(temp[i] == 1){
+            curr++;
+        }
+        else{
+            cnt += ((curr + 1ll) * curr) / 2ll;
+            curr = 0;
+        }
+    }
+
+    cnt += ((curr + 1ll) * curr) / 2ll;
+
+    return cnt; 
+}
+
+void solve() {
+    long long n;
+    cin>>n;
+
+    vector<long long> arr(n);
+    for(auto &ele: arr) cin>>ele;
+
+    long long ans = 0;
+    for(int bit=0; bit<32; bit++){
+        vector<int> temp;
+        for(long long i=0; i<n; i++){
+            temp.push_back((arr[i] >> bit) & 1);
+        }
+
+        long long cnt_subarrays = cnt_subarrays_with_1(temp);
+
+        ans += cnt_subarrays * (1 << bit);
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Gives 20 for `3 2 7 1` and 9 for `1 3 2`. T.C. = O(32 n), memory O(n).
+
+Note: `cnt_subarrays * (1 << bit)` is int shift, bit goes till 31. Use `1ll << bit` to be safe.
+
+### ORs and XORs
+
+What if the question asks for ORs ?
+
+```
+ 1  (0   0)  1
+ ═══════════════
+ ═══════════════ ]   7 subarrays
+ ═══════════════
+```
+
+[ Total - (only zero's subarr) ]
+5C2 - 3C2        } We need to change only the
+                   subarray counting.
+
+(5x4)/2 - (3x2)/2
+8 - 3 = 7
+
+Note: (5x4)/2 = 10 not 8. So 10 - 3 = 7. Answer 7 is right.
+
+Think: OR bit is 0 only when the whole subarray is zeros. So subarrays with OR bit 1 = total - subarrays made only of 0s. Only counting changes, rest same.
+
+![all 10 subarrays of 1 0 0 1 and their OR bit](../../../assets/notes/1-7-bits/fig14_or_counting.png)
+
+*10 total, 3 all-zero (red), 7 have OR bit 1.*
+
+\*\* What about XORs?
+
+Idea: prefix xor. P[0] = 0, P[i+1] = P[i] ^ arr[i]. Then xor of arr[l..r] = P[r+1] ^ P[l] (first l elements cancel out). So sum of xor of all subarrays = sum of xor of all pairs of P (n+1 values). That is the last question of this note. For [1,5,7] it comes 22.
+
+### Extending end
+
+— Extending End : Idea :
+
+```
+      a   b   c   d | e
+   [               0 |     ]
+                   1 |
+                   1 |
+       ..          1 |
+                     ↑
+```
+
+we're checking the subarrays ending here.
+
+If d has any positional bit as 0 then every subarray ending at d will have that positional bit as 0.
+
+```
+                   d
+        ┌          0 ─→ all AND values
+        │   (0)(0) ─ 1 ─→ only one sub array    will have 0
+        │ (0) 1  1  1  1  1        will have
+        └  0  1 (0) 1  1  1       1 here
+                                   by looking
+                                   at previous
+                                   zero.
+```
+
+will have 3 subarrays with 1. looking at previous 0.
+
+will have 5 subarrays with 1 by looking at previous zero.
+
+![counting subarrays ending at last cell using previous zero](../../../assets/notes/1-7-bits/fig15_extending_end.png)
+
+*count = (end index) - (index of previous 0), if end cell is 1. Else 0.*
+
+### No. of distinct AND values
+
+\*\* No. of distinct AND values is equal to no. of bits [32 for int].
+
+```
+ 0   1   2   3 | 4   5   6 | 7   8 | 9
+-------------------------------------
+ 0             | 0       0 | 1     | 1
+ 0           0 | 1       ↓ | 1     | 1
+ 0             | 0         | 0   0 | 1
+ 1             | 1         | 1     | 1
+-------------------------------------
+ ⌣⌣⌣⌣⌣     ⌣⌣⌣     ⌣⌣
+                            This pos bit
+                            flips to 0 here.
+```
+
+All these ranges have same numbers after the bit is flipped.
+
+![10 numbers in 4 bits, AND towards index 9 changes only at first zero of each bit](../../../assets/notes/1-7-bits/fig16_distinct_and_ranges.png)
+
+*ranges 0-3, 4-6, 7-8, 9 → AND = 1, 5, 13, 15. Blank cells taken as 1.*
+
+Now, since on ANDing bits in the number can flip only 'bit size' no. of times there are only 'bit size' no. of distinct ANDed numbers possible.
+
+```
+           ────────────────── 4
+              ─────────── 5
+                 ──────── 7
+     2     4     6     5     7
+    (0)    1     1     1     1
+     1     0     1    (0)    1
+     0     0    (0)    1     1
+                           └→ 7
+                        ┌──────→ 5
+                     ┌─────────→ 4
+                ┌───────────────→ 4
+          ┌─────────────────────→ 0
+```
+
+![array 2 4 6 5 7 with AND of subarrays ending at 7](../../../assets/notes/1-7-bits/fig17_ands_ending_at_7.png)
+
+*ANDs ending at 7 (start moving left): 7, 5, 4, 4, 0.*
+
+7 changes to 5 only after it sees a 0.
+Then it keeps / continues the same value
+until it sees another 0.
+
+5 changes to 4 only after seeing a 0.
+
+4 keeps 4 as no new zero.
+
+4 changes to 0 on seeing next zero.
+
+\* The change will only happen at the first zero at every bit position.
+
+```
+7  AND → 1  (once)
+5  AND → 1
+4  AND → 2
+0  AND → 1 .
+```
+
+\* At any end point there can be only at most 'bit size' AND values. [32 or 64].
+
+Now, 6 appears as next ele. (extending).
+
+```
+0 → 1        0 → 1
+4 → 2        6 → 2
+5 → 1        4 → 1
+7 → 1        6 → 1       7 & 6 → 6
+-------      6 → 1       5 & 6 → 4
+   7                     4 & 6 → 4
+                6        4 & 6 → 4
+                         0 & 6 → 0
+                         6 & 6 → 6
+```
+
+Note: after AND with 6, equal values merge. So new tally = 0 → 1, 4 → 3, 6 → 2 (total 6 subarrays, the last 6 is the new single element [6]).
+
+![tally before and after appending 6](../../../assets/notes/1-7-bits/fig18_tally_append_6.png)
+
+*equal values merge, so table never grows beyond 'bit size' rows.*
+
+So basically: keep a map {AND value → count of subarrays ending here}. For new element x → AND every key with x, merge, add (x → 1). Sum `value * count` for the answer. T.C. = O(n · 32 · log 32).
+
+```cpp
+// Fabricator/BitManipulation/BitContributionTechnique-ExtendingEnd.cpp
+void solve() {
+    long long n;
+    cin>>n;
+
+    vector<long long> arr(n);
+    for(auto &ele: arr) cin>>ele;
+
+    map<long long, long long> last_and;
+    long long ans = 0;
+    for(int i=0; i<n; i++){
+        map<long long, long long> new_and;
+        for(auto v: last_and){
+            new_and[v.first & arr[i]] += v.second;
+        }
+
+        new_and[arr[i]]++;
+
+        for(auto v: new_and){
+            ans += v.first * v.second;
+        }
+
+        last_and = new_and;
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Same output, 20 and 9. Checked against brute force too.
+
+Check LC : Bitwise ORs of Subarrays. (Same idea with OR, a bit can only go 0 → 1 once.)
+
+```cpp
+// Fabricator/BitManipulation/BitwiseORsOfSubarrays.cpp
+/*
+https://leetcode.com/problems/bitwise-ors-of-subarrays/description/
+*/
+
+int subarrayBitwiseORs(vector<int>& arr) {
+    int n = arr.size();
+
+    set<long long> total_or;
+    set<long long> last_or;
+    long long ans = 0;
+    for(int i=0; i<n; i++){
+        set<long long> curr_or;
+        for(auto or_val: last_or){
+            curr_or.insert(arr[i] | or_val);
+        }
+
+        curr_or.insert(arr[i]);
+
+        for(auto or_val: curr_or){
+            total_or.insert(or_val);
+        }
+
+        last_or = move(curr_or);
+    }
+
+    return total_or.size();
+}
+
+void solve() {
+    int n;
+    cin>>n;
+    
+    vector<int> v(n);
+    for(auto &ele: v) cin>>ele;
+
+    cout<<subarrayBitwiseORs(v)<<endl;
+}
+```
+
+Gives 3 for `[1,1,2]` and 6 for `[1,2,4]`.
+
+## Ques: index of k^th 1
+
+Ques :
+
+S = 0 1 10 11 100 101 110 111 1000 ....
+    0 1 2  3  4   5   6   7   8
+
+We have infinite sequence of binary representation of natural numbers.
+Given q queries of the form '? k', find the index of k^th 1.
+
+```
+i/p :
+1
+? 10
+
+o/p :
+15
+```
+
+Index starts from 0, k starts from 1.
+
+![string S, ones numbered, 10th one at index 15](../../../assets/notes/1-7-bits/fig19_sequence_s.png)
+
+*S = 0 1 10 11 100 101 110 ... , 10^th one is at index 15.*
+
+Constraints :
+
+i) q ≤ 10 , k ≤ 10^5
+
+ii) q ≤ 10^5 , k ≤ 10^5
+
+iii) q ≤ 10^5 , k ≤ 10^9
+
+Except 0, all numbers have at least 1 bit set.
+∴ for k ≤ 10^5 we can go at max 10^5 numbers' binary rep.
+
+10^3 ~ 2^10  ⇐⇒  10^6 ~ 2^20.
+
+∴ At max 20 bits needed per no.
+
+20 x 10^5 length of the string
+2 x 10^6 len of the string.
+
+Hence, we can precompute the whole s & also precompute all the positions of 1s & then answer the queries in O(1).
+
+T.C. — O( k x log_2(k) + q )
+
+max log_2 k bits will be added for a number.
+
+q ≤ 10 , k ≤ 10^5
+q ≤ 10^5 , k ≤ 10^5     } Both solved by using above soln.
+
+for q ≤ 10^5 & k ≤ 10^9 → we cannot build the string s as it'll lead to TLE
+
+The obvious candidate is Binary Search.
+for finding k^th element we know B.S and backtracking.
+
+Only B.S' T.C. matches the requirement.
+
+check (x) → ( (# 1s in [1......x]) ≥ k )
+
+```
+                              k^th
+                               ↓
+ 0   1   10   11   100  101  110  111  1000
+ 0   1   2    3    4    5    6   (7)   8
+```
+
+we'll need to know this 7. to compute all the 1s. to find k^th 1.
+
+boolean predicate :
+
+```
+ 0   0   0   0   0   0   0  |1|   1   1
+ 0   1   2   3   4   5   6  (7)   8   9
+```
+
+![f(x) and predicate f(x) >= 10 for x = 0..9](../../../assets/notes/1-7-bits/fig20_predicate_k10.png)
+
+*predicate is false till 6, true from 7. First true = 7.*
+
+Now, we change focus to check. function.
+
+f(n) = # of 1s in [0......n]
+
+f(5) = 7
+
+f(7) = 5+7 = 12
+
+```
+0 - 0           f(7) = f(5) +
+1 - 1             6 - 2
+2 - 1             7 - 3
+3 - 2            -------
+4 - 1                5
+5 - 2
+-------
+   7
+```
+
+f(x) = Σ (i=0 to x) # of 1s in i
+
+```
+0 ── 0 0 0
+1 ── 0 0 1
+2 ── 0 1 0
+3 ── 0 1 1
+4 ── 1 0 0
+5 ── 1 0 1
+6 ── 1 1 0
+      ↑ ↑ ↑
+```
+
+In contribution technique we count column wise.
+
+![numbers 0 to 6, ones per column](../../../assets/notes/1-7-bits/fig21_f6_columns.png)
+
+*each column has 3 ones, f(6) = 3 + 3 + 3 = 9.*
+
+Also, these colums are periodic at their position.
+
+0^th position has 0 1 0 1 0 1 ....  (repeat "0 1")
+1^st pos has 0 0 1 1 0 0 1 1 ....  (repeat "0 0 1 1")
+2^nd pos has 0 0 0 0 1 1 1 1 0 0 0 0 1 1 1 1 ....  (repeat "0 0 0 0 1 1 1 1")
+
+0^th position has period 2.
+1^st → 4
+2^nd → 8
+
+for i^th position , period = 2^(i+1)
+
+```
+      2^(i+1)
+      ↙     ↘
+   2^i → 0s   2^i → 1s
+ first half   second half
+   zeros      of ones.
+```
+
+![bit 0, 1, 2 columns for 0..15 with periods 2, 4, 8](../../../assets/notes/1-7-bits/fig22_periodic_bits.png)
+
+*one period = 2^i zeros then 2^i ones.*
+
+![period split into zeros and ones](../../../assets/notes/1-7-bits/fig23_period_split.png)
+
+*first half zeros, second half ones.*
+
+for x :
+
+⌊ x / 2^(i+1) ⌋  full pattern will occur.
+
+So, to count 1s. we count complete periods occurring in the range. and the partial periods.
+
+full = total / 2^(i+1)        x.
+                              total = x+1
+
+left = total % (2^(i+1)) .
+
+max(left - 2^i, 0) ← 1s in left
+
+full * 2^i ← 1s in full periods.
+
+Total 1s = (full * 2^i) + max(left - 2^i, 0);
+in i^th bit.
+
+Why max(.., 0)? In the partial period first $2^i$ numbers are zeros, so ones come only after that. If left ≤ $2^i$ then no 1 at all.
+
+Example: x = 10, i = 1. total = 11, period = 4, full = 2, left = 3. ones = 2*2 + max(3-2, 0) = 5. Check: bit 1 is 1 for 2,3,6,7,10 → 5 ✓.
+
+![bit 1 of numbers 0..10, formula gives 5](../../../assets/notes/1-7-bits/fig24_formula_example.png)
+
+*2 full periods + partial with left = 3.*
+
+Σ (from l to r) # of 1s (i) = f(r) - f(l-1)
+
+Now, we know how we can find the integer containing the k^th one.
+
+eg: for k=10 we know 7 is the integer. where k^th lies.
+
+We find f(6), gives how many ones have already counted.
+
+f(6) = 9
+
+k=10 ⇒ we need only 1 one from 7.
+
+We simply generate binary of 7 & pick the 0^th idx 1.
+
+Now, we need to count the index of 0^th idx 1 of 7 from beginning.
+
+```
+Size  1   1   2   2   3    3    3    3    4     4
+bin   0   1   10  11  100  101  110  111  1000  1001
+num   0   1   2   3   4    5    6    7    8     9
+```
+
+```
+0 - 0 - 1 }  consider special case
+1 - 1 → 1 x 1
+2 - 3 → 2 x 2
+4 - 7 → 3 x (4)
+8 - 15 → 4 x 8
+```
+
+(1 x (2-1)) + 2 x (4-2) + 3 x (8-4) + 4 x (9-8+1)
+
+![lengths of binary strings 0..9 grouped by size](../../../assets/notes/1-7-bits/fig25_length_groups.png)
+
+*same length numbers form a group of size 1, 2, 4, 8 ...*
+
+Dry run k = 10: f(6) = 9 < 10, f(7) = 12 ≥ 10 → number is 7. Need 1 one from 7 → first 1 of "111" → position 0. Length of S before 7 = 1 (for "0") + 1 + 4 + 9 = 15. Answer = 15 + 0 = 15 ✓.
+
+Code. `solve_via_precompute` is for k ≤ 10^5, `solve` is binary search for k ≤ 10^9. `count_of_ones` = f(x), `total_index_till_x` = length of S till x.
+
+```cpp
+// Fabricator/BitManipulation/SearchInBitSequence.cpp
+string get_bit_str(int x){
+    string curr = "";
+    while(x > 0){
+        if(x & 1){
+            curr += "1";
+        }
+        else{
+            curr += "0";
+        }
+
+        x >>= 1;
+    }
+
+    if(curr == ""){
+        curr = "0";
+    }
+
+    reverse(curr.begin(), curr.end());
+
+    return curr;
+}
+
+// This works for q <= 10 and k <= 10^5
+// This works for q <= 10^5 and k <= 10^5
+void solve_via_precompute() {
+    string s = "";
+    int cnt_one = 0;
+    int curr_num = 0;
+
+    while(cnt_one < 100100){
+        string curr_bits = get_bit_str(curr_num);
+
+        int new_one = 0;
+        for(auto v: curr_bits){
+            if(v == '1'){
+                new_one++;
+            }
+        }
+
+        s += curr_bits;
+        cnt_one += new_one;
+        curr_num++;
+    }
+
+    vector<int> pos_one;
+    for(int i=0; i<s.length(); i++){
+        if(s[i] == '1'){
+            pos_one.push_back(i);
+        }
+    }
+
+    int q;
+    cin>>q;
+    while(q--){
+        int k;
+        cin>>k;
+
+        cout<<pos_one[k-1]<<endl;
+    }
+}
+
+long long count_of_ones(long long x){
+    long long res = 0;
+    long long total = x+1;
+
+    for(int i=0; i<32; i++){
+        long long two_pow_i = (1ll << (i+1));
+        long long full_period = total / two_pow_i;
+        long long partial_period = total % two_pow_i;
+
+        two_pow_i >>= 1;
+        res += (full_period * two_pow_i) + max(partial_period - two_pow_i, 0ll);
+    }
+
+    return res;
+}
+
+bool check(long long mid, int k){
+    return count_of_ones(mid) >= k;
+}
+
+long long binary_search(int k){
+    long long lo = 0, hi = k, ans = -1;
+    while(lo <= hi){
+        long long mid = lo + (hi - lo) / 2;
+        if(check(mid, k)){
+            ans = mid;
+            hi = mid - 1;
+        }
+        else{
+            lo = mid + 1;
+        }
+    }
+
+    return ans;
+}
+
+long long get_kth_one_in_num(long long num, long long k){
+    long long cnt = 0;
+    string s = get_bit_str(num);
+    for(long long i=0; i<s.size(); i++){
+        if(s[i] == '1'){
+            cnt++;
+        }
+
+        if(cnt == k){
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+long long total_index_till_x(long long x){
+    long long len = 1;
+    long long num = 1;
+    long long ans = 0;
+
+    while(num <= x){
+        long long same_till = (num * 2) - 1;
+        if(same_till <= x){
+            ans += len * (same_till - num + 1);
+            num = same_till + 1;
+            len++;
+        }
+        else{
+            ans += len * (x - num + 1);
+
+            break;
+        }
+    }
+
+    return ans + 1;
+}
+
+void solve(){
+    int q;
+    cin>>q;
+
+    while(q--){
+        int k;
+        cin>>k;
+
+        long long kth_one = binary_search(k);
+        long long pos_in_kth_one = k - count_of_ones(kth_one - 1);
+
+        long long index = get_kth_one_in_num(kth_one, pos_in_kth_one);
+
+        cout<<total_index_till_x(kth_one - 1) + index<<endl;
+    }
+}
+```
+
+`k = 10` → 15. `k = 10^9` → 1954175149. Both ways agree (checked k = 10 and 5 → 15 and 6).
+
+Note: B.S. starts with `hi = k`, it's fine as f(k) ≥ k for k ≥ 1. Also use `long long` for index, k = 10^9 makes the index big.
+
+Mistakes to avoid: forgetting number 0 writes one char "0" (zero ones). And index from 0 but k from 1.
+
+## Ques: sum of all pair xor
+
+Ques: Given an array arr of size n,
+find Σ(i=1 to n) Σ(j=i+1 to n) (A[i] ^ A[j]).
+(Sum of all pair xor).      n ≤ 10^5
+
+Brute force: all pairs, $O(n^2)$ → too slow for 10^5.
+
+\*\* Bit expressions are sum independent on each bit.
+
+```
+arr   1  5  7
+ 2    0  1  1
+ 1    0  0  1
+ 0    1  1  1
+bits ↑
+```
+
+Solve a simpler version where the nos. are just 0s & 1s
+
+1 0 1 0 1 1 0 1 0 1
+
+ans = 24
+
+# of 0s = 4        # of 1s = 6.
+
+Total valid pairs that give xor as 1
+= 6 x 4 = 24.
+
+Rest all pairs give zeros (hence meaningless).
+
+#0s C_1 x #of 1s C_1
+
+![ten 0/1 values, 6 ones and 4 zeros](../../../assets/notes/1-7-bits/fig27_binary_pairs.png)
+
+*xor = 1 only for (0, 1) pairs → 4 x 6 = 24.*
+
+```
+arr    1  5  7
+ 2    [0  1  1]  → 2x1 = 2 valid pairs
+ 1    [0  0  1]  → 2x1 = 2 valid pairs
+ 0    [1  1  1]  → 3x0 = 0
+bit ↑
+```
+
+Now on adding the bit position values
+
+2 x 2^2 + 2 x 2^1 + 2^0 x 0
+= 8 + 4 = 12
+
+![bit rows of 1, 5, 7 with valid pairs and 12](../../../assets/notes/1-7-bits/fig26_pair_xor_bits.png)
+
+*8 + 4 + 0 = 12. Check: 1^5 + 1^7 + 5^7 = 4 + 6 + 2 = 12.*
+
+T.C. = O(32 n).
+
+```cpp
+// Fabricator/BitManipulation/PairwiseSumOfXor.cpp
+void solve() {
+    int n;
+    cin>>n;
+
+    vector<int> arr(n);
+    for(auto &ele: arr) cin>>ele;
+
+    long long ans = 0;
+
+    for(int bit_pos=0; bit_pos<32; bit_pos++){
+        long long cnt_zero = 0;
+        long long cnt_one = 0;
+        for(int i=0; i<n; i++){
+            if(arr[i] & (1 << bit_pos)){
+                cnt_one++;
+            }
+            else{
+                cnt_zero++;
+            }
+        }
+        
+        long long valid_pairs = cnt_one * cnt_zero;
+        ans += valid_pairs * (1 << bit_pos);
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+`1 5 7` → 12.
+
+Note: if numbers use all 32 bits, write `1ll << bit_pos` at the last line.
+
+## Some functions to remember
+
+Some functions to remember:
+
+i) MSB → ⌊log_2(n)⌋       → fail for x=0.
+
+GCC : `__lg(x)` or `31 - __builtin_clz(n)`
+      `__lg(n)` or `63 - __builtin_clzll(n)`
+
+C++20 : `std::bit_width(n) - 1`
+
+Note: for 64 bit use `__builtin_clzll`, plain `clz` looks only at 32 bits. `clz(0)` is undefined, so n = 0 fails here.
+
+ii) Counting set bits :
+
+GCC : `__builtin_popcount (n)`
+      `__builtin_popcountll (n)`
+
+C++20 : `popcount (n)`
+
+iii) LSB / Trailing zeros :
+
+GCC : `__builtin_ctz (n)`       } fail for
+      `__builtin_ctzll (n)`     } n = 0
+
+C++20 : `countr_zero (n)`
+
+`__builtin_clz`
+ └ count leading zeros
+
+`__builtin_ctz`
+ └ count trailing zeros.
+
+(C++20 ones are in `<bit>` header.)
+
+![44 as 8 bits: leading zeros, trailing zeros, msb index, popcount](../../../assets/notes/1-7-bits/fig28_builtins_example.png)
+
+*x = 44 = 00101100 → popcount 3, msb index 5, trailing zeros 2.*
+
+For x = 44: `__builtin_popcount` = 3, `31 - __builtin_clz(44)` = 5 (same as `__lg(44)`), `__builtin_ctz` = 2, `44 & -44` = 4 (lowest set bit as a value). For $2^{40} + 2^3$: `popcountll` = 2, `63 - clzll` = 40, `ctzll` = 3.
+
+Repo version, with the zero case handled (queries: binary string, MSB, LSB, is power of two, largest power of two dividing n, smallest power of two ≥ n):
+
+```cpp
+// Fabricator/BitManipulation/BitMagic2.cpp
+string num_to_bin_str(long long n){
+    string s = "";
+    for(int i=0; i<64; i++){
+        if(n & (1ll << i)){
+            s += "1";
+        }
+        else{
+            s += "0";
+        }
+    }
+
+    reverse(s.begin(), s.end());
+
+    return s;
+}
+
+int pos_lsb(long long n){
+    if (n == 0) return -1;
+    uint64_t u = static_cast<uint64_t>(n);
+    return __builtin_ctzll(u);
+}
+
+int pos_msb(long long n){
+    if (n == 0) return -1;
+    uint64_t u = static_cast<uint64_t>(n);
+    return 63 - __builtin_clzll(u);
+}
+
+bool is_pow_of_two(long long n){
+    return (n >= 2) && ((n & (n-1)) == 0);
+}
+
+long long kth_power_of_two_dividing(long long n){
+    if(n == 0) return -1ll;
+    uint64_t u = static_cast<uint64_t>(n);
+    return u & (~u + 1ULL);
+}
+
+unsigned long long kth_power_of_two_min(long long n){
+    if (n <= 1) return 2ULL;
+    if (n > (1LL << 62)) return 0;
+    uint64_t u = static_cast<uint64_t>(n);
+    return 1ULL << (64 - __builtin_clzll(u - 1));
+}
+
+void solve() {
+    long long n;
+    cin>>n;
+
+    string bin_org = num_to_bin_str(n);
+    int msb = pos_msb(n);
+    int lsb = pos_lsb(n);
+    int is_pow = is_pow_of_two(n);
+    long long kth_div = kth_power_of_two_dividing(n);
+    unsigned long long kth_min = kth_power_of_two_min(n);
+
+    cout<<bin_org<<endl;
+    cout<<msb<<endl;
+    cout<<lsb<<endl;
+    cout<<is_pow<<endl;
+    cout<<kth_div<<endl;
+    cout<<kth_min<<endl;
+}
+```
+
+Input `44` → binary ends `...101100`, msb 5, lsb 2, not pow of two, 4, 64. Input `64` → msb 6, lsb 6, is pow of two, 64, 64.
+
+Note: `is_pow_of_two` returns false for 1 ($2^0$) because of `n >= 2`.
+
+## Quick revision
+
+- `~ | & ^ << >>`; sign bit = leftmost; 1 → negative.
+- 1's comple = `~x`; 2's comple = `~x + 1` = `-x`; twice → x. 8-bit range -128 to 127.
+- INT_MAX + INT_MAX overflows to negative (undefined in C++).
+- subset as mask: bit i ↔ arr[i]; U = `|`, ∩ = `&`; all subsets → mask 0 to $2^n-1$.
+- check `n & (1<<x)`, set `n | (1<<x)`, unset `n & ~(1<<x)`, flip `n ^ (1<<x)`; `1ll` for 64 bit.
+- popcount: `__builtin_popcount(ll)`; shift loop / n/2 recursion fail for -ive; `n & (n-1)` removes lowest set bit.
+- contribution technique → treat each bit alone, ans = Σ count × $2^{bit}$.
+- run of L ones → L(L+1)/2 = (L+1)C2 subarrays. AND → count all-1 subarrays. OR → total − all-0 subarrays. XOR of subarrays → prefix xor + pair xor.
+- extending end → map {AND → count}; ≤ 32 keys; change only at first zero of each bit.
+- pair xor sum → per bit: zeros × ones × $2^{bit}$; O(32 n).
+- k^th 1 in binary seq → B.S. on number with f(x) ≥ k; f(n) per bit = `full*2^i + max(left-2^i,0)`, total = n+1, full = total/2^(i+1), left = total % 2^(i+1); index = len of S before x + pos of needed 1 in x.
+- MSB: `31 - __builtin_clz(n)` / `63 - __builtin_clzll(n)` / `bit_width(n)-1`; trailing zeros: `__builtin_ctz` / `countr_zero`; clz, ctz undefined for 0.
+
+## Practice problems
+
+LeetCode
+- [Bitwise ORs of Subarrays](https://leetcode.com/problems/bitwise-ors-of-subarrays/description/)
+- [Maximum Number That Sum of the Prices Is Less Than or Equal to K](https://leetcode.com/problems/maximum-number-that-sum-of-the-prices-is-less-than-or-equal-to-k/description/)
+
+maang.in
+- [XOR and AND](https://maang.in/problems/XOR-and-AND-49)
+
+### Problem ladder
 
 <Ladder topic="1.7" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card (the list includes earlier topics' cards), write the property you checked, then reveal the answer. Do not solve the problems here: deciding is the exercise. Three items are answered by the cards of topics 1.3 and 1.5.
-
-<Drill topic="1.7" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the decision.
-
-<LookalikePairs topic="1.7" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer.
-
-<SelfTest topic="1.7" />
-
-## 13. Checkpoint
-
-Three problems in 90 minutes. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items in Section 10. After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="1.7" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen against the tools you already have. The same entries appear in the Recognition Handbook, grouped by weak signal across all topics.
-
-<DecisionMapUpdate topic="1.7" />

@@ -532,6 +532,18 @@ Rendered from `decision_map`. Add entries to every weak-signal group this topic 
 
 ---
 
+### 6A. Notes-format lessons (owner's request, 2026-11-01)
+
+Saurabh asked for the site to match his handwritten notebooks, not the other way round. A topic whose lesson is written from one of his notebooks carries `format: notes` in its topic data file (default `template`). A notes-format lesson replaces the 14-section template of this Section 6 with the shape of his notes:
+
+1. The lesson keeps the frontmatter, `<TopicHeader />` and the title from Section 6. The body is his note: "What this note covers", a table of contents, one `##` section per technique, then `## Quick revision`, then `## Practice problems`. Only the last two headings are required, in that order, and `## Practice problems` is the last `## ` heading. Every other heading is whatever his note uses.
+2. **Voice.** His lines, formulas, examples and code stay exactly as he wrote them. Anything added is written the way he or his mentor Vivek Gupta (AlgoZenith) explains: terse, arrow-led (`→`), "Ques:", "Note:", brute force → better, small numbers before formulas, light English/Hinglish. Added text is never labelled "Extra" or "added".
+3. **Code.** Functions only: no `main`, no includes. Functions are copied word for word from his solutions repository (Fabricator), each with a `// Fabricator/<folder>/<File>.cpp` comment. Where his repo has a bug a short "Note:" line says so; the code is not changed. Shown code is his tested code; the lesson-code rules of Section 8 apply to template-format lessons only.
+4. **Figures** are PNG files in `src/assets/notes/<topic-id>-<slug>/` linked with relative paths. No photos of handwriting.
+5. **Practice problems.** Links only, no code. Links come from his notes and from the problem URLs in his Fabricator files. Below them comes `### Problem ladder` with `<Ladder topic="…" />`, so progress tracking keeps working.
+6. The topic data file keeps its cards, theorems, ladder, drill, checkpoint and decision map. The handbook, review, dashboard, bank and exam pages still read them; the notes lesson page just does not show cards or drill. Validator rules that read the lesson text (headings, theorem blocks, worked-example steps, "What you need", later-topic keyword scan) are skipped for notes-format lessons; the data-file rules still run.
+7. Import a note with `node scripts/import_note.mjs <note.md> <topic-id>`; it copies the figures, rewrites image links, sets `format: notes`, and adds the ladder.
+
 ## 7. Writing rules
 
 - Plain English, short sentences, active voice.

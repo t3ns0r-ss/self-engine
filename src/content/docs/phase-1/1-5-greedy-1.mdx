@@ -4,453 +4,1681 @@ sidebar:
   order: 11
 topic: "1.5"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="1.5" />
 
-## 1. Why this topic exists
-
-Here is a small problem. A festival shows $n = 2 \cdot 10^5$ films, each with a start and an end time. You want to watch as many complete films as possible, one at a time. Which ones?
-
-Trying every subset of films is $2^n$ choices, hopeless beyond $n \approx 25$ (topic 0.5). A rule that picks films one by one would take $O(n \log n)$, but which rule? "Shortest film first" fails on the films $[1, 5]$, $[4, 7]$, $[6, 10]$: it picks $[4, 7]$, which overlaps both others, and watches one film where two are possible. "Earliest start first" fails on $[1, 10]$, $[2, 3]$, $[4, 5]$. "Earliest end first" turns out to be always right, and Section 4.2 proves it.
-
-An algorithm that builds the answer by a sequence of choices, each made by a simple rule and never undone, is called greedy. Greedy algorithms are short and fast, and most plausible greedy rules are wrong. This topic is about the two standard ways to prove a greedy rule (the exchange argument and "greedy stays ahead"), the five shapes in which correct greedy rules usually appear, and the habit of testing every greedy rule against a brute force before trusting it.
-
-## 2. Prerequisites and scope
-
-### What you need
-
-<WhatYouNeed topic="1.5" />
-
-### What this topic does not cover
-
-- Problems where no greedy rule is correct and all choices must be combined, such as choosing items of given weights and values that cannot be split (knapsack, dynamic programming). Covered in Phase 3 (topic 3.3 for knapsack).
-- Greedy rules on graphs: shortest paths (Dijkstra's algorithm, topic 4.3) and minimum spanning trees (topic 4.4) have their own proofs.
-- Greedy algorithms that later take back an earlier choice using a priority queue (regret greedy). Covered in topic 7.4.
-
-## 3. Definitions
-
-- A **greedy algorithm** builds a solution by a sequence of choices, each made by a fixed rule from the current situation, and never revises a choice. Example: "repeatedly watch the film that ends first among those starting after the last film watched".
-- A **counterexample** to a rule is a concrete input on which the rule gives a wrong answer. Example: $[1, 10]$, $[2, 3]$, $[4, 5]$ for "earliest start first".
-- An **exchange argument** proves a greedy rule by taking any optimal solution and changing it step by step, each step not making it worse, until it becomes the greedy solution.
-- For an order of items and a key, an **inversion** is a pair of items where the one with the larger key comes first. Example: in the key order $(3, 1, 2)$ there are two inversions, $(3, 1)$ and $(3, 2)$.
-- **Greedy stays ahead** is a proof method: show by induction that after each step the greedy solution is at least as good, in a measured sense, as any other solution after the same number of steps.
-- A state $A$ **dominates** a state $B$ if every way to finish from $B$ can also be used from $A$, with a result at least as good.
-
-## 4. Theory and proofs
-
-### 4.1 Orders: the exchange argument
-
-Many problems ask for the best order in which to process items. There are $n!$ orders, but often an adjacent swap tells everything.
-
-**Theorem 1.5.1 (adjacent exchanges).** Let the cost of an order of $n$ items be a number to minimise, and let each item have a key. Suppose that for every order and every two adjacent items $x$ before $y$ with $\text{key}(x) \ge \text{key}(y)$, swapping $x$ and $y$ does not increase the cost. Then every order sorted by key (non-decreasing) is optimal.
-
-:::tip[In plain words]
-To find the best order of items, compare two neighbours x then y with y then x. If the swap never makes the cost worse when the larger key comes first, then sorting the items by that key gives an optimal order.
-:::
-
-**A tiny instance.** Tasks with durations $a_i$ done one after another from time 0; minimise the sum of the finishing times. For adjacent $x$, $y$ starting at time $t$, the order $x, y$ finishes them at $t + a_x$ and $t + a_x + a_y$, the order $y, x$ at $t + a_y$ and $t + a_x + a_y$; everything else is unchanged. Swapping changes the sum by $a_y - a_x$, which is at most 0 when $a_x \ge a_y$. So, by Theorem 1.5.1, shortest task first is optimal. For durations $(3, 1, 2)$: the order $1, 2, 3$ finishes at $1, 3, 6$ (sum 10), while the input order finishes at $3, 4, 6$ (sum 13).
-
-**Proof.**
-1. Start from an optimal order. While it is not sorted by key, some adjacent pair $x$, $y$ has $\text{key}(x) > \text{key}(y)$ (if every adjacent pair were in order, the whole order would be sorted).
-2. Swap them: the cost does not increase, and the number of inversions drops by exactly one (only the relative order of $x$ and $y$ changed).
-3. After finitely many swaps the order is sorted, and its cost is at most the optimal cost, so it is optimal.
-4. Two sorted orders differ only within blocks of equal keys, and adjacent equal keys can be swapped in both directions without increasing the cost, so their costs are equal. $\square$
-
-:::note[This proof needs]
-1. The effect of swapping two adjacent items depends only on those two items (and possibly on what comes before them), and it can be computed.
-2. That effect is never an increase when the larger key comes first; so it is enough to compare $x$ then $y$ against $y$ then $x$.
-3. The comparison defines a key, or at least a strict weak ordering (Theorem 1.1.3), so that "sorted" is well defined.
-:::
-
-<TheoremCode unit="1.5/thm-1" />
-
-The first example is the instance; for $(5, 5, 1)$ the shortest first order finishes at $1, 6, 11$.
-
-
-### 4.2 Intervals: greedy stays ahead
-
-**Theorem 1.5.2 (earliest end first).** Given intervals $[s_i, e_i]$, call two of them compatible if they do not overlap.
-1. Choosing repeatedly, among the intervals compatible with all chosen ones, the one that ends first, selects the largest possible number of pairwise compatible intervals.
-2. The smallest number of points that hit every interval equals that largest number, and the points can be the ends of the intervals chosen in part 1.
-
-:::tip[In plain words]
-To choose as many non-overlapping intervals as possible, always take the one that ends first among those still allowed. The greedy choices end no later than any other choice at every step, so it never falls behind, and its ends are also the fewest points that hit every interval.
-:::
-
-**A tiny instance.** Intervals $[1, 4]$, $[3, 5]$, $[0, 6]$, $[5, 7]$, $[3, 9]$, $[5, 9]$, $[6, 10]$, $[8, 11]$ (overlap means sharing a point). By end: take $[1, 4]$; skip $[3, 5]$ and $[0, 6]$; $[5, 7]$ starts after 4, take it; skip the next three; $[8, 11]$ starts after 7, take it. Three intervals, and the points 4, 7, 11 hit all eight.
-
-**Proof.**
-1. Part 1. Let the greedy choices be $g_1, \dots, g_m$ and any compatible selection be $o_1, \dots, o_k$, both listed by end. Claim: $e(g_j) \le e(o_j)$ for every $j \le \min(m, k)$.
-2. For $j = 1$, $g_1$ ends first among all intervals.
-3. If $e(g_{j-1}) \le e(o_{j-1})$, then $o_j$ starts after $o_{j-1}$ ends, so after $g_{j-1}$ ends; $o_j$ is therefore compatible with $g_1, \dots, g_{j-1}$, it was available at step $j$, and the greedy took an interval ending no later: $e(g_j) \le e(o_j)$.
-4. If $k > m$, the interval $o_{m+1}$ starts after $e(o_m) \ge e(g_m)$, so it was still available after step $m$ and the greedy would not have stopped. So $k \le m$.
-5. Part 2. Any points hitting all intervals must hit the $m$ pairwise disjoint intervals $g_1, \dots, g_m$ with different points, so at least $m$ points are needed.
-6. The points $e(g_1), \dots, e(g_m)$ suffice. Each $g_j$ contains its own end. Take an interval $I$ that was not chosen, and let $g_j$ be the first chosen interval that overlaps it (one exists, or $I$ would still be available after the last step).
-7. $I$ is compatible with $g_1, \dots, g_{j-1}$, so it was available at step $j$, and the greedy preferred $g_j$: $e(I) \ge e(g_j)$. Since $I$ overlaps $g_j$ and ends no earlier, it starts no later than $e(g_j)$. So $e(g_j)$ lies in $I$. $\square$
-
-:::note[This proof needs]
-1. Every chosen interval counts the same (maximise the number, not a total length or weight).
-2. "Compatible" is the statement's: whether intervals that touch at one point overlap decides whether the next start must be $> e$ or $\ge e$.
-3. Sorting by end, then one scan keeping the end of the last chosen interval: $O(n \log n)$.
-:::
-
-<TheoremCode unit="1.5/thm-2" />
-
-The first line lists the chosen ends, which are also the points that hit all eight intervals; in the second example the three intervals share the point 3, so only one can be chosen.
-
-
-### 4.3 Taking the most extreme items
-
-**Theorem 1.5.3 (extreme first).**
-1. Among all choices of $k$ items from a list of numbers, the $k$ largest have the largest sum. So the fewest items whose sum reaches a target $T$ are found by taking the largest items first.
-2. Items that can be split: item $i$ has $a_i$ units, each worth $v_i$, and at most $W$ units can be taken in total. Taking units in decreasing order of $v_i$ maximises the total value.
-
-:::tip[In plain words]
-When items count independently and only the number taken is limited, the k largest items give the largest total, and taking the largest first reaches a target with the fewest items. The same holds for splittable goods, taking the most valuable units first.
-:::
-
-**A tiny instance.** For the values $(5, 1, 4, 2)$ and the target 9: the largest two, $5 + 4 = 9$, reach it, and no single value does. For units: at most 5 units of goods (value 3, 4 units) and (value 5, 2 units): take the 2 units worth 5, then 3 units worth 3, total $10 + 9 = 19$.
-
-**Proof.**
-1. Part 1. List the chosen items in decreasing order and the $k$ largest items in decreasing order. The $j$-th chosen item is at most the $j$-th largest item (at least $j$ items of the list, the first $j$ chosen ones, are at least as large as it).
-2. Summing over $j$ gives the claim. For the target: if some $t$ items reach $T$, the $t$ largest reach it too, so the greedy uses at most $t$ items.
-3. Part 2. Take any optimal selection of units. If it takes a unit of item $j$ while a unit of some item $i$ with $v_i > v_j$ is left, replacing the first by the second keeps the count at most $W$ and does not lower the value.
-4. Repeating, the selection becomes "the most valuable units first", which is the greedy one, with value at least the optimum. $\square$
-
-:::note[This proof needs]
-1. Every item (or unit) contributes independently: its value does not depend on which others are taken.
-2. The only limit is a count of items or units. If items have different sizes and cannot be split, the largest-first rule fails (see "does not cover").
-:::
-
-<TheoremCode unit="1.5/thm-3" />
-
-The examples are the instance: targets 9, 11 and 13 need 2, 3 items and are impossible.
-
-Counterexample for the failing case: capacity 10, items of size 6 (value 7) and two of size 5 (value 5 each). The best value per size is the first item, which leaves room for nothing else: 7. Taking the two items of size 5 gives 10.
-
-
-### 4.4 Matching two sorted lists
-
-**Theorem 1.5.4 (smallest sufficient partner).** Children have greed values $g_1 \le \dots \le g_n$ and cookies have sizes $c_1 \le \dots \le c_m$; a child is satisfied by one cookie of size at least its greed, and each cookie goes to at most one child. Going through the children in increasing greed and giving each the smallest unused cookie that satisfies it (skipping the child if none does) satisfies the largest possible number of children.
-
-:::tip[In plain words]
-When children are matched to cookies and a cookie works for a child exactly when it is big enough, give each child, from the least greedy up, the smallest cookie that is big enough. A larger cookie would only be more useful to someone else.
-:::
-
-**A tiny instance.** Greed $(1, 2)$ and cookies $(1, 2, 3)$: the child with greed 1 gets the cookie 1, the child with greed 2 gets the cookie 2, and the cookie 3 is left over: 2 children are satisfied.
-
-**Proof.**
-1. If no cookie is at least $g_1$, no cookie satisfies any child (every greed is at least $g_1$), and the greedy's answer 0 is optimal.
-2. Otherwise the greedy gives $g_1$ the smallest cookie $c \ge g_1$. Take an optimal assignment $M$ and change it so that $g_1$ gets $c$, without lowering the number of satisfied children.
-3. If $g_1$ gets a cookie $d \ne c$ in $M$, then $d \ge g_1$, so $d \ge c$. If $c$ is unused in $M$, give $g_1$ the cookie $c$ instead of $d$.
-4. If $c$ belongs to a child $h$, swap: $h$'s greed is at most $c \le d$, so $h$ is still satisfied by $d$.
-5. If $g_1$ gets nothing in $M$, then $c$ must be used (otherwise giving it to $g_1$ would beat the optimum), say by $h$; move it from $h$ to $g_1$. The count is unchanged.
-6. Now the changed $M$ is optimal and agrees with the greedy on $g_1$. Removing $g_1$ and $c$ leaves the same kind of problem, on which $M$ is a valid assignment with one child fewer; by induction the greedy satisfies at least as many there. $\square$
-
-:::note[This proof needs]
-1. Whether a child accepts a cookie is a threshold in one sorted order ("size at least greed"), so a smaller sufficient cookie is never more useful to the others than a larger one.
-2. Each child and each cookie is used at most once.
-3. Both lists sorted, then one walk with two indices (topic 1.3): $O(n \log n + m \log m)$.
-:::
-
-<TheoremCode unit="1.5/thm-4" />
-
-In the first example the cookies of size 1 can only satisfy the child with greed 1; in the third no cookie is big enough.
-
-
-### 4.5 Left to right: choices that dominate
-
-**Theorem 1.5.5 (dominating choices).** A process makes a choice at each of the positions $1, 2, \dots$ in order, and only the current state matters for what can be done next. If at every position the greedy choice leads to a state that dominates the state reached by any other choice, then the greedy result is at least as good as any other.
-
-:::tip[In plain words]
-If processing positions from left to right and the greedy choice at each position reaches a state at least as good as any other choice's state, the greedy result is at least as good as any other result.
-:::
-
-**A tiny instance.** Cover the segment $[0, L]$ with as few of the given intervals as possible. Scan from the left; the state is how far the chosen intervals reach without a gap. Among the intervals that start at or before the current reach, take the one that ends farthest. A state that reaches farther dominates one that reaches less (any interval usable from the shorter reach is usable from the longer one), and the greedy choice maximises the reach after each step, so by Theorem 1.5.5 it uses the fewest intervals.
-
-**Proof.**
-1. By induction on the positions: after $j$ steps the greedy state dominates the state of any other sequence of choices after $j$ steps. For $j = 0$ the states are equal.
-2. If the greedy state $A_j$ dominates another sequence's state $B_j$, then the other sequence's next choice from $B_j$ can also be made from $A_j$ (or something at least as good), and the greedy choice from $A_j$ is at least as good again; so $A_{j+1}$ dominates $B_{j+1}$.
-3. At the end, "dominates" means "at least as good". $\square$
-
-:::note[This proof needs]
-1. What can be done later depends only on a small state (such as "how far is already covered" or "which coins are in the till"), not on the full history.
-2. A precise comparison of states, and a proof that the greedy choice always reaches the best one.
-:::
-
-<TheoremCode unit="1.5/thm-5" />
-
-In the third example the reach stops at 2 and no segment starts at or before it, so the answer is a gap.
-
-
-### 4.6 Testing greedy rules
-
-A greedy rule without a proof is a guess. Before relying on one, write a brute force (topic 0.5) and run both on thousands of small random inputs with `scripts/stress.sh`; a wrong rule usually fails within seconds, and the failing input is a counterexample that shows why. Both wrong rules from Section 1 are caught this way. Section 7 shows wrong greedy rules found exactly like this.
-
-## 5. Recognition Cards
-
-<Cards topic="1.5" />
-
-## 6. Templates
-
-Six short functions, one for each theorem (two for Theorem 1.5.3). Every brute force tries all orders, subsets or assignments; this is how greedy rules are tested in this course, and Section 7 shows the wrong rules it catches.
-
-### Order by an exchange argument (Theorem 1.5.1)
-
-<CodeSnippet unit="1.5/weighted-order" />
-
-**How it works.** For two adjacent jobs $x$, $y$ starting at time $t$, the order $x, y$ contributes $w_x (t + t_x) + w_y (t + t_x + t_y)$, and $y, x$ contributes $w_y (t + t_y) + w_x (t + t_x + t_y)$. The difference, $(y, x) - (x, y) = w_x t_y - w_y t_x$, does not depend on $t$ or on the other jobs, and it is at least 0 exactly when $t_x / w_x \le t_y / w_y$. So by Theorem 1.5.1 sorting by the ratio $t / w$ is optimal. The comparator compares the ratios exactly by cross-multiplication (Theorem 1.1.3, condition 2), then one pass adds up the weighted finishing times.
-
-**Alternative formulation.** With all weights equal to 1 the rule becomes "shortest job first", the example of Section 4.1; with all durations equal it becomes "heaviest job first".
-
-### Earliest end first (Theorem 1.5.2)
-
-<CodeSnippet unit="1.5/interval-select" />
-
-**How it works.** Storing each interval as (end, start) makes the default pair sort order them by end. The scan keeps `lastEnd`, the end of the last chosen interval. An interval is compatible exactly when it starts after `lastEnd` (intervals that share a point overlap here), and the first compatible interval in end order is the one that ends first. By part 2 of the theorem, the same number is the fewest hitting points, and the points are the ends of the chosen intervals.
-
-**Alternative formulation.** Sorting by start and scanning from the right, always taking the compatible interval that starts last, is the same rule seen in a mirror and equally correct.
-
-### The fewest items to reach a target (Theorem 1.5.3, part 1)
-
-<CodeSnippet unit="1.5/fewest-items" />
-
-**How it works.** Sorted from largest to smallest, the first $k$ items have the largest sum of any $k$ items. So the first $k$ for which the running sum reaches $T$ is the fewest possible; if even all items fall short, no choice reaches $T$.
-
-**Alternative formulation.** `nth_element` can place the $k$ largest first without sorting the rest, but $k$ is not known in advance here, so a full sort is the simplest.
-
-### Splittable goods (Theorem 1.5.3, part 2)
-
-<CodeSnippet unit="1.5/best-units" />
-
-**How it works.** The goods are sorted by value per unit, most valuable first, and each takes as many units as still fit. By the exchange argument of part 2, a selection that leaves a more valuable unit for a less valuable one can always be improved, so this one is optimal.
-
-**Alternative formulation.** Instead of subtracting from $W$, compute the running number of units taken and stop at the good where it would pass $W$; the result is the same.
-
-### Matching two sorted lists (Theorem 1.5.4)
-
-<CodeSnippet unit="1.5/assign-cookies" />
-
-**How it works.** Children are taken in increasing greed. For each, `j` skips the cookies that are too small: they are too small for every later child as well, since greed only grows. The first cookie left is the smallest sufficient one, and it is given to the child. When no cookie is left, the children that remain cannot be satisfied.
-
-**Alternative formulation.** Go through the cookies in increasing size and give each to the least greedy unsatisfied child it can satisfy; the same exchange argument proves it.
-
-### Left to right: covering a segment (Theorem 1.5.5)
-
-<CodeSnippet unit="1.5/cover-segment" />
-
-**How it works.** `reach` is how far $[0, \text{reach}]$ is covered. Every segment that starts at or before `reach` can continue the cover; among them, the program takes the one that ends farthest. A larger reach dominates a smaller one (every segment usable later from the smaller reach is usable from the larger one), so by Theorem 1.5.5 the greedy uses the fewest segments. If no segment extends the reach, there is a gap and the answer is $-1$.
-
-**Alternative formulation.** For every left end compute the farthest right end of a segment starting there, then walk positions like Jump Game; it is the same rule organised by position instead of by segment.
-
-## 7. Bug catalogue
-
-Most bugs in greedy solutions are wrong rules, not wrong code: the program does exactly what it says, and what it says is not optimal. Each entry below changes the rule (or one line) of a template from Section 6; `scripts/stress.sh` found a counterexample within seconds every time. The input shown is the shortest failing input among the first 2000 random seeds.
-
-### Bug: shortest job first, ignoring the weights
-
-Template: order by an exchange argument.
-
-```cpp
-return x.first < y.first;
+## What this note covers
+
+- Greedy: sorting + exchange argument, operation decoding (reverse thinking), mixed/fused thinking, bit thinking
+- Pigeonhole principle, fraction ideas
+- Sweepline: coverage, events, probabilities, top k in segments
+
+Short forms used: T.C. = time complexity, CP = competitive programming, DS = data structure, CF = Codeforces.
+
+- Greedy
+- Sorting → exchange argument
+  - min dot product
+  - CF contest with decay
+- Operation decoding
+- Mixed / fused thinking
+  - train with fuel
+  - hiring k students
+  - median (version 1, version 2)
+- Bit thinking
+- Manhattan meeting point
+- Pigeonhole principle
+- Fraction ideas
+  - equal ratio pairs
+  - line with max points
+- Sweepline
+  - length covered by ≥ k intervals
+  - probability of exactly 1 cover
+  - top k in segments
+- Quick revision
+- Practice problems
+
+## Greedy
+
+→ GREEDY:
+
+Greedy: Do the thing that feels optimal immediately.
+
+```
+├→ Sorting : finding optimal order → exchange argument.
+├→ Operation decoding        →bit thinking
+│                            →dimension setup
+└→ Reverse thinking.         →fused thinking.
 ```
 
-Input: `2`, then the jobs `2 1` and `2 3` (duration, weight).
+![Tree: Greedy splits into sorting, operation decoding and reverse thinking with their sub-ideas](../../../assets/notes/1-5-greedy-1/fig01_greedy_map.png)
 
-Wrong output `14`, correct output `10`. Both jobs take 2, so "shortest first" sees a tie and keeps the input order: weights $1 \cdot 2 + 3 \cdot 4 = 14$. Doing the heavy job first gives $3 \cdot 2 + 1 \cdot 4 = 10$.
+*three greedy categories.*
 
-**Fix:** derive the key from the swap, $t_x w_y$ against $t_y w_x$ (Theorem 1.5.1). A key that looks reasonable is not a proof.
+Try to do what feels best now and maybe that will lead to optimal solution.
 
-### Bug: rounding the ratio
+Greedy involves proofs + structured thinking.
 
-Template: order by an exchange argument.
+Matlab sirf "lagta hai sahi hai" se kaam nahi chalega, proof bhi chahiye. Proof ka sabse common tareeka → exchange argument (neeche aayega).
 
-```cpp
-return x.first / x.second < y.first / y.second;
+## Sorting → exchange argument
+
+### Ques: min dot product
+
+Ques: n-sized vectors
+
+A: ⟨ a₁, a₂, a₃ ..... aₙ ⟩ → fixed.
+
+B: ⟨ b₁, b₂, b₃ ..... bₙ ⟩ → reorder
+
+Reorder B such that (A.B) is min.
+↳ dot product.
+
+Print the min value.
+
+Dot product = multiply same-index elements and add: a₁b₁ + a₂b₂ + ... + aₙbₙ.
+
+My first idea is to map the largest value of B to A & smallest as well.
+
+```
+A : (3  1  5)
+B : (2  3  4) <─┬─ (3  2  4)
+                └─ (3  4  2)
+                   ↳ either of them is going to be true.
 ```
 
-Input: `2`, then the jobs `2 3` and `1 2`.
-
-Wrong output `12`, correct output `11`. Integer division turns both ratios $2/3$ and $1/2$ into 0, so the two jobs look equal and the wrong one may go first.
-
-**Fix:** compare by cross-multiplication in `long long` (Theorem 1.1.3, condition 2).
-
-### Bug: earliest start first
-
-Template: earliest end first. The intervals are stored and sorted as (start, end).
-
-Input: `3`, then `4 7`, `1 8`, `2 3`.
-
-Wrong output `1 1`, correct output `2 2`. The interval that starts first, $[1, 8]$, overlaps both others; the rule takes it and nothing else fits. $[2, 3]$ and $[4, 7]$ are compatible.
-
-**Fix:** sort by end. The proof of Theorem 1.5.2 compares where intervals end; nothing in it works for starts.
-
-### Bug: touching intervals treated as compatible
-
-Template: earliest end first.
-
-```cpp
-if (s >= lastEnd) {
+```
+  3  1  5          |   3  1  5
+  3  2  4          |   3  4  2
+ ---------         |  ---------
+ 9 + 2 + 20        |  (9 + 4 + 10) → lesser ↓
 ```
 
-Input: `2`, then `3 6` and `6 7`.
+![A = 3 1 5. B as 3 2 4 gives 9+2+20 = 31, B as 3 4 2 gives 9+4+10 = 23](../../../assets/notes/1-5-greedy-1/fig02_dot_orders.png)
 
-Wrong output `2 2`, correct output `1 1`. In this statement intervals that share a point overlap, and $[3, 6]$ and $[6, 7]$ share 6.
+*31 vs 23. second one is lesser.*
 
-**Fix:** use the statement's definition: here the next start must be strictly greater than the last end (Theorem 1.5.2, condition 2). Other statements use half-open intervals, where `>=` is right.
+∴ We can probably map ~~smallest~~ longest of B to smallest of A.
 
-### Bug: smallest first
+\*\* TIP:
+— Don't write code or find solution on the basis of test case. (mostly will fail on submit).
+— Write code / solve base on problem statement.
 
-Template: the fewest items to reach a target.
+A: (3 1 5) → if we sort this
+then B will be reordered
+but will this change the answer?
+↳ No.
 
-```cpp
-sort(v.begin(), v.end());
+Because at the end we'll have to match element by element.
+
+Dekho, pairs hi matter karte hain, pairs ki order nahi. Isliye A ko sort karne se answer nahi badlega.
+
+Let's see exchange argument.
+
+```
+( a₁ < a₂ < a₃ .... < aᵢ < ...... < aⱼ < ...... < aₙ )
+( b₁   b₂  ...        bᵢ  ......   bⱼ   ....    bₙ )
 ```
 
-Input: `2 3`, then `4 1`.
+![Sorted a on top, b below, swapping b_i and b_j](../../../assets/notes/1-5-greedy-1/fig03_exchange_swap.png)
 
-Wrong output `2`, correct output `1`. Taking the small item first wastes a pick; the item 4 alone reaches 3.
+*swap bᵢ and bⱼ, answer should not get better.*
 
-**Fix:** largest first (Theorem 1.5.3, part 1).
+↳ If this is optimal then swapping or exchanging bi & bj should give worse answer because original was giving optimal answer.
 
-### Bug: most units first
+Mathematically:
+( rest + aᵢbᵢ + aⱼbⱼ ≤ rest + aᵢbⱼ + aⱼbᵢ )
+↳ This should be true.
 
-Template: splittable goods. The goods are sorted by the number of units instead of the value per unit.
+aᵢbᵢ − aᵢbⱼ + aⱼbⱼ − aⱼbᵢ ≤ 0
 
-Input: `2 4`, then the goods `1 3` and `4 1` (units, value per unit).
+aᵢ(bᵢ − bⱼ) − aⱼ(bᵢ − bⱼ) ≤ 0
 
-Wrong output `4`, correct output `6`. The rule fills the capacity with the 4 cheap units; the right choice takes the valuable unit and 3 cheap ones.
+(aᵢ − aⱼ)(bᵢ − bⱼ) ≤ 0        ∵ **A** is sorted
 
-**Fix:** sort by value per unit (Theorem 1.5.3, part 2). Only the value of a unit decides which unit to take.
+(aᵢ − aⱼ) ↓ −ive  ⟹  (bᵢ − bⱼ) ↓ +ive / 0.
 
-### Bug: giving the same cookie twice
+∴ bᵢ − bⱼ ≥ 0  ⟹  bᵢ ≥ bⱼ
 
-Template: matching two sorted lists. The `j++` after a satisfied child is removed.
+⟹ if A is sorted then B is reverse sorted.
 
-Input: `2 1`, the greeds `5 2`, and the single cookie `5`.
+∴ We derived the sorting order of B.
 
-Wrong output `2`, correct output `1`. After the child with greed 2 gets cookie 5, `j` still points at it, and the child with greed 5 gets the same cookie.
+Observation: "rest" swap se change nahi hota, sirf do pairs change hote hain. Isliye bas wahi compare kiye.
 
-**Fix:** move past a cookie once it is given (Theorem 1.5.4, condition 2: each cookie is used at most once).
+Dry run: A = (3 1 5), B = (2 3 4). Sort A → (1 3 5), reverse sort B → (4 3 2). 1×4 + 3×3 + 5×2 = 4 + 9 + 10 = 23 ✓ (same as second order above).
 
-### Bug: taking the first segment that helps
-
-Template: covering a segment. The inner loop stops at the first segment that extends the reach.
+T.C. = O(n log n) for sorting. Use long long for the sum, products badi ho sakti hain.
 
 ```cpp
-while (i < n && seg[i].first <= reach && best == reach) best = max(best, seg[i++].second);
+// Fabricator/Greedy-Sweepline/MinDotProduct.cpp
+/*
+Given two arrays, a and b, of size n.
+Reorder array b such that the a[dot]b (dot product) is minimun.
+
+Print the min value.
+*/
+
+void solve() {
+    int n;
+    cin>>n;
+
+    int a[n], b[n];
+    for(auto &x: a) cin>>x;
+    for(auto &x: b) cin>>x;
+
+    // Using exchange argument we derive that
+    // if a is sorted in a way
+    // then b is reverse sorted
+
+    sort(a, a + n);
+    sort(b, b + n, greater<int>());
+
+    long long ans = 0;
+    for(int i=0; i<n; i++){
+        ans += (1ll * a[i]) * (1ll * b[i]);
+    }
+
+    cout<<ans<<endl;
+}
 ```
 
-Input: `2 4`, then `0 2` and `0 5`.
+(`endl` yaha pe macro hai: `#define endl "\n"` in the template, bas newline print karta hai.)
 
-Wrong output `2`, correct output `1`. Both segments start at 0; the rule takes $[0, 2]$ because it comes first, then still needs $[0, 5]$, which covers everything on its own.
+Input: `3` / `3 1 5` / `2 3 4` → output `23`.
 
-**Fix:** among all segments that start inside the covered part, take the one that reaches farthest; that choice dominates every other (Theorem 1.5.5).
+Note: array `int` me read ho rahe hain, sum `long long` me jaa raha hai. Values 2·10⁹ se upar ho toh `long long` me read karna padega.
 
-## 8. Worked examples
+### Ques: CF contest with decay
 
-### Example 1: Blue Spring
+Ques:
+A CF contest is running and there are n - questions with following properties.
 
-[AtCoder Beginner Contest (ABC) 318, problem C: Blue Spring](https://atcoder.jp/contests/abc318/tasks/abc318_c). In short: an $N$-day trip ($N \le 2 \cdot 10^5$) with a fare $F_i$ for each day; one-day passes are sold only in batches of $D$ for $P$ yen, usable on any days, leftovers allowed. Print the least total cost.
+Sᵢ → score   dᵢ → decay   tᵢ → time to solve
 
-#### Step 1: Constraints → budget
+decay → as the time in the contest elapses the Sᵢ will reduce by dᵢ every time unit.
 
-$N = 2 \cdot 10^5$: $O(N \log N)$. The cost can reach $2 \cdot 10^5 \cdot 10^9 = 2 \cdot 10^{14}$: `long long`.
+| time | score |
+|---|---|
+| 0 | Sᵢ |
+| 1 | Sᵢ − dᵢ |
+| 2 | Sᵢ − 2dᵢ |
 
-#### Step 2: Question form → candidate tools
+find order in which to solve the question.
+↳ This can be −ive too.
 
-Brute force over which days to cover (topic 0.5): $2^N$ choices. Two decisions are hidden in the problem: how many batches to buy, and which days to cover with them. For the second, "Most extreme first" card (Theorem 1.5.3) suggests covering the most expensive days. For the first, every number of batches $k$ could be tried with prefix sums of the sorted fares (topic 1.2).
+Eg: 2 ques.
 
-#### Step 3: Property check → decision
+|   | ① | ② |
+|---|---|---|
+| S : | 10 | 20 |
+| d : | 3 | 2 |
+| t : | 3 | 10 |
 
-With $k$ batches, the covered days save their fares, and the saving is the sum of the covered fares: independent values, limited only by a count ($kD$ days). So the best days to cover are the $kD$ most expensive (Theorem 1.5.3, part 1). Sort the fares in decreasing order and cut them into blocks of $D$; buying $k$ batches covers the first $k$ blocks. Each block either gets a batch (cost $P$) or not (cost its sum), and block sums only shrink along the sorted order, so a block-by-block choice of the cheaper option is consistent. Decision: sort, cut into blocks, add $\min(\text{block sum}, P)$ per block.
+① S = 10 − 3.3 = 1, ② (20 − 2*13) = −6 → total = (−5)
 
-#### Step 4: Proof for this problem
+② first: (20 − 2×10) + (10 − 3×13) = 0 + (−29) = −29
 
-Sort so that $f_1 \ge f_2 \ge \dots \ge f_N$ and let $S_0, S_1, \dots$ be the sums of the consecutive blocks of $D$ (the last block may be shorter). Every element of block $j$ is at least every element of block $j + 1$, and block $j$ has at least as many elements, so $S_j \ge S_{j+1}$. With $k$ batches the best cost is $kP + (\text{fares outside the first } k \text{ blocks}) = \sum_{j < k} P + \sum_{j \ge k} S_j$ by Step 3. Each term is at least $\min(P, S_j)$, so every $k$ costs at least $\sum_j \min(P, S_j)$. That sum is reached: the blocks with $S_j > P$ form a prefix (block sums only decrease), and taking $k$ equal to its length gives exactly $\sum_j \min(P, S_j)$. Sorting costs $O(N \log N)$ and the blocks $O(N)$.
+![Two timelines, 1 then 2 gives -5, 2 then 1 gives -29](../../../assets/notes/1-5-greedy-1/fig04_contest_orders.png)
 
-#### Step 5: Code
+*score = S − d × (finish time). 1 before 2 → −5, 2 before 1 → −29.*
 
-<CodeSnippet unit="1.5/example-1" />
+∴ 1 before 2 is better.
 
-#### Step 6: Alternative approach
+Using exchange argument:
 
-Try every number of batches $k$ from 0 to $\lceil N / D \rceil$ and compute $kP$ plus the fares outside the first $kD$ sorted days with prefix sums (topic 1.2), taking the minimum. It needs the same sorting and Step 3's argument, but no argument about blocks.
+```
+[ sᵢ ]   [ sⱼ ]
+[ dᵢ ]   [ dⱼ ]
+[ tᵢ ]   [ tⱼ ]
+```
 
-### Example 2: Missing Coin Sum
+If solving iᵗʰ first gives better solution, then.
 
-[CSES 2183 Missing Coin Sum](https://cses.fi/problemset/task/2183) (CSES is the Code Submission Evaluation System problem set). In short: $n \le 2 \cdot 10^5$ coins with values up to $10^9$; print the smallest positive sum that no subset of the coins makes.
+(~~sᵢ~~ − dᵢtᵢ) + ~~sⱼ~~ − dⱼ(tᵢ+tⱼ) > ~~sᵢ~~ − dᵢ(tᵢ+tⱼ) + ~~sⱼ~~ − dⱼtⱼ
 
-#### Step 1: Constraints → budget
+−~~dᵢtᵢ~~ − dⱼtᵢ − ~~dⱼtⱼ~~ > −~~dᵢtᵢ~~ − dᵢtⱼ − ~~dⱼtⱼ~~
 
-Subsets are $2^n$; listing all possible sums is hopeless. We need $O(n \log n)$. The sums reach $2 \cdot 10^{14}$: `long long`.
+dᵢtⱼ > dⱼtᵢ
 
-#### Step 2: Question form → candidate tools
+dᵢ/tᵢ > dⱼ/tⱼ  } We got the sorting criteria.
 
-Brute force over subsets (topic 0.5), only for tiny $n$. The question is order-free (any subset counts), so the coins can be sorted (topic 1.1). Processing them from the smallest, a left-to-right scan with a small state (Theorem 1.5.5) is a candidate: the state "every sum from 0 to $r$ can be made".
+Notice that baaki questions pe koi farak nahi padta, kyuki i aur j milke hamesha tᵢ + tⱼ time lete hain. Isliye sirf do questions compare karne se kaam ho gaya.
 
-#### Step 3: Property check → decision
+Dry run: d/t → ① 3/3 = 1, ② 2/10 = 0.2. Bada pehle → ① first ✓.
 
-Suppose the coins seen so far make exactly every sum $0..r$ (and no more, since they add up to $r$). A new coin $x$ adds the sums $x..x + r$. If $x \le r + 1$, these join with $0..r$ without a gap: now $0..r + x$. If $x > r + 1$, nothing can ever make $r + 1$: the coins seen add up to only $r$, and every other coin is at least $x > r + 1$ (they come in increasing order). Decision: sort, scan, stop at the first coin larger than $r + 1$.
+Note: divide mat karo (decimal aa jayega), `dᵢ·tⱼ > dⱼ·tᵢ` se compare karo. Ye d negative ho tab bhi chalta hai kyuki t > 0.
 
-#### Step 4: Proof for this problem
+```cpp
+// Fabricator/Greedy-Sweepline/OrderProblems.cpp
+/*
+Given that in a contest, n problems are given.
+Their score, decay and time taken to solve are provided.
 
-Invariant: after processing the $j$ smallest coins without stopping, $r$ is their sum and every integer from 0 to $r$ is a subset sum of them. It holds for $j = 0$ ($r = 0$). If the next coin $x$ satisfies $x \le r + 1$: a sum $s \le r$ is made as before, and a sum $s$ with $r < s \le r + x$ is $x$ plus the sum $s - x$, which lies in $0..r$ because $s - x \le r$ and $s - x \ge r + 1 - x \ge 0$. So the invariant holds with $r + x$. If the scan stops at a coin $x > r + 1$, or runs out of coins, then $r + 1$ is missing: a subset using only the processed coins sums to at most $r$, and a subset using any other coin sums to at least $x > r + 1$. So the answer is $r + 1$. Sorting is $O(n \log n)$ and the scan $O(n)$.
+Find the maximum score you can achieve by solving all problems.
+*/
 
-#### Step 5: Code
+struct prob{
+    int s, d, t;
+};
 
-<CodeSnippet unit="1.5/example-2" />
+bool cmp(prob pi, prob pj){
+    return pi.d * pj.t > pi.t * pj.d;
+}
 
-#### Step 6: Alternative approach
+void solve() {
+    int n;
+    cin>>n;
 
-There is no natural second approach within these topics: tracking every reachable sum is the subset-sum table of Phase 3, which needs memory proportional to the total value, up to $2 \cdot 10^{14}$ here. The invariant is what makes the problem small.
+    vector<prob> p(n);
+    for(int i=0; i<n; i++){
+        prob temp;
+        cin >> temp.s >> temp.d >> temp.t;
+        p[i] = temp;
+    }
 
-## 9. Problem ladder
+    sort(p.begin(), p.end(), cmp);
 
-Eighteen problems, grouped by card. Within a card, each rung adds one new idea over the previous one, named as its *twist*. Before coding each one, write down the greedy rule, the proof method you will use (exchange, stays ahead, dominating state), and a small input on which a different rule fails. Before opening a hint, spend the struggle budget shown on the problem.
+    long long curr_time = 0;
+    long long ans = 0;
+    for(auto pi: p){
+        curr_time += pi.t;
 
-Problems from the practice bank that are not in the ladder are listed under "More practice".
+        ans += (pi.s - curr_time * pi.d);
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Input: `2` / `10 3 3` / `20 2 10` → output `-5`.
+
+Note: `pi.d * pj.t` int me multiply ho raha hai, d, t ~10⁹ ho toh overflow. Fields `long long` kar lena.
+
+\* So, whenever we have to find any optimal ordering then it might be exchange argument problem.
+
+## Operation decoding
+
+→ Operation Decoding:
+
+Ques: If you're at pos x then you have two options:
+i) → go to x−1
+ii) → go to 2x
+
+Given that you are at position A and you have to go to B. Find min steps needed.
+
+```
+A → 5      B → 11        11 − 5 = (6)
+    |___________|
+```
+
+Pehle laga answer 11 − 5 = 6 hoga. Par +1 ka option hi nahi hai, toh ye galat hai. Actual answer 5 hai (circled).
+
+![Number line, best route 5 → 4 → 3 → 6 → 12 → 11 and a bad route going up to 16](../../../assets/notes/1-5-greedy-1/fig05_forward_jumps.png)
+
+*green = best (5 steps). red = going up to 16 and walking down.*
+
+(Number line me 3, 4, 5, 6, 8, 11, 16 aur jumps. Neeche wala route 5 → 4 → 8 → 16 = 3 steps, phir 16 → 11 = 5 steps. Note: ye total 3 + 5 = 8 hai, 7 nahi.)
+
+We cannot go to 2x and then come back.
+
+```
+A    B
+3 →  8
+```
+
+3 → 8: 3 → 2 → 4 → 8 = 3 steps (2, 3, 4, 6, 8, 12 pe jumps).
+
+At y:
+We can arrive at y from two positions.
+
+```
+        (y)
+       ↗   ↖
+ (y+1)       (y/2)
+```
+
+![y reached from y+1 and from y/2](../../../assets/notes/1-5-greedy-1/fig06_incoming.png)
+
+*y ke aane ke do raaste.*
+
+Thinking in reverse:
+
+If A > B then we can go to B from A by operation A−1 ....,
+It's difficult for A < B.
+
+```
+ A      B/2     B     B+1
+ |       o   ╭──┴──╮   |
+ ─────────────────────────
+```
+
+We can arrive at B from (B−1) or (B/2).
+
+Note: it should be (B+1) or (B/2), kyuki forward op x−1 hai, toh B pe x−1 se wahi aayega jo B+1 pe tha.
+
+If B is odd then we can only arrive at it from (B+1). only.
+If B is even then both cases are possible.
+
+```
+ (B/2 + 1) ◄──────────────────────┐
+                                  │
+          (B) ──→ (B+1) ──→ (B+2) ┘ → 3 steps.
+         even      odd      even
+```
+
+```
+   ┌──────────────────────────┐
+   ▼                          │
+ (B/2) ──→ (B/2 + 1)         (B)  → 2 steps (better)
+```
+
+![Two chains: B, B+1, B+2, B/2+1 takes 3 steps, B, B/2, B/2+1 takes 2 steps](../../../assets/notes/1-5-greedy-1/fig07_even_case.png)
+
+*pehle upar jaana = 3 steps, seedha half = 2 steps.*
+
+∴ If B is even and we need to decrease only.
+⟹ we can directly go to (B/2) only always.
+
+If we have to half → Its always optimal to half now.
+
+In forward thinking its not easy to think if we should go from A to (A−1) or (2A).
+
+forward → not easy to choose greedily.
+Reverse → can be chosen greedily.
+
+Dry run: A = 5, B = 11. B odd → 12 (1 step). 12 even → 6 (2). 6 even → 3 (3). Ab 3 ≤ A, toh A − 3 = 2 aur steps (forward me ye −1, −1 hain). Total 3 + 2 = 5 ✓.
+
+![Reverse trace 11, 12, 6, 3 then two more steps](../../../assets/notes/1-5-greedy-1/fig08_reverse_trace.png)
+
+*reverse trace A = 5, B = 11 → 5 steps.*
+
+Code (reverse loop). T.C. = O(log B), kyuki har even step pe B half ho jata hai.
+
+```cpp
+// not in Fabricator (new function)
+/*
+  Problem: You stand at position x. In one step you can go to x-1 or to 2x.
+  You start at A and want to reach B. Find the minimum number of steps.
+*/
+
+// Think backwards from B to A. The reverse of "x-1" is "+1", the reverse of "2x" is "/2".
+long long minSteps(long long A, long long B) {
+    long long steps = 0;
+    while (B > A) {
+        if (B % 2 == 1) B += 1;  // odd: it can only have come from B+1 (by a "-1" step)
+        else B /= 2;             // even: halving now is always at least as good
+        steps++;
+    }
+    // Now B <= A: from A we just walk down with "-1" steps.
+    return steps + (A - B);
+}
+```
+
+`minSteps(5, 11)` = 5, `minSteps(3, 8)` = 3, `minSteps(10, 4)` = 6. BFS se bhi match kiya (A, B ≤ 70).
+
+How to know if the problem is greedy?
+— Think of it as last resort
+— If constraints are large → math, greedy, bit man.
+  ~10¹⁸
+
+## Mixed / fused thinking
+
+→ Mixed/fused:
+
+### Train with fuel
+
+Ques:
+Train → inf capacity of fuel.
+
+```
+ •──────────────────────────────•
+ 1     2      3      4          N
+       P₁     P₂     P₃
+ C₁    C₂     C₃
+```
+
+There is a training from 1 → N with
+Pᵢ → Petrol/fuel need to move from (i) to (i+1).
+Cᵢ → Cost of petrol at iᵗʰ station.
+You have to go from 1 to N with min. cost.
+
+```
+ ┌──────────( )──────┐    Pₓ
+ •                   X ────→
+       min(Cᵢ)
+```
+
+![Stations on a line, bracket from 1 to X labelled min of C, arrow for P_X](../../../assets/notes/1-5-greedy-1/fig10_who_covers.png)
+
+*Pₓ kahan se bharna hai → 1..X me sabse sasta.*
+
+If I need to go from station X then we can refill the Pₓ amount of petrol before X.
+with min (Cᵢ).
+
+C₁ × P₁ + P₂ × min(C₁, C₂)
++ P₃ × min(C₁, C₂, C₃)  } Ans.
++ . . . . .
+
+A type of contribution technique. (extending).
+
+```
+ ┌────────────┐
+ │  (       )─┼──────►│    → We are extending the answer to next pt.
+ │            │
+ └────┬───────┘
+      └──→ Some point from previous will contribute
+```
+
+which point? → greedily min (Cᵢ).
+
+We need answer of → Who will cover Pₓ?
+↳ Way of thinking.
+
+Why safe? Tank infinite hai, toh agar Pₓ kisi mehnge station se kharida ho, usko sasta wale station se kharid lo, cost badhegi nahi. Isliye har Pₓ running min pe hi kharidna best.
+
+Dry run: N = 5, P = (2, 3, 1, 4), C = (5, 3, 4, 2, 9). Running min = 5, 3, 3, 2. 2×5 + 3×3 + 1×3 + 4×2 = 10 + 9 + 3 + 8 = 30.
+
+![Stations, running min price and products 10, 9, 3, 8, total 30](../../../assets/notes/1-5-greedy-1/fig09_train.png)
+
+*running min × P → total 30.*
+
+T.C. = O(N), one pass. `long long` use karna.
+
+```cpp
+// not in Fabricator (new function)
+/*
+  Problem: A train goes from station 1 to station N. The fuel tank can hold any amount.
+  P[i] = fuel needed to travel from station i to station i+1.
+  C[i] = price of one unit of fuel at station i.
+  Find the minimum total cost of fuel for the whole trip.
+*/
+
+// petrol has N-1 values (one per road), cost has N values (one per station), 0-based.
+long long minFuelCost(const vector<long long>& petrol, const vector<long long>& cost) {
+    long long cheapest = LLONG_MAX;  // cheapest price seen so far
+    long long total = 0;
+    for (size_t i = 0; i < petrol.size(); i++) {
+        cheapest = min(cheapest, cost[i]);  // best place to buy the fuel for road i
+        total += petrol[i] * cheapest;
+    }
+    return total;
+}
+```
+
+Output `30`. Slow DP se bhi compare kiya.
+
+### Hiring k students
+
+Ques: You're HR of AZ. You need to hire k students from a college having N students.
+Each student has two scores → speed & impact.
+
+(Sᵢ, Iᵢ) ────→ Given for all students.
+  ↓     ↓
+speed   Impact of his work
+
+Efficiency = (sum of impact) * (min speed of person)
+
+Choose k students out of N students to maximise efficiency.
+
+Eg:  N = 3, k = 2
+
+|   |   |   |   |
+|---|---|---|---|
+| S : | 3 | 1 | 5 |
+| I : | 1 | 10 | 3 |
+
+N, K ≤ 10⁵
+S, I ≤ 10⁹
+
+(10 + 3) × 1 = 13
+✓
+
+This cannot be solved using exchange arg.
+We can't think of any expression to write.
+Also, the min. speed & efficiency calc. can change on swap.
+
+The order of the student doesn't matter.
+
+```
+ P₁  (P₂)  P₃  (P₄)  (P₅)
+      ↑
+```
+Answer depends on min speed.
+We can use it as pivot & apply contribution technique.
+
+(pivot = jis student ko hum "sabse slow" maan ke fix kar rahe hain.)
+
+```
+       min          ┌─────────────┐ → k−1 will be chosen from here.
+ P₁  (P₂)           │ P₃  P₄  P₅  │
+      ↑             └─────────────┘
+    pivot
+```
+
+min (s) * [ I₁ + ( I₂ + ... Iₖ ) ]
+            ↑          ↳ We can chose highest (k−1) impact people.
+          fixed
+
+![Six circles with nested ovals growing from the right, pivot arrows, direction of traversal](../../../assets/notes/1-5-greedy-1/fig11_pivot_ovals.png)
+
+*pivot ke right wale sab oval me. oval badhta jata hai.*
+
+for every pivot, find largest 2 highest impact
+
+O ( oval )   for every pivot, maintain a DS that gives top 2 impacts.
+
+DS kaunsa? min-heap (priority queue jisme sabse chhota upar hota hai). Size k rakho. Size k se bada hua toh sabse chhota nikal do. Sum bhi saath me maintain karo.
+
+Sort by speed (fastest first) → jis student pe khade hain wo ab tak ka sabse slow hai, toh wahi pivot. Heap me k largest impacts, so answer candidate = pivot speed × heap sum.
+
+Dry run (k = 2): sorted (speed, impact) = (5,3), (3,1), (1,10).
+pivot 5 → heap {3}, size < k, skip.
+pivot 3 → heap {3,1}, sum 4 → 4 × 3 = 12.
+pivot 1 → heap {3,1,10} → 1 nikala → {3,10}, sum 13 → 13 × 1 = 13 ← best.
+
+![Three pivots and the heap after each, best is 13](../../../assets/notes/1-5-greedy-1/fig12_hr_trace.png)
+
+*heap after each pivot.*
+
+T.C. = O(N log N).
+
+```cpp
+// Fabricator/Greedy-Sweepline/StudentSelection.cpp
+/*
+Assume that you're an HR, and you need to hire, k out of n students
+based on their speed and impact. You're given the (s, i) of all students.
+
+Efficiency = (sum of k students) * (min speed of k students)
+
+Find the maximum efficiency you can achieve after hiring k students.
+*/
+
+void solve() {
+    int n, k;
+    cin>>n>>k;
+
+    // first = speed, second = efficiency
+    vector<pair<int, int>> arr(n);
+    for(int i=0; i<n; i++){
+        cin>>arr[i].first>>arr[i].second;
+    }
+
+    sort(arr.begin(), arr.end());
+    reverse(arr.begin(), arr.end());
+
+    priority_queue<int> pq; // min pq: we'll use negative value trick to create min priority queue
+    int top_k_sum = 0;
+    int best_team_score = 0;
+    for(int i=0; i<n; i++){
+        pq.push(-arr[i].second);
+
+        top_k_sum += arr[i].second;
+        if(pq.size() > k){
+            int x = -pq.top();
+            pq.pop();
+
+            top_k_sum -= x;
+        }
+
+        if(pq.size() == k){
+            best_team_score = max(best_team_score, arr[i].first * top_k_sum);
+        }
+    }
+
+    cout<<best_team_score<<endl;
+}
+```
+
+Input: `3 2` / `3 1` / `1 10` / `5 3` → output `13`.
+
+(`priority_queue<int>` default max-heap hota hai, isliye negative store kiya → min-heap ban gaya.)
+
+Note: `top_k_sum` aur product `int` me hain. N, K ≤ 10⁵ aur S, I ≤ 10⁹ pe answer 10²³ tak jaa sakta hai, `long long` me bhi nahi aayega (~9.2·10¹⁸). `__int128` ya problem ka modulo use karna padega.
+
+### Median
+
+Ques: Given n-points on a line
+
+```
+ ──•────────•──────────•──•────────────•──
+   x₁       x₂         x₃ x₄           x₅
+```
+
+version 1:
+find a point x such that (Σ |x−xᵢ|) is min.
+
+My try: (points 1, 3, 7, 8, 17)
+
+x = 5 ①   |1−5| + |3−5| + |5−7| + |5−8| + |5−17|
+          4 + 2 + 2 + 3 + 12 = 23
+
+x = 8 ②   |1−8| + |3−8| + |8−7| + |8−8| + |17−8|
+          7 + 5 + 1 + 0 + 9 = 22.
+
+x = 7 ③   6 + 4 + 0 + 1 + 10 = (21)      (x = 7)
+
+x = 6 ④   5 + 3 + 1 + 2 + 11 = (22)
+
+x = 9 ⑤   8 + 6 + 2 + 1 + 8 = 25
+
+![Points 1, 3, 7, 8, 17 and bars of the sum for x = 5 to 9](../../../assets/notes/1-5-greedy-1/fig13_median_trials.png)
+
+*sums: 23, 22, 21, 22, 25. min at x = 7.*
+
+Fact: (Σ|x−xᵢ|) → min at x = median.
+
+(median = sort karne ke baad beech wala element.)
+
+Kyun? Dekho, P₀ first choice, distances lines ki tarah.
+
+P₀ first choice the distances are represented as lines.
+
+When P₀ moves to P₁
+ ↳ some distances are reduced → ③
+ ↳ some distances are increased → ②.
+
+![P0 moving to P1, 3 distances shrink and 2 grow](../../../assets/notes/1-5-greedy-1/fig14_median_move.png)
+
+*right jaane pe 3 chhote, 2 bade. toh jaana faayde ka.*
+
+∴ On reaching the median we get the most optimal ans.
+
+( |x−1| + |x−3| + |x−7| )
+
+![Graph of |x-1|+|x-3|+|x-7| with minimum at 3](../../../assets/notes/1-5-greedy-1/fig15_abs_plots.png)
+
+*left: 3 points, min at 3 (optimal). right: 4 points, bottom flat.*
+
+for 4 values → bottom flat, slope here is zero. Matlab dono beech wale points ke beech koi bhi x chalega.
+
+Version 2:
+If the points have some weight associated with them. i.e. if pts move towards the optimal pt. with some cost.
+
+Σ( kᵢ |x−xᵢ| ) → minimum.
+
+xᵢ: [ 1  3  7 ]
+kᵢ: [ 1  1  3 ]
+
+(7−7) × 3 + 4×1 + 6×1 = 10
+
+|x−1| + |x−3| + 3 |x−7|
+↳ |x−1| + |x−3| + |x−7| + |x−7| + |x−7|
+↳ so now in this we can easily see the answer.
+
+xᵢ :   1   3   5   9
+kᵢ :   3   1   2   3
+
+no. of ele = (Σ kᵢ + 1) / 2  =  (9+1)/2 = 5.
+
+5ᵗʰ ele in expanded will be answer.
+
+```
+ 1 1 1 (3) (5) 5  9 9 9
+       ↑   ↑
+```
+
+![Expanded list 1 1 1 3 5 5 9 9 9, 5th element highlighted](../../../assets/notes/1-5-greedy-1/fig16_weighted_expand.png)
+
+*expand karo, 5th element = 5. (Σk = 9 odd hai, toh sirf 5th matter karta hai.)*
+
+Actually list banane ki jarurat nahi (kᵢ 10⁹ ho sakta hai). Sort by x, weights add karte jao, jaha running sum ≥ (Σk+1)/2 ho jaye wahi answer.
+
+T.C. = O(n log n).
+
+```cpp
+// not in Fabricator (new function)
+/*
+  Problem 1: Given n points x_1..x_n on a line, find x that minimises sum |x - x_i|.
+  Problem 2 (weighted): point x_i has weight k_i. Minimise sum k_i * |x - x_i|.
+*/
+
+// Version 1: the median. Returns {best x, minimum sum}.
+pair<long long, long long> bestMeetingPoint(vector<long long> xs) {
+    sort(xs.begin(), xs.end());
+    long long median = xs[xs.size() / 2];  // for an even count the other middle value gives the same sum
+    long long sum = 0;
+    for (long long x : xs) sum += llabs(x - median);
+    return {median, sum};
+}
+
+// Version 2: the weighted median. Think of every point x_i written k_i times and take the
+// middle element, but never build that long list: just add up the weights.
+pair<long long, long long> bestWeightedPoint(vector<pair<long long, long long>> pts) {  // pts = {x_i, k_i}
+    sort(pts.begin(), pts.end());
+    long long totalWeight = 0;
+    for (auto& p : pts) totalWeight += p.second;
+    long long need = (totalWeight + 1) / 2;  // position of the middle element in the long list (1-based)
+    long long running = 0, best = pts[0].first;
+    for (auto& p : pts) {
+        running += p.second;
+        if (running >= need) { best = p.first; break; }
+    }
+    long long sum = 0;
+    for (auto& p : pts) sum += p.second * llabs(best - p.first);
+    return {best, sum};
+}
+```
+
+Output: `x = 7, sum = 21` / `x = 7, sum = 10` / `x = 5, sum = 26`. Brute force (saare x try karke) se match.
+
+## Bit thinking
+
+→ Bit thinking
+
+Ques:
+At x we can do following two operations
+i) x → 4x
+ii) x → 2x+1
+
+Check on codeforces.
+/contest/1635
+
+```
+              4x ↗  1010100
+ 10101 
+                  ↘ 101011
+```
+
+![10101 with 4x = 1010100 and 2x+1 = 101011](../../../assets/notes/1-5-greedy-1/fig17_bits.png)
+
+*4x → last me "00" lag gaya. 2x+1 → last me "1".*
+
+4x ⟹ (x << 2)
+2x+1 ⟹ (x << 1) | 1
+
+(`<<` = bits ko left shift karna. `x << 2` last me do zero add karta hai, `| 1` last bit 1 kar deta hai.)
+
+Observation: dono ops bas binary string ke end me kuch jodte hain: "00" ya "1". Isliye ek number ka sirf ek hi parent ho sakta hai (last bit 1 → 2y+1 se aaya, last do bits 00 → 4y se aaya, last do bits 10 → kisi se nahi). Matlab agar kisi a ke parent chain me koi dusra given number mil gaya toh a redundant hai. Phir bits ginne ka kaam: 1 bit add ya 2 bits add → Fibonacci jaisa count. (CF 1635 isi pe hai.)
+
+## Manhattan meeting point
+
+Ques:
+
+```
+ |  o─────────x─────────o
+ |            |
+ |            o
+ |
+ |─────────────────────────
+```
+
+Given points on a plain, we want to make them meet at some pt. such that the manhattan distance is minimum.
+
+(manhattan distance = |x₁−x₂| + |y₁−y₂|, sirf up/down/left/right chalna.)
+
+i) find where to meet.
+ii) find min # of moves.
+iii) find no. of soln.
+
+```
+ |        ← ───────o (3,3)
+ |        ↑ 2
+ |        o (2,2)
+ |   o───── 2
+ |  (1,1)
+ |─────────────────────────
+```
+
+Move (3,3) to (2,2).
+ ↳ cost = 2
+Move (1,1) to (2,2)
+ ↳ cost = 2
+Total cost = 4.
+
+![Points (1,1), (2,2), (3,3) and moves of cost 2 each to (2,2)](../../../assets/notes/1-5-greedy-1/fig18_manhattan_example.png)
+
+*(2,2) pe milne ka cost = 2 + 2 = 4.*
+
+```
+ • (x₁,y₁)              • (x₂,y₂)
+ |                        |
+ └──────·(x,y)────────────┘
+        |
+        └─• (x₃,y₃)
+```
+
+Cost = Σ ( |x−xᵢ| + |y−yᵢ| )
+ ↳ we have to minimise this.
+
+Cost = Σᵢ₌₁ⁿ ( |x−xᵢ| + |y−yᵢ| )
+
+Cost = ( Σᵢ₌₁ⁿ |x−xᵢ| ) + ( Σᵢ₌₁ⁿ |y−yᵢ| )      } axis independance
+
+ ↳ Going to be min at median.   (bracket under each sum)
+
+![Three points, dashed median of x and median of y, cross where they meet](../../../assets/notes/1-5-greedy-1/fig19_median_lines.png)
+
+*median for x, median for y → X is the resultant ans.*
+
+for even pts.
+
+![Four points with the hatched median rectangle](../../../assets/notes/1-5-greedy-1/fig20_even_region.png)
+
+*median region (x) × median region (y).*
+
+This whole region will be optimal.
+# of solns can be easily calculated.
+
+Matlab integer points ginne hain toh (x_hi − x_lo + 1) × (y_hi − y_lo + 1). Odd points me ye 1 × 1 = 1 hi hota hai.
+
+Example: (1,1), (3,1), (1,5), (4,4). xs = 1,1,3,4 → x in [1,3]. ys = 1,1,4,5 → y in [1,4]. Solutions = 3 × 4 = 12, min cost = 12.
+
+T.C. = O(n log n).
+
+```cpp
+// not in Fabricator (new function)
+/*
+  Problem: n points (x_i, y_i) lie on a plane. They must all move to one common point.
+  One move shifts a point by 1 in x or in y. Find
+    (i)   where to meet,
+    (ii)  the minimum number of moves,
+    (iii) how many integer meeting points reach that minimum.
+*/
+
+struct Meeting {
+    long long cost;
+    long long xLow, xHigh, yLow, yHigh;  // every integer point in this rectangle is optimal
+    long long ways;
+};
+
+Meeting bestMeeting(const vector<pair<long long, long long>>& pts) {
+    int n = pts.size();
+    vector<long long> xs, ys;
+    for (auto& p : pts) { xs.push_back(p.first); ys.push_back(p.second); }
+    sort(xs.begin(), xs.end());
+    sort(ys.begin(), ys.end());
+
+    Meeting m;
+    m.xLow = xs[(n - 1) / 2];  m.xHigh = xs[n / 2];  // equal when n is odd
+    m.yLow = ys[(n - 1) / 2];  m.yHigh = ys[n / 2];
+    m.cost = 0;                                      // x and y are independent: use each median
+    for (long long x : xs) m.cost += llabs(x - xs[n / 2]);
+    for (long long y : ys) m.cost += llabs(y - ys[n / 2]);
+    m.ways = (m.xHigh - m.xLow + 1) * (m.yHigh - m.yLow + 1);
+    return m;
+}
+
+void show(const vector<pair<long long, long long>>& pts) {
+    Meeting m = bestMeeting(pts);
+    cout << "cost " << m.cost << ", x in [" << m.xLow << "," << m.xHigh << "], y in ["
+         << m.yLow << "," << m.yHigh << "], ways " << m.ways << "\n";
+}
+```
+
+Output: `cost 4, x in [2,2], y in [2,2], ways 1` and `cost 12, x in [1,3], y in [1,4], ways 12`. Grid brute force se match.
+
+## Pigeonhole principle
+
+→ Pigeonhole Principle:
+
+(n kabootar, n−1 ghosle → kisi ek ghosle me do kabootar. Bas yahi.)
+
+Quest:
+arr: [a₁, a₂, ..... aₙ] → n items.
+Print a subset with (sum of ele % n) == 0 if present, else print −1.
+
+n = 5 , arr = [1 2 3 4 5]
+
+valid subsets = {1,4}, {2,3}, {5}, {1,2,3,4}
+                {1,2,3,4,5}, {2,3,5}, {1,4,5}
+
+P1: N ≤ 20 ; aᵢ ≤ 10⁹
+P2: N ≤ 10⁵, aᵢ ≤ 10⁹
+
+For P1: simple brute-force will work
+ ↳ creating all subsets & checking.
+ ↳ every element will have 2 choice
+                           ↙take  ↘not take.
+
+(T.C. = O(2ⁿ · n).)
+
+Is there a subarray with (sum % n) == 0?
+
+\* Try to create an array where we'll have to print −1.
+ ↳ this is never possible.
+
+There are n prefix sums.
+
+(prefix sum = shuru ke i elements ka sum.)
+
+S₁ = a₁   S₂ = a₁+a₂  ......  Sₙ = a₁+a₂+.....+aₙ
+
+If we divide prefix sums by n, possible remainders are (0, 1, 2 ........ n−1).
+
+Case-1: If any prefix sum % n == 0 → soln.
+
+Case-2: If none have remainder 0
+By Pigeonhole Principle, at one remainder is repeated when 'n' prefix sums are divided by n.
+
+∴ Sⱼ ≡ Sᵢ (mod n)
+
+⟹ (Sⱼ − Sᵢ) ≡ 0 (mod n).
+
+Sⱼ − Sᵢ = aᵢ₊₁ + aᵢ₊₂ + ...... + aⱼ
+ ↳ sum of elements of subarray (i,j].
+
+∴ [i+1, j] → answer.
+
+A subarray is also a subset hence we have our answer.
+
+```
+ | 2 | 3 | 1 | 2 | 1 | 3 |        n = 6
+ |---|---|---|---|---|---|
+ 0   2   5   6   8   9   12
+```
+
+```
+prefix sum →  0   2   5   6   8   9   12
+% 6           0   2   5   0   2   3   0
+```
+
+2+3+1 = 6 % 6 == 0 ; 8−2 = 6 % 6 == 0 ; 12−6 = 6 % 6 == 0
+
+![Array 2 3 1 2 1 3 with prefix sums, remainders and arcs between equal remainders](../../../assets/notes/1-5-greedy-1/fig21_prefix_remainders.png)
+
+*equal remainder → beech ka block divisible by 6.*
+
+![Six remainder boxes, prefix sums placed in them, collisions in red](../../../assets/notes/1-5-greedy-1/fig22_pigeonholes.png)
+
+*6 prefix sums, 6 boxes. jaha do mile wahi answer.*
+
+\* The main problem was difficult (finding subset) so we moved on to finding a soln to similar but easy problem (subarray) which is also a soln.
+
+Code me S₀ = 0 bhi daalte hain (firstSeen[0] = 0). Isse Case-1 aur Case-2 ek hi check me aa jate hain: n + 1 values, n remainders. T.C. = O(n).
+
+```cpp
+// not in Fabricator (new function)
+/*
+  Problem: An array a has n numbers. Print a non-empty subset whose sum is divisible
+  by n (sum % n == 0). If there is none print -1.
+  Version 1: n <= 20.  Version 2: n <= 1e5.
+*/
+
+// Version 1: try every subset. Each element is "taken" or "not taken": 2^n subsets.
+// bit i of `mask` tells whether element i is taken.
+bool bruteForceSubset(const vector<long long>& a, vector<int>& chosenIdx) {
+    int n = a.size();
+    for (int mask = 1; mask < (1 << n); mask++) {
+        long long sum = 0;
+        for (int i = 0; i < n; i++)
+            if (mask >> i & 1) sum += a[i];
+        if (sum % n == 0) {
+            chosenIdx.clear();
+            for (int i = 0; i < n; i++)
+                if (mask >> i & 1) chosenIdx.push_back(i + 1);
+            return true;
+        }
+    }
+    return false;
+}
+
+// Version 2: a subarray (a block of neighbours) is also a subset, and one always exists.
+// Two equal prefix-sum remainders S_i and S_j (i < j) mean a[i+1..j] has a sum divisible by n.
+pair<int, int> divisibleSubarray(const vector<long long>& a) {  // returns 1-based {left, right}
+    int n = a.size();
+    vector<int> firstSeen(n, -1);  // firstSeen[r] = first prefix index with remainder r
+    firstSeen[0] = 0;              // the empty prefix S_0 = 0 has remainder 0
+    long long remainder = 0;
+    for (int i = 1; i <= n; i++) {
+        remainder = (remainder + a[i - 1]) % n;
+        if (firstSeen[remainder] != -1) return {firstSeen[remainder] + 1, i};
+        firstSeen[remainder] = i;
+    }
+    return {-1, -1};  // never happens (pigeonhole principle)
+}
+```
+
+`[1,2,3,4,5]` → `[2, 3]` (2 + 3 = 5). `[2,3,1,2,1,3]` → `[1, 3]` (2 + 3 + 1 = 6). Random arrays pe bhi check kiya.
+
+## Fraction ideas
+
+→ Fraction Ideas:
+
+### equal ratio pairs
+
+Ques: Given an array A of size → N.
+
+```
+ A : [______________________] → N.
+```
+
+A[i] ≤ 10¹⁸
+N ≤ 10⁵
+
+find # of pairs (i, j) such that:
+ i) i < j
+ ii) A[i] * j = A[j] * i
+
+ ↳ A[i]/i = A[j]/j     |   Let B[i] = A[i]/i
+
+We need to find B[i] = B[j].
+
+Now, B[i] is float → comparison of equality is erroneous. due to precision.
+
+map⟨double, int⟩ freq could have been used to count the duplicates and hence answer.
+But, we will get wrong answer due to decimal/floating point precision.
+
+(Example: A = [400000000000000001, 800000000000000003]. B = ...001 aur ...001.5, alag hain. Par double ~15-16 digit hi rakhta hai, toh dono barabar dikhte hain.)
+
+(p/q) → Lets keep them in pairs & keep them in lowest form. st. p & q are coprimes.
+
+(coprime = p, q ka gcd 1. Dono ko gcd se divide karo, lowest form mil jayega.)
+
+map⟨pair⟨int, int⟩, int⟩ } we can use this.
+
+Count karna: har index pe pehle dekho map me kitne same fraction pehle aa chuke (utne pairs bante hain), phir map me add karo.
+
+Dry run: A = [3, 6, 9, 2, 5] (1-indexed) → 3/1, 6/2, 9/3, 2/4, 5/5 = 3, 3, 3, 1/2, 1. Teen barabar → 3 pairs.
+
+T.C. = O(N log N), map ki wajah se.
+
+```cpp
+// Fabricator/Greedy-Sweepline/CountEqualRatioPairs.cpp
+pair<long long, long long> get_reduced_fraction(long long num, long long den){
+    if(num == 0 && den == 0) return {0, 0};
+    if(num == 0) return {0, 1};
+    if(den == 0) return {1, 0};
+
+    long long gcd_of_num_den = gcd(num, den);
+
+    return make_pair(num / gcd_of_num_den, den / gcd_of_num_den);
+}
+
+void solve() {
+    int n;
+    cin>>n;
+
+    map<pair<long long, long long>, long long> mp;
+    long long ans = 0;
+    vector<long long> arr(n);
+    for(int i=0; i<n; i++){
+        cin>>arr[i];
+        ans += mp[get_reduced_fraction(arr[i], i)];
+        mp[get_reduced_fraction(arr[i], i)]++;
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Input (extra 0 aage, neeche note dekho): `6` / `0 3 6 9 2 5` → output `3`.
+
+Note: ye code index `i` 0 se leta hai (pehla element 0 se divide hota hai), problem 1-indexed hai. Isliye upar input me 0 daala, ya `get_reduced_fraction(arr[i], i + 1)` karo.
+
+### line with max points
+
+Ques: Given n-points (xᵢ,yᵢ). find a line which passes through maximum points.
+
+![Grid of points where the best line passes through 4 points](../../../assets/notes/1-5-greedy-1/fig23_best_line.png)
+
+*→ this line has 4 pts.*
+
+For a pivot point, we calculate slope of all other points.
+Points that can be possibly on same line will have same slope.
+
+Pivot on every point and repeat,
+So, the points with same slope with highest frequency is the answer.
+
+![Pivot (2,2) with lines grouped by slope](../../../assets/notes/1-5-greedy-1/fig24_pivot_slopes.png)
+
+*pivot (2,2): slope 1 → 3 pts, slope −1 → 2 pts, slope 0 → 1 pt. best = 3 + pivot = 4.*
+
+Slope bhi fraction hai (dy/dx) → same problem, float mat use karo, reduced pair (dy, dx) rakho. Vertical line me dx = 0, usko alag handle karna.
+
+T.C. = O(n² log n).
+
+```cpp
+// Fabricator/Greedy-Sweepline/LineWithMaxPoints.cpp
+pair<long long, long long> get_reduced_fraction(long long num, long long den){
+    if(num == 0 && den == 0) return {0, 0};
+    if(num == 0) return {0, 1};
+    if(den == 0) return {1, 0};
+
+    // Handling negative number
+    int neg = 1;
+    if(num < 0){
+        neg *= -1;
+        num *= -1;
+    }
+
+    if(den < 0){
+        neg *= -1;
+        den *= -1;
+    }
+
+    long long gcd_of_num_den = gcd(num, den);
+
+    return make_pair(neg * num / gcd_of_num_den, den / gcd_of_num_den);
+}
+
+void solve() {
+    int n;
+    cin>>n;
+
+    long long x[n], y[n];
+    for(int i=0; i<n; i++){
+        cin>>x[i]>>y[i];
+    }
+
+    int ans = 0;
+    for(int i=0; i<n; i++){
+        map<pair<long long, long long>, int> mp;
+        int same = 0;
+        for(int j=0; j<n; j++){
+            if(x[i] != x[j] || y[i] != y[j]){
+                mp[get_reduced_fraction(y[i] - y[j], x[i] - x[j])]++;
+            }
+            else{
+                same++;
+            }
+        }
+
+        for(auto v: mp){
+            ans = max(ans, same + v.second);
+        }
+    }
+
+    cout<<ans<<endl;
+}
+```
+
+Input: `7` / `1 1` / `2 2` / `3 3` / `4 4` / `1 3` / `3 1` / `5 2` → output `4`.
+
+(`same` = pivot jaise hi points, duplicates handle ho jate hain. `get_reduced_fraction` vertical ke liye {1, 0}, horizontal ke liye {0, 1} deta hai.)
+
+## Sweepline
+
+→ Sweepline:
+
+Ques: Given n - intervals on a number line.
+Find the length of numberline covered by ≥ k intervals.
+
+n ≤ 10⁵
+L,R ≤ 10⁹
+k = 1, ....., n.
+
+n — intervals → [Lᵢ, Rᵢ]   | Print n numbers with coverage.
+
+```
+ 3
+ 1 5
+ 2 7
+ 6 8
+```
+
+```
+      ├────────────────────┤
+  ├─────────────────┤          ├──────┤
+ ←─────────────────────────────────────────→
+ -∞    1    2        5     6    7    8    ∞
+```
+
+k = 1     ≥1 → 7   [1, 8] →
+          ≥2 → 4   [2,5] ∪ [6,7]
+          ≥3 → 0
+
+I/P: 2
+     1 3
+     7 8
+
+O/P: 3 → ≥1
+     0 → ≥2
+
+![Intervals [1,5], [2,7], [6,8] with coverage 1 2 1 2 1 and the answers 7, 4, 0](../../../assets/notes/1-5-greedy-1/fig25_sweep_example.png)
+
+*≥1 → 7, ≥2 → 4, ≥3 → 0.*
+
+![Intervals [1,3] and [7,8]](../../../assets/notes/1-5-greedy-1/fig26_sweep_example2.png)
+
+*2 + 1 = 3 for ≥1. kuch bhi 2 baar cover nahi → 0.*
+
+Sweepline is used to solve interval problems
+↳ 1900 ranges.
+
+The intervals divide/partitions the space into regions → (−∞,1) (1,2) (2,5). . . .
+
+Coverage of intervals change in different regions
+Eg: B & A → lie in different regions hence their coverage by intervals are different.
+    A & C → lie in same region
+            ↳ coverage by intervals are same.
+
+![Intervals with dotted end points and points B, A, C](../../../assets/notes/1-5-greedy-1/fig27_regions_abc.png)
+
+*B alag region, A aur C same region.*
+
+Also, coverage changes after the end-points of the interval (in other words region change)
+
+If we find which region is covered by how many intervals then essentially the problem is solved.
+End points of the interval → key or event points.
+
+For any interval (L,R) the coverage after L increases by 1 & after R decreases by 1.
+
+S (coverage/counter)
+
+↳ There is a line which sweeps and calculates the coverage change at each event point.
+                                         if coverage = 0 (init)
+
+S moves to 1 → coverage++ → 1
+S → 2 → coverage++ → 2
+S → 5 → coverage−− → 1
+S → 6 → coverage++ → 2
+S → 7 → coverage−− → 1
+S → 8 → coverage−− → 0
+
+![+1 and −1 at the end points and the coverage step graph](../../../assets/notes/1-5-greedy-1/fig28_events_steps.png)
+
+*events (+1, −1) aur counter S.*
+
+Ab answer kaise? Do neighbouring event points ke beech coverage same rehta hai. Toh us gap ki length ko bucket[current coverage] me add kar do. Isse "exactly c intervals" ki length mil jati hai. Humein "≥ k" chahiye → bucket ka suffix sum (peeche se add karte jao).
+
+Dry run: events 1+, 2+, 5−, 6+, 7−, 8−. Gaps: [1,2] cov 1 → 1; [2,5] cov 2 → 3; [5,6] cov 1 → 1; [6,7] cov 2 → 1; [7,8] cov 1 → 1. exactly 1 = 3, exactly 2 = 4, exactly 3 = 0. Suffix: ≥3 = 0, ≥2 = 4, ≥1 = 7 ✓.
+
+T.C. = O(n log n) (2n events sort). Gap ki length `int`/`long long` dhyan se.
+
+```cpp
+// Fabricator/Greedy-Sweepline/Sweepline.cpp
+void solve() {
+    int n;
+    cin>>n;
+
+    vector<pair<int, int>> events;
+    for(int i=0; i<n; i++){
+        int l, r;
+        cin>>l>>r;
+        events.push_back({l, +1});
+        events.push_back({r, -1});
+    }
+
+    // This is piece of code is sweep line. Here we're creating an array,
+    // which stores how much length of array is covered by number of segments
+    sort(events.begin(), events.end());
+    int cnt = 0;
+    vector<int> covered_by(n + 1, 0);
+    for(int i=0; i<events.size(); i++){
+        cnt += events[i].second;
+
+        if(i+1 < events.size()){
+            int len = events[i + 1].first - events[i].first;
+            covered_by[cnt] += len;
+        }
+    }
+
+    // printing
+    for(int i=1; i<=n; i++){
+        cout<<i<<" "<<covered_by[i]<<endl;
+    }
+
+    // From above piece of code we got length of array covered by exactly number of segments
+    // But our original problem needs to compute length covered by >= k segments
+    // Hence we build a suffix array
+    for(int i=n-1; i>=0; i--){
+        covered_by[i] += covered_by[i+1];
+    }
+
+    for(int i=1; i<=n; i++){
+        cout<<i<<" "<<covered_by[i]<<endl;
+    }
+}
+```
+
+Input: `3` / `1 5` / `2 7` / `6 8`. Output pehle "exactly" (`1 3`, `2 4`, `3 0`), phir "at least" (`1 7`, `2 4`, `3 0`). Input `2` / `1 3` / `7 8` ke liye second block `1 3`, `2 0`.
+
+Note: agar L = R wala interval ho toh −1 event +1 se pehle aa sakta hai aur `cnt` −1 ho jayega (`covered_by[-1]`). L < R me problem nahi.
+
+Same sweep se max overlap bhi nikal sakte hain (coverage ka max kab hota hai). Max population year type problem: kaunse year me sabse zyada log zinda. Bas coverage jab naya max bane tab year note kar lo.
+
+```cpp
+// Fabricator/Greedy-Sweepline/MaxPopulationYear.cpp
+/*
+https://leetcode.com/problems/maximum-population-year/description/
+*/
+
+void solve() {
+    int n;
+    cin>>n;
+    vector<pair<int, int>> events;
+    for(int i=0; i<n; i++){
+        int x, y;
+        cin>>x>>y;
+        events.push_back({x, 1});
+        events.push_back({y, -1});
+    }
+
+    sort(events.begin(), events.end());
+
+    int ans = 0, curr_ans = 0, year = -1;
+    for(int i=0; i<events.size(); i++){
+        curr_ans += events[i].second;
+        if(curr_ans > ans){
+            year = events[i].first;
+            ans = curr_ans;
+        }
+    }
+
+    cout<<year<<endl;
+}
+```
+
+Input: `3` / `1993 1999` / `2000 2010` / `1995 2005` → `1995`. Input `2` / `1950 1961` / `1960 1971` → `1960`.
+
+### probability of exactly 1 cover
+
+Ques: Ref: CF /problemset/problem/2125/D → Segments Covering
+changed version:
+We need to find P(i) for iᵗʰ cell.
+P(i) → probability of the iᵗʰ cell being covered by exactly 1 interval.
+
+for every i → print the P(i).
+
+(Har interval x = p/q probability se present hai, independently.)
+
+![Two intervals with probabilities x1, x2 and cells below with their probabilities](../../../assets/notes/1-5-greedy-1/fig29_prob_cells.png)
+
+*0 prob, x₁, (dono), x₂, 0.*
+
+(with p/q = x)
+
+| 1 | 2 | |
+|---|---|---|
+| (1−x₁) | (1−x₂) | → 0  [Not desirable as both not present] |
+| x₁ | (1−x₂) | → 1  [Desirable → only 1 → present] |
+| (1−x₁) | (x₂) | → 1  [Desirable → only 2 → present] |
+| x₁ | x₂ | → 0  [No desirable → both present] |
+
+∵ The probabilities are independent
+∴ (1−x₁)x₂ & x₁(1−x₂) → are desirable probabilities.
+
+Total probabilities = (1−x₁)x₂ + x₁(1−x₂)
+
+3 intervals x₁, x₂, x₃:
+
+□ → P[i] = x₁(1−x₂)(1−x₃) + x₂(1−x₁)(1−x₃) + x₃(1−x₁)(1−x₂)
+
+Rewriting the P[i]
+
+x₁(1−x₂)(1−x₃) × (1−x₁)
+─────────────────
+      (1−x₁)
+
++ (1−x₁) x₂ (1−x₃) (1−x₂)
+        ─────────────────
+             (1−x₂)
+
++ (1−x₁)(1−x₂) x₃ (1−x₃)
+                ─────────
+                (1−x₃)
+
+P[i] = (1−x₁)(1−x₂)(1−x₃) [ x₁/(1−x₁) + x₂/(1−x₂) + x₃/(1−x₃) ]
+
+We maintain two things:
+product = (1−x₁)(1−x₂)(1−x₃)
+sum = [ x₁/(1−x₁) + x₂/(1−x₂) + x₃/(1−x₃) ]
+
+On every event the product & sum would change.
+On +1 event the values are added into the product & sum.
+On −1 event the values are removed.
+
+![Three intervals x = 1/2, 1/3, 1/4 and product, sum, P in every region](../../../assets/notes/1-5-greedy-1/fig30_product_sum.png)
+
+*region-wise product, sum, P = product × sum.*
+
+\*\* Sweepline gives an advantage to maintain any data structure for points in a segment (when segment starts/ends).
+
+Remove karne ka matlab → product ko (1−x) se divide karna. Modulo me divide = modular inverse se multiply (p/q ko p × inverse(q) likhte hain). Isliye code me `inv()` hai.
+
+Dry run: m = 6 cells, interval [1,4] x = 1/2, [3,6] x = 1/3. Cell 1, 2 → sirf pehla → 1/2. Cell 3, 4 → dono → (1/2)(2/3) + (1/2)(1/3) = 1/3 + 1/6 = 1/2. Cell 5, 6 → sirf dusra → 1/3.
+
+```cpp
+// Fabricator/Greedy-Sweepline/SegmentsCovering_Easy.cpp
+long long inv(long long n) {
+    return mpow(n, MOD - 2);
+}
+
+void solve() {
+    int m, n;
+    cin>>m>>n;
+
+    vector<pair<int, int>> events[m+2];
+
+    for(int i=0; i<n; i++){
+        int l, r, p, q;
+        cin>>l>>r>>p>>q;
+        events[l].push_back({1, p * inv(q)});
+        events[r+1].push_back({-1, p * inv(q)});
+    }
+
+    long long sum = 0;
+    long long prod = 1;
+    long long ans[m+2];
+    for(int i=1; i<=m; i++){
+        for(auto event: events[i]){
+            long long x = event.second;
+            long long comp = (1 - x + MOD) % MOD;
+            long long term = (x * inv(comp)) % MOD;
+            
+            if(event.first == 1){
+                sum = (sum + term) % MOD;
+                prod = (prod * comp) % MOD;
+            }
+            else{
+                sum = (sum - term + MOD) % MOD;
+                prod = (prod * inv(comp)) % MOD;
+            }
+        }
+
+        ans[i] = (sum * prod) % MOD;
+    }
+
+    for(auto sol : ans){
+        cout<<sol<<endl;
+    }
+}
+```
+
+Input: `6 2` / `1 4 1 2` / `3 6 1 3` (modulo 10⁹+7). Output me m + 2 numbers print hote hain, pehla aur aakhri unused hain; beech ke 6: `500000004` ×4, `333333336` ×2 → matlab 1/2 ×4 aur 1/3 ×2 ✓.
+
+Note: (1) `ans[0]` aur `ans[m+1]` set nahi hote par print ho jate hain. (2) Agar kisi interval ka x = 1 ho toh 1−x = 0 ka inverse nahi hota, code 0 de deta hai jabki sach me 1 hona chahiye (input `2 1` / `1 2 1 1` try kiya). Fix idea: x = 1 wale intervals ka count alag rakho. 2 ya zyada → answer 0. Exactly 1 → baaki sabka (1−x) product. 0 → product × sum. (3) `p * inv(q)` ko `% MOD` kiye bina `int` me store kiya hai, `% MOD` laga dena safe rahega.
+
+### top k in segments
+
+Ques: Given n-intervals & a value k.
+Lᵢ, Rᵢ, Xᵢ → value of the segment.
+Given Q queries, for each query given Y, return/print sum of top k Xᵢ values on segment covering y.
+
+n ≤ 10⁵, k ≤ 10⁵
+Lᵢ, Rᵢ, Xᵢ ≤ 10⁹
+Q ≤ 10⁵
+yᵢ ≤ 10⁹
+
+k = 2
+
+for y = 2 → ans = 1 → top2 → 1 (only)
+for y = 4 → ans = 1+3 = 4 → top2 → (1 & 3)
+for y = 6 → ans = 2+3 = 5 → top2 → (2 & 3)
+
+![Segments with values 1, 3, 2, 6, 5 and queries y = 2, 4, 6, answers 1, 4, 5](../../../assets/notes/1-5-greedy-1/fig31_topk_segments.png)
+
+*k = 2 → 1, 4, 5. (segment ends yaha answers ke hisaab se bane hain.)*
+
+Harder version:
+What if k is given in queries.
+
+```
+ n
+ L₁  R₁  X₁
+ ⋮
+ Lₙ  Rₙ  Xₙ
+ Q
+ y₁  k₁
+ y₂  k₂
+ ⋮
+ y_Q  k_Q
+```
+} k ≤ 10
+
+Eg:
+
+```
+ 2
+ 1  10  1
+ 5  15  2
+ 3
+ 7  3  → 2+1 = 3
+ 12 2  → 2 = 2
+ 2  1  → 1 = 1
+```
+
+![Segments X=1 from 1 to 10 and X=2 from 5 to 15 with the 3 queries](../../../assets/notes/1-5-greedy-1/fig33_topk_example.png)
+
+*answers 3, 2, 1.*
+
+Ans to be printed in this order.
+
+We can use offlining queries: [since the queries do not change the input in any way, we can use this].
+
+```
+query idx
+  ↓
+  0   7  3
+  1   12 2
+  2   2  1
+      ↳ sort by this value.
+```
+
+![Queries with index, sorted by y, answers written back to the index](../../../assets/notes/1-5-greedy-1/fig32_offline_queries.png)
+
+*sort by y, index yaad rakho, answer wapas us index pe.*
+
+calculate the answer & print it in queries order.
+
+Now, for solving the problem: we can maintain a multiset → insert on interval start
+                                                           → remove on interval end.
+                              iterate on top k to calculate answer.
+
+(multiset = sorted container jisme repeated values allowed.)
+
+Observation: ek hi position x pe agar koi segment start ho raha hai, koi query hai aur koi segment end ho raha hai, toh query ko dono ki value count karni chahiye (closed segments). Isliye same position pe order: start → query → end. Sort pair (position, type) se hota hai, type 0 = start, 1 = query, 2 = end.
+
+Note: `mt.erase(mt.find(v))` ek hi copy hatata hai. `mt.erase(v)` saari copies hata deta.
+
+T.C. = O(n log n + Q·k), k ≤ 10.
+
+```cpp
+// Fabricator/Greedy-Sweepline/TopKInSegments.cpp
+using event = pair<pair<int, int>, pair<int, int>>;
+
+/*
+event = pair<pair<int,                 int>, pair<int,   int>>;
+                  pos(query & segment) type       value  pos(not useful for segment, only query position is stored)
+0 -> start
+1 -> query
+2 -> end
+
+WHY??
+
+This handles the boundary condition, if at any point x, there is starting segment, and an ending segment
+then to include those values in the calculation. Because when we sort, the sorting is done by position and then type
+
+For any arbitrary position x we'll have following sorted pairs:
+ -> x, start
+ -> x, query
+ -> x, end
+
+1 10 1
+5 15 2
+
+*/
+
+void solve() {
+    int n;
+    cin>>n;
+
+    vector<event> events;
+    for(int i=0; i<n; i++){
+        int l, r, x;
+        cin>>l>>r>>x;
+
+        events.push_back({
+            {l, 0},
+            {x, 0}
+        });
+        events.push_back({
+            {r, 2},
+            {x, 0}
+        });
+    }
+
+    int q;
+    cin>>q;
+
+    for(int i=0; i<q; i++){
+        int y, k;
+        cin>>y>>k;
+        events.push_back({
+            {y, 1},
+            {k, i}
+        });
+    }
+
+    sort(events.begin(), events.end());
+    int ans[q];
+    multiset<int> mt;
+    for(auto v: events){
+        if(v.first.second == 0){
+            mt.insert(v.second.first);
+        }
+        else if(v.first.second == 2){
+            mt.erase(mt.find(v.second.first));
+        }
+        else{
+            int sum_val = 0;
+            for(auto [cnt, it] = make_pair(0, mt.rbegin()); cnt < v.second.first && it != mt.rend(); it++, cnt++){
+                sum_val += *it;
+            }
+
+            ans[v.second.second] = sum_val;
+        }
+    }
+
+    for(int i=0; i<q; i++){
+        cout<<ans[i]<<endl;
+    }
+}
+```
+
+Input: `2` / `1 10 1` / `5 15 2` / `3` / `7 3` / `12 2` / `2 1` → output `3`, `2`, `1`.
+
+Agar k bada ho (10⁵) toh har query pe top k ghoomna slow hai. Tab do multiset rakhte hain: `top` (k sabse bade) aur `rest`, aur top ka sum maintain.
+
+## Quick revision
+
+- Greedy → best now, prove it (exchange argument).
+- Best ordering → compare i, j, "i first better" likh ke simplify → sort rule.
+- min dot product → A sort ↑, B sort ↓.
+- decay contest → sort by dᵢ/tᵢ ↓, compare `dᵢ·tⱼ > dⱼ·tᵢ`.
+- x−1 / 2x: A → B reverse socho. B odd → B+1, B even → B/2. A ≥ B → A − B. T.C. = O(log B).
+- Constraints ~10¹⁸ → math / greedy / bit man.
+- Fuel: Σ Pᵢ · min(C₁..Cᵢ). Who covers Pₓ?
+- Hire k: sort by speed ↓, pivot, min-heap of top k impacts, ans = max(speed × sum). overflow dekho (10²³).
+- Median → min of Σ|x−xᵢ|. Even count → beech ke dono ke beech sab optimal. Weighted → kᵢ baar likho, position (Σk+1)/2.
+- Manhattan: x, y independent → dono ka median. # solns = (xhi−xlo+1)(yhi−ylo+1).
+- Bits: 4x = x << 2, 2x+1 = (x << 1) | 1. Dono end me bits jodte hain ("00", "1").
+- Pigeonhole: n numbers me hamesha subarray hai jiska sum % n == 0. Prefix sum mod n, same remainder → block.
+- Ratio equality → lowest form pair in map, double kabhi nahi.
+- Max points on line → pivot, reduced slopes in map, ans = max freq + 1. T.C. = O(n² log n).
+- Sweepline → events (+1 at L, −1 at R), sort, gap length → bucket[cov], suffix sum for ≥ k. T.C. = O(n log n).
+- Same position: start → query → end.
+- Sweepline se DS maintain: product + sum (probability), multiset (top k).
+- Offline queries: sort by y, index save, answer print in original order.
+
+## Practice problems
+
+- [Codeforces contest 1635](https://codeforces.com/contest/1635)
+- [Codeforces 2125D Segments Covering](https://codeforces.com/problemset/problem/2125/D)
+- [LeetCode Maximum Population Year](https://leetcode.com/problems/maximum-population-year/description/)
+
+### Problem ladder
 
 <Ladder topic="1.5" />
-
-## 10. Identification drill
-
-Each item names a problem without saying which card decides it. Choose a card (the list includes earlier topics' cards), write the property you checked, then reveal the answer. Do not solve the problems here: deciding is the exercise. Three items are answered by topic 1.4's cards.
-
-<Drill topic="1.5" />
-
-## 11. Look-alike pairs
-
-Two problems that read almost the same but need different tools. The *flipping difference* is the one detail that changes the decision.
-
-<LookalikePairs topic="1.5" />
-
-## 12. Self-test questions
-
-Answer each question on paper before opening its answer.
-
-<SelfTest topic="1.5" />
-
-## 13. Checkpoint
-
-Three problems in 90 minutes. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items in Section 10. After passing, three review sets become due: after 3 days, 14 days and 60 days.
-
-<Checkpoint topic="1.5" />
-
-## 14. Decision map update
-
-How this topic's cards are chosen against the tools you already have. The same entries appear in the Recognition Handbook, grouped by weak signal across all topics.
-
-<DecisionMapUpdate topic="1.5" />

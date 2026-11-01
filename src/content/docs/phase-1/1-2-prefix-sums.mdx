@@ -11,17 +11,20 @@ import Ladder from '../../../components/Ladder.astro';
 
 ## What this note covers
 
-Do cheez hai, dono ek dusre ke opposite:
-- Prefix Sum → many "sum of range" queries on a fixed array, fast.
-- Partial Sum → many "add to range" updates, fast.
+Two techniques, and each one is the opposite of the other:
+- Prefix Sum → answer many "sum of a range" queries on a fixed array, fast.
+- Partial Sum → apply many "add a value to a range" updates, fast.
 
-Pehle 1D, phir 2D, phir A.P. (arithmetic progression) / G.P. (geometric progression) wale versions, last me triangle.
+The order of the lesson: 1D first, then 2D, then versions with an A.P. (arithmetic progression: each term is the previous term plus a fixed number) and a G.P. (geometric progression: each term is the previous term times a fixed number), and a triangle at the end.
 
-Words I use everywhere:
-- query → one question (or one update) asked on the array. Q = no. of queries, N = size of array.
-- static array → array that does not change between queries.
-- T.C. (time complexity) → how the running time grows with input size.
-- modulo $10^9+7$ → remainder after dividing by 1000000007. Used when the answer can be huge.
+Why learn this? Suppose an array has $10^5$ elements and we receive $10^5$ range queries. Adding up every range by hand costs up to $10^5 \times 10^5 = 10^{10}$ steps, which takes minutes. With one preparation pass of $10^5$ steps and one subtraction per query, the whole job takes about $2 \times 10^5$ steps, which takes a fraction of a second.
+
+Terms used in this lesson:
+- query → one question (or one update) asked on the array. Q = number of queries, N = size of the array.
+- static array → an array that does not change between queries.
+- T.C. (time complexity) → how the running time grows with the size of the input. O(N) means the work grows in step with N.
+- modulo $10^9+7$ → the remainder after dividing by 1000000007. It is used when the true answer can be too large to store.
+- subarray → a block of consecutive elements of an array.
 
 ## Table of contents
 
@@ -48,7 +51,7 @@ Find answers to Q queries on a static array A of size N.
 
 ![Array A with values 4 2 3 1 -5 6 and indices 0 to 5, range 2 to 4 highlighted](../../../assets/notes/1-2-prefix-sums/fig01_array_query.png)
 
-*A, and the range of `? 2 4`.*
+*The array A, and the range of the query `? 2 4`.*
 
 `? 2 4` → -1
 
@@ -58,23 +61,23 @@ Brute force: for each query iterate from L to R and compute sum.
 
 T.C. = O(Q.N).
 
-Infeasible for Q, N ≤ 10^5 / 10^6. (10^5 × 10^5 = 10^10 steps, bahut zyada.)
+Infeasible for Q, N ≤ 10^5 / 10^6. With Q = N = $10^5$ this is $10^5 \times 10^5 = 10^{10}$ steps. A computer does roughly $10^8$ simple steps per second, so this needs about 100 seconds, far too slow.
 
-Observation: har query me hum wahi purane elements baar baar add kar rahe hain. Toh ek baar hi pehle se running total bana ke rakh lo.
+Observation: every query adds up many of the same elements again and again. So do the repeated work once, and keep a running total ready in advance.
 
 Better: Create a precomputation array P such that P[i] → prefix sum of A[0..i]
 
-(prefix = sum of everything from index 0 till i.)
+(prefix sum = the sum of everything from index 0 up to index i.)
 
 $P[i] = \sum_{j=0}^{i} A[j]$
 
 $P[i] = A[i] + P[i-1]$
 
-So basically, har cell = naya element + pichla prefix.
+In words: each cell of P is the new element plus the prefix sum just before it.
 
 ![Array A above its prefix array P: 4 6 9 10 5 11](../../../assets/notes/1-2-prefix-sums/fig02_prefix_array.png)
 
-*P banta hai left to right: A[i] + P[i-1].*
+*P is built from left to right: A[i] + P[i-1].*
 
 Dry run of building P for A = 4 2 3 1 -5 6:
 - P[0] = 4
@@ -89,18 +92,24 @@ Dry run of building P for A = 4 2 3 1 -5 6:
 - P[R] → brings sum of elements from 0 - R
 - P[L-1] → removes sum of elements from 0 - (L-1)
 
+Why it works: P[R] is the sum of A[0..R]. It contains the part we want, A[L..R], and also an unwanted part in front, A[0..L-1]. P[L-1] is exactly that unwanted part, so subtracting it leaves A[L..R].
+
 ![P[4] covers indices 0 to 4, P[1] covers 0 to 1, difference is A[2..4]](../../../assets/notes/1-2-prefix-sums/fig03_range_formula.png)
 
-*P[4] - P[1]: starting ka hissa cut ho gaya, bacha A[2..4].*
+*P[4] - P[1]: the front part is cut away and A[2..4] is left.*
 
 T.C. → O(N) → to generate prefix sum array
        O(1) → for queries.
 
+For the example above, the cost is 6 steps to build P, and then every query is one subtraction. For $10^5$ queries on $10^5$ elements, that is about $2 \times 10^5$ steps in total instead of $10^{10}$.
+
 **\*** Range queries → with STATIC array.
 
-Note: L = 0 pe P[L-1] = P[-1] exist nahi karta. Either check `L > 0`, ya P ko ek index shift karke store karo (P[0] = 0 = sum of nothing). Aur sum $10^5 \times 10^9$ tak ja sakta hai, so use long long.
+If the array changes after P is built, P becomes wrong, because one change to A[i] changes every P[j] with j ≥ i.
 
-Code (shifted version: `prefix_sum_arr[k]` = sum of first k elements, so L = 0 pe koi special case nahi):
+Note: when L = 0, the cell P[L-1] = P[-1] does not exist. There are two common fixes. Either check `L > 0`, or store P shifted by one index, so that P[0] = 0 means "the sum of nothing". Also, a sum can reach $10^5 \times 10^9 = 10^{14}$, which does not fit in a 32-bit int (maximum about $2.1 \times 10^9$), so use long long.
+
+Code (shifted version: `prefix_sum_arr[k]` = sum of first k elements, so L = 0 needs no special case). This version stores the sums in `int` to keep the code short, which is correct only while all sums stay below about $2 \times 10^9$. For larger values, change the types to long long.
 
 ```cpp
 /*
@@ -147,7 +156,7 @@ void solve() {
 }
 ```
 
-Same thing with "answer modulo 10^9+7". Negative numbers aa sakte hain, isliye `(x + MOD) % MOD`. Yaha input 1-indexed hai (isliye l-2 aur r-1).
+Same thing with "answer modulo 10^9+7". The subtraction can produce a negative number, so we write `(x + MOD) % MOD` to bring the result back into the range 0 to MOD-1. Here the input is 1-indexed, which is why the code uses l-2 and r-1 (index of position l is l-1, and the element before it is l-2).
 
 ```cpp
 /*
@@ -187,7 +196,7 @@ void solve() {
 
 In general, we can use this technique for all operations that can allow removal of contribution of elements. eg: XOR.
 
-XOR ka rule: x ^ x = 0, toh ek value ko do baar XOR karo toh wo hat jaati hai. Yahi "removal" chahiye. So prefix XOR, aur "-" ki jagah "^":
+XOR (exclusive or, a bit-by-bit operation) has the rule x ^ x = 0, so if a value is XOR-ed twice, it disappears. This is the "removal" that the technique needs. So build a prefix XOR, and use "^" in the place of "-":
 
 ```cpp
 /*
@@ -209,6 +218,11 @@ int rangeXor(const vector<int>& X, int L, int R) {
 
 Dry run: A = 4 2 3 1 5 6, `? 2 4` → 3 ^ 1 ^ 5 = 7, and whole array → 7.
 
+Common mistakes with prefix sums:
+- Mixing 0-indexed and 1-indexed positions. Decide the indexing first and keep it for the whole program.
+- Using int when the sum can be large.
+- Forgetting that the array must be static.
+
 ---
 
 ## Partial Sum Technique
@@ -222,7 +236,7 @@ After all the queries find the final array.
 
 ![Array of six zeros, then the array after each of the three queries](../../../assets/notes/1-2-prefix-sums/fig04_partial_sum_example.png)
 
-*Har query ke baad array. Last row = final array (ans).*
+*The array after each query. The last row is the final array (ans).*
 
 ```
 A:  | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -239,9 +253,9 @@ A:  | 0 | 0 | 0 | 0 | 0 | 0 |
       0   1   2   3   4   5          (ans)
 ```
 
-Brute force: har query pe L se R tak loop, X add. T.C. = O(Q.N). Same problem as before: range ke andar sab cells pe jaana padta hai.
+Brute force: for each query, loop from L to R and add X. T.C. = O(Q.N). This is the same problem as before: every cell inside the range has to be visited. With Q = N = $10^5$ it is again $10^{10}$ steps.
 
-Question: kya hum sirf range ke do end pe kuch karke kaam chala sakte hain? Haan.
+Question: can we do the work by touching only the two ends of the range? Yes.
 
 Claim:
 Step 1: create a new array P of size N
@@ -253,32 +267,32 @@ Final P is the answer.
 
 ![P after each query's two point updates, then its prefix array equals the answer](../../../assets/notes/1-2-prefix-sums/fig05_difference_steps.png)
 
-*Har query me sirf 2 cells. End me ek prefix pass = answer (2 5 6 4 4 3).*
+*Each query changes only 2 cells. One prefix pass at the end gives the answer (2 5 6 4 4 3).*
 
-Note: `+ 1 5 3` me R+1 = 6 array ke bahar hai. Skip kar do (ya array ek size bada rakho).
+Note: in `+ 1 5 3` the index R+1 = 6 is outside the array. Skip that update (or keep the array one cell larger).
 
 Why this works?
 
-Notice that prefix sum me ek `+X` aaya toh wo aage sabhi cells me jaata hai.
+Think of what a prefix sum does to a single `+X`: the value X is added to the running total at that cell, and the running total is carried into every cell after it.
 
 → value of x is propagated till the end of the array
 
-Ab agar aage kahin `-X` rakh do toh wo X ko cancel kar dega.
+Now, if a `-X` is placed further to the right, the running total drops by X there, which cancels the earlier X.
 
 → value of x is propagated till the point where -x negates its presence.
 
 ![Marks before and after a prefix sum: one +X; +X and -X; X+Y and -X](../../../assets/notes/1-2-prefix-sums/fig06_why_it_works.png)
 
-*Mark right me tab tak failta hai jab tak koi cancel na kare.*
+*A mark spreads to the right until another mark cancels it.*
 
 → a value (X+Y) propagates until something (-X) is substracted.
 → it also shows that we can add X & Y separately, to the array.
 
-Matlab do overlapping queries ke marks bas jud jaate hain, aur ek hi prefix pass sab handle kar leta hai.
+This means that the marks of two overlapping queries simply add up, and one single prefix pass handles all of them together.
 
-T.C. → O(1) per update, O(N) for the final prefix pass. Total O(Q + N).
+T.C. → O(1) per update, O(N) for the final prefix pass. Total O(Q + N). For Q = N = $10^5$ this is about $2 \times 10^5$ steps instead of $10^{10}$.
 
-Code: `prefix_arr` pehle marks hold karta hai, phir answer ban jaata hai. `if(r < n-1)` wahi "R+1 bahar ho toh skip" wali line hai.
+Code: `prefix_arr` first holds the marks, and then becomes the answer. The line `if(r < n-1)` is the "skip if R+1 is outside the array" rule from the note above.
 
 ```cpp
 /*
@@ -321,6 +335,10 @@ void solve() {
 
 Dry run: n = 6, `+ 2 4 1`, `+ 1 5 3`, `+ 0 2 2` → `2 5 6 4 4 3`.
 
+Check by hand: the marks written by the three queries are 2 at index 0 and -2 at index 3 (third query), 3 at index 1 (second query; its end mark at index 6 is outside the array and skipped), and 1 at index 2 and -1 at index 5 (first query). The mark array is 2 3 1 -2 0 -1, and its prefix sums are 2 5 6 4 4 3.
+
+Common mistakes: writing the end mark at R instead of R+1, and forgetting that this technique gives the final array only after all updates. It cannot answer "what is the value now?" between the updates without another prefix pass.
+
 ---
 
 ## 2D Prefix Sum
@@ -329,41 +347,41 @@ Given a 2D matrix Arr[][], with values in each cell. There are Q queries of the 
 
 ![Grid with a rectangle from cell (U,L) top-left to (D,R) bottom-right](../../../assets/notes/1-2-prefix-sums/fig07_2d_query.png)
 
-*Up Left to Down Right.*
+*From the Up-Left cell to the Down-Right cell.*
 
 Brute force: iterate of all cells → O(N^2).
 
-Note: N x M grid me ye O(N.M) per query hai.
+Note: for an N x M grid this is O(N.M) per query.
 
 Using 1D prefix sum:
 
 ![The rectangle cut into three row pieces, each circled](../../../assets/notes/1-2-prefix-sums/fig08_2d_rows.png)
 
-*Har row ek 1D range.*
+*Each row of the rectangle is a 1D range.*
 
 Keep prefix sum of rows & find sum of cells of each rows in O(1) and sum them in O(n).
 
-Better idea: poore rectangle ko hi ek baar me nikal lo, rows ka loop bhi hata do.
+This helps, but a query still loops over all rows of the rectangle. A better idea: get the whole rectangle at once, and remove the loop over rows as well.
 
 Idea of 2D prefix sums:
 
 ![Grid with the rectangle from the top-left corner to cell (i,j) shaded](../../../assets/notes/1-2-prefix-sums/fig09_2d_prefix_definition.png)
 
-*P[i][j] → sum of top left corner to (i,j) rectangle.*
+*P[i][j] → sum of the rectangle from the top left corner to (i,j).*
 
 How to build?
 
-Build in row major order. (row 0 left to right, phir row 1, ...)
+Build in row major order. (row 0 from left to right, then row 1, and so on.)
 
 P[i][j] = arr[i][j] + P[i-1][j]
                       + P[i][j-1]
                       - P[i-1][j-1]
 
-Think of it as: upar wala rectangle + left wala rectangle, dono me P[i-1][j-1] wala hissa do baar aa gaya, toh ek baar minus. Aur arr[i][j] to bacha hi tha, wo add.
+Think of it like this: the rectangle above the cell and the rectangle to the left of the cell both contain the rectangle ending at (i-1, j-1). So that part is counted twice, and we subtract it once. The cell arr[i][j] itself is in neither of them, so we add it.
 
 ![P[i-1][j], P[i][j-1], P[i-1][j-1] counted twice, and the new cell](../../../assets/notes/1-2-prefix-sums/fig10_2d_build.png)
 
-*Teeno ready hote hain.*
+*All three earlier values are ready when P[i][j] is computed.*
 
 While iterating in row major order all the required values will always be present.
 
@@ -380,21 +398,23 @@ P[D][R]
 
 ![Four grids: big rectangle, minus left part, minus top part, plus the corner](../../../assets/notes/1-2-prefix-sums/fig11_2d_query_regions.png)
 
-*Corner do baar kat gaya, toh ek baar wapas add.*
+*The corner was subtracted twice, so it is added back once.*
 
 T.C. :
 Building prefix array: O(N.M).
 Query the sum of rectangle: O(1).
 
+Small example: take the matrix with rows `1 2 3`, `4 5 6`, `7 8 9`. Its prefix array has rows `1 3 6`, `5 12 21`, `12 27 45`. For the lower-right 2 x 2 block (U = 1, D = 2, L = 1, R = 2) the formula gives P[2][2] - P[2][0] - P[0][2] + P[0][0] = 45 - 12 - 6 + 1 = 28, and directly 5 + 6 + 8 + 9 = 28.
+
 Example: matrix 4 x 5, P next to it. Query L=1 R=3 U=1 D=2 → P[2][3] - P[2][0] - P[0][3] + P[0][0] = 60 - 17 - 9 + 3 = 37.
 
 ![Matrix and its prefix array, with the cells used by the query coloured](../../../assets/notes/1-2-prefix-sums/fig12_2d_example.png)
 
-*Whole matrix → P[3][4] = 97.*
+*The whole matrix gives P[3][4] = 97.*
 
-Dhyan se: order `? L R U D` hai (columns pehle), kai problems me x1 y1 x2 y2 (rows pehle) hota hai. Aur row 0 / column 0 pe L-1, U-1 = -1 ho jaata hai, toh guard lagao.
+Be careful: the query order here is `? L R U D` (columns first), but many problems give x1 y1 x2 y2 (rows first). Also, on row 0 or column 0, the values L-1 and U-1 become -1, so add a guard (a check) for them.
 
-Code: queries yaha 1-indexed hain, isliye `--u;--l;--d;--r;`. `norm` kisi bhi number (negative bhi) ko 0 se MOD-1 me laata hai.
+Code: the queries here are 1-indexed, which is why the code has `--u;--l;--d;--r;`. The function `norm` brings any number (negative numbers too) into the range 0 to MOD-1.
 
 ```cpp
 /*
@@ -459,7 +479,7 @@ j → index of Column.
 
 ![A 4x4 block of +X cells, arrows to (U,L) and (D,R); and the 1D idea per row](../../../assets/notes/1-2-prefix-sums/fig13_2d_update_block.png)
 
-*Left: add X to all cells. Right: har row me +X aur -X.*
+*Left: add X to all cells of the block. Right: the 1D idea in every row, +X at the start and -X after the end.*
 
 Brute force: O(Q. N.M).
 
@@ -469,21 +489,21 @@ Using 1D partial sum:
 
 T.C.: O(N.Q).
 
-Ab sawal: har row ke liye 2 marks lagana bhi bahut hai, kya poore rectangle ke liye sirf 4 marks se ho jaayega?
+Now the question: putting 2 marks in every row is still a lot of work for a tall block. Can 4 marks in total be enough for the whole rectangle?
 
 Using 2D partial sum:
 How does any value of sum propagates?
 
-Let's say X = 1, grid 6 x 6, block rows 1 to 3 and columns 1 to 3. Prefix sum 2D matlab column me neeche, phir row me aage.
+Let us say X = 1, the grid is 6 x 6, and the block is rows 1 to 3 and columns 1 to 3. A 2D prefix sum means: go down the columns first, then go right along the rows.
 
-1. Sirf ek `+X` at (U,L) → X poore neeche-right quadrant me phail jaata hai.
-2. `-X` at (U,R+1) add kiya → X sirf columns L..R me rehta hai, but neeche tak jaata rehta hai.
-3. Neeche rokne ke liye `-X` at (D+1,L). Ab bottom-right corner region me -X aa gaya, kyuki wo twice subtract hua.
-4. To fix twice subtraction we add X at (D+1,R+1).
+1. A single `+X` at (U,L) spreads X over the whole lower-right quadrant.
+2. After adding `-X` at (U,R+1), X stays only in the columns L..R, but it still continues down to the bottom.
+3. To stop it at the bottom, add `-X` at (D+1,L). Now the bottom-right corner region has received -X, because it was subtracted twice.
+4. To fix the twice subtraction, add X at (D+1,R+1).
 
 ![Marks (top) and the 2D prefix result (bottom) for the four steps](../../../assets/notes/1-2-prefix-sums/fig14_2d_propagation.png)
 
-*Upar marks, neeche prefix ke baad. Step 4 → bas block me X.*
+*Top: the marks. Bottom: the result after the prefix sum. After step 4, only the block holds X.*
 
 Now X will correctly be propagated in the region. without any -ive / +ive region.
 
@@ -499,7 +519,7 @@ P[D+1][R+1] += X
 
 ![Four corner marks +X, -X, -X, +X around the block](../../../assets/notes/1-2-prefix-sums/fig15_four_corners.png)
 
-*4 corners, bas.*
+*The four corner marks: +X, -X, -X, +X.*
 
 T. C.:
 Building partial sums → O(1) per query.
@@ -507,7 +527,9 @@ Building the find array → O(N.M).
 
 Total : O(Q + N.M).
 
-Code: `if(d < n-1)` / `if(r < m-1)` → jo mark grid ke bahar girta hai usse skip. Neeche wala double loop wahi 2D prefix hai, in place.
+For Q = $10^5$ updates on a 1000 x 1000 grid, brute force can touch $10^5 \times 10^6 = 10^{11}$ cells, while this method needs about $10^5 + 10^6$ steps.
+
+Code: `if(d < n-1)` and `if(r < m-1)` skip a mark that would fall outside the grid. The double loop at the bottom is the same 2D prefix sum, done in place.
 
 ```cpp
 /*
@@ -561,7 +583,7 @@ Dry run: 5 x 6, `+ 1 4 1 3 1` and `+ 2 5 2 4 2`:
 0 0 2 2 2 2
 ```
 
-Overlap wale cells me 1 + 2 = 3.
+The cells where the two blocks overlap hold 1 + 2 = 3.
 
 ---
 
@@ -572,7 +594,7 @@ Given a fixed array A of size N. You need to answer Q queries of the form:
 
 A[L] + A[L+1]*2 + A[L+2]*3 + ...... + A[R]*(R-L+1)
 
-(weights 1, 2, 3, ... → an A.P., har agla = pichla + 1.)
+(The weights 1, 2, 3, ... form an A.P.: each weight is the previous weight plus 1.)
 
 ![Array A with 3 2 9 4 1 -2, cells 2 to 4 highlighted with weights 1 2 3](../../../assets/notes/1-2-prefix-sums/fig16_ap_query_example.png)
 
@@ -584,7 +606,7 @@ A[L] + A[L+1]*2 + A[L+2]*3 + ...... + A[R]*(R-L+1)
 Brute force: O(Q.N).
   ↳ for every query loop on the range asked.
 
-Problem ye hai ki weight (i-L+1) L pe depend karta hai, toh seedha prefix nahi ban sakta. Isko tod ke dekhte hain, i wala hissa aur L wala hissa alag.
+The difficulty is that the weight (i-L+1) depends on L, so one ready-made prefix array cannot be used directly. The fix is to split the weight into a part that depends on i and a part that depends on L.
 
 A[L] + A[L+1]*2 + A[L+2]*3 + ...... + A[R]*(R-L+1)
 
@@ -602,9 +624,11 @@ $= \sum_{L}^{R} B[i] + (1-L)\sum_{L}^{R} A[i]$
 
 ↳ can be kept in prefix array with values A[i]x i.
 
-So basically do prefix arrays: ek A[i] ka, ek A[i]*i ka. Query O(1). T.C. = O(N + Q).
+So we build two prefix arrays: one for A[i], and one for A[i]*i. Each query then needs two range sums and one multiplication. Query O(1). T.C. = O(N + Q).
 
-Code: `sum` → prefix of A, `wsum` (weighted sum) → prefix of A[i]*i. Answer = `ws + (1-l)*s`, aur `norm(1 - l)` isliye kyuki 1-l negative ho sakta hai.
+Worked check with A = 3 2 9 4 1 -2 and the query `? 2 4` (0-indexed): the sum of A[2..4] is 9 + 4 + 1 = 14. The values A[i]*i are 0 2 18 12 4 -10, and the sum over 2..4 is 18 + 12 + 4 = 34. The answer is 34 + (1-2) * 14 = 20, which matches the direct calculation.
+
+Code: `sum` → prefix of A, `wsum` (weighted sum) → prefix of A[i]*i. The answer is `ws + (1-l)*s`, and we use `norm(1 - l)` because 1-l can be negative.
 
 ```cpp
 /*
@@ -666,7 +690,7 @@ K=2 , N= 6
 Brute force : for each query calculate the expression value iterating from L-R.
 T. C. O(Q.N).
 
-Same trick, bas ab weight K^(i-L) hai. K^(-L) bahar nikal sakte hain.
+The trick is the same as before, but now the weight is K^(i-L). The part K^(-L) does not depend on i, so it can be taken outside the sum.
 
 A[L] + A[L+1] x K^1 + ...... + A[R] x K^(R-L)
 
@@ -691,17 +715,20 @@ Kinv[2] = Kinv[1] x x
 
 K^-m = K^-(m-1) x K^-1
 ```
+
 Can be computed and saved in arr.
 
 T.C. = O(N + Q).
 
-Note: K^-1 yaha modular inverse hai (x such that K·x ≡ 1 mod 10^9+7). MOD prime hai, toh Fermat se K^-1 = K^(MOD-2), fast power se. Toh cost O(log MOD) hai, aur K, MOD ka multiple nahi hona chahiye.
+Note: K^-1 here is the modular inverse, that is, the number x such that K·x ≡ 1 (mod $10^9+7$). We need it because ordinary division does not work on remainders. Since MOD is a prime number, Fermat's little theorem gives K^-1 = K^(MOD-2), which is computed by fast power. This costs O(log MOD), and K must not be a multiple of MOD.
 
 ![Rows A, K^i, B[i], prefix of B; query = (91 - 7) / 4](../../../assets/notes/1-2-prefix-sums/fig18_gp_prefix_trace.png)
 
 *K=2: B = 3 4 36 32 16 -64, prefix = 3 7 43 75 91 27. ? 2 4 → (91 - 7) / 4 = 21.*
 
-Code: `bin_pow` → fast power (base square karo, exp aadha karo). `inv` usse exp = MOD-2 pe call karta hai. `wsum` → prefix of A[i]*K^i, `k_inv[m]` → K^-m.
+Reading the figure: the sum of B over positions 2..4 is 91 - 7 = 84. Dividing by K^2 = 4 gives 21, the same as the direct calculation.
+
+Code: `bin_pow` is fast power (square the base and halve the exponent at every step). `inv` calls it with exponent MOD-2. `wsum` is the prefix of A[i]*K^i, and `k_inv[m]` is K^-m.
 
 ```cpp
 /*
@@ -764,7 +791,7 @@ void solve() {
 }
 ```
 
-Dry run: K = 2, A = 3 2 9 4 1 -2: `? 2 4` → 21, whole array → 27, `? 3 5` → 1000000005 (= -2 mod 10^9+7, kyuki 4 + 2 - 8 = -2).
+Dry run: K = 2, A = 3 2 9 4 1 -2: `? 2 4` → 21, whole array → 27, `? 3 5` → 1000000005 (= -2 mod 10^9+7, because 4 + 2 - 8 = -2).
 
 ---
 
@@ -781,6 +808,7 @@ Arr[L+2] += A+2D
    :
 Arr[R] += A + (R-L) D.
 ```
+
 Find the final array after all queries modulo 10^9+7.
 
 Eg:-
@@ -813,7 +841,7 @@ Arr[4] += 7 | Arr[5] += 9.
 
 *first contri + second contri.*
 
-Observation: GP me hum tod nahi sakte the, AP me tod sakte hain. Term me i alag aur baaki alag:
+Observation: for a G.P. (later in this lesson) we cannot split the term, but for an A.P. we can. Write the term as one part that depends on i and one part that does not:
 
 ```
 Arr[i] += A + (i-L) x D
@@ -839,7 +867,7 @@ Looking closely at the two relations, we can deduce that
 
 (A-LD) can be added to range (L,R) in Arr_A & D can be added to the range (L,R) in Arr_B.
 
-Matlab dono arrays pe simple range add → partial sum.
+This means that both arrays only need a simple range add, which is the ordinary partial sum.
 
 Eg:
 ```
@@ -865,7 +893,7 @@ Arr_B  | | y |   |   |   | -y |
 
 ![Direct values and the marks placed in Arr_A and Arr_B](../../../assets/notes/1-2-prefix-sums/fig21_ap_marks.png)
 
-*Do arrays, sirf end marks.*
+*Two arrays, and only the end marks are written.*
 
 ```
 Arr_A  | | x-y | x-y | x-y | x-y | |
@@ -890,7 +918,9 @@ Combine using    Arr[i] = Arr_A[i] + Arr_B[i]*i
 
 TC: O(Q+N)
 
-Code: `arr_a`, `arr_b` → do mark arrays, `head` = A - L*D. Input 1-indexed hai, isliye `--l;--r;`.
+Each query makes 4 mark updates, and the end needs 2 prefix passes and 1 combine pass, so the total work is about 4Q + 3N steps.
+
+Code: `arr_a` and `arr_b` are the two mark arrays, and `head` = A - L*D. The input is 1-indexed, which is why the code has `--l;--r;`.
 
 ```cpp
 /*
@@ -947,7 +977,7 @@ void solve() {
 }
 ```
 
-Dry run: n = 6, `+ 2 1 3 4`, `+ 1 2 1 5` → `0 1 3 7 10 9`.
+Dry run: n = 6, `+ 2 1 3 4`, `+ 1 2 1 5` → `0 1 3 7 10 9`. (The example uses 0-indexed positions, as in the figure.)
 
 ---
 
@@ -993,6 +1023,8 @@ Arr[i] += A.r^(i-L) & cannot be separated into sums.
 A.r^(i-L)
  ↳ cannot be separated into sums.
 
+The reason: in the A.P. case the term split into "a part with i" plus "a part without i". Here i is in an exponent and the pieces are multiplied, not added, so no such split exists.
+
 hence cannot use decomposition technique from previous problem.
 
 Lets try to tweak the idea of prefix sum.
@@ -1011,6 +1043,8 @@ using this loop (instead of traditional)
 ```
 \} the above loop gives GP contri
 
+The ordinary prefix sum adds the previous cell. This loop multiplies the previous cell by r first, so a single value A turns into the sequence A, Ar, Ar^2, ... automatically.
+
 So, now, for query
 + A 1 3
 
@@ -1028,16 +1062,16 @@ we need to add following:
 
 ![The GP loop spreading A, then the cancelling mark at index 4](../../../assets/notes/1-2-prefix-sums/fig24_partial_gp_loop.png)
 
-*Loop har step r se multiply karta hai. R+1 pe cancel.*
+*The loop multiplies by r at every step. The mark at R+1 cancels it.*
 
 ```
 Arr[L] += A;
 Arr[R+1] += (-A x r^(R-L+1));
 ```
 
-Why -A r^(R-L+1)? Loop ke baad cell R me A r^(R-L) hai. Cell R+1 me loop r guna ye daalega = A r^(R-L+1). Utna hi minus daal diya toh R+1 zero, aur uske baad sab zero. Multiple queries linear hain, marks bas add hote hain.
+Why -A r^(R-L+1)? After the loop, cell R holds A r^(R-L). At cell R+1 the loop would put r times this value, which is A r^(R-L+1). Placing exactly the negative of this value at R+1 makes cell R+1 zero, and then every cell after it stays zero. Several queries are linear, so their marks just add up.
 
-Note: loop me modulo nahi hai, big values pe overflow hoga. Solution me `% MOD` laga hai.
+Note: the loop above has no modulo, so large values would overflow. The solution code uses `% MOD`.
 
 Time Complexity:
 
@@ -1054,7 +1088,7 @@ Now, Query time reduced to O(Q).
 
 Total T.C. = O(Q+N)
 
-Code: `r_pow` → powers of r table. Marks L aur R+1 pe (bahar ho toh skip), last loop wahi GP wala prefix (`* r_gp`).
+Code: `r_pow` is the table of powers of r. The marks go at L and at R+1 (skipped when outside the array), and the last loop is the G.P. prefix pass (the `* r_gp` part).
 
 ```cpp
 /*
@@ -1115,6 +1149,8 @@ void solve() {
 
 Dry run: r = 2, `+ 1 1 5`, `+ 2 3 4`, n = 6 → `0 1 2 6 12 16`.
 
+Check by hand (positions 0-indexed, as in the figure; the code above subtracts one from its input, so it expects 1-indexed positions): the first query contributes 1 2 4 8 16 at indices 1 to 5, and the second contributes 2 4 at indices 3 and 4. Adding them gives 0 1 2 6 12 16.
+
 ---
 
 ## 2D Prefix Triangle
@@ -1125,23 +1161,23 @@ You will need to answer Q queries. In each query three integers x,y,L is given, 
 
 ![Grid with a staircase triangle of side L ending at (x,y)](../../../assets/notes/1-2-prefix-sums/fig25_triangle_query.png)
 
-*Top edge L, right edge L, bottom-right cell (x,y). (x=4, y=4, L=4, 0-indexed.)*
+*The top edge has length L, the right edge has length L, and the bottom-right cell is (x,y). (x=4, y=4, L=4, 0-indexed.)*
 
 Calculate all the values modulo 10^9+7.
 If you go outside the cell then consider the value of the cell to be 0.
 
 ![Triangle with corner (4,2), one cell outside the grid, value 0](../../../assets/notes/1-2-prefix-sums/fig26_triangle_outside.png)
 
-*one element outside grid. value = 0.*
+*One element is outside the grid, so its value is 0.*
 
 Now, we got rectangular sums using prefix sums of rectangles.
 So, lets try to conquer triangles with triangular prefix sums.
 
 ![Two stretched triangles: P(3,4) and P(4,3)](../../../assets/notes/1-2-prefix-sums/fig27_triangle_prefix_definition.png)
 
-*P(3,4) → sum of triangle formed by the shaded cells. P(4,3) → likewise.*
+*P(3,4) → sum of the triangle formed by the shaded cells. P(4,3) → likewise.*
 
-(Triangle ko top / left edge tak kheench do. Cells (a,b) with a ≤ x, b ≤ y, b - a ≥ y - x.)
+(Stretch the triangle up to the top edge and the left edge of the grid. It contains the cells (a,b) with a ≤ x, b ≤ y, b - a ≥ y - x.)
 
 Calculating triangular prefix sum:
 
@@ -1159,7 +1195,7 @@ Use only prefix sums previous values.
 
 P[i][j] = Arr[i][j] + P[i-1][j-1] + P[i-1][j] - P[i-1][j-1];
 
-Note: last term P[i-2][j-1] hona chahiye, nahi toh wo P[i-1][j-1] ko hi cancel kar deta hai. So P[i][j] = Arr[i][j] + P[i-1][j-1] + P[i-1][j] - P[i-2][j-1].
+Note: the last term must be P[i-2][j-1]. Otherwise it only cancels P[i-1][j-1]. So P[i][j] = Arr[i][j] + P[i-1][j-1] + P[i-1][j] - P[i-2][j-1].
 
 ![Target triangle; method 1: green triangle + yellow strip; method 2: blue minus red](../../../assets/notes/1-2-prefix-sums/fig28_triangle_build.png)
 
@@ -1175,11 +1211,13 @@ P → triangular prefix sum.
 
 ![Big stretched triangle, minus smaller triangle, minus strip, leaves the wanted triangle](../../../assets/notes/1-2-prefix-sums/fig29_triangle_answer.png)
 
-*x=4, y=4, L=3: upar ka hissa kaat do.*
+*x=4, y=4, L=3: cut away the upper part.*
+
+In words: the big stretched triangle P[x][y] is too large. The stretched triangle P[x-L][y-L] removes the part above the wanted triangle on the diagonal side, and the rectangle strip R[x-L][y] - R[x-L][y-L] removes the remaining rows above it.
 
 T.C. = O(N*M + Q).
 
-Code: `rect_pref` → R, `tri_pref` → P. Input 1-indexed (`--x;--y;`). `x - l >= 0` wali checks → "outside grid = 0".
+Code: `rect_pref` is R, and `tri_pref` is P. The input is 1-indexed (`--x;--y;`). The checks `x - l >= 0` apply the rule "outside the grid = 0".
 
 ```cpp
 /*
@@ -1240,15 +1278,15 @@ void solve() {
 }
 ```
 
-Dry run on a 6 x 6 grid (0-indexed): `x=4 y=2 L=4` → 56, `x=4 y=4 L=3` → 24. Haath se bhi cells jod ke check kiye.
+Dry run on a 6 x 6 grid (0-indexed): `x=4 y=2 L=4` → 56, `x=4 y=4 L=3` → 24. These were also checked by adding the cells by hand.
 
 ---
 
 ## Prefix sum + map, partial sum + sort
 
-Prefix sum ka ek aur use: count subarrays whose sum is X. (subarray = consecutive elements ka block.)
+Another use of prefix sums: count the subarrays whose sum is X. (A subarray is a block of consecutive elements.)
 
-Sum of A[i+1..j] = P[j] - P[i]. Ye X ho, toh P[i] = P[j] - X. Toh har j pe dekho kitne pehle ke prefix = P[j] - X. Count `map` me rakh lo. P[empty] = 0 ek baar pehle se daal do (`mp[0]++`).
+The sum of A[i+1..j] is P[j] - P[i]. For this to be X we need P[i] = P[j] - X. So for every j, count how many earlier prefix sums are equal to P[j] - X. Keep these counts in a `map` (a container that stores a count for each key). Put P[empty] = 0 into it once at the start (`mp[0]++`), so that subarrays starting at index 0 are counted.
 
 ```cpp
 /*
@@ -1291,9 +1329,11 @@ void solve(){
 
 Dry run: `1 2 3 -1 4 1`, X = 5 → 3 (`2 3`, `1 2 3 -1`, `4 1`).
 
-Partial sum ka use: M ranges [l, r] ke elements ek bag S me daalo, K-th smallest of S pucho. Partial sum se nikalo kaunsa index kitni baar aaya (cnt[i]). Phir (cnt, value) ko value se sort karo, cnt ka prefix lo, aur K ke liye `lower_bound`.
+Step by step: the prefix sums are 1 3 6 5 9 10. At 6 the code looks for 6 - 5 = 1, which exists (the subarray `2 3`). At 5 it looks for 0, which is the empty prefix (the subarray `1 2 3 -1`). At 10 it looks for 5, which exists (the subarray `4 1`). The other positions find nothing, so the answer is 3. This runs in O(N log N) because of the `map`.
 
-`cmp` → sort ko batata hai kaun pehle. `[](...) {...}` → lambda, jagah pe likha chhota function; yaha lower_bound ko batata hai pair aur K kaise compare karna hai. Agar `it` end pe hai toh answer -1, warna `it->second`.
+A use of partial sum: M ranges [l, r] are given, and the elements in all these ranges are put into one bag S. The query asks for the K-th smallest element of S. Use a partial sum to find how many times each index is covered (cnt[i]). Then sort the pairs (cnt, value) by value, take the prefix sum of cnt, and use `lower_bound` (binary search for the first position that is not smaller than the target) for K.
+
+`cmp` tells `sort` which element goes first. `[](...) {...}` is a lambda: a small function written in place. Here it tells lower_bound how to compare a pair with K. If `it` is at the end, the answer is -1. Otherwise the answer is `it->second`.
 
 ```cpp
 /*
@@ -1359,25 +1399,27 @@ void solve() {
 
 Dry run: A = 1 3 2, ranges (1,3) (2,3) (1,1) → S sorted = 1 1 2 2 3 3 → K = 1 2 5 8 → `1 1 3 -1`.
 
+Step by step: every index is covered twice, so the sorted pairs are (2,1) (2,2) (2,3) and the prefix counts are 2 4 6. For K = 1 and 2 the first prefix count that reaches K is 2, so the value is 1. For K = 5 it is 6, so the value is 3. For K = 8 there is no such position, so the answer is -1.
+
 ---
 
 ## Quick revision
 
 - Prefix: P[i] = A[i] + P[i-1], range = P[R] - P[L-1]. Build O(N), query O(1). Static array only.
-- L = 0 → P[-1] = 0 (shift array). Use long long. Mod me negative → (x + MOD) % MOD.
-- Removal wali koi bhi operation chalegi → XOR: X[R+1] ^ X[L].
-- Partial: P[L] += X, P[R+1] -= X, last me ek prefix pass. Update O(1). R+1 bahar → skip.
-- Mark tab tak failta hai jab tak cancel na ho. X, Y alag alag add ho sakte hain.
+- For L = 0, P[-1] = 0 (store the array shifted by one). Use long long. With a modulus, fix negative values with (x + MOD) % MOD.
+- Any operation that can undo a contribution works: for XOR, X[R+1] ^ X[L].
+- Partial: P[L] += X, P[R+1] -= X, and one prefix pass at the end. Update O(1). If R+1 is outside the array, skip it.
+- A mark spreads to the right until a mark cancels it. X and Y can be added separately.
 - 2D prefix: P[i][j] = arr[i][j] + P[i-1][j] + P[i][j-1] - P[i-1][j-1].
 - Rectangle = P[D][R] - P[D][L-1] - P[U-1][R] + P[U-1][L-1]. O(NM) build, O(1) query.
-- 2D partial: P[U][L] += X, P[U][R+1] -= X, P[D+1][L] -= X, P[D+1][R+1] += X, then 2D prefix. O(Q + NM).
-- Prefix AP: Σ A[i]·(i-L+1) = Σ B[i] + (1-L) Σ A[i], B[i] = A[i]·i. Do prefix arrays.
-- Prefix GP: Σ A[i] K^(i-L) = K^(-L) Σ A[i] K^i. Kinv[m] = Kinv[m-1]·K^-1 precompute. K^-1 = K^(MOD-2).
-- Partial AP: Arr[i] += (A - LD) + iD → Arr_A += (A-LD), Arr_B += D on L..R. Arr[i] = Arr_A[i] + Arr_B[i]·i.
-- Partial GP: Arr[L] += A, Arr[R+1] -= A·r^(R-L+1), loop Arr[i] += Arr[i-1]·r. rpow precompute.
+- 2D partial: P[U][L] += X, P[U][R+1] -= X, P[D+1][L] -= X, P[D+1][R+1] += X, then a 2D prefix. O(Q + NM).
+- Prefix AP: Σ A[i]·(i-L+1) = Σ B[i] + (1-L) Σ A[i], with B[i] = A[i]·i. Keep two prefix arrays.
+- Prefix GP: Σ A[i] K^(i-L) = K^(-L) Σ A[i] K^i. Precompute Kinv[m] = Kinv[m-1]·K^-1, with K^-1 = K^(MOD-2).
+- Partial AP: Arr[i] += (A - LD) + iD → add (A-LD) to Arr_A and D to Arr_B on L..R. Then Arr[i] = Arr_A[i] + Arr_B[i]·i.
+- Partial GP: Arr[L] += A, Arr[R+1] -= A·r^(R-L+1), then loop Arr[i] += Arr[i-1]·r. Precompute the powers of r.
 - Triangle prefix: P[i][j] = Arr[i][j] + P[i-1][j-1] + P[i-1][j] - P[i-2][j-1].
-- Ans = P[x][y] - P[x-L][y-L] - (R[x-L][y] - R[x-L][y-L]). Bahar = 0. O(NM + Q).
-- Prefix + map → count subarrays with sum X: look up P[j] - X.
+- Answer = P[x][y] - P[x-L][y-L] - (R[x-L][y] - R[x-L][y-L]). Outside the grid = 0. O(NM + Q).
+- Prefix + map → count the subarrays with sum X by looking up P[j] - X.
 
 ---
 
@@ -1398,3 +1440,4 @@ maang.in
 ### Problem ladder
 
 <Ladder topic="1.2" />
+

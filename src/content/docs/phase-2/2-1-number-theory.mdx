@@ -11,29 +11,33 @@ import Ladder from '../../../components/Ladder.astro';
 
 ## What this note covers
 
-Numbers ko unke factors se samajhna: prime (jo sirf 1 aur khud se divide ho), divisors (jo number ko exactly divide kare), prime factorisation (number = primes ka product). Isme:
+Understand a number through its factors. A **prime** is a number greater than 1 that is divisible only by 1 and itself. A **divisor** of N is a number that divides N exactly, with no remainder. The **prime factorisation** of N writes N as a product of primes, for example $360 = 2^3 \cdot 3^2 \cdot 5$.
 
-→ Primality test, divisors nikalna, prime factorisation (sab $\sqrt{N}$ tak loop)
-→ Sieve of Eratosthenes (prime nikalne ka tareeka), segmented sieve, fast factorization, divisors ka count / sum
-→ Euler totient (1 se n tak kitne numbers n ke coprime hain), product of divisors
-→ N! me kisi number ki power, $\frac1a + \frac1b = \frac1n$, aur harmonic lemma (floor(N/x) ke sirf $2\sqrt{N}$ distinct values)
+This note covers:
 
-Jaha mod wali fast power chahiye, wo 2.2 me detail me aayegi.
+→ Primality test, finding divisors, prime factorisation (all of them loop only up to $\sqrt{N}$)
+→ Sieve of Eratosthenes (a method that finds all primes up to N together), segmented sieve, fast factorisation, count and sum of divisors
+→ Euler totient (how many numbers from 1 to n are coprime with n, that is, share no factor with n except 1), product of divisors
+→ The power of a number inside N!, the equation $\frac1a + \frac1b = \frac1n$, and the harmonic lemma (floor(N/x) has only about $2\sqrt{N}$ distinct values)
+
+Fast exponentiation with a modulus is needed in a few places. It is explained in detail in 2.2.
+
+Why this matters: the constraints of most number problems are too large for a plain loop. A loop to $10^9$ takes about 10 seconds at $10^8$ simple operations per second, but a loop to $\sqrt{10^9} \approx 31623$ is instant. Every technique below is a way to replace "try everything up to N" with "try only up to $\sqrt{N}$" or "handle many numbers at once".
 
 ## Table of contents
 
-- Primality Test → prime hai ya nahi, $\sqrt{N}$ tak loop
-- Finding divisors → saare divisors, pairs (i, N/i)
-- Prime factorisation → N = primes ka product
-- Sieve of Eratosthenes → n tak ke saare primes
-- Segmented Sieve → range [a, b] ke primes
+- Primality Test → is N prime or not, loop up to $\sqrt{N}$
+- Finding divisors → all divisors, as pairs (i, N/i)
+- Prime factorisation → N = product of primes
+- Sieve of Eratosthenes → all primes up to n
+- Segmented Sieve → primes in a range [a, b]
 - Fast Factorization → smallest prime factor array
-- Sieve Applications → divisors ka count aur sum
-- Euler Totient function → coprime numbers ka count
-- Product of divisors → saare divisors ka product
-- Power of a number in N! → N! me x ki highest power, trailing zeros
-- 1/a + 1/b = 1/n → integer solutions ginna
-- Harmonic Lemma based summation optimisation → floor(N/x) ke blocks
+- Sieve Applications → count and sum of divisors
+- Euler Totient function → count of coprime numbers
+- Product of divisors → product of all divisors
+- Power of a number in N! → highest power of x in N!, trailing zeros
+- 1/a + 1/b = 1/n → counting integer solutions
+- Harmonic Lemma based summation optimisation → blocks of equal floor(N/x)
 
 ## Primality Test
 
@@ -41,6 +45,8 @@ Check if a given number N is a prime?
 
 Brute force:
   Check from 2 to (N-1) to check if any number divides N.
+
+Cost: for $N \approx 10^9$ this is about $10^9$ divisions, roughly 10 seconds. Too slow when there are many queries.
 
 Optimised:
   Assuming N is not prime:
@@ -51,6 +57,8 @@ Optimised:
 
 One of the multiplier must be $\le \sqrt{N}$.
 as if both were $\ge \sqrt{N}$ then $(\ge\sqrt{N}) \times (\ge\sqrt{N})$ will give $> N$. (which is not valid).
+
+Intuition: divisors of a composite number come in pairs $(d, N/d)$. In every pair the smaller one is at most $\sqrt{N}$, so if no number up to $\sqrt{N}$ divides N, no divisor exists at all.
 
 ```cpp
 bool is_prime (long long x){          // O(√N).
@@ -63,6 +71,10 @@ bool is_prime (long long x){          // O(√N).
 ```
 
 Note: x = 0 and x = 1 return 1 (true) here but they are not prime → handle `x > 1` outside, like `if(n > 1 && is_prime(n))` in PrimalityCheck.cpp. `i*i <= x` instead of sqrt(x) → no floating point issues. For N ≈ 10^9 → about 3×10^4 steps only.
+
+Dry run for x = 91: the loop runs for i = 2, 3, 4, 5, 6 (none divides 91), then i = 7 and 91 % 7 = 0, so 91 = 7 · 13 is not prime. For x = 97: the loop runs for i = 2 to 9 (since 10·10 = 100 > 97), nothing divides, so 97 is prime.
+
+Common mistake: with `int`, the product `i*i` can overflow when x is near $2 \cdot 10^9$. That is why the loop variable here is `long long`.
 
 ```cpp
 // Fabricator/Maths/PrimalityCheck.cpp
@@ -84,6 +96,8 @@ find all the divisors of a number N.
 12 = 1, 2, 3, 4, 6, 12
 
 Brute force → iterate over (1→N) check for each number.
+
+Cost: for $N = 10^{12}$ that is $10^{12}$ checks, far too many. The pairing below brings it down to $10^6$.
 
 N → d_1 × d_2
 
@@ -118,7 +132,9 @@ vector <long long> divisors (long long x){
 ```
 O(√n) T.C.
 
-Note: parameter is `x` but body uses `n` → won't compile as it is, should be `x` in both places. `i*i != x` so 6 for x=36 is pushed once. Result unsorted.
+Note: the parameter is `x` but the body uses `n`, so this will not compile as written. Use `x` in both places. With `i*i != x`, the value 6 for x = 36 is pushed only once. The result is not sorted.
+
+Dry run for x = 36: i = 1 gives 1 and 36; i = 2 gives 2 and 18; i = 3 gives 3 and 12; i = 4 gives 4 and 9; i = 5 does not divide; i = 6 gives 6 once because 6·6 = 36. That is 9 divisors, found with 6 loop steps.
 
 ```cpp
 // Problem:
@@ -144,7 +160,7 @@ $N = p_1^{\alpha_1} \, p_2^{\alpha_2} \, p_3 ......$
 
 Only one prime can be $> \sqrt{N}$.
 
-Idea: divide out each i ≤ √N fully, jo bacha (if > 1) wahi ek bada prime hai.
+Idea: divide out every i up to √N completely. Whatever is left after that (if it is greater than 1) is the one big prime. Reason: two primes both above $\sqrt{N}$ would multiply to more than N.
 
 ```cpp
 vector<pair<long long, long long>> prime_factor (long long x){
@@ -167,9 +183,11 @@ vector<pair<long long, long long>> prime_factor (long long x){
 ```
 O(√N) → T.C.
 
-Dry run x = 360: i=2 → 360→180→90→45, push (2,3). i=3 → 45→15→5, push (3,2). i=4 → 16 > 5 stop. x=5 > 1 → push (5,1). So 360 = 2³·3²·5. For prime 97 → loop kuch nahi karta, last `if` push (97,1). (He crossed out an early `return fact;` before the `if`, wo big prime miss kar deta.)
+Dry run x = 360: i=2 → 360→180→90→45, push (2,3). i=3 → 45→15→5, push (3,2). i=4 → 16 > 5 stop. x=5 > 1 → push (5,1). So 360 = 2³·3²·5. For prime 97 the loop finds nothing, and the last `if` pushes (97,1). (In the notebook an early `return fact;` before the `if` is crossed out, because it would miss the big prime.)
 
-What if many queries (n ≤ 10^6)? Trial division har baar √N. Better: sieve se smallest prime factor `sp[i]` store karo, then factorise in O(log N) by dividing with sp[n].
+Common mistake: forgetting the last `if (x>1)`. Then 97, or 14 = 2 · 7 (which would give only the factor 2), lose their big prime.
+
+What if there are many queries (n ≤ 10^6)? Trial division costs up to √N every time. Better: store the smallest prime factor `sp[i]` of every number with a sieve, then factorise in O(log N) by repeatedly dividing by sp[n].
 
 ```cpp
 // Fabricator/Maths/FastFactorization.cpp
@@ -236,11 +254,15 @@ Brute force:
 Loop over [1, 10^7]
 Add is prime for each      \} O(n√n).
 
+Cost: $10^7 \cdot \sqrt{10^7} \approx 10^7 \cdot 3162 \approx 3 \cdot 10^{10}$ operations, about 300 seconds at $10^8$ per second. The sieve below needs about $2 \cdot 10^7$.
+
 Sieve:
 
 we loop from 2.... N;
 we mark all the multiples of current prime as not prime.
 we skip every non-prime number.
+
+Why it works: a number that is still unmarked when the loop reaches it has no smaller prime factor, so it must be prime. Every composite is marked by its smallest prime factor.
 
 ![is_prime array 2 to 10 before and after](../../../assets/notes/2-1-number-theory/figB16_sieve_array.png)
 *2 → cross 4,6,8,10. 3 → cross 6,9. 4 skip. 5, 7 stay.*
@@ -272,16 +294,18 @@ for (int i=2; i<=N; i++){
 
 We can start from **i\*i**
 
-This number has i as factor.  → i ... (p*i) ... i*i
+This number has i as factor.  → i ... `(p*i)` ... `i*i`
 
-(p*i) &lt; i*i
-p &lt; i
+`(p*i) < i*i`
+`p < i`
 ↳ this prime must have striked off all multiples &lt; **i\*i**.
+
+In words: a multiple `p*i` with p smaller than i has the smaller factor p. The prime factors of p are all smaller than i, so earlier primes have already marked it.
 
 ![multiples of 7 below 49 already crossed by 2, 3, 5](../../../assets/notes/2-1-number-theory/figB17_sieve_start_i_squared.png)
 *i = 7 → 14..42 already gone. First new one = 49.*
 
-`1ll*i*i` → long long, so i*i int me overflow na kare.
+`1ll*i*i` is a long long, so that `i*i` does not overflow in int.
 
 No. of times inner loop runs:
 
@@ -289,12 +313,14 @@ $\lfloor \frac{N}{2} \rfloor + \lfloor \frac{N}{3} \rfloor + \lfloor \frac{N}{5}
 
 $= \sum_{\substack{p \in prime \\ p \le N}} \lfloor \frac{N}{p} \rfloor \approx O(n \log \log n)$
 
-Measured for N = 10^7: 664579 primes, simple version = 29,465,738 inner runs, i*i version = 22,850,051 (N·ln ln N ≈ 27.8 million, formula sahi andaza deta hai).
+Why this sum is small: it is $N$ times the sum of $1/p$ over primes, and that sum grows extremely slowly (about $\ln \ln N$; it is only about 3 for N = $10^7$). So the cost is only slightly more than N.
+
+Measured for N = 10^7: 664579 primes, simple version = 29,465,738 inner runs, `i*i` version = 22,850,051 (N·ln ln N ≈ 27.8 million, so the formula gives a good estimate).
 
 ![grid 2 to 50, primes outlined, others coloured by smallest prime](../../../assets/notes/2-1-number-theory/figB18_sieve_grid.png)
 *only 2, 3, 5, 7 (≤ √50) needed to strike all composites ≤ 50.*
 
-Memory: int array 10^7 = 40 MB, char = 10 MB, vector&lt;bool> ≈ 1.25 MB.
+Memory: int array 10^7 = 40 MB, char = 10 MB, `vector<bool>` ≈ 1.25 MB.
 
 ```cpp
 // Fabricator/Maths/SieveOfEratosthenes.cpp
@@ -319,16 +345,16 @@ Note: `DEF_ARR_SIZE` is `1'000'100` in the repo. Primes below 1,000,100 = 78504.
 
 Ques: find the primes in the range [a,b] where $0 < a \le b \le 10^{12}$ and $b-a \le 10^6$
 
-Building sieve up to $10^{12}$ is not possible. (array of size $10^{12}$, memory hi nahi hogi)
+Building sieve up to $10^{12}$ is not possible. (An array of size $10^{12}$ needs about 1 terabyte even at one byte per number, so memory is the problem.)
 
 Checking each no. b/w (b-a) → $O(\sqrt{b})$ per number → $O(10^{12})$ X (infeasible)
 
 Idea: To check for any number N to be prime or not, we need to check only the primes &lt;= sqrt(N).
 
-Why? Let's say N is not prime, so $p_1 \cdot k = N$ ($p_1$ → prime, k → some int > 1). Dono me se ek toh $\le \sqrt{N}$ hoga hi (agar dono $> \sqrt{N}$ hote toh product $> N$ ho jata).
+Why? Let's say N is not prime, so $p_1 \cdot k = N$ ($p_1$ → prime, k → some int > 1). One of the two must be $\le \sqrt{N}$ (if both were $> \sqrt{N}$, the product would be $> N$).
 
 - If $p_1 \le \sqrt{N}$ then it proves.
-- If $k \le \sqrt{N}$ then it'll be composed of some other prime that'll be $\le \sqrt{N}$ (aur wo prime N ko bhi divide karega).
+- If $k \le \sqrt{N}$ then it'll be composed of some other prime that'll be $\le \sqrt{N}$ (and that prime also divides N).
 
 Phase 1: We need to find primes in the range [1, sqrt(b)] to check numbers till b.
 
@@ -336,7 +362,7 @@ $\sqrt{b} \to 10^6$ → sieve can be used to find the primes.
 
 Phase 2: Sieve the range [a,b] using the primes found in the range [1, sqrt(b)].
 
-Matlab array ka slot `x - a` number `x` ko represent karega. Size sirf $b-a+1 \le 10^6$.
+This means the array slot `x - a` stands for the number `x`. The array size is only $b-a+1 \le 10^6$.
 
 Example: a = 28, b = 36. $\sqrt{36} = 6$, so phase 1 runs on [1,6] (1 → prime, 0 → not prime).
 
@@ -362,9 +388,9 @@ for (prime : [1, sqrt(b)]) {
 
 add check curMul ≠ prime
 
-`((a+prime-1)/prime)*prime` → a ko round up karke first multiple of prime nikalta hai (ceil trick). Check kyu? Agar prime khud [a,b] me aa gaya (e.g. a = 1 ya a = 2) toh loop usko bhi cut kar dega. Isliye `curMul != prime`.
+The expression `((a+prime-1)/prime)*prime` rounds a up to the first multiple of prime (the "ceil trick"). Check: a = 28, prime = 5 gives (32/5)·5 = 6·5 = 30. Why the check? If the prime itself lies in [a,b] (for example a = 1 or a = 2), the loop would cross it out too. That is why we need `curMul != prime`.
 
-Your version, with that check:
+The same code with that check:
 
 ```cpp
 // Fabricator/Maths/SegmentedSieve.cpp
@@ -415,9 +441,9 @@ vector<long long> segmented_sieve(long long a, long long b){
 }
 ```
 
-Note: `sieve_of_eratosthenes(n)` returns primes strictly less than `n`. If $\lfloor \sqrt{b} \rfloor$ is itself prime (e.g. b = 49 or 50) toh $7^2 = 49$ cut hi nahi hoga. Phase 1 ko `n + 1` pe call karna chahiye. (Tested: [24, 50] me 49 galat se prime aa raha tha. [28,36], [1,100], [90,120] aur $10^{12}$ ke paas ki range sahi aayi.)
+Note: `sieve_of_eratosthenes(n)` returns primes strictly less than `n`. If $\lfloor \sqrt{b} \rfloor$ is itself prime (e.g. b = 49 or 50), then $7^2 = 49$ is never crossed out. Phase 1 should be called with `n + 1`. (Tested: in [24, 50] the number 49 was wrongly reported as prime. The ranges [28,36], [1,100], [90,120] and a range near $10^{12}$ gave correct answers.)
 
-Also `a = 1`: 1 ko koi prime cut nahi karta, isliye `(a+i) >= 2` wala check.
+Also `a = 1`: no prime crosses out 1, which is why there is the `(a+i) >= 2` check.
 
 T.C:
 
@@ -427,9 +453,11 @@ No. of times marking happens in [a,b] = $\Sigma \lceil \frac{(b-a+1)}{P} \rceil$
 
 $O((b-a) \log \log b)$
 
-Using same formula/relation as in sieve of eratosthenes. (Phase 1 ka $O(\sqrt{b} \log\log b)$ iske saamne chhota hai.)
+Using same formula/relation as in sieve of eratosthenes. (Phase 1 costs $O(\sqrt{b} \log\log b)$, which is small next to this.)
 
-Note: `long long` use karna, $i*i$ ya $b$ int me overflow karega.
+For b = 10^12 and b - a = 10^6: phase 1 sieves up to $10^6$ (about 78,000 primes), and phase 2 does roughly $10^6 \cdot \log\log 10^{12} \approx 3 \cdot 10^6$ markings. Memory is about $10^6$ flags.
+
+Note: use `long long`. Values like $i*i$ or $b$ overflow in int.
 
 ## Fast Factorization
 
@@ -437,7 +465,7 @@ Ques: find the prime factorization of all numbers from 1 - $10^6$.
 
 60 = 2.2.3.5
 
-Brute force: har number ke liye $\sqrt{n}$ tak trial division. Query bahut ho toh slow.
+Brute force: trial division up to $\sqrt{n}$ for every number. With many queries this is slow: $10^6$ queries at $\sqrt{10^6} = 1000$ steps each is $10^9$ steps.
 
 Idea of pre-computation.
 
@@ -449,7 +477,7 @@ Proof:
 Suppose a number is made of entirely 2.
 2 . 2 . 2 .... c times = N
 $2^c = N$ ⇒ $c = \log_2 (N)$
-Similar for all primes (bade prime se aur kam factors milenge).
+Similar for all primes (a larger prime gives even fewer factors).
 
 We'll be compiling the smallest prime factor for all numbers.
 
@@ -464,7 +492,7 @@ We'll be compiling the smallest prime factor for all numbers.
 
 ✓ $pf(n) = sp(n) . pf\left(\frac{n}{sp(n)}\right)$.
 
-(pf = prime factors.) Bas ek ek karke sp(n) nikalte jao aur n me se divide karte jao, jab tak n = 1.
+(pf = prime factors.) Take sp(n), divide it out of n, and repeat until n = 1.
 
 ![60 broken down using sp](../../../assets/notes/2-1-number-theory/figC04_spf_chain.png)
 *60 → 30 → 15 → 5 → 1, sp = 2, 2, 3, 5.*
@@ -488,7 +516,7 @@ for (int i= 2; i<=N; i++) {
 
 $O(N \log \log N)$.
 
-`sp[j] == j` matlab abhi tak kisi chhote prime ne j ko claim nahi kiya. Primes increasing order me aate hain, toh jo pehle pahunchega wahi smallest prime factor hoga.
+`sp[j] == j` means that no smaller prime has claimed j yet. Primes arrive in increasing order, so the first prime to reach j is its smallest prime factor.
 
 - Using sp [] for fast factorisation:
 
@@ -506,7 +534,9 @@ vector <int> prime_fact ( int n) {
 T.C:
 $O(\log n)$
 
-Same thing from your repo:
+Dry run for n = 84: sp[84] = 2 → n = 42; sp[42] = 2 → n = 21; sp[21] = 3 → n = 7; sp[7] = 7 → n = 1. Result 2, 2, 3, 7. Four steps, and each step divides n by at least 2, so there are never more than $\log_2 n$ steps.
+
+The same code from the Fabricator repository:
 
 ```cpp
 // Fabricator/Maths/FastFactorization.cpp
@@ -539,7 +569,7 @@ vector<int> prime_factors(int n){
 }
 ```
 
-Agar sirf distinct primes chahiye (each prime once), toh power nikaal do:
+If only the distinct primes are needed (each prime once), divide out the whole power of each prime:
 
 ```cpp
 // Fabricator/Maths/Coprime.cpp (needs sp[] from above)
@@ -555,7 +585,7 @@ vector<int> prime_factors(int n){
 }
 ```
 
-Note: sp array $O(N)$ memory leta hai, $10^6$ ke liye ~4 MB. Single bahut bada number ($10^{12}$) ho toh trial division $O(\sqrt{n})$ hi karo.
+Note: the sp array takes $O(N)$ memory, about 4 MB for $10^6$ numbers. For a single very large number ($10^{12}$), just use trial division in $O(\sqrt{n})$.
 
 ## Sieve Applications
 
@@ -563,7 +593,7 @@ $N = p_1^{\alpha_1} p_2^{\alpha_2} \dots p_n^{\alpha_n}$
 
 $S_0$ → No. of divisors.
 
-every prime factor has $(1+\alpha_i)$ options. (divisor me $p_i$ ki power $0, 1, \dots, \alpha_i$ kuch bhi ho sakti hai, aur alag primes ke choices independent hain.)
+every prime factor has $(1+\alpha_i)$ options. (In a divisor, the power of $p_i$ can be $0, 1, \dots, \alpha_i$, and the choices for different primes are independent.)
 
 No. of divisors of N = $(1+\alpha_1)(1+\alpha_2) \dots (1+\alpha_n)$
 
@@ -573,7 +603,7 @@ $S_1$ → sum of divisors.
 
 Sum = $\left(\frac{p_1^{\alpha_1+1} - 1}{p_1 - 1}\right) . \left(\frac{p_2^{\alpha_2+1} - 1}{p_2 - 1}\right) + \dots$
 
-Note: dots ke beech product aata hai, plus nahi. Think of it as: $(1 + p_1 + \dots + p_1^{\alpha_1})(1 + p_2 + \dots)\dots$ expand karo toh har term ek divisor hai. e.g. 60 → $(1+2+4)(1+3)(1+5) = 7 \cdot 4 \cdot 6 = 168$.
+Note: the dots between the brackets mean a product, not a plus. Think of it as: $(1 + p_1 + \dots + p_1^{\alpha_1})(1 + p_2 + \dots)\dots$ If you expand this, every term is exactly one divisor. e.g. 60 → $(1+2+4)(1+3)(1+5) = 7 \cdot 4 \cdot 6 = 168$.
 
 Using sp[] both are easy to get:
 
@@ -610,7 +640,7 @@ pair<long long, long long> divisor_count_and_sum(int n){
 
 Let $f(n)$ = count of numbers in [1,x] such that gcd (x,a) = 1 ← coprime numbers.
 
-(gcd = greatest common divisor. Coprime matlab gcd = 1.)
+(gcd = greatest common divisor. Coprime means gcd = 1.)
 
 6 → 1, 5 \} $f(n) = 2$.
 
@@ -623,7 +653,7 @@ Excluding multiples of $p_1$ & $p_2$
 
 $x - \frac{x}{p_1} - \frac{x}{p_2} + \frac{x}{p_1 \cdot p_2}$
 
-($\frac{x}{p_1}$ → no. of multiples of $p_1$, $\frac{x}{p_2}$ → no. of multiples of $p_2$. Dono ke common multiples do baar minus ho gaye, isliye ek baar wapas add.)
+($\frac{x}{p_1}$ → no. of multiples of $p_1$, $\frac{x}{p_2}$ → no. of multiples of $p_2$. The numbers divisible by both were subtracted twice, so they are added back once.)
 
 ![Venn picture: multiples of p1 and p2 inside 1..x](../../../assets/notes/2-1-number-theory/figC05_totient_venn.png)
 *subtract both circles, add the overlap back once.*
@@ -638,7 +668,7 @@ $f(n) = x . \left(1 - \frac{1}{p_1}\right)\left(1 - \frac{1}{p_2}\right)\left(1 
 $\phi(n)$ ↗
 Totient of n
 
-Note: yaha bhi product hai (plus nahi), $p_i$ = distinct primes of n.
+Note: this is also a product (not a sum), and $p_i$ are the distinct primes of n.
 
 ![Numbers 1 to 12, green = coprime to 12](../../../assets/notes/2-1-number-theory/figC06_coprime12.png)
 *phi(12) = 12 · (1/2) · (2/3) = 4 → 1, 5, 7, 11.*
@@ -663,9 +693,11 @@ The inner loop calculates
 $x\left(1 - \frac{1}{i}\right)$ for all multiples of i.
 ↳ It will add contri of $\left(1 - \frac{1}{i}\right)$ to all the multiples of j.
 
-(contri = contribution. Division exact hai kyuki phi[j] abhi bhi i se divisible hai. T.C: $O(N \log \log N)$. Brute force gcd se compare kiya n ≤ 3000 tak, sab match.)
+(contri = contribution. The division is exact because phi[j] is still divisible by i at that point. T.C: $O(N \log \log N)$. Compared with a brute-force gcd count for n ≤ 3000, all values matched.)
 
-Single number ka totient chahiye toh (from your repo):
+Dry run for j = 12 (prime factors 2 and 3): phi[12] starts at 12. Prime 2: 12 - 12/2 = 6. Prime 3: 6 - 6/3 = 4. So $\phi(12) = 4$, which agrees with the picture above.
+
+If the totient of a single number is needed (from the Fabricator repository):
 
 ```cpp
 // Fabricator/Maths/Totient.cpp
@@ -693,9 +725,9 @@ vector<long long> prime_factors(long long n){
     }
 ```
 
-Pehle divide phir multiply, taaki number exact rahe. 6 → 2, $10^6$ → 400000.
+Divide first, then multiply, so that the intermediate number stays exact. 6 → 2, $10^6$ → 400000.
 
-Note: yaha `prime_factors` me `i<=n` tak loop hai, toh prime n ke liye $O(n)$. `i*i<=n` tak karo toh $O(\sqrt{n})$.
+Note: here `prime_factors` loops up to `i<=n`, so for a prime n it costs $O(n)$. Loop up to `i*i<=n` to get $O(\sqrt{n})$.
 
 | $n$ | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -714,7 +746,9 @@ ii) $\phi(p^k) = p^k\left(1 - \frac{1}{p}\right) = p^k - p^{k-1}$ ✓
 iii) $\phi(p_1 . p_2)$ = $p_1 p_2 \left(1 - \frac{1}{p_1}\right)\left(1 - \frac{1}{p_2}\right)$ ✓
    $= (p_1 - 1)(p_2 - 1)$
 
-(coprime numbers ke primes alag alag hote hain, isliye yahi grouping kisi bhi coprime a, b ke liye chalti hai.)
+(Coprime numbers have different primes, so the same grouping works for any coprime a and b.)
+
+Example of the multiplicative property: $\phi(12) = \phi(4) \cdot \phi(3) = 2 \cdot 2 = 4$. It fails without coprimality: $\phi(2 \cdot 2) = 2$, but $\phi(2) \cdot \phi(2) = 1$.
 
 ## Product of divisors
 
@@ -734,10 +768,10 @@ for $p_1^2$ = $3 \times 4 \times 2$
 ∴ for all power of $p_1$ = $1 \times 4 \times 2 + 2 \times 4 \times 2 + 3 \times 4 \times 2$
 = $\frac{2 \times (2+1)}{2} \times (3+1) \times (1+1)$
 
-Note: $p_1^1$ wale divisors bhi $4 \times 2 = 8$ hi hain (p2, p3 ke choices same). Toh power ka hisaab (0+1+2) × 8 = 24, aur $\frac{2 \times (2+1)}{2} \times 4 \times 2 = 24$ ✓. Final formula wahi rehta hai.
+Note: the divisors with $p_1^1$ are also $4 \times 2 = 8$ in number (the choices for $p_2$ and $p_3$ are the same). So the power of $p_1$ is (0+1+2) × 8 = 24, and $\frac{2 \times (2+1)}{2} \times 4 \times 2 = 24$ ✓. The final formula stays the same.
 
 ![Three groups of 8 divisors, by power of p1](../../../assets/notes/2-1-number-theory/figC07_proddiv_groups.png)
-*har power ke liye 8 divisors → (0+1+2) × 8 = 24.*
+*for each power there are 8 divisors → (0+1+2) × 8 = 24.*
 
 for $p_2$ = $\frac{3 \times (3+1)}{2} \times (2+1) \times (1+1)$
 
@@ -755,9 +789,11 @@ Product of all divisors = $\prod p_i^{\left(\frac{a_i \times (a_i+1)}{2}\right) 
 
 Product of all divisors = $\prod p_i^{\left(\frac{a_i \times \#D}{2}\right)}$
 
-Observation: divisors pair hote hain $(d, X/d)$, product $X$. $\#D/2$ pairs → product = $X^{\#D/2}$. Wahi formula hai. $\#D$ odd ho toh X perfect square hai aur saare $a_i$ even, toh $a_i \cdot \#D$ hamesha even.
+Observation: divisors come in pairs $(d, X/d)$ whose product is $X$. There are $\#D/2$ pairs, so the product is $X^{\#D/2}$, which is the same formula. If $\#D$ is odd, X is a perfect square and all $a_i$ are even, so $a_i \cdot \#D$ is always even.
 
-Code ke liye factorisation with exponents and power function from your repo:
+Check with X = 12: divisors 1, 2, 3, 4, 6, 12 form the pairs (1,12), (2,6), (3,4), each with product 12, so the total is $12^3 = 1728$.
+
+For the code we need the factorisation with exponents and a power function, both from the Fabricator repository:
 
 ```cpp
 // Fabricator/Maths/HowManySolutions.cpp
@@ -797,13 +833,13 @@ long long mpow(long long base, long long exp) {
 }
 ```
 
-↳ mpow / bin_pow = fast power (binary exponentiation, $a^b$ ko O(log b) me nikalna), yeh 2.2 me detail me dekhenge.
+↳ mpow / bin_pow = fast power (binary exponentiation, which computes $a^b$ in O(log b) steps). It is explained in detail in 2.2.
 
 ```cpp
 /*
   Problem: product of all divisors of n (n up to 10^12), modulo 10^9+7.
   Formula: product of p^(a * D / 2) over the prime powers p^a of n, D = number of divisors.
-  Uses prime_factors_with_pow and mpow from your repo (shown below).
+  Uses prime_factors_with_pow and mpow (both shown above).
 */
 long long product_of_divisors(long long n){
     map<long long, long long> factors = prime_factors_with_pow(n);
@@ -823,7 +859,7 @@ long long product_of_divisors(long long n){
 }
 ```
 
-(Brute force se check kiya n ≤ 3000. Product of divisors of 12 = 1728 = $12^3$.)
+(Checked against brute force for n ≤ 3000. Product of divisors of 12 = 1728 = $12^3$.)
 
 ## Power of a number in N!
 
@@ -839,11 +875,13 @@ Eg. N = 5, x = 6 ⇒ a = 1.
 
 ($5! = 120 = 6 \cdot 20$ but $36 \nmid 120$.)
 
+Why brute force fails: N! has about $10^{19}$ digits for $N = 10^{18}$, so it can never be written down. We count prime factors instead.
+
 Power of prime p in N!
 
 $\left\lfloor \frac{N}{p} \right\rfloor + \left\lfloor \frac{N}{p^2} \right\rfloor + \left\lfloor \frac{N}{p^3} \right\rfloor + \dots\dots + \left\lfloor \frac{N}{p^k} \right\rfloor$
 
-Intuition: $\lfloor N/p \rfloor$ numbers me kam se kam ek p hai. Unme se $\lfloor N/p^2 \rfloor$ me doosra p bhi hai, aur aise hi aage. Har level ek aur p add karta hai.
+Intuition: among 1..N, $\lfloor N/p \rfloor$ numbers contain at least one p. Of those, $\lfloor N/p^2 \rfloor$ contain a second p, and so on. Each level adds one more p.
 
 ![1 to 25, multiples of 5 and the extra 5 from 25](../../../assets/notes/2-1-number-theory/figC09_legendre25.png)
 *N = 25, p = 5 → 5 + 1 = 6 fives.*
@@ -868,7 +906,7 @@ Lets $X = 2 . 3^3 = 54$
 $54^a | N!$
 
 ![54^a divides N! splits into 2^a and (3^3)^a](../../../assets/notes/2-1-number-theory/figC08_split54.png)
-*har prime power ek bound deta hai a pe.*
+*each prime power gives its own bound on a.*
 
 $f(N,p) = \left\lfloor \frac{N}{p} \right\rfloor + \left\lfloor \frac{N}{p^2} \right\rfloor + \dots\dots$
 
@@ -909,7 +947,9 @@ We min of all     ↳ $O(\log_p N)$
 No. of prime factors = log x.
 $O(\sqrt{x} + \log x . \log N)$
 
-Code: $p^k$ directly nahi nikalna (overflow ho sakta hai). N ko baar baar p se divide karo, kyuki $\lfloor \lfloor N/p \rfloor / p \rfloor = \lfloor N/p^2 \rfloor$. Factorisation `prime_factors_with_pow` (product of divisors wale section me), `INF = 1e18`:
+For $x = 10^{12}$ and $N = 10^{18}$: factorising x takes at most $10^6$ steps, and each of at most about 12 prime factors needs at most 60 divisions. So the factorisation dominates.
+
+Code: do not compute $p^k$ directly, because it can overflow. Divide N by p again and again instead, since $\lfloor \lfloor N/p \rfloor / p \rfloor = \lfloor N/p^2 \rfloor$. The factorisation is `prime_factors_with_pow` (from the product of divisors section), and `INF = 1e18`:
 
 ```cpp
 /*
@@ -941,7 +981,9 @@ long long largest_power_in_factorial(long long n, long long x){
 }
 ```
 
-(100! → 24 zeros ✓. N = 5, x = 6 → 1. N = $10^{18}$, x = 54 → 166666666666666660. Brute force check N ≤ 60, x ≤ 200 ✓. x = 1 ke liye koi largest a nahi hota.)
+(100! → 24 zeros ✓. N = 5, x = 6 → 1. N = $10^{18}$, x = 54 → 166666666666666660. Brute force check N ≤ 60, x ≤ 200 ✓. For x = 1 there is no largest a.)
+
+Dry run for 100! and x = 10 = 2 · 5: power of 5 is 20 + 4 = 24 (100/5 = 20, 20/5 = 4, 4/5 = 0). Power of 2 is 50 + 25 + 12 + 6 + 3 + 1 = 97. The minimum is 24, so 100! ends in 24 zeros.
 
 ## 1/a + 1/b = 1/n
 
@@ -967,14 +1009,16 @@ $a-n = d$   (some divisor d of Z)
 $a = d+n$
 $b = \left(\frac{n^2}{d} + n\right)$
 
+Idea: the equation is hard to count directly, but after adding $n^2$ to both sides it becomes a product of two integers that equals a fixed number. Each way of splitting $n^2$ into two factors gives exactly one pair (a, b).
+
 We compute divisors of $n^2$
 ∵ $n^2 \le 10^{12}$ → its feasible. $O(\sqrt{n})$.
 We iterate over all divisors. & compute a & b and count integer soln.
 ∵ a & b are I, -ive divisors should also be considered.
 
-Note: $d = -n$ pe $a = 0$ aur $b = 0$ dono aate hain, $\frac{1}{0}$ valid nahi. Wo ek solution hata do. Toh positive pairs = $D(n^2)$ aur all integer pairs = $2 D(n^2) - 1$. Aur $n = \prod p_i^{\alpha_i}$ toh $D(n^2) = \prod (2\alpha_i + 1)$ (har exponent double).
+Note: for $d = -n$ both $a = 0$ and $b = 0$, and $\frac{1}{0}$ is not valid. Remove that one solution. So the positive pairs number $D(n^2)$ and all integer pairs number $2 D(n^2) - 1$. Also, if $n = \prod p_i^{\alpha_i}$, then $D(n^2) = \prod (2\alpha_i + 1)$ (every exponent doubles).
 
-Divisors nikalne ka sqrt wala loop (from your repo):
+The sqrt loop that finds the divisors (from the Fabricator repository):
 
 ```cpp
 // Fabricator/Maths/CreamPuff.cpp (num is the number)
@@ -1008,9 +1052,9 @@ long long count_reciprocal_solutions(long long n, bool positive_only){
 }
 ```
 
-(n = 2: $(a-2)(b-2) = 4$ → positive $(3,6), (4,4), (6,3)$ = 3, negatives $d = -1, -4$ → 2, $d = -2$ invalid. Total 5. n = 1, 2, 4, 6, 12 → positive 1, 3, 5, 9, 15. Brute force scan n ≤ 12 me match. n = $10^6$ → 169 positive.)
+(n = 2: $(a-2)(b-2) = 4$ → positive $(3,6), (4,4), (6,3)$ = 3, negatives $d = -1, -4$ → 2, $d = -2$ invalid. Total 5. n = 1, 2, 4, 6, 12 → positive 1, 3, 5, 9, 15. Brute force scan n ≤ 12 matches. n = $10^6$ → 169 positive.)
 
-Your `HowManySolutions.cpp` is the same idea (exponents double, multiply (exp+1), `2*ans - 1`) with the decimal-digit variant.
+`HowManySolutions.cpp` in the repository uses the same idea (exponents double, multiply (exp+1), `2*ans - 1`) with a decimal-digit variant.
 
 ## Harmonic Lemma based summation optimisation
 
@@ -1018,6 +1062,8 @@ Find $\left\lfloor \frac{N}{1} \right\rfloor^3 + \left\lfloor \frac{N}{2} \right
 
 $N \le 10^{12}$
 Brute for $O(N)$ → iterate over all N & compute the terms.
+
+Cost: $10^{12}$ terms at $10^8$ per second is about $10^4$ seconds, nearly three hours.
 
 for. eg: N = 12
 
@@ -1030,28 +1076,28 @@ $\left\lfloor \frac{12}{9} \right\rfloor = 1$   $\left\lfloor \frac{12}{10} \rig
 No. of distinct values = 6.
 $f(x) = \left\lfloor \frac{N}{x} \right\rfloor$ → no. of values
 
-Notice: values repeat ho rahi hain (2, 2 aur phir saare 1). Toh ek ek term compute karne ki jagah, same value wale poore block ko ek saath handle kar sakte hain.
+Notice: the values repeat (2, 2 and then all 1s). So instead of computing the terms one by one, we can handle a whole block of equal values at once.
 
 ![Staircase of floor(12/x), 6 blocks](../../../assets/notes/2-1-number-theory/figC10_staircase12.png)
-*floor(12/x) → 12, 6, 4, 3, 2, 1. Har rang ka block = same value.*
+*floor(12/x) → 12, 6, 4, 3, 2, 1. Each colour block has the same value.*
 
 Harmonic Lemma: The no. of values $\lfloor \frac{N}{x} \rfloor$ can take is bounded by $2\sqrt{N}$ & $O(\sqrt{N})$.
 
 Proof (intuition):
 - $x \le \sqrt{N}$ → at most $\sqrt{N}$ choices of x, so at most $\sqrt{N}$ values.
-- $x > \sqrt{N}$ → value $\lfloor N/x \rfloor < \sqrt{N}$, so values sirf $0..\sqrt{N}$ me, again at most $\sqrt{N}$.
+- $x > \sqrt{N}$ → the value $\lfloor N/x \rfloor < \sqrt{N}$, so the values lie only in $0..\sqrt{N}$, again at most $\sqrt{N}$.
 
 Total $\le 2\sqrt{N}$.
 
 ![Distinct values of floor(N/x) vs 2 sqrt(N)](../../../assets/notes/2-1-number-theory/figC12_distinct_vs_2sqrtN.png)
-*count hamesha 2 sqrt(N) ke just neeche.*
+*the count always stays just below 2 sqrt(N).*
 
 To iterate efficiently over the distinct values of $\lfloor \frac{N}{x} \rfloor$ for any i we need to find max j such that
 $\lfloor \frac{N}{i} \rfloor = \lfloor \frac{N}{j} \rfloor$      j → max value.
 
 $j = \left\lfloor \frac{n}{\left\lfloor \frac{n}{i} \right\rfloor} \right\rfloor$
 
-(Why: $q = \lfloor n/i \rfloor$ ho toh sabse bada x jiske liye $\lfloor n/x \rfloor \ge q$ wo $\lfloor n/q \rfloor$ hai.)
+(Why: let $q = \lfloor n/i \rfloor$. The largest x for which $\lfloor n/x \rfloor \ge q$ is $\lfloor n/q \rfloor$.)
 
 ```cpp
 for (int i= 1, la; i <= n ; i= la+1) {
@@ -1066,7 +1112,9 @@ as the loop iterates over distinct $\lfloor \frac{n}{i} \rfloor$ values.
 And there are $O(\sqrt{n})$ distinct values possible.
 
 ![Blocks for N = 12: i = 7 gives la = 12, i = 5 gives la = 6](../../../assets/notes/2-1-number-theory/figC11_blocks12.png)
-*top row x, neeche floor(12/x). Equal values = ek loop step.*
+*top row x, bottom row floor(12/x). Equal values = one loop step.*
+
+Dry run for n = 12: i = 1 gives la = 12/12 = 1. Next i = 2 gives la = 12/6 = 2. Then i = 3 → la = 12/4 = 3, i = 4 → la = 12/3 = 4, i = 5 → la = 12/2 = 6 (so 5 and 6 share the value 2), i = 7 → la = 12/1 = 12. That is 6 steps, one for each distinct value.
 
 code of org' problem:
 ```cpp
@@ -1077,9 +1125,9 @@ for (int i= 1, la; i <= n; i= la+1) {
 }
 ```
 
-Note: $n$ up to $10^{12}$ hai toh `i`, `la` `long long` hone chahiye. Aur answer bahut bada hai (pehla term hi $10^{36}$), toh mod $10^9+7$ karna padega.
+Note: since $n$ is up to $10^{12}$, `i` and `la` must be `long long`. The answer is also very large (the first term alone is $10^{36}$), so take the result modulo $10^9+7$.
 
-Your version, `m` = power (m = 3 for cubes):
+The same idea from the Fabricator repository, where `m` is the power (m = 3 for cubes):
 
 ```cpp
 // Fabricator/Maths/HardFloor.cpp
@@ -1101,7 +1149,7 @@ long long bin_pow(long long base, long long exp){
 }
 ```
 
-↳ mpow / bin_pow = fast power (binary exponentiation, $a^b$ ko O(log b) me nikalna), yeh 2.2 me detail me dekhenge.
+↳ mpow / bin_pow = fast power (binary exponentiation, which computes $a^b$ in O(log b) steps). It is explained in detail in 2.2.
 
 ```cpp
 // Fabricator/Maths/HardFloor.cpp (inside solve, n and m already read)
@@ -1116,22 +1164,22 @@ long long bin_pow(long long base, long long exp){
     }
 ```
 
-Har block pe (block length) × (value)$^m$. Sample (4, 2) → 22, ($10^{11}$, $10^8$) → 728180943 ✓. m = 3 pe brute force se n ≤ 3000 tak match. N = 12 → 6 iterations, $N = 10^{12}$ → ~$2 \times 10^6$ iterations.
+Each block adds (block length) × (value)$^m$. Sample (4, 2) → 22, ($10^{11}$, $10^8$) → 728180943 ✓. For m = 3 it matches brute force up to n = 3000. N = 12 → 6 iterations, $N = 10^{12}$ → about $2 \times 10^6$ iterations.
 
 ## Quick revision
 
-- Prime test: factor ≤ √N → O(√N), handle N &lt; 2.
-- Divisors: loop i ≤ √N, push i and N/i (not twice if i*i == N). At most 2√N.
-- Prime factorisation: divide out i ≤ √N, leftover > 1 is prime. Many queries → sp[] sieve.
-- Sieve: mark multiples of each prime, start from i*i, O(n log log n).
-- Segmented sieve: phase 1 primes ≤ $\sqrt{b}$, phase 2 cut multiples in [a,b], slot `x-a`, first multiple = $\lceil a/p \rceil p$, skip p itself, 1 not prime. T.C: $O((b-a)\log\log b)$.
+- Prime test: it is enough to try factors up to √N → O(√N). Handle N &lt; 2 separately.
+- Divisors: loop i ≤ √N, push `i` and `N/i` (only once if `i*i == N`). At most 2√N divisors.
+- Prime factorisation: divide out every i ≤ √N completely; a leftover greater than 1 is a prime. For many queries, build the sp[] array with a sieve.
+- Sieve: mark the multiples of each prime, starting from `i*i`. Cost O(n log log n).
+- Segmented sieve: phase 1 finds the primes up to $\sqrt{b}$; phase 2 crosses out their multiples in [a,b]. Slot `x-a` stands for x, the first multiple is $\lceil a/p \rceil p$, skip p itself, and 1 is not prime. T.C: $O((b-a)\log\log b)$.
 - sp[n] = smallest prime factor → $pf(n) = sp(n) \cdot pf(n/sp(n))$. Build $O(N\log\log N)$, query $O(\log n)$.
-- #divisors = $\prod (1+\alpha_i)$, sum = $\prod \frac{p_i^{\alpha_i+1}-1}{p_i-1}$ (product!).
-- $\phi(n) = n \prod (1-1/p)$; $\phi(p) = p-1$; $\phi(p^k) = p^k - p^{k-1}$; multiplicative if gcd = 1. Sieve: `phi[j] -= phi[j]/p`.
+- #divisors = $\prod (1+\alpha_i)$, sum = $\prod \frac{p_i^{\alpha_i+1}-1}{p_i-1}$ (a product, not a sum).
+- $\phi(n) = n \prod (1-1/p)$; $\phi(p) = p-1$; $\phi(p^k) = p^k - p^{k-1}$; multiplicative when gcd = 1. Sieve: `phi[j] -= phi[j]/p`.
 - Product of divisors = $\prod p_i^{a_i \cdot \#D/2}$ = $X^{\#D/2}$.
 - Power of x in N!: $f(N,p) = \sum \lfloor N/p^k \rfloor$, answer $\min_i \lfloor f(N,p_i)/a_i \rfloor$. Trailing zeros → p = 5. T.C: $O(\sqrt{x} + \log x \log N)$.
 - $\frac1a + \frac1b = \frac1n$ → $(a-n)(b-n) = n^2$ → divisors of $n^2$ ($D = \prod(2\alpha_i+1)$), all integer pairs $2D - 1$.
-- $\lfloor N/x \rfloor$ has ≤ $2\sqrt{N}$ values; `for (i=1; i<=n; i=la+1) la = n/(n/i);` (long long, mod).
+- $\lfloor N/x \rfloor$ has at most $2\sqrt{N}$ distinct values; use `for (i=1; i<=n; i=la+1) la = n/(n/i);` with long long and a modulus.
 
 ## Practice problems
 

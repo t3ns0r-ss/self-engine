@@ -27,7 +27,9 @@ import Ladder from '../../../components/Ladder.astro';
 - Quick revision
 - Practice problems
 
-Short forms used: T.C. = time complexity, MSB = most significant bit (leftmost), LSB = least significant bit (rightmost), LC = LeetCode, B.S. = binary search, TLE = time limit exceeded, CP = competitive programming. Set bit = bit which is 1. Subarray = continuous part of the array.
+Terms used in this lesson: T.C. = time complexity, MSB = most significant bit (leftmost), LSB = least significant bit (rightmost), LC = LeetCode, B.S. = binary search, TLE = time limit exceeded, CP = competitive programming. Set bit = bit which is 1. Subarray = continuous part of the array. AND, OR, XOR (exclusive OR) = the bit operations `&`, `|`, `^`.
+
+Why learn this? Take an array of n = 10^5 numbers and the question "what is the sum of the AND of every subarray?". There are n(n+1)/2, about 5·10^9, subarrays. At roughly 10^8 simple operations per second that is about 50 seconds, far over a typical 1 to 2 second limit. The idea of this lesson: a number is 32 independent yes/no flags, so we can solve each flag alone. That costs about 32 · 10^5 = 3.2·10^6 operations, which runs in a few milliseconds.
 
 ## Operators
 
@@ -86,7 +88,9 @@ Note: first bit of 1's comple of 10 is 1 (flip of 0), not 0.
 
 *carry here goes 2 places, last two bits change.*
 
-Why does it work? Say 8 bits. Total patterns = 256. Flipping all bits of x gives 255 - x. Add 1 → 256 - x. So x + (-x) = 256, and 256 doesn't fit in 8 bits, toh bas 0 bacha. Isliye machine same adder se plus aur minus dono kar leti hai.
+Why does it work? Say 8 bits. Total patterns = 256. Flipping all bits of x gives 255 - x. Add 1 → 256 - x. So x + (-x) = 256, and 256 does not fit in 8 bits, so only 0 remains. This is why the machine can use the same adder circuit for both plus and minus.
+
+Example with x = 5: flipping gives 250, adding 1 gives 251 = `11111011`, and 5 + 251 = 256, which wraps to 0 in 8 bits. So `11111011` behaves exactly like -5.
 
 Range for 8 bits: -128 to 127. For int (32 bit): $-2^{31}$ to $2^{31}-1$.
 
@@ -165,6 +169,8 @@ X ──────────→ -X ──────────→ X
 
 ## Sets as bitmasks
 
+A **bitmask** is an integer used as a row of yes/no flags: bit i says whether element i is in the set. One integer then stores a whole set, and set operations become single machine instructions.
+
 ```
 arr = { 2 , 3 , 5 , 7 }
         0   1   2   3
@@ -190,12 +196,16 @@ U → OR  `|`    ∩ → AND  `&`
 
 ![masks 6 and 10 as subsets, their union and intersection](../../../assets/notes/1-7-bits/fig07_subset_masks.png)
 
-*bit i = 1 matlab arr[i] is inside the set. 6 & 10 = 2 = \{3\}.*
+*bit i = 1 means arr[i] is inside the set. 6 & 10 = 2 = \{3\}.*
 
 \{ 2,3,5 \} → 2^3 → 8 subsets
 loop over (0 - 7) to generate all subsets.
 
 Think of it as: every number from 0 to $2^n - 1$ is one choice of "take / don't take" for each element. mask = 5 = 101 → take arr[0] and arr[2]. T.C. = $O(2^n \cdot n)$.
+
+Cost with numbers: n = 20 gives $2^{20} \approx 10^6$ masks, each checked with 20 bit tests, so about $2 \cdot 10^7$ operations. That is fine. n = 40 gives $10^{12}$ masks, which is impossible. So this loop is for n up to about 20 to 25.
+
+Common mistake: for n = 31 or more, `1 << n` overflows `int`. Write `1ll << n` (the suffix `ll` makes the constant a 64-bit `long long`).
 
 ```cpp
 // Fabricator/BitManipulation/SubSets.cpp
@@ -358,6 +368,10 @@ x = 3        x = 12        x = 16
 
 Note: precisely, it turns **off** the lowest set bit. So count2 counts how many times we can remove a bit before n becomes 0. T.C. = O(no. of set bits).
 
+Why it works: subtracting 1 from n borrows from the lowest set bit. That bit becomes 0 and every zero below it becomes 1. Bits above it do not change. So AND of n and n-1 keeps the upper bits and clears the rest.
+
+Dry run, n = 12 = `1100`: 12 & 11 = `1100` & `1011` = `1000` (count 1). Then 8 & 7 = `1000` & `0111` = 0 (count 2). Answer 2, in 2 steps instead of 4 shifts.
+
 `__builtin_popcountll()` → for long long integers.
 
 | way | T.C. | -ive numbers |
@@ -377,7 +391,7 @@ Find sum of all (subarray &) of an array.
 
 [ sum of all (subarray) ]  \} Contribution technique
 
-Contribution technique: don't compute each subarray's AND. Instead ask "how much does each small piece add to the final answer?".
+Contribution technique: do not compute each subarray's AND. Instead ask "how much does each small piece add to the final answer?". Here the small piece is one bit position. The answer is a sum over bit positions of (number of subarrays whose AND has that bit) times $2^{bit}$, because every number is a sum of powers of two.
 
 ```
 contribution technique
@@ -386,7 +400,7 @@ contribution technique
         └ → pivot.
 ```
 
-Brute force: all subarrays, AND each → $O(n^2)$ with running AND. Better: use contribution technique, T.C. = O(32 n).
+Brute force: all subarrays, AND each → $O(n^2)$ with running AND. For n = 10^5 that is about 5·10^9 steps. Better: use contribution technique, T.C. = O(32 n) = 3.2·10^6 steps.
 
 ### Atomic item contri
 
@@ -549,6 +563,8 @@ Gives 20 for `3 2 7 1` and 9 for `1 3 2`. T.C. = O(32 n), memory O(n).
 
 Note: `cnt_subarrays * (1 << bit)` is int shift, bit goes till 31. Use `1ll << bit` to be safe.
 
+Size check: the answer can be as large as 5·10^9 subarrays times values near $2^{31}$, so it needs `long long`.
+
 ### ORs and XORs
 
 What if the question asks for ORs ?
@@ -577,9 +593,13 @@ Think: OR bit is 0 only when the whole subarray is zeros. So subarrays with OR b
 
 \*\* What about XORs?
 
-Idea: prefix xor. P[0] = 0, P[i+1] = P[i] ^ arr[i]. Then xor of arr[l..r] = P[r+1] ^ P[l] (first l elements cancel out). So sum of xor of all subarrays = sum of xor of all pairs of P (n+1 values). That is the last question of this note. For [1,5,7] it comes 22.
+Idea: prefix xor. P[0] = 0, P[i+1] = P[i] ^ arr[i]. Then xor of arr[l..r] = P[r+1] ^ P[l] (first l elements cancel out, because a ^ a = 0). So sum of xor of all subarrays = sum of xor of all pairs of P (n+1 values). That is the last question of this note. For [1,5,7] it comes 22.
+
+Dry run: P = [0, 1, 4, 3]. The six pairs give 0^1 = 1, 0^4 = 4, 0^3 = 3, 1^4 = 5, 1^3 = 2, 4^3 = 7, and 1+4+3+5+2+7 = 22. Direct check: the subarray xors are 1, 5, 7, 4, 2, 3, which also sum to 22.
 
 ### Extending end
+
+Motivation: the atomic item method needs the whole array up front and works one bit at a time. Extending end instead scans left to right and keeps a small summary of all subarrays that end at the current position. This is the method to use when the question asks for something else about the AND values, such as how many distinct values there are.
 
 — Extending End : Idea :
 
@@ -618,6 +638,8 @@ will have 5 subarrays with 1 by looking at previous zero.
 ### No. of distinct AND values
 
 \*\* No. of distinct AND values is equal to no. of bits [32 for int].
+
+Intuition: fix the end position and grow the subarray to the left. AND can only turn bits off, never on. Each of the 32 bits can turn off at most once, so the AND value changes at most 32 times. Therefore at most 33 different values appear among the subarrays ending at one position. Across all n positions that is at most 33 n values to handle, not n(n+1)/2.
 
 ```
  0   1   2   3 | 4   5   6 | 7   8 | 9
@@ -700,7 +722,7 @@ Note: after AND with 6, equal values merge. So new tally = 0 → 1, 4 → 3, 6 �
 
 *equal values merge, so table never grows beyond 'bit size' rows.*
 
-So basically: keep a map \{AND value → count of subarrays ending here\}. For new element x → AND every key with x, merge, add (x → 1). Sum `value * count` for the answer. T.C. = O(n · 32 · log 32).
+In short: keep a map \{AND value → count of subarrays ending here\}. For new element x → AND every key with x, merge, add (x → 1). Sum `value * count` for the answer. T.C. = O(n · 32 · log 32).
 
 ```cpp
 // Fabricator/BitManipulation/BitContributionTechnique-ExtendingEnd.cpp
@@ -780,6 +802,8 @@ void solve() {
 Gives 3 for `[1,1,2]` and 6 for `[1,2,4]`.
 
 ## Ques: index of k^th 1
+
+Plan of this section: first the simple solution that builds the string (enough for small k), then why it fails for k up to 10^9, then binary search on the number plus a per-bit counting formula.
 
 Ques :
 
@@ -1149,6 +1173,8 @@ void solve(){
 
 `k = 10` → 15. `k = 10^9` → 1954175149. Both ways agree (checked k = 10 and 5 → 15 and 6).
 
+Cost of the binary search version: about 30 search steps (since $\log_2 10^9 \approx 30$), each step calls `count_of_ones`, which loops over 32 bits. That is about 1000 operations per query, so 10^5 queries cost about 10^8 operations. The precompute version needs a string of length about 2·10^6 but only for k up to 10^5. For k = 10^9 the answer is about 2·10^9, so the string would hold about 2·10^9 characters (about 2 GB), which is too much to build in time or memory.
+
 Note: B.S. starts with `hi = k`, it's fine as f(k) ≥ k for k ≥ 1. Also use `long long` for index, k = 10^9 makes the index big.
 
 Mistakes to avoid: forgetting number 0 writes one char "0" (zero ones). And index from 0 but k from 1.
@@ -1159,7 +1185,7 @@ Ques: Given an array arr of size n,
 find Σ(i=1 to n) Σ(j=i+1 to n) (A[i] ^ A[j]).
 (Sum of all pair xor).      n ≤ 10^5
 
-Brute force: all pairs, $O(n^2)$ → too slow for 10^5.
+Brute force: all pairs, $O(n^2)$ → too slow for 10^5. There are n(n-1)/2, about 5·10^9, pairs, which is about 50 seconds at 10^8 operations per second. The per-bit method below needs 32 · 10^5 = 3.2·10^6 operations.
 
 \*\* Bit expressions are sum independent on each bit.
 
@@ -1243,6 +1269,8 @@ void solve() {
 `1 5 7` → 12.
 
 Note: if numbers use all 32 bits, write `1ll << bit_pos` at the last line.
+
+Size check: one bit can give up to (5·10^4)^2 = 2.5·10^9 valid pairs, which is above the `int` limit of about 2.1·10^9. That is why the counts are `long long`.
 
 ## Some functions to remember
 
@@ -1360,18 +1388,18 @@ Note: `is_pow_of_two` returns false for 1 ($2^0$) because of `n >= 2`.
 
 ## Quick revision
 
-- `~ | & ^ << >>`; sign bit = leftmost; 1 → negative.
-- 1's comple = `~x`; 2's comple = `~x + 1` = `-x`; twice → x. 8-bit range -128 to 127.
-- INT_MAX + INT_MAX overflows to negative (undefined in C++).
-- subset as mask: bit i ↔ arr[i]; U = `|`, ∩ = `&`; all subsets → mask 0 to $2^n-1$.
-- check `n & (1<<x)`, set `n | (1<<x)`, unset `n & ~(1<<x)`, flip `n ^ (1<<x)`; `1ll` for 64 bit.
-- popcount: `__builtin_popcount(ll)`; shift loop / n/2 recursion fail for -ive; `n & (n-1)` removes lowest set bit.
-- contribution technique → treat each bit alone, ans = Σ count × $2^{bit}$.
-- run of L ones → L(L+1)/2 = (L+1)C2 subarrays. AND → count all-1 subarrays. OR → total − all-0 subarrays. XOR of subarrays → prefix xor + pair xor.
-- extending end → map \{AND → count\}; ≤ 32 keys; change only at first zero of each bit.
-- pair xor sum → per bit: zeros × ones × $2^{bit}$; O(32 n).
-- k^th 1 in binary seq → B.S. on number with f(x) ≥ k; f(n) per bit = `full*2^i + max(left-2^i,0)`, total = n+1, full = total/2^(i+1), left = total % 2^(i+1); index = len of S before x + pos of needed 1 in x.
-- MSB: `31 - __builtin_clz(n)` / `63 - __builtin_clzll(n)` / `bit_width(n)-1`; trailing zeros: `__builtin_ctz` / `countr_zero`; clz, ctz undefined for 0.
+- Operators: `~ | & ^ << >>`. The leftmost bit is the sign bit; 1 means negative.
+- One's complement = `~x`. Two's complement = `~x + 1` = `-x`. Applying it twice returns x. The 8-bit range is -128 to 127.
+- INT_MAX + INT_MAX overflows to a negative number (undefined behaviour in C++). Use `long long` for big sums.
+- A subset is a mask: bit i stands for arr[i]. Union = `|`, intersection = `&`. All subsets = masks 0 to $2^n-1$, cost $O(2^n \cdot n)$.
+- Check bit x: `n & (1<<x)`. Set: `n | (1<<x)`. Unset: `n & ~(1<<x)`. Flip: `n ^ (1<<x)`. Use `1ll` for 64-bit values.
+- Counting set bits: `__builtin_popcount` (`__builtin_popcountll` for `long long`). The shift loop and the n/2 recursion fail for negative numbers. `n & (n-1)` removes the lowest set bit, so it costs O(number of set bits).
+- Contribution technique: treat each bit alone. Answer = sum over bits of (count of items with that bit) × $2^{bit}$.
+- A run of L ones contains L(L+1)/2 = (L+1)C2 subarrays. AND: count subarrays made only of 1s. OR: total minus subarrays made only of 0s. XOR of subarrays: prefix xor, then the pair xor sum.
+- Extending end: keep a map from AND value to the count of subarrays ending here. It has at most 32 keys, because each bit turns off only at its first zero.
+- Sum of pair xor: for each bit, zeros × ones × $2^{bit}$. Cost O(32 n).
+- k-th 1 in the binary sequence: binary search for the smallest x with f(x) ≥ k. For each bit i: total = x+1, full = total / $2^{i+1}$, left = total % $2^{i+1}$, ones = full × $2^i$ + max(left − $2^i$, 0). The index is (length of S before x) + (position of the needed 1 inside x).
+- Most significant bit: `31 - __builtin_clz(n)`, `63 - __builtin_clzll(n)` or `bit_width(n)-1`. Trailing zeros: `__builtin_ctz` or `countr_zero`. Both clz and ctz are undefined for 0.
 
 ## Practice problems
 

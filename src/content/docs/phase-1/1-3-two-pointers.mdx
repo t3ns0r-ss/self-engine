@@ -18,6 +18,8 @@ Two Pointers (TP) + Sliding Window.
 
 Idea: instead of a nested loop, move two indices smartly, neither goes back → O(n).
 
+Why this matters, with numbers: suppose n = 100 000. A nested loop over all pairs of positions does about $n^2/2 = 5 \times 10^9$ steps, and a typical judge allows only about $10^8$ simple steps per second, so it gets a time limit exceeded (TLE) verdict. Two pointers does at most $2n = 200\,000$ steps for the same problem.
+
 - Two pointers: where it comes from
 - Sliding window (fixed length, form 0)
 - Two pointers forms
@@ -47,6 +49,8 @@ BS (binary search) has two kinds:
 - BS on Ans
 - BS on Every start → this class of problems can be optimally solved using TP.
 
+"BS on every start" means: for each start position L, binary search the farthest end R that is still valid. That costs O(n log n). Two pointers removes the log factor, because the answer for the next start can be built from the previous one instead of searching again.
+
 ![BS splits into BS on answer and BS on every start; the second is solved optimally by TP](../../../assets/notes/1-3-two-pointers/fig01_bs_vs_tp.png)
 
 *BS on every start → TP, O(n).*
@@ -59,14 +63,16 @@ TP patterns:
 
 *Left: towards each other. Right: same direction with a window.*
 
-Why is it fast? dono pointers sirf aage jaate hain, piche nahi. Each moves at most n steps → n + n = 2n → O(n).
+Why is it fast? Both pointers only move forward and never go back. Each moves at most n steps → n + n = 2n → O(n).
+
+Tiny example: n = 5. Pointer one visits positions 0 to 4 (5 steps) and pointer two visits positions 0 to 4 (5 steps). That is 10 steps in total, and a nested loop would take up to 25.
 
 ## TP & sliding window
 
 - → fixed length window. (easy)
 - → variable length window.
 
-fixed length window matlab window ka size k hi rehta hai, ek step aage → left wala bahar, naya right wala andar. (this is "0-form" in the repo)
+A fixed length window always has the same size k. With each step to the right, the leftmost element leaves the window and one new element enters on the right. (This is the "0-form" in the repository.)
 
 ![Window of length 3 sliding over an array, minimum of each window marked](../../../assets/notes/1-3-two-pointers/fig03_fixed_window.png)
 
@@ -76,11 +82,29 @@ Ques: given an array of size n and a window of size k. Find minimum of all subar
 
 Brute force: for every window loop k elements → O(n·k).
 
+With numbers: n = 100 000 and k = 50 000 gives 50 001 windows of 50 000 elements each, about $2.5 \times 10^9$ steps. Too slow.
+
 Better: keep a DS of the current window.
 - multiset (sorted, duplicates allowed): insert new, erase the element that left, min = first. O(n log k)
 - monotonic deque (queue we can pop from both ends): keep indices whose values are increasing, so front is always the min. Every index pushed once, popped once → O(n)
 
+Why the deque works: suppose an older element is larger than or equal to a new element. The older one leaves the window earlier and is not smaller, so it can never be the minimum again. We can drop it safely. This is why we pop from the back while `arr[dq.back()] >= arr[i]`, and pop from the front when the index has left the window.
+
+Memory: both versions keep at most k items, so O(k) extra memory.
+
 Dry run with `2 1 5 1 3 2 8 1`, k = 3 → mins `1 1 1 1 2 1`. Both functions give the same.
+
+Deque trace (the deque holds indices; the value of each index is in brackets):
+- i = 0: deque `[0]`
+- i = 1: value 1 is not larger than arr[0] = 2, so pop index 0 → deque `[1]`
+- i = 2: 5 is larger than 1, keep → deque `[1, 2]`. The first full window is ready, min = arr[1] = 1
+- i = 3: value 1 pops index 2 (5) and index 1 (1) → deque `[3]`, min = 1
+- i = 4: deque `[3, 4]`, min = arr[3] = 1
+- i = 5: value 2 pops index 4 (3) → deque `[3, 5]`, min = 1
+- i = 6: index 3 is outside the window (3 &lt;= 6 - 3), so pop it from the front → deque `[5, 6]`, min = arr[5] = 2
+- i = 7: value 1 pops indices 6 and 5 → deque `[7]`, min = 1
+
+Common mistake: storing values instead of indices in the deque. Then we cannot tell when the front element has left the window.
 
 ```cpp
 // Fabricator/TwoPointers/0-Form/SlidingWindow.cpp
@@ -206,6 +230,8 @@ for (L = (0,N))                  for every L we can keep
 ```
 - → we can try checking all sub arrays of the questions.
 
+Cost: for n = 100 000 there are about $n^2/2 = 5 \times 10^9$ pairs (L, R). If each check also scans the subarray, it is even worse (O(n³)). Both are far too slow.
+
 ![For one fixed L, every end R is tried](../../../assets/notes/1-3-two-pointers/fig08_brute_force_ranges.png)
 
 *Fixed L, try every R → O(N²).*
@@ -220,7 +246,7 @@ for next element while starting why to start of next element while we know that 
 Why not begin checking from 'end'.
 ↳ bcz if [start,end] → true ⇒ [start+1,end] → true.
 
-Observation: head ko piche lane ki zaroorat hi nahi. Tail moves 1 step → window sirf chhoti hui, so best head for new tail ≥ old head. Head only goes right.
+Observation: the head never needs to move back. When the tail moves 1 step, the window only becomes smaller (the old window was valid, and a part of a valid window is still valid). So the best head for the new tail is ≥ the old head. The head only goes right.
 
 Now pseudo code changes:
 
@@ -259,7 +285,7 @@ for current question we can use frequency of 0s.
 
 ![Window with tail, head and the next element, and a DS box with check next, insert, remove](../../../assets/notes/1-3-two-pointers/fig11_ds_window.png)
 
-*DS answers: can I eat next?*
+*DS answers: can the window take the next element?*
 
 Code in Subarrays With K flips.cpp.
 
@@ -377,7 +403,21 @@ void solve() {
 
 Dry run: `1 0 1 0 1`, k=1 → 3. `0 1 0 1 0 0 1 1 0`, k=2 → 5. `0 0 0 1`, k=0 → 1.
 
-Note: BS on every start version is also possible here. Prefix count of zeros never decreases, so for every L binary search the farthest R → O(n log n). TP does it in O(n), isliye TP better.
+Step by step for `1 0 1 0 1`, k = 1:
+- tail = 0: head eats indices 0, 1, 2 (one zero is allowed). Index 3 is a second zero, so stop. Length 3. Remove arr[0], tail = 1.
+- tail = 1: the window is still `0 1`, head cannot eat the zero at index 3. Length 2. Remove arr[1] (a zero, so the zero count drops to 0), tail = 2.
+- tail = 2: head eats indices 3 and 4. Length 3. Then the tail keeps moving and lengths only get smaller.
+- Best = 3.
+
+Common mistakes:
+- Starting with head = 0 (see "Why head = -1" above).
+- Forgetting to remove arr[tail] from the data structure when the tail moves.
+- Forgetting the else branch, which handles the case where the tail runs ahead of the head.
+- Using a criteria that is not monotonic.
+
+Cost: time O(n), memory O(1) (only one counter).
+
+Note: BS on every start version is also possible here. Prefix count of zeros never decreases, so for every L binary search the farthest R → O(n log n). TP does it in O(n), so TP is better.
 
 ### Distinct elements
 
@@ -418,6 +458,8 @@ for small values we can use array as the freq map.
 
 Count: no. of subarrays starting at tail = length of max valid subarray starting at tail.
 
+Reason: if the longest valid window starting at tail is [tail, head], then every shorter one [tail, tail], [tail, tail+1], ..., [tail, head] is also valid, because a part of a valid window is valid (monotonic). That gives exactly head - tail + 1 subarrays.
+
 `1 2 1 3`, k=2
 - tail=0 → [1 2 1] → 3
 - tail=1 → [2 1] → 2
@@ -436,7 +478,7 @@ Sum of length of all subarrays starting at tail = len x (len+1) / 2.
 
 *1 + 2 + ... + len.*
 
-Note: yaha pe hume sum of lengths nahi, sirf len chahiye (count of subarrays starting at tail = len). len(len+1)/2 tab kaam aata hai jab "sum of length" pucha ho.
+Note: here we do not need the sum of lengths, only len (the count of subarrays starting at tail = len). The formula len(len+1)/2 is used only when the question asks for the "sum of lengths".
 
 \*\* If question was twisted like
 find # of subarrays such that # of distincts == k.
@@ -540,7 +582,11 @@ void solve() {
 
 Dry run: `1 2 1 3`, k=2 → ≤k: 8, ==k: 4, ≥k: 6 (10 total subarrays, 4 have only 1 distinct → 10 - 4 = 6).
 
-Ques: find the # of subarrays with sum ≤ k (non-negative numbers). Same thing, DS is just the running sum. Monotonic kyuki number hatane se sum sirf kam hoga. Note: negative numbers aaye toh monotonic nahi rahega, TP fail.
+Cost: each call of the function is O(n), and we call it at most three times, so still O(n). Memory is O(V), where V is the largest value in the array (the frequency array here has 100 100 cells). If values can be larger, use a map or compress the values first. A value outside the array range is a common cause of crashes.
+
+Ques: find the # of subarrays with sum ≤ k (non-negative numbers). Same thing, DS is just the running sum. The criteria is monotonic because removing a number can only lower the sum (all numbers are non-negative). Note: if negative numbers are allowed, removing a number can raise the sum, so the criteria is not monotonic and TP fails.
+
+Dry run: `1 2 3`, k = 5. Longest valid window per tail: tail 0 → `1 2` (sum 3, adding 3 would give 6) → 2; tail 1 → `2 3` (sum 5) → 2; tail 2 → `3` → 1. Total 2 + 2 + 1 = 5.
 
 ```cpp
 // Fabricator/TwoPointers/SubarraysWithSumAtLeastK.cpp
@@ -609,6 +655,8 @@ Note: file name says "AtLeast" but code counts sum ≤ K.
 Ques: find the shortest subarray with # of distinct elements >= k.
 
 `[2 3 2] (5) 2`, k = 3
+
+Why we use "&lt; k" instead of ">= k": if a window has at least k distinct values, a smaller part of it may not. So ">= k" is not monotonic. But "fewer than k distinct" is monotonic, so we let the window grow as long as it has fewer than k distinct values. The first element that cannot join would bring the distinct count to exactly k, so window + that element is the shortest valid subarray for this tail.
 
 >= k → not monotonic hence check for &lt; k. (annotation: "monotonic")
 - ↳ find largest starting at tail with distinct &lt; k.
@@ -806,7 +854,7 @@ as we are decreasing the gap we should increase the min value to achieve the lar
 We start iterating from both ends using l & r and move the smaller pointers..
 And, in the end, we'll have the max ans.
 
-Why smaller one? Let's say left bar is shorter. Is bar ke saath koi bhi aur right end lo (andar wala) → gap chhota, height still ≤ left bar → pehle wale se better nahi ho sakta. So left bar ko hamesha ke liye hata do. Taller ko hilaoge toh height wahi limited rahegi aur gap kam hoga, bas.
+Why move the smaller one? Let's say the left bar is shorter. Pair it with any other right end that lies inside (closer to it): the gap becomes smaller and the height is still at most the left bar, so the result cannot be better than the current one. So the left bar is useless for ever, and we discard it by moving l. If we moved the taller bar instead, the height would still be limited by the shorter bar while the gap shrinks, so nothing can improve.
 
 ```cpp
 // Fabricator/TwoPointers/2-Form/ContainerWithMostWater.cpp
@@ -843,7 +891,15 @@ void solve() {
 
 Dry run: example gives 49. T.C. O(n), memory O(1).
 
-Note: `min(v[l], v[r]) * (r - l)` is int * int, overflow ho sakta hai badi values pe. Use 1LL * ...
+Trace on `[1, 8, 6, 2, 5, 4, 8, 3, 7]`:
+- l = 0 (height 1), r = 8 (height 7): area = 1 × 8 = 8. Left is smaller, so l++.
+- l = 1 (8), r = 8 (7): area = 7 × 7 = 49. Right is smaller, so r--.
+- l = 1 (8), r = 7 (3): area = 3 × 6 = 18. Right is smaller, so r--.
+- Continuing, no pair beats 49. Answer 49.
+
+The loop runs at most n - 1 times because each step moves one pointer closer.
+
+Note: `min(v[l], v[r]) * (r - l)` is int * int, so it can overflow when values are large (for example heights up to $10^9$ and width up to $10^5$ give a product near $10^{14}$, which does not fit in a 32-bit int). Use 1LL * ...
 
 ### 3-Sum
 
@@ -860,6 +916,8 @@ Given an array of n-elements, and a target, T.
 
 We can sort the array because the order of the elements doesn't matter.
 - ↳ O(nlogn).
+
+(We count sets of three positions, not orderings, so sorting does not change the answer.)
 
 `[ 2 | 3 | 5 | 5 | 7 | 9 | 9 | 13 | 15 | 20 ]`
 T = 21
@@ -904,13 +962,15 @@ A[i] + A[k] = 20 - A[j] = 20 - 6 = 14.
 
 *Sum too big → k moves left, too small → i moves right.*
 
-Why? sum > need → is k ke saath koi bhi i (aage wala) aur bada hi dega, so k bekaar → k--. sum &lt; need → is i ke saath koi bhi k (peeche wala) aur chhota dega, so i bekaar → i++.
+Why? If sum > need: the array is sorted, so pairing this k with any i further to the right gives an even bigger sum. This k is useless for this j → k--. If sum &lt; need: pairing this i with any k further to the left gives an even smaller sum. This i is useless → i++.
 
 ```
 for (j → (0, n-1))                → O(n²).
   (──────────────)
       O(n) for finding i & k.
 ```
+
+Cost: sorting is O(n log n), and for each j the two-pointer scan is O(n), so O(n²) in total. For n = 5000 that is about $25 \times 10^6$ steps, while the brute force O(n³) would need about $1.25 \times 10^{11}$.
 
 For all solns & # of solns we need to work more.
 
@@ -928,7 +988,7 @@ Convert this → same numbers with freq.
 
 we can also move i & k and count same element & calculate the count.
 
-j is the middle index → har triple exactly ek baar count hota hai. Match pe itemp, ktemp equal values skip karte hain, (itemp - i) * (k - ktemp) = left copies x right copies.
+j is the middle index, so every triple is counted exactly once. On a match, itemp and ktemp skip over all copies of the equal values on the left and on the right. Then (itemp - i) * (k - ktemp) = left copies x right copies.
 
 ```cpp
 // Fabricator/TwoPointers/2-Form/ThreeSum.cpp
@@ -977,7 +1037,7 @@ Dry run: T=21 on the sorted example → 7. `3 3 5 7 7 7`, T=15 → 6. The `1 3 4
 
 Note: this function never prints cnt, add `cout<<cnt<<endl;` at the end. Also cnt is int, use long long if count is big.
 
-Variant: closest sum to target. Same loop, match pe rukna nahi hai, bas min of abs(sum - target) rakho. sum > target → k--, else i++.
+Variant: closest sum to target. Same loop, but we do not stop on a match. Just keep the minimum of abs(sum - target). If sum > target then k--, else i++.
 
 ```cpp
 // Fabricator/TwoPointers/2-Form/ThreeSumAZ.cpp
@@ -1035,7 +1095,7 @@ while (i → (0, s.length-1) &&
 
 *b at 1, d at 8, a at 9 → yes subsequence.*
 
-Dekho, t ke saare letters mil gaye (j == t.length) toh yes. Repo me 3-Form abhi khaali hai, so function:
+If all the letters of t were found (j == t.length), the answer is yes. The 3-Form folder in the repository is still empty, so here is a function:
 
 ```cpp
 /*
@@ -1054,6 +1114,10 @@ bool is_subsequence(const string& s, const string& t) {
 
 Dry run: `abaccabadaba` with `bda` → true, with `dbd` → false. T.C. O(|s|).
 
+Trace for `bda`: the pointer on s moves over `a` (no match), then `b` matches (j = 1). It then skips `a c c a b a` looking for `d`, which matches at index 8 (j = 2), and the next `a` matches at index 9 (j = 3 = length of t). True.
+
+Why greedy is correct: taking the earliest possible match for each letter leaves the longest possible rest of s for the remaining letters. Time O(|s|), memory O(1).
+
 Practical use of form 3: [ Information Retrieval ]
 
 - D1 = "Vivek has been coding DSA"
@@ -1061,6 +1125,8 @@ Practical use of form 3: [ Information Retrieval ]
 - D3 = "Algozenith also covers DEV now"
 - D4 = "Vivek is the founder of Algozenith".
 - D5 = "Algozenith is the best DSA cover available."
+
+(These are sample texts. DSA = data structures and algorithms, CP = competitive programming, DEV = development.)
 
 Query = (Vivek AND Algozenith)
 Query should return D4.
@@ -1098,7 +1164,7 @@ So on query of DSA AND Algozenith, we fetch both the lists. of DSA & algozenith.
 [2, 3, 4, 5] AND [1, 2, 5]    | & find their intersection.
 (AND → intersection.)
 
-Both sorted, so: values match → take it, move both. Not matching → move the one with the smaller value (bada wala wait karega). Result [2, 5].
+Both sorted, so: values match → take it, move both. Not matching → move the pointer at the smaller value (the larger value waits). Reason: everything after the smaller value is at least as large as the larger value, so the smaller value cannot appear in the other list anymore. Result [2, 5].
 
 ![Five steps on the lists [2,3,4,5] and [1,2,5], matches at 2 and 5](../../../assets/notes/1-3-two-pointers/fig26_intersect.png)
 
@@ -1194,7 +1260,7 @@ Keep going like this, until we are on last column.
 
 *Step 1 → 4, min pointer moves.*
 
-Why min? max kabhi kam nahi hoga jab koi pointer aage jaye. Sirf min ko hilane se hi max - min chhota ho sakta hai.
+Why the minimum? Rows are sorted, so the maximum can never decrease when a pointer moves forward. Moving any pointer other than the minimum keeps the range the same or makes it larger. Only moving the minimum can make max - min smaller.
 
 ```cpp
 /*
@@ -1226,7 +1292,7 @@ int min_range_one_per_row(vector<vector<int>> g) {
 }
 ```
 
-priority_queue with `greater<...>` = min-heap (smallest on top). Dry run: example → 1 (diffs 2 2 1 1 5 4 2). `2 10 / 3 9 / 8 15` → 2. T.C. O(nm log n).
+priority_queue with `greater<...>` = min-heap (smallest on top). Dry run: example → 1 (diffs 2 2 1 1 5 4 2). `2 10 / 3 9 / 8 15` → 2. T.C. O(nm log n): at most n·m steps, each with a heap push and pop of cost O(log n) (the heap holds n items). The sort of each row costs O(m log m) per row. Memory O(n) for the heap.
 
 SOL -2
 
@@ -1355,25 +1421,25 @@ void solve() {
 }
 ```
 
-Dry run: samples give 1 and 2. T.C. O(nm log(nm)) for the sort.
+Dry run: samples give 1 and 2. T.C. O(nm log(nm)) for the sort, then O(nm) for the two pointers. Memory O(nm) for the list of (value, row) pairs.
 
 Note: INT32_MAX needs `<cstdint>`.
 
 ## Quick revision
 
-- TP → two indices, never move back → O(n)
-- patterns → towards each other | same direction + window
-- form 1 → ask (longest/shortest/count/sum of len), what (subarray/gaps), criteria (monotonic)
-- monotonic → true for [L,R] ⇒ true for [L+1,R] & [L,R-1]. Not monotonic → no TP
-- template → tail = 0, head = -1; eat max → update ans → move tail (empty window: tail++, head = tail-1)
-- DS → check next, insert, remove. Distinct → freq map + count, set can't remove
-- T.C. → O(N * (H + A + T))
-- count subarrays starting at tail = len; sum of lengths = len(len+1)/2
-- == k → f(≤k) - f(≤k-1); ≥ k → n(n+1)/2 - f(≤k-1)
-- shortest ≥ k → eat for &lt; k, len = head - tail + 1 + 1 if next exists
-- form 2 → ends inward. Container → move smaller. 3-Sum → sort, j middle, 2-sum (too big k--, too small i++), dups → freq product
-- form 3 → one pointer per sequence. Subsequence: s always, t on match. Sorted lists → intersection / union, inverted index
-- matrix min(max-min) → SOL-1 move min pointer (heap), SOL-2 sort (val,row) + form 1
+- Two pointers (TP) → two indices that never move back → O(n)
+- Patterns → towards each other | same direction with a window
+- Form 1 → ask (longest / shortest / count / sum of lengths), what (subarray / gaps), criteria (monotonic)
+- Monotonic → true for [L,R] ⇒ true for [L+1,R] and [L,R-1]. If not monotonic, TP cannot be used
+- Template → tail = 0, head = -1; eat as many as possible → update answer → move tail (if the window is empty: tail++, head = tail - 1)
+- Data structure → check next, insert, remove. For distinct values use a frequency map plus a distinct count (a set cannot remove)
+- Time complexity → O(N * (H + A + T))
+- Count of subarrays starting at tail = len; sum of their lengths = len(len+1)/2
+- Exactly k → f(≤k) - f(≤k-1); at least k → n(n+1)/2 - f(≤k-1)
+- Shortest with at least k distinct → eat while fewer than k; if a next element exists, length = head - tail + 1 + 1
+- Form 2 → pointers move inward. Container → move the smaller bar. 3-Sum → sort, j in the middle, 2-sum with i and k (sum too big → k--, too small → i++); duplicates → product of frequencies
+- Form 3 → one pointer per sequence. Subsequence: pointer on s always moves, pointer on t moves on a match. Sorted lists → intersection / union (inverted index)
+- Matrix, minimise (max - min) → SOL-1: move the minimum pointer with a heap; SOL-2: sort (value, row) pairs, then form 1
 
 ## Practice problems
 

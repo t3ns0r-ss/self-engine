@@ -13,9 +13,11 @@ import Ladder from '../../../components/Ladder.astro';
 
 BS (Binary Search) from the basic "search an element" to BS on answer, BS on real numbers and ternary search. Idea is always same: make a yes/no check → convert it to `0 0 0 1 1 1` → find the first 1.
 
-Words I use again and again:
-- search space = jitne values pe abhi answer ho sakta hai
-- monotonic = only one direction, i.e. `0 0 0 1 1 1` (kabhi `0 1 0` nahi hota)
+Why it matters: a sorted list of 1,000,000 numbers needs up to 1,000,000 comparisons with a linear scan, but only about 20 with binary search. When the search range is as large as 10^18, a linear scan is impossible, while binary search needs about 60 steps.
+
+Terms used in this lesson:
+- search space = the set of values where the answer can still be
+- monotonic = changes in only one direction, i.e. `0 0 0 1 1 1` (a pattern like `0 1 0` never happens)
 - T.C. = time complexity, how time grows with input size
 - check function = takes a value, returns 1 (yes) or 0 (no)
 
@@ -45,7 +47,7 @@ Words I use again and again:
 
 ![Recognize branching to sorted, minimize, maximize, optimization, high constraint](../../../assets/notes/1-4-binary-search/fig01_recognize.png)
 
-*Recognize: kab BS lagana hai.*
+*Recognize: when to use binary search.*
 
 - Sorted → monotonic
 - minimize optimal val → maxima (sometimes)
@@ -53,15 +55,15 @@ Words I use again and again:
 - optimization
 - high constraint (N ≤ 10^5), value 10^9 | 10^18 ...
 
-Observation: BS ko bas ek cheez chahiye, ek yes/no strip jo sirf ek baar palti ho. Sorted array mein ye free milti hai. "Minimize the best value" type mein answer ko hi search karte hain, aur "kya x se ho jayega?" usually monotonic hota hai (x chalta hai toh bada x bhi chalega). 10^18 dikhe toh BS hi hoga, kyuki 10^18 ke liye bas ~60 checks lagte hain (2^60 ≈ 10^18).
+Observation: binary search needs only one thing, a yes/no strip that flips exactly once. A sorted array gives this for free. In "minimize the best value" problems we search over the answer itself, and the question "will x be enough?" is usually monotonic: if x works, a larger x also works. If a limit such as 10^18 appears, binary search is very likely the intended method, because 10^18 needs only about 60 checks (2^60 ≈ 10^18).
 
-| Problem mein kya dikha | Kya try karna hai |
+| What the problem shows | What to try |
 |---|---|
-| Sorted array, value/position | plain BS, lower_bound, upper_bound |
+| Sorted array, value or position | plain BS, lower_bound, upper_bound |
 | minimize the maximum / maximize the minimum | BS on answer |
-| answer 10^18 tak | BS on answer |
-| curve with one top/bottom | ternary search / BS on slope |
-| decimal answer, error allowed | BS on real domain |
+| answer up to 10^18 | BS on answer |
+| a curve with one top or one bottom | ternary search / BS on slope |
+| decimal answer, some error allowed | BS on real domain |
 
 ## Designing check functions
 
@@ -77,7 +79,7 @@ Select the middle element.
 
 ![Searching 17: middle 19, then 10, then 15](../../../assets/notes/1-4-binary-search/fig02_search17.png)
 
-*17 dhoondhna: har row mein aadha space gaya.*
+*Searching 17: half of the search space is removed in each row.*
 
 19 → middle element. ⇒ 17 must lie in first half of the array. (19 is larger than 17)
 
@@ -89,7 +91,7 @@ finding 35
 
 ![Searching 35: middle 19, then 35](../../../assets/notes/1-4-binary-search/fig03_search35.png)
 
-*35 dhoondhna: 2 checks mein mil gaya.*
+*Searching 35: found in 2 checks.*
 
 19 ⇒ middle element, less than 35 ⇒ 35 must be in second half of the array.
 
@@ -99,11 +101,11 @@ Time complexity — O(Logn)
 
 ![N elements halving to 1 element, one check each](../../../assets/notes/1-4-binary-search/fig04_halving.png)
 
-*Har check pe aadha: log n checks.*
+*Each check halves the space: log n checks.*
 
 On each check we are discarding half of the array i.e. halving the search space.
 
-Let's say N = 10^6. 10^6 → 5·10^5 → 2.5·10^5 → ... → 1. Itne halves mein kitne steps? 2^20 ≈ 10^6, so about 20 checks. Linear mein 10^6 lagte.
+Let's say N = 10^6. 10^6 → 5·10^5 → 2.5·10^5 → ... → 1. How many halvings does this take? 2^20 ≈ 10^6, so about 20 checks. Linear search would need up to 10^6 checks, which is 50,000 times more.
 
 ```cpp
 // Fabricator/BinarySearch/BitonicArraySearchElement.cpp
@@ -126,7 +128,7 @@ int binary_search(vector<int> &arr, int x){
 }
 ```
 
-Code ka mid lower-middle leta hai (index (lo+hi)/2 neeche round). Toh 17 ke liye ye 15, 21, 19 dekhta hai → -1. 35 ke liye 15, 21, 35 → index 6. Upar jo manually kiya usme upper-middle liya tha, dono chalte hain.
+This code takes the lower middle (the index (lo+hi)/2, rounded down). For 17 it looks at 15, 21, 19 and returns -1. For 35 it looks at 15, 21, 35 and returns index 6. The manual walk above took the upper middle; both choices work.
 
 ## Finding first 1
 
@@ -142,17 +144,17 @@ lo & hi represent the index (asked in problem). search space is [lo, hi].
 
 Never include the mid back to the search space. → it can cause buggy code.
 
-Dekho kyu: agar `lo = mid` karoge aur hi = lo + 1 ho, toh mid = lo + 0 = lo hi aayega → space chhota hi nahi hoga → infinite loop. Isliye hamesha mid+1 ya mid-1.
+Why: if we write `lo = mid` and hi = lo + 1, then mid = lo + 0 = lo again, so the space does not shrink and the loop never ends. Always use mid+1 or mid-1.
 
 Always maintain 4 variables.
 
-lo, hi, mid, ans. Start: lo = 0, hi = 8, mid = lo + (hi-lo)/2 = 4, ans = 4 (jab 1 mil gaya).
+lo, hi, mid, ans. Start: lo = 0, hi = 8, mid = lo + (hi-lo)/2 = 4, ans = 4 (a 1 is found at mid).
 
 lo + (hi-lo)/2 doesn't cause overflow.
 
 $\lfloor \frac{lo+hi}{2} \rfloor$ → may cause overflow.
 
-Ek example: lo = 2·10^9, hi = 2.1·10^9 (dono int mein aate hain, int max = 2,147,483,647). lo+hi = 4.1·10^9 → overflow, mid negative aa jata hai (-97483648 aaya). lo + (hi-lo)/2 = 2·10^9 + 5·10^7 = 2.05·10^9, sahi. Kyuki hi-lo kabhi hi se bada nahi hota.
+Example: lo = 2·10^9, hi = 2.1·10^9 (both fit in an int, whose maximum is 2,147,483,647). lo+hi = 4.1·10^9 overflows, and mid becomes negative (-97483648). lo + (hi-lo)/2 = 2·10^9 + 5·10^7 = 2.05·10^9, which is correct, because hi-lo is never larger than hi.
 
 ![Four rows of first-1 search for the 9 element array](../../../assets/notes/1-4-binary-search/fig06_first_one_trace.png)
 
@@ -165,7 +167,7 @@ Ek example: lo = 2·10^9, hi = 2.1·10^9 (dono int mein aate hain, int max = 2,1
 | 2 | 3 | 2 | 2 |
 | 2 | 1 | X | |
 
-1 found at 4 hence ans is 4 (for now). End mein lo > hi, stop. Final ans = 2.
+1 found at 4 hence ans is 4 (for now). At the end lo > hi, so stop. Final ans = 2.
 
 ```cpp
 while (lo <= hi) {
@@ -182,14 +184,14 @@ while (lo <= hi) {
 cout << ans << endl;
 ```
 
-Note: ye fragment hai: `mid` ke baad `;` aur `int mid` chahiye, aur loop se pehle `lo = 0, hi = n-1, ans = -1` set karna hai.
+Note: this is only a fragment. `mid` needs a `;` after it and a declaration `int mid`, and before the loop we must set `lo = 0, hi = n-1, ans = -1`.
 
 arr [0 0 0 0 0 0 1 1]
       0 1 2 3 4 5 6 7
 
 ![Four rows of first-1 search for the 8 element array](../../../assets/notes/1-4-binary-search/fig07_first_one_trace2.png)
 
-*Dusra example, ans = 6.*
+*Second example, ans = 6.*
 
 | lo | hi | mid | ans |
 |----|----|-----|-----|
@@ -228,7 +230,7 @@ int binary_search(vector<int> &arr){
 }
 ```
 
-Note: yaha `hi=arr.size()` hai, toh mid = n pe `arr[n]` read ho sakta hai (out of bounds, e.g. \{0,0,0\} pe). `hi = arr.size() - 1` hona chahiye.
+Note: here `hi=arr.size()`, so when mid = n the code reads `arr[n]`, which is out of bounds (for example on \{0,0,0\}). It should be `hi = arr.size() - 1`.
 
 # lower_bound / upper_bound
 
@@ -240,7 +242,7 @@ Check function
 
 ![Hill with best x0 and the step check function](../../../assets/notes/1-4-binary-search/fig08_check_function.png)
 
-*Hill ka peak ↔ 0/1 step.*
+*The peak of the hill ↔ the 0/1 step.*
 
 We design a check function which gives zero before x0 & 1 for all values greater than x0.
 
@@ -267,7 +269,7 @@ lb (arr,5) → 2                    ub (arr,5) → 5
 
 lb (arr,6) → 5                    ub (arr,10) → last +1
 
-Dekho: ub(5) - lb(5) = 5 - 2 = 3 → 5 teen baar aaya hai. (Count of x = ub - lb.)
+Look: ub(5) - lb(5) = 5 - 2 = 3 → 5 appears three times. (Count of x = ub - lb.)
 
 # Find first elem ≥ x. [lower_bound].
 
@@ -284,7 +286,7 @@ Do not create the array, convert the elements on demand.
 
 ![Cells 31, 33, 33 converted to 0, 1, 1](../../../assets/notes/1-4-binary-search/fig10_lb_on_demand.png)
 
-*Sirf wahi cells convert jo BS dekhta hai.*
+*Only the cells that the binary search looks at are converted.*
 
 [1, 5, 10, (31), (33), (33), 35, 100] → [ , , , 0, 1, 1, , ] (indices 0 to 7)
 
@@ -344,7 +346,7 @@ void binary_search (int * arr, int n) {
 }
 ```
 
-Note: return type `int` hona chahiye, `void` mein `return ans` nahi chalega. `ans = n` matlab koi element qualify nahi karta.
+Note: the return type must be `int`; `return ans` is not allowed in a `void` function. `ans = n` means that no element qualifies.
 
 ```cpp
 // Fabricator/BinarySearch/LowerBound.cpp
@@ -405,7 +407,7 @@ int binary_search(vector<int> &arr, int x){
 }
 ```
 
-Note: dono `ans = -1` se start hote hain, toh koi element na mile toh -1 dete hain. STL (Standard Template Library) ka `std::lower_bound` end (index n) deta hai, jaise upar `ans = n`. Dono ko arr = [1,3,5,5,5,7,7,9] pe STL se compare kiya: x = 5 → 2, 5. x = 6 → 5, 5. x = 10 → -1 (STL: 8).
+Note: both start with `ans = -1`, so they return -1 when no element qualifies. The STL (Standard Template Library) `std::lower_bound` returns the end (index n) instead, like `ans = n` above. Both were compared with the STL on arr = [1,3,5,5,5,7,7,9]: x = 5 → 2, 5. x = 6 → 5, 5. x = 10 → -1 (STL: 8).
 
 ## Search elem in rotated sorted array:
 
@@ -420,7 +422,7 @@ rotate ↳ [3, 5, 9, 1, 2]
 
 ![Sorted array and three rotations, min 1 highlighted](../../../assets/notes/1-4-binary-search/fig12_rotations.png)
 
-*Har rotation mein last element aage aata hai. Index of 1 = no. of rotations.*
+*In each rotation the last element moves to the front. Index of 1 = no. of rotations.*
 
 [5, 9, 3, 4]  → ans: 2.
  0  1  (2) 3
@@ -438,9 +440,9 @@ Check function:   arr[mid] &lt; arr[0]
 
 default ans = 0.    | arr[mid] ≤ arr [n-1]
 
-Note: dono check tabhi chalte hain jab saare elements distinct hon. Duplicates ho toh min nahi milega.
+Note: both checks work only when all elements are distinct. With duplicates the minimum may not be found.
 
-Idea of searching x: pehle min ka index nikalo (upar wala), array do sorted pieces mein toot gaya: [0, idx-1] aur [idx, n-1]. x ≤ arr[n-1] ho toh right piece mein BS, warna left piece mein.
+Idea of searching x: first find the index of the minimum (as above). The array is now two sorted pieces: [0, idx-1] and [idx, n-1]. If x ≤ arr[n-1], run BS on the right piece, otherwise on the left piece. Example: [5, 9, 3, 4], idx = 2. Searching 4: 4 ≤ arr[3] = 4, so search [2, 3]. Searching 9: 9 > 4, so search [0, 1].
 
 ```cpp
 // Fabricator/BinarySearch/RotatedArray.cpp
@@ -486,7 +488,7 @@ arr = [1, 5, 9, 11, 9, 2, 1]
 
 ![Bitonic array with peak 11 and strip 0 0 0 1 1 1 1](../../../assets/notes/1-4-binary-search/fig14_peak.png)
 
-*Upar jaate hue 0, neeche aate hue 1. First 1 = peak.*
+*Going up gives 0, going down gives 1. The first 1 is the peak.*
 
 Check function:   arr [mid] > arr [mid +1]
 
@@ -498,7 +500,7 @@ int check (int mid) {
 }
 ```
 
-`mid == n-1` kyu: last element ka right neighbour nahi hota, toh usko "neeche jaa raha" maan lete hain.
+Why `mid == n-1`: the last element has no right neighbour, so we treat it as "going down".
 
 ```cpp
 // Fabricator/BinarySearch/BitonicArray.cpp
@@ -529,13 +531,13 @@ int binary_search(vector<int> &arr){
 }
 ```
 
-Note: ye `>=` use karta hai (equal neighbours bhi "down" count). [1 5 9 11 9 2 1] → 3. Strictly increasing then strictly decreasing hona chahiye warna flat part pe galat ho sakta hai.
+Note: this version uses `>=` (equal neighbours also count as "down"). [1 5 9 11 9 2 1] → 3. The array must be strictly increasing and then strictly decreasing; otherwise a flat part can give a wrong answer.
 
 ## Binary Search forms:
 
 ![BS forms: 90 percent BS on answer, 10 percent BS on every start](../../../assets/notes/1-4-binary-search/fig15_forms.png)
 
-*BS ke 2 forms.*
+*The 2 forms of BS.*
 
 - 90% → BS on answer (90% into medium-hard problems (OAs, i.e. online assessments))
 - 10% → BS on every start → more than 80% of these type of problems can be solved using two pointers.
@@ -544,7 +546,7 @@ BS on answer
 
 ![BS on answer: 35, 35, 20, 10 percent](../../../assets/notes/1-4-binary-search/fig16_answer_types.png)
 
-*BS on answer ke types. Ye decide karte hain check kaisa banega.*
+*Types of BS on answer. They decide how the check is built.*
 
 - 35% → BS on atomic items [contribution]
 - 35% → BS by sweep coverage
@@ -578,7 +580,7 @@ Time = 12.
 
 ![Split 12, 7, 7 and max of all sums, minimize](../../../assets/notes/1-4-binary-search/fig18_painter_best.png)
 
-*Groups ke sums ka max = time. Isse minimize karna hai.*
+*The maximum of the group sums is the time. This is what we minimize.*
 
 [ ____ | ____ | ____ ]
   sum     sum    sum
@@ -587,7 +589,7 @@ Time = 12.
 minimize the maximum  \}
 maximize the minimum  \} Most probably B.S.
 
-Brute force: saari tarah se array ko k parts mein kaato → exponential. Better: time hi search kar lo.
+Brute force: try every way to cut the array into k parts → exponential (6 walls into 3 parts already has 10 ways, and N = 10^5 has astronomically many). Better: search the time itself.
 
 BS on ans → answer here is time.
 time → [0, ....., sum (A_i)]  \} answer lies in this.
@@ -626,11 +628,13 @@ for k = 3 , check for 11 secs.
 
 ![Time left with 13 s (yes) and 11 s (no)](../../../assets/notes/1-4-binary-search/fig20_painter_timeleft.png)
 
-*13 s mein ho gaya. 11 s mein last wall bach gayi → 4th painter chahiye.*
+*Finished in 13 s. With 11 s the last wall is left over, so a 4th painter is needed.*
 
 Time complexity — O( log ( Search space ) * check() )
 
 O ( log ( Σ A_i ) * N ).
+
+Example of the cost: N = 10^5 walls with times up to 10^9 gives Σ A_i up to 10^14. That is about log2(10^14) ≈ 47 checks of N = 10^5 steps each, about 4.7·10^6 operations in total.
 
 ```cpp
 int check (int mid , int *arr, int n, int k) {
@@ -652,11 +656,13 @@ int check (int mid , int *arr, int n, int k) {
     return 1; }
 ```
 
-Check ka idea: left se right jao, current painter ke paas time bacha hai toh wahi paint karega. Nahi bacha toh naya painter. k se zyada ho gaye ya ek wall hi mid se badi hai → 0.
+Idea of the check: go from left to right. If the current painter has enough time left, this painter paints the wall. Otherwise a new painter starts. If more than k painters are needed, or a single wall is longer than mid, return 0.
 
-Note: `int` mein sums overflow ho sakte hain, bade input pe `long long`.
+Dry run for A = [1, 3, 8, 7, 2, 5], k = 3, mid = 13: painter 1 takes 1, 3, 8 (12 used, 1 left). Wall 7 does not fit, so painter 2 takes 7, 2 (9 used, 4 left). Wall 5 does not fit, so painter 3 takes 5. Three painters are enough → 1. For mid = 11 a 4th painter is needed → 0.
 
-Search space [max(A_i), Σ A_i] bhi chalta hai (wall se chhota time ho hi nahi sakta). k = 1 → 26 (Σ), k ≥ N → 8 (max wall).
+Note: sums in `int` can overflow; use `long long` for large inputs.
+
+The search space [max(A_i), Σ A_i] also works (the time can never be smaller than the longest wall). k = 1 → 26 (Σ), k ≥ N → 8 (max wall).
 
 ```cpp
 // Fabricator/BinarySearch/ArrayDivision.cpp
@@ -709,9 +715,9 @@ long long binary_search(int *arr, int &n, int &k, long long &sumOfAll){
 }
 ```
 
-Same painter wala hai (CSES 1085). [2 4 7 3 5], k = 3 → 8.
+This is the same painter problem (CSES 1085; CSES is a problem set website). [2 4 7 3 5], k = 3 → 8.
 
-Ab "maximize the minimum" wala: same BS, bas direction ulti. Check true hai chhote mid ke liye, toh LAST true chahiye → true pe `lo = mid + 1`.
+Now the "maximize the minimum" form: the same BS, but in the opposite direction. The check is true for small mid and false for large mid (a larger minimum distance is harder to achieve), so we want the LAST true: on true set `lo = mid + 1`.
 
 ```cpp
 // Fabricator/BinarySearch/ClassRoom.cpp
@@ -750,7 +756,7 @@ long long binary_search(vector<int> &seats, int k){
 }
 ```
 
-Seats 1 2 4 8 9, k = 3 → 3 (seats 1, 4, 8 ya 1, 4, 9). Seats sorted hone chahiye pehle.
+Seats 1 2 4 8 9, k = 3 → 3 (seats 1, 4, 8 or 1, 4, 9). The seats must be sorted first. Dry run: mid = 3 places students at 1, 4, 8 → 3 students ≥ k, so true. mid = 4 places students at 1, 8 only → 2 &lt; 3, so false.
 
 # Patterns:
 
@@ -758,14 +764,14 @@ i) Sweep:
 
 ![Array swept into three groups, and items contributing to k](../../../assets/notes/1-4-binary-search/fig21_patterns.png)
 
-*Sweep: groups banao. Atomic: har item k mein add hota hai.*
+*Sweep: build groups. Atomic: every item adds to k.*
 
 We are moving forward in an array and grouping the elements.
 
 * creating partitions over array.
 * we simply sweep a partition into one group. and we create multiple groups based on the constraints given.
 
-(Painter isi pattern ka example hai.)
+(Painter is an example of this pattern.)
 
 ii) Atomic Items contribution:
 
@@ -777,7 +783,7 @@ k is something we want to achieve.
 
 ![Machines m1 m2 m3 producing x1 x2 x3](../../../assets/notes/1-4-binary-search/fig22_factory.png)
 
-*Saari machines t tak pahunchne mein contribute karti hain.*
+*All machines contribute to reaching the target t.*
 
 check (mid) → time
 
@@ -791,7 +797,7 @@ x1 + x2 + x3 ... ≥ t  → yes: 1 / no: 0
 
 lo = 0, hi = t * arr[0] ; ans = -1
 
-(arr[0] kisi bhi machine ki speed ho, ek machine akele bhi t products bana leti hai → valid upper bound. Fastest lo toh aur tight.)
+(arr[0] is the time one machine needs for one product. That machine alone makes t products in t * arr[0] seconds, so this is a valid upper bound. Using the fastest machine gives a tighter bound.)
 
 * mostly optimization type problem use binary search
 
@@ -833,7 +839,7 @@ long long binary_search(long long n, long long t, long long *arr){
 }
 ```
 
-machines 3 2 5, t = 7 → 8 (8 sec pe 2 + 4 + 1 = 7, 7 sec pe 6 hi). `if (machines_produced >= t) return true;` early return isliye ki sum overflow na ho.
+machines 3 2 5, t = 7 → 8 (in 8 sec: 2 + 4 + 1 = 7 products; in 7 sec only 6). The early return `if (machines_produced >= t) return true;` is there so the sum does not overflow. Cost: log2(t · arr[0]) checks of n steps each.
 
 iii) 2D Variations:
 
@@ -841,7 +847,7 @@ iii) 2D Variations:
 
 ![3 by 3 multiplication table with entries at most 4 colored](../../../assets/notes/1-4-binary-search/fig23_mult_table.png)
 
-*Row i mein i, 2i, 3i ... → mid se ≤ wale min(n, mid/i).*
+*Row i holds i, 2i, 3i ... so the entries ≤ mid in that row number min(n, mid/i).*
 
 → The elements of this matrix are formed by doing some operation on two arrays A & B.
 
@@ -849,7 +855,7 @@ Problems on this are mostly like put all elements of the matrix in an array, sor
 
 check (mid) = are there greater than k elements in ≤ mid - in table total.
 
-Note: "greater than" nahi, "at least k" (≥ k). k-th smallest woh pehla mid hai jiska count ≥ k.
+Note: it is "at least k" (≥ k), not "greater than k". The k-th smallest is the first mid whose count is ≥ k.
 
 ```cpp
 // Fabricator/BinarySearch/MultiplicationTable.cpp
@@ -886,9 +892,11 @@ long long binary_search(long long n, long long k){
 }
 ```
 
-n = 3 → 3, n = 5 → 8. Count O(n), toh T.C. O(n log(n^2)).
+n = 3 → 3, n = 5 → 8. Counting is O(n), so T.C. is O(n log(n^2)).
 
-Same idea "sab elements ek array mein, sort karo, kth/median": subarray sums ka median. Sums O(N^2) hain, array nahi bana sakte → BS on sum, count of subarrays with sum ≤ mid two pointers se.
+Dry run for n = 3 (the table is 1 2 3 / 2 4 6 / 3 6 9) and k = 5: count(≤ 3) = min(3,3) + min(3,1) + min(3,1) = 5 ≥ 5 → true. count(≤ 2) = 2 + 1 + 0 = 3 &lt; 5 → false. So the answer is 3.
+
+Same idea ("put all elements in one array, sort, take the k-th or the median"): the median of subarray sums. There are O(N^2) sums, so the array cannot be built. Instead, BS on the sum, and count the subarrays with sum ≤ mid using two pointers.
 
 ```cpp
 // Fabricator/BinarySearch/MedianOfSubarraySum.cpp
@@ -941,7 +949,7 @@ long long binary_search(vector<long long> &a, long long total){
 }
 ```
 
-[1 2 3] → 3, [5] → 5, [1 5] → 5 (sums 1, 5, 6). Array positive hona chahiye (two pointers ke liye).
+[1 2 3] → 3, [5] → 5, [1 5] → 5 (sums 1, 5, 6). The array must be positive (needed for two pointers).
 
 Ques:
 
@@ -994,7 +1002,7 @@ Answere here is max neighbour distance.
 lo / min = 0
 hi / max = max distance between two points in input.
 
-Note: lo = 0 pe check mein x se divide hoga → 0 se divide. lo = 1 se start karo. Aur yaha answer integer hai aur points integer positions pe (isliye 33.33 nahi, 34).
+Note: with lo = 0 the check would divide by 0 (it divides by x). Start from lo = 1. Also, the answer here is an integer and the points are at integer positions (so 34, not 33.33).
 
 check (mid) → can we place ≤ k points to make answer ≤ x.
 
@@ -1004,7 +1012,7 @@ also == x might not be monotone.
 
 ![Strip no no yes yes yes and the gap split into pieces of at most x](../../../assets/notes/1-4-binary-search/fig26_gas_check.png)
 
-*x0 chalta hai → x0+1 bhi. Gap d ko ≤ x ke tukdon mein todne ko ceil(d/x) - 1 points.*
+*If x0 works, x0+1 also works. Splitting a gap d into pieces of at most x needs ceil(d/x) - 1 points.*
 
 x0 is ≤
 ∴ x0+1 is also ≤
@@ -1020,7 +1028,7 @@ Now, we need to place pts such that max dist. b/w two neighbours is ≤ x.
 
 $\lceil \frac{d}{x} \rceil - 1 = \lfloor \frac{d+x-1}{x} \rfloor - 1$
 
-Dekho d = 100, x = 30: ceil(100/30) - 1 = 4 - 1 = 3 points (30, 60, 90 → tukde 30, 30, 30, 10).
+Look: d = 100, x = 30: ceil(100/30) - 1 = 4 - 1 = 3 points (30, 60, 90 → pieces 30, 30, 30, 10).
 
 ```cpp
 // Fabricator/BinarySearch/MinimiseMaxDiff.cpp
@@ -1086,7 +1094,7 @@ B → 2, 3, 4          k=3
 
 ![Sums of A and B and the check strip for 4 to 10](../../../assets/notes/1-4-binary-search/fig27_kth_sum.png)
 
-*Saare sums, aur har x ke liye check. Pehla 1 → 7.*
+*All the sums, and the check for each x. The first 1 is at 7.*
 
 check (7) → 5, 6, 7, 7   k' = 4 ≥ k  ⇒ True
 check (8) → 5, 6, 7, 7, 8   k' = 5 ≥ k  ⇒ True.
@@ -1115,7 +1123,7 @@ After sorting A & B, we can decide hi & lo easily.
 lo = A[0] + B[0]
 hi = A.last() + B.last().  or A[n-1] + B[m-1]
 
-Note: ye fragment hai (return type nahi). Count aur mid `long long` mein rakho.
+Note: this is a fragment (no return type). Keep the count and mid in `long long`.
 
 ```cpp
 // Fabricator/BinarySearch/KthSumValue.cpp
@@ -1169,11 +1177,11 @@ find max. length subarray that can be created with all 1s. by flipping ≤ k mov
 
 ![Two zeros flipped and the longest run of ones](../../../assets/notes/1-4-binary-search/fig28_flips.png)
 
-*k = 2: do zeros flip karo, cells 3..12 sab 1.*
+*k = 2: two zeros are flipped, cells 3..12 are all 1.*
 
 [1|0|0|1|1|1|1|1|1|1|1|1|1]  → X = longest window.
 
-Note: is array mein X = 10 aata hai (cells 3 se 12).
+Note: in this array X = 10 (cells 3 to 12).
 
 ∴ X-1 is also possible.
 
@@ -1182,7 +1190,7 @@ ans ≥ x → monotonic space.
 ① So, we need to find a subarray/window of size X that can be all 1s.
 We can iterate through all subarrays of size X in the arr and check.
 
-Prefix sum array (ones ka) se window mein ones O(1) mein milte hain:
+A prefix sum array (of ones) gives the number of ones in a window in O(1):
 
  1 2 3 4 4 5 5 5 6 7     ← prefix sum array.
 [1|1|1|1|0|1|0|0|1|1]
@@ -1203,11 +1211,11 @@ check → O(N-X+1). O(1).
 
 ② Using Binary Search → O (log N) x O(N)
 
-③ Prefix array bhi nahi chahiye: window slide karo.
+③ A prefix array is not needed either: slide the window.
 
 ![Window sliding by one step](../../../assets/notes/1-4-binary-search/fig30_sliding.png)
 
-*Ek cell bahar, ek andar.*
+*One cell leaves, one cell enters.*
 
 if we computed in this.
 # of 0s = 2 = cnt
@@ -1220,9 +1228,9 @@ in new window.
 
 st++ ; end++;
 
-Note: naya element `arr[en]` (pehle wala en) aata hai, phir dono pointers aage.
+Note: the incoming element is `arr[en]` (with the value of en before it is incremented); after that both pointers move forward.
 
-Brute force: har (l, r) pe zeros gino → O(N^3). Prefix se O(N^2). BS on length + prefix → O(N log N). Aur two pointers (r badhao, zeros > k ho toh l badhao) → O(N), isi liye 80% "BS on every start" two pointers se ho jaate hain.
+Brute force: count the zeros for every (l, r) → O(N^3). With prefix sums → O(N^2). BS on length + prefix → O(N log N). Two pointers (move r forward; when zeros > k, move l forward) → O(N). This is why more than 80% of the "BS on every start" problems can be solved with two pointers.
 
 ```cpp
 // Fabricator/BinarySearch/ConsecutiveOnes.cpp
@@ -1258,7 +1266,7 @@ int binary_search(int *p, int n, int k, int st){
 }
 ```
 
-Ye har start ke liye sabse door ka valid end dhoondta hai (BS on every start). Samples: 7 4 8 10 7. Upar wale 13-cell array pe k = 2 → 10.
+For every start this finds the farthest valid end (BS on every start). Samples: 7 4 8 10 7. On the 13-cell array above with k = 2 → 10.
 
 Ques: find the # of subarrays that you can make all 1s by ≤ k flips.
 
@@ -1269,11 +1277,12 @@ k = 1
 
 ![Valid end for every start in 1 0 1 0 1](../../../assets/notes/1-4-binary-search/fig31_count_by_start.png)
 
-*Har start ka farthest valid end.*
+
+*The farthest valid end for each start.*
 
 5 + 3 + 2 + 1 = 11
 
-Note: start ke hisaab se 3 + 2 + 3 + 2 + 1 = 11 (length ke hisaab se 5 + 4 + 2 = 11).
+Note: counted by start: 3 + 2 + 3 + 2 + 1 = 11 (counted by length: 5 + 4 + 2 = 11).
 
 k=2
 [1|0|1|0|1|1|0|1]
@@ -1286,7 +1295,7 @@ l=0 , r=5 will be true in monotone space
 
 ![T T T T T T F F for l = 0](../../../assets/notes/1-4-binary-search/fig32_true_false_strip.png)
 
-*l = 0: T T T T T T F F. Last true chahiye.*
+*l = 0: T T T T T T F F. We want the last true.*
 
  T T T T T T F F
  0 1 2 3 4 5 6 7
@@ -1330,7 +1339,7 @@ sol += (ans - st +1)
 sol += (ans - (st-1))
 To make this zero → ans = st-1;
 
-Note: 2 cheezein: `while (lo <= hi)` hona chahiye. Aur strip T T T F F hai toh LAST true chahiye: true pe `lo = mid+1`, false pe `hi = mid-1`. Upar `hi = mid-1` on true first-true wala hai → galat (1 0 1 0 1, k = 1 pe 5 aata hai, 11 chahiye).
+Note: two points. The loop must be `while (lo <= hi)`. And since the strip is T T T F F, we need the LAST true: on true set `lo = mid+1`, on false `hi = mid-1`. The `hi = mid-1` on true shown above is the first-true form, so it is wrong here (for 1 0 1 0 1 with k = 1 it gives 5, but 11 is needed).
 
 ```cpp
 // Fabricator/BinarySearch/SubarraysWithKFlips.cpp
@@ -1371,9 +1380,9 @@ int binary_search(int &n, int &k, int &st, int *p){
 }
 ```
 
-Sum karo `binary_search(...) - st + 1` har st pe: [1 0 1 0 1], k = 1 → 11. [1 0 1 0 1 1 0 1], k = 2 → 32. [0 1 0 1 0], k = 0 → 2.
+Add up `binary_search(...) - st + 1` over every st: [1 0 1 0 1], k = 1 → 11. [1 0 1 0 1 1 0 1], k = 2 → 32. [0 1 0 1 0], k = 0 → 2.
 
-Same "har start pe BS" ka ek aur example: minimum size subarray with sum ≥ target (prefix sums, end dhoondo).
+Another example of "BS from every start": minimum size subarray with sum ≥ target (prefix sums; search for the end).
 
 ```cpp
 // Fabricator/BinarySearch/MinimumSizeSubarraySum.cpp
@@ -1405,7 +1414,7 @@ int binary_search(int target, vector<int>& nums){
 }
 ```
 
-(yaha `nums` prefix array hai.) [2 3 1 2 4 3], target = 7 → 2.
+(here `nums` is the prefix array.) [2 3 1 2 4 3], target = 7 → 2.
 
 HW
 Ques: Find # of subarrays such that # of distinct element ≤ k.
@@ -1419,13 +1428,13 @@ Eg:-
 
 Valid: [1], [1,2], [2], [2,3], [2,3,2], [3], [3,2], [2] → 8.
 
-Hint: window mein distinct count prefix sum se nahi milta, freq map rakho. Observation: har r ke liye smallest valid l sirf aage badhta hai → two pointers.
+Hint: the number of distinct values in a window cannot be read from prefix sums; keep a frequency map. Observation: for each r, the smallest valid l only moves forward → two pointers.
 
 → Binary Search of Real Domain:
 
 ![Step from low to high at ans, and interval shrinking](../../../assets/notes/1-4-binary-search/fig34_real_domain.png)
 
-*Real domain: ans ek number hai, index nahi. Interval ans ke paas aata jata hai.*
+*Real domain: the answer is a number, not an index. The interval closes in on the answer.*
 
 ```cpp
 long double lo= 0, hi= n;
@@ -1453,13 +1462,13 @@ So in ques → it'll ask to do some rounding off
 
 . Ideally keep epsilon 100 times more than what is asked in question.
 
-Note: matlab question jitna error maange, epsilon usse 100 guna chhota (tight) rakho.
+Note: use an epsilon that is 100 times tighter (smaller) than the error the question allows.
 
 \* If the data type is not optimal and we're keep EPS tight on that, then the BS might not converge.
   ↳ Always use a bit bigger data type
   ↳ long double.
 
-Dekho sqrt(2) ka example: check(x) = x*x ≥ 2. lo = 0, hi = 2. EPS = 1e-9 pe 31 rounds baad ruk jata hai (2/2^31 ≈ 9.3·10^-10 &lt; 10^-9), ans 1.414213561919. Asli 1.414213562373.
+Example sqrt(2): check(x) = x*x ≥ 2. lo = 0, hi = 2. With EPS = 1e-9 the loop stops after 31 rounds (2/2^31 ≈ 9.3·10^-10 &lt; 10^-9) and gives ans 1.414213561919. The true value is 1.414213562373.
 
 \* Better Alternative:
 
@@ -1487,14 +1496,14 @@ n → n/2 →(40)→ n/2^40
 2^40 ~ 10^12
    ↳ will work for 10^9 types requirement.
 
-Note: n = 10^9 ho toh 10^9/2^40 ≈ 9·10^-4 hi bachta hai, 10^-9 nahi. Rounds = ⌈log2(n/eps)⌉. n = 10^9, eps = 10^-9 → 60.
+Note: if n = 10^9, then 10^9/2^40 ≈ 9·10^-4 remains, not 10^-9. Rounds = ⌈log2(n/eps)⌉. For n = 10^9, eps = 10^-9 → 60.
 
 Although for larger n, we can increase the iterations easily. → may be to 60, 80.
 
 \* Use iterative for very tight questions in which precision is highly tight requirement.
   ↳ for others classical style will work.
 
-Fixed iterations ka ek repo example: maximize (Σ A_i) / (Σ B_i) over K chosen indices. Check(mid): kya koi K items hain jinke Σ(A_i - mid·B_i) ≥ 0? Haan toh ratio ≥ mid possible hai → lo = mid.
+Example of fixed iterations from the repository: maximize (Σ A_i) / (Σ B_i) over K chosen indices. Check(mid): do K items exist with Σ(A_i - mid·B_i) ≥ 0? If yes, a ratio ≥ mid is possible → lo = mid.
 
 ```cpp
 // Fabricator/BinarySearch/MaximizeFraction.cpp
@@ -1550,23 +1559,23 @@ Used to find minima/maxima of convex up/down function. (works only on below type
 
 ![Valley, hill and V shape with the best point marked](../../../assets/notes/1-4-binary-search/fig35_unimodal.png)
 
-*Valley (min) aur hill (max). V shape bhi chalta hai.*
+*Valley (minimum) and hill (maximum). A V shape also works.*
 
 Strictly decreasing then zero then strictly increasing. | Strictly increasing then zero then strictly decreasing.
 
 (V shape with point at bottom, inverted V with point at top.)
 
-Note: "zero" (flat) sirf bilkul top/bottom pe ho sakta hai. Beech mein flat part aaya toh ternary fail.
+Note: "zero" (flat) is allowed only exactly at the top or bottom. If a flat part appears in the middle, ternary search fails.
 
 m1 = lo + (hi-lo)/3   |   m2 = m1 x 2.
 
-Note: m2 = lo + 2·(hi-lo)/3 (= hi - (hi-lo)/3), m1 ka double nahi.
+Note: m2 = lo + 2·(hi-lo)/3 (= hi - (hi-lo)/3), not the double of m1.
 
 TS divides the search space into 3 parts.
 
 ![Hill with lo, m1, m2, hi and the part after m2 removed](../../../assets/notes/1-4-binary-search/fig36_ternary_step.png)
 
-*f(m2) ≤ f(m1) → (m2, hi] gaya.*
+*f(m2) ≤ f(m1) → the part (m2, hi] is removed.*
 
 f (m1) > f(lo) && f(m2) ≤ f(m1)
 
@@ -1575,7 +1584,7 @@ We can eliminate hi → search space reduces to (lo, m2).
 
 If f(m2) == f(m1) → then also hi can be eliminated
 
-Dusra case f(m1) &lt; f(m2) → lo se m1 tak gaya (peak m1 ke right mein).
+The other case, f(m1) &lt; f(m2): lo up to m1 is removed (the peak is to the right of m1).
 
 Can be solved using BS also.
 We find mid & mid+δ
@@ -1583,7 +1592,7 @@ We can calculate slope b/w mid & mid+δ.
 
 ![Hill with mid and mid plus d, curve going up](../../../assets/notes/1-4-binary-search/fig37_slope_search.png)
 
-*mid → mid+δ upar gaya → max right mein.*
+*mid → mid+δ goes up → the maximum is on the right.*
 
 \{ If slope increases then max is on right.
 \{ If slope decreases then max is on left.
@@ -1591,9 +1600,9 @@ We can calculate slope b/w mid & mid+δ.
 ↳ Half of search space is eliminated
    ↳ Better than ternary search.
 
-Note: "slope increases" matlab f(mid+δ) > f(mid), function upar ja raha hai (slope ki value badh rahi hai, ye nahi).
+Note: "slope increases" means f(mid+δ) > f(mid), i.e. the function is going up (it does not mean that the value of the slope grows).
 
-Kyu better: ternary mein 2 f calls aur 1/3 gaya → ≈ 2·log_\{1.5\}(n) ≈ 3.4·log2(n) calls. Slope mein 2 calls aur 1/2 gaya → 2·log2(n).
+Why it is better: ternary search makes 2 calls of f and removes 1/3 per round → ≈ 2·log_\{1.5\}(n) ≈ 3.4·log2(n) calls. Slope search makes 2 calls and removes 1/2 → 2·log2(n) calls.
 
 \* Above BS works really well with integer values.
    mid is int & δ is int.
@@ -1622,7 +1631,7 @@ Using differentiation.
 
 ![A over root t falls, B(t-1) rises, sum is U shaped](../../../assets/notes/1-4-binary-search/fig39_freefall_curve.png)
 
-*A/√x gir raha, B(x-1) badh raha, sum = U. Right: whole-number t pe f(t) > f(t+1) (red) / ≤ (green).*
+*A/√x falls, B(x-1) rises, the sum is a U shape. Right: at whole numbers t, f(t) > f(t+1) (red) / ≤ (green).*
 
 effective curve (U shape, ek minimum).
 
@@ -1630,7 +1639,7 @@ We'll use ternary operations to find this.
 
 lo= 0,  hi= a/b
 
-b·t ≤ a  \} gravity badhane me a se jaada time to nahi lena chahiye.
+b·t ≤ a  \}  raising gravity should not take more than a seconds in total.
 t ≤ a/b.
 
 ∴ hi = a/b → is good estimate.
@@ -1644,7 +1653,7 @@ a - b → Large.
 f(mid) &lt;= f(mid+1)  |  f(mid) >= f(mid+1)
 hi= mid             |  ∴ lo = mid.
 
-Note: whole numbers pe `lo = mid` infinite loop deta hai → `lo = mid + 1`. Aur t = 0 allowed nahi (A/√0), lo = 1 lo. Dekho A = 100, B = 1: real min t = 50^\{2/3\} ≈ 13.57. Integers pe f(13) > f(14) aur f(14) ≤ f(15) → t = 14.
+Note: on whole numbers `lo = mid` gives an infinite loop → use `lo = mid + 1`. Also t = 0 is not allowed (A/√0), so start with lo = 1. Example A = 100, B = 1: the real minimum is at t = 50^\{2/3\} ≈ 13.57. On integers f(13) > f(14) and f(14) ≤ f(15) → t = 14.
 
 ```cpp
 // Fabricator/BinarySearch/Freefall-Ternary.cpp
@@ -1699,26 +1708,27 @@ long double binary_search(){
 }
 ```
 
-A = 10, B = 1 → 7.7735026919 (binary_search aur ternary_search dono). A = 5, B = 10 → 5.0000000000.
+A = 10, B = 1 → 7.7735026919 (both binary_search and ternary_search). A = 5, B = 10 → 5.0000000000.
 
 ## Quick revision
 
-- BS needs monotonic strip `0 0 0 1 1 1` (first true) ya `1 1 1 0 0 0` (last true)
+- BS needs a monotonic strip: `0 0 0 1 1 1` (find the first true) or `1 1 1 0 0 0` (find the last true)
 - mid = lo + (hi-lo)/2 → no overflow
-- while (lo &lt;= hi), mid kabhi wapas nahi → mid+1 / mid-1
+- Loop `while (lo &lt;= hi)`; never put mid back into the space → use mid+1 / mid-1
 - 4 variables: lo, hi, mid, ans
-- first true: ans = mid; hi = mid-1. last true: ans = mid; lo = mid+1
-- lower_bound = first ≥ x (# elem &lt; x). upper_bound = first > x (# elem ≤ x). count of x = ub - lb
-- array 0/1 mein convert mat karo, on demand
-- rotated: idx of min = no. of rotations (arr[mid] ≤ arr[n-1])
-- peak: arr[mid] > arr[mid+1], mid == n-1 → 1
-- minimize the max / maximize the min → BS on answer, check = "x se ho jayega?"
+- First true: ans = mid; hi = mid-1. Last true: ans = mid; lo = mid+1
+- lower_bound = first ≥ x (# elem &lt; x). upper_bound = first > x (# elem ≤ x). Count of x = ub - lb
+- Do not convert the array to 0/1; convert the cells on demand
+- Rotated array: index of the minimum = no. of rotations (check arr[mid] ≤ arr[n-1])
+- Peak: check arr[mid] > arr[mid+1]; mid == n-1 → 1
+- Minimize the max / maximize the min → BS on answer; check = "will x be enough?"
 - T.C. = O(log(search space) * check())
-- painter: left→right sweep. factory: Σ mid/k_i. mult table: Σ min(n, mid/i). kth sum: Σ upper_bound
-- points: ⌈d/x⌉ - 1 = ⌊(d+x-1)/x⌋ - 1. greedy halving galat. ≤ use karo, == nahi
-- flips: X possible → X-1 possible. zeros = X - ones. har start pe LAST valid end, ans = st-1, sol += ans-st+1
-- real domain: EPS question se ~100x tight, long double, ya fixed rounds ⌈log2(n/eps)⌉
-- ternary: strictly up-down / down-up. m1 = lo+(hi-lo)/3, m2 = hi-(hi-lo)/3. integers pe slope BS better
+- Painter: left→right sweep. Factory: Σ mid/k_i. Multiplication table: Σ min(n, mid/i). Kth sum: Σ upper_bound
+- Points: ⌈d/x⌉ - 1 = ⌊(d+x-1)/x⌋ - 1. Greedy halving is wrong. Use ≤, not ==
+- Flips: if X is possible then X-1 is possible. zeros = X - ones. For each start take the LAST valid end, ans = st-1, sol += ans-st+1
+- Real domain: EPS about 100x tighter than the question asks, use long double, or a fixed number of rounds ⌈log2(n/eps)⌉
+- Ternary: the function must be strictly up-down or down-up. m1 = lo+(hi-lo)/3, m2 = hi-(hi-lo)/3. On integers, slope BS is better
+- Freefall: f(t) = (t-1)B + A/√t, minimum near (A/2B)^\{2/3\}
 - freefall: f(t) = (t-1)B + A/√t, min near (A/2B)^\{2/3\}
 
 ## Practice problems

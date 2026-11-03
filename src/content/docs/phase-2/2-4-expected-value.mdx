@@ -11,7 +11,7 @@ import Ladder from '../../../components/Ladder.astro';
 
 ## What this note covers
 
-Contribution technique → instead of building every large object (every triplet, every subarray, every substring) and evaluating it, ask how much each small piece adds to the answer, then add those amounts.
+The contribution technique → instead of building every large object (every triplet, every subarray, every substring) and evaluating it, ask how much each small piece adds to the answer, then add those amounts.
 
 Why this matters: an array of n = $10^5$ elements has about n(n+1)/2 ≈ 5×$10^9$ subarrays. A program can do roughly $10^8$ simple operations per second, so looking at every subarray one by one is far too slow. Counting what each of the n elements contributes takes only n steps.
 
@@ -22,7 +22,11 @@ Terms used in this lesson:
 - DS = data structure (map, set, ...)
 - mod = remainder after division, here by $10^9+7$ (a prime number that keeps results inside a normal integer range)
 - ans = the answer being built; cur = the running value for the current position
-- nCr = no. of ways to choose r things out of n, order doesn't matter. e.g. nC2 = n(n-1)/2
+- nCr = number of ways to choose r things out of n, order doesn't matter. e.g. nC2 = n(n-1)/2
+- i, j, k = positions in the array, counted from 0, so the last position is n-1
+- inversion = a pair of positions (i, j) with i &lt; j but arr[i] > arr[j] (the bigger value comes first)
+- Fenwick tree (also called BIT, binary indexed tree) = a small structure that keeps counts or sums and answers "sum of the first p cells" and "add to one cell", both in O(log n) time
+- freq = frequency map, it stores how many times each value was seen so far
 
 Contents:
 - Contribution technique (the map)
@@ -38,6 +42,8 @@ Contents:
 
 → Contribution Technique: Always applicable whenever we count, sum or even optimize
 
+The tree below is the map of this lesson. Each branch is one way of asking "who adds to the answer?".
+
 ```
 Contribution Technique
  ├─→ Atomic item contribution
@@ -49,11 +55,13 @@ Contribution Technique
 ![Tree: contribution technique splits into atomic item contribution and contribution at pivot; pivot splits into extension and DS usage.](../../../assets/notes/2-4-expected-value/fig01_technique_map.png)
 *Two branches. Atomic = one small item. Pivot = fix the end.*
 
+Atomic item contribution: pick the smallest thing that adds to the answer (one element, one pair, one character) and count how many times it is added. Contribution at pivot: fix one position, usually the end of the range, and answer the question "what ends here?". There are two ways to do that. Extension reuses the answer of the previous end. DS usage (data structure usage) keeps the earlier elements in a map, set or tree and searches in it.
+
 ## Atomic item contribution
 
-Q: Given an array of n elements, choose all triplets (i,j,k) such that (0 ≤ i &lt; j &lt; k ≤ n-1) and calculate their sum. mod $10^9+7$
+Question: Given an array of n elements, choose all triplets (i,j,k) such that (0 ≤ i &lt; j &lt; k ≤ n-1) and calculate their sum, modulo $10^9+7$.
 
-Brute force:
+Brute force, three nested loops, one for each position of the triplet:
 
 ```cpp
 for (0 ≤ i < n)
@@ -62,13 +70,13 @@ for (0 ≤ i < n)
             ans += arr[i] + arr[j] + arr[k];
 ```
 
-→ O(n^3) → TLE.
+→ O(n^3) → TLE (time limit exceeded).
 
 How slow? For n = 1000 there are about 1.7×$10^8$ triplets, already near the limit. For n = $10^5$ there are about 1.7×$10^14$.
 
 Note: j and k loops should stop at `< n`, last index is n-1.
 
-Let's take 4 elements a, b, c, d and write all triplets.
+Take 4 elements a, b, c, d and write all triplets. Each line below is one triplet.
 
 ```
 a b c
@@ -82,9 +90,7 @@ a b   d
 ![Array a b c d with its four triplets highlighted; each element is picked 3 times.](../../../assets/notes/2-4-expected-value/fig02_triplets_four.png)
 *4 triplets; every element appears in 3 of them.*
 
-Notice that every element comes exactly 3 times. Why? Because
-
-When we choose any number, then we have to choose other 2 numbers out of **n-1** nos.
+Notice that every element comes exactly 3 times. Why? Because, when we choose any number, then we have to choose the other 2 numbers out of the **n-1** numbers left.
 
 ```
 a  ( ) ( )
@@ -92,7 +98,11 @@ a  ( ) ( )
     2 places to fill out of (n-1) options.
 ```
 
+So the element a is counted this many times:
+
 a × $^{n-1}C_2$
+
+For the 4 elements above this is $^{3}C_2$ = 3, which matches the 3 triplets that contain a.
 
 ![a[x] with two empty slots, shown for the three positions of a[x].](../../../assets/notes/2-4-expected-value/fig03_roles.png)
 *a[x] is fixed; the other 2 places are filled from the remaining n-1 elements.*
@@ -103,11 +113,11 @@ a[x] * $^{n-1}C_2$ → choose two out of (n-1) elements without any order.
 
 ans = $\sum_{i=0}^{n-1} (a[i] \times {}^{n-1}C_2)$
 
-ans = $^{n-1}C_2 \times \sum_{0}^{n-1} a[i]$ &nbsp; (Sum of ele of array.)
+ans = $^{n-1}C_2 \times \sum_{0}^{n-1} a[i]$ &nbsp; (the sum of the elements of the array)
 
 Check with a,b,c,d = 1,2,3,4 → $^{3}C_2 = 3$, sum = 10, ans = 30. Brute force also gives 30.
 
-T.C. = O(n) (just one pass for the sum), memory O(1). Edge cases: n < 3 → no triplet, ans = 0. Use long long, `(n-1)*(n-2)/2` is big. Negative values → `((x % mod) + mod) % mod`.
+T.C. (time complexity) = O(n) (just one pass for the sum), memory O(1). Edge cases: n &lt; 3 → no triplet, ans = 0. Use long long: for n = $10^5$, `(n-1)*(n-2)/2` is about 5×$10^9$, which does not fit in a 32-bit int (limit about 2.1×$10^9$). Both `ways` and `total` are kept below $10^9+7$, so their product is below about $10^{18}$ and still fits in a long long. Negative values → `((x % mod) + mod) % mod`, because in C++ the remainder of a negative number is negative.
 
 ```cpp
 /*
@@ -128,7 +138,7 @@ long long tripletSum(const vector&lt;long long>& arr) \{
 \}
 ```
 
-Why ordering doesn't matter?
+Why ordering doesn't matter? The sketch shows the three places where a[x] can sit relative to the 2 other chosen positions.
 
 ```
 |__| a[x] |__|        If we have to choose this way then a[x] is j
@@ -140,11 +150,11 @@ a[x] |__|__|    →     a[x] is i.
 
 In other words, whichever 2 other positions we choose, the role of a[x] (i, j or k) is decided by where it sits among them. One set of 3 positions is exactly one triplet. So we count sets, never orders.
 
-Common mistake: multiplying by 3! = 6 for the orderings. That would count each triplet 6 times.
+Common mistake: choosing the 2 other positions in order, which gives (n-1)(n-2) instead of $^{n-1}C_2$ = (n-1)(n-2)/2. Every pair of positions is then counted twice, so the answer doubles (60 instead of 30 for 1, 2, 3, 4).
 
-Same thinking, another problem (Fabricator/ContributionTechnique/SumOfDifference.cpp): sum of |arr[i] - arr[j]| over all pairs i < j. Sorting doesn't change this sum. After sorting, element at index i is bigger in `i` pairs (all before it) and smaller in `n-i-1` pairs (all after it). So contribution = (i - (n-i-1)) × value. T.C. = O(n log n) because of sort.
+Same thinking, another problem (Fabricator/ContributionTechnique/SumOfDifference.cpp): sum of |arr[i] - arr[j]| over all pairs i &lt; j. The brute force looks at all n(n-1)/2 pairs, which is about 5×$10^9$ for n = $10^5$. Sorting doesn't change this sum, because |a - b| is the same for both orders and every pair of elements is still counted once. After sorting, element at index i is bigger in `i` pairs (all before it) and smaller in `n-i-1` pairs (all after it). In a pair the bigger value is added and the smaller value is subtracted, so contribution = (i - (n-i-1)) × value. T.C. = O(n log n) because of sort, memory O(n) for the sorted copy. With equal values the formula still works, because a pair of equal values adds and subtracts the same number. The answer can be large, so it is kept in a long long.
 
-Example: sorted [1, 3, 6]. Contributions: (0-2)×1 = -2, (1-1)×3 = 0, (2-0)×6 = 12. Total 10. Check by hand: |1-3| + |1-6| + |3-6| = 2 + 5 + 3 = 10.
+Example: sorted [1, 3, 6]. Index 0 is the smaller value in 2 pairs and the bigger value in 0 pairs, and so on. Contributions: (0-2)×1 = -2, (1-1)×3 = 0, (2-0)×6 = 12. Total 10. Check by hand: |1-3| + |1-6| + |3-6| = 2 + 5 + 3 = 10.
 
 ```cpp
 // Fabricator/ContributionTechnique/SumOfDifference.cpp (input reading removed, loop is same)
@@ -170,7 +180,7 @@ long long sumOfDifferences(vector&lt;int> arr) \{
 
 ### Inversions
 
-Q: inversion of an array = # pairs (i, j) such that ( i < j , arr[i] > arr[j] )
+Question: an inversion of an array is a pair (i, j) such that ( i &lt; j , arr[i] > arr[j] ). The number of inversions of an array is the number of such pairs. For example:
 
 ```
  4 , 2 , 1 , 3
@@ -182,9 +192,7 @@ Q: inversion of an array = # pairs (i, j) such that ( i < j , arr[i] > arr[j] )
 
 n, arr is given &nbsp; n ≤ 1000
 
-Brute force would look at about n²/2 subarrays and count inversions inside each one (up to O(n²) work), so O(n⁴) in total. For n = 1000 that is about $10^{12}$ steps, far too many.
-
-Find sum of ((# inv) of all subarray) of the array.
+Find the sum of (the number of inversions) over all subarrays of the array. The sketch lists the subarrays of 4, 2, 1, 3 (size 1 subarrays have no inversion and are left out) with the inversion count of each.
 
 ```
 4 , 2 , 1 , 3
@@ -200,9 +208,13 @@ Ans = 10
 ![All subarrays of 4 2 1 3 with at least 2 elements and their inversion counts.](../../../assets/notes/2-4-expected-value/fig05_subarray_inversions.png)
 *1 + 1 + 0 + 3 + 1 + 4 = 10. Size-1 subarrays have 0 inv.*
 
+Brute force looks at about n²/2 subarrays and counts the inversions inside each one by checking all pairs in it, up to O(n²) work, so O(n⁴) in total. Counting exactly, the sum over all lengths is about n⁴/24, which is about 4×$10^{10}$ steps for n = 1000. At roughly $10^8$ steps per second that is several minutes, so it is too slow.
+
 Here, we are required to count contribution of each atomic item, and here each atomic item is an inversion pair
 
-Atomic item = (i, j) &nbsp; (inv. pair)
+Atomic item = (i, j) &nbsp; (inversion pair)
+
+The inversion count of a subarray is the number of inversion pairs inside it. So adding the counts over all subarrays gives the same total as adding, for every inversion pair, the number of subarrays that contain it. The sketch lists this number next to each pair of 4, 2, 1, 3.
 
 ```
 4 2 → 3 times
@@ -218,7 +230,7 @@ Atomic item = (i, j) &nbsp; (inv. pair)
 
 We need to find no. of subarrays that contain the pair (i,j).
 
-**Note**
+**Note**: a subarray is fixed by choosing where it starts and where it ends. First count the subarrays that contain one single index i:
 
 ```
 (i+1) ways to start the subarray
@@ -228,12 +240,14 @@ We need to find no. of subarrays that contain the pair (i,j).
 
 ⇒ Total (i+1) × (n-i) subarrays can contain a[i] ✓
 
-For the pair, start can be anything ≤ i → (i+1) ways. End can be anything ≥ j → (n-j) ways.
+For the pair, start can be anything ≤ i → (i+1) ways. End can be anything ≥ j → (n-j) ways. Start and end are chosen independently, and every such choice contains both i and j, because everything between the start and the end is inside the subarray.
 
 ⇒ # subarrays = (i+1) × (n-j)
 
 ![Start zone gives i+1 ways, end zone gives n-j ways.](../../../assets/notes/2-4-expected-value/fig07_start_end_zones.png)
 *Start left of i, end right of j.*
+
+So the brute force over pairs, with the formula for the number of subarrays, is:
 
 ```cpp
 ans = 0
@@ -243,20 +257,57 @@ for (i = 0 ... n)
             ans += 1 * (i+1) * (n-j)
 ```
 
-O(n²) → for n = 1000 about 5×$10^5$ pairs, which is fast.
+O(n²) → for n = 1000 about 5×$10^5$ pairs, which is fast. Memory O(1).
 
-Note: loops go till `< n` in real code. Check: (4,2) → i=0, j=1 → 1×3 = 3 ✓, (2,1) → i=1, j=2 → 2×2 = 4 ✓.
+Note: loops go till `< n` in real code. Check: (4,2) → i=0, j=1 → 1×3 = 3 ✓, (2,1) → i=1, j=2 → 2×2 = 4 ✓, (4,1) → i=0, j=2 → 1×2 = 2 ✓, (4,3) → i=0, j=3 → 1×1 = 1 ✓. Use long long for ans: for n = 1000 the answer can reach about 4×$10^{10}$ (a strictly decreasing array), more than a 32-bit int holds.
 
-Observation: middle elements lie in more subarrays than the corner ones. For n = 7, (i+1)(n-i) = 7, 12, 15, 16, 15, 12, 7.
+Observation: middle elements lie in more subarrays than the corner ones, because they have more places to start on the left and more places to end on the right. For n = 7, (i+1)(n-i) = 7, 12, 15, 16, 15, 12, 7.
 
 ![Bars of (i+1)(n-i) for n = 7.](../../../assets/notes/2-4-expected-value/fig20_subarrays_per_index.png)
 *Subarrays containing index i, n = 7.*
 
-What if n is large, like 10^5? O(n²) is too slow. Then pivot on j: for each j we need the sum of (i+1) over earlier i with arr[i] > arr[j]. That is a "sum over earlier bigger elements" → Fenwick tree (BIT, binary indexed tree: point update, prefix sum, both O(log n)). T.C. = O(n log n). That is the DS usage branch below.
+What if n is large, like $10^5$? O(n²) is about 5×$10^9$ pairs, too slow. Then pivot on j: for each j we need the sum of (i+1) over earlier i with arr[i] > arr[j], and then multiply this sum by (n-j). That is a "sum over earlier bigger elements" → Fenwick tree (BIT, binary indexed tree: point update, prefix sum, both O(log n)). The tree is indexed by the rank of the value (its place in the sorted list of distinct values), and the cell of arr[i] stores the weight i+1. For 4, 2, 1, 3: j=1 (value 2): the bigger earlier value is 4 with weight 1, so 1 × (4-1) = 3. j=2 (value 1): 4 and 2 are bigger, weights 1 + 2 = 3, so 3 × (4-2) = 6. j=3 (value 3): only 4, so 1 × (4-3) = 1. Total 3 + 6 + 1 = 10 ✓. T.C. = O(n log n), memory O(n). That is the DS usage branch below.
+
+```cpp
+// Used for the "n is large" case of the inversions question above.
+// Two helper functions for the Fenwick tree (cells are numbered from 1).
+void fenwickAdd(vector&lt;long long>& bit, int pos, long long add) \{
+    for (; pos &lt; (int)bit.size(); pos += pos & -pos) bit[pos] += add;
+\}
+long long fenwickPrefix(const vector&lt;long long>& bit, int pos) \{
+    long long s = 0;
+    for (; pos > 0; pos -= pos & -pos) s += bit[pos];    // sum of cells 1..pos
+    return s;
+\}
+
+/*
+  Problem: return the sum, over all subarrays, of the number of inversions
+  inside the subarray (the same question as above, for large n).
+  Idea: pivot on j. Every earlier i with arr[i] > arr[j] adds (i+1) * (n-j).
+*/
+long long inversionsOfAllSubarrays(const vector&lt;int>& arr) \{
+    int n = arr.size();
+    vector&lt;int> vals(arr);
+    sort(vals.begin(), vals.end());
+    vals.erase(unique(vals.begin(), vals.end()), vals.end());   // distinct values, sorted
+    int m = vals.size();
+    vector&lt;long long> bit(m + 1, 0);
+    long long ans = 0;
+    for (int j = 0; j &lt; n; j++) \{
+        int rank = lower_bound(vals.begin(), vals.end(), arr[j]) - vals.begin() + 1;
+        long long weight_of_bigger = fenwickPrefix(bit, m) - fenwickPrefix(bit, rank);
+        ans += weight_of_bigger * (n - j);
+        fenwickAdd(bit, rank, j + 1);                           // weight of position j is j+1
+    \}
+    return ans;
+\}
+```
+
+A common mistake is to count values equal to arr[j] as bigger. Using the rank, "strictly bigger" means ranks above `rank`, so equal values are correctly left out.
 
 ## Contribution at pivot [Extension]
 
-Q.
+Question: take the array [1 3 2]. Each line below is one subarray and the product of its elements.
 
 ```
 [1   3   2]
@@ -270,21 +321,21 @@ Q.
               21
 ```
 
-multiply elements of subarrays & sum them.
+Multiply the elements of each subarray and sum these products.
 
 ![All subarrays of [1 3 2] with products 1, 3, 2, 3, 6, 6.](../../../assets/notes/2-4-expected-value/fig08_subarray_products.png)
 *Sum = 21.*
 
-Find sum of product of ele of all subarrays of an array.
-n → n ≤ $10^5$
+Find the sum of the products of the elements of all subarrays of an array.
+Here n ≤ $10^5$. There are about 5×$10^9$ subarrays, and one product can need up to n multiplications, so brute force is far too slow.
 
-\*\* Here using Atomic Contribution is very difficult
-generally used for sum of sum
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for sum of count.
+\*\* Here using atomic contribution is very difficult. It is generally used for a sum of sums or a sum of counts.
 
 Why is it difficult? The product of a subarray is not a sum of small independent pieces, so we cannot assign a fixed amount to each element. Instead, pivot on the end: group the subarrays by the position where they end.
 
 Intuition: every subarray ending at the new position is either an old subarray (ending one step earlier) with the new element appended, or the new element alone. So the old result can be reused instead of recomputed.
+
+The sketch below groups the subarrays of 1, 3, 2 by the position where they end.
 
 ```
   1        3        2
@@ -295,6 +346,8 @@ Intuition: every subarray ending at the new position is either an old subarray (
 ```
 
 Let's see subarrays ending at 3: `[1×3]` and `[3]`. These are just the subarray ending at 1 (`[1]`) with 3 multiplied, plus the new `[3]`. Similarly ending at 2: `[1×3×2]`, `[3×2]`, `[2]` = (old ones) × 2 + `[2]`.
+
+The next sketch writes the products of each group. Each group is built from the group before it (the notes call this "repeated"). The update rule is written below the groups.
 
 ```
  1 ]        3 ]         2 ]
@@ -311,6 +364,8 @@ Note: this update is for `cur` (subarrays ending at i), not the final ans. ans j
 ![Subarrays ending at 1, 3, 2 with products; cur = 1, 6, 14.](../../../assets/notes/2-4-expected-value/fig09_extension_products.png)
 *cur: 1 → 6 → 14. ans = 1 + 6 + 14 = 21.*
 
+The same idea with letters: the subarrays ending at d are on the left. When e arrives, every one of them gets e added at the end, and the single subarray e is new.
+
 ```
 a  b  c  d
                       e
@@ -323,7 +378,7 @@ a b c d              a b c d e
 ![Subarrays ending at d, and after adding e the subarrays ending at e.](../../../assets/notes/2-4-expected-value/fig10_extension_abcde.png)
 *Every old subarray gets e appended, plus the new subarray [e].*
 
-Suppose a new element 'e' is added to the array. Can we recompute the value.
+Suppose a new element 'e' is added to the array. Can we recompute the value?
 
 ← we simply add e or extend 'e' to previous result.
 
@@ -338,8 +393,10 @@ for (int i=0; i&lt;n; i++)\{
 
 Note: int will overflow, products grow fast. Use long long + mod. T.C. = O(n), memory O(1). Dry run [1,3,2]: cur = 1, then 1×3+3 = 6, then 6×2+2 = 14. ans = 21 ✓.
 
-Q: Find sum of all subarrays.
-Now, lets use this technique in sum of all subarrays.
+Why `cur × arr[i]` is right: cur is a sum of products p1 + p2 + ... of the subarrays that end at i-1. Appending arr[i] to each subarray multiplies each product by arr[i], and (p1 + p2 + ...) × arr[i] = p1×arr[i] + p2×arr[i] + ..., so one multiplication updates all of them at once. With mod, keep cur below $10^9+7$ so that `cur × arr[i]` stays below about $10^{18}$ and fits in a long long.
+
+Question: Find the sum of all subarrays (the sum of the sums of all subarrays).
+Now use the same technique for the sum of all subarrays.
 
 ```
  1 ]        3 ]          2 ]
@@ -355,7 +412,7 @@ Why (i+1)? Subarrays ending at i → start can be 0..i → (i+1) of them. Each g
 ![Sums of subarrays ending at 1, 3, 2: cur = 1, 7, 13.](../../../assets/notes/2-4-expected-value/fig11_extension_sums.png)
 *cur + arr[i] × (i+1).*
 
-Q: Find the largest sum of any contiguous subarray.
+Question: Find the largest sum of any contiguous subarray. In the sketch, the array is -1, 3, -2, 4, and the best sum that ends at -2 is extended to reach 4.
 
 ```
  -1     3     -2     4
@@ -369,12 +426,12 @@ Q: Find the largest sum of any contiguous subarray.
 cur = max (cur + arr[i], arr[i])
 ans = max (ans, cur)
 
-(Best subarray ending at -2 is [3,-2] = 1. For 4: either extend it → 1+4 = 5, or start fresh → 4. Max = 5.) This is Kadane's algorithm.
+(Best subarray ending at -2 is [3,-2] = 1. For 4: either extend it → 1+4 = 5, or start fresh → 4. Max = 5.) This is Kadane's algorithm. It works because a negative cur only makes the next sum smaller, so when cur + arr[i] is smaller than arr[i] (that is, cur is negative) the best choice is to drop the old part and start fresh.
 
 ![Bars of arr[i] and cur for -1, 3, -2, 4; cur is -1, 3, 1, 5.](../../../assets/notes/2-4-expected-value/fig12_kadane.png)
 *cur = -1, 3, 1, 5 → ans = 5.*
 
-Note: start cur and ans with arr[0], not 0. Otherwise all-negative array gives 0 (empty subarray, not allowed). T.C. = O(n).
+Note: start cur and ans with arr[0], not 0. Otherwise all-negative array gives 0 (empty subarray, not allowed). For [-3,-1,-2] the answer is -1. T.C. = O(n), memory O(1).
 
 ```cpp
 /*
@@ -410,17 +467,17 @@ long long maxSubarraySum(const vector&lt;long long>& arr) \{
 \}
 ```
 
-\*\* Simply put, if we know ans of this
+\*\* Simply put, if we know the answer of this
 
 ```
  (____←____)___)
 ```
 
-then we can extend the current ans to next end.
+then we can extend the current answer to the next end. Each step takes O(1) time, so the whole scan is O(n) time and O(1) memory.
 
 ## Contribution at pivot [Using Data Structure]
 
-Q: 2 sum
+Question: Two sum. We are given n and an array arr, and we look at two positions i &lt; j.
 
 ```
 n, arr   |   | | |   | | |
@@ -429,26 +486,28 @@ n, arr   |   | | |   | | |
 
 arr[i] + arr[j] == X
 
-Count (i,j) satisfying ↑
+Count the pairs (i,j) satisfying the condition above. Brute force checks all n(n-1)/2 pairs, about 5×$10^9$ for n = $10^5$, which is too slow.
 
-**Note** \*\* Whenever we are given a set that has to satisfy a given condition & we have to count then it might be contribution problem.
+**Note** \*\* Whenever we are given a set that has to satisfy a given condition and we have to count, then it might be a contribution problem.
 
-Like: Given (i,j) such they satisfy f(i,j) then
+For example: given (i,j) such that they satisfy f(i,j), then
 
 ```
 |_________________||_|
                     j   → we mark j as pivot
 ```
-& find all (i) that satisfy f(i,j).
+and find all i that satisfy f(i,j).
 
 Above f(i,j) ⇒ arr[i] + arr[j] == X.
 
-We pivot on j & find all i's.
+We pivot on j and find all i's.
 
-Now, we pivot on j.
+With j fixed, the condition becomes a search for the earlier values that are equal to one known number:
 
 ∴ arr[i] == X - arr[j]
 &nbsp;&nbsp;↳ All i satisfying this will be ans.
+
+Example: arr = 1, 2, 3, 4 and X = 5 (written "(i,j) = 5" in the sketch). The pairs of positions that add up to 5 are listed under the array.
 
 ```
       1 , 2 , 3 , 4        (i,j) = 5
@@ -461,13 +520,15 @@ idx=  0   1   2   3
 ![Array 1 2 3 4 with arcs for the pairs that sum to 5.](../../../assets/notes/2-4-expected-value/fig13_two_sum_pairs.png)
 *X = 5: (1,2) and (0,3).*
 
+The sketch shows the pivot j and the part of the array on its left, where every i lives.
+
 ```
 [|_______________________||__|_____]
   i &lt; j                   j
 ```
 
-we need to count arr[i]
-we create a freq map.
+we need to count arr[i], that is, how many earlier elements have the value X - arr[j].
+We create a freq map.
 
 ```cpp
 map&lt;int, int> freq;
@@ -478,18 +539,20 @@ for(int i=0; i&lt;n; i++)\{
 \}
 ```
 
-Note: here the loop `i` is the pivot j. Query first, then insert arr[i], otherwise element pairs with itself. `ans` should be long long. T.C. = O(n log n) with map, O(n) average with unordered_map.
+Note: here the loop `i` is the pivot j. Query first, then insert arr[i], otherwise element pairs with itself. `ans` should be long long. T.C. = O(n log n) with map, O(n) average with unordered_map. Memory O(n). Equal values are counted correctly: for [2,2,2] and X = 4 the totals go 0, 1, 3, so 3 pairs. Reading `freq[val]` also creates an entry with count 0 when val is missing, which is harmless for the answer but uses extra memory.
 
 ![Trace of the frequency map on 1 2 3 4 with X = 5.](../../../assets/notes/2-4-expected-value/fig14_freq_trace.png)
 *Trace: total goes 0, 0, 1, 2.*
 
-Q: Given an array, find smallest (arr[i]+arr[j]), i≠j also arr[i]+arr[j] ≥ k.
+Question: Given an array, find smallest (arr[i]+arr[j]), i≠j also arr[i]+arr[j] ≥ k. Brute force checks all pairs, which is O(n²).
 
-n, arr
+Input: n and arr.
 
 ```
 | 1 | 4 | 5 | 2 | 2 |    k = 4.
 ```
+
+Take j at the first 2 (index 3), so arr[j] = 2 and we need arr[i] + 2 ≥ 4, which means arr[i] ≥ 2. Among the earlier values 1, 4, 5 only 4 and 5 qualify, because 1 + 2 = 3 is less than 4. The smallest valid one is 4.
 
 ```
                 j
@@ -500,6 +563,8 @@ valid i
 ```
 arr[i] + a2 ≥ 4
 arr[i] ≥ 2.
+
+Now take j at the last position (index 4), whose value is also 2. The condition is the same, arr[i] ≥ 2, but now the earlier 2 at index 3 is available.
 
 ```
                     j
@@ -514,7 +579,7 @@ this seems like use case of lower bound.
 
 Hence, we can use set & binary search.
 
-(lower_bound(v) = first element ≥ v in the set. Smallest valid arr[i] → smallest sum. For j = 3: need ≥ 2 among {1,4,5} → 4 → sum 6. For j = 4: need ≥ 2 among {1,4,5,2} → 2 → sum 4. Answer = 4.)
+(lower_bound(v) = first element ≥ v in the set. Smallest valid arr[i] → smallest sum for this j, and the answer is the smallest over all j. Dry run: j = 0: set is empty, nothing to pair. j = 1: need ≥ 0 among {1} → 1 → sum 5. j = 2: need ≥ -1 among {1,4} → 1 → sum 6. j = 3: need ≥ 2 among {1,4,5} → 4 → sum 6. j = 4: need ≥ 2 among {1,4,5,2} → 2 → sum 4. Answer = 4.)
 
 ![k = 4: for j = 3 and j = 4, the valid earlier values and the smallest one.](../../../assets/notes/2-4-expected-value/fig15_lower_bound.png)
 *j = 3 → 4 (sum 6). j = 4 → 2 (sum 4).*
@@ -533,9 +598,11 @@ for (int j=0; j&lt;n; j++)\{
 \}
 ```
 
-Note: `k-arr[i]` should be `k-arr[j]`, there is no i here. INF = INT_MAX, and if ans is still INF at the end → no pair. T.C. = O(n log n).
+Note: `k-arr[i]` should be `k-arr[j]`, there is no i here. INF = INT_MAX, and if ans is still INF at the end → no pair. T.C. = O(n log n), memory O(n). The set keeps only one copy of each value, which is enough, because a pair needs just one earlier element with that value. Use long long if the values are large, since arr[j] + *it can overflow an int.
 
-Pivot idea in Fabricator/ContributionTechnique/ContainerWithMostWater.cpp: pick 2 walls i < j, maximize min(h[i], h[j]) × (j - i). Pivot = the shorter wall of the best pair. Sort walls by height, go from tallest down. Walls seen so far are all at least as tall as the current one, so min_idx and max_idx are the leftmost and rightmost of them. Every value it tries is a real container, and when the shorter wall of the best pair comes, both its walls are already seen. T.C. = O(n log n).
+Pivot idea in Fabricator/ContributionTechnique/ContainerWithMostWater.cpp: pick 2 walls i &lt; j, maximize min(h[i], h[j]) × (j - i). Trying all pairs is O(n²). Pivot = the shorter wall of the best pair. Sort walls by height, go from tallest down. Walls seen so far are all at least as tall as the current one, so min_idx and max_idx are the leftmost and rightmost of them. Every value it tries is a real container, and when the shorter wall of the best pair comes, both its walls are already seen. T.C. = O(n log n), memory O(n). It needs n ≥ 2, otherwise the loop does not run and the answer stays INT32_MIN.
+
+Example: heights 1, 8, 6, 2, 5, 4, 8, 3, 7. The tallest walls are 8 (index 6) and 8 (index 1), then 7 (index 8). After the walls at indices 6 and 1 are seen, the range is 1..6, so the area is min(8,8) × 5 = 40. After the 7 at index 8 the range is 1..8, so the area is min(8,7) × 7 = 49. The smaller walls cannot widen the range, so 49 is the answer.
 
 ```cpp
 // Fabricator/ContributionTechnique/ContainerWithMostWater.cpp
@@ -561,11 +628,11 @@ int maxArea(vector&lt;int>& height) \{
 
 ## Atomic item again: distinct characters
 
-Q: find sum of total no. of distinct characters in all the substrings of a string
+Question: find the sum of the total number of distinct characters in all the substrings of a string.
 
 (A substring is a continuous part of a string. A string of length n has n(n+1)/2 substrings, so for n = $10^5$ we cannot examine each one.)
 
-abbca → 'a','b','b','c','a' → 5.
+abbca → 'a','b','b','c','a' → 5. The sketch lists the substrings of abbca by length, and under each one the number of distinct characters in it.
 
 ```
 'ab', 'bb', 'bc', 'ca' → 7
@@ -587,16 +654,22 @@ abbca → 'a','b','b','c','a' → 5.
 
 If this subarray has distinct 3 ⇒ it must be having 3 different alphabets.
 
-[ # of subarrays that contain 'a' ] → in all these subarrays no. of distinct will be ++.
+[ the number of subarrays that contain 'a' ] → in all these subarrays the number of distinct characters increases by 1 because of 'a'.
 &nbsp;&nbsp;⋮
-similarly for all alphabets.
+similarly for all alphabets. So the answer is the sum, over all letters, of the number of substrings that contain that letter.
+
+To count them, count the substrings that do not contain the letter and subtract from the total. For 'a' in abbca, the sketch shows the gap of 3 letters between the two a's.
 
 ```
 a (- - -) a → no. of subarrays that contain 'a'
     3        = total - no. of subarrays that don't contain 'a'.
 ```
+The string has 5 letters, so the total is $^{6}C_2$ = 15 substrings. The gap of 3 letters has $^{4}C_2$ = 6 substrings, and none of them contains 'a'.
+
 ↳ $^6C_2 - {}^4C_2$ = 15 - 6 = 9
 &nbsp;&nbsp;&nbsp;&nbsp;↳ all of these subarrays will have 1 extra distinct elements because 'a' is present in them.
+
+For 'b', the letters without b are 'a' on the left (1 letter) and 'ca' on the right (2 letters), as the sketch shows.
 
 ```
 _ bb _ _   →   ⁶C₂ - ²C₂ - ³C₂
@@ -608,7 +681,9 @@ For 'c': parts without c are "abb" (3) and "a" (1) → 15 - 6 - 1 = 8. Total = 9
 ![Rows for a, b, c in abbca with the gap formula and contribution 9, 11, 8.](../../../assets/notes/2-4-expected-value/fig17_gaps_abbca.png)
 *9 + 11 + 8 = 28.*
 
-\*\* No. of subarrays that don't contain x:
+In general, when x appears many times, the pieces before the first x, between two x's and after the last x hold all the subarrays without x. In the sketch, the example has 12 cells and three x.
+
+\*\* Number of subarrays that don't contain x:
 
 ```
 (__) x (___) x (_____) x (___)
@@ -620,9 +695,11 @@ For 'c': parts without c are "abb" (3) and "a" (1) → 15 - 6 - 1 = 8. Total = 9
 ![12 cells with three x splitting them into parts of length 1, 2, 3, 3.](../../../assets/notes/2-4-expected-value/fig18_gaps_general.png)
 *The parts between the x characters contain no x.*
 
-\*\* No. of subarrays of on n length array = $^{n+1}C_2$.
+\*\* Number of subarrays of an array of length n = $^{n+1}C_2$. (Think of n+1 cut lines around the n cells. Any 2 cut lines mark exactly one subarray.)
 
 Note: part of length L has $^{L+1}C_2$ = L(L+1)/2 subarrays. Also the last part (after last x) and first part (before first x) count, even if length 0.
+
+A check on a small string: all substrings of aba, how many distinct characters each has, and how much each character contributes to that count.
 
 ```
 a  b  a                                  Contribution from char.
@@ -642,13 +719,13 @@ a  b  a                a, b   —  2  =    1  +  1
 
 We calculate contribution of each character. & sum them.
 
-✓ Contri of a char = total - # of subarrays that don't have that char.
+✓ Contribution of a char = total - number of subarrays that don't have that char.
 
 Here, the char is the atomic item that contributes.
 
 \*\* Whatever increases the ans is the atomic item.
 
-Code (T.C. = O(26·n), memory O(1)):
+Code (T.C. = O(26·n), memory O(1)). For each letter it walks over the string once. Each gap between two copies of the letter, and the gap before the first and after the last copy, is subtracted as len(len+1)/2. Dry run for 'a' in abbca: the first a is at index 0 (gap 0), the next at index 4 (gap 3, subtract 6), the last gap is 0, so 15 - 6 = 9. A letter that never appears has one gap of length 5, so 15 - 15 = 0, as it should be.
 
 ```cpp
 // Fabricator/ContributionTechnique/TotalAppealOfString.cpp
@@ -678,7 +755,7 @@ long long appealSum_v2(string s)\{
 \}
 ```
 
-Same problem, other way (extension): let i be the end. Subarrays ending at i where s[i] is new (first time in that subarray) → start can be anything after the last occurrence of s[i] → (i - last) choices. `curr` = total distinct of all subarrays ending at i, so `curr += i - last`, `sol += curr`. T.C. = O(n).
+Same problem, other way (extension): let i be the end. Subarrays ending at i where s[i] is new (first time in that subarray) → start can be anything after the last occurrence of s[i] → (i - last) choices. `curr` = total distinct of all subarrays ending at i, so `curr += i - last`, `sol += curr`. The other subarrays ending at i already contain s[i], so their distinct count does not change when s[i] is appended. T.C. = O(n), memory O(1). Dry run on abbca: curr = 1, 3, 4, 8, 12 and sol = 1, 4, 8, 16, 28.
 
 ```cpp
 // Fabricator/ContributionTechnique/TotalAppealOfString.cpp
@@ -699,23 +776,26 @@ long long appealSum(string s) \{
 
 Note: both assume lowercase letters, and `appealSum` compares int with `s.size()` (compiler warning only). abbca → 28 from both ✓.
 
-Count unique chars (char counts only if it appears exactly once in the substring): same pivot + gaps thinking, `(pos[i] - pos[i-1]) * (pos[i+1] - pos[i])` for each occurrence. See Fabricator/ContributionTechnique/UniqueCharactersInString.cpp.
+Count unique chars (char counts only if it appears exactly once in the substring): same pivot + gaps thinking, `(pos[i] - pos[i-1]) * (pos[i+1] - pos[i])` for each occurrence. Here pos holds the positions of one letter, with -1 added in front and n added at the end. A substring has this occurrence as its only copy of the letter when it starts after the previous copy and ends before the next copy, which gives the product. For abbca the letter a gives 4 + 4, b gives 2 + 3 and c gives 8, so the total is 21. See Fabricator/ContributionTechnique/UniqueCharactersInString.cpp.
 
 ## Quick revision
 
 - Contribution technique: ask "which small piece adds to the answer?" (atomic item) or "which subarrays end here?" (pivot).
-- Triplets: each element is in $^{n-1}C_2$ triplets, so ans = $^{n-1}C_2$ × sum(arr). If n < 3, ans = 0. Do not multiply by orderings.
+- Triplets: each element is in $^{n-1}C_2$ triplets, so ans = $^{n-1}C_2$ × sum(arr). If n &lt; 3, ans = 0. Choose the other two positions without order (a factor (n-1)(n-2) would double the answer).
+- Sum of |arr[i] - arr[j]| over pairs: sort, then the element at index i contributes (i - (n-i-1)) × value.
 - Subarrays containing index i: (i+1)(n-i). Subarrays containing the pair (i, j): (i+1)(n-j).
-- Inversions of all subarrays: add (i+1)(n-j) for each pair with arr[i] > arr[j]. O(n²); with a Fenwick tree O(n log n).
+- Inversions of all subarrays: add (i+1)(n-j) for each pair with arr[i] > arr[j]. O(n²); with a Fenwick tree (weight i+1 at the rank of arr[i], multiply the sum of bigger earlier weights by n-j) O(n log n). The answer needs long long.
 - Number of subarrays of an array of length n = $^{n+1}C_2$ = n(n+1)/2.
 - Extension (pivot = end of the subarray; cur = value for subarrays ending at i):
-  - product: cur = cur × arr[i] + arr[i]; ans += cur
+  - product: cur = cur × arr[i] + arr[i]; ans += cur (multiplication spreads over the sum of old products)
   - sum: cur = cur + arr[i] × (i+1); ans += cur
   - maximum sum (Kadane): cur = max(cur + arr[i], arr[i]); ans = max(ans, cur); start from arr[0]
 - Data structure usage: for a condition f(i, j), pivot on j and search among the earlier i.
   - exact value: frequency map (query first, then insert)
   - at least / at most a value: set with lower_bound
-- Distinct characters in all substrings: for each character, total minus the sum of $^{L+1}C_2$ over the gaps that do not contain it.
+  - longest-wall type of problem (container with most water): sort by height, the shorter wall of the best pair is the pivot
+- Distinct characters in all substrings: for each character, total minus the sum of $^{L+1}C_2$ over the gaps that do not contain it. Extension version: curr += i - last, sol += curr.
+- Unique characters in all substrings: each occurrence adds (pos[i] - pos[i-1]) × (pos[i+1] - pos[i]).
 - Common mistakes: overflow (use long long and mod), negative numbers with %, loops that must stop at `< n`.
 
 ## Practice problems

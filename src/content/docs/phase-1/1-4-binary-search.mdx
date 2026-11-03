@@ -735,6 +735,12 @@ Idea of the check: go from left to right. If the current painter has enough time
 
 Dry run for A = [1, 3, 8, 7, 2, 5], k = 3, mid = 13: painter 1 takes 1, 3, 8 (12 used, 1 left). Wall 7 does not fit, so painter 2 takes 7, 2 (9 used, 4 left). Wall 5 does not fit, so painter 3 takes 5. Three painters are enough → 1. For mid = 11 a 4th painter is needed → 0.
 
+Why the greedy check is correct: giving the current painter as many walls as fit never makes things worse. Any wall that this painter takes is a wall the next painter does not have to take, so the number of painters used is the smallest possible for this mid.
+
+The outer search for A = [1, 3, 8, 7, 2, 5], k = 3, over the time range 0 to 26 (26 is the sum): mid = 13 is yes (ans = 13), mid = 6 is no, mid = 9 is no, mid = 11 is no, mid = 12 is yes (ans = 12). Then lo > hi and the answer is 12. This took 5 checks, each of them one pass over the 6 walls.
+
+Typical mistake: forgetting that a single wall longer than mid makes the answer no at once, because one wall cannot be shared between painters. The `else return 0` branch handles it.
+
 Note: sums in `int` can overflow; use `long long` for large inputs.
 
 The search space [max(A_i), Σ A_i] also works (the time can never be smaller than the longest wall). k = 1 → 26 (Σ), k ≥ N → 8 (max wall).
@@ -790,9 +796,13 @@ long long binary_search(int *arr, int &n, int &k, long long &sumOfAll){
 }
 ```
 
-This is the same painter problem (CSES 1085; CSES is a problem set website). [2 4 7 3 5], k = 3 → 8.
+This is the same painter problem (CSES 1085; CSES is a problem set website). [2 4 7 3 5], k = 3 → 8. The cost is O(n log(sum)) time and O(1) extra memory.
 
-Now the "maximize the minimum" form: the same BS, but in the opposite direction. The check is true for small mid and false for large mid (a larger minimum distance is harder to achieve), so we want the LAST true: on true set `lo = mid + 1`.
+Now the "maximize the minimum" form: the same BS, but in the opposite direction.
+
+Question: N seats are on a line, and K students must sit on K different seats. Make the smallest distance between two students as large as possible. Trying every choice of K seats out of N is far too slow (for N = 10^5 the number of choices is astronomical). Instead, search the distance itself. If a minimum distance d is possible, any smaller distance is possible too (the same seating still works). So the check is true for small mid and false for large mid (a larger minimum distance is harder to achieve), and the aim is the LAST true: on true set `lo = mid + 1`.
+
+The check is greedy. Put the first student on the first seat (after sorting), and then put each next student on the first seat that is at least mid away from the previous student. The earliest possible seat always leaves the most room for the rest.
 
 ```cpp
 // Fabricator/BinarySearch/ClassRoom.cpp
@@ -833,7 +843,11 @@ long long binary_search(vector<int> &seats, int k){
 
 Seats 1 2 4 8 9, k = 3 → 3 (seats 1, 4, 8 or 1, 4, 9). The seats must be sorted first. Dry run: mid = 3 places students at 1, 4, 8 → 3 students ≥ k, so true. mid = 4 places students at 1, 8 only → 2 &lt; 3, so false.
 
+The outer search on these seats goes over the distances 0 to 8: mid = 4 is false (hi = 3), mid = 1 is true (ans = 1, lo = 2), mid = 2 is true (ans = 2, lo = 3), mid = 3 is true (ans = 3, lo = 4). Then lo > hi and the answer is 3. The cost is O(N log(range)) after the sort, and O(1) extra memory. The typical mistake is to forget the sort. The SPOJ problem Aggressive Cows (AGGRCOW) in the practice list is this same problem.
+
 # Patterns:
+
+The three common types of BS on answer are described below, each with its sketch. The type decides how the check function is written.
 
 i) Sweep:
 
@@ -854,11 +868,15 @@ every item from the array contributes to k.
 
 k is something we want to achieve.
 
+Example: in the problem Factory Machines every machine adds some products, and the sum of all of them must reach a target t.
+
 [Factory Machines — (CSES, a problem set website)]
 
 ![Machines m1 m2 m3 producing x1 x2 x3](../../../assets/notes/1-4-binary-search/fig22_factory.png)
 
 *All machines contribute to reaching the target t.*
+
+The answer is a time. Simulating second by second is impossible because the time can reach t × arr[0], which can be about 10^18 (for example t = 10^9 and a machine that needs 10^9 seconds per product). More time never gives fewer products, so "are t products ready within mid seconds?" is a monotone yes/no question.
 
 check (mid) → time
 
@@ -916,9 +934,13 @@ long long binary_search(long long n, long long t, long long *arr){
 
 machines 3 2 5, t = 7 → 8 (in 8 sec: 2 + 4 + 1 = 7 products; in 7 sec only 6). The early return `if (machines_produced >= t) return true;` is there so the sum does not overflow. Cost: log2(t · arr[0]) checks of n steps each.
 
+The outer search for these machines runs over the times 0 to 21 (21 = 7 × 3). mid = 10 gives 3 + 5 + 2 = 10 products, which is enough (ans = 10, hi = 9). mid = 4 gives 1 + 2 + 0 = 3, not enough (lo = 5). mid = 7 gives 6, not enough (lo = 8). mid = 8 gives 7, enough (ans = 8, hi = 7). The loop ends with the answer 8. The memory is O(1).
+
 iii) 2D Variations:
 
 [Multiplication Table - (CSES)]
+
+Question: the n × n multiplication table holds the numbers i × j. Find the k-th smallest number in it (in the code below, the middle one). For n = 10^6 the table has 10^12 cells, which cannot be stored or sorted. The sketch below shows a 3 × 3 table, with the entries that are at most 4 colored.
 
 ![3 by 3 multiplication table with entries at most 4 colored](../../../assets/notes/1-4-binary-search/fig23_mult_table.png)
 
@@ -971,7 +993,9 @@ n = 3 → 3, n = 5 → 8. Counting is O(n), so T.C. is O(n log(n^2)).
 
 Dry run for n = 3 (the table is 1 2 3 / 2 4 6 / 3 6 9) and k = 5: count(≤ 3) = min(3,3) + min(3,1) + min(3,1) = 5 ≥ 5 → true. count(≤ 2) = 2 + 1 + 0 = 3 &lt; 5 → false. So the answer is 3.
 
-Same idea ("put all elements in one array, sort, take the k-th or the median"): the median of subarray sums. There are O(N^2) sums, so the array cannot be built. Instead, BS on the sum, and count the subarrays with sum ≤ mid using two pointers.
+The outer search runs over the values 1 to 9: mid = 5 gives 3 + 2 + 1 = 6 ≥ 5 (ans = 5, hi = 4). mid = 2 gives 3, false (lo = 3). mid = 3 gives 5, true (ans = 3, hi = 2). The loop ends with 3. The first mid with count ≥ k is always a number that really is in the table: the count grows only at values that appear in the table, so the smallest mid that reaches k is such a value. Memory is O(1). A typical mistake is to use `int` for n × n when n is large.
+
+Same idea ("put all elements in one array, sort, take the k-th or the median"): the median of subarray sums. There are O(N^2) sums (for N = 10^5 about 5·10^9), so the array cannot be built. Instead, BS on the sum, and count the subarrays with sum ≤ mid using two pointers. The two pointers keep a window whose sum is at most mid, and for each right end they add the number of valid left ends (right - left + 1).
 
 ```cpp
 // Fabricator/BinarySearch/MedianOfSubarraySum.cpp
@@ -1026,9 +1050,13 @@ long long binary_search(vector<long long> &a, long long total){
 
 [1 2 3] → 3, [5] → 5, [1 5] → 5 (sums 1, 5, 6). The array must be positive (needed for two pointers).
 
-Ques:
+Dry run for [1 2 3]: the sums are 1, 2, 3, 3, 5, 6, so there are 6 of them, and the median is the (6 + 1) / 2 = 3rd smallest, which is 3. count(≤ 3) = 4 (the subarrays [1], [2], [3], [1 2]) ≥ 3 → true. count(≤ 2) = 2 &lt; 3 → false. So the answer is 3. The cost is O(N log(total)) time, because every check is one two-pointer pass, and O(1) extra memory.
+
+Question:
 
 Given n points on a number line, place at most k additional points on the line to minimize the maximum separation b/w any two consecutive points.
+
+Brute force would try every way to spread k new points over the gaps, and the number of ways grows very fast with n and k. A better way is to search the answer, the biggest gap, as shown below.
 
 x1 x2 x3 x4 x5 on a number line.
 
@@ -1037,6 +1065,8 @@ for every point p , we will calculate distance of immediate neighbour d1 & d2.
 minimise (max neighbour distance).
 
 ans → we have to minimise this (the biggest gap).
+
+Small examples first, on the points 0, 100, 150.
 
 n=3, k=1: points 0, 100, 150.
 
@@ -1062,11 +1092,15 @@ Will give WA (wrong answer)
 
 Is this process legit/correct? — NO ↴
 
+The right column of the sketch below shows one gap of length 100 with k = 2. Halving it twice gives 50, 25, 25, so the largest piece stays 50. Cutting it into three equal parts gives 33, 33, 34, so the largest piece is 34.
+
+```
  100 , 50 → 50, 50, 50           │  k=2
  100, 100 → 100, 51, 50          │  100 → 50, 50
                                  │      ↓
  2, 2, (3)                       │      X 50, 25, 25
    2, 1                          │  100 → 33, 33, 34
+```
 
 ![Greedy halving gives 50, better split gives 34](../../../assets/notes/1-4-binary-search/fig25_greedy_wrong.png)
 
@@ -1104,6 +1138,8 @@ Now, we need to place pts such that max dist. b/w two neighbours is ≤ x.
 $\lceil \frac{d}{x} \rceil - 1 = \lfloor \frac{d+x-1}{x} \rfloor - 1$
 
 Look: d = 100, x = 30: ceil(100/30) - 1 = 4 - 1 = 3 points (30, 60, 90 → pieces 30, 30, 30, 10).
+
+Why ⌈d/x⌉ - 1: to cut a gap of length d into pieces of length at most x, at least ⌈d/x⌉ pieces are needed, and p pieces need p - 1 cut points. The check adds this number over all gaps and compares the total with k. For the points 0, 100, 150 (gaps 100 and 50): x = 50 needs 1 + 0 = 1 point, so k = 1 is enough. x = 49 needs 2 + 1 = 3 points, which is too many for k = 1. With k = 5: x = 25 needs 3 + 1 = 4 points, which is allowed, and x = 24 needs 4 + 2 = 6 points, which is not allowed. So the answers are 50 and 25.
 
 ```cpp
 // Fabricator/BinarySearch/MinimiseMaxDiff.cpp
@@ -1143,15 +1179,17 @@ int binary_search(int *arr, int &n, int &k){
 }
 ```
 
-Samples: (1 2 3 4 5, k=5) → 1, (2 5 7 8 10, k=0) → 3, (100 200 230, k=2) → 34, (1 3 5 7 9 11, k=5) → 1, (1 4 8 13 19 26, k=4) → 4. Points 0 100 150: k = 1 → 50, k = 5 → 25.
+Samples: (1 2 3 4 5, k=5) → 1, (2 5 7 8 10, k=0) → 3, (100 200 230, k=2) → 34, (1 3 5 7 9 11, k=5) → 1, (1 4 8 13 19 26, k=4) → 4. Points 0 100 150: k = 1 → 50, k = 5 → 25. The cost is O(n log(range)) time, since every check is one pass over the gaps, and O(1) extra memory. A typical mistake is to start lo at 0, which divides by zero in the check, and another is to test `== k` instead of `≤ k`.
 
-Ques:
+Question:
 Given arrays A → N size
             B → M size.
 
 Create array C → N*M  with elements A[i] + B[j]   | 1 ≤ i ≤ N
                                                   | 1 ≤ j ≤ M
 find Kth smallest element in array C.
+
+C has N·M elements. For N = M = 10^5 that is 10^10 sums, too many to build and sort. The array C is never built. Instead, the value x is searched, and the check counts how many sums are ≤ x.
 
 A → [1 2 3]
 B → [4 5 6]
@@ -1163,6 +1201,8 @@ Sorted C → [5, 6, 6, 7, 7, 7, 8, 8, 9]
                          6^th
 
 check (x) → (# of elements in C, ≤ x) ≥ k.
+
+A smaller example for the check:
 
 A → 3, 5
 B → 2, 3, 4          k=3
@@ -1192,6 +1232,8 @@ check (int mid) {
 ```
 
 Note: for no. of items ≤ x we have used upper bound function
+
+Why this counts the sums: for a fixed A[i], the sum A[i] + B[j] is ≤ mid exactly when B[j] ≤ mid - A[i]. Because B is sorted, upper_bound gives the number of such B[j] in O(log M). Adding this over all i gives the count of sums ≤ mid.
 
 After sorting A & B, we can decide hi & lo easily.
 
@@ -1238,29 +1280,41 @@ int binary_search(vector<int> &a, vector<int> &b, int &n, int &m, long long &k){
 
 A = 1 2 3, B = 4 5 6, k = 6 → 7. A = 3 5, B = 2 3 4, k = 3 → 7. T.C. O(N log M · log(range)).
 
+Dry run for A = 3 5, B = 2 3 4, k = 3, with lo = 5 and hi = 9: mid = 7 counts 3 + 1 = 4 sums ≥ 3 (ans = 7, hi = 6). mid = 5 counts 1 + 0 = 1 &lt; 3 (lo = 6). mid = 6 counts 2 + 0 = 2 &lt; 3 (lo = 7). Then lo > hi and the answer is 7. The memory is O(1) and the counts need `long long`, because they can reach N·M.
+
+## Binary Search on every start
+
 → Binary Search on every step:
 
-N, arr of 0s & 1s.
+Question: N is the size of an array of 0s and 1s.
 
 K → # of flips that we can make. (at most).
 
 find max. length subarray that can be created with all 1s. by flipping ≤ k moves.
 
+Trying every subarray and counting its zeros costs O(N^2) pairs (and O(N^3) work if the zeros are counted one by one). The ideas below bring this down step by step. Here is the example for k=2, and it has 13 cells:
+
 → for k=2
 
+```
 [1|0|0|1|1|0|1|1|1|0|1|1|1]
+```
 
 ![Two zeros flipped and the longest run of ones](../../../assets/notes/1-4-binary-search/fig28_flips.png)
 
 *k = 2: two zeros are flipped, cells 3..12 are all 1.*
 
+```
 [1|0|0|1|1|1|1|1|1|1|1|1|1]  → X = longest window.
+```
 
 Note: in this array X = 10 (cells 3 to 12).
 
 ∴ X-1 is also possible.
 
 ans ≥ x → monotonic space.
+
+Why: if a window of length X can be made all 1s with at most k flips, then any shorter window inside it needs no more flips. So "length x is possible" is true for small x and false for large x, and the answer is the last true. For the 13 cells above, X = 10 is possible (cells 3 to 12 hold 2 zeros) and X = 11 is not (every window of 11 cells holds at least 3 zeros).
 
 ① So, we need to find a subarray/window of size X that can be all 1s.
 We can iterate through all subarrays of size X in the arr and check.

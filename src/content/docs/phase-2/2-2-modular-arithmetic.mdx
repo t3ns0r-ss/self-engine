@@ -13,11 +13,13 @@ import Ladder from '../../../components/Ladder.astro';
 
 Handling huge powers and division inside a modulus. The problem: many tasks ask for a number that is far too large to store, such as $3^{1000000000}$ (about 477 million digits). The task then says "print the answer modulo $10^9+7$", meaning the remainder after dividing by $10^9+7$. All the techniques below keep every number small while we compute.
 
+The topics are:
+
 → Binary exponentiation (fast power: compute $a^b$ in O(log b) steps)
 → Modular inverse (the number we multiply by instead of dividing, under a modulus), geometric progression (GP) sum under a modulus, binary multiplication
 → Fermat's Little Theorem and Euler's Theorem (shrink a huge exponent), inverse = $a^{p-2}$
 
-The totient ($\phi$) was introduced in 2.1, and it is used again here.
+The totient ($\phi$, the count of numbers from 1 to m that are co-prime to m) was introduced in 2.1, and it is used again here. Two numbers are co-prime when their greatest common divisor (gcd) is 1, that is, they share no common factor except 1.
 
 ## Table of contents
 
@@ -28,7 +30,7 @@ The totient ($\phi$) was introduced in 2.1, and it is used again here.
 
 ## Binary exponentiation
 
-binpow = binary exponentiation. Idea: write b in binary. For every bit, square the base. If the bit is 1, multiply the result by the current base. Time complexity (T.C.) = O(log b). Example: $3^5$, 5 = 101 (binary) → $3^4 \cdot 3^1$.
+binpow = binary exponentiation. The idea is to write b in binary. For every bit, square the base. If the bit is 1, multiply the result by the current base. The time complexity (T.C.) is O(log b). Example: $3^5$, 5 = 101 (binary) → $3^4 \cdot 3^1$.
 
 Why it is needed: the plain loop multiplies b times. For b = $10^9$ that is $10^9$ multiplications, about 10 seconds at $10^8$ per second. Binary exponentiation needs only about 30 steps, because $2^{30}$ is just over $10^9$ and b loses one bit per step.
 
@@ -91,7 +93,11 @@ Cost: the loop runs once per bit of the exponent, so about $\log_2 b$ times (30 
 
 Why division needs a new idea: addition, subtraction and multiplication work directly under a modulus, because we may take the remainder after each operation. Division does not. For example, (6 / 3) % 7 = 2 is fine, but for (5 / 3) % 7 the ordinary quotient 1.666... is not an integer, and cutting it down would give a wrong answer. We need a number that behaves like "one third" inside the modulus.
 
+His own example shows the failure. Take $a = 2$, $b = 4$, $c = 4$, $M = 11$. The true value of $\frac{2^4}{4}$ is 4, and 4 % 11 = 4. If the remainder is taken inside the division, then $2^4$ % 11 = 16 % 11 = 5, and $\frac{5}{4}$ is not an integer, so the result is wrong. With the inverse of 4 modulo 11, which is 3 (because 4 · 3 = 12 and 12 % 11 = 1), the result is correct: 16 · 3 = 48 and 48 % 11 = 4.
+
 ### Modular inverse
+
+The derivation starts from a division that is easy to see: 3 divided by 3 is 1. Write the division as a multiplication by $\frac{1}{3}$, call this unknown value x, and ask which integer x works under modulus 7:
 
 $\left(\frac{3}{3}\right)$ % 7 = 1
 
@@ -116,10 +122,14 @@ $\left(\frac{6}{3}\right)$ % 7 = 2.
 
 **\*** These modular inverses can be used in place whenever we have to divide.
 
+Doing the same search for every number from 1 to 6 gives the full table of inverses modulo 7:
+
+```
 x:        0   1   2   3   4   5   6
 x^-1 % 7: NA, 1, 4, 5, 2, 3, 6
+```
 
-(k.x % 7 ≡ 1: 1 → x = 1, 2 → x = 4, 3 → x = 5, 4 → x = 2, 5 → x = 3, 6 → x = 6.)
+(For each number k, its inverse x is the value with k·x % 7 ≡ 1. In the notes this is written k.x % 7 ≡ 1: 1 → x = 1, 2 → x = 4, 3 → x = 5, 4 → x = 2, 5 → x = 3, 6 → x = 6.)
 
 ![Inverses mod 7](../../../assets/notes/2-2-modular-arithmetic/figA03_inverse_mod7.png)
 
@@ -129,11 +139,13 @@ x^-1 % 7: NA, 1, 4, 5, 2, 3, 6
 
 **\*** Inverses are unique for every number & prime modulo.
 
-Note: the exact condition is gcd(a, m) = 1. If m is prime, every non-zero number has an inverse. If m = 10, then 4 has no inverse, because 4 and 10 share the common factor 2.
+Note: the exact condition is gcd(a, m) = 1 (gcd = greatest common divisor). If m is prime, every non-zero number has an inverse. If m = 10, then 4 has no inverse, because 4 and 10 share the common factor 2.
 
 Why: a remainder of 1 modulo 10 means the number is 1 + 10k for some k, which is always odd. But 4·x is always even, so it can never leave remainder 1 when divided by 10.
 
-Now $\left(\frac{a^b}{c}\right)$ % m = ($a^b \times c^{-1}$) % m
+With inverses, the division problem is solved:
+
+$\left(\frac{a^b}{c}\right)$ % m = ($a^b \times c^{-1}$) % m
 
 = [binpow (a,b,m) * inv (c,m)] % m
 
@@ -141,7 +153,7 @@ Now $\left(\frac{a^b}{c}\right)$ % m = ($a^b \times c^{-1}$) % m
 
 Searching x by trying all values takes O(m) time, which is too slow for m near $10^9$. Fermat's Little Theorem gives a formula instead.
 
-Fermat's Little Theorem:
+Fermat's Little Theorem (proved in the Fermat section below) says:
 
 $a^{p-1}$ % p = 1       | p → prime.
 
@@ -151,11 +163,17 @@ a x $a^{p-2}$ % p = 1
 
 $a^{-1}$ = $a^{p-2}$ % p → inverse.
 
+Two worked examples of this formula for p = 7, written side by side (the left one finds the inverse of 3, the right one the inverse of 2):
+
+```
 Eg:  3^-1 % 7                       |  2^-1 % 7
 3^-1 = (3^(7-2) % 7) = 3^5 % 7      |  2^-1 = 2^(7-2) % 7
 = 243 % 7 = 5                       |       = 2^5 % 7
                                     |       = 32 % 7
                                     |       = 4  ✓
+```
+
+Both answers agree with the table above (the inverse of 3 is 5, the inverse of 2 is 4).
 
 (If a is a multiple of p, the theorem does not apply. In that case no inverse exists at all, because a % p = 0 and 0 times anything is 0, never 1.)
 
@@ -168,9 +186,13 @@ int inv(int num){
 
 Checked: inv(3) = 333333336 and 3 * 333333336 % (10^9+7) = 1.
 
+Cost: one fast power with exponent $m-2$, so about 30 loop steps for $m = 10^9+7$ (instead of up to $10^9$ steps for a search). Memory is O(1).
+
 (The rule about printing a non-negative remainder was seen in 0.4, and it is used again here.)
 
-Ques: $\left(A + \frac{(B-C)^D}{E} - F * G\right)$ % $(10^9+7)$
+A full problem that uses every rule so far.
+
+Question: $\left(A + \frac{(B-C)^D}{E} - F * G\right)$ % $(10^9+7)$
 
 $1 \le A, B, C, D, E, F, G \le 10^9$
 
@@ -194,7 +216,9 @@ m = $10^9+7$
 
 Why the extra "+ m": B - C can be negative, and in C++ the remainder of a negative number is negative or zero. Adding m before the last remainder moves the result into the range 0 to m-1.
 
-Our solve():
+Trace on the sample 5 3 10 3 2 4 6 (A = 5, B = 3, C = 10, D = 3, E = 2, F = 4, G = 6). Here B - C = -7, so x = (-7 + m) % m = 1000000000. Then $x^3$ is -343 modulo m, $E^{-1}$ = inv(2) = 500000004, and F·G = 24. The answer is 5 + (-343) · 500000004 - 24 modulo m, which is 499999813. Check: doubling the answer gives 999999626 = m - 381, and 2 · (5 - 24) + (-343) = -381.
+
+Our solve() function:
 
 ```cpp
 // Fabricator/Maths/Modulo.cpp
@@ -218,7 +242,9 @@ Note: the logic is correct, but `int` is used, so `num * den` and `f * g` (about
 
 ### GP sum under mod
 
-Ques: F(x, m, n) = $(1 + x^1 + x^2 + x^3 + .... + x^n)$ % m
+A geometric progression (GP) is a list of terms where each term is the previous one times x. The next problem asks for the sum of such a list, modulo m.
+
+Question: F(x, m, n) = $(1 + x^1 + x^2 + x^3 + .... + x^n)$ % m
         ↓            i) m → prime
                      ii) m → composite
 
@@ -241,9 +267,15 @@ Note: the formula also fails if x - 1 is a multiple of m, because then x - 1 has
 
 works for m prime.
 
+Dry run for the formula: x = 3, n = 4, m = 7. The real sum is 1 + 3 + 9 + 27 + 81 = 121, and 121 % 7 = 2. By the formula: $3^5$ % 7 = 243 % 7 = 5, so the top is 5 - 1 = 4, and inv(2) = 4 (because 2 · 4 = 8 and 8 % 7 = 1). Then 4 · 4 = 16 and 16 % 7 = 2. Both ways give 2.
+
+Why m must be prime: x - 1 needs an inverse, and for a composite m it may not have one. For example, x = 3, n = 3, m = 4: x - 1 = 2 shares the factor 2 with 4, so it has no inverse, yet the sum 1 + 3 + 9 + 27 = 40 is a normal number (40 % 4 = 0). The divide and conquer idea below never divides.
+
 for m not prime:
 
 (the inverse of (x-1) may not exist, so we use divide and conquer.)
+
+The idea is to split the terms into two equal halves, where the second half is the first half times a power of x. Case 1 is n odd, so the number of terms n+1 is even and the split is exact. Example with n = 5 (six terms):
 
 f(x,n) = $1 + x + x^2 + x^3 + x^4 + x^5$       n % 2 == 1
 
@@ -253,7 +285,9 @@ f(x,n) = $1 + x + x^2 + x^3 + x^4 + x^5$       n % 2 == 1
 
 = $(1 + x^3)$ * f (x, n/2)
 
-for odd terms:
+Case 2 is n even, so the number of terms is odd. One term is taken out first, and what is left is a case 1 problem. Example with n = 4 (five terms):
+
+for an odd number of terms:
 
 f(x, n) = $1 + x + x^2 + x^3 + x^4$       n % 2 == 0.
 
@@ -265,7 +299,7 @@ Dry run: x = 2, n = 5 → 6 terms (1+2+4+8+16+32 = 63). n is odd → $(1 + 2^3) 
 
 Note: n odd means the number of terms (n+1) is even, so we can split them into two equal halves. n even means the number of terms is odd, so we take one term out first.
 
-T.C. = O(log n) levels, and each level runs binpow in O(log n) → O(log² n).
+Cost: an even n becomes an odd n-1, and an odd n is then halved, so the number of levels is at most about $2 \log_2 n$ (about 60 for $n = 10^9$). Each level runs binpow in O(log n), so the time complexity (T.C.) is O(log² n), roughly 1800 multiplications for $n = 10^9$. The recursion depth is also O(log n), so memory is O(log n).
 
 Our code:
 
@@ -307,7 +341,7 @@ int f2(int x, int n, int m){
 }
 ```
 
-Note: is_prime is wrong. It returns true as soon as `n % i` is non-zero, so it reports 9 and 15 as prime (checked). f2 has no base case for n == 0, so the recursion never stops, and f2(2, 5, 1000) gives a segmentation fault (checked). Also, f uses f2 before f2 is declared, and it uses the fixed mpow/MOD instead of m. Finally, the int products overflow: f(123456789, 3, MOD) = -903367421, while the correct value is 117531387. The idea is correct, and only these fixes are needed. Working version:
+Note: is_prime is wrong. It returns true as soon as `n % i` is non-zero, so it reports 9 and 15 as prime, and 2 as not prime (checked). f2 has no base case for n == 0, so the recursion never stops, and f2(2, 5, 1000) gives a segmentation fault (checked). Also, f uses f2 before f2 is declared, and it uses the fixed mpow/MOD instead of m. Finally, the int products overflow: f(123456789, 3, MOD) = -903367421, while the correct value is 117531387. The idea is correct, and only these fixes are needed. Working version:
 
 ```cpp
 /*
@@ -334,11 +368,11 @@ long long gpAny(long long x, long long n, long long m) {
 }
 ```
 
-Checked: 20000 random cases each (any m up to 200, primes up to 101) against a plain loop, no mismatch. gpAny(2, 5, 1000) = 63.
+Checked: 20000 random cases each (any m up to 200, primes up to 101) against a plain loop, no mismatch. gpAny(2, 5, 1000) = 63, gpPrime(3, 4, 7) = 2, and gpAny(3, 3, 4) = 0, which matches the examples above.
 
 ### Binary multiplication
 
-Ques: A, B, M → A, B, M ≤ $10^{18}$
+Question: A, B, M → A, B, M ≤ $10^{18}$
 
 Calculate (A.B) % M.
 
@@ -349,7 +383,7 @@ Why it overflows: after the remainders, both factors can be near $10^{18}$, so t
 
 Use binary multiplication [ Like binary exponentiation ].
 
-Idea: exponentiation uses "result × base" and "base²". Here the operations are "result + a" and "a + a" (doubling). Everything stays below M ≤ $10^{18}$, so a + a ≤ $2 \times 10^{18}$ fits in `long long`. T.C. = O(log B).
+Why it works: B is a sum of powers of two, so A·B is the sum of A·$2^k$ for every bit k of B that is 1, and A·$2^k$ comes from doubling A k times. The idea: exponentiation uses "result × base" and "base²". Here the operations are "result + a" and "a + a" (doubling). Everything stays below M ≤ $10^{18}$, so a + a ≤ $2 \times 10^{18}$ fits in `long long`. The time complexity (T.C.) is O(log B).
 
 Tiny example: 6 × 5 with M = 7. Write 5 = 101 (binary). Bit 1: res = 0 + 6 = 6, a = 12 % 7 = 5. Bit 0: res stays 6, a = 10 % 7 = 3. Bit 1: res = 6 + 3 = 9 % 7 = 2. The answer 2 equals 30 % 7 = 2.
 
@@ -371,7 +405,11 @@ long long bin_mul(long long a, long long b, long long mod){
 
 Checked: 100000 random triples up to $10^{18}$ against 128-bit arithmetic, no mismatch. bin_mul(999999999999999999, 999999999999999989, 1000000000000000000) = 11. (GCC also has the type __int128, so (__int128)a * b % m works too.)
 
+Cost: the loop runs once per bit of B, so at most about 60 times for $B \le 10^{18}$, with one or two additions per run. Memory is O(1). Edge case: a + a must fit in `long long`, so this code is safe only while M is at most about $4.6 \cdot 10^{18}$ (half of the largest `long long`).
+
 ## Fermat's Little Theorem
+
+The theorem in short: for a prime p, powers of a repeat with a period that divides p-1. In symbols:
 
 $a^p \equiv a \mod p$     p → prime.
 
@@ -382,6 +420,8 @@ $a^{p-1} \equiv 1 \mod p$
 (mod = remainder after dividing. The second form holds when p does not divide a. If a = p, the remainder is 0.)
 
 Small check with p = 7: $2^6 = 64 = 63 + 1$, so $2^6$ % 7 = 1. Also $3^6 = 729 = 7 \cdot 104 + 1$, so $3^6$ % 7 = 1.
+
+Why it holds: take p = 7 and a = 3. Multiply each of 1, 2, ..., 6 by 3 and take the remainder modulo 7. The results are 3, 6, 2, 5, 1, 4, which are the same six numbers in a different order (two different numbers can never give the same remainder, because 3 has an inverse). So the two products are equal: $3^6 \cdot 6! \equiv 6!$ modulo 7. Since 6! has no factor 7, it can be cancelled, which leaves $3^6 \equiv 1$. The same argument works for any prime p and any a that p does not divide.
 
 for instance: $a^{b^c} \% p = a^{(b^c \% (p-1))} \% p$
 
@@ -453,7 +493,11 @@ long long power_tower_mod(long long a, long long b, long long c, long long p){
 }
 ```
 
+Trace: A = 2, B = 3, C = 4, P = 7. The exponent is $3^4 = 81$, and 81 % 6 = 3. So the answer is $2^3$ % 7 = 8 % 7 = 1. Direct check: $2^3 \equiv 1$ modulo 7 and 81 is a multiple of 3, so $2^{81}$ % 7 = 1 as well.
+
 (p = 1, b = 0 and p dividing a are special cases. When p divides a, the theorem does not apply, and the answer is 0. Tested: $5^{p} \% p = 5$, $5^{p-1} \% p = 1$ for $p = 10^9+7$, inv(3) = 333333336.)
+
+Cost: two fast powers, one with exponent c (modulus p-1) and one with exponent below p-1, so O(log c + log p) time and O(1) memory. A random test of 5000 small cases against the direct power found no mismatch.
 
 Common mistakes:
 
@@ -470,6 +514,8 @@ fermat's little theorem is direct implication of Euler's theorem.
  if m → prime
  then $\phi(m) = m-1$
  ∴ $a^n \mod m = a^{n \% (m-1)} \mod m$.
+
+Why it holds: the idea is the same as for Fermat's theorem, but only the numbers co-prime to m are used, and there are $\phi(m)$ of them. For m = 10 they are 1, 3, 7, 9 (four numbers, $\phi(10) = 4$). Multiplying each by 3 and taking the remainder modulo 10 gives 3, 9, 1, 7, the same four numbers in a different order. So $3^4 \cdot (1 \cdot 3 \cdot 7 \cdot 9) \equiv 1 \cdot 3 \cdot 7 \cdot 9$, and cancelling the product leaves $3^4 \equiv 1$ modulo 10.
 
 Why we need it: Fermat works only when the modulus is prime. For a composite modulus such as 10, Euler's theorem says the powers of a (when a is co-prime to the modulus) repeat with a period that divides $\phi(m)$.
 
@@ -502,9 +548,9 @@ long long euler_power(long long a, long long n, long long m){
 }
 ```
 
-(For m = $10^6$, $\phi$ = 400000. The result was compared with the direct power and matched.)
+(For m = $10^6$, $\phi$ = 400000. Trace: $7^{123456789012}$ mod $10^6$. Here 123456789012 % 400000 = 389012, so the answer is $7^{389012}$ mod $10^6$ = 687201. The result was compared with the direct power and matched.)
 
-Cost: finding $\phi(m)$ by trial division takes O($\sqrt{m}$) steps (about 1000 for $m = 10^6$). The power itself takes O(log n).
+Cost: finding $\phi(m)$ by trial division takes O($\sqrt{m}$) steps (about 1000 for $m = 10^6$). The power itself takes O(log n). Memory is O(1). Edge case: if gcd(a, m) is not 1, the answer can be wrong, so check the gcd first (or use the generalised form in the note above).
 
 ## Quick revision
 
@@ -515,20 +561,23 @@ Cost: finding $\phi(m)$ by trial division takes O($\sqrt{m}$) steps (about 1000 
 - (A·B) % M with M ≤ $10^{18}$ → binary multiplication (add and double).
 - Fermat: $a^{p-1} \equiv 1$ (p does not divide a) → reduce the exponent modulo $(p-1)$; inverse = $a^{p-2}$.
 - Euler: gcd(a,m) = 1 → reduce the exponent modulo $\phi(m)$.
+- GP sum needs a prime m for the inverse form. For any m, halve the terms; time O(log² n), memory O(log n).
+- Binary multiplication is safe while M is at most about $4.6 \cdot 10^{18}$, because a + a must fit in `long long`.
+- Fermat and Euler both come from the fact that multiplying all numbers co-prime to the modulus by a gives the same set of remainders.
 - Use `long long` and keep results in the range 0 to m-1.
 
 ## Practice problems
 
 **CSES**
 
-- [CSES task 1095](https://cses.fi/problemset/task/1095)
-- [CSES task 1617](https://cses.fi/problemset/task/1617)
+- [CSES 1095: Exponentiation](https://cses.fi/problemset/task/1095)
+- [CSES 1617: Bit Strings](https://cses.fi/problemset/task/1617)
 
 **Codeforces**
 
-- [Codeforces 1594E1](https://codeforces.com/problemset/problem/1594/E1)
-- [Codeforces 584B](https://codeforces.com/problemset/problem/584/B)
-- [Codeforces 742A](https://codeforces.com/problemset/problem/742/A)
+- [Codeforces 1594E1: Rubik's Cube Coloring (easy version)](https://codeforces.com/problemset/problem/1594/E1)
+- [Codeforces 584B: Kolya and Tanya](https://codeforces.com/problemset/problem/584/B)
+- [Codeforces 742A: Arpa's hard exam and Mehrdad's naive cheat](https://codeforces.com/problemset/problem/742/A)
 
 **Maang (AlgoZenith)**
 

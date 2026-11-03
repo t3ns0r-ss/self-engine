@@ -22,9 +22,9 @@ The motivation is speed. Many problems ask, for every element, "where is the nea
 - Sum of subarray minimums (A2, super minimum sum)
 - Better way for NSE and PSE
 - Elements not distinct
-- Other three directions (NGE, PGE)
+- Other three directions (NGE, PGE: next greater element, previous greater element)
 - Number of rectangles in histogram
-- Bracketting
+- Bracketing
 - Min of every window of size k (monotone deque)
 - Quick revision
 - Practice problems
@@ -34,7 +34,9 @@ The motivation is speed. Many problems ask, for every element, "where is the nea
 → Stack:
 - i) Monotonic stack
 - ii) NGE/NSE (Next Greater Element / Next Smaller Element)
-- iii) Bracketting
+- iii) Bracketing
+
+The symbol ∴ in the notes below means "therefore".
 
 Quick definitions before we start:
 - **Stack** = last in, first out (LIFO). Push on top, pop from top.
@@ -46,7 +48,7 @@ Quick definitions before we start:
 
 ## Largest rectangle in histogram
 
-**Ques:** Largest rectangle in histogram.
+**Question:** Largest rectangle in histogram. Find the rectangle of the largest area that fits completely inside the bars.
 
 Histogram = bars side by side, each bar has width 1. Heights here: 2, 1, 5, 6, 2, 3.
 
@@ -54,17 +56,17 @@ Histogram = bars side by side, each bar has width 1. Heights here: 2, 1, 5, 6, 2
 
 *histogram: 2 1 5 6 2 3*
 
-Another problem:
-find no. of rectangles in histogram.
+A second question is asked about the same kind of picture: find no. of rectangles in histogram. It is solved in the section "Number of rectangles in histogram" below.
 
-Observation: the height of a rectangle = the height of the shortest bar inside it. So for every bar we ask: how far can we extend to the left and to the right before we meet a shorter bar?
+First the largest rectangle. Observation: the height of a rectangle = the height of the shortest bar inside it. So for every bar we ask: how far can we extend to the left and to the right before we meet a shorter bar?
 
 Why this matters: the brute force tries every pair of left and right ends, which is about n²/2 rectangles. For n = 10^5 that is 5 × 10^9 rectangles, far too slow. The stack finds the best extent of every bar in one pass.
 
-an array:
+To see how a stack helps, take an array of bar heights:
+
 1 3 5 7 4
 
-monotone stack
+The bars wait in a monotone stack (the heights only go up from bottom to top). The picture shows the stack after 1, 3, 5 and 7 are pushed, with the next bar, 4, about to arrive:
 
 ![Stack box holding 1 3 5 7 and the next element 4 arriving](../../../assets/notes/1-6-monotonic-stack/fig03_increasing_stack.png)
 
@@ -72,9 +74,9 @@ monotone stack
 
 ![Histogram with bars 1, 3, 5, 7, 4. Arrow from bar 7: we would want to choose the max height possible](../../../assets/notes/1-6-monotonic-stack/fig02_histogram_1_3_5_7_4.png)
 
-*we would want to choose the **max height possible***
+*bars 1 3 5 7 4: for the bar 7, we would want to choose the **max height possible***
 
-pushing till the element matches/exceeds the height is better.
+pushing a bar, as long as it matches or exceeds the height of the top bar, is better.
 
 The reason: while the bars keep growing, no bar has found its right boundary yet, so we cannot fix its rectangle. Such bars wait in the stack, and the stack stays sorted.
 
@@ -82,9 +84,9 @@ When 4 appears → we need to potentially try to calculate contribution of all r
 
 with 7 as max height we can make a rectangle of width 1.
 
-we include contri of 7 & then remove 7 from the stack.
+we include contri (contribution) of 7 & then remove 7 from the stack.
 
-we do not remove the bar actually, meaning we cannot use the height 7.
+we do not remove the bar actually, meaning we cannot use the height 7. (The bar stays in the picture, so the area under it can still be used by the next rectangle. Only the height 7 is gone, because the incoming bar 4 is lower.)
 
 next height we can use is of 5 & width 2.
 
@@ -96,9 +98,11 @@ next height we can use is of 5 & width 2.
 
 *height 5, width 2. left wall 3, right wall 4*
 
-width can be calculated by checking incoming and previous element.
+width can be calculated by checking incoming and previous element. (Previous element = the bar just below the popped one in the stack.)
 
 → This width is decided by the previous & next smaller elements.
+
+The two walls of the height 5, written as one line:
 
 3 ≤ 5 ✗ 4
 
@@ -110,7 +114,7 @@ for every bar we find the contribution of the height with the max width availabl
 
 So, we can use either monotonic stack or nge/nse.
 
-\*\* We have added sentinel values in the beginning and end of the array. sentinel value = 0 here.
+\*\* We have added sentinel values in the beginning and end of the array. sentinel value = 0 here. (Used in the code below.)
 
 A sentinel is a fake element placed at the ends so that we do not need special cases. 0 is smaller than every real bar, so the 0 at the end pops everything still left in the stack, and the 0 at the front is never popped (so the stack is never empty).
 
@@ -155,6 +159,10 @@ void solve() {
 
 `2 1 5 6 2 3` → 10 and `1 3 5 7 4` → 12 (both tested).
 
+Cost: the loop runs over n + 1 positions. Each index is pushed once and popped at most once, so the time is O(n). The stack can hold all n bars (for example when the heights only increase), so the memory is O(n) (S.C., space complexity).
+
+Edge cases. Equal heights, for example `2 2`: the second 2 does not pop the first 2, because the pop needs a strictly smaller bar. At the end the second 2 is popped first (width 1, area 2), then the first 2 is popped with the full width 2 (area 4). So the answer 4 is not lost. Heights that only increase, for example `1 2 3`: nothing is popped until the last sentinel 0, which then pops all bars (areas 3, 4, 3, best 4). The sentinel 0 assumes that heights are not negative.
+
 Note: `height * width` is an int here. With large limits (for example heights and n up to 10^5, area up to 10^10) use `long long`, otherwise the product overflows.
 
 Note: `5 × 2 = 10` is just one rectangle on the way. For `1 3 5 7 4` the best is 12 (height 3 over 4 bars, or height 4 over 3 bars).
@@ -165,7 +173,7 @@ Note: `5 × 2 = 10` is just one rectangle on the way. For `1 3 5 7 4` the best i
 
 ## Dry run of the histogram stack
 
-`1 3 5 7 4` with sentinel 0 at both ends. Box = height, small number = index in the array with sentinels (0 to 6).
+This section follows the stack step by step for `1 3 5 7 4` with sentinel 0 at both ends. Box = height, small number = index in the array with sentinels (0 to 6). The bars 1, 3, 5, 7 are each taller than the top of the stack, so they are only pushed, and nothing is popped yet.
 
 ![Table of stack states for each step while processing 1 3 5 7 4 with sentinels](../../../assets/notes/1-6-monotonic-stack/fig05_histogram_stack_trace.png)
 
@@ -175,7 +183,9 @@ Note: `5 × 2 = 10` is just one rectangle on the way. For `1 3 5 7 4` the best i
 - The last 0 arrives: pop 4 → left wall 3, width = 6 − 2 − 1 = 3, area 12. Pop 3 → left wall 1, width 4, area 12. Pop 1 → left wall = first 0, width 5, area 5.
 - ans = 12.
 
-For `2 1 5 6 2 3` pops are (height, width, area): (2,1,2) (6,1,6) (5,2,10) (3,1,3) (2,4,8) (1,6,6). ans = 10.
+The same result by the formula width = (next smaller index) − (previous smaller index) − 1: for the bar 3 (index 2) the next smaller is the last 0 (index 6) and the previous smaller is 1 (index 1), so the width is 6 − 1 − 1 = 4 and the area is 3 × 4 = 12.
+
+For `2 1 5 6 2 3` the pops are (height, width, area): (2,1,2) (6,1,6) (5,2,10) (3,1,3) (2,4,8) (1,6,6). ans = 10.
 
 ## Next Smaller Element (NSE)
 
@@ -183,15 +193,22 @@ For `2 1 5 6 2 3` pops are (height, width, area): (2,1,2) (6,1,6) (5,2,10) (3,1,
 
 For each element, index of the first element on its right which is smaller. Sentinel -1 at the end (it is the smallest value, so every element gets an answer).
 
+Brute force: for every element scan to the right until a smaller one is found. In the worst case (an increasing array) this is n(n − 1)/2 comparisons, about 5 × 10^9 for n = 10^5.
+
+Idea in plain words: the stack keeps the indices of the elements that are still waiting for their answer. The values of the waiting elements always increase from bottom to top, because a waiting element that is larger than a later one would already have been answered. When a new element x arrives, every waiting element larger than x has found its answer, and that answer is x. Those elements are exactly the ones on top of the stack, so we pop while the top is larger than x. Then x starts waiting itself.
+
 ![Array 4 5 2 7 8 3 and sentinel -1 with arrows to the next smaller element, nse 2 2 6 5 5 6](../../../assets/notes/1-6-monotonic-stack/fig06_nse_arrows.png)
 
 *arr: [4 5 2 7 8 3 | -1], nse: [2 2 6 5 5 6]*
 
-sentinel value (-1 at idx 6).
+sentinel value (-1 at idx 6; idx is short for index).
 
 nse: indices of next smaller elements.
 
+Now the stack steps for this array. The first 4 and 5 are pushed, because each is larger than the top:
+
 arr: 4 5 2 7 8 3
+
 idx: 0 1 2 3 4 5
 
 st: [0 1]   (values 4 5)     nse: [ ]
@@ -204,25 +221,25 @@ again 2 &lt; 4
 
 ∴ we repeat
 
-push 2 now & continue.
+push 2 now & continue. (7 and 8 are pushed after it, each larger than the top.)
 
 st: [2 3 4]   (values 2 7 8)
 
 we encounter 3.   3 &lt; 8
 
-Pop 4 and 3 (the values 8 and 7); both get nse = 5. 3 &lt; 2 is false, so stop. Push 5. st: [2 5]. nse = [2 2 _ 5 5 _].
+Pop the indices 4 and 3 (the values 8 and 7); both get nse = 5. 3 &lt; 2 is false, so stop. Push 5. st: [2 5]. nse = [2 2 _ 5 5 _].
 
 we encounter -1 :
 
 -1 is smaller than both 3 and 2, so both are popped with nse = 6. st: []. nse = [2 2 6 5 5 6].
 
-add -1 at idx 6, in org arr.
+add -1 at idx 6, in the original array (org arr).
 
 ![Step by step: stack and the nse array being filled](../../../assets/notes/1-6-monotonic-stack/fig07_nse_stack_trace.png)
 
 *stack + nse after every step*
 
-The same loop in code is shown below. Here the array is 1-based and the sentinel 0 sits at both ends, so every printed answer is shifted by +1 compared with the 0-based example above. One loop also gives the previous smaller element (pse): when an element is popped, the new top of the stack is its previous smaller.
+The same loop in code is shown below. (`_print` is the print helper of his template; it writes a vector to the error stream.) Here the array is 1-based and the sentinel 0 sits at both ends, so every printed answer is shifted by +1 compared with the 0-based example above. One loop also gives the previous smaller element (pse): when an element is popped, the new top of the stack is its previous smaller.
 
 ```cpp
 /*
@@ -265,11 +282,13 @@ void solve() {
 
 `4 5 2 7 8 3` → nse = `3 3 7 6 6 7` (−1 each → `2 2 6 5 5 6`), pse = `0 1 0 3 4 3`.
 
+Cost: every index is pushed once and popped at most once, so the time is O(n); the stack and the two answer arrays take O(n) memory. If an element has no smaller element on its right, the sentinel at the end answers for it (index n + 1 in this code). The sentinel 0 works because the input values are positive. If values can be 0 or negative, use a sentinel smaller than every value.
+
 Note: a pop happens only when the new element is **strictly** smaller. Equal elements stay in the stack, so this pse is really "previous smaller **or equal**". This detail matters later, in the duplicates section.
 
 ## Sum of subarray minimums (A2, super minimum sum)
 
-**Ques:** A2 → super minimum sum.
+**Question:** A2 → super minimum sum.
 
 Given an array A of size N. All elements are distinct.
 
@@ -279,11 +298,11 @@ find sum of the minimum of all possible subarrays of array A.
 
 1 ≤ t ≤ 10  |  1 ≤ N ≤ 10^5  |  1 ≤ A_i ≤ 10^6
 
-Sounds like contribution technique.
+This sounds like the contribution technique.
 
 (contribution technique = instead of looking at every subarray, look at every element and ask how much it adds to the answer.)
 
-We need to find minimums for all subarrays & sum them up.
+We need to find minimums for all subarrays & sum them up. Example:
 
 Brute force: all subarrays, min of each → O(N²) subarrays. For N = 10^5 that is about 5 × 10^9 subarrays, which is infeasible.
 
@@ -291,7 +310,7 @@ Brute force: all subarrays, min of each → O(N²) subarrays. For N = 10^5 that 
 
 *A = 1 2 3: minimums 1 2 3 1 2 1, sum = 10*
 
-So, we check , how many times each element become minimum in the subarrays.
+So, we check, how many times each element becomes minimum in the subarrays.
 
 1 → becomes minimum 3 times
 
@@ -301,7 +320,7 @@ So, we check , how many times each element become minimum in the subarrays.
 
 1×3 + 2×2 + 3 = 10
 
-We need to think for how many subarrays A[i] is min.
+We need to think for how many subarrays A[i] is min. In the sketch below, i is the position of A[i], a is the position of the previous smaller element and b is the position of the next smaller element (both cells hold values smaller than x = A[i]).
 
 ![Array with positions a, i, b; cells at a and b are smaller than x](../../../assets/notes/1-6-monotonic-stack/fig09_contribution_range.png)
 
@@ -309,17 +328,17 @@ We need to think for how many subarrays A[i] is min.
 
 A[a] → previous smaller | A[b] → next smaller
 
-∴ A[i] must be min in all subarrays [a+1 , b-1].
+∴ A[i] must be min in all subarrays [a+1 , b-1]. (That means: in every subarray that lies inside the range a+1 to b−1 and contains i.)
 
 A subarray in which A[i] is the minimum must contain i. Its start can be any position in `a+1 ... i` → `i − a` choices. Its end can be any position in `i ... b−1` → `b − i` choices. Any start can be paired with any end, so:
 
 no. of subarrays = (i − a) × (b − i), contribution = A[i] × (i − a) × (b − i)
 
-1 5 (3) 4 2
+Example: the array `1 5 3 4 2` and the element 3 (index 2).
 
 for 3 to be min: subarray must start after 1 and must end before 2.
 
-a=0       b= 4
+a = 0, b = 4 (indices of the 1 and the 2).
 
 ![Array 1 5 3 4 2 with 3 highlighted, walls at index 0 and index 4](../../../assets/notes/1-6-monotonic-stack/fig10_example_1_5_3_4_2.png)
 
@@ -327,13 +346,23 @@ a=0       b= 4
 
 Here the contribution of 3 = 3 × 2 × 2 = 12 (subarrays: [5 3], [5 3 4], [3], [3 4]).
 
-Answer can go up to ~ 10^6 × (10^5)² / 2 ≈ 5 × 10^15, which does not fit in a 32-bit int (about 2 × 10^9), so use `long long`.
+The same formula for every element of `1 5 3 4 2` (previous smaller index a, next smaller index b; a = −1 if there is none on the left, b = n = 5 if there is none on the right):
 
-The full code comes after we fix the duplicates case (below). First, a shorter way to compute NSE and PSE.
+- 1 (index 0): a = −1, b = 5, 1 × 1 × 5 = 5 (subarrays that start at index 0, all five of them).
+- 5 (index 1): a = 0, b = 2, 5 × 1 × 1 = 5.
+- 3 (index 2): a = 0, b = 4, 3 × 2 × 2 = 12.
+- 4 (index 3): a = 2, b = 4, 4 × 1 × 1 = 4.
+- 2 (index 4): a = 0, b = 5, 2 × 4 × 1 = 8.
+
+Total = 5 + 5 + 12 + 4 + 8 = 34.
+
+Answer can go up to ~ 10^6 × (10^5)² / 2 ≈ 5 × 10^15, which does not fit in a 32-bit int (about 2 × 10^9), so use `long long`. It fits in a 64-bit `long long` (about 9 × 10^18).
+
+The full code comes after we fix the duplicates case (below). First, a shorter way to compute NSE and PSE (previous smaller element).
 
 ## Better way for NSE and PSE
 
-\* Better way for NSE:
+\* Better way for NSE: it needs no stack. It fills the answers from right to left and reuses the answers already found.
 
 ```cpp
 vector <int> nse(n);
@@ -345,7 +374,7 @@ for (int i=n-1; i>=0; i--) {
 }
 ```
 
-Idea: start at i+1. If it is not smaller, jump to its nse. This is safe because every element between i+1 and nse[i+1] is greater than or equal to `arr[i+1]`, and `arr[i+1]` itself is not smaller than `arr[i]`, so no answer can hide in between.
+Idea in plain words: start at i+1. If it is not smaller, jump to its nse. This is safe because every element between i+1 and nse[i+1] is greater than or equal to `arr[i+1]`, and `arr[i+1]` itself is not smaller than `arr[i]`, so no answer can hide in between.
 
 Dry run on `[1 6 4 7 5 2]` for i = 2 (value 4): start at 3 (value 7, not smaller) → jump to nse[3] = 4 (value 5, not smaller) → jump to nse[4] = 5 (value 2, smaller). Stop: nse[2] = 5.
 
@@ -353,9 +382,9 @@ Dry run on `[1 6 4 7 5 2]` for i = 2 (value 4): start at 3 (value 7, not smaller
 
 *[1 6 4 7 5 2] → nse [6 2 5 4 5 6]. i=2: 3 → nse[3]=4 → nse[4]=5, stop*
 
-T.C. = O(n) amortised, same as the stack. The jump chain is exactly what the stack would have held. An element that has been skipped is never visited again by an earlier index.
+T.C. = O(n) amortised, same as the stack. The jump chain is exactly what the stack would have held. An element that has been skipped is never visited again by an earlier index: it is covered by a smaller (or equal) element in front of it, and an earlier index that arrives there jumps over it. So the total number of jumps is at most n. Memory: O(n) for the nse array. If nothing smaller exists, nse[i] ends at n (one past the last index).
 
-For Previous Smaller Element:
+For Previous Smaller Element, the same code runs from left to right:
 
 ```cpp
 vector <int> pse (n);
@@ -376,6 +405,8 @@ Now, using those NSE & PSE we can find the solution for the previous problem, in
 
 But what if the elements are not distinct?
 
+The problem: a row of equal values, `1 1 1`. Every element has no strictly smaller element on either side.
+
 ![1 1 1 with nse 3 3 3 and pse -1 -1 -1](../../../assets/notes/1-6-monotonic-stack/fig12_duplicates_wrong.png)
 
 *1 1 1: nse [3 3 3], pse [-1 -1 -1]*
@@ -384,32 +415,33 @@ using these to calculate the contributions will lead to wrong result.
 
 Look at what goes wrong: each of the three 1s thinks that the whole array belongs to it. (i−a)(b−i) = 3, 4, 3 → 10. The correct answer is 6 (6 subarrays, each with minimum 1). Some subarrays were counted more than once.
 
-Instead, the idea we use is that in a subarray we found a min. then it is the first ever occurrence of it. Then we add its contribution, else not.
+Instead, the idea we use is that in a subarray we found a min. then it is the first ever occurrence of it. Then we add its contribution, else not. (So each subarray is given to exactly one element: the leftmost one among equal minimums.)
 
 means we need to find the previous smaller or equal element.
 so that we can count from that.
 
-psee [-1   0   1]  \}  we calculate
-nse  [ 3   3   3]  \}  the contribution
-                      using these.
+The two arrays for `1 1 1`:
+
+psee [-1 0 1]
+
+nse [3 3 3]
+
+we calculate the contribution using these.
 
 ![1 1 1 with psee -1 0 1 and nse 3 3 3, counts 3 2 1](../../../assets/notes/1-6-monotonic-stack/fig13_duplicates_fixed.png)
 
 *psee [-1 0 1], nse [3 3 3] → 3 + 2 + 1 = 6*
 
-(psee = previous smaller or equal element.) Check: `1×(0−(−1))×(3−0) = 3`, `1×(1−0)×(3−1) = 2`, `1×(2−1)×(3−2) = 1` → 6.
+(psee = previous smaller or equal element. The first 1 has none, so −1. The second 1 finds the first 1 at index 0. The third 1 finds the second 1 at index 1.) Check: `1×(0−(−1))×(3−0) = 3`, `1×(1−0)×(3−1) = 2`, `1×(2−1)×(3−2) = 1` → 6.
 
 Left side: "or equal". Right side: strictly smaller. Using strict on both sides, or "or equal" on both sides, gives a wrong answer (the first double counts, the second misses subarrays). One side strict, the other side "or equal": then every subarray is assigned to exactly one minimum, its leftmost one.
 
 ```cpp
 /*
-Ques: sum of the minimum of all subarrays of A (elements can repeat).
+Question: sum of the minimum of all subarrays of A (elements can repeat).
 Left side: previous smaller OR equal (psee). Right side: next strictly smaller (nse).
 */
-/*
-Ques: sum of the minimum of all subarrays of A (elements can repeat).
-Left side: previous smaller OR equal (psee). Right side: next strictly smaller (nse).
-*/
+// Used for: A2 super minimum sum and the number of rectangles in a histogram (below).
 long long sumOfSubarrayMinimums(const vector<int>& A) {
     int n = A.size();
     vector<int> nse(n), psee(n);
@@ -428,7 +460,11 @@ long long sumOfSubarrayMinimums(const vector<int>& A) {
 }
 ```
 
-`{1,2,3}` → 10, `{1,1,1}` → 6, `{1,5,3,4,2}` → 34, `{3,1,2,4}` → 17 (tested).
+`{1,2,3}` → 10, `{1,1,1}` → 6, `{1,5,3,4,2}` → 34, `{3,1,2,4}` → 17 (tested; also compared with the brute force on 20000 random small arrays with repeated values).
+
+Cost: the two jump loops are O(N) in total and the last loop is O(N), so the time is O(N) per test case. With t ≤ 10 and N ≤ 10^5 that is about 10^6 steps. Memory is O(N) for the two arrays. The brute force would need about 5 × 10^9 steps for one test case. Mistakes to avoid: using `>=` on both sides, or `>` on both sides; computing the product in `int`; and forgetting that a = −1 and b = n are the values when no smaller element exists.
+
+Worked example `3 1 2 4` (psee, nse, contribution): 3 has psee −1 and nse 1, so 3 × 1 × 1 = 3. 1 has psee −1 and nse 4, so 1 × 2 × 3 = 6. 2 has psee 1 and nse 4, so 2 × 1 × 2 = 4. 4 has psee 2 and nse 4, so 4 × 1 × 1 = 4. Total = 3 + 6 + 4 + 4 = 17.
 
 ![Worked example 3 1 2 4: ranges owned by each element, total 17](../../../assets/notes/1-6-monotonic-stack/fig16_contribution_ranges.png)
 
@@ -451,6 +487,8 @@ It is the same technique with the comparison reversed. There are 4 combinations 
 
 For the "next" queries, a popped element receives the answer `i`. For the "previous" queries, the answer is the element left on top after the pops. How equal values are treated is decided by `>` versus `>=` (see the duplicates section above).
 
+Trace of next greater on `4 2 5 1 3` (the stack holds indices): index 0 is pushed. Index 1 (value 2): the top 4 is not smaller, so push. Index 2 (value 5): pop index 1 (2 &lt; 5) and index 0 (4 &lt; 5), both get answer 2; push index 2. Index 3 (value 1): push. Index 4 (value 3): pop index 3 (1 &lt; 3), answer 4; the top 5 is not smaller, so push. The indices 2 and 4 are left in the stack, so they get the answer 5 (none). Result: `2 2 5 4 5`. The cost is O(n) time and O(n) memory, the same as for the smaller case.
+
 Results on `4 2 5 1 3` (checked against brute force): next smaller `1 3 3 5 5`, next greater `2 2 5 4 5`, previous smaller `-1 -1 1 -1 3`, previous greater `-1 0 -1 2 2`.
 
 ## Number of rectangles in histogram
@@ -459,9 +497,13 @@ This is the problem "find no. of rectangles in histogram" from the start: rectan
 
 Adding over all ranges gives the **sum of subarray minimums**, the same function as above. `1 3 5 7 4` → 46 (brute force also gives 46).
 
-## Bracketting
+By the contribution formula, with psee on the left and nse on the right: 1 gives 1 × 1 × 5 = 5, 3 gives 3 × 1 × 4 = 12, 5 gives 5 × 1 × 2 = 10, 7 gives 7 × 1 × 1 = 7, 4 gives 4 × 3 × 1 = 12. Total = 5 + 12 + 10 + 7 + 12 = 46. The brute force over all pairs of ends would need about n²/2 steps; this needs O(n) time and O(n) memory.
 
-Every opening bracket must have a matching closing bracket in the correct order. Stack rule: push each opening bracket. When a closing bracket arrives, the top must be its partner. At the end the stack must be empty.
+The small case `1 3`: the ranges are [1], [3], [1 3] with minimums 1, 3, 1, so the sum is 5. Counted directly on the picture: 1 rectangle over the bar 1 alone, 3 rectangles (heights 1, 2, 3) over the bar 3 alone, and 1 rectangle (height 1) over both bars, so 1 + 3 + 1 = 5.
+
+## Bracketing
+
+Question: given a string of brackets, check that every opening bracket has a matching closing bracket in the correct order. For example `([)]` is not balanced: the `)` arrives while the open `[` is on top. The stack fits because the bracket opened last must be closed first (last in, first out). Stack rule: push each opening bracket. When a closing bracket arrives, the top must be its partner. At the end the stack must be empty.
 
 Map: opening → +x, closing → −x. `st.top() + val == 0` means the pair matches.
 
@@ -508,13 +550,19 @@ void solve(){
 
 `()[]{}` ✓, `{[]}` ✓, `(]` ✗, `([)]` ✗, `((` ✗ (tested).
 
+Trace of `([)]`: `(` is pushed (1). `[` is pushed (3). `)` has value −1; the top is 3, and 3 + (−1) is not 0, so the string is not balanced. Trace of `{[]}`: push 2, push 3; `]` has value −3 and 3 + (−3) = 0, so pop; `}` has value −2 and 2 + (−2) = 0, so pop; the stack is empty, so it is balanced.
+
+Cost: one pass, O(n) time; the stack can hold up to n opening brackets, so the memory is O(n). Edge cases: a closing bracket when the stack is empty (checked by `!st.empty()`), an opening bracket never closed (checked at the end), and a character that is not a bracket: its map value is 0, so it falls into the closing branch and the answer is "Not Balanced".
+
 ## Min of every window of size k (monotone deque)
 
 A close relative of the monotonic stack. A deque (double-ended queue: push and pop at both ends) is kept so that its front always holds the minimum of the current window.
 
-Why: scanning each window of size k costs about n × k steps; for n = 10^5 and k = 5 × 10^4 that is 5 × 10^9. The deque costs O(n) in total, because each element enters once and leaves once.
+Problem: print the minimum of every window of size k in an array of size n. Why brute force fails: scanning each window costs k steps and there are n − k + 1 windows, so about (n − k + 1) × k steps. This is largest near k = n / 2; for n = 10^5 and k = 5 × 10^4 it is about 2.5 × 10^9. The deque costs O(n) in total, because each element enters once and leaves once.
 
-Dry run on `4 2 5 1 3`, k = 3: insert 4 → [4]. Insert 2 → pop 4, deque [2]. Insert 5 → [2 5]; the first window is complete, min = 2. Insert 1 → pop 5 and 2, deque [1]; the element leaving the window (4) is not at the front, so nothing to remove; min = 1. Insert 3 → [1 3]; min = 1. Output `2 1 1`.
+Idea in plain words: when a new element x arrives, every element behind it in the deque that is larger than x can never be the minimum again, because x is smaller and leaves the window later. So those elements are removed from the back. What remains is increasing from front to back, so the front is the minimum of the window. An element is removed from the front when it leaves the window.
+
+Dry run on `4 2 5 1 3`, k = 3: insert 4 → [4]. Insert 2 → pop 4, deque [2]. Insert 5 → [2 5]; the first window is complete, min = 2. Insert 1 → pop 5 and 2, deque [1]; the element leaving the window (4) is not at the front, so nothing to remove; min = 1. Insert 3 → [1 3]; the leaving element 2 is not at the front either; min = 1. Output `2 1 1`.
 
 ```cpp
 /*
@@ -555,21 +603,23 @@ void solve(){
 }
 ```
 
+Cost: O(n) time in total and O(k) memory, since the deque holds at most the k elements of one window. The deque stores values, not indices. This works because equal values are kept (the pop needs a strictly larger value), so erasing by value removes the correct copy.
+
 Note: `if((i-k) > 0)` should be `>= 0`. When `i == k`, `arr[0]` leaves the window but is not erased. On `1 5 6 7`, k = 2 this prints `1 1 1`, while the correct output is `1 5 6`. (On `4 2 5 1 3`, k = 3 it prints the correct `2 1 1`, so the bug stays hidden.)
 
 ## Quick revision
 
-- Monotonic stack: store indices, keep the order sorted, pop whatever breaks the order. T.C. = O(n).
+- Monotonic stack: store indices, keep the order sorted, pop whatever breaks the order. Time O(n), memory O(n): each index is pushed once and popped at most once.
 - NSE: pop while `a[top] > a[i]`; each popped element gets answer `i`. Leftover elements get n (or the sentinel).
 - PSE: after the pops, the top of the stack is the answer.
-- Histogram: width = nse − pse − 1, area = height × width, sentinel 0 at both ends.
-- Number of rectangles in a histogram = sum of subarray minimums.
-- Contribution of A[i] as the minimum = A[i] × (i − a) × (b − i).
+- Histogram: width = nse − pse − 1, area = height × width, sentinel 0 at both ends. Equal bars are fine: the earlier bar gets the full width.
+- Number of rectangles in a histogram = sum of subarray minimums (`1 3 5 7 4` → 46).
+- Contribution of A[i] as the minimum = A[i] × (i − a) × (b − i), with a = −1 and b = n when no smaller element exists.
 - Distinct elements: strict comparison on both sides. Repeated elements: left side psee (smaller or equal), right side nse (strict). `1 1 1` → 6, not 10.
 - Jump trick: `nse[i] = i+1; while (nse[i] < n && arr[nse[i]] >= arr[i]) nse[i] = nse[nse[i]];`
-- Use `long long` for sums and areas.
+- Use `long long` for sums and areas (sum of minimums can reach about 5 × 10^15).
 - Brackets: push openings; on a closing bracket the top must match; the stack must be empty at the end.
-- Window minimum: monotone deque, front = minimum, remove the leaving element when `i − k >= 0`.
+- Window minimum: monotone deque, front = minimum, remove the leaving element when `i − k >= 0`. Time O(n), memory O(k).
 
 ## Practice problems
 

@@ -225,6 +225,37 @@ void solve() {
 
 Note: the logic is correct, but `int` is used, so `num * den` and `f * g` (about $10^{18}$) overflow. On the sample 5 3 10 3 2 4 6 this gives 298690449, while the correct answer is 499999813 (checked). It must be changed to `long long`.
 
+The same solution as a corrected function. First a general inverse for any prime modulus (the `inv` above is fixed to $10^9+7$), then the whole expression, using `bin_exp` from the binary exponentiation section:
+
+```cpp
+// New function (not from the Fabricator repo): a modular inverse for any prime modulus m.
+/*
+  Problem: inverse of c modulo a PRIME m (c must not be a multiple of m).
+  Fermat's little theorem: c^(m-2) % m. Uses bin_exp from above.
+*/
+long long invMod(long long c, long long m) {
+    return bin_exp(c % m, m - 2, m);
+}
+
+// New function (not from the Fabricator repo): the corrected, long long version of solve() above.
+/*
+  Problem: (A + (B-C)^D / E - F*G) % (1e9+7), 1 <= A..G <= 1e9. Division means multiply by the inverse.
+*/
+long long expressionMod(long long A, long long B, long long C, long long D,
+                        long long E, long long F, long long G) {
+    const long long m = 1000000007LL;
+    long long x = (((B - C) % m) + m) % m;                  // B-C may be negative
+    long long term = bin_exp(x, D, m) * invMod(E, m) % m;   // (B-C)^D * E^-1
+    long long fg = (F % m) * (G % m) % m;
+    long long ans = (A % m + term - fg) % m;                // may be negative here
+    return ((ans % m) + m) % m;                             // printing rule
+}
+```
+
+Compiled and run: the inverses of 1 to 6 modulo 7 come out as 1 4 5 2 3 6, the same as the table above. For the first example of this section, `bin_exp(2, 4, 11) * invMod(4, 11) % 11` is 4. For the sample 5 3 10 3 2 4 6, `expressionMod` returns 499999813, the same as the trace and as an independent 128-bit calculation. On 2000 random inputs it matched that calculation every time, and 1000 random values v satisfied $v \cdot v^{-1} \% (10^9+7) = 1$.
+
+Cost: two fast powers and a few multiplications, so O(log D + log m) time (about 60 steps) and O(1) memory. Common mistake: calling `invMod` with a multiple of m. There is no inverse then, and the function silently returns 0.
+
 ### GP sum under mod
 
 A geometric progression (GP) is a list of terms where each term is the previous one times x. The next problem asks for the sum of such a list, modulo m.

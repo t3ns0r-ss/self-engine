@@ -10,6 +10,7 @@ Next action: Saurabh runs the LeetCode snippet from the Profiles page (gate S4),
 ## Lesson restore (LESSON_RESTORE_PLAN.md)
 - R_BASE (old template 3.1, used by Phases 1 and 2): `e5d3412` (`git show e5d3412:src/content/docs/phase-3/3-1-backtracking.mdx`).
 - Phase 0 done on branch `claude/vigilant-hypatia-iyajxg` (commit 1020352). Phase R raw import is `c1b7b3c` (the `check_code_unchanged` reference for 3.1). Phase R plain-English pass done (`docs/restore/R-changes-3-1.md`), 16 Fabricator blocks match `check_fabricator.mjs`. Next: Phase 1 inventory, which waits for Saurabh to merge Phases 0 and R.
+- Phase 1 (inventory) done: `docs/restore/*.md`, 1657 rows over 15 lessons, `check_ideas.mjs` passes. Totals present/partial/missing/duplicate: 0.1 4/19/77/0, 0.2 16/15/70/0, 0.4 24/11/81/0, 0.6 6/29/62/0, 1.2 43/13/69/0, 1.3 42/33/52/2, 1.4 23/30/63/0, 1.5 2/10/93/0, 1.6 20/23/56/3, 1.7 14/10/80/0, 2.1 23/12/88/0, 2.2 14/19/71/0, 2.3 24/13/77/0, 2.4 5/5/77/0, 3.1 8/22/104/0. Waiting for Saurabh to read them and strike rows. Contradictions between old lessons and his notes are listed at the end of each file ("Contradicts his note") and are his to decide; none is restored.
 
 ## Gates
 | Gate | Status | Date |

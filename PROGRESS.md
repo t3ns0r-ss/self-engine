@@ -7,6 +7,10 @@
 Last completed step: profile sync (PROFILE_SYNC_PLAN.md) milestones S0 to S6 except the LeetCode snippet, on `main` at Saurabh's request (details under "Profile sync" below).
 Next action: Saurabh runs the LeetCode snippet from the Profiles page (gate S4), then the final review.
 
+## Lesson restore (LESSON_RESTORE_PLAN.md)
+- R_BASE (old template 3.1, used by Phases 1 and 2): `e5d3412` (`git show e5d3412:src/content/docs/phase-3/3-1-backtracking.mdx`).
+- Phase 0 done on branch `claude/vigilant-hypatia-iyajxg` (commit 1020352). Phase R raw import committed next; its commit is the `check_code_unchanged` reference for 3.1.
+
 ## Gates
 | Gate | Status | Date |
 |---|---|---|

@@ -4,434 +4,1956 @@ sidebar:
   order: 18
 topic: "3.1"
 ---
-import { Code } from '@astrojs/starlight/components';
 import TopicHeader from '../../../components/TopicHeader.astro';
-import TheoremCode from '../../../components/TheoremCode.astro';
-import CodeSnippet from '../../../components/CodeSnippet.astro';
-import WhatYouNeed from '../../../components/WhatYouNeed.astro';
-import Cards from '../../../components/Cards.astro';
 import Ladder from '../../../components/Ladder.astro';
-import Drill from '../../../components/Drill.astro';
-import LookalikePairs from '../../../components/LookalikePairs.astro';
-import SelfTest from '../../../components/SelfTest.astro';
-import Checkpoint from '../../../components/Checkpoint.astro';
-import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="3.1" />
 
-## 1. Why this topic exists
+## What this note covers
 
-Here is a small problem. Place $n = 10$ queens on a $10 \times 10$ chessboard so that no two attack each other (no two share a row, a column or a diagonal), and count the ways.
+Function jab khud ko hi call kare toh recursion. Us recursion se brute force karo (saare options try karo, jo galat ho usko wapas hata do) toh backtracking. Isme recursion tree banana, call stack trace karna, N-Queens, subsets, permutations, k-th element nikalna aur fractals, sab ek hi idea se hote hain.
 
-Brute force from [topic 0.5](../../phase-0/0-5-brute-force/) picks one column for the queen of each row: $10^{10}$ placements, each checked in about 45 pair tests. That is $4.5 \cdot 10^{11}$ operations, more than an hour at $10^8$ per second. But almost all of these placements were dead after two rows: if the queens of rows 0 and 1 already attack each other, none of the $10^8$ ways to fill the other eight rows can help.
+- Recursion
+- Fibonacci and the recursion tree
+- Palindrome and tail recursion
+- nCr using Pascal's triangle
+- Print n to 1 and back
+- Tower of Hanoi
+- Trace following (the f(3) tree)
+- Backtracking and the LCCMD framework
+- T.C. of backtracking and the 4 problems
+- N-Queens (diagonals, search tree, variants)
+- Print all subsequences / non-distinct permutations
+- Backtracking revisited: subsets for unique elements
+- Subsets with duplicates
+- Permutations: distinct and non-distinct
+- Balanced parentheses
+- Kth form: k-th permutation
+- K-th move of Tower of Hanoi
+- Fractals
+- Self-similar problems: Caracal vs Monster, Christmas burger, Nephren's riddle
+- Quick revision
+- Practice problems
 
-The key idea of this topic: build the answer one choice at a time, check the partial solution after every choice, and stop extending it as soon as it cannot succeed. This is **backtracking**. For 10 queens it makes 35 539 calls instead of $10^{10}$ checks, and finds all 724 solutions in a few milliseconds. The same idea, with a sharper check, cuts optimisation searches (stop when even an optimistic guess cannot beat the best answer so far), and a different trick, splitting the choices into two halves, takes $2^{40}$ subsets down to about $2 \cdot 2^{20}$.
+Quick definitions before we start:
+- **Recursion** = a function calling itself.
+- **Base case** = the input for which the function does not call itself, it just returns. Bina base case ke recursion kabhi rukti nahi.
+- **Recursive case** = the part where it calls itself on a smaller input.
+- **Call stack** = the memory where every running call keeps its own `n`, `l`, `r` etc. Naya call aaya toh push, return hua toh pop. Last in, first out.
+- **Depth** = how many calls are sitting on the stack at the same time. S.C. (space complexity) of a recursion is mostly this depth.
+- **T.C.** = time complexity (how many steps), **S.C.** = space complexity (how much extra memory).
 
-## 2. Prerequisites and scope
+## Recursion
 
-### What you need
+→ Recursion:
 
-<WhatYouNeed topic="3.1" />
+A function calling itself. →  `f() { f(); }`
 
-### What this topic does not cover
+Left (marked "↑ Easy to trace"):
 
-- Storing the answer of each recursive call so that a repeated call is answered at once (memoisation), and building tables of answers bottom-up: covered in topic 3.2 (dynamic programming foundations).
-- Search over the states of a graph, visiting each state once: covered in topic 4.1 (breadth-first search and depth-first search).
-- Bitmask dynamic programming for "choose an order of $n \le 20$ items": covered in topic 3.7.
-- Randomised search, heuristics such as simulated annealing, and constraint solvers: not part of this course.
-
-## 3. Definitions
-
-- A **partial solution** is a sequence of the first few choices, $c_0, \dots, c_{p-1}$, of a recursion over choices (Theorem 0.5.4). Example: for queens, the columns of the queens in rows $0, \dots, p - 1$.
-- The **search tree** of a recursion has one node per call: the root is the call with no choices made, and the children of a node are the calls it makes. A node at depth $p$ corresponds to one partial solution of length $p$. Example: for 4 queens without any checks, the search tree has $1 + 4 + 16 + 64 + 256 = 341$ nodes.
-- **Backtracking** is a recursion that extends a partial solution one choice at a time, tests it, and, when the call returns, undoes its last choice so that the shared state is as it was before the call.
-- **Pruning** a node means not calling into it, so that its whole subtree is skipped. A **feasibility check** prunes partial solutions that cannot be completed to a valid one; a **bound** prunes partial solutions that cannot be completed to one better than the best found so far.
-- An **optimistic estimate** for a maximisation problem is a number $U(s)$ for a partial solution $s$ that is at least the value of every complete solution extending $s$. Example: when choosing items with non-negative values, "value so far + values of all items not yet decided" is optimistic.
-- **Branch and bound** is backtracking for an optimisation problem that prunes with an optimistic estimate.
-- **Meet in the middle** splits $n$ choices into two halves, lists all $2^{n/2}$ choices of each half separately, and combines the two lists, usually after sorting one of them.
-
-## 4. Theory and proofs
-
-### 4.1 Backtracking with a feasibility check
-
-Backtracking adds one line to the recursion of Theorem 0.5.4:
-
+```cpp
+void f(int n){
+    if (n<=0) return;
+    cout << "Hi, " << n << endl;
+    f(n-1);
+}
 ```
-rec(pos):
-    if pos == L: output the current sequence c[0..L-1]; return
-    for each allowed choice v at position pos:
-        c[pos] = v
-        if ok(c[0..pos]): rec(pos + 1)
+
+Right (marked "↑ Difficult to trace."):
+
+```cpp
+void f(int n) {
+    if (n<=0) return;
+    f(n-2);
+    cout << "Hi, " << n << endl;
+    f(n-1);
+}
 ```
 
-**Theorem 3.1.1 (pruning by feasibility).** Suppose that on a complete sequence ($pos = L - 1$) `ok` is the full validity check, and that `ok` never rejects a partial solution that has a valid completion; that is, whenever $c_0, \dots, c_p$ can be extended to a valid complete sequence, `ok` returns true. Then `rec(0)` outputs every valid complete sequence exactly once. If, in addition, `ok` is **exact** (it accepts exactly the partial solutions that have a valid completion), then every call lies on the path from the root to some output, so the number of calls is at most $(L + 1) \cdot S$, where $S$ is the number of outputs.
+As complexity increases, its very difficult to trace the recursion.
 
-:::tip[In plain words]
-Build the answer one choice at a time and test the partial answer after every choice. If the test never rejects a partial answer that can still be completed, the search still finds every valid answer exactly once, and the rejected branches cost nothing.
-:::
+Tracing level:
 
-Trace for 4 queens, one queen per row, `ok` = "the new queen attacks none of the earlier ones". The test only looks at placed queens, so it never rejects a placement that could be completed.
-
-| row 0 | row 1 options that pass | what happens |
+|  | Speed | Understanding |
 |---|---|---|
-| column 0 | 2, 3 | after (0, 2) no column passes in row 2; after (0, 3) the queen at (2, 1) leaves nothing for row 3 |
-| column 1 | 3 | (1, 3, 0, 2) is a solution |
-| column 2 | 0 | (2, 0, 3, 1) is a solution |
-| column 3 | 0, 1 | the mirror image of column 0: dead ends |
+| i) Intuitive | Fast | Low |
+| ii) Recursion Tree | Draw/Med | Med |
+| iii) Recursion Stack | Slow | High. |
 
-In all, 17 calls instead of the 341 nodes of the unpruned tree; for 8 queens 2 057 calls instead of about $1.9 \cdot 10^7$; for 10 queens 35 539 calls instead of about $1.1 \cdot 10^{10}$. The queens test is not exact (row 2 is reached after (0, 2) although nothing can follow), so the count is more than $(L + 1) S$, but still small.
+Increase with experience.
 
+Easy one first. `f(3)`: dekho, call stack me kya hota hai. Print `Hi, n` pehle, phir `f(n-1)`.
 
-**Proof.**
-1. Without the test, Theorem 0.5.4 shows that every sequence is reached exactly once, along the path of its prefixes.
-2. A valid sequence has a valid completion at every prefix (itself), so `ok` accepts each of its prefixes and its path is never cut: it is output.
-3. An invalid sequence is never output, because it fails the test at $pos = L - 1$, which is the full validity check. So the outputs are exactly the valid sequences, each once.
-4. If `ok` is exact, every node that is called has a valid completion, so it is a prefix of some output.
-5. Each output has $L + 1$ prefixes, so there are at most $(L + 1) S$ calls. $\square$
+![Call stack of f(3), growing to four frames and then popping one by one](../../../assets/notes/3-1-backtracking/fig01_call_stack_easy.png)
 
-:::note[This proof needs]
-1. The test never rejects a partial solution that can still be completed: it may only use the choices made so far and must be implied by the final validity condition. A constraint that is checked only when it involves already-placed items has this property.
-2. The shared state (counters, "used" marks) is restored when a call returns, so that each call sees exactly the state of its own partial solution.
-3. For the running time: the number of nodes that pass the test, times the cost of a test, fits the budget. With an exact test, that is at most (depth + 1) × the number of outputs.
-:::
+*f(3): push f(3), f(2), f(1), f(0). f(0) returns, then pops one by one*
 
-<TheoremCode unit="3.1/thm-1" />
+Output: `Hi, 3`, `Hi, 2`, `Hi, 1`.
 
-In all, 17 calls instead of the 341 nodes of the unpruned tree; for 8 queens 2 057 calls instead of about $1.9 \cdot 10^7$; for 10 queens 35 539 calls instead of about $1.1 \cdot 10^{10}$. The queens test is not exact (row 2 is reached after (0, 2) although nothing can follow), so the count is more than $(L + 1) S$, but still small.
+- Calls: n + 1 (f(3) → 4 calls, the last one is the base case).
+- T.C. = O(n). S.C. = O(n), because n + 1 frames sit on the stack together.
+- Common mistake: no base case, or a base case that is never reached (like `if (n==0) return;` and then calling `f(-5)`, n goes -6, -7, ... and never hits 0). Stack bharta jaata hai, program crash (stack overflow).
 
-**Undoing.** If the test reads shared arrays, such as "column $j$ is taken", the recursion sets the mark before the call and clears it after. Each call then sees the marks of exactly its own partial solution (precondition 2), and each test costs $O(1)$ instead of a loop over the earlier queens.
+Now the right one: `f(n-2)`, print, `f(n-1)`. Do not trace this on the stack in your head, draw the tree. Har node = ek call, left child pehle chalega.
 
+![Call tree of the hard f(3): 9 calls, 4 prints in the order Hi 1, Hi 3, Hi 2, Hi 1](../../../assets/notes/3-1-backtracking/fig02_hard_trace_tree.png)
 
-### 4.2 Listing without repeats
+*f(3) → prints Hi 1, Hi 3, Hi 2, Hi 1. Print happens between the two calls, so in-order*
 
-Many problems ask for all *sets* of choices, not all sequences. Listing sequences then lists every set many times: the set $\{1, 2\}$ appears as $(1, 2)$ and $(2, 1)$.
+Idea: the print sits between the two calls. So for a node we first finish the whole left subtree, then print, then go right. For `f(4)` the output is `2 1 4 1 3 2 1` (7 prints, checked by running it).
 
-**Theorem 3.1.2 (canonical order).**
-1. Let the recursion choose the next element only among those with a larger index than the last one chosen. Then every subset of indices is produced exactly once, as its elements in increasing order.
-2. Let the values $a_0 \le a_1 \le \dots \le a_{n-1}$ be sorted, and at each call let the loop skip index $i$ when $i$ is not the first index tried in that loop and $a_i = a_{i-1}$. Then every distinct multiset of values (every sub-multiset of $a$) is produced exactly once.
+Number of prints p(n) = 1 + p(n-2) + p(n-1): 1, 2, 4, 7, ... same shape as Fibonacci, so it grows exponentially.
 
-:::tip[In plain words]
-To list every subset once, always choose the next element from the ones after the last chosen. To list every collection of values once when some values repeat, sort first and skip a value that equals the previous try in the same loop.
-:::
+## Fibonacci and the recursion tree
 
-**A tiny instance.** $a = (1, 2, 2)$. Without the skip, part 1 gives the subsets $\{\}, \{1\}, \{1, 2\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2\}, \{2, 2\}$, with $\{1, 2\}$ and $\{2\}$ twice. With the skip, the second $2$ is never the first choice of a loop where the first $2$ was available, and the six distinct multisets $\{\}, \{1\}, \{1, 2\}, \{1, 2, 2\}, \{2\}, \{2, 2\}$ come out once each.
-
-**Proof.**
-1. Part 1. A subset of indices has exactly one increasing order, and the recursion produces every increasing sequence (Theorem 0.5.4 with the allowed choices "larger than the last"); it produces no other sequence.
-2. Part 2. Fix a multiset $M$ of values. Among the index sequences that give $M$ in non-decreasing order, call the one that uses, for each value, the *leftmost* available indices the canonical one.
-3. The skip rule allows exactly the canonical sequence: in one loop, the first index of each run of equal values is tried, and later indices of the same run are skipped.
-4. So when a value $x$ is taken at some depth, it is taken at the first index of $x$ after the previous choice, which is what the canonical sequence does.
-5. Any other sequence for $M$ takes some value at a later index of a run whose first index was available, and is skipped. $\square$
-
-:::note[This proof needs]
-1. Part 1: the output is a set (order does not matter); producing elements in increasing index order is enough.
-2. Part 2: the values are sorted, so equal values are next to each other, and the skip compares with the previous index *within the same loop* (at the same depth), not with the last value taken.
-:::
-
-<TheoremCode unit="3.1/thm-2" />
-
-For permutations of a list with repeated values the same idea works with a "used" array: at one position, try each *value* once (skip index $i$ when $a_i = a_{i-1}$ and index $i - 1$ is not used, so equal values are placed left to right). The number of outputs is then the multinomial coefficient of [topic 2.3](../../phase-2/2-3-combinatorics/) instead of $n!$.
-
-
-### 4.3 Branch and bound
-
-For an optimisation problem ("the largest total value of a valid choice"), feasibility alone does not cut much: every partial solution may be completable. A bound cuts the partial solutions that are completable but cannot win.
-
-**Theorem 3.1.3 (branch and bound).** Let backtracking keep `best`, the best value of a complete solution found so far (initially $-\infty$), and prune a partial solution $s$ when $U(s) \le$ `best`. If $U$ is optimistic ($U(s) \ge$ the value of every complete solution extending $s$), the search still returns the optimum.
-
-:::tip[In plain words]
-When looking for the best answer, keep the best one found so far and give up on any partial answer whose most optimistic completion cannot beat it. As long as the estimate never understates what is still possible, the optimum is still found.
-:::
-
-**A tiny instance.** Distribute jobs of lengths $(8, 7, 5, 4, 3)$ to 2 workers so that the larger load is as small as possible. This is a minimisation, so the bound is reversed: a partial assignment is cut when its current larger load is already $\ge$ `best`, because loads only grow (the current larger load never exceeds the larger load of any completion). Jobs are tried longest first, each first on the less loaded worker. The first complete assignment is $8 + 4 + 3 = 15$ and $7 + 5 = 12$, so `best` $= 15$. From then on, every branch that puts 8 and 7 on the same worker reaches load 15 at the second job and is cut with its whole subtree of $2^3$ completions. The search ends with `best` $= 14$ ($8 + 5$ against $7 + 4 + 3$), and the total $27$ shows that no assignment does better than $\lceil 27 / 2 \rceil = 14$. A symmetry cut helps too: the first job may go to worker 0 only, because swapping the two workers gives the same loads.
-
-
-**Proof.**
-1. Let $s^*$ be an optimal complete solution, of value $v^*$. If $s^*$ is reached, `best` becomes $v^*$.
-2. Otherwise some prefix $s$ of $s^*$ was pruned, at a moment when $U(s) \le$ `best`.
-3. Since $U$ is optimistic, $v^* \le U(s) \le$ `best`, so a solution of value at least $v^*$ had already been found.
-4. Nothing beats the optimum, so `best` $= v^*$. Pruning on feasibility (Theorem 3.1.1) is kept as well. $\square$
-
-:::note[This proof needs]
-1. The estimate never understates what the rest can achieve (for a maximum: never smaller than the best completion; for a minimum: never larger than the cheapest completion).
-2. `best` is the value of a complete solution actually found, not a guess.
-3. Running time has no useful worst-case guarantee: the bound helps only as much as the estimate is tight, so test the worst inputs. Two habits make it tight sooner: try the most promising choices first (for example the largest items), so that a good `best` is found early, and make the estimate as sharp as an easy formula allows.
-:::
-
-<TheoremCode unit="3.1/thm-3" />
-
-The unit shows the search without the symmetry cut: it makes 41 calls where the unpruned tree has 63 nodes.
-
-
-### 4.4 Meet in the middle
-
-**Theorem 3.1.4 (meet in the middle).** Given $n$ numbers and a target $T$, the number of subsets with sum exactly $T$ (or at most $T$, or the subset sum closest to $T$) can be found in $O(2^{n/2} \cdot n)$ time: split the numbers into halves $A$ and $B$, list the $2^{|A|}$ subset sums of $A$ and the $2^{|B|}$ subset sums of $B$, sort the list of $B$, and for each sum $x$ of $A$ look up the sums $y$ of $B$ with $x + y = T$ (or $\le T$, or closest to $T$) by binary search.
-
-:::tip[In plain words]
-Split n numbers into two halves, list the 2^(n/2) subset sums of each, sort one list, and for each sum of the other half look up the partner by binary search. That is about 2^(n/2) · n steps instead of 2^n.
-:::
-
-**A tiny instance and a budget.** For $n = 40$: Listing all $2^{40} \approx 1.1 \cdot 10^{12}$ subsets is out of budget, but two lists of $2^{20} \approx 10^6$ sums, a sort, and $10^6$ binary searches of 20 steps are about $5 \cdot 10^7$ operations. A small trace: numbers $(3, 5 \mid 2, 6)$, $T = 8$. Sums of $A$: $0, 3, 5, 8$. Sorted sums of $B$: $0, 2, 6, 8$. Look up $8 - x$: for $x = 0$, the value 8 is found once (the subset $\{2, 6\}$); for $x = 3$ and $x = 5$, the values 5 and 3 are not in the list; for $x = 8$, the value 0 is found once (the subset $\{3, 5\}$). So 2 subsets have sum 8, which a check by hand confirms.
-
-
-**Proof.**
-1. Every subset $S$ of the numbers splits uniquely as $S = S_A \cup S_B$ with $S_A \subseteq A$, $S_B \subseteq B$, and $\operatorname{sum}(S) = \operatorname{sum}(S_A) + \operatorname{sum}(S_B)$.
-2. So subsets correspond one-to-one to pairs (a sum from the list of $A$, a sum from the list of $B$), each list entry counted with its own subset.
-3. The subsets with sum $T$ are the pairs with $x + y = T$; for a fixed $x$, the matching $y$ form one block of the sorted list of $B$, whose two ends binary search finds (Theorem 1.4.1).
-4. Lists: $2^{n/2}$ sums each, built in $O(2^{n/2} \cdot n)$ by bitmasks or by recursion; sorting and the lookups cost $O(2^{n/2} \cdot n)$ each. $\square$
-
-:::note[This proof needs]
-1. The objective splits into a part from each half that are combined by a simple rule (a sum, a bitwise exclusive or (XOR), a product), and the question about the combination can be answered from a sorted list (equal to, at most, closest to).
-2. Each half is small enough to list: $2^{20} \approx 10^6$ is comfortable, $2^{25}$ is at the edge of memory.
-:::
-
-<TheoremCode unit="3.1/thm-4" />
-
-
-
-### 4.5 Choosing among the tools
-
-Every tool in this topic is still exhaustive search: it gives the exact answer but its running time depends on how much is cut. Before writing one, estimate the number of nodes:
-- **Generating everything**: at most (depth + 1) × the number of outputs when the check is exact (Theorem 3.1.1). When the problem asks to *print* every object, this is the best possible.
-- **Placement with checks**: no clean formula; small boards (queens up to about 12, a $9 \times 9$ grid puzzle with many givens) are known to be fast, and the worst input should be tried.
-- **Branch and bound**: no guarantee; it is the tool when $n$ is around 10 to 20, the choices are few per step, and a good order and estimate are available.
-- **Meet in the middle**: a guarantee, $O(2^{n/2} n)$, when $n$ is around 30 to 45 and the objective splits (Theorem 3.1.4).
-
-## 5. Recognition Cards
-
-<Cards topic="3.1" />
-
-## 6. Templates
-
-Five functions: two that list objects without repeats, one placement search, one branch and bound and one meet in the middle. Each brute force uses a different method: bitmasks, `next_permutation`, or every assignment without any cut.
-
-### Distinct sub-multisets (Theorem 3.1.2)
-
-<CodeSnippet unit="3.1/distinct-subsets" />
-
-**How it works.** Every call of `rec` is one sub-multiset, the values in `chosen`; it is recorded at once, and then each possible next value is added in turn. The next index is always larger than the last one taken (`rec(i + 1)`), and inside one loop a value equal to the previous try is skipped (`i > start && a[i] == a[i - 1]`), so each collection of values is produced once (Theorem 3.1.2). After each child call, `chosen.pop_back()` undoes the addition. Because the values are sorted and the loop goes left to right, the collections come out in lexicographic order.
-
-**Alternative formulation.** Group equal values: for each distinct value with $c$ copies, choose how many copies to take, from 0 to $c$. A recursion over the distinct values then produces each collection once without any skip rule, and the count is $\prod (c + 1)$, the product rule of topic 2.3.
-
-### Distinct arrangements (Theorem 3.1.2)
-
-<CodeSnippet unit="3.1/distinct-permutations" />
-
-**How it works.** `current` holds the values placed so far and `used[i]` tells whether index $i$ is already placed. At each position, every unused index is tried, except that a value is skipped if an equal value at a smaller index is still unused. So equal values are always placed in the order of their indices, and two arrangements that differ only by swapping equal values are not both produced. Both changes, `used[i]` and `current`, are undone after the call.
-
-**Alternative formulation.** Writing `used[i - 1]` instead of `!used[i - 1]` is also correct, and it passed the same 5000 stress tests when tried as a bug: it forces equal values to be placed right to left instead of left to right, which again allows exactly one order of the equal copies. But it finds that out late. A copy can be placed only after all the copies to its right, so most branches place a wrong copy first and run into a dead end deeper down: for eight equal values, the version above makes 9 calls and this one 2 781, and for $(1, 1, 1, 2, 2, 2)$ it is 69 calls against 327, for the same 20 arrangements.
-
-Another variant keeps a count for each distinct value instead of `used`: at each position, try each distinct value whose count is positive, decrease its count, and restore it after the call. Each value is tried once per position, so no skip rule is needed.
-
-### Counting queen placements (Theorem 3.1.1)
-
-<CodeSnippet unit="3.1/queens" />
-
-**How it works.** Row `row` gets one queen; a column `c` is tried only if the square is free and no earlier queen uses its column, its diagonal or its anti-diagonal. On one diagonal (down and to the right), `row - c` is the same for every square; on one anti-diagonal, `row + c` is. So three arrays of marks answer the test in $O(1)$; `row - c + n - 1` shifts the diagonal number from $-(n - 1) \dots n - 1$ to $0 \dots 2n - 2$. The test only reads queens already placed, so it never rejects a placement that could be completed, and the marks are cleared after each call (both conditions of Theorem 3.1.1). The function returns the number of completions, so the answer is `rec(0)`.
-
-**Alternative formulation.** Store the occupied columns, diagonals and anti-diagonals of the current partial placement as three bitmasks (topic 1.7); the free columns of the next row are then the zero bits of their bitwise or, shifted. This is the same search with a faster test.
-
-### Smallest largest load (Theorem 3.1.3)
-
-<CodeSnippet unit="3.1/min-max-load" />
-
-**How it works.** Job $i$ goes to each worker in turn; `currentMax` is the largest load so far. Loads only grow, so `currentMax` never exceeds the largest load of any completion: it is an optimistic estimate for a minimum, and a branch with `currentMax >= best` is cut (Theorem 3.1.3). Two habits make the cut effective. The jobs are sorted longest first, so loads become large early and branches die near the root. And a worker whose load equals that of an earlier worker is skipped: swapping two workers with equal loads turns any completion into one with the same largest load, so trying one of them is enough (the canonical-order idea of Theorem 3.1.2, applied to workers).
-
-**Alternative formulation.** Binary search on the answer $L$ (topic 1.4) and ask "can the jobs be packed into $k$ workers of capacity $L$?" with the same backtracking; the cut is then "the job does not fit". It is the same search with a different cut, and it can be faster because a fixed capacity rejects a job as soon as it overflows.
-
-### Counting subsets with a bounded sum (Theorem 3.1.4)
-
-<CodeSnippet unit="3.1/mitm-count" />
-
-**How it works.** `subsetSums` lists the $2^{h}$ subset sums of one half: it starts with the empty sum, and each element doubles the list by adding itself to every sum already there. The right half's list is sorted. For each left sum $x \le T$, the right sums $y$ with $x + y \le T$ are exactly those $\le T - x$, a prefix of the sorted list, whose length `upper_bound` returns (Theorem 3.1.4). With $n = 40$, each list has $2^{20} \approx 10^6$ sums.
-
-**Alternative formulation.** Sort both lists and move two pointers (topic 1.3): as $x$ increases through the sorted left list, the largest valid $y$ only moves down. This replaces the binary searches by one $O(2^{n/2})$ pass after sorting.
-
-## 7. Bug catalogue
-
-Backtracking bugs rarely crash: the program runs and prints a wrong list or a wrong count, often only on inputs with repeated values or ties. Each bug below was made by changing one line of a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
-
-### Bug: skipping equal values across depths
-
-Template: distinct sub-multisets.
+fib(n) = fib(n-1) + fib(n-2)
 
 ```cpp
-if (i > 0 && a[i] == a[i - 1]) continue;
+int fib(int n){
+    if (n<=1) return n;      // → base case
+    return fib(n-1) + fib(n-2);
+}
 ```
 
-Input: `2`, then `0 0`.
+*n depends on n-1 & n-2.*
 
-Wrong output: the 2 collections $\{\}$ and $\{0\}$; correct output: 3 collections, also $\{0, 0\}$. The second 0 is the *first* try of the loop in the call where the first 0 was just taken, but the condition compares it with the previous index anyway and skips it.
+![Recursion tree of fib(5) with 15 calls, repeated subproblems coloured](../../../assets/notes/3-1-backtracking/fig03_fibonacci_tree.png)
 
-**Fix:** skip only a repeat within the same loop, `i > start` (Theorem 3.1.2, condition 2): a value equal to the one just taken is a different choice, not a repeat.
+*Recursion tree. \*\* We need to draw recursion tree for almost every problem.*
 
-### Bug: forgetting to undo
+Idea: answer for n is built from the answers of two smaller inputs. Base case `n<=1` returns n itself (fib(0) = 0, fib(1) = 1).
 
-Template: distinct sub-multisets. The line `chosen.pop_back();` is deleted.
+Notice fib(3) is solved 2 times and fib(2) 3 times, same work again and again. That is why it is slow.
 
-Input: `2`, then `0 1`.
+Number of calls = 2 × fib(n+1) − 1 (counted by running the code):
 
-Wrong output: the last collection is $\{0, 1, 1\}$; correct: $\{1\}$. After the call for $\{0, 1\}$ returns, the 1 is never removed, then the 0's call ends without removing the 0 either, so the next try adds a 1 to the leftover $\{0, 1\}$.
+| n | fib(n) | calls |
+|---|---|---|
+| 5 | 5 | 15 |
+| 10 | 55 | 177 |
+| 20 | 6765 | 21,891 |
+| 30 | 832,040 | 2,692,537 |
+| 40 | 102,334,155 | 331,160,281 |
 
-**Fix:** every change made before a recursive call is undone after it (Theorem 3.1.1, condition 2). Write the undo line right after the call, before anything else.
+- T.C. = O(2^n) as a safe upper bound (the real growth is about 1.618^n). n = 40 is already 33 crore calls.
+- S.C. = O(n). The deepest path is fib(n) → fib(n-1) → ... → fib(1), n frames. The tree is huge but only one path is alive at a time.
+- Common mistake: base case written as `n==0` only. Then fib(1) calls fib(0) and fib(-1) and never stops. Also `int` overflows from fib(47) onwards (2,971,215,073).
+- Same subproblem again and again → that is the hint for DP (dynamic programming, remember the answers), alag note me.
 
-### Bug: no skip for equal values
+Recursion is used in 4 ways.
 
-Template: distinct arrangements. The skip line is deleted.
+```
+Recursion ─┬→ Divide & Conquer.
+           ├→ Backtracking
+           ├→ Kth element
+           └→ Fractals.
+```
 
-Input: `2`, then `1 1`.
+Divide & Conquer ka code yaha nahi hai (problem ko aadha karo, dono half solve karo, merge karo). Baaki teeno neeche aate hain.
 
-Wrong output: `2`, then `1 1` twice; correct output: `1`, then `1 1` once. The two copies of 1 are different indices, so "place index 0, then index 1" and "place index 1, then index 0" are both produced.
+## Palindrome and tail recursion
 
-**Fix:** fix one order for equal values (Theorem 3.1.2): skip a value when an equal value with a smaller index is still unused.
+Q: Check if a string is palindrome.
 
-### Bug: undoing only part of the state
+(Palindrome = reads the same from both ends, like `madam`.)
 
-Template: queen placements.
+`s[0] == s[r]` & remaining string must also be palindrome.
+
+Idea: compare the two ends. If they match, the problem shrinks to the inside part `l+1 .. r-1`, which is the same question on a smaller string.
 
 ```cpp
-colUsed[c] = false;
+string s;
+
+bool isPalindrome(int l, int r) {
+    if (l>=r) return true;  // || if (r-l+1 <= 1) return true;
+    return s[l] == s[r] && isPalindrome(l+1, r-1);
+}
 ```
 
-Input: `4`, then a free $4 \times 4$ board.
+*isPalindrome(l+1, r-1) → tail recursion.*
 
-Wrong output `0`, correct output `2`. The diagonal marks of every queen ever tried stay set, so after the first dead end the board is full of stale diagonals and the two real solutions are rejected.
+![Calls of isPalindrome for madam (true after 3 calls) and abca (false after 2 calls)](../../../assets/notes/3-1-backtracking/fig04_palindrome_calls.png)
 
-**Fix:** undo every mark that was set before the call. When several arrays are updated together, clear them in one statement that mirrors the one that set them.
+*madam: 3 calls. abca: stops at the second call*
 
-### Bug: checking only one diagonal direction
+\*\* If there are expression that needs to be computed then always put the recursion in the end → this is called tail recursion.
 
-Template: queen placements. The test `antiUsed[row + c]` is removed.
+Note: tail recursion matlab recursive call ke baad kuch bhi karna baaki na ho, uska result seedha return. Yaha `s[l] == s[r]` pehle compute hota hai, and `&&` stops early when it is false (so `abca` never goes inside).
 
-Input: `2`, then a free $2 \times 2$ board.
+- Base case `l>=r`: covers an empty string and a single character (`r-l+1 <= 1`, same thing).
+- T.C. = O(n) (at most n/2 + 1 calls). S.C. = O(n) stack depth (about n/2 frames). A compiler may turn a tail call into a loop, but do not depend on it.
+- Common mistake: base case `l==r` only. For an even length like `abba` the pointers cross (l=2, r=1) without ever being equal, so the recursion walks outside the string.
 
-Wrong output `1`, correct output `0`. The queens at $(0, 1)$ and $(1, 0)$ attack each other along an anti-diagonal ($0 + 1 = 1 + 0$), but only diagonals with equal `row - c` are checked.
+## nCr using Pascal's triangle
 
-**Fix:** list every constraint and check each one when its last item is placed. Two queens share a line in four ways: row (impossible here), column, diagonal, anti-diagonal.
+Q: Calculate nCr using recursion.
+↳ Using Pascal's Triangle.
 
-### Bug: a symmetry cut that is too strong
-
-Template: smallest largest load.
+(nCr = number of ways to choose r items out of n.)
 
 ```cpp
-if (load[v] <= load[w]) seen = true;
+int ncr(int n, int r) {
+    if (n<r) return 0;
+    if (r==0 || r==n) return 1;
+    return ncr(n-1, r-1) + ncr(n-1, r);
+}
 ```
 
-Input: `7 2`, then `2 6 8 14 8 6 9`.
+Idea: pick any one item. Either it is in the group (then choose r-1 from the remaining n-1) or it is not (choose r from n-1). That is `ncr(n-1, r-1) + ncr(n-1, r)`.
 
-Wrong output `28`, correct output `27` (for example $9 + 8 + 8 + 2$ against $14 + 6 + 6$). Workers with *equal* loads are interchangeable, but a worker with a larger load is not: the cut now forbids giving a job to a worker that is more loaded than an earlier one, which comes close to the greedy rule "always the least loaded worker", and that rule is not optimal.
+![Recursion tree of ncr(4,2) with 11 calls, six leaves returning 1](../../../assets/notes/3-1-backtracking/fig05_ncr_tree.png)
 
-**Fix:** a symmetry cut may only skip choices that lead to the same set of outcomes. Prove the swap argument before cutting: swapping two workers with equal loads changes nothing; with different loads it does.
+*ncr(4,2) = 6, 11 calls*
 
-### Bug: an estimate that is not optimistic
+- Base cases: `n<r` → 0 ways, `r==0` or `r==n` → 1 way.
+- Every leaf returns 1 and the answer is just those 1s added, so calls ≈ 2 × C(n,r) − 1. Checked: (4,2) → 11, (10,5) → 503, (20,10) → 369,511.
+- T.C. = O(C(n,r)) calls, S.C. = O(n) depth.
+- Common mistake: using this for big n (exponential, same repeated subproblems as fib). `int` also overflows: the middle value C(34,17) = 2,333,606,220 is bigger than 2^31 − 1.
 
-Template: smallest largest load.
+## Print n to 1 and back
+
+Q: for n=4, the code should print this. Write a recursive func.
+
+```
+4
+3
+2
+1
+2
+3
+4
+```
+
+Wrong attempt (crossed with a big X on the left):
 
 ```cpp
-if (i < n && currentMax + job[i] >= best) return;
+void f(int n){
+    if (n==0) return;
+    cout << n << endl;
+    f(n-1);
+    cout << n << endl;
+}
 ```
 
-Input: `3 3`, then `8 1 1`.
+*wrong prints → 4 3 2 1 1 2 3 4*
 
-Wrong output `9`, correct output `8`. The estimate assumes the next job lands on the most loaded worker, but it can go to an empty one. After the assignment with loads $(9, 1, 0)$ gives `best` $= 9$, the branch $8$ on worker 0 and $1$ on worker 1 has estimate $8 + 1 = 9 \ge 9$ and is cut, although its completion has largest load 8.
+Note: the 1 comes twice because for n=1 it is printed before the call and again after the call (the n==0 call just returns). I left out `void` on paper.
 
-**Fix:** the estimate must never be worse than some completion (Theorem 3.1.3, condition 1). The current largest load is safe; "plus the next job" is not.
-
-### Bug: `lower_bound` for "at most"
-
-Template: counting subsets with a bounded sum.
+Correct:
 
 ```cpp
-count += lower_bound(right.begin(), right.end(), T - x) - right.begin();
+void f(int n) {
+    cout << n << endl;
+    if (n==1) return;
+    f(n-1);
+    cout << n << endl;
+}
 ```
 
-Input: `1 0`, then `4`.
+![Frames of f(4): going down prints 4 3 2 1, coming back up prints 2 3 4](../../../assets/notes/3-1-backtracking/fig06_print_down_up.png)
 
-Wrong output `0`, correct output `1` (the empty subset has sum $0 \le 0$). `lower_bound` stops at the first $y \ge T - x$, so it counts only the sums $y < T - x$ and misses every subset whose sum is exactly $T$.
+*before the call → runs on the way down. After the call → runs on the way up*
 
-**Fix:** "at most $v$" is the prefix before the first element *greater* than $v$: `upper_bound` (topic 1.4). Test with a $T$ that some subset sum hits exactly.
+Idea: whatever is written before `f(n-1)` runs while the stack is growing, whatever is written after it runs while the stack is shrinking. Isi cheez ko backtracking me "revert" ke liye use karenge (place, recurse, revert).
 
-## 8. Worked examples
+- T.C. = O(n), S.C. = O(n).
+- Common mistake: base case `if (n==1) return;` before the first print, then 1 is never printed.
 
-### Example 1: Count Simple Paths
+## Tower of Hanoi
 
-[AtCoder Beginner Contest (ABC) 378, problem D: Count Simple Paths](https://atcoder.jp/contests/abc378/tasks/abc378_d). In short: on an $H \times W$ grid with blocked cells ($H, W \le 10$), count the walks of exactly $K \le 11$ moves between side-adjacent empty cells that never visit a cell twice.
+Q: Tower of Hanoi.
 
-#### Step 1: Constraints → budget
+Find min. no. of moves to move discs from A to C using B.
 
-At most 100 starting cells and 11 moves. A walk is a sequence of 12 cells; listing all sequences of cells is $100^{12}$, far out of budget. But each move has at most 4 directions, and after the first move at most 3 (going straight back is never allowed), so there are at most $100 \cdot 4 \cdot 3^{10} \approx 2.4 \cdot 10^7$ walks without revisits. That fits in a second if each step costs $O(1)$.
+(Rules: move one disc at a time, never put a bigger disc on a smaller one.)
 
-#### Step 2: Question form → candidate tools
+```
+   |        |        |
+ __|__    __|__    __|__
+   A        B        C
+```
 
-Recursion over choices (Theorem 0.5.4) with "4 directions per move" lists $100 \cdot 4^{11} \approx 4 \cdot 10^8$ sequences and then checks each one for repeated cells: too slow, and most of the work goes into walks that died on their second move. Backtracking with a check after every move (Theorem 3.1.1) cuts those walks at the first revisit: the "Place with checks and undo" card. A formula from topic 2.3 does not apply: the blocked cells and the no-revisit rule destroy any simple count.
+n discs on A. Move the n-1 discs above the nth disc to B, then the nth disc to C.
 
-#### Step 3: Property check → decision
+```
+ n  {  /\ } n-1 discs   ──move to B──>   /\            ┌─┐
+      /__\ A + nth                        B               C
+      ╰──────────────move to C───────────────────────────╯
+```
 
-The card needs every constraint to be checkable as soon as its items are placed. Both rules are: "the new cell is empty and inside the grid" involves only the new cell, and "not visited before" involves the new cell and the cells already on the walk. A partial walk that breaks a rule can never be repaired by later moves, and a partial walk that keeps all rules may still be extended. Decision: a recursion from each empty start with a `visited` grid, set before each call and cleared after.
+```cpp
+void tower(int discs, int from, int to, int extra){
+    if (discs == 0) return;
+    tower(discs-1, from, extra, to);
+    cout << discs << " from " << from << " to " << to << endl;
+    tower(discs-1, extra, to, from);
+}
+```
 
-#### Step 4: Proof for this problem
+→ The recursive function will work correctly iff the subproblem is being solved correctly by the recursion.
 
-A valid walk is a sequence $(p_0, \dots, p_K)$ of empty cells, each adjacent to the previous one, all different. Each prefix of a valid walk satisfies the same three rules, so the test (inside, empty, not visited) never rejects a prefix of a valid walk; and at length $K + 1$ the test has checked every rule for every cell, so it is the full validity check. By Theorem 3.1.1, the recursion counts every valid walk exactly once. The `visited` marks are exactly the cells of the current prefix, because each mark is set right before its call and cleared right after (condition 2). Time: at most $2.4 \cdot 10^7$ walks of length 12, each step $O(1)$; the fully empty $10 \times 10$ grid with $K = 11$ has 3 882 208 walks and runs in under 0.1 seconds.
+Like here, we are delegating the task of finding the soln for n-1 disc to the recursion, keeping only nth disc with us to move.
 
-#### Step 5: Code
+Trace for 2 discs (A = 1, B = 2, C = 3), `tower(2,1,3,2)`:
+- tower(2,1,3,2) calls tower(1,1,2,3) (move 1 disc from 1 to 2 using 3).
+- tower(1,1,2,3) calls tower(0,..) → returns. Print `1 from 1 to 2`. Calls tower(0,..) → returns. Pop.
+- back in tower(2,1,3,2): print `2 from 1 to 3`.
+- tower(1,2,3,1): print `1 from 2 to 3`.
 
-<CodeSnippet unit="3.1/example-1" />
+3 moves. For 3 discs, 7 moves:
 
-#### Step 6: Alternative approach
+![All 7 moves of 3 discs on the three pegs, the 6th move highlighted](../../../assets/notes/3-1-backtracking/fig07_hanoi_states.png)
 
-Grow the walks level by level instead of depth first: keep the list of all valid walks of length $j$ and extend each by one move. It visits the same walks, but stores all of them at once (millions of walks at the last level), where backtracking keeps only the current one.
+*3 discs: start and the position after every move*
 
-### Example 2: Programming Contest
+How many moves? T(n) = T(n-1) + 1 + T(n-1) = 2·T(n-1) + 1. T(1) = 1, T(2) = 3, T(3) = 7 → T(n) = 2^n - 1 (see later, same T(n) is used for the k-th move).
 
-[AtCoder Beginner Contest (ABC) 184, problem F: Programming Contest](https://atcoder.jp/contests/abc184/tasks/abc184_f). In short: given $N \le 40$ times $A_i \le 10^9$ and a limit $T \le 10^9$, find the largest total of a subset of the times that is at most $T$.
+- n = 10 → 1,023 moves, n = 20 → 1,048,575 moves, n = 64 → 18,446,744,073,709,551,615 moves.
+- T.C. = O(2^n) (we print every move, so no better is possible). S.C. = O(n) (depth n).
+- Common mistake: swapping `to` and `extra` in one of the two recursive calls. Check the order: first call `(from, extra, to)`, second call `(extra, to, from)`.
 
-#### Step 1: Constraints → budget
+Same code from the repo (CSES 2165, print the count and then each move as `from to`):
 
-$N = 40$: all subsets are $2^{40} \approx 1.1 \cdot 10^{12}$, out of budget by a factor of $10^4$. $2^{20} \approx 10^6$ is comfortable, even with a sort and a binary search per element: about $2^{20} \cdot 20 \cdot 2 \approx 4 \cdot 10^7$ steps.
+```cpp
+/*
+https://cses.fi/problemset/task/2165
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Tower-Of-Hanoi.cpp
+int sol = 0;
 
-#### Step 2: Question form → candidate tools
+void tower(int discs, int from, int to, int extra){
+    if(discs == 0){
+        sol++;
+        return;
+    }
 
-A subset whose sum is "as large as possible but at most $T$". Candidates:
-- Branch and bound (Theorem 3.1.3) with "sum so far + all remaining times" as the estimate. It has no worst-case guarantee: with 40 times of nearly equal size, very many subsets have sums just below $T$, and the estimate cuts little.
-- Recording which sums are possible in an array indexed by the sum would need $T = 10^9$ entries, far too large.
-- Meet in the middle (Theorem 3.1.4): the objective is a sum, which splits into a left part and a right part.
+    // moving n-1 discs to "extra" from "from" using "to"
+    tower(discs - 1, from, extra, to);
+    // moving nth disc to "to" from "from"
+    //cout<<discs<<" moved from "<<from<<" to "<<to<<endl;
+    cout<<from<<" "<<to<<endl;
+    // now move n-1 discs from "extra" to "to" using "from"
+    tower(discs - 1, extra, to, from);
+}
 
-#### Step 3: Property check → decision
+void solve() {
+    int n;
+    cin>>n;
+    cout<<(1<<n) - 1<<endl;
+    tower(n, 1, 3, 2);
 
-The meet-in-the-middle card needs the objective to split into a part from each half and the question to be a lookup in a sorted list. The total of a subset is (sum of its left elements) + (sum of its right elements); for a fixed left sum $x \le T$, the best partner is the largest right sum $y \le T - x$, which is the element just before `upper_bound(T - x)` in the sorted right list. Each half has 20 elements, so each list has $2^{20}$ sums. Decision: meet in the middle; it beats branch and bound because it has a guaranteed running time.
+    //cout<<"total moves: "<<sol-1<<endl;
+}
+```
 
-#### Step 4: Proof for this problem
+Note: `sol` counts the calls with `discs == 0`, that is 2^n of them (8 for n = 3), so the number of moves is `sol - 1`, as in the commented line.
 
-Every subset $S$ splits uniquely into $S_L$ (its elements among the first $\lfloor N/2 \rfloor$) and $S_R$ (the rest), with $\operatorname{sum}(S) = \operatorname{sum}(S_L) + \operatorname{sum}(S_R)$ (Theorem 3.1.4). So the answer is the largest $x + y \le T$ with $x$ in the left list and $y$ in the right list. For each $x \le T$, the largest valid $y$ is the largest element $\le T - x$ of the sorted right list; it exists because the empty sum 0 is in the list. Left sums $x > T$ have no valid partner, since all times are positive. Taking the maximum over $x$ covers every pair. Time: $O(2^{N/2} \cdot N)$.
+## Trace following
 
-#### Step 5: Code
+Q: Trace following:
 
-<CodeSnippet unit="3.1/example-2" />
+(`x` is a global vector, it holds the numbers chosen so far.)
 
-#### Step 6: Alternative approach
+```cpp
+vector<int> x;
 
-Sort both lists and move two pointers (topic 1.3): as $x$ increases through the sorted left list, the best partner $y$ can only move down the right list, so one pass replaces the binary searches.
+void f(int i) {
+    if (i==0) {
+        for (auto v : x) cout << v << " ";
+        cout << endl;
+        return;                 // "assuming return here"
+    }
+    f(i-1);
+    x.push_back(i);
+    f(i-1);
+    x.pop_back();               // pop_back() takes no argument
+}
+```
 
-## 9. Problem ladder
+Note: on paper the base case says "assuming return here", so the `return;` is there. And `x.pop_back(i)` should be `x.pop_back()`, it takes no argument.
+
+f(3);
+
+![Tree of f(3): two branches per call, skip i or push i, eight leaves printing the eight vectors in order](../../../assets/notes/3-1-backtracking/fig13_subsets_tree.png)
+
+*f(3). The middle edge in the notes (v=\{3\}) is the `x.push_back(i)`. Prints in order: \{\}, \{1\}, \{2\}, \{2,1\}, \{3\}, \{3,1\}, \{3,2\}, \{3,2,1\}*
+
+Dekho: each call has two children, first `f(i-1)` without i, then push i and `f(i-1)` with i. Last wala `pop_back` is the revert, so the vector is back to what the parent had.
+
+8 leaves = 2^3 = 8 subsets. Yahi tree subsets ka backtracking hai (neeche).
+
+## Backtracking and the LCCMD framework
+
+→ Backtracking:
+ ↳ Brute force: exhaustively searching everything
+
+Recursion is a language technique - func. calling itself.
+
+Doing brute force using recursion is backtracking.
+
+- framework:
+ ↳ LCCMD
+
+\*\* Always first decide how to represent solution & then apply this framework.
+
+Level: For which stage currently I'm deciding.
+
+Choice: At current level what values can I place.
+
+check: Check if the choice is valid.
+
+Move: Place, recurse, revert.
+
+Decide: → mostly happens in base case.
+ ↳ check more constraint given in problem.
+
+LCCMD = Level, Choice, Check, Move, Decide. Dono "C" alag hain: first C = choice, second C = check.
+
+Think of it as filling a form. Level = which field I am filling now. Choice = what can go in this field. Check = is it allowed given what is already filled. Move = write it, go to the next field, erase it when I come back. Decide = form full, is this a valid answer (count it, print it).
+
+How the same framework looks for different problems (from the notes):
+
+| | Level | Choice | Check | Move | Decide |
+|---|---|---|---|---|---|
+| N-Queens | the row in which I'm placing the queen | all the columns | is this column / diagonal free | place, recurse, revert | — |
+| Print all subsequences | each element | take / not take | — | insert in subset if taken | — |
+| Permutation (non-distinct) | index we're filling at | all elements of arr. with freq. | if freq>0 for that choice | insert, recurse, remove | — |
+
+## T.C. of backtracking and the 4 problems
+
+**
+Now, when we write backtrack code for the n-queens.
+the code behaves as n-nested loops in which we choice/check/move/decide.
+
+This is true for all backtracking code because we are doing complete search/brute-force.
+
+TC: (#choices)₁ × (#choices)₂ × ...... × (#choices)ₙ × (check+decide).
+
+If choices are same.
+
+(#choices)^N × (check+decide).
+
+Pehle chhota example: 3 positions, 2 choices each. 3 nested loops vs the same job done with recursion levels.
+
+```cpp
+// n = 3 positions, 2 choices each (0 = not take, 1 = take): 3 nested loops
+void loops3() {
+    for (int a = 0; a < 2; a++)
+        for (int b = 0; b < 2; b++)
+            for (int c = 0; c < 2; c++)
+                cout << a << b << c << endl;
+}
+
+// same thing with recursion: level = "which loop am I in"
+int pick[3];
+
+void rec(int level) {
+    if (level == 3) {
+        cout << pick[0] << pick[1] << pick[2] << endl;
+        return;
+    }
+    for (int ch = 0; ch < 2; ch++) {
+        pick[level] = ch;       // place
+        rec(level + 1);         // recurse (revert = the next value of ch overwrites it)
+    }
+}
+```
+
+![Three nested loops on the left, three recursion levels on the right](../../../assets/notes/3-1-backtracking/fig08_levels_nested_loops.png)
+
+*outer loop = level 0, middle loop = level 1, inner loop = level 2*
+
+Nested loops me depth fixed hota hai (hame code me 3 loops likhne padte). Recursion me depth n input se decide hoti hai, toh "n nested loops" likh paate hain. Both print the same 8 lines (checked).
+
+Why this is the cost: every node has `#choices` children and the tree is `N` levels deep, so there are about `choices^N` leaves. Har leaf pe check + decide.
+
+Worked numbers:
+
+| Problem | Choices per level | Levels | Leaves (no pruning) | Example |
+|---|---|---|---|---|
+| Subsets (take / not take) | 2 | n | 2^n | n = 20 → 1,048,576 |
+| Permutations (distinct) | n, then n-1, ..., 1 | n | n! | n = 8 → 40,320 |
+| N-Queens | n columns | n rows | n^n | n = 8 → 16,777,216 |
+
+**Pruning** = when the check fails we do not go down that branch, so the whole subtree below it is never visited. That is why backtracking is much better than the pure formula in practice (N-Queens numbers are in the next section). But in the worst case T.C. stays exponential, so n is always small (n ≤ 20 or so) in these problems.
+
+- S.C. = O(depth) for the stack + O(depth) for the partial answer. Not O(number of answers).
+- Common mistakes: forgetting the revert (the next branch starts with leftover choices), deciding the representation after writing the loops, storing/printing every answer when only the count was asked.
+
+- 4 problems.
+
+```
+Permutation  ┬→ Distinct elements ①
+             └→ Non-distinct elements ②
+
+Subset       ┬→ Distinct elements ③
+             └→ Non-distinct elements. ④
+```
+
+*Learn to write backtracking of these*
+
+** In most of the cases the choices are same for all levels.
+
+## N-Queens
+
+Q: Think for N-queens problem → no. of ways to place queens on chess board.
+
+Q: N-queens: given n×n chessboard, place n queens such that no 2 queens attack each other.
+
+(A queen attacks along its row, its column and both diagonals.)
+
+eg:- n=4.
+
+![Two 4 by 4 boards, solutions [1 3 0 2] and [2 0 3 1]](../../../assets/notes/3-1-backtracking/fig09_nqueens_two_solutions.png)
+
+*queens: [1 3 0 2]  [2 0 3 1]. 0 1 2 3 written below each array are the indices, these are levels.*
+
+Represent → [_ _ _ _]
+
+Ek row me ek hi queen aa sakti hai (do aayengi toh woh same row me attack karengi). So I only decide the column of each row, and "same row" check free me mil jaata hai.
+
+LCCMD:
+Level: the row in which I'm placing the queen.
+Choice: at current level what are my choices.
+ ↳ here are all the columns.
+check: check if my current placement of queen is valid.
+move: place, recurse, revert.
+decide: —
+
+Recursion stack:
+
+```
+choice: all columns          L-0
+   |  ┌───────────────┐
+   |  │ col: 0,1,2,3  │   valid => [0 _ _ _]
+   |  └───────────────┘
+   ↓      L-1
+      ┌───────────────┐
+      │ col: 0,1,2,3  │   valid => [0 0 _ _]
+      └───────────────┘
+          L-2
+      ┌───────────────┐
+      │ col: 0,1,2,3  │   valid => [0 0 0 _]
+      └───────────────┘
+          L-3
+      ┌───────────────┐
+      │ col: 0,1,2,3  │   valid => [0 0 0 0]
+      └───────────────┘
+          L-4
+      ┌───────────────┐
+      │   base case   │
+      └───────────────┘
+```
+
+*we check validity & move forward*
+
+Note: this stack shows the loop over columns at each level, with no check applied. With the check, `[0 0 _ _]` never happens: the second queen in column 0 is the same column as the first, so it is rejected at L-1 and all 4^2 = 16 leaves below it are skipped (of the 4^4 = 256 total).
+
+checks: same row, same column, same diagonal.
+
+i) curr_col != prev_col.
+ii)
+
+```
+q1 (prev_row, prev_col)
+    •
+      \
+        \
+          \
+            • q2 (curr_row, curr_col)
+```
+
+q1 & q2 can attack each other if they are in same diagonal
+⇒ slope = ±1
+
+(prev_col − curr_col) / (prev_row − curr_row) = ±1
+
+abs(prev_col − curr_col) = abs(prev_row − curr_row).
+
+Another way to see the diagonals: on one "\" diagonal `row - col` never changes, on one "/" diagonal `row + col` never changes.
+
+![5 by 5 board with row-col and row+col written in every cell, the queen's two diagonals highlighted](../../../assets/notes/3-1-backtracking/fig11_nqueens_diagonals.png)
+
+*same number as the queen's cell = attacked diagonal*
+
+Trace for n = 4. The search goes row by row, tries columns left to right. Number in the circle = column chosen in that row.
+
+![Search tree of N-Queens n=4 with 17 calls, 2 solutions and 4 dead ends](../../../assets/notes/3-1-backtracking/fig10_nqueens_search_tree_n4.png)
+
+*17 calls. Dead ends are red, solutions are green: [1 3 0 2] and [2 0 3 1]*
+
+Column 0 in row 0: row 1 can use col 2 or 3. [0 2] has no safe column in row 2, [0 3] goes to [0 3 1] and then row 3 has none. Back up (pop), try the next. Pehla solution [1 3 0 2] second branch me milta hai. (Dead end = loop ends without recursing, the queens vector is popped and the parent tries its next column.)
+
+The code from the repo (comment lines on top are the problem statement):
+
+```cpp
+/*
+N-Queens, given N X N board, find number of ways to place N queens
+such that no queens attack each other
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/N-Queens.cpp
+int n;
+int sol = 0;
+vector<int> queens;
+
+bool can_place(int row, int col){
+    for(int prev_row = 0; prev_row < row; prev_row++){
+        int prev_queen_pos = queens[prev_row];
+
+        if(prev_queen_pos == col)
+            return false;
+
+        // checking for diagonal using slope
+        // the slope of the line will be +- 1 if the queens are in same diagonal
+        if(abs(prev_queen_pos - col) == abs(prev_row - row))
+            return false;
+    }
+
+    return true;
+}
+
+// O(n ^ n) => O(n!) => O(n!!)
+void rec(int level){
+    // base case
+    if(level == n){
+        sol++;
+        //_print(queens);
+        return;
+    }
+
+    // recurse
+
+    // go through choices
+    for(int col=0; col<n; col++){
+        if(can_place(level, col)){
+            // move
+            // place
+            queens.push_back(col);
+            //recurse
+            rec(level + 1);
+            //revert
+            queens.pop_back();
+        }
+    }
+
+}
+
+void solve() {
+    cin>>n;
+
+    rec(0);
+
+    cout<<sol<<endl;
+}
+```
+
+TC: O(N^N) worst | O(N! × N) upper bound.
+
+How to read it: without any check every row has N choices, so N^N. The check kills the same column, so only placements with different columns survive, at most N! of them; each `can_place` loops over the previous rows, so N more per placement. In real runs it is far less than that:
+
+| n | solutions | calls made | n^n | n! |
+|---|---|---|---|---|
+| 4 | 2 | 17 | 256 | 24 |
+| 5 | 10 | 54 | 3,125 | 120 |
+| 6 | 4 | 153 | 46,656 | 720 |
+| 7 | 40 | 552 | 823,543 | 5,040 |
+| 8 | 92 | 2,057 | 16,777,216 | 40,320 |
+| 9 | 352 | 8,394 | 387,420,489 | 362,880 |
+
+(n = 1 → 1, n = 2 → 0, n = 3 → 0 solutions. All counts checked by running the code.)
+
+![Log chart of n^n, n!, calls made and solutions for n from 1 to 9](../../../assets/notes/3-1-backtracking/fig12_nqueens_pruning.png)
+
+*n = 8: 16,777,216 leaves on paper, 2,057 calls in reality*
+
+- S.C. = O(N) (queens vector + recursion depth).
+- Common mistakes: forgetting `queens.pop_back()` (revert), checking only the column and forgetting the diagonals, using `row` and `level` mixed up.
+
+`can_place` has a loop, so one check is O(N). It can be O(1): remember which column and which diagonals are already taken. `row - col` can be negative, so add `n - 1` to make it an index.
+
+```cpp
+// same N-Queens count, but the check is O(1): remember which column / diagonals are taken
+bool col_used[20], diag1[40], diag2[40];     // diag1: row-col (+n-1 so it is never negative), diag2: row+col
+
+int rec_fast(int row, int n){
+    if(row == n) return 1;
+
+    int ans = 0;
+    for(int col=0; col<n; col++){
+        if(col_used[col] || diag1[row - col + n - 1] || diag2[row + col]) continue;
+
+        col_used[col] = diag1[row - col + n - 1] = diag2[row + col] = true;     // place
+        ans += rec_fast(row + 1, n);                                            // recurse
+        col_used[col] = diag1[row - col + n - 1] = diag2[row + col] = false;    // revert
+    }
+    return ans;
+}
+```
+
+Same answers (1, 0, 0, 2, 10, 4, 40, 92, 352, 724 for n = 1 to 10).
+
+### N-Queens twisted
+
+Same code, with a board where some squares are reserved: queens go only on free squares, but reserved squares do not block attacks. Only the choice changes: `board[level][col] != '*'`. Sample from the problem gives 65.
+
+```cpp
+/*
+https://maang.in/problems/Queens-On-Chessboard-272
+
+Your task is to place eight queens on a chessboard so that no two queens are attacking each other. 
+As an additional challenge, each square is either free (.) or reserved (∗), and you can only place queens on the free squares. 
+However, the reserved squares do not prevent queens from attacking each other.
+
+How many possible ways are there to place the queens?
+
+Input:
+........
+........
+..*.....
+........
+........
+.....**.
+...*....
+........
+
+Output:
+65
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/N-Queens-Twisted.cpp
+bool check(int row, int col,vector<int> &pos){
+    for(int prev_row = 0; prev_row < row; prev_row++){
+        auto prev_col = pos[prev_row];
+        if(prev_col == col || abs(prev_col - col) == abs(prev_row - row)){
+            return false;
+        }
+    }
+
+    return true;
+}
+
+int rec(int level, vector<string> &board, vector<int> &pos){
+    if(level == 8){
+        return 1;
+    }
+
+    int ans = 0;
+    for(int col=0; col<8; col++){
+        if(board[level][col] != '*' && check(level, col, pos)){
+            pos.push_back(col);
+            ans += rec(level + 1, board, pos);
+            pos.pop_back();
+        }
+    }
+
+    return ans;
+}
+
+void solve() {
+    vector<string> board(8);
+    vector<int> pos;
+    for(int i=0; i<8; i++){
+        cin>>board[i];
+    }
+
+    cout<<rec(0, board, pos)<<endl;
+}
+```
+
+### N-S-Queens
+
+An S-Queen = queen + knight. A knight attacks at (row ± 1, col ± 2) and (row ± 2, col ± 1). Earlier queens are all in earlier rows, and a knight reaches only 2 rows up, so only rows `row-1` and `row-2` need the extra check.
+
+```cpp
+/*
+https://maang.in/problems/NQueens-Revisited-143
+
+An S-Queen is a chess piece that combines the power of a knight and a queen.
+Find the number of ways to place N S-Queens on an N×N chessboard.
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/N-S-Queens.cpp
+int n;
+
+bool check(int row, int col,vector<int> &pos){
+    for(int prev_row = 0; prev_row < row; prev_row++){
+        auto prev_col = pos[prev_row];
+        if(prev_col == col || abs(prev_col - col) == abs(prev_row - row)){
+            return false;
+        }
+    }
+
+    if(row >= 1){
+        int prev_col = pos[row - 1];
+        if(abs(prev_col - col) == 2) return false;
+    }
+
+    if(row >= 2){
+        int prev_col = pos[row - 2];
+        if(abs(prev_col - col) == 1) return false;
+    }
+
+    return true;
+}
+
+int rec(int level, vector<int> &pos){
+    if(level == n){
+        return 1;
+    }
+
+    int ans = 0;
+    for(int col=0; col<n; col++){
+        if(check(level, col, pos)){
+            pos.push_back(col);
+            ans += rec(level + 1, pos);
+            pos.pop_back();
+        }
+    }
+
+    return ans;
+}
+
+void solve() {
+    cin>>n;
+    vector<int> pos;
+
+    cout<<rec(0, pos)<<endl;
+}
+```
+
+For n = 2 to 9 the answer is 0, n = 10 gives 4 (matched with a brute force that checks every pair of queens).
+
+## Print all subsequences / non-distinct permutations
+
+Q: Print all subsequences:
+
+N=4 : [3,1,2,5].
+
+(Subsequence = pick some elements, keep their order. Here every element is picked or not, so 2^4 = 16.)
+
+L: each element
+C: take/not take
+C: —
+M: insert in subset if taken
+D: —
+
+```
+[ _ _ _ _ ]
+  |
+3/1/2/5
+  ‾‾‾‾‾
+Y/N for each element.
+```
+
+Q: Print all permutation (non-distinct).
+
+N = 3 : [2,2,3]
+
+L: index we're filling at
+C: all elements of arr. with freq.
+C: if freq>0 for that choice
+M: insert , recurse , remove.
+D: —
+
+(freq = frequency, how many copies of that value are still unused. Code for both is below.)
+
+## Backtracking revisited: subsets for unique elements
+
+→ Backtracking Revisited:
+
+Core problems
+
+```
+subsets ─┬→ unique
+         └→ duplicates
+
+permutation ─┬→ unique
+             └→ duplicates.
+```
+
+Q: Subset for unique element array.
+
+```
+┌──┬──┬──┬──┬──┬──┐
+│  │  │ |│ │  │  │
+└──┴──┴─↑┴──┴──┴──┘
+        ↳ its unique ——→ 2 choices ─┬→ take
+                                    └→ not take.
+```
+
+L → index
+
+C → 2 choices → do both one by one by backtracking.
+
+C → no checks.
+
+M → place, recurse, reverse.
+
+D → no decision.
+
+Take:
+subset.push_back(arr[i])    ← place
+rec(i+1)                    ← recurse
+subset.pop_back();          ← revert.
+
+Not take:
+rec(i+1).
+
+Idea: for one element there are only two worlds, "it is in the subset" and "it is not". Pehle ek world explore karo, wapas aao (revert), phir doosra. Base case: level == n, all elements decided, print.
+
+```cpp
+/*
+Given a set, generate all subsequences of it.
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Generate-Subset.cpp
+int n;
+vector<int> v;
+vector<int> subsequence;
+
+void rec(int level){
+    if(level == n){
+        _print(subsequence);
+        return;
+    }
+
+    // take
+    subsequence.push_back(v[level]);
+    rec(level + 1);
+    subsequence.pop_back();
+
+    // not take
+    rec(level + 1);
+}
+
+void solve() {
+    cin>>n;
+    v.resize(n);
+
+    for(auto &x: v) cin>>x;
+
+    rec(0);
+}
+```
+
+(`_print(v)` is my debug function from the template, it prints the vector as `[ 3 1 2 ]`. Here `v` is the input array and `subsequence` is the one being built.)
+
+Trace for `3 1 2` (take first, so the order is a bit different from the f(3) tree above):
+`[ 3 1 2 ]`, `[ 3 1 ]`, `[ 3 2 ]`, `[ 3 ]`, `[ 1 2 ]`, `[ 1 ]`, `[ 2 ]`, `[ ]`.
+
+- Calls = 2^(n+1) − 1 (15 for n = 3). Subsets = 2^n. n = 20 → 1,048,576 subsets and 2,097,151 calls.
+- T.C. = O(2^n · n) (2^n leaves, copying/printing a subset costs up to n). S.C. = O(n).
+- Common mistake: missing `pop_back()` after the take branch, then the not-take branch still carries the element. Or forgetting `return` in the base case, then the code goes on to `v[level]` with `level == n`, outside the array.
+
+## Subsets with duplicates
+
+Problem ④. `[1,1,2]`: the subsets are `[]`, `[1]`, `[1,1]`, `[2]`, `[1,2]`, `[1,1,2]`, 6 of them, not 8. Taking "first 1" or "second 1" is the same subset, so take/not take per position gives repeats.
+
+Idea: group equal values. For a value with `freq` copies the choice is "how many copies do I take": 0, 1, ..., freq. So the choices at that level are freq + 1, not 2.
+
+L: index of the distinct value. C: take c copies, c = 0..freq. C: —. M: push c copies, recurse, pop c copies. D: —.
+
+```cpp
+vector<int> val;             // distinct values
+vector<int> freq;            // how many copies of each value we have
+vector<int> cur;
+
+void subsets_dup(int level){
+    if (level == (int)val.size()) {
+        _print(cur);
+        return;
+    }
+    for (int c = 0; c <= freq[level]; c++) {                    // take c copies (c = 0 is "not take")
+        for (int j = 0; j < c; j++) cur.push_back(val[level]);  // place
+        subsets_dup(level + 1);                                 // recurse
+        for (int j = 0; j < c; j++) cur.pop_back();             // revert
+    }
+}
+```
+
+For `val = {1,2}`, `freq = {2,1}`: `[ ]`, `[ 2 ]`, `[ 1 ]`, `[ 1 2 ]`, `[ 1 1 ]`, `[ 1 1 2 ]`.
+
+- Number of subsets = (freq₁ + 1) × (freq₂ + 1) × ... = 3 × 2 = 6. (Same product idea as the T.C. formula above, here the choices are different at every level.)
+- T.C. = O(that count × n). S.C. = O(n).
+- Common mistake: taking `c` copies but popping only one. Or doing plain take / not take per position and removing the repeated subsets from the output afterwards (the tree is bigger and the dedupe is extra work).
+
+Note: `subset_duplicate` in the repo's `Permutation.cpp` is unfinished (no `return` after the base case, and it takes each value at most once), so I did not use it.
+
+## Permutations: distinct and non-distinct
+
+Q: Print all permutation (non-distinct). → Permutation of `[2,2,3]`.
+
+First the distinct one (problem ①). Level = position we're filling. Choice = every element that is not used yet. Check = is it used.
+
+```cpp
+/*
+Given an array of distinct elements, generate all permutations.
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Permutation.cpp
+int n;
+vector<int> arr;
+map<int, bool> is_used;
+map<int, int> ele_count;
+vector<int> perm;
+
+void permutation_unique(int level){
+    if(level == n){
+        _print(perm);
+        return;
+    }
+
+    // iterate over all elements and see if it is used
+    // if not being used add in permutation
+    for(int i=0; i<n; i++){
+        if(!is_used[arr[i]]){
+            perm.push_back(arr[i]);
+            is_used[arr[i]] = true;
+            permutation_unique(level + 1);
+            perm.pop_back();
+            is_used[arr[i]] = false;
+        }
+    }
+}
+```
+
+Idea: at every position try every unused element, mark it used, recurse, unmark.
+
+- Calls: 1 + n + n(n-1) + ... + n! (for n = 3 → 16, n = 8 → 109,601). About e × n!.
+- T.C. = O(n · n!), S.C. = O(n). n = 8 → 40,320 permutations.
+- Common mistake: `is_used` is a map on the value, so this works only when all values are different. With `[2,2,3]` the second 2 would be blocked as "used".
+
+Now non-distinct (problem ②). If we loop over positions we get `[2,2,3]` twice (first 2 / second 2), 3! = 6 outputs, each repeated. Fix: loop over distinct values, with how many copies are left.
+
+```cpp
+/*
+Given an array, generate all permutations if the elements are not distinct
+i/p:
+2,2,3
+
+o/p:
+2,2,3
+2,3,2
+3,2,2
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Generate-Permutation2.cpp
+int n;
+vector<int> arr;
+map<int, int> choices;
+vector<int> perm;
+
+void rec(int level){
+    if(level == n){
+        _print(perm);
+        return;
+    }
+
+    map<int,int> temp = choices;
+    for(auto v: temp){
+        if(v.second > 0){
+            perm.push_back(v.first);
+            choices[v.first]--;
+            rec(level + 1);
+            perm.pop_back();
+            choices[v.first]++;
+        }
+    }
+}
+
+void solve() {
+    cin>>n;
+
+    arr.resize(n);
+    for(auto &x: arr) {
+        cin>>x;
+        choices[x]++;
+    }
+
+    rec(0);
+}
+```
+
+Note: `temp` is a copy of `choices` so the loop is over the counts as they were when this level started.
+
+![Tree of permutations of 2 2 3 with the remaining frequency at each node: 9 calls, 3 permutations](../../../assets/notes/3-1-backtracking/fig14_permutation_tree_duplicates.png)
+
+*3!/2! = 3 permutations: 223, 232, 322*
+
+- Number of permutations = n! / (freq₁! × freq₂! × ...). [2,2,3] → 3!/2! = 3.
+- T.C. = O(calls × distinct values), S.C. = O(n + distinct values).
+- Common mistake: forgetting `choices[v.first]++` after the recursion (revert), the counts keep shrinking and later branches find nothing.
+
+## Balanced parentheses
+
+(Same LCCMD, with a real check.) Given an even n, print all balanced strings of length n in lexicographic (dictionary) order. `(` comes before `)`, so trying `(` first gives the sorted order for free.
+
+L: the position (how many characters are left). C: `(` or `)`. C: `(` only if open_count &lt; n/2, `)` only if close_count &lt; open_count. M: place, recurse, remove. D: —
+
+```cpp
+/*
+https://maang.in/problems/Generate-Balanced-Parenthesis-easy-version-484
+
+You are given a positive even integer n. 
+Your task is to print all balanced parentheses of length n in lexicographic order
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Generate-Parenthesis-Easy.cpp
+vector<string> ans;
+int n;
+
+void rec(int level, string curr_ans, int open_count, int close_count){
+    // base case
+    if(level == 0){
+        ans.push_back(curr_ans);
+        return;
+    }
+
+    // choices
+    // check
+    if(open_count < n/2){
+        // move, place
+        curr_ans += '(';
+        // recurse
+        rec(level - 1, curr_ans, open_count+1, close_count);
+        // backtrack
+        curr_ans.pop_back();
+    }
+
+    // check
+    if(close_count < open_count){
+        // move, place
+        curr_ans += ')';
+        // recurse
+        rec(level - 1, curr_ans, open_count, close_count + 1);
+        // backtrack
+        curr_ans.pop_back();
+    }
+}
+
+void solve() {
+    cin>>n;
+
+    rec(n, "", 0, 0);
+
+    for(auto curr_ans: ans){
+        cout<<curr_ans<<endl;
+    }
+}
+```
+
+![Search tree for n=4: only the branches whose check passes are created, two answers (()) and ()()](../../../assets/notes/3-1-backtracking/fig15_parentheses_tree.png)
+
+*n = 4 → `(())`, `()()`. Red = branch refused by the check*
+
+Note: `curr_ans` is passed by value, so each call has its own copy. The `pop_back()` is still needed: in the same call we did `curr_ans += '('` and the second `if` must start from the original string.
+
+- Count for n = 2, 4, 6, 8, 10 → 1, 2, 5, 14, 42 (Catalan numbers, a standard counting sequence). n = 12 → 132.
+- T.C. = O(count × n). S.C. = O(n) depth.
+- Common mistake: checking `close_count <= n/2` instead of `close_count < open_count`, then `)(` style strings come out.
+
+## Kth form: k-th permutation
+
+→ Kth Form:
+
+Finding kth element/item in a setup.
+
+Q: ABCA → if we generate all permutation in lexicographical order, what will be 8th elem?
+
+total perm = 4! / (2! 1! 1!) = 12.
+
+(Lexicographic order = dictionary order: AABC, AACB, ABAC, ABCA, ACAB, ACBA, BAAC, BACA, ...)
+
+Soln 1: generate all permutation & return 8th elem.
+ ↳ may not be always possible.
+
+(For 15 different letters that is 15! = 1,307,674,368,000 permutations. Infeasible.)
+
+Soln 2:
+
+when we generate permutation, it'll be of 4 chars.
+
+_ _ _ _
+
+```
+        A → no. of perms if start with A = 3! = 6
+choices B → no. of perms for B = 3!/2! = 3
+        C → no. of perms for C = 3!/2! = 3
+```
+
+Given above information we know that the first char of 8th perm will be B.
+
+A → 1 to 6
+B → 7 to 9 ——→ 8th is here.
+C → 10 to 12
+
+Dekho: sorted order me pehle saari permutations jo A se shuru hoti hain (6), phir B wali (3), phir C wali (3). The 8th falls in the B block, so first char is B. We never generated anything, only counted.
+
+B [ A _ _ _ ]
+↳ options → A, A, C.
+
+```
+A → |||||        (5 tally marks)
+B → |||  } 2nd element from here will be 8th overall
+C → |||
+```
+
+kth (8, \{A,A,B,C\}) → "B" + kth (2, \{A,A,C\})
+
+↑ idea behind kth element.
+
+options → \{A,A,C\}.
+_ _ _
+
+A → no. of perms if started with A → 2!
+C → no. of perms if started with C → 2!/2! = 1
+
+```
+A → ==  } here lies the 2nd element.
+C → _     ↳ ∴ A must be placed first.
+```
+
+kth (2, \{A,A,C\}) → "A" + kth (2, \{A,C\})
+
+_ _   options → \{A,C\}.
+
+A → 1
+C → 1  ← this is the second element.
+
+kth (2, \{A,C\}) → "C" + kth (1, \{A\})
+                          ↳ "A"
+
+→ soln = B A C A. → 8th element.
+
+![Four rows of numbered cells: the 12 permutations split into A, B, C blocks, then the remaining choices after B, BA and BAC](../../../assets/notes/3-1-backtracking/fig16_kth_permutation_bars.png)
+
+*k = 8 → B (k becomes 2) → A (k stays 2) → C (k becomes 1) → A*
+
+Another ex:
+
+[ _ _ _ ] options - A/B/C.
+
+```
+A → ||||| 5
+B → ||||||| 7
+C → ||||||||| 10
+```
+
+kth (14, \{......\}) → "C" + \{2, \{......\}\}
+                          ↳ 14 - 5 - 7
+
+Rule in one line: go over the letters in sorted order, for each letter `w` = number of permutations that start with it. If `k <= w` the letter is chosen, else `k -= w` and move to the next letter. After choosing, recurse on the rest with the same `k`.
+
+Code in the same LCCMD style. `ways(len)` = len! divided by the freq! of every letter left (that is the 3!/2! = 3 in the notes).
+
+```cpp
+map<char,int> cnt;           // letters still left, with their frequency (map keeps them sorted)
+
+long long ways(int len){     // no. of distinct permutations of the letters left in cnt, len = how many are left
+    long long r = 1;
+    for (int i = 2; i <= len; i++) r *= i;                              // len!
+    for (auto &p : cnt)
+        for (int i = 2; i <= p.second; i++) r /= i;                     // divide by every freq!
+    return r;
+}
+
+string kth(long long k, int len){        // k-th (1-based) permutation in lexicographic order
+    if (len == 0) return "";
+    for (auto &p : cnt) {
+        if (p.second == 0) continue;
+        p.second--;                                  // place this letter first
+        long long w = ways(len - 1);                 // no. of perms that start with it
+        if (k <= w) {
+            string rest = kth(k, len - 1);           // k is inside this block
+            p.second++;                              // revert
+            return string(1, p.first) + rest;
+        }
+        p.second++;                                  // revert
+        k -= w;                                      // skip the whole block
+    }
+    return "";                                       // k was bigger than the total
+}
+```
+
+Note: `Kth-Permutation.cpp` in the repo is half written (`k_included` has no body), so this is the full version of that idea. Checked for ABCA, AABC, ABC, AAAB, ABCDE, AABBCC against `next_permutation` for every k, and `kth(8, 4)` on ABCA gives BACA.
+
+- T.C. = O(n × d × (n + d)) with d = distinct letters (n levels, d letters per level, `ways` costs O(n + d)). S.C. = O(n).
+- `long long` is fine up to n = 20 (20! = 2,432,902,008,176,640,000). 21! overflows.
+- Common mistakes: using 0-based k with the 1-based rule above; forgetting `k -= w`; forgetting to revert the count; not skipping letters whose count is 0.
+
+## K-th move of Tower of Hanoi
+
+Q: In Tower of Hanoi, find the k = 6th move for 3 disc.
+
+Soln 1: Maintaining a counter for the moves & returning the kth move.
+ ↳ infeasible because we might have to generate all the moves to maintain the counter.
+
+Soln 2:
+
+```
+                     ↗ rec(2,1,2,3)   → 3 moves
+rec(3,1,3,2) ──────→ [1→3]  → 1 move
+7 moves              ↘ rec(2,2,3,1)   → 3 moves
+```
+
+T(n) → moves ??
+
+T(1) → 1, T(2) → 3, T(3) → 7
+
+T(n) = 2^n - 1
+
+![Seven numbered moves split into part I (moves 1 to 3), part II (move 4) and part III (moves 5 to 7), then part III opened up](../../../assets/notes/3-1-backtracking/fig17_kth_hanoi_parts.png)
+
+*3 disk: (I) 3 moves, (II) 1 move, (III) 3 moves. 6th move lies in (III) part. 6 - 3 - 1 = 2*
+
+for finding 6th move.
+
+```
+                  ┌ rec(2,1,2,3)
+rec(3,1,3,2) ────├ move(1→3)
+                  └ rec(2,2,3,1) —— 2nd move in this is 6th move overall.
+```
+
+Same counting idea as the permutation. Instead of generating the moves, decide in which of the 3 parts k lies:
+- `k <= numMoves` → inside the first part, go into `rec(discs-1, from, extra, to)` with the same k.
+- `k == numMoves + 1` → it is the middle move, the nth disc from `from` to `to`. Done.
+- else → `k -= numMoves + 1` and go into the third part `rec(discs-1, extra, to, from)`.
+
+Here numMoves = 2^(discs-1) - 1.
+
+```cpp
+/*
+Tower of Hanoi, n discs, move them from peg 1 to peg 3 using peg 2.
+Print the k-th move of the optimal solution (without generating the others).
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Kth-Tower-Of-Hanoi.cpp
+// O(discs)
+void kth_in_tower_of_hanoi(long long int k, long long int discs, int from, int to, int extra){
+    if(discs == 0){
+        return;
+    }
+
+    long long int numMoves = (1 << (discs - 1)) - 1;
+
+    if(k <= numMoves){
+        kth_in_tower_of_hanoi(k, discs - 1, from, extra, to);
+        return;
+    }
+
+    k -= numMoves;
+
+    if(k == 1){
+        cout<<discs<<" from "<<from<<" to "<<to<<endl;
+        return;
+    }
+
+    k -= 1;
+
+    if(k <= numMoves){
+        kth_in_tower_of_hanoi(k, discs - 1, extra, to, from);
+        return;
+    }
+}
+
+void solve() {
+    long long int n, k;
+    cin>>n>>k;
+
+    kth_in_tower_of_hanoi(k, n, 1, 3, 2);
+}
+```
+
+Trace for n = 3, k = 6: `numMoves` = 3, k > 3 so k = 3; k != 1 so k = 2; k &lt;= 3 → go into (2, from 2, to 3, extra 1). There numMoves = 1, k = 2 > 1 so k = 1, and k == 1 → print `2 from 2 to 3`. This matches the 6th move in the picture above. Checked: for n = 10 all 1,023 answers match the full move list.
+
+- T.C. = O(discs) (one call per level, constant work, only one child is entered). S.C. = O(discs). The full list would be 2^n − 1 moves.
+- Common mistake: `(1 << (discs - 1))` is an `int` shift. From discs = 32 it overflows. For n = 40, k = 2^39 it printed `33 from 2 to 1`, the right answer is `40 from 1 to 3`. Use `(1LL << (discs - 1))` for big n.
+
+## Fractals
+
+→ fractals:
+
+Q:
+
+Step 0 is a plain square. Each step replaces every square by a smaller copy of the pattern. The picture is built from smaller copies of itself, so recursion fits.
+
+![Fractal growth for k = 0, 1, 2, 3 with n = 2, quadrants marked 1 to 4 on the last picture](../../../assets/notes/3-1-backtracking/fig18_fractal_growth.png)
+
+*0 → 1 → 2 → k=3. n = 2, side = 2^3 = 8 → n^k.*
+
+(In the notes, hatched = black. Rule used in the repo problem, Codeforces 36B: the n × n model has `.` (white) and `*` (black). A white square becomes the model, a black square becomes all black.)
+
+Cell by cell:
+
+\} We check if the first position is white or black.
+
+If first block (cell) is black then whole area is black.   |   1, 3 & 4 have same pattern if their first blocks are white.
+
+Matlab at k = 3 the big square has 4 quadrants (marked 1, 2, 3, 4). Quadrant 2 sits under the black model cell → fully black. Quadrants 1, 3, 4 sit under white model cells → each is the same picture as k = 2.
+
+Two ways to write it.
+
+**Painter method**: start with an empty grid, recursively go into every block; at level 0 write the cell's colour into the grid. Needs the whole n^k × n^k grid.
+
+```cpp
+/*
+Fractal (Codeforces 36B). n x n model of '.' (white) and '*' (black), k steps.
+Step 0 is one white square. Each step: every white square becomes the model, every black square becomes all black.
+Print the final n^k x n^k picture.
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Fractal.cpp
+int n, k;
+string pat[3];
+vector<vector<char>> grid;
+
+// Painter Method
+void rec(int x, int y, int level, int len, char ch){
+    if(level == 0) {
+        grid[x][y] = ch;
+        return;
+    }
+
+    int nlen = len/n;
+    if(ch == '.'){
+        for(int i=0; i<n; i++){
+            for(int j=0; j<n; j++){
+                rec(x + i * nlen, y + j * nlen, level - 1, nlen, pat[i][j]);
+            }
+        }
+    }
+    else{
+        for(int i=0; i<n; i++){
+            for(int j=0; j<n; j++){
+                rec(x + i * nlen, y + j * nlen, level - 1, nlen, '*');
+            }
+        }
+    }
+}
+
+void solve() {
+    cin>>n>>k;
+
+    for(int i=0; i<n; i++){
+        cin>>pat[i];
+    }
+
+    int len = 1;
+    for(int i=0; i<k; i++){
+        len = len * n;
+    }
+
+    grid = vector<vector<char>>(len, vector<char>(len, ' '));
+
+    rec(0, 0, k, len, '.');
+
+    for(auto row: grid){
+        for(auto item : row){
+            cout<<item;
+        }
+
+        cout<<endl;
+    }
+}
+```
+
+For `n = 2, k = 3` and model `.*` / `..` the output (checked against an independent version):
+
+```
+.*******
+..******
+.*.*****
+....****
+.***.***
+..**..**
+.*.*.*.*
+........
+```
+
+- Calls = 1 + n² + n⁴ + ... + n^(2k) (85 for n = 2, k = 3). T.C. = O(n^(2k)) (one leaf per cell). S.C. = O(n^(2k)) for the grid, plus O(k) stack.
+
+**Divide-Locate method**: do not draw anything, just find the colour of one cell. At level `L` the cell is in block `(r / n^(L-1), c / n^(L-1))` of the model. If that model cell is black, the cell is black. Otherwise throw away the block's position (`%`) and look inside.
+
+```cpp
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Fractal2.cpp
+int n, k;
+vector<string> model;
+long long powers[10]; // To precompute powers of N
+
+char get_color(int r, int c, int level) {
+    if (level == 0) return '.';
+
+    int block_size = powers[level - 1];
+
+    int bx = r / block_size;
+    int by = c / block_size;
+
+    if (model[bx][by] == '*') {
+        return '*';
+    }
+
+    return get_color(r % block_size, c % block_size, level - 1);
+}
+
+void solve(){
+    cin >> n >> k;
+    model.resize(n);
+    for (int i = 0; i < n; i++) {
+        cin >> model[i];
+    }
+
+    powers[0] = 1;
+    for (int i = 1; i <= k; i++) {
+        powers[i] = powers[i - 1] * n;
+    }
+
+    int total_size = powers[k];
+
+    for (int i = 0; i < total_size; i++) {
+        for (int j = 0; j < total_size; j++) {
+            cout << get_color(i, j, k);
+        }
+        cout << "\n";
+    }
+}
+```
+
+![Finding the colour of cell (5,2) at k=3 in two lookups: block (1,0) is white, then block (0,1) is black](../../../assets/notes/3-1-backtracking/fig19_fractal_locate.png)
+
+*(5, 2): model[1][0] is `.`, go inside; model[0][1] is `*`, black*
+
+- T.C. = O(k) for one cell. Whole picture = O(k · n^(2k)).
+- Common mistakes: `block_size = n^level` instead of `n^(level-1)` (off by one level); forgetting `% block_size` when going inside.
+
+### Box fractal (POJ 2083)
+
+A box fractal of degree n is 5 copies of degree n-1 placed in the 4 corners and the middle of a 3 × 3 arrangement. Side = 3^(n-1).
+
+![Box fractal of degree 1, 2 and 3, sizes 1, 3 and 9](../../../assets/notes/3-1-backtracking/fig20_box_fractal.png)
+
+*the 3 × 3 blocks with (bx + by) odd stay empty*
+
+Divide-Locate version (block position `(bx + by) & 1` → blank, else go inside):
+
+```cpp
+/*
+http://poj.org/problem?id=2083
+
+A fractal is an object or quantity that displays self-similarity, in a somewhat technical sense, on all scales. 
+The object need not exhibit exactly the same structure at all scales, but the same "type" of structures must appear on all scales.
+A box fractal is defined as below :
+A box fractal of degree 1 is simply
+X
+A box fractal of degree 2 is
+X X
+ X
+X X
+If using B(n - 1) to represent the box fractal of degree n - 1, then a box fractal of degree n is defined recursively as following
+B(n - 1)        B(n - 1)
+        B(n - 1)
+B(n - 1)        B(n - 1)
+
+Your task is to draw a box fractal of degree n. -1 means end of input
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Fractal-POJ.cpp
+int powers[10];
+int n;
+vector<vector<char>> grid;
+
+void prep_power(){
+    powers[0] = 1;
+    for(int i=1; i<10; i++){
+        powers[i] = powers[i-1] * 3;
+    }
+}
+
+// Divide - Locate Method
+char get_char(int x, int y, int level){
+    if(level == 1){
+        return 'X';
+    }
+
+    int block_size = powers[level - 2];
+    int bx = x / block_size;
+    int by = y / block_size;
+
+    if((bx + by) & 1){
+        return ' ';
+    }
+
+    return get_char(x % block_size, y % block_size, level - 1);
+}
+
+void solve() {
+    prep_power();
+
+    int n;
+    while(cin>>n && n != -1){
+        int size = powers[n-1];
+
+        for(int i=0; i<size; i++){
+            for(int j=0; j<size; j++){
+                cout<<get_char(i, j, n);
+            }
+
+            cout<<endl;
+        }
+    }
+}
+```
+
+Painter version (skip the same blocks, recurse into the other 5):
+
+```cpp
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Fractal-POJ.cpp
+int powers[10];
+int n;
+vector<vector<char>> grid;
+
+void prep_power(){
+    powers[0] = 1;
+    for(int i=1; i<10; i++){
+        powers[i] = powers[i-1] * 3;
+    }
+}
+
+void my_rec(int x, int y, int level, int len){
+    if(level == 1){
+        grid[x][y] = 'X';
+        return;
+    }
+
+    int sub_len = len/3;
+
+    for(int i=0; i<3; i++){
+        for(int j=0; j<3; j++){
+            if((i + j) & 1) continue;
+
+            my_rec(x + i * sub_len, y + j * sub_len, level - 1, sub_len);
+        }
+    }
+    // // top-left
+    // my_rec(x, y, level - 1, sub_len);
+
+    // // top-right
+    // my_rec(x, y + 2 * sub_len, level - 1, sub_len);
+
+    // // middle
+    // my_rec(x + sub_len, y + sub_len, level - 1, sub_len);
+
+    // // bottom-left
+    // my_rec(x + 2 * sub_len, y, level - 1, sub_len);
+
+    // // bottom-right
+    // my_rec(x + 2 * sub_len, y + 2 * sub_len, level - 1, sub_len);
+}
+
+void my_solve() {
+    prep_power();
+
+    while(cin>>n && n != -1){
+        int size = powers[n-1];
+
+        grid = vector<vector<char>>(size, vector<char>(size, ' '));
+        
+        my_rec(0, 0, n, size);
+        for(int i=0; i<size; i++){
+            for(int j=0; j<size; j++){
+                cout<<grid[i][j];
+            }
+
+            cout<<endl;
+        }
+    }
+}
+```
+
+Note: the problem prints a line with `-` after every picture (see the sample output in the problem). These functions do not print it, so add `cout<<"-"<<endl;` after the printing loop of each degree. Without the `-` lines the pictures match the sample exactly (checked).
+
+- Degree 4 → 27 × 27 = 729 cells, 5³ = 125 of them `X`.
+- T.C. = O(side²) to print. Common mistake: using `/ 3^(level-1)` instead of `/ 3^(level-2)` here, because in this code level 1 is a single `X` (block size of level L is 3^(L-2)).
+
+## Self-similar problems: Caracal vs Monster, Christmas burger, Nephren's riddle
+
+Same recursion idea: the big object is made of smaller copies of itself, so we never build it, we count or locate.
+
+### Caracal vs Monster (AtCoder ABC153 D)
+
+Attack a monster of health X > 1 and it becomes two monsters of health X/2 (rounded down). Both are the same problem, so solve one and double it.
+
+```cpp
+/*
+https://atcoder.jp/contests/abc153/tasks/abc153_d
+Caracal fights a monster with health H. One attack on a monster:
+  health 1  -> it disappears
+  health X>1 -> it splits into two monsters, each with health floor(X/2)
+Find the minimum number of attacks to make all monsters disappear.
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/CaracalVsMonster.cpp
+long long int kill(long long h){
+    if(h == 0){
+        return 0;
+    }
+
+    if(h == 1){
+        return 1;
+    }
+
+    h = h>>1;
+
+    long long int stepsToKillAfterDivision = kill(h);
+
+    return 1 + (stepsToKillAfterDivision << 1);
+}
+
+void solve() {
+    long long h;
+    cin>>h;
+
+    cout<<kill(h)<<endl;
+}
+```
+
+kill(4) = 1 + 2·kill(2), kill(2) = 1 + 2·kill(1), kill(1) = 1 → kill(2) = 3, kill(4) = 7. So kill(H) = 2^(⌊log₂ H⌋ + 1) − 1. H = 10^12 → 2^40 − 1 = 1,099,511,627,775.
+
+- T.C. = O(log H) (40 calls for 10^12). S.C. = O(log H).
+- Common mistake: simulating all the monsters (2^40 of them). The two halves are identical, so one call is enough.
+
+### Christmas burger (AtCoder ABC115 D)
+
+Layers from the bottom, level 2 = `B B P P P B P B P P P B B`. Eating the bottom X layers: how many patties?
+
+![Burger of level 0, 1, 2 as rows of layers, the bottom 7 layers of level 2 marked](../../../assets/notes/3-1-backtracking/fig21_burger_levels.png)
+
+*level L = B + level(L-1) + P + level(L-1) + B*
+
+Kth style: do not build the burger (level 50 has 2^52 − 3 = 4,503,599,627,370,493 layers). `bcnt`, `pcnt` store buns and patties of each level (pre-computed). Then walk the 5 parts: bottom bun, level L-1, patty, level L-1, top bun. If X ends inside a part, count the full parts before it and go inside that one part.
+
+```cpp
+/*
+https://atcoder.jp/contests/abc115/tasks/abc115_d
+Level-0 burger = P (one patty).
+Level-L burger = B + (level L-1 burger) + P + (level L-1 burger) + B   (B = bun, P = patty).
+Eat the bottom X layers of a level-N burger. How many patties are eaten?
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Christmas.cpp
+long long patties = 0;
+long long int bcnt[51];
+long long int pcnt[51];
+
+void pre(){
+    bcnt[0] = 0;
+    pcnt[0] = 1;
+
+    for(int i=1; i<=50; i++){
+        bcnt[i] = 1 + bcnt[i-1] + bcnt[i-1] + 1;
+        pcnt[i] = pcnt[i-1] + 1 + pcnt[i-1];
+    }
+}
+
+long long int kth(long long k, long long level){
+    if(k == 0){
+        return 0;
+    }
+    if(level == 0){
+        return 1;
+    }
+
+    long long total = 0;
+    if(k <= 1){
+        return total;
+    }
+    k-=1;
+
+    if(k <= bcnt[level - 1] + pcnt[level - 1]){
+        total += kth(k, level - 1);
+        return total;
+    }
+    total += pcnt[level - 1];
+    k -= (bcnt[level - 1] + pcnt[level - 1]);
+
+    if(k <= 1){
+        return total + 1;
+    }
+    total += 1;
+    k-=1;
+
+    if(k <= bcnt[level - 1] + pcnt[level - 1]){
+        total += kth(k, level - 1);
+        return total;
+    }
+    total += pcnt[level - 1];
+    k -= (bcnt[level - 1] + pcnt[level - 1]);
+
+    if(k <= 1){
+        return total;
+    }
+    k-=1;
+}
+
+void solve() {
+    long long int n, x;
+    cin>>n>>x;
+
+    patties = kth(x, n);
+
+    cout<<patties<<endl;
+}
+```
+
+Trace for N = 2, X = 7: skip the bottom bun (k = 6). Is 6 inside the first level-1 burger (5 layers)? No. So add all its 3 patties and k = 6 − 5 = 1. k = 1 is the middle patty → 3 + 1 = 4. Matches the picture (B B P P P B P → 4 patties).
+
+Checked: all N ≤ 5 and every X against the real string. The sample `50 4321098765432109` gives 2160549382716056.
+
+- T.C. = O(N) (only one recursive call per level), S.C. = O(N).
+- Layers = 2^(N+2) − 3, patties = 2^(N+1) − 1 (N = 2 → 13 layers, 7 patties).
+- Common mistakes: building the string; `int` instead of `long long`.
+
+Note: the last `k-=1;` has no `return` after it, the compiler warns. It is never reached for a valid X (the `if(k <= 1) return total;` just before it fires first).
+
+### Nephren's riddle (Codeforces 896 A)
+
+f0 has 75 characters. fi = 34 chars + f(i-1) + 32 chars + f(i-1) + 2 chars, so len(i) = 2 · len(i-1) + 68. len(1) = 218, len(2) = 504 (checked against the real strings).
+
+Idea: same as the burger. For the k-th character: if k is in a fixed piece (`fPrefix`, `sPrefix`, `suffix`) answer directly. If it is inside one of the two copies of f(i-1), subtract what came before and go to level i-1.
+
+```cpp
+/*
+https://codeforces.com/problemset/problem/896/A
+f0 = "What are you doing at the end of the world? Are you busy? Will you save us?"
+fi = "What are you doing while sending \"" + f(i-1) + "\"? Are you busy? Will you send \"" + f(i-1) + "\"?"
+Query (n, k): print the k-th character of fn, or '.' if fn has less than k characters.
+*/
+// Fabricator/Recursion-Bactracking-Kth-Fractals/Nephren-Gives-A-Riddle.cpp
+string core = "What are you doing at the end of the world? Are you busy? Will you save us?";
+string fPrefix = "What are you doing while sending \"";
+string sPrefix = "\"? Are you busy? Will you send \"";
+string suffix = "\"?";
+
+unsigned long long len[100];
+
+void pre(){
+    len[0] = core.size();
+
+    for(int i=1; i<100; i++){
+        len[i] = fPrefix.size() + len[i-1] + sPrefix.size() + len[i-1] + suffix.size();
+    }
+}
+
+char sol;
+
+void kth(long long int k, int level){
+    while (level > 60) {
+        if (k < fPrefix.size()){ 
+            sol = fPrefix[k];
+            return;
+        }
+        k -= fPrefix.size();
+        // Since len[n-1] is effectively infinite, we just go deeper into the first chunk
+        level--; 
+    }
+
+    if(level == 0){
+        if(k < core.size()){
+            sol = core[k];
+        }
+        else{
+            sol = '.';
+        }
+
+        return;
+    }
+
+    if(k >= len[level] && level <= 60){
+        sol = '.';
+        return;
+    }
+
+    if(k < fPrefix.size()){
+        sol = fPrefix[k];
+        return;
+    }
+    k-=fPrefix.size();
+
+    if(k < len[level - 1]){
+        kth(k, level - 1);
+        return;
+    }
+    k-=len[level - 1];
+
+    if(k < sPrefix.size()){
+        sol = sPrefix[k];
+        return;
+    }
+    k-=sPrefix.size();
+
+    if(k < len[level - 1]){
+        kth(k, level - 1);
+        return;
+    }
+    k-=len[level - 1];
+
+    if(k < suffix.size()){
+        sol = suffix[k];
+        return;
+    }
+    k-=suffix.size();
+
+    sol = '.';
+
+    return;
+}
+
+void solve() {
+    int levels;
+    long long k;
+
+    cin>>levels>>k;
+
+    kth(k-1, levels);
+
+    cout<<sol;
+}
+```
+
+Trace for f2, k = 100 (the code gets `k - 1` = 99 as 0-based): 99 ≥ 34 so skip `fPrefix` (k = 65). 65 &lt; len(1) = 218 so go into level 1. 65 ≥ 34 so skip `fPrefix` (k = 31). 31 &lt; len(0) = 75 so go into level 0 → `core[31]` = `f`. The 100th character of f2 is `f`.
+
+- T.C. = O(n) per query (levels above 60 only strip `fPrefix`; below that one call per level). S.C. = O(n) at most.
+- Level 60 would already have about 1.6 × 10^20 characters, so the strings can never be built.
+- Common mistake: 1-based vs 0-based `k` (that is why `solve` calls `kth(k-1, levels)`).
+
+Note: `len[i]` is about 143 · 2^i, which passes 2^64 at i = 57 and wraps around. It still works because k ≤ 10^18 never reaches that part (tested levels 48 to 70 and 99999, 100000 against exact big-number arithmetic).
+
+## Quick revision
+
+- Recursion = function calling itself. Base case + smaller input. Draw the recursion tree, not the stack, once it branches.
+- Code before the recursive call runs going down, code after it runs coming back up.
+- fib calls = 2·fib(n+1) − 1, exponential because of repeated subproblems. S.C. = depth.
+- Tail recursion: the recursive call is the last thing (`return cond && f(...)`).
+- Hanoi: n-1 discs to extra, move nth, n-1 discs onto it. T(n) = 2T(n-1) + 1 = 2^n − 1.
+- Backtracking = brute force with recursion. LCCMD = Level, Choice, Check, Move (place, recurse, revert), Decide. Decide the representation first.
+- T.C. = (#choices)₁ × ... × (#choices)ₙ × (check + decide), same choices → (#choices)^N × (check + decide). Pruning cuts subtrees.
+- 4 problems: permutation / subset × distinct / non-distinct.
+- Subsets: take / not take, 2^n. With duplicates: take c copies, (freq+1) choices per value.
+- Permutations: distinct → n! with `is_used`. Non-distinct → loop over distinct values with freq > 0, n!/(freq!...).
+- N-Queens: queens[row] = col. Check: `col` same, or `abs(dcol) == abs(drow)`. Diagonals: `row-col` and `row+col`. Calls for n = 8: 2,057 (not 8^8). Solutions n = 1..9: 1, 0, 0, 2, 10, 4, 40, 92, 352.
+- Kth form: do not generate, count. k-th permutation: for each letter `w` = perms starting with it, `k <= w` → choose, else `k -= w`.
+- K-th Hanoi: numMoves = 2^(discs-1) − 1; k in part I, the middle move, or part III (`k -= numMoves + 1`). O(n). Use `1LL <<` for big n.
+- Fractals: painter (fill the grid) or divide-locate (colour of one cell in O(k)). Side = n^k. If the first block is black everything under it is black.
+- Self-similar counting: Caracal `kill(h) = 1 + 2·kill(h/2)`; burger layers 2^(N+2) − 3; Nephren len(i) = 2·len(i-1) + 68.
+- Common mistakes: missing base case, missing revert, off-by-one in levels, `int` overflow in `1 << n`, building the object instead of counting.
+
+## Practice problems
+
+Recursion, Tower of Hanoi:
+
+- [CSES 2165, Tower of Hanoi](https://cses.fi/problemset/task/2165)
+
+Backtracking (N-Queens, parentheses):
+
+- [Queens On Chessboard](https://maang.in/problems/Queens-On-Chessboard-272)
+- [NQueens Revisited](https://maang.in/problems/NQueens-Revisited-143)
+- [Generate Balanced Parenthesis, easy version](https://maang.in/problems/Generate-Balanced-Parenthesis-easy-version-484)
+
+Kth form, fractals, self-similar:
+
+- [POJ 2083, Fractal](http://poj.org/problem?id=2083)
+- [AtCoder ABC115 D](https://atcoder.jp/contests/abc115/tasks/abc115_d)
+- [AtCoder ABC153 D](https://atcoder.jp/contests/abc153/tasks/abc153_d)
+- [Codeforces 896 A](https://codeforces.com/problemset/problem/896/A)
+
+### Problem ladder
 
 <Ladder topic="3.1" />
-
-## 10. Identification drill
-
-<Drill topic="3.1" />
-
-## 11. Look-alike pairs
-
-<LookalikePairs topic="3.1" />
-
-## 12. Self-test questions
-
-<SelfTest topic="3.1" />
-
-## 13. Checkpoint
-
-<Checkpoint topic="3.1" />
-
-## 14. Decision map update
-
-<DecisionMapUpdate topic="3.1" />

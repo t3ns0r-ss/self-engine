@@ -94,6 +94,8 @@ ans = $^{n-1}C_2 \times \sum_{0}^{n-1} a[i]$ &nbsp; (the sum of the elements of 
 
 Check with a,b,c,d = 1,2,3,4: $^{3}C_2 = 3$, sum = 10, so ans = 30. Brute force also gives 30.
 
+Why are we allowed to group by element? The answer is a sum of many small terms, and each term is one element taken from one triplet. Adding these terms triplet by triplet or element by element adds the same terms in a different order, so the total is the same.
+
 T.C. (time complexity) = O(n) (just one pass for the sum), memory O(1). Edge cases: if n &lt; 3 there is no triplet, so ans = 0. Use long long: for n = $10^5$, `(n-1)*(n-2)/2` is about 5×$10^9$, which does not fit in a 32-bit int (limit about 2.1×$10^9$). Both `ways` and `total` are kept below $10^9+7$, so their product is below about $10^{18}$ and still fits in a long long. Negative values → `((x % mod) + mod) % mod`, because in C++ the remainder of a negative number is negative.
 
 ```cpp
@@ -243,7 +245,7 @@ long long inversionsOfAllSubarrays(const vector&lt;int>& arr) \{
 \}
 ```
 
-A common mistake is to count values equal to arr[j] as bigger. Using the rank, "strictly bigger" means ranks above `rank`, so equal values are correctly left out.
+A common mistake is to count values equal to arr[j] as bigger. Using the rank, "strictly bigger" means ranks above `rank`, so equal values are correctly left out. Another common mistake is to mix 0-based and 1-based positions. With 0-based positions the count is (i+1)(n-j). With 1-based positions it is i × (n-j+1). Check: the pair (4,2) in 4, 2, 1, 3 has 1-based positions 1 and 2, and 1 × (4-2+1) = 3, the same as before.
 
 ## Contribution at pivot [Extension]
 
@@ -291,6 +293,24 @@ for (int i=0; i&lt;n; i++)\{
 Note: int will overflow because products grow fast, so use long long and mod. T.C. = O(n), memory O(1). Dry run for [1,3,2]: cur = 1, then 1×3+3 = 6, then 6×2+2 = 14. So ans = 1 + 6 + 14 = 21.
 
 Why `cur × arr[i]` is right: cur is a sum of products p1 + p2 + ... of the subarrays that end at i-1. Appending arr[i] to each subarray multiplies each product by arr[i], and (p1 + p2 + ...) × arr[i] = p1×arr[i] + p2×arr[i] + ..., so one multiplication updates all of them at once. With mod, keep cur below $10^9+7$ so that `cur × arr[i]` stays below about $10^{18}$ and fits in a long long.
+
+Here is the same loop with long long and mod added:
+
+```cpp
+// New function: the author's loop above with long long and mod added, because an int overflows.
+long long sumOfSubarrayProducts(const vector<long long>& arr) {
+    const long long MOD = 1000000007;
+    long long ans = 0, cur = 0;
+    for (long long x : arr) {
+        long long xm = ((x % MOD) + MOD) % MOD;   // x brought into [0, MOD), also when x is negative
+        cur = (cur * xm + xm) % MOD;              // all old products times x, plus the new subarray [x]
+        ans = (ans + cur) % MOD;
+    }
+    return ans;
+}
+```
+
+Run on [1, 3, 2] it returns 21, the same as the dry run. Run on [2, -1] the products are 2, -1 and -2, so the true sum is -1, and the function returns 1000000006, which is -1 modulo $10^9+7$. Common mistake: leaving out the `+ arr[i]` term. That term is the new subarray that holds only arr[i]. Without it, cur starts at 0 and stays 0 for ever.
 
 Question: find the sum of the sums of all subarrays. We use the same technique again. The update rule is `cur = cur + arr[i] × (i+1)`.
 
@@ -387,6 +407,24 @@ for(int i=0; i&lt;n; i++)\{
 
 Note: here the loop `i` is the pivot j. Query first, then insert arr[i], otherwise element pairs with itself. `ans` should be long long. T.C. = O(n log n) with map, O(n) average with unordered_map. Memory O(n). Equal values are counted correctly: for [2,2,2] and X = 4 the totals go 0, 1, 3, so 3 pairs. Reading `freq[val]` also creates an entry with count 0 when val is missing, which is harmless for the answer but uses extra memory.
 
+Why this works: fixing j turns a condition on two positions into a search for one value among the earlier positions. Only earlier elements are in the map, so each pair is seen once, when its larger position is the pivot.
+
+```cpp
+// New function: the author's loop above, with find() so that a missing value does not create an empty map entry.
+long long countPairsWithSum(const vector<int>& arr, int X) {
+    map<int, int> freq;                  // value -> how many times seen so far
+    long long ans = 0;
+    for (int j = 0; j < (int)arr.size(); j++) {
+        auto it = freq.find(X - arr[j]);
+        if (it != freq.end()) ans += it->second;
+        freq[arr[j]]++;                  // arr[j] is available only for later pivots
+    }
+    return ans;
+}
+```
+
+For [1, 2, 3, 4] with X = 5 it returns 2, and for [2, 2, 2] with X = 4 it returns 3. A `map` costs O(log n) per step. An `unordered_map` is O(1) on average, but on some judges, such as Codeforces, special inputs can make it slow, so `map` is the safe choice.
+
 ![Trace of the frequency map on 1 2 3 4 with X = 5.](../../../assets/notes/2-4-expected-value/fig14_freq_trace.png)
 *In the trace the running total goes 0, 0, 1, 2.*
 
@@ -420,6 +458,25 @@ for (int j=0; j&lt;n; j++)\{
 ```
 
 Note: `k-arr[i]` should be `k-arr[j]`, there is no i here. INF = INT_MAX, and if ans is still INF at the end, then there is no such pair. T.C. = O(n log n), memory O(n). The set keeps only one copy of each value, which is enough, because a pair needs just one earlier element with that value. Use long long if the values are large, since arr[j] + *it can overflow an int.
+
+The same loop with his typo fixed:
+
+```cpp
+// New function: the author's lower_bound loop with k - arr[j] in place of his k - arr[i], and -1 when no pair exists.
+long long smallestSumAtLeastK(const vector<int>& arr, int k) {
+    const long long INF = LLONG_MAX;
+    long long ans = INF;
+    set<int> seen;                                   // the earlier values
+    for (int j = 0; j < (int)arr.size(); j++) {
+        auto it = seen.lower_bound(k - arr[j]);      // smallest earlier value that is at least k - arr[j]
+        if (it != seen.end()) ans = min(ans, (long long)arr[j] + *it);
+        seen.insert(arr[j]);
+    }
+    return ans == INF ? -1 : ans;
+}
+```
+
+For [1, 4, 5, 2, 2] with k = 4 it returns 4. For [1, 1] with k = 5 no pair reaches 5, so it returns -1, and for the single element [3] there is no pair at all, so it also returns -1.
 
 Pivot idea in Fabricator/ContributionTechnique/ContainerWithMostWater.cpp: pick 2 walls i &lt; j, maximize min(h[i], h[j]) × (j - i). Trying all pairs is O(n²). Pivot = the shorter wall of the best pair. Sort walls by height, go from tallest down. Walls seen so far are all at least as tall as the current one, so min_idx and max_idx are the leftmost and rightmost of them. Every value it tries is a real container, and when the shorter wall of the best pair comes, both its walls are already seen. T.C. = O(n log n), memory O(n). It needs n ≥ 2, otherwise the loop does not run and the answer stays INT32_MIN.
 
@@ -531,6 +588,8 @@ long long appealSum_v2(string s)\{
 
 Same problem, other way (extension): let i be the end. Subarrays ending at i where s[i] is new (the first time it appears in that subarray) can start anywhere after the last occurrence of s[i], which gives (i - last) choices. `curr` = total distinct of all subarrays ending at i, so `curr += i - last`, `sol += curr`. The other subarrays ending at i already contain s[i], so their distinct count does not change when s[i] is appended. T.C. = O(n), memory O(1). Dry run on abbca: curr = 1, 3, 4, 8, 12 and sol = 1, 4, 8, 16, 28.
 
+Another way to read the same sum: count each position as the first copy of its letter inside the substring. The left end of such a substring has (i - last) choices and the right end has (n - i) choices, so position i adds (i - last) × (n - i). For abbca this is 5 + 8 + 3 + 8 + 4 = 28.
+
 ```cpp
 // Fabricator/ContributionTechnique/TotalAppealOfString.cpp
 // Contribution - Extended/Incremental
@@ -549,6 +608,8 @@ long long appealSum(string s) \{
 ```
 
 Note: both assume lowercase letters, and `appealSum` compares int with `s.size()` (compiler warning only). Both give 28 for abbca.
+
+Common mistakes: using $^{n}C_2$ instead of $^{n+1}C_2$ for the number of substrings of a string of length n, and leaving out the gap before the first copy and the gap after the last copy of the letter. Those two gaps count too, even when their length is 0 (then they subtract nothing).
 
 Count unique chars (char counts only if it appears exactly once in the substring): same pivot + gaps thinking, `(pos[i] - pos[i-1]) * (pos[i+1] - pos[i])` for each occurrence. Here pos holds the positions of one letter, with -1 added in front and n added at the end. A substring has this occurrence as its only copy of the letter when it starts after the previous copy and ends before the next copy, which gives the product. For abbca the letter a gives 4 + 4, b gives 2 + 3 and c gives 8, so the total is 21. See Fabricator/ContributionTechnique/UniqueCharactersInString.cpp.
 

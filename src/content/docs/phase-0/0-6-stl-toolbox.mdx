@@ -390,6 +390,23 @@ To check whether one part (a block of consecutive characters) of the string is b
 
 Note: having the same depth at the start and at the end is not enough. The depth must also never go below the starting depth in between. The red piece in the figure starts at depth 1 and ends at depth 1, but it touches 0 in between, so it is not balanced.
 
+The two conditions (same depth at both ends, never below it) as a function. Here `depth[i]` is the depth before character i, with `depth[0] = 0`, and the piece is the characters from position l up to r - 1:
+
+```cpp
+/*
+   New function: the depth-graph rule above, written as code so it can be tested on any piece.
+   Is the piece s[l..r-1] balanced on its own? O(r - l) time, no extra memory.
+*/
+bool pieceBalanced(const vector<int>& depth, int l, int r) {
+    if (depth[l] != depth[r]) return false;          // must end where it started
+    for (int i = l; i <= r; i++)
+        if (depth[i] < depth[l]) return false;       // must never dip below the start
+    return true;
+}
+```
+
+For `(()())()` the depth array is `0 1 2 1 2 1 0 1 0`. The piece from 1 to 5 (`()()`) gives true. The piece from 1 to 7 (`()())(`) gives false, because depth[6] = 0 is below depth[1] = 1. The whole string, from 0 to 8, gives true. It agreed with a stack check on 2000 random bracket strings. Common mistake: testing only `depth[l] == depth[r]`, which wrongly accepts the red piece.
+
 ## STL Applications-2: window maintenance
 
 There are two kinds of problems on arrays here:
@@ -571,6 +588,29 @@ In words, the deque after each step is: `[3]`, `[1]` (3 is thrown out because 1 
 T.C. = O(n) amortized. Each element is pushed once and popped at most once, so the total is at most 2n operations (for n = 10^5, at most 2 × 10^5). M.C. = O(k).
 
 For the maximum, reverse the comparison (pop while the back is smaller than x).
+
+The repository code removes by value, which is why it needs the strict `>` and the `(i-k) >= 0` fix. A version that stores positions instead removes by position, so it needs neither trick:
+
+```cpp
+/*
+   New function: the corrected monotone deque. It stores indices, so we know exactly when the front
+   has left the window (index <= i - k). The values at these indices grow from front to back.
+   O(n) time, O(k) memory.
+*/
+vector<int> windowMinIndexDeque(const vector<int>& a, int k) {
+    vector<int> result;
+    deque<int> idx;
+    for (int i = 0; i < (int)a.size(); i++) {
+        while (!idx.empty() && a[idx.back()] >= a[i]) idx.pop_back();   // later and not bigger: the old one can never win
+        idx.push_back(i);
+        if (idx.front() <= i - k) idx.pop_front();                      // front fell out of the window
+        if (i >= k - 1) result.push_back(a[idx.front()]);
+    }
+    return result;
+}
+```
+
+Results: `3 1 5 2 5 9 1 2` with k = 3 gives `1 1 2 2 1 1`. `3 1 5 3 2 9 9 2 2 1` with k = 3 gives `1 1 2 2 2 2 2 1`. The input that broke the repository code, `1 5 5 5` with k = 3, gives `1 5`, which is correct. It matched a brute force with `min_element` on 2000 random arrays. Common mistake: forgetting the `!idx.empty()` check, which reads the back of an empty deque.
 
 ## STL Applications-3: shop and budget
 
@@ -793,6 +833,8 @@ struct Bag{
 ```
 
 Note: the `;` is missing after the closing `}` of the struct, which is a compile error. With the `;` added: insert 5 7 5 3 → sum 20, max 7, distinct 3. remove(5) → sum 15, distinct 3. remove(5) again → sum 10, distinct 2. remove(7) → max 3. get_max() on an empty map will crash.
+
+Cost: insert and remove are O(log n) because they update the map. get_sum, get_max (the last key of the map) and get_distinct (the size of the map) are O(1). M.C. = O(n) for the map.
 
 ## Achieve target sum: card game
 

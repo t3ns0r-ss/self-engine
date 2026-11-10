@@ -4,11 +4,13 @@
 // Usage: node scripts/check_code_unchanged.mjs <base-ref> <file.mdx> ...
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+// Import-script escapes inside fences (&lt; &gt; &amp; \{ \}) render literally; the fix unescapes them, so compare unescaped text.
+const unesc = (x) => x.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/\\([{}])/g, '$1');
 function blocks(t) {
   const out = []; let cur = null;
   for (const l of t.split('\n')) {
     const m = /^\s*(```|~~~)\s*(\w*)/.exec(l);
-    if (m) { if (cur) { out.push({ lang: cur.lang, text: cur.lines.join('\n').trim() }); cur = null; } else cur = { lang: m[2], lines: [] }; continue; }
+    if (m) { if (cur) { out.push({ lang: cur.lang, text: unesc(cur.lines.join('\n').trim()) }); cur = null; } else cur = { lang: m[2], lines: [] }; continue; }
     if (cur) cur.lines.push(l.trimEnd());
   }
   return out;

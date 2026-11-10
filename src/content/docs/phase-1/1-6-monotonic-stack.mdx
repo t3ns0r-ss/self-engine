@@ -389,6 +389,62 @@ Note: `>=` means equal elements are skipped too, so this gives the **strictly** 
 
 Now we can use NSE and PSE to solve the previous problem, in which all elements of the array were distinct.
 
+Here is that solution as a function. Trace on `1 5 3 4 2` (all distinct): the contributions are 5, 5, 12, 4 and 8, so the answer is 34, the same total as the table above.
+
+```cpp
+/*
+Sum of the minimum of every subarray, when ALL elements are distinct.
+Strict "smaller" on both sides, using the jump loops above.
+*/
+// New function (not in his repo): it shows that the distinct case needs no tie rule, and it gives the wrong answer 10 on 1 1 1.
+long long sumOfSubarrayMinimumsDistinct(const vector<int>& A) {
+    int n = A.size();
+    vector<int> nse(n), pse(n);
+    for (int i = n - 1; i >= 0; i--) {
+        nse[i] = i + 1;
+        while (nse[i] < n && A[nse[i]] >= A[i]) nse[i] = nse[nse[i]];
+    }
+    for (int i = 0; i < n; i++) {
+        pse[i] = i - 1;
+        while (pse[i] >= 0 && A[pse[i]] >= A[i]) pse[i] = pse[pse[i]];
+    }
+    long long total = 0;
+    for (int i = 0; i < n; i++)
+        total += (long long)A[i] * (i - pse[i]) * (nse[i] - i);
+    return total;
+}
+```
+
+Compiled and run: `1 2 3` gives 10, `1 5 3 4 2` gives 34, and `1 1 1` gives 10 (wrong, the right answer is 6). Cost: O(N) time and O(N) memory. Mistake to avoid: using this function on arrays with repeated values.
+
+The same two arrays also solve the histogram without a stack walk. Bar i can stretch from just after its previous smaller bar to just before its next smaller bar, so its best rectangle has width nse[i] − pse[i] − 1.
+
+```cpp
+/*
+Largest rectangle in a histogram using previous and next smaller indices.
+For bar i the widest rectangle of height h[i] spans (pse[i], nse[i]), both ends excluded.
+*/
+// New function (not in his repo): the same answer as the stack code, written with the NSE and PSE arrays he describes.
+long long largestRectangleByNeighbours(const vector<int>& h) {
+    int n = h.size();
+    vector<int> nse(n), pse(n);
+    for (int i = n - 1; i >= 0; i--) {
+        nse[i] = i + 1;
+        while (nse[i] < n && h[nse[i]] >= h[i]) nse[i] = nse[nse[i]];
+    }
+    for (int i = 0; i < n; i++) {
+        pse[i] = i - 1;
+        while (pse[i] >= 0 && h[pse[i]] >= h[i]) pse[i] = pse[pse[i]];
+    }
+    long long best = 0;
+    for (int i = 0; i < n; i++)
+        best = max(best, (long long)h[i] * (nse[i] - pse[i] - 1));
+    return best;
+}
+```
+
+Compiled and run: `2 1 5 6 2 3` gives 10, `1 3 5 7 4` gives 12, and `2 2` gives 4 (equal bars are fine here, because the strict rule lets both bars stretch over each other). Cost: O(n) time, O(n) memory. Both functions were compared with brute force on 20000 random small arrays.
+
 ## Elements not distinct
 
 But what if the elements are not distinct?
@@ -472,7 +528,139 @@ For the "next" queries, a popped element receives the answer `i`. For the "previ
 
 Trace of next greater on `4 2 5 1 3` (the stack holds indices): index 0 is pushed. Index 1 (value 2): the top 4 is not smaller, so push. Index 2 (value 5): pop index 1 (2 &lt; 5) and index 0 (4 &lt; 5), both get answer 2; push index 2. Index 3 (value 1): push. Index 4 (value 3): pop index 3 (1 &lt; 3), answer 4; the top 5 is not smaller, so push. The indices 2 and 4 are left in the stack, so they get the answer 5 (none). Result: `2 2 5 4 5`. The cost is O(n) time and O(n) memory, the same as for the smaller case.
 
-Results on `4 2 5 1 3` (checked against brute force): next smaller `1 3 3 5 5`, next greater `2 2 5 4 5`, previous smaller `-1 -1 1 -1 3`, previous greater `-1 0 -1 2 2`.
+Each variant as a function. A value of n (right side) or -1 (left side) in the answer means "none".
+
+```cpp
+/*
+For every index i, the nearest index to the RIGHT with a strictly smaller value, n if none.
+Example: a = 4 2 5 1 3 gives 1 3 3 5 5
+*/
+// New function (not in his repo): the plain stack version of NSE, one function per direction so the four differ by one sign.
+vector<int> nextSmaller(const vector<int>& a) {
+    int n = a.size();
+    vector<int> res(n, n);
+    stack<int> st;  // indices; values grow from bottom to top
+    for (int i = 0; i < n; i++) {
+        while (!st.empty() && a[st.top()] > a[i]) {  // a[i] is the answer for these
+            res[st.top()] = i;
+            st.pop();
+        }
+        st.push(i);
+    }
+    return res;
+}
+
+/*
+Nearest index to the RIGHT with a strictly greater value, n if none.
+Example: a = 4 2 5 1 3 gives 2 2 5 4 5
+*/
+// New function (not in his repo): NGE, the comparison of nextSmaller reversed.
+vector<int> nextGreater(const vector<int>& a) {
+    int n = a.size();
+    vector<int> res(n, n);
+    stack<int> st;  // indices; values shrink from bottom to top
+    for (int i = 0; i < n; i++) {
+        while (!st.empty() && a[st.top()] < a[i]) {
+            res[st.top()] = i;
+            st.pop();
+        }
+        st.push(i);
+    }
+    return res;
+}
+
+/*
+Nearest index to the LEFT with a strictly smaller value, -1 if none.
+Example: a = 4 2 5 1 3 gives -1 -1 1 -1 3
+*/
+// New function (not in his repo): PSE, where the answer is the element left on top after the pops.
+vector<int> previousSmaller(const vector<int>& a) {
+    int n = a.size();
+    vector<int> res(n, -1);
+    stack<int> st;
+    for (int i = 0; i < n; i++) {
+        while (!st.empty() && a[st.top()] >= a[i]) st.pop();  // not smaller: useless for later
+        if (!st.empty()) res[i] = st.top();
+        st.push(i);
+    }
+    return res;
+}
+
+/*
+Nearest index to the LEFT with a strictly greater value, -1 if none.
+Example: a = 4 2 5 1 3 gives -1 0 -1 2 2
+*/
+// New function (not in his repo): PGE, the comparison of previousSmaller reversed.
+vector<int> previousGreater(const vector<int>& a) {
+    int n = a.size();
+    vector<int> res(n, -1);
+    stack<int> st;
+    for (int i = 0; i < n; i++) {
+        while (!st.empty() && a[st.top()] <= a[i]) st.pop();  // not greater: useless for later
+        if (!st.empty()) res[i] = st.top();
+        st.push(i);
+    }
+    return res;
+}
+```
+
+Compiled and run on `4 2 5 1 3`: next smaller `1 3 3 5 5`, next greater `2 2 5 4 5`, previous smaller `-1 -1 1 -1 3`, previous greater `-1 0 -1 2 2`. All four were compared with brute force on 20000 random small arrays with repeated values.
+
+How equal values behave depends on the sign you choose. With repeated values you must decide what a tie means:
+
+| You want | Pop condition | What happens to equal values |
+|---|---|---|
+| next strictly smaller | pop while `a[top] > a[i]` | equal values stay on the stack |
+| next smaller or equal | pop while `a[top] >= a[i]` | equal values are popped |
+| previous strictly smaller | pop while `a[top] >= a[i]` | equal values are popped (the jump code above computes this) |
+| previous smaller or equal | pop while `a[top] > a[i]` | equal values stay, so the answer can be an equal element (this is psee) |
+
+In the sum of subarray minimums, one side must be strict and the other side must be "or equal".
+
+Next greater element is also hidden inside two well-known problems. In Daily Temperatures we want the distance in days to the next warmer day, which is the next greater index minus i. In a circular array the first element follows the last one, so we walk the array twice (positions 0 to 2n−1, using `i % n`) and push an index only during the first walk.
+
+```cpp
+/*
+Daily Temperatures: for each day, how many days until a warmer day? 0 if there is none.
+Example: 73 74 75 71 69 72 76 73 gives 1 1 4 2 1 1 0 0
+*/
+// New function (not in his repo): next greater element, answering with a distance instead of an index.
+vector<int> dailyTemperatures(const vector<int>& temp) {
+    int n = temp.size();
+    vector<int> wait(n, 0);
+    stack<int> st;  // days still waiting for a warmer day
+    for (int i = 0; i < n; i++) {
+        while (!st.empty() && temp[st.top()] < temp[i]) {
+            wait[st.top()] = i - st.top();
+            st.pop();
+        }
+        st.push(i);
+    }
+    return wait;
+}
+
+/*
+Next Greater Element II: the array is circular. For each element give the next greater VALUE, or -1.
+Example: 1 2 1 gives 2 -1 2
+*/
+// New function (not in his repo): shows the two-walk trick for circular arrays.
+vector<int> nextGreaterCircular(const vector<int>& a) {
+    int n = a.size();
+    vector<int> res(n, -1);
+    stack<int> st;
+    for (int i = 0; i < 2 * n; i++) {  // walk the array twice
+        int pos = i % n;               // real position
+        while (!st.empty() && a[st.top()] < a[pos]) {
+            res[st.top()] = a[pos];
+            st.pop();
+        }
+        if (i < n) st.push(pos);       // push only during the first walk
+    }
+    return res;
+}
+```
+
+Compiled and run: `73 74 75 71 69 72 76 73` gives `1 1 4 2 1 1 0 0`, and the circular `1 2 1` gives `2 -1 2` (the last 1 wraps around to the 2). Both match brute force on 20000 random arrays. Cost: O(n) time and O(n) memory; the circular version makes 2n steps. Mistake to avoid: walking the array only once. Then the last 1 of `1 2 1` finds no greater element and prints -1, while the correct answer is 2.
 
 ## Number of rectangles in histogram
 

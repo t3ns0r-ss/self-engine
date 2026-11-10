@@ -141,6 +141,38 @@ int binary_search(vector<int> &arr, int x){
 
 This code takes the lower middle (the index (lo+hi)/2, rounded down). For 17 it looks at 15, 21, 19 and returns -1. For 35 it looks at 15, 21, 35 and returns index 6. The manual walk above took the upper middle; both choices work.
 
+The two functions below are new. The first is the same search with an early `return`, so it needs no `ans` variable and no `break`. The second uses the library calls lower_bound and upper_bound (explained in a later section) to count how often x occurs.
+
+```cpp
+/*
+Problem: sorted array a. Is x present? Return its index, or -1 if it is not present.
+*/
+// New function: the shortest form of the search above, used as a reference in this lesson.
+int binary_search_element(const vector<int>& a, int x) {
+    int lo = 0, hi = (int)a.size() - 1;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;    // middle of the current search space
+        if (a[mid] == x) return mid;     // found it
+        if (a[mid] < x) lo = mid + 1;    // x can only be on the right
+        else hi = mid - 1;               // x can only be on the left
+    }
+    return -1;                           // search space became empty
+}
+
+/*
+Problem: how many times does x occur in the sorted array a?
+Idea: (index of first element > x) - (index of first element >= x).
+*/
+// New function: shows that a count is a difference of two positions.
+int count_of(const vector<int>& a, int x) {
+    return upper_bound(a.begin(), a.end(), x) - lower_bound(a.begin(), a.end(), x);
+}
+```
+
+Both functions were compiled and run. On [1, 5, 10, 15, 19, 21, 35, 100], `binary_search_element` returns -1 for 17 and 6 for 35. On [1, 3, 5, 5, 5, 7, 7, 9], `count_of` returns 3 for the value 5, and 0 for 6 and for 10.
+
+Cost and common mistakes. Linear search takes O(n) time and binary search takes O(log n) time. Both use O(1) extra memory. Only binary search needs sorted data. The usual mistakes are: using binary search on data that is not sorted, forgetting that the search space can become empty (`lo > hi` is how "not present" is detected), and writing `lo = mid` or `hi = mid`, which can loop forever.
+
 ## Finding first 1
 
 ![Zeros then ones, lo mid hi marked](../../../assets/notes/1-4-binary-search/fig05_first_one_setup.png)
@@ -166,6 +198,27 @@ Always maintain 4 variables: lo, hi, mid and ans. These are the low end, the hig
 The form lo + (hi-lo)/2 does not cause overflow. The form $\lfloor \frac{lo+hi}{2} \rfloor$ may cause overflow.
 
 Example: lo = 2·10^9, hi = 2.1·10^9 (both fit in an int, whose maximum is 2,147,483,647). lo+hi = 4.1·10^9 overflows, and mid becomes negative (-97483648). lo + (hi-lo)/2 = 2·10^9 + 5·10^7 = 2.05·10^9, which is correct, because hi-lo is never larger than hi.
+
+The two functions below show the difference in code.
+
+```cpp
+/*
+Problem: compute the middle of lo and hi without the sum overflowing a 32-bit int.
+*/
+// New function: the safe formula.
+int mid_safe(int lo, int hi) {
+    return lo + (hi - lo) / 2;      // hi - lo never exceeds hi, so it cannot overflow
+}
+
+// New function: the risky formula, written so that we can look at the broken value.
+// Real code would write (lo + hi) / 2 directly, which is undefined behaviour when the sum is too big.
+// Here the addition is done in unsigned numbers so the wrap-around is well defined.
+int mid_unsafe(int lo, int hi) {
+    return (int)((unsigned)lo + (unsigned)hi) / 2;
+}
+```
+
+Both were compiled and run: `mid_safe(2000000000, 2100000000)` gives 2050000000 (correct) and `mid_unsafe` of the same numbers gives -97483648 (wrong).
 
 ![Four rows of first-1 search for the 9 element array](../../../assets/notes/1-4-binary-search/fig06_first_one_trace.png)
 
@@ -247,6 +300,50 @@ int binary_search(vector<int> &arr){
 ```
 
 Note: here `hi=arr.size()`, so when mid = n the code reads `arr[n]`, which is out of bounds (for example on \{0,0,0\}). It should be `hi = arr.size() - 1`.
+
+Almost every problem in this note fits one of two shapes: "first true" on a strip `0 0 0 1 1 1`, or "last true" on a strip `1 1 1 0 0 0`. The two new functions below write both shapes once, so that any check can be plugged in. Two C++ words appear in the code. A `template <class Check>` line means that `Check` stands for any callable thing, either a function or a lambda. A lambda is a small nameless function written on the spot, as `[captures](parameters) { body }`. The `[&]` means that the lambda may read variables from outside, such as `n`.
+
+```cpp
+/*
+Problem: a reusable "first true" and "last true" binary search over integers in [lo, hi].
+firstTrue needs  false ... false true ... true.   lastTrue needs  true ... true false ... false.
+*/
+// New function: the first-true template written once, so any check can be plugged in.
+template <class Check>
+long long firstTrue(long long lo, long long hi, Check check) {
+    long long ans = hi + 1;                 // hi + 1 means "no true value exists"
+    while (lo <= hi) {
+        long long mid = lo + (hi - lo) / 2;
+        if (check(mid)) { ans = mid; hi = mid - 1; }   // true: remember it, look further left
+        else lo = mid + 1;
+    }
+    return ans;
+}
+
+// New function: the last-true template, the mirror image of firstTrue.
+template <class Check>
+long long lastTrue(long long lo, long long hi, Check check) {
+    long long ans = lo - 1;                 // lo - 1 means "no true value exists"
+    while (lo <= hi) {
+        long long mid = lo + (hi - lo) / 2;
+        if (check(mid)) { ans = mid; lo = mid + 1; }   // true: remember it, look further right
+        else hi = mid - 1;
+    }
+    return ans;
+}
+
+/*
+Example use: integer square root = the largest r with r * r <= n  (n up to 1e18).
+*/
+// New function: a "last true" example, the largest r whose square is at most n.
+long long integer_sqrt(long long n) {
+    return lastTrue(0, 2000000000LL, [&](long long r) { return r * r <= n; });
+}
+```
+
+These functions were compiled and run. On [1, 5, 10, 31, 33, 33, 35, 100] with x = 33, `firstTrue` with the check `a[i] >= x` returns 4, and with `a[i] > x` it returns 6. `integer_sqrt` returns 9 for 99, 10 for 100 and 1000000000 for 10^18. When nothing is true, `firstTrue` returns `hi + 1` and `lastTrue` returns `lo - 1` (here 10 and -1 for the range 0 to 9).
+
+Cost: each call is O(log(hi - lo)) checks and O(1) extra memory. Common mistakes: (1) an infinite loop, because with `mid = lo + (hi - lo) / 2` (rounds down) the code `lo = mid` gets stuck when `hi = lo + 1`, so always use `mid + 1` or `mid - 1`; (2) an off by one error, because `hi` is either the last index (`n - 1`) or one past it, and the two must not be mixed; (3) the wrong direction: "first true" moves `hi = mid - 1` on true, and "last true" moves `lo = mid + 1` on true.
 
 # lower_bound / upper_bound
 
@@ -491,6 +588,33 @@ int binary_search(vector<int> &arr){
 ```
 
 Outputs of this function (the cost is O(log n) time and O(1) memory): [1 2 3 5 9] → 0, [9 1 2 3 5] → 1, [5 9 1 2 3] → 2, [3 5 9 1 2] → 3, [5 9 3 4] → 2.
+
+The function below puts the two steps together: find the minimum, then use lower_bound on the piece that can hold x.
+
+```cpp
+/*
+Problem: a sorted array of distinct values was rotated to the right some times.
+Search for x in it. Return the index, or -1.
+*/
+// New function: the full search in a rotated array (the Fabricator file only counts the rotations).
+int search_in_rotated(const vector<int>& a, int x) {
+    int n = (int)a.size();
+    int lo = 0, hi = n - 1, p = n - 1;          // p = index of the minimum element
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (a[mid] <= a[n - 1]) { p = mid; hi = mid - 1; }   // mid is in the small right piece
+        else lo = mid + 1;
+    }
+    bool inRightPiece = (x <= a[n - 1]);        // smaller values live in [p, n-1]
+    auto first = inRightPiece ? a.begin() + p : a.begin();
+    auto last  = inRightPiece ? a.end() : a.begin() + p;
+    auto it = lower_bound(first, last, x);
+    if (it != last && *it == x) return (int)(it - a.begin());
+    return -1;
+}
+```
+
+It was compiled and run. On [3 5 9 1 2], searching 9, 2, 3, 7, 1, 10 returns 2, 4, 0, -1, 3, -1. It also matched a plain scan for every rotation of arrays of length 1 to 9. Cost: O(log n) time and O(1) extra memory. A common mistake is to run it on an array with repeated values, where the minimum can be found wrongly (see the note above).
 
 # Find the peak element
 
@@ -1195,6 +1319,69 @@ Note: the incoming element is `arr[en]` (with the value of en before it is incre
 
 Brute force: count the zeros for every (l, r) → O(N^3). With prefix sums → O(N^2). BS on length + prefix → O(N log N). Two pointers (move r forward; when zeros > k, move l forward) → O(N). This is why more than 80% of the "BS on every start" problems can be solved with two pointers.
 
+The new functions below write the three ways in code: binary search on the length X with the prefix check, the same check with a sliding window, and the two pointers version.
+
+```cpp
+/*
+Problem: 0/1 array a, at most k flips. Longest subarray that can become all ones.
+Idea: the answer length X is "possible" for small X and "impossible" for big X, so
+binary search on X (last true). Check one length by looking at every window of that length.
+*/
+// New function: ones[i] = number of ones in the first i elements (prefix sums).
+vector<int> prefix_ones(const vector<int>& a) {
+    vector<int> ones(a.size() + 1, 0);
+    for (size_t i = 0; i < a.size(); i++) ones[i + 1] = ones[i] + a[i];
+    return ones;
+}
+
+// New function: is there a window of length X with at most k zeros?  O(n - X + 1) windows, O(1) each.
+bool window_ok_prefix(const vector<int>& ones, int n, int X, int k) {
+    for (int st = 0; st + X <= n; st++) {
+        int zeros = X - (ones[st + X] - ones[st]);
+        if (zeros <= k) return true;
+    }
+    return false;
+}
+
+// New function: the same check without a prefix array. One element leaves, one enters.
+bool window_ok_sliding(const vector<int>& a, int X, int k) {
+    int n = (int)a.size(), cnt = 0;                    // cnt = zeros in the current window
+    for (int i = 0; i < X; i++) cnt += (a[i] == 0);
+    if (cnt <= k) return true;
+    for (int st = 0, en = X; en < n; st++, en++) {     // a[st] goes out, a[en] comes in
+        cnt = cnt - (a[st] == 0) + (a[en] == 0);
+        if (cnt <= k) return true;
+    }
+    return false;
+}
+
+// New function: binary search on the length X, using the prefix check.
+int longest_ones_by_length(const vector<int>& a, int k) {
+    int n = (int)a.size();
+    vector<int> ones = prefix_ones(a);
+    int lo = 0, hi = n, ans = 0;                       // length 0 is always possible
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (mid == 0 || window_ok_prefix(ones, n, mid, k)) { ans = mid; lo = mid + 1; }
+        else hi = mid - 1;
+    }
+    return ans;
+}
+
+// New function: two pointers, O(n), the usual best answer for this problem.
+int longest_ones_two_pointers(const vector<int>& a, int k) {
+    int zeros = 0, best = 0, st = 0;
+    for (int en = 0; en < (int)a.size(); en++) {
+        zeros += (a[en] == 0);
+        while (zeros > k) zeros -= (a[st++] == 0);     // shrink until at most k zeros
+        best = max(best, en - st + 1);
+    }
+    return best;
+}
+```
+
+All of these were compiled and run. On the 13-cell example with k = 2, binary search on the length and the two pointers version both return 10, and `window_ok_sliding` says yes for X = 10 and no for X = 11. The functions also matched a brute force on 4000 random arrays. Cost: binary search on the length is O(N log N) time with O(N) extra memory for the prefix sums (the sliding check needs none). The two pointers version is O(N) time and O(1) memory. A common mistake is to forget that length 0 is always possible, which is why `ans` starts at 0.
+
 The Fabricator code below uses the other form: for one start index st, binary search the farthest end index whose window has at most k zeros. The zeros are counted with the prefix sums, and the first window cell is guarded with `l > 0 ? p[l-1] : 0` so that start 0 works.
 
 ```cpp
@@ -1380,6 +1567,32 @@ Counted by the farthest valid end of each start: start 0 reaches index 1 (2 suba
 
 Hint: the number of distinct values in a window cannot be read from prefix sums, so keep a frequency map. Observation: for each r, the smallest valid l only moves forward, so two pointers can be used.
 
+The new function below is one solution that uses two pointers and a frequency map (the number of times each value is in the window).
+
+```cpp
+/*
+Problem (homework): count the subarrays that contain at most k distinct values (N <= 1e5).
+Idea: two pointers. For each right end, the smallest valid start only moves right.
+*/
+// New function: a solution to the homework above.
+long long count_at_most_k_distinct(const vector<int>& a, int k) {
+    unordered_map<int, int> freq;           // value -> how many times it is in the window
+    long long total = 0;
+    int st = 0;
+    for (int en = 0; en < (int)a.size(); en++) {
+        freq[a[en]]++;
+        while ((int)freq.size() > k) {      // too many distinct values: drop from the left
+            if (--freq[a[st]] == 0) freq.erase(a[st]);
+            st++;
+        }
+        total += en - st + 1;               // subarrays ending at en, starting in [st, en]
+    }
+    return total;
+}
+```
+
+It was compiled and run: it returns 8 for `1 2 3 2` with k = 2, the same as the count above, and it matched a brute force on 3000 random arrays. Cost: O(N) expected time (the hash map makes it expected time) and O(N) memory. A common mistake is to use the prefix sums here, which cannot count distinct values. For "exactly k distinct values", count "at most k" and subtract "at most k - 1".
+
 ## Binary Search of Real Domain
 
 Sometimes the answer is a real number, for example √2, or the best ratio of two sums. There is no list of indices to search, so the search space is an interval [lo, hi] of real numbers. The yes/no check is still monotone: false before the answer and true from the answer onwards. Instead of moving to mid + 1 (there is no "next" real number), the interval is cut at mid, and it is repeated until the interval is shorter than a small number EPS. Because the interval is halved each time, an interval of length n needs about log2(n / EPS) rounds.
@@ -1415,6 +1628,38 @@ Important: if the data type is not suitable and we keep EPS tight for it, then t
 Example sqrt(2): check(x) = x*x ≥ 2. lo = 0, hi = 2. With EPS = 1e-9 the loop stops after 31 rounds (2/2^31 ≈ 9.3·10^-10 &lt; 10^-9) and gives ans 1.414213561919. The true value is 1.414213562373.
 
 The first rounds are: mid = 1 (1 &lt; 2, so lo = 1), mid = 1.5 (2.25 ≥ 2, so hi = 1.5), mid = 1.25 (1.5625, so lo = 1.25), mid = 1.375 (1.8906, so lo = 1.375), mid = 1.4375 (2.0664, so hi = 1.4375). After 5 rounds the interval [1.375, 1.4375] already has length 0.0625 and contains √2 = 1.41421...
+
+The two new functions below write both styles for this example.
+
+```cpp
+/*
+Problem: find sqrt(n) (n >= 1) by binary search on real numbers.
+check(x) = "x * x >= n" is false for small x and true from sqrt(n) onward.
+*/
+// New function: style 1, stop when the interval is smaller than EPS (the error we allow).
+long double sqrt_with_eps(long double n, long double EPS) {
+    long double lo = 0, hi = n;
+    while (hi - lo >= EPS) {
+        long double mid = (lo + hi) / 2;
+        if (mid * mid >= n) hi = mid;        // check(mid) is true: answer is mid or left of it
+        else lo = mid;
+    }
+    return (lo + hi) / 2;
+}
+
+// New function: style 2, always do a fixed number of halvings (it cannot get stuck).
+long double sqrt_with_iterations(long double n, int rounds) {
+    long double lo = 0, hi = n;
+    for (int i = 0; i < rounds; i++) {
+        long double mid = (lo + hi) / 2;
+        if (mid * mid >= n) hi = mid;
+        else lo = mid;
+    }
+    return (lo + hi) / 2;
+}
+```
+
+Both were compiled and run for n = 2. With `EPS = 1e-9` the loop stops after 31 rounds and gives 1.414213561919. With 40 fixed rounds it gives 1.414213562372, and the true value is 1.414213562373. Cost: about log2(n / EPS) rounds, each with O(1) work, and O(1) memory. A common mistake is to write `lo = mid + 1` here, which has no meaning for real numbers.
 
 Why a "bigger data type": near 10^9 a `double` can only store steps of about 1.2·10^-7, so with EPS = 10^-9 the value hi - lo can never become smaller than EPS and the loop never ends. A `long double` has steps of about 5.8·10^-11 near 10^9, which is fine for EPS = 10^-9 but still too coarse for EPS = 10^-12. Also make sure the floating-point `abs` is used (include &lt;cmath&gt;, or write `fabsl`), because the integer `abs` would cut off the fraction.
 
@@ -1546,6 +1791,45 @@ Note: "slope increases" means f(mid+δ) > f(mid), i.e. the function is going up 
 Why it is better: ternary search makes 2 calls of f and removes 1/3 per round, so it needs about 2·log_\{1.5\}(n) ≈ 3.4·log2(n) calls. Slope search makes 2 calls and removes 1/2 per round, so it needs 2·log2(n) calls.
 
 The slope search works really well with integer values, where mid is an int and δ is an int. For floating point (real) numbers, ternary search works better.
+
+The two new functions below write both methods for a hill (a maximum). `F` is any callable thing, a function or a lambda.
+
+```cpp
+/*
+Problem: f is hill shaped on [lo, hi] (strictly rising, then strictly falling).
+Find x where f is largest.
+*/
+// New function: ternary search on real numbers. 100 rounds is plenty for doubles.
+template <class F>
+double ternary_max_real(double lo, double hi, F f) {
+    for (int i = 0; i < 100; i++) {
+        double m1 = lo + (hi - lo) / 3;      // one third of the way
+        double m2 = hi - (hi - lo) / 3;      // two thirds of the way
+        if (f(m1) < f(m2)) lo = m1;          // the peak cannot be left of m1
+        else hi = m2;                        // the peak cannot be right of m2
+    }
+    return (lo + hi) / 2;
+}
+
+/*
+Problem: same hill shape, but x must be an integer. Binary search on the slope:
+"f(mid) > f(mid + 1)" (we are already going down) is false, false, ..., true, true.
+The first true is the peak.
+*/
+// New function: slope search on integers. `last` stays fixed because f(last + 1) must not be read.
+template <class F>
+long long slope_max_int(long long lo, long long hi, F f) {
+    long long last = hi, ans = hi;
+    while (lo <= hi) {
+        long long mid = lo + (hi - lo) / 2;
+        if (mid == last || f(mid) > f(mid + 1)) { ans = mid; hi = mid - 1; }
+        else lo = mid + 1;
+    }
+    return ans;
+}
+```
+
+Both were compiled and run. `ternary_max_real` finds the top of -(x - 3.7)^2 + 5 on [0, 10] at x = 3.700000. `slope_max_int` finds 37 for -(x - 37)^2 on [0, 100], 100 for a function that only rises and 0 for one that only falls. It also found every peak position from 0 to n - 1 for ranges of size n = 1 to 60. Cost: ternary search makes 2 calls of f per round and keeps two thirds, the slope search makes 2 calls and keeps one half, and both use O(1) memory. A common mistake is to read `f(mid + 1)` when `mid` is the last index, which is why the code remembers `last`.
 
 ## AtCoder Freefall
 

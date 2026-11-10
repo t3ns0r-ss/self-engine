@@ -419,6 +419,8 @@ void solve() {
 
 The check `count_of_zeros + 1 - arr[head + 1] <= k` works like this. If the next element is 1, the value is count_of_zeros, so nothing new is added. If the next element is 0, the value is count_of_zeros + 1, so one more zero is added. In both cases the result must stay within k.
 
+The comment above the code says one move may flip a 0 to a 1 or a 1 to a 0. Flipping a 1 to a 0 never helps when we want the longest block of 1s, so counting only the zeros in the window is enough. This gives the same answer as the version in the notebook.
+
 Dry run: `1 0 1 0 1`, k=1 → 3. `0 1 0 1 0 0 1 1 0`, k=2 → 5. `0 0 0 1`, k=0 → 1.
 
 Step by step for `1 0 1 0 1`, k = 1:
@@ -436,6 +438,33 @@ Common mistakes:
 Cost: time O(n), memory O(1) (only one counter).
 
 Note: the BS on every start version is also possible here. The prefix count of zeros (the number of zeros among the first i elements) never decreases, so for every L we can binary search the farthest R. That costs O(n log n). Two pointers does it in O(n), so two pointers is better.
+
+Here is that slower version as a function, so the two ideas can be compared on the same input. The helper array `zeros_before[i]` holds the number of zeros among the first i elements, so the number of zeros in positions `start` to `end` is a difference of two of its values. `upper_bound` is a standard function that returns the position of the first value greater than a given value in a sorted range.
+
+```cpp
+// new function (not in Fabricator): the "BS on every start" version of the flips problem, to compare with two pointers
+/*
+Given an array of 0s and 1s and k.
+Find the longest subarray that contains at most k zeros (the zeros are the elements we flip).
+Use binary search on every start.
+*/
+int longest_atmost_k_zeros_binary_search(const vector<int>& a, int k) {
+    int n = a.size(), ans = 0;
+    vector<int> zeros_before(n + 1, 0);        // zeros_before[i] = zeros among a[0..i-1]
+    for (int i = 0; i < n; i++) zeros_before[i + 1] = zeros_before[i] + (a[i] == 0);
+    for (int start = 0; start < n; start++) {
+        // zeros_before never decreases, so the farthest valid end can be binary searched
+        int end_exclusive = upper_bound(zeros_before.begin() + start, zeros_before.end(),
+                                        zeros_before[start] + k) - zeros_before.begin() - 1;
+        ans = max(ans, end_exclusive - start);
+    }
+    return ans;
+}
+```
+
+Trace on `0 1 0 1 0 0 1 1 0` with k = 2. The array `zeros_before` is `0 1 1 2 2 3 4 4 4 5`. For start = 3 we have zeros_before[3] = 2, so the window may reach the last position whose value is at most 2 + 2 = 4. The first value above 4 is at position 9, so end_exclusive = 8 and the length is 8 - 3 = 5 (positions 3 to 7). No other start gives more, so the function returns 5, the same as two pointers (checked by running it, and also against a brute force on 20 000 random arrays).
+
+Cost: n binary searches over at most n + 1 values, so T.C. O(n log n), and the array `zeros_before` needs O(n) space. Common mistake: forgetting the `- 1` after `upper_bound`. The function returns the first position that is too big, so the last good position is one before it. Without the `- 1` the example above would give 6 instead of 5 for start = 3.
 
 ### Distinct elements
 
@@ -598,7 +627,9 @@ Dry run: `1 2 1 3`, k=2 → ≤k: 8, ==k: 4, ≥k: 6 (10 total subarrays, 4 have
 
 Cost: each call of the function is O(n), and we call it at most three times, so still O(n). Memory is O(V), where V is the largest value in the array (the frequency array here has 100 100 cells). If values can be larger, use a map or compress the values first. A value outside the array range is a common cause of crashes.
 
-Question: find the number of subarrays with sum ≤ k (non-negative numbers). It is the same thing, and the DS is just the running sum. The criteria is monotonic because removing a number can only lower the sum (all numbers are non-negative). Note: if negative numbers are allowed, removing a number can raise the sum, so the criteria is not monotonic and TP fails.
+The same counting loop is also in the file `1-Form/SubarraysWithAtmostKDistincts.cpp` (a problem from maang.in). It keeps the frequencies in a `map` instead of an array. Run on the five sample cases written in that file, it prints `5 6 0 28 46`, which are the answers written there. The time is O(n) with an array and O(n log n) with a `map`.
+
+Question: find the number of subarrays with sum ≤ k (non-negative numbers). It is the same thing, and the DS is just the running sum. The criteria is monotonic because removing a number can only lower the sum (all numbers are non-negative). Note: if negative numbers are allowed, removing a number can raise the sum, so the criteria is not monotonic and TP fails. For "the number of subarrays with sum equal to K" with negative numbers, use prefix sums and a hash map instead (LeetCode 560, Subarray Sum Equals K).
 
 Dry run: `1 2 3`, k = 5. Longest valid window per tail: tail 0 → `1 2` (sum 3, adding 3 would give 6) → 2; tail 1 → `2 3` (sum 5) → 2; tail 2 → `3` → 1. Total 2 + 2 + 1 = 5.
 

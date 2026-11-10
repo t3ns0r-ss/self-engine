@@ -12,7 +12,13 @@ function blocks(t) {
     const m = /^\s*(```|~~~)\s*(\w*)/.exec(l);
     if (m) { if (cur) { out.push({ lang: cur.lang, text: unesc(cur.lines.join('\n').trim()) }); cur = null; } else cur = { lang: m[2], lines: [] }; continue; }
     // Decision 3 of LESSON_RESTORE_PLAN.md: a removed line that holds a maang.in link is allowed (paid site).
-    if (cur) { if (!/maang\.in/.test(l)) cur.lines.push(l.trimEnd()); }
+    // (a blank line right after such a line goes with it)
+    if (cur) {
+      if (/maang\.in/.test(l)) { cur.skipBlank = true; continue; }
+      if (cur.skipBlank && l.trim() === '') { cur.skipBlank = false; continue; }
+      cur.skipBlank = false;
+      cur.lines.push(l.trimEnd());
+    }
   }
   return out;
 }

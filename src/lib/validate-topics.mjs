@@ -24,6 +24,10 @@ export const LESSON_HEADINGS = [
 // Topic 7.8 replaces Sections 4, 6, and 7 with a recap (PLAN.md Section 4 notes).
 // Notes-format lessons (PLAN.md Section 6A) keep the owner's own section order; only these two are required, in this order.
 export const NOTES_HEADINGS = ['## Quick revision', '## Practice problems'];
+// LESSON_RESTORE_PLAN.md Section 3: the new notes shape. Switched on with NOTES_V2=1 (or `notes_v2: true` in a topic file) after Phase 2 is merged.
+export const NOTES_HEADINGS_V2 = ['## What this note covers', '## Quick revision', '## Check yourself', '## Practice problems'];
+export const NOTES_V2_COMPONENTS = ['TopicHeader', 'WhatYouNeed', 'Cards', 'Drill', 'LookalikePairs', 'SelfTest', 'Checkpoint', 'DecisionMapUpdate', 'Ladder'];
+export const NOTES_V2_CHECK_YOURSELF = ['### Identification drill', '### Look-alike pairs', '### Self-test', '### Checkpoint', '### Decision map update'];
 const HEADINGS_78 = LESSON_HEADINGS.filter((h) => !/^## [467]\. /.test(h));
 
 export const WORKED_EXAMPLE_STEPS = [
@@ -236,7 +240,8 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
     if (!topics[tid]) err(lesson.path, `no data file src/data/topics/${fileId(tid)}.yaml`);
     const hs = headingsOf(lesson.text);
     const isNotes = topics[tid]?.format === 'notes';
-    const required = isNotes ? NOTES_HEADINGS : tid === '7.8' ? HEADINGS_78 : LESSON_HEADINGS;
+    const v2 = isNotes && (process.env.NOTES_V2 === '1' || topics[tid]?.notes_v2 === true);
+    const required = v2 ? NOTES_HEADINGS_V2 : isNotes ? NOTES_HEADINGS : tid === '7.8' ? HEADINGS_78 : LESSON_HEADINGS;
     let i = 0;
     for (const h of hs) if (i < required.length && h === required[i]) i++;
     if (i < required.length) err(lesson.path, `missing or out-of-order heading "${required[i]}"`);
@@ -246,6 +251,17 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
       else if (h.startsWith('#### ') && examples.length) examples.at(-1).push(h);
     }
     if (isNotes) {
+      if (v2) {
+        const tail = hs.filter((h) => h.startsWith('## ')).slice(-3);
+        if (tail.join('|') !== ['## Quick revision', '## Check yourself', '## Practice problems'].join('|')) err(lesson.path, 'notes lesson: the last three "## " headings must be Quick revision, Check yourself, Practice problems');
+        let j = 0;
+        for (const h of hs) if (j < NOTES_V2_CHECK_YOURSELF.length && h === NOTES_V2_CHECK_YOURSELF[j]) j++;
+        if (j < NOTES_V2_CHECK_YOURSELF.length) err(lesson.path, `notes lesson: missing or out-of-order heading "${NOTES_V2_CHECK_YOURSELF[j]}" under "## Check yourself"`);
+        for (const c of NOTES_V2_COMPONENTS) {
+          const n = (lesson.text.match(new RegExp(`<${c}[\\s/>]`, 'g')) ?? []).length;
+          if (n !== 1) err(lesson.path, `notes lesson: <${c} /> must appear exactly once (found ${n})`);
+        }
+      }
       if (hs.filter((h) => h.startsWith('## ')).at(-1) !== '## Practice problems') err(lesson.path, 'notes lesson: "## Practice problems" must be the last "## " heading');
       continue;
     }

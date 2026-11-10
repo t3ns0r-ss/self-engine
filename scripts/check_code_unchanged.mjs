@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Proves his code is untouched: every fenced code block in the base version of a lesson must still appear
-// verbatim (same text) in the new version. New blocks are allowed.
+// verbatim (same text) in the new version. New blocks are allowed. Lines that mention maang.in are ignored on both sides.
 // Usage: node scripts/check_code_unchanged.mjs <base-ref> <file.mdx> ...
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -11,7 +11,8 @@ function blocks(t) {
   for (const l of t.split('\n')) {
     const m = /^\s*(```|~~~)\s*(\w*)/.exec(l);
     if (m) { if (cur) { out.push({ lang: cur.lang, text: unesc(cur.lines.join('\n').trim()) }); cur = null; } else cur = { lang: m[2], lines: [] }; continue; }
-    if (cur) cur.lines.push(l.trimEnd());
+    // Decision 3 of LESSON_RESTORE_PLAN.md: a removed line that holds a maang.in link is allowed (paid site).
+    if (cur) { if (!/maang\.in/.test(l)) cur.lines.push(l.trimEnd()); }
   }
   return out;
 }

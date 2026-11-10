@@ -6,6 +6,7 @@ import { isSolvedView } from '../lib/sync/status';
 import StatusChip from './StatusChip';
 import LogPanel from './LogPanel';
 import PlatformBadge from './PlatformBadge';
+import M from './M';
 
 export type LadderProblem = {
   id: string; title: string; url: string; source: string; difficulty: string;
@@ -21,7 +22,7 @@ function Hints({ p, log, budget }: { p: LadderProblem; log?: ProblemLog; budget:
   return (
     <div className="hints">
       {p.hints.slice(0, opened).map((h, i) => (
-        <p key={i} className="hint"><strong>Hint {i + 1}:</strong> {h}</p>
+        <p key={i} className="hint"><strong>Hint {i + 1}:</strong> <M t={h} /></p>
       ))}
       {next <= p.hints.length &&
         (asking ? (
@@ -68,8 +69,8 @@ export default function LadderIsland({ groups, more, budget }: { groups: LadderG
                     <a href={p.url} target="_blank" rel="noopener noreferrer">{p.title}</a>{' '}
                     <PlatformBadge source={p.source} /> <span className="muted">{p.difficulty}</span>
                   </header>
-                  <p><strong>New twist:</strong> {p.twist}</p>
-                  <p>{p.summary}</p>
+                  <p><strong>New twist:</strong> <M t={p.twist} /></p>
+                  <p><M t={p.summary} /></p>
                   <Hints p={p} log={log} budget={budget} />
                   <div className="ladder-status">
                     <StatusChip view={st(p.id)} />

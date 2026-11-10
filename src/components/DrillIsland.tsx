@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import M from './M';
 import { getDrills, saveDrill, type DrillState } from '../lib/storage';
 import { useStore } from '../lib/useStore';
 import { COMPROMISED_NOTE, beginReservedSet } from '../lib/sync/reserved';
@@ -23,7 +24,7 @@ function Item({ item, state, options, bad }: { item: DrillItem; state?: DrillSta
         <a href={item.url} target="_blank" rel="noopener noreferrer">{item.title}</a> <PlatformBadge source={item.source} />{' '}
         <span className="muted">{item.difficulty}</span>
       </p>
-      <p>{item.summary}</p>
+      <p><M t={item.summary} /></p>
       {bad && <p className="notice">{bad}</p>}
       <label htmlFor={`drill-${item.id}-card`}>Tool</label>
       <select id={`drill-${item.id}-card`} value={chosen} disabled={revealed} onChange={(e) => setChoice(e.target.value)}>
@@ -39,8 +40,8 @@ function Item({ item, state, options, bad }: { item: DrillItem; state?: DrillSta
       ) : (
         <div className="drill-answer">
           <p><strong>{right ? 'Right.' : 'Not this time.'}</strong> Answer: {item.answerName}</p>
-          <p><strong>Property:</strong> {item.property}</p>
-          <p><strong>Why other tools fail:</strong> {item.why}</p>
+          <p><strong>Property:</strong> <M t={item.property} /></p>
+          <p><strong>Why other tools fail:</strong> <M t={item.why} /></p>
           <button type="button" className="secondary" onClick={() => { setChoice(''); setProperty(''); saveDrill(item.id, { revealed: false, chosenCard: '', property: '' }); }}>
             Try again later
           </button>

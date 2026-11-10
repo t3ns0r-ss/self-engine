@@ -33,7 +33,18 @@ Always in this order:
 Add more examples from the first improved version only when the section is still thin against its length target.
 
 ## 5. Section shape
-`## What this note covers` (with terms) → topic sections → `## Quick revision` → `## Practice problems` (last, links only, at least 8; if a topic honestly has fewer, keep the honest number and say so in the PR).
+1. `## What this note covers`: his overview, the old "Why this topic exists" (with real numbers), `<WhatYouNeed />`, what the topic does not cover, and a "Terms used in this lesson" list (**bold** term, one line, a small example).
+2. `## Table of contents` (his).
+3. His technique sections in his order. Restored theorems, templates, bug entries and worked examples sit inside the section they belong to.
+4. `## Recognition cards` with `<Cards />`.
+5. `## Quick revision` (one line for each restored theorem too).
+6. `## Check yourself`: `### Identification drill`, `### Look-alike pairs`, `### Self-test`, `### Checkpoint`, `### Decision map update`.
+7. `## Practice problems` (last): one intro line and `<Ladder />`. No raw link list. maang.in is a paid site: never link it.
+
+Theorem format: `**Theorem 1.4.1 (name).** statement`, then a small example with numbers, then "Why it works:" with numbered proof steps, then "This proof needs: (1) …", then `<TheoremCode unit="…" />` where it adds something.
+
+## 5A. Maths and terms
+Maths is KaTeX: `$O(n \log n)$`, `$10^9$`, `$\lceil d/x \rceil$`, `$\sum$`, `$\binom{n}{r}$`, `$a \bmod m$`, `$\sqrt{n}$`, `$\log_2 n$`, `$[\text{lo}, \text{hi}]$`; derivations in display maths (`$$ … $$` on their own lines). A variable in prose is maths (`$n$`); a name from the code is code font (`mid`). Bold a term only where it is defined. Library names are always code. Headings, alt text and captions stay plain text. Never put maths in code. In MDX write `$i < j$` with a space after `<`, and `\$` for a currency dollar. The same `$…$` works in the text fields of the topic YAML (cards, ladder, drill, self-test, checkpoint). Check with `node scripts/check_math.mjs <files>` and `node scripts/check_math.mjs --yaml <ids>`; check that numbers survived with `node scripts/check_numbers.mjs <ref> <files>`.
 
 ## 6. Code
 - His code is never edited. A diff check proves it. Corrected versions come back as new functions with a one-line reason.
@@ -47,3 +58,4 @@ Generated figures live in `src/assets/notes/<topic-id>-<slug>/`. Every figure ha
 - `node scripts/check_english.mjs [--tone] <files>`: Hinglish, shorthand, ASCII sketches.
 - `node scripts/check_depth.mjs [--report]`: prose length against `scripts/lesson_targets.json`, and sections with code but no trace, cost or mistake line.
 - Existing: `check_rewrite.mjs`, `validate.mjs`.
+- `node scripts/check_math.mjs`, `check_numbers.mjs`, `check_ideas.mjs`: unformatted maths, lost numbers, the idea inventory in `docs/restore/`. Render check: `node tests/e2e/render_check.cjs`.

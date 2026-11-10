@@ -1,7 +1,19 @@
 #!/usr/bin/env node
 // Flags Hinglish (Hindi words in Latin letters) in the prose and code comments of the given lesson files.
-// Usage: node scripts/check_english.mjs <file.mdx> ...   (exit 1 if any word is found)
+// Usage: node scripts/check_english.mjs [--tone] <file.mdx> ...   (exit 1 if any word is found)
+// --tone also flags leftover note shorthand ("HW:", "Ques:", "# of", bare TC/SC) and ASCII sketches outside code blocks.
 import { readFileSync } from 'node:fs';
+
+const TONE = process.argv.includes('--tone');
+const SHORTHAND = [
+  [/(^|\s)HW\s*:/, 'HW:'],
+  [/(^|\s)Ques\s*:/i, 'Ques:'],
+  [/(^|\s)#\s+of\b/i, '# of'],
+  [/idea is always (the )?same/i, 'Idea is always same'],
+  [/(^|[^A-Za-z.])(TC|SC)(?![A-Za-z(])(?!\s*\((time|space))/, 'bare TC/SC'],
+];
+// ASCII sketch: box corners, runs of dashes next to + or |, lone arrow-head lines, spaced pipes.
+const SKETCH = /\+-{2,}|-{2,}\+|\|\s{3,}\||^\s*[\\/|^v]\s*$|^\s*[-=]{3,}>\s*$/;
 
 const WORDS = new Set(`hai hain nahi nahin kya toh karo karna karke karna kaise kyun kyuki kyunki matlab jaise agar isse yaha yahan wahi wahan
 pehle pehla phir wale wala wali mein hoga hogi hota hote dekho dekh sabhi bhi bhai jaata jaate jata jate rakho rakh chahiye sakte sakta sakti lekin
@@ -15,7 +27,7 @@ for (const w of ['do', 'lo', 'ho', 'ya', 'ke', 'ka', 'ko', 'ki', 'jana', 'jata',
 const SOFT = new Set(['ke', 'ka', 'ko', 'ki']);
 
 let bad = 0;
-for (const f of process.argv.slice(2)) {
+for (const f of process.argv.slice(2).filter((a) => a !== '--tone')) {
   const lines = readFileSync(f, 'utf8').split('\n');
   let fence = null;
   lines.forEach((line, i) => {
@@ -24,6 +36,12 @@ for (const f of process.argv.slice(2)) {
       if (!fence) fence = m[1];
       else if (m[1][0] === fence[0] && m[1].length >= fence.length && /^\s*[`~]+\s*$/.test(line)) fence = null;
       return;
+    }
+    if (TONE && !fence) {
+      const plain = line.replace(/`[^`\n]*`/g, ' ').replace(/\$\$.*?\$\$|\$[^$\n]*\$/g, ' ');
+      const isTable = /^\s*\|.*\|\s*$/.test(line);
+      for (const [re, name] of SHORTHAND) if (re.test(plain)) { bad++; console.log(`${f}:${i + 1}: shorthand "${name}"  | ${line.trim().slice(0, 100)}`); }
+      if (!isTable && SKETCH.test(line)) { bad++; console.log(`${f}:${i + 1}: ASCII sketch outside code block  | ${line.trim().slice(0, 100)}`); }
     }
     let text = line;
     if (fence) {
@@ -44,5 +62,5 @@ for (const f of process.argv.slice(2)) {
     }
   });
 }
-console.log(bad ? `${bad} line(s) with Hinglish words` : 'no Hinglish words found');
+console.log(bad ? `${bad} problem line(s)${TONE ? ' (tone mode)' : ' with Hinglish words'}` : (TONE ? 'tone check clean' : 'no Hinglish words found'));
 process.exit(bad ? 1 : 0);

@@ -2,7 +2,7 @@
 
 **Audience:** an autonomous coding agent working in the `t3ns0r-ss/self-engine` repository.
 **Owner:** Saurabh. He reviews each phase's pull request (PR) and replies "merge" or gives changes.
-**Scope:** the 14 notes-format lessons only (list in Section 1.1). The other 34 topics are not touched, except for the shared component change in Phase 0, step 4.
+**Scope:** the 14 notes-format lessons (Section 1.1), plus topic 3.1 (Recursion), which is first converted to notes format from his recursion notebook (Phase R). That makes 15 lessons. The other 33 topics are not touched, apart from the shared component change in Phase 0, step 4.
 
 Read `PLAN.md` (especially Section 6A), `DEVELOPER_GUIDE.md`, `docs/LESSON_STYLE_GUIDE.md` and `PROBLEM_BANK_PLAN.md` (Sections 7 and 10) before starting. Every rule there still applies unless this file changes it explicitly.
 
@@ -13,12 +13,13 @@ Read `PLAN.md` (especially Section 6A), `DEVELOPER_GUIDE.md`, `docs/LESSON_STYLE
 1. **Keep the old ideas.** Before the 14 lessons were converted to his notes format, each lesson had more ideas in it. Those ideas must be in the lessons again. Write them in his notes style of explanation, but bring back the depth the old lessons had.
 2. **Format the maths.** Equations, formulas, symbols and terms must be properly formatted (KaTeX maths, bold terms where they are defined, code names in code font). Today most of them are plain text.
 3. **Research the problems.** Every practice problem should be chosen with care and checked. Present problems in the same style as the rest of the lesson. **maang.in is a paid site, so remove all its problems.**
+4. **Convert recursion too.** Topic 3.1 (Recursion, backtracking, pruning) is still in the old template format. Convert it to notes format from his recursion notebook, the same way the 14 lessons were converted (Phase R). Then it goes through every later phase with the others.
 
 ---
 
 ## 1. Facts you need
 
-### 1.1 The 14 lessons
+### 1.1 The 15 lessons
 
 | Topic | Lesson file | Data file |
 |---|---|---|
@@ -36,6 +37,7 @@ Read `PLAN.md` (especially Section 6A), `DEVELOPER_GUIDE.md`, `docs/LESSON_STYLE
 | 2.2 | `src/content/docs/phase-2/2-2-modular-arithmetic.mdx` | `2-2.yaml` |
 | 2.3 | `src/content/docs/phase-2/2-3-combinatorics.mdx` | `2-3.yaml` |
 | 2.4 | `src/content/docs/phase-2/2-4-expected-value.mdx` | `2-4.yaml` |
+| 3.1 | `src/content/docs/phase-3/3-1-backtracking.mdx` (template format until Phase R) | `3-1.yaml` |
 
 The problem bank for each topic is `src/data/bank/<id>.yaml`. Lesson code units for the old template lessons are in `code/<topic>/<unit>/` (for example `code/1.4/thm-1`), tested by `bash scripts/test_units.sh code`.
 
@@ -46,6 +48,13 @@ The old template-format lessons are in git history at commit **`1d76f35`**, the 
 ```bash
 git show 1d76f35:src/content/docs/phase-1/1-4-binary-search.mdx
 ```
+
+**For 3.1 the old version is the current template lesson on `main`.** Before Phase R starts, record the `main` commit as `R_BASE` in `PROGRESS.md`. Phases 1 and 2 use `git show $R_BASE:src/content/docs/phase-3/3-1-backtracking.mdx` as the old 3.1. That lesson has:
+- Theorems 3.1.1 to 3.1.4: backtracking with a feasibility check, listing without repeats, branch and bound, meet in the middle;
+- a "choosing among the tools" section;
+- 8 bug catalogue entries;
+- 2 worked examples (Count Simple Paths, Programming Contest);
+- 20 ladder problems.
 
 Each old lesson had these sections (PLAN.md Section 6):
 - 1. Why this topic exists.
@@ -99,7 +108,7 @@ Run `grep -n maang src/content/docs/phase-*/*.mdx` for the full list.
 - `node scripts/check_code_unchanged.mjs <ref> <files>`: every original C++ block is still there word for word.
 - `node scripts/check_rewrite.mjs`.
 - `npx astro preview --port 4321` then `node tests/e2e/lessons.cjs` (809 checks).
-- A render check (open each of the 14 pages and count broken images, `.katex-error` elements and page errors) was used before, but it lived outside the repository. Phase 0 adds it as `tests/e2e/render_check.cjs`.
+- A render check (open each of the 14 notes pages and count broken images, `.katex-error` elements and page errors) was used before, but it lived outside the repository. Phase 0 adds it as `tests/e2e/render_check.cjs`.
 
 ### 1.6 Environment notes
 
@@ -226,7 +235,7 @@ Problem entries follow the old ladder style, written in the voice above:
 
 ## 5. Work split
 
-Each phase is one branch and one PR. Do lesson work with parallel sub-agents, one per lesson, but treat the maths lessons as a group: 0.4, 2.1, 2.2 and 2.3 come from one note, so give them to one agent, or check them together. Sub-agents write files only. The main session runs builds and checks and does all git work.
+Each phase is one branch and one PR. Do lesson work with parallel sub-agents, one per lesson, but treat the maths lessons as a group: 0.4, 2.1, 2.2 and 2.3 come from one note, so give them to one agent, or check them together. Phase R (3.1) is one agent, with the main session doing the import and commits. Phase R can run in parallel with Phase 0, but Phase 1 needs both merged. Sub-agents write files only. The main session runs builds and checks and does all git work.
 
 Give each sub-agent:
 - a written brief: this file's Sections 3 and 4, plus its lesson's inventory;
@@ -240,7 +249,7 @@ Give each sub-agent:
 
 1. Add this file to the repository root.
 2. Update PLAN.md 6A and `docs/LESSON_STYLE_GUIDE.md` with Sections 3 and 4. Record the decisions from Section 2.
-3. Add `tests/e2e/render_check.cjs`. For each of the 14 pages it must:
+3. Add `tests/e2e/render_check.cjs`. For each of the 15 lessons (the 14 plus 3.1) it must:
    - open the page at `localhost:4321` and scroll to the bottom;
    - count images, broken images (`naturalWidth == 0`), `.katex-error` elements, `.ladder-item` elements and page errors;
    - exit with an error if any broken image, KaTeX error or page error is found.
@@ -266,6 +275,68 @@ Give each sub-agent:
 
 Gate: build, `validate`, unit tests and the e2e lessons check all pass, and nothing visible changes on the 14 pages, apart from YAML maths now rendering.
 
+### Phase R: Convert 3.1 Recursion to notes format (one PR)
+
+**Source files.** Saurabh's notes and code are **not** in the repository, and the repository is public. Saurabh attaches `recursion-source.zip` to your session. Unzip it **outside** the repository, for example into your scratch folder, and never commit it. It contains:
+- `note/recursion-and-backtracking.md`: his improved recursion chapter, about 10,000 words, with its 21 figures in `note/images/`.
+- `raw/recursion-and-backtracking.raw.md`: the transcription of his 17 handwritten pages. Use it to check what he actually wrote.
+- `fabricator/*.cpp`: his 16 solutions from `Fabricator/Recursion-Bactracking-Kth-Fractals`.
+
+If the zip is not attached, stop and ask for it. Do not rebuild the note from memory.
+
+The chapter's sections are:
+- Recursion and the call stack;
+- the Fibonacci recursion tree;
+- palindrome and tail recursion;
+- $\binom{n}{r}$ by Pascal's triangle;
+- print $n$ to 1 and back;
+- Tower of Hanoi;
+- trace following;
+- backtracking and the LCCMD framework (Level, Choice, Check, Move, Decide);
+- time complexity of backtracking;
+- N-Queens and two variants;
+- subsequences, subsets (unique and with duplicates) and permutations (distinct and non-distinct);
+- balanced parentheses;
+- the k-th form (k-th permutation, k-th move of Tower of Hanoi);
+- fractals (POJ 2083);
+- self-similar problems: ABC153 D, ABC115 D and CF 896 A.
+
+The chapter is written in his private notes style, which includes some Hinglish (for example "Naya call aaya toh push"). It has 6 maang.in mentions, and 3 Fabricator files (`Generate-Parenthesis-Easy.cpp`, `N-Queens-Twisted.cpp`, `N-S-Queens.cpp`) have a maang.in URL in their comments.
+
+Steps:
+1. Record `R_BASE` (Section 1.2). Commit nothing until step 3.
+2. Import the note: `node scripts/import_note.mjs <unzipped>/note/recursion-and-backtracking.md 3.1`. This:
+   - writes the lesson;
+   - copies the figures to `src/assets/notes/3-1-backtracking/`;
+   - sets `format: notes` in `3-1.yaml`;
+   - adds the ladder.
+
+   Check that all 21 figures copied and every image link resolves.
+3. **Commit the raw import on its own.** That commit is the reference for `check_code_unchanged.mjs` on 3.1 in every later phase.
+4. Code:
+   - Every C++ block must match the corresponding file in `fabricator/` word for word, apart from removing a maang.in URL line in a comment (decision 3).
+   - Show functions only (no `main`, no `#include`).
+   - Each block starts with a `// Fabricator/Recursion-Bactracking-Kth-Fractals/<File>.cpp` comment.
+   - Where his code has a bug, add a one-line "Note:" and, if needed, a corrected new function. Compile and run every new function and show its output.
+5. Plain English pass, the same as the 14 lessons had in PRs #2 and #5:
+   - remove the Hinglish and rewrite shorthand using the style guide table;
+   - replace ASCII sketches with generated figures;
+   - expand T.C., S.C., LCCMD and similar terms on first use;
+   - `check_english.mjs` and `--tone` must be clean.
+
+   Keep every statement, number and example of his.
+6. **Order of topics.** 3.1 may use topics up to 2.4 (the k-th permutation uses factorials, which is fine). His DP remark in the Fibonacci section ("same subproblem again and again is the hint for DP") stays as one line pointing forward, and dynamic programming (DP) also goes under "What this topic does not cover". Nothing on the page teaches memoisation.
+7. Add `"3-1-backtracking": { "v1Prose": …, "v1Code": … }` to `scripts/lesson_targets.json`. Count the words in the note's prose and code the same way the other entries were counted. Then run `check_depth.mjs --report`.
+8. Leave the practice list as imported for now. Phase 4 handles it, including the 3 maang.in problems: Queens On Chessboard, NQueens Revisited and Generate Balanced Parenthesis. POJ 2083 is on poj.org, which is often down. Check it in Phase 4 like any other problem.
+
+From here on, 3.1 is the 15th lesson in Phases 1 to 5. Its old version is `R_BASE` (Section 1.2), not `1d76f35`. Expect many "missing" rows in the 3.1 inventory, because his note does not cover branch and bound or meet in the middle. Those ideas come back in Phase 2, written in his style.
+
+Gate:
+- validate, build, render check and e2e pass;
+- `check_english --tone` is clean on 3.1;
+- every code block matches `fabricator/`;
+- the PR lists every Hinglish or shorthand line that was rewritten, and every figure that was added.
+
 ### Phase 1: Idea inventory (read-only, one PR)
 
 For each lesson, write `docs/restore/<topic-id>.md`, a table with one row per old idea:
@@ -286,7 +357,7 @@ For each lesson, write `docs/restore/<topic-id>.md`, a table with one row per ol
 
 Gate: every row has a status, and `check_ideas.mjs` passes. Put the totals per lesson in the PR body (present, partial, missing, duplicate). Stop for Saurabh to read it. He may strike rows.
 
-### Phase 2: Restore depth (one PR, all 14 lessons)
+### Phase 2: Restore depth (one PR, all 15 lessons)
 
 For every partial or missing row:
 1. Write it into the lesson at the place named in the inventory, following Section 4.1 (voice) and Section 4.2 (theorems).
@@ -310,14 +381,14 @@ Gate:
 
 ### Phase 3: Format the maths and terms (one PR)
 
-1. Run `check_math.mjs` on all 14 lessons and on their YAML. Fix every finding using the table in Section 4.3. This covers his text, the restored text and the YAML text (cards, ladder, drill, self-test, checkpoint).
+1. Run `check_math.mjs` on all 15 lessons and on their YAML. Fix every finding using the table in Section 4.3. This covers his text, the restored text and the YAML text (cards, ladder, drill, self-test, checkpoint).
 2. Make terms bold only where they are defined. Expand abbreviations on their first use on each page.
 3. Turn ASCII formulas inside prose into display maths where they are derivations.
 
 Gate:
 - `check_math` reports zero;
 - `check_numbers <phase-2 commit>` passes;
-- the render check shows 0 `.katex-error` on all 14 pages;
+- the render check shows 0 `.katex-error` on all 15 pages;
 - `check_code_unchanged` passes.
 
 Then open 0.2, 1.4, 1.5 and 2.3 in a browser at desktop width and at 375 px width:
@@ -384,9 +455,9 @@ The main session fixes what they find, and the PR lists each fix. Items that are
 ```bash
 node scripts/validate.mjs
 node scripts/check_links.mjs
-node scripts/check_english.mjs --tone <14 files>
-node scripts/check_code_unchanged.mjs <ref> <14 files>
-node scripts/check_math.mjs <14 files>             # from Phase 3 on: must be 0
+node scripts/check_english.mjs --tone <15 files>
+node scripts/check_code_unchanged.mjs <ref> <15 files>
+node scripts/check_math.mjs <15 files>             # from Phase 3 on: must be 0
 node scripts/check_ideas.mjs                       # from Phase 2 on
 node scripts/check_depth.mjs --report              # attach output to PR
 bash scripts/test_units.sh code
@@ -402,9 +473,10 @@ Commits and PR bodies end with the attribution lines your session gives you. Upd
 
 ## 8. Definition of done
 
-- [ ] Every idea from the `1d76f35` lessons and their YAML data is on the page (inventory shows added, present or a reasoned duplicate), written in his notes voice.
+- [ ] 3.1 is in notes format, built from his recursion notebook, with his Fabricator code word for word and plain English throughout.
+- [ ] Every idea from the `1d76f35` lessons (and from `R_BASE` for 3.1) and their YAML data is on the page (inventory shows added, present or a reasoned duplicate), written in his notes voice.
 - [ ] Every theorem has a statement, a small example, the full proof and its "needs" list.
-- [ ] Recognition cards, drill, look-alike pairs, self-test, checkpoint and decision map are visible on all 14 pages.
+- [ ] Recognition cards, drill, look-alike pairs, self-test, checkpoint and decision map are visible on all 15 pages.
 - [ ] Zero unformatted maths (`check_math`), zero KaTeX errors, and all numbers unchanged (`check_numbers`).
 - [ ] No maang.in anywhere. Every practice problem was opened, fits its topic, and has a summary, twist and hints in the lesson style.
 - [ ] His code is unchanged (apart from the one maang comment line), and all new code is tested.
@@ -422,6 +494,6 @@ Continue with the other lessons in the meantime.
 
 ## 10. Out of scope
 
-- The 34 template-format topics, apart from the shared component change in Phase 0.
+- The 33 template-format topics, apart from the shared component change in Phase 0.
 - The failing CI `browser` job (`H4-2.yaml`, `L2-1.yaml`).
 - New figures, except where a restored idea needs one: generate it, never use a photo.

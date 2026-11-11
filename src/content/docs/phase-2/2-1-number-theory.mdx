@@ -839,7 +839,7 @@ Trace for $6, 10, 15$: 6 has primes 2, 3; 10 has 2, 5; 15 has 3, 5. So `used[2] 
 
 Cost: $O(M \log \log M)$ for the table with $M = 10^6$, plus at most 20 divisions per element.
 
-Common mistake: counting a prime once per power instead of once per element. For $4$ and $9$, counting the two 2s of $4$ would make `used[2] = 2` and wrongly report a shared prime. The code divides out the whole run of $p$ first.
+Common mistake: counting a prime once per power instead of once per element. For the single number 4, counting each of its two 2s would make `used[2] = 2` and wrongly report a shared prime. The code divides out the whole run of $p$ first.
 
 Alternative: count the elements divisible by each $d \ge 2$ by summing over multiples (Theorem 2.1.6). The set is pairwise coprime exactly when every count is at most 1. It is $O(M \log M)$ and needs no factorisation.
 
@@ -895,6 +895,66 @@ pair<long long, long long> divisor_count_and_sum(int n){
 Trace for n = 60: sp[60] = 2, and 60 → 30 → 15 gives alpha = 2, so term_sum = 1 + 2 + 4 = 7 and count = 3. Next sp[15] = 3 gives alpha = 1, term_sum = 4, count = 6. Next sp[5] = 5 gives term_sum = 6, count = 12. The sum is 7 · 4 · 6 = 168. The loop runs once per prime power, so the cost is $O(\log n)$ and no extra memory is used beyond sp[].
 
 (Checked for every n up to $10^6$ against a divisor sieve. 60 → 12 divisors, sum 168.)
+
+**Theorem 2.1.3, parts 2 and 3.** The formulas above are part 2: $d(n) = \prod (e_i + 1)$ and $\sigma(n) = \prod (1 + p_i + \dots + p_i^{e_i})$. Part 3 adds that $\gcd(a, b) = \prod p_i^{\min(\alpha_i, \beta_i)}$ and $\operatorname{lcm}(a, b) = \prod p_i^{\max(\alpha_i, \beta_i)}$.
+
+Small example: $360 = 2^3 \cdot 3^2 \cdot 5$ has $d(360) = 4 \cdot 3 \cdot 2 = 24$ divisors, and $\sigma(360) = 15 \cdot 13 \cdot 6 = 1170$. With $84 = 2^2 \cdot 3 \cdot 7$, the minimum exponents give $\gcd(360, 84) = 2^2 \cdot 3 = 12$, and the maximum exponents give $\operatorname{lcm}(360, 84) = 2^3 \cdot 3^2 \cdot 5 \cdot 7 = 2520$.
+
+Why it works:
+1. Part 2. A product $p_1^{f_1} \cdots p_k^{f_k}$ with $f_i \le e_i$, times $p_1^{e_1 - f_1} \cdots p_k^{e_k - f_k}$, gives $n$, so it is a divisor.
+2. Conversely, if $n = d \cdot m$, the factorisations of $d$ and $m$ multiply to that of $n$ by uniqueness (part 1). So $d$ uses each $p_i$ at most $e_i$ times.
+3. Each $f_i$ is chosen independently from $e_i + 1$ values, and different choices give different numbers by uniqueness. That is $d(n)$. Expanding the product for $\sigma(n)$ gives one term for each divisor.
+4. Part 3. A common divisor has exponent at most $\alpha_i$ and at most $\beta_i$ at each prime, and the largest one takes the minimum at every prime.
+5. A common multiple has exponent at least both, and the smallest takes the maximum.
+
+This proof needs: (1) $n \ge 2$ (and $d(1) = 1$). (2) The formulas need the factorisation first. (3) Divisor counts stay small: at most 240 for $n \le 10^6$, 1344 for $n \le 10^9$, 6720 for $n \le 10^{12}$ and 103680 for $n \le 10^{18}$. So listing all divisors of one number is cheap once it is factorised.
+
+<TheoremCode unit="2.1/thm-3" />
+
+The first line is the small example for 360 and the second is the GCD and LCM example.
+
+For the divisor count of every $x \le N$ at once there is a way with no factorisation: for each $d$, add 1 to every multiple of $d$. It is $O(N \log N)$ (harmonic sum, topic 0.2). With the table, one number needs only its exponents:
+
+<CodeSnippet unit="2.1/spf-divisors" />
+
+How it works: the inner `while` takes the whole run of equal primes, whose length is the exponent $e$, and the divisor count multiplies by $e + 1$. Cost: $O(\log v)$ per number after the table.
+
+### Loops over multiples
+
+Question: given $n = 10^5$ numbers up to $M = 10^6$, count the pairs whose GCD is exactly $d$, for every $d$.
+
+Brute force: compute a GCD for each of the $5 \cdot 10^9$ pairs. Too slow. Better: for one $d$, the number of elements divisible by $d$ is easy, because we sum `cnt` over $d, 2d, 3d, \dots$. That takes $M/d$ steps, so $M \ln M$ in all. "Divisible by $d$" is easy; "gcd exactly $d$" is not. But the second follows from the first by subtracting.
+
+**Theorem 2.1.6 (sums over multiples).** Let $a_1, \dots, a_n$ be integers with $1 \le a_i \le M$, and let $\operatorname{cnt}[v]$ be the number of $i$ with $a_i = v$.
+
+1. For every $d \le M$, the number of elements divisible by $d$ is $c[d] = \sum_{k \ge 1,\, kd \le M} \operatorname{cnt}[kd]$, and all of them together take $O(M \log M)$ steps.
+2. Let $E[d]$ be the number of pairs $i < j$ with $\gcd(a_i, a_j) = d$ exactly. Then $E[d] = \frac{c[d](c[d]-1)}{2} - \sum_{k \ge 2,\, kd \le M} E[kd]$. So computing $E[d]$ for $d = M, M-1, \dots, 1$ takes $O(M \log M)$ steps.
+3. More generally, if $F(d) = \sum_{k \ge 1,\, kd \le M} G(kd)$ for every $d \le M$, then $G(d) = F(d) - \sum_{k \ge 2,\, kd \le M} G(kd)$, computed from $d = M$ down to 1.
+
+Small example: $a = (2, 4, 6, 3)$, $M = 6$. Then $c[1] = 4$, $c[2] = 3$, $c[3] = 2$, $c[4] = 1$, $c[5] = 0$, $c[6] = 1$. From the top: $E[6] = E[5] = E[4] = 0$. Then $E[3] = 1 - E[6] = 1$ (the pair 6, 3). Then $E[2] = 3 - E[4] - E[6] = 3$ (the pairs 2, 4; 2, 6; 4, 6). And $E[1] = 6 - E[2] - E[3] - E[4] - E[5] - E[6] = 2$ (the pairs 2, 3 and 4, 3).
+
+Why it works:
+1. Part 1. An element is divisible by $d$ exactly when its value is one of $d, 2d, \dots$, so summing `cnt` over these values counts each such element once.
+2. The loop for $d$ makes $\lfloor M/d \rfloor$ steps, which is $O(M \log M)$ in total (harmonic sum, topic 0.2).
+3. Part 2. $d$ divides both $a_i$ and $a_j$ exactly when $d$ divides $\gcd(a_i, a_j)$, that is, when the GCD is $kd$ for some $k \ge 1$ with $kd \le M$.
+4. So the $\frac{c[d](c[d]-1)}{2}$ pairs of elements divisible by $d$ split into the pairs with GCD exactly $d, 2d, 3d, \dots$. This gives $\frac{c[d](c[d]-1)}{2} = \sum_{k \ge 1} E[kd]$.
+5. Move the terms with $k \ge 2$ to the other side. When $d$ is processed, every $kd > d$ already has its value. Part 3 is the same rearrangement with $F$ and $G$.
+
+This proof needs: (1) the values are bounded by an array size $M$ (about $10^6$ to $10^7$), and the arrays are indexed by value, not by position. (2) "Divisible by $d$" is easy to count and "GCD exactly $d$" is not, but the second follows from the first by subtracting the multiples, from large $d$ to small. (3) Pair counts reach $n^2/2$, so use `long long`.
+
+<TheoremCode unit="2.1/thm-6" />
+
+The line is the small example: $E[1] = 2$, $E[2] = 3$, $E[3] = 1$.
+
+Template: pairs with GCD 1, and the largest GCD of a pair:
+
+<CodeSnippet unit="2.1/gcd-pairs" />
+
+How it works: for each $d$ from the largest value down, `c` counts the elements divisible by $d$, and `E[d]` starts as the number of pairs among them. Subtracting the pairs with GCD $2d, 3d, \dots$, already known, leaves the pairs with GCD exactly $d$. The largest GCD of a pair is the largest $d$ that divides at least two elements. Cost: $O(M \log M)$.
+
+Alternative: for the largest GCD alone, no subtraction is needed. Scan $d$ downward and stop at the first one that divides two elements.
+
+Common mistake: subtracting in the wrong order. With the loop `for (d = 1; d <= M; d++)` and the numbers $9, 6$, the pair has GCD 3. Processing $d = 1$ first subtracts $E[2], E[3], \dots$ while they are all still 0, so the pair is counted as coprime and the program prints `1 3` instead of `0 3`. Fix: go from large $d$ to small, so every $E[kd]$ with $k \ge 2$ is final before $E[d]$ uses it.
 
 ## Euler Totient function
 
@@ -1426,6 +1486,12 @@ Here mpow (also called bin_pow) is fast power (binary exponentiation, which comp
 
 Each block adds (block length) × (value)$^m$. Sample (4, 2) → 22, ($10^{11}$, $10^8$) → 728180943 ✓. For m = 3 it matches brute force up to n = 3000. N = 12 → 6 iterations, $N = 10^{12}$ → about $2 \times 10^6$ iterations.
 
+## Recognition cards
+
+A card names one tool, the property that decides it, and how to test that property on a new problem.
+
+<Cards topic="2.1" />
+
 ## Quick revision
 
 - Prime test: it is enough to try factors up to √N → O(√N). Handle N &lt; 2 separately.
@@ -1440,6 +1506,34 @@ Each block adds (block length) × (value)$^m$. Sample (4, 2) → 22, ($10^{11}$,
 - Power of x in N!: $f(N,p) = \sum \lfloor N/p^k \rfloor$, answer $\min_i \lfloor f(N,p_i)/a_i \rfloor$. Trailing zeros → p = 5. T.C: $O(\sqrt{x} + \log x \log N)$.
 - $\frac1a + \frac1b = \frac1n$ → $(a-n)(b-n) = n^2$ → divisors of $n^2$ ($D = \prod(2\alpha_i+1)$), all integer pairs $2D - 1$.
 - $\lfloor N/x \rfloor$ has at most $2\sqrt{N}$ distinct values; use `for (i=1; i<=n; i=la+1) la = n/(n/i);` with long long and a modulus.
+- Theorem 2.1.1: the smallest divisor above 1 of $n$ is prime, and a composite $n$ has a prime divisor $p$ with $p^2 \le n$. The sieve marks from $p^2$ and leaves exactly the primes.
+- Theorem 2.1.2: `ext(a, b)` gives $g$ and $x, y$ with $ax + by = g$. Then $ax + by = c$ is solvable exactly when $g \mid c$, and the solutions are $(x_0 + kb/g, \; y_0 - ka/g)$. Reduce $x$ modulo $b/g$.
+- Theorem 2.1.3: the factorisation is unique (Euclid's lemma). GCD takes the minimum exponents and LCM the maximum.
+- Theorem 2.1.4: with the smallest-prime-factor table, $x$ splits in at most $\log_2 x$ divisions, and the exponent is the run length.
+- Theorem 2.1.5: trial division divides out each $d$ with $d^2 \le n$ and records the leftover $n > 1$.
+- Theorem 2.1.6: $c[d] = \sum \operatorname{cnt}[kd]$, and the pairs with GCD exactly $d$ are found from $d = M$ down to 1 by subtraction.
+
+## Check yourself
+
+### Identification drill
+
+<Drill topic="2.1" />
+
+### Look-alike pairs
+
+<LookalikePairs topic="2.1" />
+
+### Self-test
+
+<SelfTest topic="2.1" />
+
+### Checkpoint
+
+<Checkpoint topic="2.1" />
+
+### Decision map update
+
+<DecisionMapUpdate topic="2.1" />
 
 ## Practice problems
 

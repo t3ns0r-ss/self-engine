@@ -696,6 +696,30 @@ vector<int> windowMinIndexDeque(const vector<int>& a, int k) {
 
 Results: `3 1 5 2 5 9 1 2` with k = 3 gives `1 1 2 2 1 1`. `3 1 5 3 2 9 9 2 2 1` with k = 3 gives `1 1 2 2 2 2 2 1`. The input that broke the repository code, `1 5 5 5` with k = 3, gives `1 5`, which is correct. It matched a brute force with `min_element` on 2000 random arrays. Common mistake: forgetting the `!idx.empty()` check, which reads the back of an empty deque.
 
+### Worked example: LR insertion
+
+[AtCoder Beginner Contest (ABC) 237, problem D: LR insertion](https://atcoder.jp/contests/abc237/tasks/abc237_d). Start with the sequence $(0)$. For $i = 1, \dots, N$ with $N \le 5 \cdot 10^5$, insert $i$ immediately to the left of $i - 1$ if $S_i$ is `L`, or immediately to the right if it is `R`. Print the final sequence.
+
+Example: $N = 5$, $S$ = `LRRLR`. The sequence goes $(0)$, $(1, 0)$, $(1, 2, 0)$, $(1, 2, 3, 0)$, $(1, 2, 4, 3, 0)$, $(1, 2, 4, 5, 3, 0)$.
+
+The idea, in six steps.
+1. Budget. $N = 5 \cdot 10^5$. Inserting in the middle of a `vector` costs $O(N)$ because everything after it moves. For all insertions that is about $2.5 \cdot 10^{11}$ steps, which is too slow. We need $O(1)$ or $O(\log N)$ per number.
+2. Tools. Following the process with a `vector` is the brute force. The insertions are next to the previous number, never at a fixed end, so a stack or a queue does not fit the process as stated. But a `deque` adds at both ends in $O(1)$, if the process can be rearranged so that every insertion is at an end.
+3. Deciding property. Look at the numbers from the last one backwards. The numbers $k, k+1, \dots, N$ were all inserted after $k - 1$, each next to a number of the same group. So in the final sequence they form one contiguous block, and the block sits next to $k - 1$ on the side given by $S_k$: to its right if $S_k$ is `R`, to its left if `L`.
+4. So, for $k = N, N-1, \dots, 1$, the number $k - 1$ goes directly at one end of the block built so far. It goes at the front if $S_k$ is `R` and at the back if $S_k$ is `L`.
+5. Proof. By induction on the insertions: right after $k$ is inserted, the block is just $\{k\}$, next to $k - 1$ on side $S_k$. Each later number $j + 1$ is inserted next to $j$, which is in the block. So it lands at the edge of the block or inside it, always between the block and the outside. The block stays contiguous and stays next to $k - 1$ on the same side. Numbers below $k - 1$ come later in the process and do not touch it. So the final sequence restricted to $k - 1, \dots, N$ is exactly what the deque builds. With $k = 1$ that is the whole sequence.
+6. Decision: build backwards with a `deque`.
+
+Trace for `LRRLR`. Start $\{5\}$. $S_5$ is `R`: 4 to the front, giving 4 5. $S_4$ is `L`: 3 to the back, giving 4 5 3. $S_3$ is `R`: 2 to the front, giving 2 4 5 3. $S_2$ is `R`: 1 to the front, giving 1 2 4 5 3. $S_1$ is `L`: 0 to the back, giving 1 2 4 5 3 0. This matches the forward process above.
+
+<CodeSnippet unit="0.6/example-2" />
+
+Cost: $N$ pushes of $O(1)$, so $O(N)$ time, about $5 \cdot 10^5$ steps instead of $2.5 \cdot 10^{11}$. Memory is $O(N)$.
+
+Common mistake: $S_k$ is the character `s[k-1]` in a 0-indexed string. Reading `s[k]` is off by one. For $N = 1$ and `L` the program reads past the end of the string, takes the `R` branch, and prints `0 1` instead of `1 0`.
+
+Alternative: keep a doubly linked list, with the left and right neighbour of each number in two arrays. Insert $i$ next to $i - 1$ by updating four links in $O(1)$, then walk the links from the leftmost number. It follows the process forwards, at the price of more bookkeeping.
+
 ## STL Applications-3: shop and budget
 
 Question: a shop has n items. The ith item has price p_i. A budget B is given. Find the maximum number of items that can be bought.
@@ -920,6 +944,29 @@ Note: the `;` is missing after the closing `}` of the struct, which is a compile
 
 Cost: insert and remove are O(log n) because they update the map. get_sum, get_max (the last key of the map) and get_distinct (the size of the map) are O(1). M.C. = O(n) for the map.
 
+**Theorem 0.6.2 (sets).** After inserting $a_1, \dots, a_n$ into a `set`, it holds each distinct value exactly once. So `s.size()` is the number of distinct values, and `s.count(x)` is 1 exactly when $x$ equals some $a_i$. Building it costs $O(n \log n)$, and each later query costs $O(\log n)$.
+
+Small example first: insert 3, 1, 3, 3. The set is $\{1, 3\}$, the size is 2, `count(1)` is 1 and `count(2)` is 0.
+
+Why it works:
+1. Inserting a value that is already present changes nothing. Inserting a new value adds it.
+2. Base case: the empty set holds no values. Step: if after $i$ insertions the set holds exactly the distinct values inserted so far, one more insertion keeps that true, by step 1.
+3. So after $n$ insertions the set holds each distinct value once. Then `size()` is the distinct count and `count(x)` tells whether $x$ occurred. The costs are in the cost table.
+
+This proof needs: (1) only whether a value occurs matters, not how many times. If counts matter, use a `map` of counts (Theorem 0.6.3). (2) The values can be compared (numbers, strings, pairs), or hashed for `unordered_set`.
+
+Common mistake: using a set when the answer depends on how often a value occurs. In 3 1 3 3 the value 3 occurs three times, but the set says `count(3)` is 1. The fix is a `map` from value to count.
+
+<TheoremCode unit="0.6/thm-2" />
+
+As a template, here is one function for three query types: add, ask, and count distinct.
+
+<CodeSnippet unit="0.6/distinct-queries" />
+
+Dry run on 8 queries: `3` gives 0 (empty set). `2 5` gives NO. `1 5` adds 5. `1 5` changes nothing. `1 1000000000` adds a big value. `2 5` gives YES. `2 0` gives NO. `3` gives 2. Each query is $O(\log n)$.
+
+Alternative: `unordered_set<int>` has the same member functions (see the hash table caveat in the STL section). If the values are at most about $10^6$, a `vector<bool>` indexed by value is simpler still.
+
 ## Achieve target sum: card game
 
 Question: two players P_A and P_B are playing a card game. There are n cards placed on a table. Each card has two scores (A_i / B_i).
@@ -1135,6 +1182,54 @@ Tested: `3 3` / `0 3 0` → `4`. `5 4` / `2 0 2 0 2` → `4`.
 
 Note: prefix sums stored in `int` can overflow, so use long long. `unordered_map` gives O(n) on average, but some judges have anti-hash tests (inputs built to make it slow), so `map` is the safe choice.
 
+**Theorem 0.6.3 (counting with a map).** Process $a_1, \dots, a_n$ in order. Before the step for $a_i$, let `cnt[x]` be the number of indices $j < i$ with $a_j = x$ (a missing key counts as 0). Then:
+1. After `cnt[a_i]++` for every $i$, `cnt[x]` is the number of occurrences of $x$.
+2. The number of pairs $j < i$ with $a_j = a_i$ is the sum over $i$ of `cnt[a_i]` read just before it is incremented. This equals $\sum_x c_x (c_x - 1)/2$, where $c_x$ is the final count of $x$.
+
+All of this costs $O(n \log n)$ with `map`.
+
+Small example first: $a = (3, 1, 3, 3)$. The counts read before each increment are 0, 0, 1, 2, so there are 3 pairs of equal values. Also $c_3 = 3$ gives $3 \cdot 2 / 2 = 3$.
+
+Why it works:
+1. Part 1: each index increments the count of its own value exactly once.
+2. Part 2: when $a_i$ is processed, `cnt[a_i]` counts exactly the earlier indices with the same value.
+3. So adding it over all $i$ counts each pair $j < i$ once, at its larger index.
+4. A value with $c_x$ copies contributes $0 + 1 + \dots + (c_x - 1) = c_x (c_x - 1)/2$.
+
+This proof needs: (1) the answer depends only on the count per key. (2) Reading `cnt[x]` with `[]` inserts the key $x$ with value 0 if it is missing. To only test presence, use `count` or `find`, so the map does not fill with zero entries. (3) The pair count can reach $n^2/2 = 2 \cdot 10^{10}$ for $n = 2 \cdot 10^5$, so use `long long`.
+
+<TheoremCode unit="0.6/thm-3" />
+
+Template: equal pairs, and the most frequent value (the smallest one on a tie).
+
+<CodeSnippet unit="0.6/equal-pairs" />
+
+Before counting $a_i$, `cnt[a]` is the number of earlier equal elements, so adding it to `pairs` counts every equal pair once, at its later index. Afterwards the map holds the final count of every value. Going through it in increasing key order and keeping only strictly larger counts gives the most frequent value, and the smallest on ties. With `unordered_map` the iteration order is arbitrary, so the tie rule needs an explicit comparison of values.
+
+Common mistake: counting after incrementing, `cnt[a]++; pairs += cnt[a];`. For input `6` then `1 0 0 3 -3 2` the output is `7 0` instead of `1 0`. After the increment `cnt[a]` includes the element itself, so each of the 6 elements pairs with itself, and the one real pair (the two zeros) is added on top. The fix is to read the count before incrementing.
+
+### Worked example: Sum of Two Values
+
+[CSES 1640 Sum of Two Values](https://cses.fi/problemset/task/1640). An array of $n \le 2 \cdot 10^5$ values up to $10^9$ and a target $x$. Print two different positions whose values add up to $x$, or IMPOSSIBLE.
+
+Example: values 2 7 5 1 and $x = 8$. The positions 2 and 4 work, because $7 + 1 = 8$.
+
+The idea, in six steps.
+1. Budget. $n = 2 \cdot 10^5$, so all pairs are about $2 \cdot 10^{10}$, far over $10^8$. We need about $O(n \log n)$.
+2. Tools. A pair loop is the first candidate, and the budget rejects it. Second idea: for each position $j$ the partner must have the value $x - a_j$. So the question is "has the value $x - a_j$ appeared before?". That is membership in a set or a map (Theorems 0.6.2 and 0.6.3).
+3. Deciding property. A set of earlier values says whether a partner exists, but the output needs its position. So the container maps each value to a position where it occurred: a `map` from value to first position. Each step is one lookup and at most one insertion.
+4. Proof. Before position $j$ is processed, the map holds every value among $a_1, \dots, a_{j-1}$ with the first position where it occurs. If some $i < j$ has $a_i + a_j = x$, then $a_i = x - a_j$ is in the map, so it is found at $j$. So every valid pair is found at its larger position. If the loop ends without printing, there is no pair. The first $j$ that succeeds is the smallest $j$ of any valid pair.
+5. Cost. $n$ steps of $O(\log n)$, about $2 \cdot 10^5 \cdot 18 = 3.6 \cdot 10^6$ steps.
+6. Decision: one pass with a map.
+
+Trace on 2 7 5 1 with $x = 8$. Position 1, value 2: need 6, not in the map. Store 2 at position 1. Position 2, value 7: need 1, not there. Store. Position 3, value 5: need 3, not there. Store. Position 4, value 1: need 7, found at position 2. Print `2 4`.
+
+<CodeSnippet unit="0.6/example-1" />
+
+Cost: $O(n \log n)$ time and $O(n)$ memory.
+
+Common mistake: storing the value before looking for the partner. For values 3 5 and $x = 6$, position 1 finds its own 3, so the output is `1 1` instead of IMPOSSIBLE. The code looks up first and stores after, and it uses `find` so that no empty entries appear.
+
 ## Top K elements in priority queue
 
 Question: K is fixed. The data structure supports insert(x), and a query that returns the sum of the K largest elements so far.
@@ -1334,6 +1429,29 @@ Tested: k = 2, insert 5, 3, 7 gives `12`, and then remove(7) gives `8` (5+3). 20
 Trace for k = 2. insert(5): top \{5\}, sum 5. insert(3): top \{3 5\}, sum 8. insert(7): top \{3 5 7\} has size 3, so the smallest (3) moves to removed: top \{5 7\}, removed \{3\}, sum 12. remove(7): 7 is in top, so top \{5\}, sum 5. The size is 1 &lt; k, so the largest of removed (3) moves back: top \{3 5\}, sum 8.
 
 T.C. = O(log n) per operation, M.C. = O(n) because every number is stored once. Typical mistake: remove(x) for a value that is in both parts (duplicates). Equal values are interchangeable, so removing from top first is correct.
+
+**Theorem 0.6.5 (priority queues).** A process holds a collection of numbers. At each step it removes the largest one and may insert new numbers. A `priority_queue` does each step with `top`, `pop` and `push` in $O(\log n)$, so $k$ steps cost $O(k \log n)$, and the removed numbers are exactly the ones the process removes.
+
+Small example first: halve the largest of $(8, 3, 5)$ (rounding down), three times. Take 8, push 4. Take 5, push 2. Take 4, push 2. What is left is 3, 2, 2, with sum 7.
+
+Why it works:
+1. `top` always returns a largest element stored, `pop` removes it, and `push` adds an element.
+2. So after every step the queue holds exactly the collection of the process. The element removed is a largest one, as the process requires. Equal values are interchangeable, so ties do not matter.
+3. The costs are in the cost table.
+
+This proof needs: (1) the statement says which element to take, always the largest or always the smallest. (2) For the smallest, use `priority_queue<long long, vector<long long>, greater<long long>>`, or push negated values. (3) Only the extreme is needed. A question like "the largest element at most $x$" needs an ordered set (Theorem 0.6.4).
+
+<TheoremCode unit="0.6/thm-5" />
+
+Template: always merge the two smallest piles, paying their total.
+
+<CodeSnippet unit="0.6/merge-smallest" />
+
+Dry run on piles 1 2 3 4. Merge 1 and 2, cost 3, piles 3 3 4. Merge 3 and 3, cost 6, piles 4 6. Merge 4 and 6, cost 10. Total 19. There are $n - 1$ merges of $O(\log n)$ each. Instead of `greater`, you can push negated sizes into the default queue and negate again when reading.
+
+Common mistake 1: the default queue `priority_queue<long long> pq;` puts the largest on top, so the program merges the two largest piles. For `6` then `5 9 4 4 2 2` it prints 104 instead of 64. The fix is `greater<long long>`.
+
+Common mistake 2: the cost in `int`. Merged piles hold sums of up to $n$ sizes of $10^9$. For 7 piles `41471738 607553668 249426361 521102281 193987841 445173526 835177982` the output is `-1151742813` instead of `7438191779`. The fix is `long long`. Before choosing a type, estimate the largest value the counter can reach.
 
 ## Median with insert and remove
 
@@ -1845,6 +1963,36 @@ Trace of this version: fill(1,5) stores 1→5. fill(4,9): firstReaching(3) finds
 
 Tested: fill(1,5), fill(4,9) → `[1,9]`. clear(3,4) → `[1,2] [5,9]`. checkPoint(4) false, checkPoint(6) true, checkAnyInside(3,4) false, checkAnyInside(3,5) true. 3000 random games match a plain boolean array.
 
+**Theorem 0.6.4 (ordered lookups).** In a `set` or `multiset` $s$:
+1. `s.lower_bound(x)` points to the smallest element $\ge x$ and `s.upper_bound(x)` to the smallest element $> x$. Either is `s.end()` if there is none.
+2. The largest element $\le x$ is the one just before `s.upper_bound(x)`, if that is not `s.begin()`. The largest element $< x$ is the one just before `s.lower_bound(x)`.
+3. The smallest element is `*s.begin()` and the largest is `*prev(s.end())`.
+
+Each costs $O(\log n)$, and they stay correct after any number of insertions and erasures.
+
+Small example first: in $\{2, 5, 9\}$ with $x = 6$, both `lower_bound` and `upper_bound` point to 9, so the largest element $\le 6$ is the one before, 5. For $x = 1$, `upper_bound` is `begin()`, so no element is $\le 1$.
+
+Why it works:
+1. The container keeps its elements in increasing order at all times.
+2. Part 1 is the definition of the two member functions.
+3. Part 2: all elements before `upper_bound(x)` are $\le x$ and all elements from it on are $> x$. So the last element before it is the largest $\le x$. It exists exactly when the iterator is not the first position.
+4. The same argument with $\ge$ gives the largest element $< x$ before `lower_bound(x)`.
+5. Part 3: the first and last elements in increasing order are the smallest and largest.
+
+This proof needs: (1) the question is about order (nearest, smallest, largest) and the collection changes between questions. A sorted `vector` would cost $O(n)$ per insertion. (2) Check `it != s.begin()` before `prev(it)`, and `it != s.end()` before `*it`. (3) In a `multiset`, `s.erase(x)` removes every copy. To remove one copy use `s.erase(s.find(x))`.
+
+<TheoremCode unit="0.6/thm-4" />
+
+Template: a multiset with add, remove one copy, largest $\le x$ and smallest $\ge x$.
+
+<CodeSnippet unit="0.6/nearest-in-set" />
+
+Dry run on the first 11 queries. `3 5` on the empty set gives -1. Add 5, add 5, add 9. `3 8`: `upper_bound(8)` is 9, the one before is 5, so 5. `4 6`: `lower_bound(6)` is 9. Remove one 5: the set is $\{5, 9\}$. `3 5` gives 5. Remove the other 5: the set is $\{9\}$. `3 8`: `upper_bound(8)` is `begin()`, so -1. `4 10`: `lower_bound(10)` is `end()`, so -1.
+
+Alternative: store the negated values, and ask for the smallest element $\ge -x$ with `s.lower_bound(-x)`. The `prev(s.upper_bound(x))` form needs no sign change, but it needs the `begin` check.
+
+Common mistake: `cout << *prev(it)` with no check. If the first query asks for 8 while the multiset is empty, `upper_bound(8)` is `begin()`, `prev(begin())` is before the first element, and the program crashes. The correct output is -1. The fix is to test `it == s.begin()` first.
+
 ## Histogram problem (Hacker Cup)
 
 This problem is based on the previous idea. It comes from the Facebook (now Meta) Hacker Cup, a yearly programming contest.
@@ -1905,6 +2053,12 @@ Cost: the update touches only the pieces inside [l, r), but the area and perimet
 
 Tested: add [0,4) h=3 → area 12, perimeter 14. add [2,6) h=5 → 26, 22. add [3,5) h=2 → 26, 22 (nothing changes, already inside). 2000 random games match a unit-grid brute force.
 
+## Recognition cards
+
+A recognition card names one container and the question it answers fast. Its decisive property is what must be true about the problem. Weak signals suggest the card, and kill signals rule it out.
+
+<Cards topic="0.6" />
+
 ## Quick revision
 
 - The STL has algorithms and containers. A range is [start, end). arr[i] is the same as *(arr+i).
@@ -1923,6 +2077,45 @@ Tested: add [0,4) h=3 → area 12, perimeter 14. add [2,6) h=5 → 26, 22. add [
 - Segments covering y: the answer is N - (the number of R_i &lt; y) - (the number of L_i > y), in O((N+Q) log N).
 - Fill, clear and check: keep disjoint segments in a sorted set or map. Draw the cases first.
 - Histograms: keep a map of heights. The area is Σ (width × height), and the perimeter is 2 × covered width + Σ |height jump|.
+- Theorem 0.6.1: a doubling vector copies fewer than $2n$ elements in $n$ calls of `push_back`, so it is $O(1)$ on average.
+- Theorem 0.6.2: a set holds each distinct value once. `size()` is the distinct count and `count(x)` is membership, in $O(\log n)$.
+- Theorem 0.6.3: read `cnt[a]` before incrementing it. The sum is the number of equal pairs, $\sum c_x (c_x - 1)/2$, in `long long`.
+- Theorem 0.6.4: largest $\le x$ is `prev(upper_bound(x))` with a `begin` check. Smallest $\ge x$ is `lower_bound(x)` with an `end` check.
+- Theorem 0.6.5: a process that takes the largest again and again is a `priority_queue`, $O(k \log n)$ for $k$ steps.
+- Theorem 0.6.6: push positions of `(`, pop at `)`. Each `)` matches the nearest unmatched `(`, and pairs never cross.
+
+## Check yourself
+
+### Identification drill
+
+Each item names a problem without saying which card decides it. Choose a card, write the property you checked, then reveal the answer.
+
+<Drill topic="0.6" />
+
+### Look-alike pairs
+
+Two problems that read almost the same but need different tools. The flipping difference is the one detail that changes the decision.
+
+<LookalikePairs topic="0.6" />
+
+### Self-test
+
+Answer each question on paper before opening its answer.
+
+<SelfTest topic="0.6" />
+
+### Checkpoint
+
+Three problems in 90 minutes. Pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items. After passing, review sets become due after 3, 14 and 60 days.
+
+<Checkpoint topic="0.6" />
+
+### Decision map update
+
+How this topic's cards are chosen against the tools you already have.
+
+<DecisionMapUpdate topic="0.6" />
+
 
 ## Practice problems
 

@@ -6,6 +6,15 @@ topic: "2.4"
 ---
 import TopicHeader from '../../../components/TopicHeader.astro';
 import Ladder from '../../../components/Ladder.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="2.4" />
 
@@ -14,6 +23,18 @@ import Ladder from '../../../components/Ladder.astro';
 The contribution technique means this: instead of building every large object (every triplet, every subarray, every substring) and evaluating it, ask how much each small piece adds to the answer, then add those amounts.
 
 Why this matters: an array of n = $10^5$ elements has about n(n+1)/2 ≈ 5×$10^9$ subarrays. A program can do roughly $10^8$ simple operations per second, so looking at every subarray one by one is far too slow. Counting what each of the n elements contributes takes only n steps.
+
+Here is a second small problem, this time from probability. A random order of $n = 10^5$ people is chosen, and all $n!$ orders are equally likely. On average, how many people stand in their own original place? Listing all $n!$ orders is impossible beyond $n = 12$ or so. Counting the orders with exactly $k$ people in place needs inclusion-exclusion for every $k$ (topic 2.3), which is heavy. But the answer takes one line. Each person stays in place with probability $\frac{1}{n}$, so the average number of people in place is $n \cdot \frac{1}{n} = 1$.
+
+The rule behind it: an expected count is a sum of probabilities, one for each event, even when the events depend on each other. A total over all subarrays, subsets or pairs is the same idea without the averaging: a sum over elements of the value times the number of configurations in which the element counts. Two more tools complete the picture. Waiting times have a formula of their own, $\frac{1}{p}$ trials until a success. And the expected value of a non-negative whole number is $E[X] = \sum_{x \ge 1} P(X \ge x)$, which makes maxima easy.
+
+What you need before this lesson:
+
+<WhatYouNeed topic="2.4" />
+
+This lesson does not cover:
+- Expected values found by a recurrence over states ("from state $s$, the expected remaining time is ..."). That needs a table of answers, which is the dynamic programming of Phase 3.
+- Variance, conditional expectation as a topic of its own, Markov chains and continuous distributions. They are not part of this course.
 
 Terms used in this lesson:
 - subarray = continuous part of array, like `arr[2..5]` (substring = same for strings)
@@ -28,14 +49,29 @@ Terms used in this lesson:
 - Fenwick tree (also called BIT, binary indexed tree) = a small structure that keeps counts or sums and answers "sum of the first p cells" and "add to one cell", both in O(log n) time
 - freq = frequency map, it stores how many times each value was seen so far
 
+Terms from probability, used in the second half of this lesson:
+- **finite probability space** = a finite set of outcomes, each with a probability $P(\omega) \ge 0$, all adding up to 1. When all outcomes are equally likely, $P(\omega)$ is 1 over the number of outcomes. An **event** is a set of outcomes, and $P(A)$ is the sum of $P(\omega)$ over the outcomes in $A$. Example: for a fair die, $P(\text{even}) = \frac{3}{6}$.
+- **random variable** = a number $X(\omega)$ given to each outcome. Its **expected value** is $E[X] = \sum_\omega X(\omega) P(\omega)$, the average weighted by probability. Example: for a die, $E[X] = \frac{1 + 2 + 3 + 4 + 5 + 6}{6} = 3.5$.
+- **indicator** of an event $A$ = the variable $\mathbb{1}_A$ that is 1 on the outcomes of $A$ and 0 elsewhere.
+- **independent** events = events with $P(A \text{ and } B) = P(A) P(B)$. Example: two dice rolls, or two coin flips.
+
 Contents:
 - Contribution technique (the map)
+  - Linearity of expectation
+  - Counting by indicators
+  - Tail sums
+  - Waiting times
+  - Worked example: expected salary (ABC326 E)
 - Atomic item contribution: triplets
+- Contribution as a theorem, sum of widths of all subsets, worked example: Cell Distance
 - Atomic item contribution: inversions of all subarrays
+- Expected inversions of a random order
 - Contribution at pivot: Extension
 - Contribution at pivot: DS usage
 - Atomic item again: distinct characters in all substrings
+- Recognition cards
 - Quick revision
+- Check yourself
 - Practice problems
 
 ## Contribution technique
@@ -48,6 +84,127 @@ The figure below is the map of this lesson. Each branch is one way of asking "wh
 *Two branches: atomic means one small item, and pivot means fixing the end. The pivot branch splits again into extension (extend the contribution of the previous thing into the next thing) and DS usage.*
 
 Atomic item contribution: pick the smallest thing that adds to the answer (one element, one pair, one character) and count how many times it is added. Contribution at pivot: fix one position, usually the end of the range, and answer the question "what ends here?". There are two ways to do that. Extension reuses the answer of the previous end. DS usage (data structure usage) keeps the earlier elements in a map, set or tree and searches in it.
+
+### Linearity of expectation
+
+So far every number was exact. Now the numbers are random and we want their average. Small example first: roll two dice and ask for the average sum. The brute force lists the 36 outcomes. Each die shows each face in 6 of them, so the 36 sums add up to $6 \cdot 21 + 6 \cdot 21 = 252$, and $252 / 36 = 7$. The better way: one die averages $3.5$, so two dice average $3.5 + 3.5 = 7$, with no list at all.
+
+This shortcut is true even when the two numbers depend on each other. Let $X$ be one die and $Y = 7 - X$ (the number on the opposite face). $Y$ is decided completely by $X$, yet $E[X + Y] = E[7] = 7 = 3.5 + 3.5$. Products are different. For $Y = X$ we get $E[X \cdot X] = \frac{1 + 4 + 9 + 16 + 25 + 36}{6} = \frac{91}{6} \approx 15.17$, which is not $3.5 \cdot 3.5 = 12.25$.
+
+**Theorem 2.4.1 (linearity of expectation).** For random variables $X$ and $Y$ on the same experiment and a constant $c$, $E[X + Y] = E[X] + E[Y]$ and $E[cX] = c\,E[X]$. Hence $E[X_1 + \dots + X_n] = E[X_1] + \dots + E[X_n]$. No independence is needed.
+
+In plain words: the average of a sum is the sum of the averages, even when the parts depend on each other. So an average over a huge set of outcomes can be found by averaging each part separately.
+
+Small example: two dice, $E[\text{sum}] = 3.5 + 3.5 = 7$, without listing the 36 outcomes.
+
+Why it works:
+1. $E[X + Y] = \sum_\omega (X(\omega) + Y(\omega)) P(\omega)$, by the definition of expected value.
+2. Split the sum in two: $\sum_\omega X(\omega) P(\omega) + \sum_\omega Y(\omega) P(\omega) = E[X] + E[Y]$.
+3. A constant factor comes out of the sum the same way, so $E[cX] = c\,E[X]$.
+4. Induction on the number of terms gives the sum of $n$ variables. $\square$
+
+This proof needs: (1) all variables are defined on the same outcomes, that is, the same random experiment; (2) nothing about independence, because the variables may depend on each other in any way (products are different: $E[XY] = E[X]E[Y]$ does need independence); (3) a finite space, so the sums are finite (infinite waiting times use Theorem 2.4.4).
+
+<TheoremCode unit="2.4/thm-1" />
+
+### Counting by indicators
+
+Small example first: a random order of 4 people. How many stand in their own place on average? The brute force lists the 24 orders. Position $i$ is in place in $3! = 6$ of them, so the 4 positions together give $4 \cdot 6 = 24$ people in place over 24 orders, an average of 1. The better way: each position stays with probability $\frac{1}{4}$, so the average is $4 \cdot \frac{1}{4} = 1$.
+
+The events depend on each other. With three letters in three envelopes, if two letters are in the right envelope, the third one must be too. Linearity does not care.
+
+**Theorem 2.4.2 (expected counts).** $E[\mathbb{1}_A] = P(A)$. So if $X$ counts how many of the events $A_1, \dots, A_n$ happen, then $E[X] = P(A_1) + \dots + P(A_n)$.
+
+In plain words: the expected number of events that happen is the sum of their probabilities, because each event is a 0-or-1 variable whose average is its probability. The events may depend on each other.
+
+Small example: fixed points of a random order of $n$ people, $n \cdot \frac{1}{n} = 1$. Inversions of a random order are worked out in the section "Inversions" below.
+
+Why it works:
+1. $E[\mathbb{1}_A] = \sum_{\omega \in A} 1 \cdot P(\omega) + \sum_{\omega \notin A} 0 \cdot P(\omega) = P(A)$.
+2. A count is a sum of indicators: $X = \mathbb{1}_{A_1} + \dots + \mathbb{1}_{A_n}$.
+3. Apply linearity (Theorem 2.4.1). $\square$
+
+This proof needs: (1) the quantity is a count, or a weighted count $\sum w_i \mathbb{1}_{A_i}$, which gives $\sum w_i P(A_i)$; (2) each single probability $P(A_i)$ can be computed, often by symmetry.
+
+<TheoremCode unit="2.4/thm-2" />
+
+### Tail sums
+
+Small example first: the larger of two dice. The brute force lists 36 outcomes. The value $v$ is the larger one in $2v - 1$ of them, so the total is $1 + 6 + 15 + 28 + 45 + 66 = 161$ and the average is $\frac{161}{36} \approx 4.47$. That is fine for two dice, but for $k = 10^9$ dice the list has $m^k$ outcomes. We need one simple question per value instead: "is the maximum at least $x$?"
+
+For two dice, $P(\max \ge x) = 1 - \left(\frac{x-1}{6}\right)^2$, because the maximum is below $x$ only when both dice are below $x$. For $x = 1, \dots, 6$ this is $\frac{36}{36}, \frac{35}{36}, \frac{32}{36}, \frac{27}{36}, \frac{20}{36}, \frac{11}{36}$. They add up to $\frac{161}{36}$, the same answer.
+
+**Theorem 2.4.4 (tail sum).** If $X$ takes values in $\{0, 1, 2, \dots\}$, then $E[X] = \sum_{x \ge 1} P(X \ge x)$. In particular, for independent $X_1, \dots, X_k$ with values in $\{1, \dots, m\}$, $P(\max X_i \le x) = \prod_i P(X_i \le x)$, so $E[\max] = \sum_{x=1}^{m} \left(1 - \prod_i P(X_i \le x - 1)\right)$.
+
+In plain words: the expected value of a non-negative whole number is the sum over $x \ge 1$ of the probability that it is at least $x$. For a maximum of independent draws, the probability that it is at most $x$ is a product, so it is easy to find.
+
+Small example: the larger of two dice. $P(\max \le x) = \left(\frac{x}{6}\right)^2$, so $E[\max] = 6 - \frac{0 + 1 + 4 + 9 + 16 + 25}{36} = 6 - \frac{55}{36} = \frac{161}{36} \approx 4.47$.
+
+Why it works:
+1. Write $X = \sum_{x \ge 1} [X \ge x]$. A value $v$ is counted once for each $x = 1, \dots, v$, which is $v$ times.
+2. Take expectations. For a finite range this is linearity. For values without an upper bound the same exchange of sums holds, because all terms are non-negative.
+3. For the maximum: $\max \le x$ exactly when every $X_i \le x$, and independence turns the probability of all of them into the product. $\square$
+
+This proof needs: (1) non-negative whole-number values (for other values, sum $P(X \ge x)$ over the distinct values, with the gaps between them as weights); (2) independence of the $X_i$ for a maximum or minimum, such as dice or separate draws. With dependent values, $P(\max \le x)$ needs a count of its own.
+
+<TheoremCode unit="2.4/thm-4" />
+
+Now the version that prints the answer modulo a prime. When the answer is a fraction $\frac{P}{Q}$, compute every probability as a residue modulo the prime, with the inverse from Theorem 2.2.4. Sums and products of residues stay valid, so the residue of the exact expected value comes out.
+
+Problem: $k$ numbers are drawn independently and uniformly from $1, \dots, m$ ($m \le 10^6$, $k \le 10^9$). Print the expected maximum modulo $998244353$. The list of $m^k$ outcomes is impossible. The tail sum has $m$ terms, each needing one fast power of about 30 rounds, so about $3 \cdot 10^7$ steps. Dry run for $m = 6$, $k = 2$: the terms are $1, \frac{35}{36}, \frac{32}{36}, \frac{27}{36}, \frac{20}{36}, \frac{11}{36}$, and the sum $\frac{161}{36}$ prints as $637767230$.
+
+<CodeSnippet unit="2.4/expected-max" />
+
+T.C. = $O(m \log k)$, memory $O(1)$. The same sum can be regrouped as $E[\max] = \sum_x x \cdot P(\max = x)$ with $P(\max = x) = \left(\frac{x}{m}\right)^k - \left(\frac{x-1}{m}\right)^k$. It is the same number.
+
+Common mistake: shifting the tail sum by one, that is, using "all draws at most $x$" instead of "all draws at most $x - 1$". Input `2 6` (6 draws from $\{1, 2\}$) must give $\frac{127}{64}$, because the maximum is 1 only with probability $\frac{1}{64}$. The shifted code gives $\frac{63}{64}$. Fix: $P(X \ge x) = 1 - P(\text{all} \le x - 1)$. A quick check is $m = 1$, where the answer must be 1.
+
+### Waiting times
+
+Small example first: roll a die until a 6 appears. The brute force adds $t \cdot P(T = t)$ for $t = 1, 2, 3, \dots$ with $P(T = t) = \left(\frac{5}{6}\right)^{t-1} \frac{1}{6}$, an infinite sum. The better way is the tail sum above: $T \ge t$ means the first $t - 1$ rolls all failed, so $P(T \ge t) = \left(\frac{5}{6}\right)^{t-1}$, and the sum is a geometric series that equals 6.
+
+**Theorem 2.4.5 (waiting times).**
+1. If independent trials each succeed with probability $p > 0$, the expected number of trials up to and including the first success is $\frac{1}{p}$.
+2. If a process passes through stages $1, \dots, k$ in order, and in stage $j$ each independent trial ends the stage with probability $p_j > 0$, the expected total number of trials is $\frac{1}{p_1} + \dots + \frac{1}{p_k}$.
+3. (Coupon collector.) Drawing uniformly from $n$ kinds until every kind has appeared takes $n \left(1 + \frac{1}{2} + \dots + \frac{1}{n}\right)$ draws on average.
+
+In plain words: repeating independent trials with success probability $p$ until the first success takes $\frac{1}{p}$ trials on average. A process made of stages one after another takes the sum of the stage times, which gives the coupon collector value.
+
+Small example: a die until a 6 takes 6 rolls. All six faces take $6 \left(1 + \frac{1}{2} + \dots + \frac{1}{6}\right) = 6 \cdot 2.45 = 14.7$ rolls.
+
+Why it works:
+1. Part 1. The first success comes after trial $t - 1$ exactly when the first $t - 1$ trials fail, so $P(T \ge t) = (1 - p)^{t-1}$.
+2. By Theorem 2.4.4, $E[T] = \sum_{t \ge 1} (1 - p)^{t-1} = \frac{1}{1 - (1 - p)} = \frac{1}{p}$, a geometric series.
+3. Part 2. The total is the sum of the stage lengths. Apply part 1 to each stage and add (linearity).
+4. Part 3. After $j$ kinds have been seen, a draw shows a new kind with probability $\frac{n - j}{n}$, so stage $j$ takes $\frac{n}{n - j}$ draws on average. Add over $j = 0, \dots, n - 1$. $\square$
+
+This proof needs: (1) independent trials with a fixed success probability inside each stage; (2) stages that come one after another. If the probability depends on more than the stage number, for example on the whole history, a recurrence over states is needed, which is Phase 3.
+
+<TheoremCode unit="2.4/thm-5" />
+
+Template: you own $c$ of $n$ kinds and want the expected number of further draws, modulo $998244353$ ($n \le 10^6$). Simulation gives only an estimate, not a residue. The stage sum has one term per missing kind, each with one inverse, about $n \cdot 30$ steps. Dry run for $n = 6$, $c = 0$: $\frac{6}{6} + \frac{6}{5} + \frac{6}{4} + \frac{6}{3} + \frac{6}{2} + \frac{6}{1} = 14.7$. With $c = 3$ of $n = 4$, only the last stage is left: $\frac{4}{1} = 4$.
+
+<CodeSnippet unit="2.4/coupon-collector" />
+
+T.C. = $O(n \log p)$ because of one fast power per stage (or $O(n)$ with a table of inverses), memory $O(1)$.
+
+Common mistake: ignoring the coupons already owned and looping from $j = 0$. Input `4 3` must print 4, but the loop from 0 adds the stages $j = 0, 1, 2$ as well and gives $4\left(1 + \frac{1}{2} + \frac{1}{3} + \frac{1}{4}\right) = \frac{25}{3}$. Fix: start the loop at $j = c$.
+
+### Worked example: expected salary (ABC326 E)
+
+Example: [AtCoder ABC326 E, Revenge of "The Salary of AtCoder Inc."](https://atcoder.jp/contests/abc326/tasks/abc326_e). Start with $x = 0$ and roll a fair $N$-sided die again and again. While the roll $y$ is bigger than $x$, pay $A_y$ and set $x = y$. Stop at the first roll $y \le x$. Print the expected total pay modulo $998244353$, with $N \le 3 \cdot 10^5$.
+
+Idea. Budget: $N = 3 \cdot 10^5$ allows $O(N)$ or $O(N \log N)$. The process can follow exponentially many paths, so they cannot be listed. Tools: the pay is a sum of $A_y$ times "$A_y$ is paid", so by Theorem 2.4.2 the expected pay is $\sum_y A_y \cdot P(A_y \text{ is paid})$, although the events are far from independent. Deciding property: each single probability needs a formula. Since $x$ only increases, $A_y$ is paid exactly when the rolls so far are some increasing values $t_1 < \dots < t_j < y$, followed by $y$.
+
+Fix $y$ and a set $T \subseteq \{1, \dots, y - 1\}$ of size $j$. The rolls "the elements of $T$ in increasing order, then $y$" have probability $\left(\frac{1}{N}\right)^{j+1}$, because the rolls are independent. These cases are disjoint for different $T$, so by the binomial theorem (topic 2.3)
+
+$$P(A_y \text{ is paid}) = \sum_{j=0}^{y-1} \binom{y-1}{j} \frac{1}{N^{j+1}} = \frac{1}{N}\left(1 + \frac{1}{N}\right)^{y-1}.$$
+
+Trace for $N = 3$, $A = (3, 2, 6)$: $P$ is $\frac{1}{3}, \frac{4}{9}, \frac{16}{27}$, so $E = 3 \cdot \frac{1}{3} + 2 \cdot \frac{4}{9} + 6 \cdot \frac{16}{27} = \frac{49}{9}$, which prints as $776412280$. (Check $y = 2$ by hand: first roll 2, probability $\frac{1}{3}$, or first roll 1 then 2, probability $\frac{1}{9}$, total $\frac{4}{9}$.)
+
+<CodeSnippet unit="2.4/example-1" />
+
+Cost: $O(N)$ after one inverse of $N$, memory $O(1)$ besides the array. Common mistake: using the exponent $y$ instead of $y - 1$. For $N = 1$, $A = (5)$ the answer is 5, because the first roll always pays, but the exponent $y$ gives $10$.
 
 ## Atomic item contribution
 
@@ -153,6 +310,55 @@ long long sumOfDifferences(vector<int> arr) {
 }
 ```
 
+### Contribution as a theorem
+
+Small example first: the sum of the sums of all subarrays of $(1, 2, 3)$. Listing the six subarrays gives $1 + 2 + 3 + 3 + 5 + 6 = 20$. By elements: index $i$ lies in $(i+1)(n-i)$ subarrays, which is $3, 4, 3$, so the total is $1 \cdot 3 + 2 \cdot 4 + 3 \cdot 3 = 20$. Another one: the sum of the maxima of all non-empty subsets of the sorted distinct array $(1, 2, 3)$. The seven subsets have maxima $1, 2, 3, 2, 3, 3, 3$, total 17. By elements: $a_i$ is the maximum of the subsets that hold it and only smaller elements, which is $2^i$ subsets, so $1 \cdot 1 + 2 \cdot 2 + 3 \cdot 4 = 17$.
+
+**Theorem 2.4.3 (contribution technique).** Let $\mathcal{C}$ be a finite set of configurations and $f(c) = \sum_i v_i \cdot [\text{element } i \text{ counts in } c]$. Then
+
+$$\sum_{c \in \mathcal{C}} f(c) = \sum_i v_i \cdot N_i,$$
+
+where $N_i$ is the number of configurations in which element $i$ counts. If all configurations are equally likely, the expected value is this total divided by $|\mathcal{C}|$.
+
+In plain words: a total over many configurations is a sum over elements of the value times the number of configurations in which it counts. Swapping the order of the two sums means the configurations never have to be listed.
+
+Small example: for $(1, 2, 3)$ the total is 20 over 6 subarrays, so the average subarray sum is $\frac{20}{6} = \frac{10}{3}$.
+
+Why it works:
+1. Exchange the order of the two sums: $\sum_c \sum_i v_i [i \text{ counts in } c] = \sum_i v_i \sum_c [i \text{ counts in } c]$.
+2. The inner sum is $N_i$, so the total is $\sum_i v_i N_i$.
+3. Dividing by $|\mathcal{C}|$ is linearity with $P(c) = \frac{1}{|\mathcal{C}|}$. $\square$
+
+This proof needs: (1) the value of a configuration is a sum over elements of a value times a condition on that element (a minimum, a maximum, "this pair is in the subarray"); (2) $N_i$ can be counted for each element, by positions ($(i+1)(n-i)$ subarrays contain index $i$), by sorting ($2^i$ subsets have $a_i$ as maximum), or by the nearest greater elements on the left and right (topic 1.6; for equal values treat one side as strictly greater and the other as greater or equal, so no subarray is counted twice); (3) totals grow fast, so use `long long` or a modulus.
+
+<TheoremCode unit="2.4/thm-3" />
+
+### Sum of widths of all subsets
+
+Question: the sum of (maximum minus minimum) over all non-empty subsets of an array, modulo $10^9 + 7$, with $n \le 2 \cdot 10^5$. There are $2^n - 1$ subsets, so listing them is impossible. After sorting, $a_i$ is the maximum of $2^i$ subsets and the minimum of $2^{n-1-i}$ subsets, so the answer is $\sum_i a_i (2^i - 2^{n-1-i})$.
+
+Dry run for sorted $(1, 2, 3)$: maxima total $1 \cdot 1 + 2 \cdot 2 + 3 \cdot 4 = 17$, minima total $1 \cdot 4 + 2 \cdot 2 + 3 \cdot 1 = 11$. The answer is $17 - 11 = 6$. Check by the formula: $1(1 - 4) + 2(2 - 2) + 3(4 - 1) = -3 + 0 + 9 = 6$.
+
+<CodeSnippet unit="2.4/subset-widths" />
+
+T.C. = $O(n \log n)$ for the sort and $O(n)$ for the powers of 2, memory $O(n)$. Another way: compute the sum of maxima and the sum of minima separately. The minima are the maxima of the negated array, so one function serves both.
+
+Common mistake: computing the contributions before sorting. Input `2`, then `5 4`, prints $-1$ (that is $1000000006$) instead of 1, because "$a_i$ is the maximum of $2^i$ subsets" holds only when the elements before it are smaller. Sorted, $4 \cdot (1 - 2) + 5 \cdot (2 - 1) = 1$. Another common mistake: forgetting the minima. Input `1`, then `2`, prints 2 instead of 0, because a single element is both the maximum and the minimum. Fix: each element has two contributions, $+2^i$ as a maximum and $-2^{n-1-i}$ as a minimum.
+
+### Worked example: Cell Distance (ABC127 E)
+
+Example: [AtCoder ABC127 E, Cell Distance](https://atcoder.jp/contests/abc127/tasks/abc127_e). On an $N \times M$ grid ($NM \le 2 \cdot 10^5$), add up, over all ways to choose $K$ cells, the sum of the Manhattan distances between all pairs of chosen cells, modulo $10^9 + 7$.
+
+Idea. Budget: there are $\binom{NM}{K}$ choices, astronomically many, so we need about $O(NM)$ work. The question is a total over configurations, where the value of a configuration is a sum over its pairs of cells. That is Theorem 2.4.3: each pair of cells contributes its distance times the number of $K$-sets that contain both cells. Deciding property: that number is the same for every pair. The other $K - 2$ cells are chosen from the remaining $NM - 2$, so it is $\binom{NM-2}{K-2}$ (topic 2.3). The answer is $\binom{NM-2}{K-2}$ times the sum of the distances over all pairs of cells.
+
+That sum splits into rows and columns, because the distance is $|r_u - r_v| + |c_u - c_v|$. Unordered pairs with row difference $d \ge 1$: the upper cell's row can be chosen in $N - d$ ways and each cell's column in $M$ ways, so $(N-d)M^2$ pairs. The row part is $\sum_{d=1}^{N-1} d(N-d)M^2$ and the column part is $\sum_{d=1}^{M-1} d(M-d)N^2$.
+
+Trace for a $2 \times 2$ grid with $K = 2$: row part $1 \cdot 1 \cdot 4 = 4$, column part $4$, and $\binom{2}{0} = 1$, so the answer is 8. Check by hand: 4 adjacent pairs at distance 1 and 2 diagonal pairs at distance 2 give $4 + 4 = 8$. With $K = 3$ the factor is $\binom{2}{1} = 2$ and the answer is 16.
+
+<CodeSnippet unit="2.4/example-2" />
+
+Cost: $O(NM)$ for the factorial table, $O(N + M)$ for the two sums, and three fast powers for the inverses. Another way: sum over the row and column differences together, $\sum (dr + |dc|) \cdot (\text{pairs with those differences})$, which is $O(NM)$ because it visits every difference pair. For a row difference $dr \ge 1$ there are $(N - dr)(M - |dc|)$ pairs for each $dc$ from $-(M-1)$ to $M-1$, and for $dr = 0$ there are $N(M - dc)$ pairs for each $dc \ge 1$. Common mistake: counting ordered pairs. That doubles the sum, and the $2 \times 2$ example with $K = 2$ gives 16 instead of 8.
+
 ### Inversions
 
 Question: an inversion of an array is a pair (i, j) such that ( i &lt; j , arr[i] > arr[j] ). The number of inversions of an array is the number of such pairs. For example, the array 4, 2, 1, 3 has 4 inversions:
@@ -246,6 +452,20 @@ long long inversionsOfAllSubarrays(const vector<int>& arr) {
 ```
 
 A common mistake is to count values equal to arr[j] as bigger. Using the rank, "strictly bigger" means ranks above `rank`, so equal values are correctly left out. Another common mistake is to mix 0-based and 1-based positions. With 0-based positions the count is (i+1)(n-j). With 1-based positions it is i × (n-j+1). Check: the pair (4,2) in 4, 2, 1, 3 has 1-based positions 1 and 2, and 1 × (4-2+1) = 3, the same as before.
+
+#### Expected inversions of a random order
+
+Same question with chance in it: the values are put in a uniformly random order. What is the expected number of inversions? Small example: the 6 orders of $(1, 2, 3)$ have $0 + 1 + 1 + 2 + 2 + 3 = 9$ inversions in total, so the average is $\frac{9}{6} = 1.5$.
+
+By Theorem 2.4.2 the number of inversions is a sum of indicators, one per pair of elements. Two different values are in the wrong order in exactly half of the orders, because swapping them maps the orders where the pair is inverted to the orders where it is not. So each such pair has probability $\frac{1}{2}$, and for $n$ distinct values the expectation is $\binom{n}{2} \cdot \frac{1}{2}$. For $n = 3$ that is $1.5$. Two equal values are never inverted, so only pairs with different values count. Dry run for $(1, 1, 2)$: 3 pairs, 1 of them equal, so 2 unequal pairs and the expectation is 1. (The three orders $1\,1\,2$, $1\,2\,1$, $2\,1\,1$ have $0$, $1$, $2$ inversions, average 1.)
+
+The code prints the answer modulo $998244353$, so the half is multiplied in as the inverse of 2.
+
+<CodeSnippet unit="2.4/expected-inversions" />
+
+T.C. = $O(n \log n)$ because of the `map`, memory $O(n)$. Another way: sort the array. For each position, the number of elements strictly smaller is the index of the first copy of its value, and adding these over all positions counts every unequal pair once, also in $O(n \log n)$.
+
+Common mistake: counting pairs of equal values as inverted. Input `2`, then `1 1`, prints $\frac{1}{2}$ (the residue $499122177$) instead of 0. Fix: check the probability of each indicator, and give equal values probability 0. Another mistake: forgetting the probability. Input `2`, then `1 2`, prints 1 instead of $\frac{1}{2}$. An expected count is a sum of probabilities, not of possibilities, so multiply by the inverse of 2.
 
 ## Contribution at pivot [Extension]
 
@@ -611,7 +831,15 @@ Note: both assume lowercase letters, and `appealSum` compares int with `s.size()
 
 Common mistakes: using $^{n}C_2$ instead of $^{n+1}C_2$ for the number of substrings of a string of length n, and leaving out the gap before the first copy and the gap after the last copy of the letter. Those two gaps count too, even when their length is 0 (then they subtract nothing).
 
+Common mistakes in the first-occurrence form $(i - \text{last})(n - i)$, with the single-letter string `c` (the answer must be 1). If the previous position defaults to 0 instead of $-1$, the start has $i - 0 = 0$ choices for $i = 0$ and the program prints 0. With no earlier copy the start may be anywhere from 0 to $i$, which is $i + 1$ choices, so the default is $-1$ (his code already starts at $-1$). If the end is written as $(n - i - 1)$, then $1 \cdot (1 - 0 - 1) = 0$ again. The subarray may end at $i$ itself, so the ends are $i, \dots, n - 1$, which is $n - i$ choices.
+
 Count unique chars (char counts only if it appears exactly once in the substring): same pivot + gaps thinking, `(pos[i] - pos[i-1]) * (pos[i+1] - pos[i])` for each occurrence. Here pos holds the positions of one letter, with -1 added in front and n added at the end. A substring has this occurrence as its only copy of the letter when it starts after the previous copy and ends before the next copy, which gives the product. For abbca the letter a gives 4 + 4, b gives 2 + 3 and c gives 8, so the total is 21. See Fabricator/ContributionTechnique/UniqueCharactersInString.cpp.
+
+## Recognition cards
+
+A card names one decisive property, the test for it, and the inputs that look similar but fail it. The four cards below belong to this lesson.
+
+<Cards topic="2.4" />
 
 ## Quick revision
 
@@ -632,6 +860,38 @@ Count unique chars (char counts only if it appears exactly once in the substring
 - Distinct characters in all substrings: for each character, total minus the sum of $^{L+1}C_2$ over the gaps that do not contain it. Extension version: curr += i - last, sol += curr.
 - Unique characters in all substrings: each occurrence adds (pos[i] - pos[i-1]) × (pos[i+1] - pos[i]).
 - Common mistakes: overflow (use long long and mod), negative numbers with %, loops that must stop at `< n`.
+- Theorem 2.4.1: $E[X + Y] = E[X] + E[Y]$ and $E[cX] = c\,E[X]$, with no independence needed. Products need independence.
+- Theorem 2.4.2: $E[\mathbb{1}_A] = P(A)$, so an expected count is a sum of probabilities. Fixed points of a random order: $n \cdot \frac{1}{n} = 1$. Inversions: half the pairs with different values.
+- Theorem 2.4.3: a total over configurations is $\sum_i v_i N_i$. Divide by the number of configurations for the expected value. Sorted subset maxima: $a_i$ has $2^i$ subsets; after the sort, widths are $\sum_i a_i(2^i - 2^{n-1-i})$.
+- Theorem 2.4.4: $E[X] = \sum_{x \ge 1} P(X \ge x)$. For the maximum of $k$ draws from $1..m$, $P(\max \ge x) = 1 - \left(\frac{x-1}{m}\right)^k$ (use "at most $x - 1$", not "at most $x$").
+- Theorem 2.4.5: $\frac{1}{p}$ trials to the first success, stages add, coupon collector $n\left(1 + \frac{1}{2} + \dots + \frac{1}{n}\right)$. Start the sum at the coupons already owned.
+- Printing a fraction modulo a prime: every probability becomes a residue (Theorem 2.2.4).
+
+## Check yourself
+
+### Identification drill
+
+Each item names a problem without saying which card decides it. Choose a card, write the property you checked, then reveal the answer. Most items look like totals over many terms but are answered by cards of earlier topics.
+
+<Drill topic="2.4" />
+
+### Look-alike pairs
+
+Two problems that read almost the same but need different tools. The flipping difference is the one detail that changes the decision.
+
+<LookalikePairs topic="2.4" />
+
+### Self-test
+
+<SelfTest topic="2.4" />
+
+### Checkpoint
+
+<Checkpoint topic="2.4" />
+
+### Decision map update
+
+<DecisionMapUpdate topic="2.4" />
 
 ## Practice problems
 

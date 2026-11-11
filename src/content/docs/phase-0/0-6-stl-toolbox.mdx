@@ -6,6 +6,15 @@ topic: "0.6"
 ---
 import TopicHeader from '../../../components/TopicHeader.astro';
 import Ladder from '../../../components/Ladder.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="0.6" />
 
@@ -14,6 +23,16 @@ import Ladder from '../../../components/Ladder.astro';
 STL (Standard Template Library) is a ready-made C++ library. It contains algorithms (such as sorting and searching) and data structures, which are called containers.
 
 Why learn it? The STL gives tested, fast building blocks. A `set` keeps numbers sorted and finds, inserts and erases in O(log n). With n = 10^5 numbers that is about 17 steps per operation (log2 of 100000 is about 17), instead of up to 100000 steps on an unsorted array. The applications below show how choosing the right container turns an O(n²) idea into an O(n log n) one.
+
+Here is a small problem. You get $q = 2 \cdot 10^5$ queries. Each one either adds a number $x$ (up to $10^9$) to a collection, or asks whether $x$ is already in it.
+
+The first idea keeps the numbers in a `vector` and scans it for every question. One scan is up to $2 \cdot 10^5$ steps and there are up to $2 \cdot 10^5$ questions, so that is $4 \cdot 10^{10}$ steps. At about $10^8$ steps per second (topic 0.2) this takes about 400 seconds.
+
+The second idea is an array indexed by $x$. It answers in one step, but $x$ goes up to $10^9$, so the array needs $10^9$ cells. That is 4 GB of `int`.
+
+A `set` does both jobs in about $\log_2 (2 \cdot 10^5) \approx 18$ steps per query, so all queries take about $4 \cdot 10^6$ steps.
+
+So the skill of this note is to pick the container whose fast operations are exactly the ones the problem asks for. Then we need the cost of each operation. With those costs, the step-budget check of topic 0.2 (number of operations times cost per operation, compared with about $10^8$) is done before any code is written.
 
 The lesson goes in this order: a map of the STL, then `sort()` and ranges, then applications:
 
@@ -28,6 +47,12 @@ The lesson goes in this order: a map of the STL, then `sort()` and ranges, then 
 - range maintenance (segments, fill / clear)
 - histogram problem (Hacker Cup)
 
+What you need before this note:
+
+<WhatYouNeed topic="0.6" />
+
+What this note does not cover: building your own range-query trees, the segment tree and the Fenwick tree (Phase 5). This note only uses the trees that the STL already provides.
+
 Terms used in this lesson:
 
 - T.C. = time complexity, M.C. = memory complexity.
@@ -37,6 +62,9 @@ Terms used in this lesson:
 - macro = text replacement done before compiling. In the code of this lesson `#define endl "\n"` is used, so `endl` just prints a newline.
 - amortized O(1) = O(1) on average per operation, when we look at many operations together.
 - Short forms that may appear in the code comments: Q = question, soln = solution, ans = answer, ops = operations. The symbol # means "the number of", Σ means "sum of", and n+1 C 2 is read "n+1 choose 2" and equals (n+1) × n / 2.
+- **ordered set** (`set`) = distinct values kept in increasing order. Inserting 3, 1, 3 gives 1, 3. A **multiset** allows repeats: 1, 3, 3. A **map** = (key, value) pairs with distinct keys, ordered by key: `mp["apple"] = 2`.
+- **hash table** (`unordered_set`, `unordered_map`) = elements placed in buckets chosen by a hash function (a rule that turns a value into a bucket number). It keeps no order, so there is no "smallest element" to ask for.
+- **queue** = first in, first out, like a line at a shop: push 1, 2, 3 and `front()` is 1. A **stack** is last in, first out: push 1, 2, 3 and `top()` is 3. A **deque** adds and removes at both ends.
 
 ## Table of contents
 
@@ -53,7 +81,9 @@ Terms used in this lesson:
 - Range maintenance: segments covering a point
 - Range maintenance: fill, clear, check
 - Histogram problem (Hacker Cup)
+- Recognition cards
 - Quick revision
+- Check yourself
 - Practice problems
 
 ## STL: algorithms and containers
@@ -164,6 +194,28 @@ A `deque` is stored as several blocks plus a small table of block addresses. So 
 | list | O(1) if you have the iterator | by position O(n) |
 | set / map / multiset | O(log n) | O(log n) |
 | priority_queue | push, pop O(log n) | top O(1) |
+
+More fast operations, for the same table. `set`, `multiset` and `map` also do `find`, `count` and `erase` in $O(\log n)$. `stack`, `queue` and `deque` do `push`, `pop` and `top` or `front` in $O(1)$.
+
+Slow operations to avoid: searching a `vector` for a value is $O(n)$ (up to 100000 steps for $n = 10^5$). A `priority_queue` gives nothing but its largest element, so it cannot find or remove any other value.
+
+Costs of a whole solution. $q$ operations of $O(\log n)$ each cost $O(q \log n)$. For $q = n = 2 \cdot 10^5$ that is about $4 \cdot 10^6$ steps. Tree containers follow pointers in memory, so their constant is large. A safer estimate is $10^6$ to $10^7$ such operations per second, not $10^8$. Do the 0.2 budget check with that.
+
+Hash tables. A hash table spreads the values over buckets, and it is fast only when they spread evenly. Inputs built on purpose to collide put many values in one bucket, and then one operation scans that bucket, up to $O(n)$. This rule holds for every use of a hash table: where other people can send tests against your solution, the ordered `set` and `map` are the safe choice.
+
+**Theorem 0.6.1 (amortised `push_back`).** If a vector doubles its capacity whenever it is full, then $n$ calls of `push_back` from an empty vector copy fewer than $2n$ elements in total, so each call costs $O(1)$ on average.
+
+Small example first: 5 calls. The vector is full before the 2nd, 3rd and 5th call, and it copies 1, 2 and 4 elements: $1 + 2 + 4 = 7 < 10 = 2 \cdot 5$. For $n = 8$ the copies are also $1 + 2 + 4 = 7$. For $n = 1000$ they are $1 + 2 + \dots + 512 = 1023 < 2000$.
+
+Why it works:
+1. Copies happen only when the capacity grows from $c$ to $2c$, and then $c$ elements are copied.
+2. The capacities that occur are $1, 2, 4, \dots, 2^k$ with $2^k < n$. So the total number of copies is at most $1 + 2 + 4 + \dots + 2^k = 2^{k+1} - 1$.
+3. Since $2^k < n$, we get $2^{k+1} - 1 < 2n$.
+4. Each call also writes one element, so the total work is less than $3n$.
+
+This proof needs: (1) the capacity grows by a constant factor (here 2). Growing by a constant amount, say 10 cells, would cost $O(n^2)$ in total. (2) The bound is for the whole sequence of calls. One call that triggers a copy still costs $O(n)$.
+
+<TheoremCode unit="0.6/thm-1" />
 
 ## sort() and ranges
 
@@ -379,6 +431,38 @@ Tested: `[()]{}` and `[{}]` → Is Balanced. `[{]}` and `(()` → Not Balanced.
 Trace of `[{]}`: `[` is pushed (stack: 3). `{` is pushed (stack: 3 2). `]` has value -3 and the top is 2, and 2 + (-3) is not 0, so the answer is Not Balanced at once. A string that starts with a closing bracket fails the `!st.empty()` test in the same way. The case that is easy to forget is a string that only opens, such as `(()`: nothing fails inside the loop, and only the final `!st.empty()` check rejects it.
 
 T.C. = O(n), M.C. = O(n) (in the worst case, for example `((((`, the stack holds every bracket).
+
+**Theorem 0.6.6 (last in, first out).** Read a string of `(` and `)` from left to right. Push the position of each `(` on a stack, and at each `)` pop the top position. If the stack is never empty at a `)` and is empty at the end, every `)` is matched with the nearest unmatched `(` before it, and the pairs are properly nested.
+
+Small example first: `(())`. Positions 0 and 1 are pushed. The `)` at position 2 pops 1, and the `)` at position 3 pops 0. The pairs are $(1, 2)$ and $(0, 3)$. They are nested, and the stack ends empty.
+
+Why it works:
+1. The top of the stack is always the most recent `(` not yet matched. Each push puts the newest `(` on top, and each pop removes the top.
+2. So each `)` is matched with the nearest unmatched `(` before it.
+3. Take two pairs $(p, q)$ and $(p', q')$ with $p < p' < q$. The `(` at $p'$ was pushed after $p$, so it is above $p$ in the stack when the `)` at $q$ is read.
+4. So $p'$ must already be popped, by a `)` at some $q' < q$. Pairs never cross.
+
+This proof needs: (1) the process uses only the newest unfinished item (a stack) or only the oldest waiting item (a queue). (2) Check that the container is not empty before `top()` or `pop()` on a stack, and before `front()` or `pop()` on a queue. On an empty container they are undefined behaviour.
+
+<TheoremCode unit="0.6/thm-6" />
+
+The code above keeps values on the stack. To also record which position closes which, push positions and compare the kind of bracket at the top:
+
+<CodeSnippet unit="0.6/bracket-partners" />
+
+Dry run on `([]{})`, positions 0 to 5. Push 0 for `(` and 1 for `[`. The `]` at 2 meets the top, position 1, a `[`, so they are partners and 1 is popped. Push 3 for `{`. The `}` at 4 pops 3. The `)` at 5 pops 0. The stack is empty. The partner array is 5 2 1 4 3 0.
+
+Cost: $O(n)$ time, $O(n)$ memory. An alternative is a `vector<int>` with `push_back`, `back` and `pop_back` as the stack. It also lets you read the elements below the top.
+
+A queue is the same idea for "first come, first served". Elements leave in the order they arrived, so we push at the back and pop at the front, $O(1)$ each. Example: 3 tasks need 3, 1 and 4 units of work, and a worker gives each task at most $Q = 2$ units per turn. An unfinished task goes to the back with its remaining work.
+
+Dry run: the queue is (1:3) (2:1) (3:4). Task 1 gets 2 units, 1 is left, back of the line: (2:1) (3:4) (1:1). Task 2 finishes. Task 3 gets 2, goes back: (1:1) (3:2). Task 1 finishes, then task 3 finishes. The finishing order is 2 1 3.
+
+<CodeSnippet unit="0.6/round-robin" />
+
+Cost: each pass of the loop is $O(1)$. A pass either finishes a task (at most $n$ times) or hands out exactly $Q$ units (at most $\sum t_i / Q$ times). So there are at most $\sum t_i / Q + n$ passes. Here that is $8/2 + 3 = 7$, and the dry run used 5. A `deque` can play the same role with `push_back`, `front` and `pop_front`.
+
+Common mistake: calling `q.pop()` before reading `q.front()`. For tasks 3 1 4 with $Q = 2$ the first pass then works on task 2 instead of task 1. Read `front()` into variables first, then pop.
 
 Now look at the depth as a graph, to see which parts of a string are balanced: an open bracket goes up, a close bracket goes down.
 

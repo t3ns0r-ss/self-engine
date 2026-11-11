@@ -6,6 +6,15 @@ topic: "0.2"
 ---
 import TopicHeader from '../../../components/TopicHeader.astro';
 import Ladder from '../../../components/Ladder.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="0.2" />
 
@@ -28,6 +37,41 @@ The note covers these topics:
 - online judge verdicts
 - counting subarrays and subsequences, the contribution technique, and palindrome anagram queries
 
+### Why this note exists
+
+Here is a small problem. Given $N \le 10^{12}$, list all positive divisors of $N$.
+
+The obvious program tries every $d$ from 1 to $N$ and keeps those with $N \bmod d = 0$. It is correct. But for $N = 10^{12}$ it makes $10^{12}$ checks. At $10^8$ simple steps per second, this takes about $10^4$ seconds, nearly three hours. The time limit is 2 seconds.
+
+We must know this before writing the program. The constraints in the statement are not decoration. They say how many steps we may spend, so we compare the step count with the limit before coding.
+
+Here the fix is a pairing. Divisors come in pairs $d$ and $N/d$, and one of each pair is at most $\sqrt{N} = 10^6$. Trying $d$ only up to $10^6$ costs $10^6$ steps, about 10 milliseconds at $10^8$ steps per second. That is a saving from $10^{12}$ to $10^6$.
+
+This note also shows three ways in which a step count that looks too large is small:
+
+- a formula replaces a loop (Theorem 0.2.3, in "Counting instructions and asymptotic analysis");
+- a total stays bounded although the loops are nested (Theorem 0.2.4, in "Amortized complexity");
+- loops over multiples have lengths $n/1, n/2, n/3, \dots$ which add up to far less than $n^2$ (Theorem 0.2.5, in "Loop questions (sqrt, log, harmonic, power)").
+
+Theorem 0.2.1 (counting the steps of loops and reading the limits) sits in "Limits on input size". Theorem 0.2.2 (divisor pairs) sits in "Loop questions (sqrt, log, harmonic, power)".
+
+### What you need
+
+<WhatYouNeed topic="0.2" />
+
+### What this note does not cover
+
+- Turning a long description of a process into code step by step (simulation). That is topic 0.3.
+- Divisibility, GCD (greatest common divisor) and the Euclidean algorithm. That is topic 0.4.
+- Marking the multiples of each prime to find all primes up to $N$ (the sieve of Eratosthenes). It uses the same harmonic bound as Theorem 0.2.5. That is topic 2.1.
+- Moving two indices through an array, each only forward (two pointers). Its cost is bounded by the same argument as Theorem 0.2.4. That is topic 1.3.
+
+### Terms used in this lesson
+
+- **Budget**: the number of steps that fit in the time limit. At $10^8$ simple steps per second, a limit of 2 seconds gives a budget of about $2 \cdot 10^8$ steps. It is a rule of thumb, not an exact number.
+- **Closed form** of a sum: a formula that gives its value without adding the terms one by one. Example: $1 + 2 + \dots + n = n(n+1)/2$.
+- **Divisor** of a positive integer $N$: a positive integer $d$ with $N \bmod d = 0$. Example: the divisors of 12 are 1, 2, 3, 4, 6, 12. The divisors $d$ and $N/d$ form a divisor pair.
+
 ## Table of contents
 
 - Steps of solving a problem
@@ -49,7 +93,9 @@ The note covers these topics:
 - Stable sorting
 - Comparing strings with a+b &lt; b+a
 - Palindrome anagram queries
+- Recognition cards
 - Quick revision
+- Check yourself
 - Practice problems
 
 ---
@@ -169,6 +215,67 @@ $1 < \log n < \sqrt{n} < n < n \log n < n^2 < n^3 < 2^n < n! < n^n$
 
 The gaps are large. For n = $10^6$, n log n is about $2 \times 10^7$ steps, but $n^2$ is $10^{12}$ steps.
 
+### Closed forms for loops that add up
+
+The loop `for (k = 0; k < n; k++) sum += a + k*d;` costs $n$ steps. When $n$ is $10^{18}$ that is far too many, but the sum has a formula.
+
+**Theorem 0.2.3 (arithmetic sums).** For integers $n \ge 1$, $a$ and $d$:
+
+$$a + (a + d) + (a + 2d) + \dots + (a + (n-1)d) = \frac{n\,(2a + (n-1)d)}{2}.$$
+
+In particular $1 + 2 + \dots + n = n(n+1)/2$ (take $a = 1$, $d = 1$), and the number of pairs $i < j$ among $n$ items is $n(n-1)/2$.
+
+Small example first: $a = 3$, $d = 2$, $n = 4$. The terms are 3, 5, 7, 9 and the sum is 24. Write them forwards and backwards: 3 5 7 9 above 9 7 5 3. Every pair of terms adds to 12, and there are 4 pairs, so twice the sum is $4 \cdot 12 = 48$.
+
+Why it works:
+1. Write the sum $S$ forwards, and below it backwards. The $k$-th terms are $a + kd$ and $a + (n-1-k)d$.
+2. Each such pair of terms adds to $2a + (n-1)d$, whatever $k$ is.
+3. There are $n$ pairs, so $2S = n(2a + (n-1)d)$, which is the formula.
+4. Among $n$ items, item $j$ (counting from 0) forms a pair with each of the $j$ items before it. So the number of pairs is $0 + 1 + \dots + (n-1)$. This is the sum with $a = 0$, $d = 1$, and it equals $(n-1)n/2$.
+
+This proof needs: (1) consecutive terms differ by the same amount $d$, (2) the product $n(2a + (n-1)d)$ is computed before dividing by 2, because it is always even but $n/2$ alone may not be a whole number.
+
+<TheoremCode unit="0.2/thm-3" />
+
+A loop over $n$ terms takes $n$ steps and the formula takes one. For $n = 10^{18}$ only the formula fits the budget. Watch the size of the product (Theorem 0.1.1). For $n = 2 \cdot 10^9$, $n(n+1)$ is about $4 \cdot 10^{18}$, which is near the `long long` limit of about $9.2 \cdot 10^{18}$. For $n = 4 \cdot 10^9$ it is $1.6 \cdot 10^{19}$ and overflows. Then halve the even factor first. The result, $8 \cdot 10^{18}$, still fits.
+
+Alternative formulation: $n \cdot a + d \cdot \frac{(n-1)n}{2}$. This is $n$ copies of $a$ plus $d$ times $0 + 1 + \dots + (n-1)$. Here $(n-1)n$ is always even, so halving it first is safe. For $a = 7$, $d = 8$, $n = 9$: $63 + 8 \cdot 36 = 351$.
+
+Common mistake: halving before multiplying, as in `n / 2 * (2 * a + (n - 1) * d)`. Input $a = 7$, $d = 8$, $n = 9$ (the terms 7, 15, ..., 71) gives 312, but the correct sum is 351. For odd $n = 9$, `n / 2` is 4, not 4.5, so the result is short by half of $2a + (n-1)d = 78$, which is 39. Fix: multiply first, then divide.
+
+Periodic patterns. If a quantity repeats with period $p$, the sum over $n$ steps is the number of full periods times the sum of one period, plus the sum of the leftover part. There are $\lfloor n/p \rfloor$ full periods and $n \bmod p$ leftover steps. Example: the pattern 1, 2, 3 repeats and $n = 100$. There are 33 full periods of sum 6, which is 198, and 1 leftover term, which is 1. The sum is 199. That replaces 100 steps with about $p = 3$ steps.
+
+### Worked example: Number Spiral
+
+[CSES 1071 Number Spiral](https://cses.fi/problemset/task/1071) (CSES is the Code Submission Evaluation System problem set). In short: an infinite grid is filled with $1, 2, 3, \dots$ along a fixed spiral shown on the page. Answer $t \le 10^5$ queries "which number is in row $y$, column $x$?" with $y, x \le 10^9$.
+
+The top left corner of the grid is:
+
+| | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| 1 | 1 | 2 | 9 | 10 | 25 |
+| 2 | 4 | 3 | 8 | 11 | 24 |
+| 3 | 5 | 6 | 7 | 12 | 23 |
+| 4 | 16 | 15 | 14 | 13 | 22 |
+| 5 | 17 | 18 | 19 | 20 | 21 |
+
+Idea:
+- Budget. There are $t = 10^5$ queries and the coordinates reach $10^9$. Filling the grid up to the cell would take up to $10^{18}$ steps for one query. Even $O(\sqrt{10^{18}}) = 10^9$ per query is too slow. We need $O(1)$ per query, which means a formula. The answer reaches about $10^{18}$, so it needs `long long`.
+- Tools. A value defined by a long but regular process suggests a closed form (Theorem 0.2.3). Building the grid step by step is ruled out by the budget.
+- Deciding property. Call $m = \max(y, x)$ the layer of the cell. Layer $m$ is the cells in row $m$ or column $m$ with both coordinates at most $m$, which is $2m - 1$ cells. Layers $1, \dots, m-1$ form an $(m-1) \times (m-1)$ square and use the numbers $1, \dots, (m-1)^2$. So layer $m$ holds $(m-1)^2 + 1, \dots, m^2$. In the table, an odd layer runs right along row $m$ and then up column $m$. An even layer runs down column $m$ and then left along row $m$. Each half is an arithmetic progression with difference $+1$ or $-1$, so its values have a formula.
+
+Why the formulas are right. Take an even layer $m$. Its first cell is $(1, m)$ with value $(m-1)^2 + 1$. Going down column $m$ adds 1 per row, so cell $(y, m)$ holds $(m-1)^2 + y$. The last cell of the column is $(m, m)$ with value $(m-1)^2 + m$. Then row $m$ is walked to the left and ends at $(m, 1)$ with value $m^2$. Going back one column subtracts 1, so $(m, x)$ holds $m^2 - x + 1$. For odd $m$, row and column swap: $(m, x)$ holds $(m-1)^2 + x$ and $(y, m)$ holds $m^2 - y + 1$. The two formulas agree at the corner $(m, m)$, because $(m-1)^2 + m = m^2 - m + 1$, so the corner may go to either case.
+
+Trace: for $(y, x) = (2, 3)$ we get $m = 3$, an odd layer, and $y \ne m$, so the value is $m^2 - y + 1 = 9 - 2 + 1 = 8$. The table shows 8. For $(4, 1)$: $m = 4$, an even layer, and $x \ne m$, so $m^2 - x + 1 = 16$. The table shows 16.
+
+<CodeSnippet unit="0.2/example-1" />
+
+Cost: $O(1)$ time and memory per query, so $O(t)$ in all.
+
+Alternative: walk the spiral cell by cell until reaching $(y, x)$. It is correct, but $O(m^2)$ per query, about $10^{18}$ steps in the worst case. There is no other natural approach within the budget, so the formula is the solution.
+
+Common mistake: computing $(m-1)^2$ in `int`. For the query $y = x = 10^9$, the answer is $(10^9 - 1)^2 + 10^9 = 999\,999\,999\,000\,000\,001$, which needs `long long`.
+
 ---
 
 ## Order notations
@@ -287,6 +394,8 @@ $O(N^2 + NM) = O(N(N+M))$.
 
 Counting the steps by running the code confirms all three: (i) for n=10 the count is 27, which is 2n+7, (ii) for n=10 the count is 100, which is n², (iii) for N=10 and M=3 the count is 130, which is N(N+M).
 
+Small example with big numbers: two nested loops of 5000 rounds each, with a body of one step, take $5000 \cdot 5000 = 25 \cdot 10^6$ steps. A third part that loops 5000 times after them adds to it: $25\,005\,000$ steps in all. The nested part decides, and the extra loop hardly changes the total.
+
 Common mistakes:
 - Do not add for nested loops. Multiply.
 - Do not multiply for loops that run one after another. Add.
@@ -352,6 +461,26 @@ Every row stays within $10^8$. So the habit is: read the limits first, find the 
 Example of use: a problem has $n \le 2 \times 10^5$. The row for $5 \times 10^5$ allows $O(n \log n)$, which is about $2 \times 10^5 \times 17.6 \approx 3.5 \times 10^6$ steps, so it is fast. An $O(n^2)$ idea needs $4 \times 10^{10}$ steps, about 400 seconds at $10^8$ steps per second, so the idea must change.
 
 Note: this is a rule of thumb. The real speed depends on the judge's machine and on how heavy each step is. Constants also matter ($5n$ and $500n$ are both $O(n)$, but they run very differently).
+
+**Theorem 0.2.1 (step counts and the budget).** (1) A loop that runs at most $m$ times, with a body of at most $s$ steps, costs at most $m \cdot s$ steps. So $k$ nested loops that run at most $m_1, \dots, m_k$ times do at most $m_1 m_2 \cdots m_k$ innermost steps. (2) Parts of a program that run one after another cost the sum of their steps. (3) If $f(n) = O(g(n))$ and $g(n) \le B$ for the largest allowed $n$, then $f(n) \le c \cdot B$ for that $n$, where $c$ is the constant of the big-O bound.
+
+Parts 1 and 2 are the nesting and sequence rules from "Loops: nesting and sequence". Part 3 is how the table above is used: plug the largest input into the step count before writing any code.
+
+Small example first: a program has two nested loops of 5000 rounds and a body of one step. Then $g(n) = n^2 = 2.5 \cdot 10^7 \le B = 10^8$. If the true cost is $f(n) \le 3 g(n)$, then $f(n) \le 3 \cdot 2.5 \cdot 10^7 = 7.5 \cdot 10^7$, still inside the budget. With $c = 10$ it would be $2.5 \cdot 10^8$, which is not.
+
+Why it works:
+1. A loop runs its body at most $m$ times and each run costs at most $s$ steps, so the loop costs at most $m s$ steps.
+2. For $k$ nested loops, apply step 1 from the innermost loop outward. The innermost costs at most $m_k s$, the loop around it at most $m_{k-1} m_k s$, and so on up to $m_1 m_2 \cdots m_k s$.
+3. Parts that run one after the other finish one before the next starts, so their steps add.
+4. $f(n) = O(g(n))$ says $f(n) \le c \cdot g(n)$ for every $n \ge n_0$. At the largest allowed $n$, which is at least $n_0$, this reads $f(n) \le c \cdot g(n) \le c \cdot B$.
+
+This proof needs: (1) a bound on how many times each loop runs, from the input sizes given in the constraints, (2) the largest input the constraints allow, plugged into the count. Check both on every problem.
+
+<TheoremCode unit="0.2/thm-1" />
+
+The first line is the row $n = 5000$ of the idea above. The second shows what the same check says for $n = 2 \cdot 10^5$: no. The third, three loops of 500, is $1.25 \cdot 10^8$ steps. It passes only because that time limit is 2 seconds; with 1 second it is at the edge.
+
+Common mistake: forgetting the constant $c$. Take $n = 5000$ and an $O(n^2)$ idea that does one `map` lookup in the innermost step. That is $2.5 \cdot 10^7$ lookups. A lookup in a map of 5000 keys visits about $\log_2 5000 \approx 12$ nodes, so it costs about 12 simple steps. The real count is about $3 \cdot 10^8$, over the budget of $10^8$, although the same loop with plain array reads is fast. Read the table both ways. Given $n$, it says which complexity to aim for. Given an idea, it says whether to write it or to think more. Near a boundary, count the constant too.
 
 ---
 
@@ -426,6 +555,58 @@ Other places where amortized analysis appears:
 - Two pointers and sliding window: each pointer only moves forward.
 - `push_back`: one push is sometimes slow (the vector grows and copies its data), but the average cost is $O(1)$. The capacity doubles, so the copies cost 1 + 2 + 4 + ... which is less than 2n for n pushes.
 - Monotonic stack: each element is pushed once and popped at most once.
+
+Here is the same idea with a number, so that later topics can cite it.
+
+**Theorem 0.2.4 (bounded total work).** Suppose a program has an outer loop and, inside it, an inner loop. Each iteration of the inner loop increases a counter `j` by at least 1. If `j` starts at 0, never decreases and never goes above $n$, then the inner loop runs at most $n$ times in total, over all rounds of the outer loop together.
+
+Small example first: the string `aabccc` has $n = 6$ and the blocks `aa`, `b`, `ccc`. The inner loop runs 2 times, then 1, then 3, which is 6 in all. That is exactly $n$, although the loop sits inside another loop.
+
+Why it works:
+1. Each inner iteration increases `j` by at least 1.
+2. `j` starts at 0, never goes down and ends at most $n$.
+3. So the increases add up to at most $n$, which means at most $n$ inner iterations in all.
+
+This proof needs: (1) every inner iteration moves a counter forward by at least one, (2) the counter never moves back and has a bounded range, $0$ to $n$. In the example above, `i` is that counter and the bound is `N`.
+
+<TheoremCode unit="0.2/thm-4" />
+
+### Maximal runs
+
+A maximal run (block) is a stretch of equal characters that cannot be made longer. To split a string into blocks, an outer loop starts a block at position `i`, and an inner loop advances `j` while `s[j] == s[i]`. Then the outer loop continues from `j`. It looks $O(n^2)$, but `j` only moves forward, so the total is $O(n)$ by Theorem 0.2.4.
+
+Dry run on `aabccc`: `i = 0`, `j` goes 0, 1, 2 and the block is `aa`. Then `i = 2`, `j` goes 2, 3 and the block is `b`. Then `i = 3`, `j` goes 3, 4, 5, 6 and the block is `ccc`. Then `i = 6` and the loop stops. The inner loop ran 2 + 1 + 3 = 6 times.
+
+A block of length $L$ has $L(L+1)/2$ substrings made of one repeated letter: $L$ of length 1, $L-1$ of length 2, down to 1 of length $L$. This is Theorem 0.2.3 with $a = 1$, $d = 1$. For `aabccc` that is $3 + 1 + 6 = 10$. The function below returns the number of blocks, the longest block, and this count.
+
+<CodeSnippet unit="0.2/runs" />
+
+Cost: time $O(n)$, memory $O(1)$.
+
+Alternative formulation: use one loop and compare each character with the previous one. When they differ, a new block starts. Keep the length of the current block in a counter. It is the same $O(n)$ pass, written without the inner loop.
+
+Common mistake: starting the next block at `i++` instead of `i = j`. For the input `babaacbbbac` the function should return `8 3 15`, but this version returns `11 3 20`. Starting again one character later inside a block counts the rest of the block as new blocks, so `aa` becomes two blocks and `bbb` becomes three. The time also becomes quadratic, because the inner loop scans the same characters again. Fix: `i = j`.
+
+### Worked example: Count xxx
+
+[AtCoder Beginner Contest 329, problem C, Count xxx](https://atcoder.jp/contests/abc329/tasks/abc329_c). In short: count the different strings that occur in $S$ ($|S| \le 2 \cdot 10^5$) as substrings and consist of one repeated letter.
+
+Example: $S$ = `aaabaa`. The answer is 4: `a`, `aa`, `aaa` and `b`.
+
+Idea, in three questions:
+- Budget. $N = 2 \cdot 10^5$. Listing all $N(N+1)/2 \approx 2 \cdot 10^{10}$ substrings is too slow. We need $O(N)$ or $O(N \log N)$.
+- Tools. Substrings of one repeated letter point at maximal blocks and Theorem 0.2.4.
+- Deciding property. The string of $k$ copies of the letter $c$ occurs in $S$ exactly when some block of $c$ has length at least $k$. So for letter $c$ the different strings are $c, cc, \dots, c^{L}$, where $L$ is the longest block of $c$. That is exactly $L$ strings, and strings of different letters are different. The answer is the sum over the 26 letters of the longest block.
+
+Why it is right: every one-letter substring lies inside one maximal block, so $c^k$ occurs if and only if $k \le L_c$. The scan visits each position once (Theorem 0.2.4), so it is $O(N)$.
+
+Trace for `aaabaa`: the blocks are `aaa`, `b`, `aa`. The longest block of `a` is 3, of `b` is 1. The total is $3 + 1 = 4$.
+
+<CodeSnippet unit="0.2/example-2" />
+
+Cost: time $O(N)$, memory $O(1)$ (26 counters).
+
+Common mistake: adding the lengths of all blocks. For `aaabaa` that gives $3 + 1 + 2 = 6$, but `a` and `aa` from the last block are already counted by the first block. Only the longest block of each letter counts. The correct answer is 4.
 
 ---
 
@@ -759,6 +940,44 @@ All four loops were run and their steps counted:
 | `j *= 2` | 8987 | 1568946 | $N \log_2 N$ = 9966, 1660964 |
 | `j += i` | 7069 | 1166750 | $N \ln N$ = 6908, 1151293 |
 
+The `j += i` loop has its own exact bound. The next theorem states it without big-O.
+
+**Theorem 0.2.5 (harmonic loops).** The loop
+
+```
+for i = 1 .. n:
+    for j = i, 2i, 3i, ... while j <= n:
+        (one step)
+```
+
+makes $\sum_{i=1}^{n} \lfloor n/i \rfloor \le n H_n \le n(1 + \ln n)$ steps. So it is $O(n \log n)$.
+
+Small example first: $n = 10$. The inner loop visits $10, 5, 3, 2, 2, 1, 1, 1, 1, 1$ numbers for $i = 1, \dots, 10$. That is 27 steps, below $10(1 + \ln 10) \approx 33$.
+
+Why it works:
+1. For a fixed $i$, the multiples of $i$ up to $n$ are $i, 2i, \dots, \lfloor n/i \rfloor i$, so the inner loop runs $\lfloor n/i \rfloor \le n/i$ times.
+2. Summing over $i$ gives at most $n(1 + \frac12 + \dots + \frac1n) = n H_n$.
+3. For $k \ge 2$, $\frac1k \le \int_{k-1}^{k} \frac{dx}{x}$, because $\frac1x \ge \frac1k$ on that interval.
+4. Adding these for $k = 2, \dots, n$ gives $H_n - 1 \le \int_1^n \frac{dx}{x} = \ln n$. So $n H_n \le n(1 + \ln n)$.
+
+This proof needs: (1) the inner loop for $i$ visits only the multiples of $i$ up to $n$ (it steps by $i$, not by 1), (2) each visit costs $O(1)$.
+
+<TheoremCode unit="0.2/thm-5" />
+
+Numbers: for $n = 10^7$ the exact count is 162,725,364 steps. The bound $n(1 + \ln n)$ gives $1.7 \cdot 10^8$. That is about one to two seconds of simple steps. For $n = 10^6$ the exact count is 13,970,034. Checking every pair $(i, j)$ instead would be $n^2 = 10^{14}$ for $n = 10^7$.
+
+Typical use: loops over multiples answer questions about all numbers up to $n$ at once. One is the number of divisors of every $k \le n$ (add 1 to each multiple of each $i$). Another is the number of pairs $(a, b)$ with $a \cdot b \le n$ (for each $a$ there are $\lfloor n/a \rfloor$ choices of $b$).
+
+Divisor counts of all numbers up to $n$. Instead of finding the divisors of each $k$, turn the question around. For each $i$, visit every multiple $j$ of $i$ and record that $i$ divides $j$. After all $i$, `cnt[k]` is the number of divisors of $k$. For $n = 12$ the counts are 1, 2, 2, 3, 2, 4, 2, 4, 3, 4, 2, 6, and they add up to 35, the same 35 steps counted above.
+
+<CodeSnippet unit="0.2/divisor-counts" />
+
+Cost: time at most $n(1 + \ln n)$ (Theorem 0.2.5), memory $O(n)$.
+
+Alternative formulation: count the divisors of each $k$ separately with $\sqrt{k}$ steps each. The total is about $\frac23 n^{3/2}$, which is about $2 \cdot 10^{10}$ for $n = 10^7$. That is too slow, and fine only up to about $n = 10^5$.
+
+Common mistake: starting the inner loop at `j = 2 * i`. Then no number counts itself as a divisor. For the input $n = 146$ the correct output is `754 16` (the sum of the counts and the largest count), but this version prints `608 15`. Every count is one too small, so the total is short by exactly $n = 146$. Fix: start at `j = i`. (Starting at `2 * i` is right when marking only the proper multiples of a number. Know which one you need.)
+
 Loops that run up to $\sqrt{N}$ appear everywhere in number theory. Here are three examples from the Fabricator repository (a collection of ready-made solutions):
 
 ```cpp
@@ -791,6 +1010,28 @@ for(long long i=1; i*i<=n; i++){
 ```
 
 Divisors come in pairs (i and n/i), so it is enough to look up to $\sqrt{n}$. For example 12 has 6 divisors, 5 has 2, and 9 has 3 (here i = 3 is its own pair, which is why the code checks `i*i != n`). Trace for n = 12: i = 1 adds 1 and 12, i = 2 adds 2 and 6, i = 3 adds 3 and 4, and i = 4 stops because 16 &gt; 12. That gives 6 divisors. Time $O(\sqrt{n})$.
+
+**Theorem 0.2.2 (divisor pairs).** Let $N \ge 1$. For every divisor $d$ of $N$, $N/d$ is also a divisor, and at least one of $d$ and $N/d$ is at most $\sqrt{N}$. So trying every $d$ with $d \cdot d \le N$, and recording both $d$ and $N/d$ when $d$ divides $N$, finds every divisor. At most $\lfloor \sqrt{N} \rfloor$ values of $d$ are tried.
+
+Small example first: $N = 12$. The values $d = 1, 2, 3$ satisfy $d \cdot d \le 12$ and all divide 12, with partners 12, 6, 4. Together they give 1, 2, 3, 4, 6, 12. For $N = 36$, $d = 6$ is its own partner and is recorded once.
+
+Why it works:
+1. If $d \cdot e = N$, then both $d$ and $e$ divide $N$. In particular $N/d$ is a divisor whenever $d$ is.
+2. Suppose both $d > \sqrt{N}$ and $e > \sqrt{N}$. Then $d \cdot e > \sqrt{N} \cdot \sqrt{N} = N$, which is a contradiction.
+3. So the smaller of a pair $(d, N/d)$ is at most $\sqrt{N}$ and is tried. The larger one is recorded as $N/d$.
+4. The tried values are $1, 2, \dots, \lfloor \sqrt{N} \rfloor$, which is at most $\lfloor \sqrt{N} \rfloor$ values.
+
+This proof needs: (1) the objects come in pairs $(d, N/d)$ with a fixed product, so the smaller one is at most $\sqrt{N}$, (2) when $d = N/d$ (a perfect square) the pair has one element, recorded once.
+
+His loop above gives the divisors in pair order. To print them sorted, keep two lists: `small` holds the $d$ found in the loop (increasing) and `large` holds their partners $N/d$ (decreasing). Printing `small` and then `large` backwards gives the whole list in increasing order. The partner is skipped when $d = N/d$.
+
+<TheoremCode unit="0.2/thm-2" />
+
+The condition `d * d <= n` avoids computing a square root and its rounding problems (Theorem 0.1.5). The same argument works for anything that pairs up with a fixed product: all ways to write $N = a \cdot b$, or all rectangles of area $N$.
+
+Common mistake 1: recording the partner without checking `d != n / d`. Input 57600, which is $240^2$. The list then contains `240 240`, but 240 must appear once (the correct list has 81 divisors). For $d = 240$ the partner $n/d$ is 240 again, and it is pushed as a second divisor. Fix: push the partner only when `d != n / d` (condition 2 above).
+
+Common mistake 2: stopping strictly below the square root, `d * d < n`. Input 57600 again. The list has no 240 at all, so it has 80 divisors instead of 81. When $n$ is a perfect square, its root $d$ satisfies $d \cdot d = n$, and `<` stops one step too early. Fix: `d * d <= n`. Every divisor up to $\sqrt{n}$ must be tried, including $\sqrt{n}$ itself.
 
 ```cpp
 // Fabricator/Maths/SieveOfEratosthenes.cpp
@@ -1464,6 +1705,14 @@ s = "abcabaca", both methods give the same answers: (1,5) abcab → YES, (1,3) a
 
 ---
 
+## Recognition cards
+
+Each card names one way of fitting a solution into the budget. Weak signals suggest the card. Kill signals rule it out.
+
+<Cards topic="0.2" />
+
+---
+
 ## Quick revision
 
 - steps: read, understand, ideate, implement, debug, AC. Complexity belongs to ideate (correctness + efficiency)
@@ -1488,6 +1737,45 @@ s = "abcabaca", both methods give the same answers: (1,5) abcab → YES, (1,3) a
 - a+b &lt; b+a compares strings of different lengths
 - palindrome anagram: at most one letter with an odd count. Prefix parity mask → $O(1)$ per query
 - stable: merge, insertion, bubble. `stable_sort` is stable, `sort` is not
+- Theorem 0.2.1: nested loops multiply, parts in sequence add. Plug the largest $n$ into the count and keep the constant: $f(n) \le c \cdot B$
+- Theorem 0.2.2: divisors pair up as $(d, N/d)$. Try $d \cdot d \le N$, record both, a perfect square once. $N = 10^{12}$ needs only $10^6$ tries
+- Theorem 0.2.3: $a + (a+d) + \dots + (a+(n-1)d) = n(2a+(n-1)d)/2$. Multiply before halving. Periodic: full periods times one period, plus the leftover
+- Theorem 0.2.4: an inner counter that only moves forward within $0$ to $n$ gives at most $n$ inner steps in total
+- Theorem 0.2.5: loops over multiples make at most $n(1 + \ln n)$ steps ($n = 10^7$ gives about $1.6 \cdot 10^8$)
+
+---
+
+## Check yourself
+
+### Identification drill
+
+Each item names a problem without saying which card decides it. Choose a card, write the property you checked, then reveal the answer. Do not solve the problems here. Deciding is the exercise.
+
+<Drill topic="0.2" />
+
+### Look-alike pairs
+
+Two problems that read almost the same but need different tools. The flipping difference is the one detail that changes the decision.
+
+<LookalikePairs topic="0.2" />
+
+### Self-test
+
+Answer each question on paper before opening its answer.
+
+<SelfTest topic="0.2" />
+
+### Checkpoint
+
+Three problems in 90 minutes. The pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 9 drill items above. After passing, three review sets become due: after 3 days, 14 days and 60 days.
+
+<Checkpoint topic="0.2" />
+
+### Decision map update
+
+How this topic's cards are chosen against the tools you already have.
+
+<DecisionMapUpdate topic="0.2" />
 
 ---
 

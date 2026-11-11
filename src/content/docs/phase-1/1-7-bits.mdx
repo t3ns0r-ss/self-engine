@@ -6,6 +6,15 @@ topic: "1.7"
 ---
 import TopicHeader from '../../../components/TopicHeader.astro';
 import Ladder from '../../../components/Ladder.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="1.7" />
 
@@ -14,22 +23,46 @@ import Ladder from '../../../components/Ladder.astro';
 This note covers: operators, the sign bit, 2's complement, sets as bitmasks, x^th bit tricks and counting set bits. After that come the bit application problems (contribution technique, extending end, k^th one in binary sequence, pair xor) and the built-in functions to remember.
 
 - Operators
+  - Sum identities (Theorem 1.7.5)
 - Two's complement (sign bit, -10 + 10, overflow)
 - Sets as bitmasks (union, intersection, all subsets)
 - X^th bit: check / set / unset / flip
 - Counting set bits
 - Bit application: sum of all subarray ANDs (atomic item, extending end)
 - ORs and XORs
+  - XOR identities, XOR of a range, prefix XOR, example Red Scarf
 - Number of distinct AND values
+- Highest bit first (largest AND of a pair)
 - Question: index of k^th 1 in binary sequence
+  - Example: Masked Popcount
 - Question: sum of all pair xor
+  - Per-bit sums over pairs
 - Some functions to remember
+- Recognition cards
 - Quick revision
+- Check yourself
 - Practice problems
 
 Terms used in this lesson: T.C. = time complexity, Ques = question, e.g. = for example, MSB = most significant bit (leftmost), LSB = least significant bit (rightmost), LC = LeetCode, B.S. = binary search, TLE = time limit exceeded, CP = competitive programming. Set bit = bit which is 1. Subarray = continuous part of the array. AND, OR, XOR (exclusive OR) = the bit operations `&`, `|`, `^`.
 
 Why learn this? Take an array of n = 10^5 numbers and the question "what is the sum of the AND of every subarray?". There are n(n+1)/2, about 5·10^9, subarrays. At roughly 10^8 simple operations per second that is about 50 seconds, far over a typical 1 to 2 second limit. The idea of this lesson: a number is 32 independent yes/no flags, so we can solve each flag alone. That costs about 32 · 10^5 = 3.2·10^6 operations, which runs in a few milliseconds.
+
+What you need before this note:
+
+<WhatYouNeed topic="1.7" />
+
+This note does not cover:
+
+- The largest XOR of a value with any element of a changing set, using a binary tree of bits (binary trie). That is topic 6.3. Here the same question is answered offline, bit by bit.
+- Dynamic programming over subsets stored as bitmasks. That is topic 3.7.
+- Prefix sums of an array that changes, organised by the bits of the positions (Fenwick tree). That is topic 5.2.
+- Linear algebra over bits (the XOR basis of a set of numbers). It is not part of this course.
+
+More terms used in this lesson:
+
+- The **prefix XOR** of an array is the running XOR from the start: `P[0] = 0` and `P[i+1] = P[i] ^ arr[i]`. Example: for $(3, 5, 6)$ it is $(0, 3, 6, 0)$.
+- The **lowest set bit** of $x > 0$ is $2^b$ for the smallest $b$ with bit $b$ equal to 1. It equals `x & -x`. Example: for $12 = 1100_2$ it is $4$.
+- The **popcount** of $x$ is the number of 1 bits in it. Example: the popcount of $13 = 1101_2$ is $3$.
 
 ## Operators
 
@@ -53,6 +86,35 @@ The table below shows each bit operator on 5 = 101 and 3 = 011.
 | `>>` | shift right, /2 per step | `5 >> 1 = 2` |
 
 Note: logical operators look at the whole number as true / false. `6 && 1` is true but `6 & 1 = 0`. Don't mix them.
+
+We write $x_b$ for bit $b$ of $x$, so $x = \sum_b x_b 2^b$. In C++ this is `(x >> b) & 1`. Every bit operator works on each $b$ alone: bit $b$ of $x \,\&\, y$ depends only on $x_b$ and $y_b$.
+
+### Sum identities (Theorem 1.7.5)
+
+Start with numbers. Take $a = 6 = 110_2$ and $b = 3 = 011_2$. Then $a \oplus b = 101_2 = 5$ and $a \,\&\, b = 010_2 = 2$. Check: $6 + 3 = 9$ and $5 + 2 \cdot 2 = 9$. Also $6 \mid 3 = 7 = 5 + 2$.
+
+**Theorem 1.7.5 (sum identities).** For integers $a, b \ge 0$:
+
+1. $a + b = (a \oplus b) + 2 (a \,\&\, b)$, and $a \mid b = (a \oplus b) + (a \,\&\, b)$.
+2. For $x > 0$, $x \,\&\, (x - 1)$ is $x$ with its lowest set bit cleared. So $x > 0$ is a power of two exactly when $x \,\&\, (x - 1) = 0$.
+3. For two's complement integers, `x & -x` is the lowest set bit of $x > 0$.
+
+In plain words: adding two numbers gives their XOR plus twice the bits they share, because the shared bits carry. Parts 2 and 3 are proved where they are used, in "Counting set bits" and in "Some functions to remember". Here is the proof of part 1.
+
+Why part 1 works:
+1. At one bit, $a_j + b_j = (a_j \oplus b_j) + 2 (a_j \,\&\, b_j)$. Check the four cases: $0+0 = 0+0$, $0+1 = 1+0$, $1+0 = 1+0$, $1+1 = 0 + 2 \cdot 1$.
+2. Multiply by $2^j$ and add over all $j$. This gives the first identity.
+3. For OR, $a_j \mid b_j = (a_j \oplus b_j) + (a_j \,\&\, b_j)$ at each bit. At most one of the two terms is 1 (they are never 1 together), so there is no carry and the sum of bits is exact.
+
+This proof needs: (1) part 1 holds for every pair of non-negative integers; (2) to recover $a$ and $b$ from $s = a + b$ and $x = a \oplus b$, the number $(s - x)/2$ must be a non-negative integer with no bit in common with $x$; (3) part 3 uses the signed type of $x$ (for 64-bit values write `x & -x` with `x` a `long long`, not an `int`).
+
+<TheoremCode unit="1.7/thm-5" />
+
+Use: rebuild $a$ and $b$ from their sum $s$ and XOR $x$ (smallest $a$). By part 1, $s = x + 2c$ where $c = a \,\&\, b$. So we need $s \ge x$ and $s - x$ even, and then $c = (s - x)/2$. A bit cannot be common to both numbers and also be in exactly one of them, so we also need $c \,\&\, x = 0$. When all of this holds, $a = c$ and $b = c \mid x$ work. They share exactly the bits of $c$ and differ exactly at the bits of $x$. Every solution has the bits of $c$ in $a$, so $a = c$ is the smallest. Dry run: $s = 9$, $x = 5$ gives $c = 2$, $2 \,\&\, 5 = 0$, so $a = 2$ and $b = 2 \mid 5 = 7$, and indeed $2 + 7 = 9$ and $2 \oplus 7 = 5$. For $s = 10$, $x = 4$: $c = 3$, $a = 3$, $b = 7$. Alternative: decide $a$ and $b$ bit by bit from the lowest bit and track the carry; it is the same reasoning written as a loop. Cost: $O(1)$.
+
+Common mistake: skipping the check that $s - x$ is even. Input $s = 19$, $x = 0$ prints `9 9` (sum 18), but there is no answer, because $x = 0$ means $a = b$ and $a + b$ is even. Fix: when $s - x$ is odd, print $-1$.
+
+Common mistake: skipping the check $c \,\&\, x = 0$. Input $s = 48$, $x = 2$ gives $c = 23 = 10111_2$, which shares bit 1 with $x = 10_2$. The program prints `23 23`, but $23 \oplus 23 = 0 \ne 2$. The correct answer is $-1$. Fix: check $c \,\&\, x = 0$, and test the output by computing $a + b$ and $a \oplus b$ back.
 
 ## Two's complement
 
@@ -210,6 +272,8 @@ Four common jobs on the x^th bit of a number n (bit 0 is the rightmost): check i
 
 Note: check gives non-zero, not exactly 1. Compare with `!= 0` or use `(n >> x) & 1`. For `long long` use `1ll << x`, plain `1 << x` is an int.
 
+Common mistake: a missing bracket. In `x & want == want` the operator `==` binds more strongly than `&`, so it means `x & (want == want)`, which is `x & 1`. With `-Wall -Wextra`, g++ warns ("suggest parentheses around comparison" and "self-comparison always evaluates to true"). Fix: put brackets around every bit operation inside a comparison, `(x & want) == want`. Read the compiler warnings.
+
 The version from his repository answers queries on a 64-bit number: 1 is check, 2 is set, 3 is unset, 4 is flip, 5 to 7 are popcount checks, 8 is popcount and 9 prints n.
 
 ```cpp
@@ -341,6 +405,8 @@ Summary of the ways to count set bits:
 | recursion n/2 | O(bits) | wrong |
 | n & (n-1) | O(set bits) | works |
 | builtin | O(1) | works |
+
+Why part 2 of Theorem 1.7.5 holds (the first half is the borrow argument above): let $2^k$ be the lowest set bit of $x > 0$. Then $x - 1$ equals $x$ at every bit above $k$, has 0 at bit $k$, and has 1s below $k$ (where $x$ has 0s). So $x \,\&\, (x - 1)$ keeps the bits above $k$ and clears the rest. A power of two has one set bit, so it becomes 0. Any other $x > 0$ has a higher set bit, which stays, so the result is not 0. Dry run: $16 \,\&\, 15 = 0$ (power of two), $12 \,\&\, 11 = 8 \ne 0$. For $1 = 2^0$ the test also gives 0, so mathematically 1 is a power of two. His `is_pow_of_two` below returns false for 1 because of `n >= 2`; that is his convention, so check $n = 1$ yourself if it must count.
 
 ## Bit application
 
@@ -544,6 +610,86 @@ long long sum_of_subarray_xor(const vector<long long> &arr){
 
 Compiled and run: `[1, 5, 7]` gives 22 and `[3, 2, 7, 1]` gives 42 (direct check: the ten subarray xors are 3, 1, 6, 7, 2, 5, 4, 7, 6, 1, which add up to 42). The function was compared with brute force on 20000 random small arrays. Cost: O(32 n) time and O(n) memory for the prefix array. Mistake to avoid: forgetting P[0] = 0, which loses every subarray that starts at index 0.
 
+#### XOR identities (Theorem 1.7.1)
+
+Start with numbers. In $(4, 7, 4, 2, 7)$ every value except 2 appears twice. The two 4s cancel, the two 7s cancel, so the XOR of the whole list is 2.
+
+**Theorem 1.7.1 (XOR identities).** For integers $x, y, z \ge 0$:
+
+1. $x \oplus y = y \oplus x$ and $(x \oplus y) \oplus z = x \oplus (y \oplus z)$. So a XOR of many values does not depend on order or grouping.
+2. $x \oplus 0 = x$ and $x \oplus x = 0$.
+3. $x \oplus y = z$ exactly when $x = y \oplus z$.
+4. The XOR of a list equals the XOR of the values that appear in it an odd number of times.
+
+In plain words: the XOR of several numbers is the same in any order, XOR with 0 changes nothing, and a number XOR itself is 0. So every value that appears twice cancels.
+
+Another instance: the XOR $0 \oplus 1 \oplus \dots \oplus n$ is $n$, $1$, $n + 1$ or $0$ when $n \bmod 4$ is $0$, $1$, $2$ or $3$. Check: $n = 4, 5, 6, 7$ give $4, 1, 7, 0$. Reason: four consecutive numbers $4m, \dots, 4m+3$ have XOR 0, because the higher bits appear four times and the last two bits $00, 01, 10, 11$ XOR to 0. Only the leftover numbers matter: $4m \oplus (4m+1) = 1$, and $1 \oplus (4m+2) = 4m + 3$.
+
+Why it works:
+1. Each statement is about one bit at a time. Bit $b$ of a XOR of several values is 1 exactly when an odd number of them have bit $b$ set. That is the sum of their bits modulo 2.
+2. Sums modulo 2 do not depend on order or grouping. This gives part 1.
+3. Adding 0 changes nothing, and $x_b + x_b = 2 x_b$ is even. This gives part 2.
+4. For part 3, XOR both sides of $x \oplus y = z$ with $y$. By parts 1 and 2, $x \oplus y \oplus y = x \oplus 0 = x$, so $x = z \oplus y$. The way back is the same step.
+5. For part 4, reorder the list (part 1) so that equal values stand together. Each pair gives 0 (part 2), and 0 changes nothing.
+
+This proof needs: (1) the values are combined with XOR only. AND and OR have no inverse: from $x \mid y$ and $y$ you cannot recover $x$. (2) For signed types, negative values have the top bit set. The identities still hold bit by bit, but sums and comparisons of such values need care, so use non-negative or `unsigned` values when bits are the point.
+
+<TheoremCode unit="1.7/thm-1" />
+
+**XOR of a range of integers.** To get $L \oplus (L+1) \oplus \dots \oplus R$ with $R$ up to $10^{18}$, use the period-4 pattern. The XOR of $0..R$ is the XOR of $0..L-1$ followed by the wanted range. XOR with the first part cancels it (part 2), so the answer is `xorUpTo(R) ^ xorUpTo(L-1)`.
+
+<CodeSnippet unit="1.7/xor-range" />
+
+Dry run: $L = 2$, $R = 9$. `xorUpTo(9)` is 1 (as $9 \bmod 4 = 1$), `xorUpTo(1)` is 1, so the answer is $1 \oplus 1 = 0$. Direct check: $2 \oplus 3 \oplus \dots \oplus 9 = 0$. Cost: $O(1)$ per query. Alternative: bit $b$ of the answer is the parity of the number of integers in $[L, R]$ with bit $b$ set; it is longer, but it works for any per-bit count.
+
+Common mistake: cancelling one prefix too many. `xorUpTo(L)` includes $L$ itself, so XOR-ing it out removes $L$ from the range. Input: one query `2 9` returns $3 \oplus \dots \oplus 9 = 2$, the correct answer is 0. Fix: cancel $0..L-1$.
+
+#### Prefix XOR (Theorem 1.7.2)
+
+Start with numbers. For arr $= (1, 2, 3, 4)$ the prefix XOR is $P = (0, 1, 3, 0, 4)$. The XOR of `arr[1..2]` is $2 \oplus 3 = 1$, and $P[3] \oplus P[1] = 0 \oplus 1 = 1$.
+
+**Theorem 1.7.2 (prefix XOR).** Let `P` be the prefix XOR of `arr` (`n` values, 0-based as above). Then:
+
+1. For $0 \le l \le r < n$, the XOR of `arr[l..r]` is $P[r+1] \oplus P[l]$.
+2. That XOR equals $k$ exactly when $P[l] = P[r+1] \oplus k$. So the number of subarrays with XOR $k$ is the number of pairs $i < j$ (with $0 \le i < j \le n$) such that $P[i] = P[j] \oplus k$. They are counted in one pass with a map from prefix values to counts, in $O(n \log n)$.
+
+In plain words: the XOR of a range is the running XOR at its end combined with the running XOR just before its start, because the common part cancels.
+
+Why it works:
+1. $P[r+1] = P[l] \oplus (\text{arr}[l] \oplus \dots \oplus \text{arr}[r])$ by grouping (Theorem 1.7.1, part 1).
+2. XOR both sides with $P[l]$. Since $P[l] \oplus P[l] = 0$, the XOR of the range is $P[r+1] \oplus P[l]$. This is part 1.
+3. By part 3 of Theorem 1.7.1, $P[r+1] \oplus P[l] = k$ exactly when $P[l] = P[r+1] \oplus k$.
+4. Each subarray `arr[l..r]` matches exactly one pair $(i, j) = (l, r+1)$ with $0 \le i < j \le n$, and back.
+5. The counting is the same pass as counting subarrays with sum $k$ in topic 1.2 (Theorem 1.2.2), with $\oplus$ in place of $-$. For $j = 0, 1, \dots, n$: add the count of $P[j] \oplus k$ seen so far, then record $P[j]$.
+
+This proof needs: (1) $P[0] = 0$ is part of the prefix list; forgetting it loses every subarray that starts at index 0. (2) The condition is that the XOR equals a fixed $k$. For "XOR at most $k$" the prefix values have no order that helps, and that needs a different tool (the bit tree of topic 6.3). (3) The count can reach $n(n+1)/2$, about $2 \cdot 10^{10}$ for $n = 2 \cdot 10^5$, so use `long long`.
+
+<TheoremCode unit="1.7/thm-2" />
+
+Note: the unit above numbers positions from 1, so its `rangeXor(P, l, r)` is `P[r] ^ P[l-1]`. In the 0-based form of this lesson that is $P[r+1] \oplus P[l]$. It is the same idea.
+
+Dry run for counting with $k = 3$ on $(1, 2, 3, 4)$: `seen = {0:1}`. Read 1: $P = 1$, look up $1 \oplus 3 = 2$, none; record. Read 2: $P = 3$, look up $0$, found once, count 1 (subarray $[1, 2]$); record. Read 3: $P = 0$, look up $3$, found once, count 2 (subarray $[3]$); record. Read 4: $P = 4$, look up $7$, none. Answer 2, as in the output above. Cost: $O(n \log n)$ with a `map`, $O(n)$ memory. Alternative: an `unordered_map`, or a `vector<int>` of size $2^{20}$ indexed by the prefix value when the values are below $2^{20}$.
+
+Common mistake: forgetting `seen[0] = 1`. Input `n = 1, k = 2`, array `2`: the only subarray $(2)$ has XOR 2, but its pair is $(P[0], P[1]) = (0, 2)$ and $P[0]$ was never recorded, so the program prints 0 instead of 1. Fix: record $P[0] = 0$ before the loop.
+
+Common mistake: recording the prefix before the lookup. Input `n = 1, k = 0`, array `1`: the lookup of $P \oplus 0 = P$ finds the value just recorded, a pair of $j$ with itself, and prints 1 instead of 0. Fix: look up first, then record, because the pairs need $i < j$.
+
+Prefix XOR values stay below $2^{30}$ when the inputs do. So when the values are small, for example bitmasks of a few letters, an array indexed by the value can replace the map. A related use: a substring has every letter an even number of times exactly when the XOR of the letter masks (bit $c$ for letter $c$) over it is 0, that is, when two prefix masks are equal.
+
+#### Example: Red Scarf (AtCoder ABC171 E)
+
+[ABC171 E, Red Scarf](https://atcoder.jp/contests/abc171/tasks/abc171_e). $N$ cats ($N$ even, $N \le 2 \cdot 10^5$) wear hidden integers $x_i$. You are given $a_i$, the XOR of all hidden integers except $x_i$. Print the hidden integers. Example: $x = (1, 2, 3, 4)$, so $a = (2 \oplus 3 \oplus 4, \dots) = (5, 6, 7, 0)$.
+
+Idea. Budget: $N = 2 \cdot 10^5$, so $O(N)$ or $O(N \log N)$. Guessing hidden values ($10^9$ choices each) is hopeless. Tools: the data is a XOR of almost everything, so cancellation (Theorem 1.7.1) fits. The deciding property: removing a value from a XOR is XOR-ing it again. Let $X$ be the XOR of all hidden values. Then $a_i = X \oplus x_i$, so $x_i = a_i \oplus X$ (part 3). To find $X$, XOR all the $a_i$. Each $x_j$ is in every $a_i$ except $a_j$, so it appears $N - 1$ times, an odd number because $N$ is even. By part 4 the XOR of all $a_i$ is $X$.
+
+Trace: $5 \oplus 6 \oplus 7 \oplus 0 = 4 = X$ (and indeed $1 \oplus 2 \oplus 3 \oplus 4 = 4$). Then $x = (5 \oplus 4, 6 \oplus 4, 7 \oplus 4, 0 \oplus 4) = (1, 2, 3, 4)$.
+
+<CodeSnippet unit="1.7/example-1" />
+
+Cost: two passes, $O(N)$ time and $O(N)$ memory. Alternative: $a_i \oplus a_j = x_i \oplus x_j$ because $X$ cancels. Substituting $x_j = x_1 \oplus a_1 \oplus a_j$ into $a_1 = x_2 \oplus \dots \oplus x_N$ gives $x_1 = a_2 \oplus \dots \oplus a_N$. It reaches the same formula with more algebra. Common mistake: $N$ odd. With $x = (1, 2, 4)$ we get $a = (6, 5, 3)$, and each $x_j$ appears $N - 1 = 2$ times, so the XOR of all $a_i$ is 0, not $X = 7$. The trick needs $N$ even.
+
+Common mistake with Single Number problems: when every value appears three times except one, pairs do not cancel, so the XOR is not the answer. In $[2, 2, 2, 9]$ the XOR is $2 \oplus 9 = 11$. There, count each bit modulo 3 instead. In $[4, 1, 4]$ (pairs) the XOR gives 1 correctly.
+
 ### Extending end
 
 The second way is extending end. Motivation: the atomic item method needs the whole array up front and works one bit at a time. Extending end instead scans left to right and keeps a small summary of all subarrays that end at the current position. This is the method to use when the question asks for something else about the AND values, such as how many distinct values there are.
@@ -687,6 +833,29 @@ void solve() {
 ```
 
 It gives 3 for `[1,1,2]` (the values are 1, 2, 3) and 6 for `[1,2,4]` (the values are 1, 2, 4, 3, 6, 7). Cost: O(32 n log 32) with sets, memory O(32) for `last_or` and O(distinct values) for `total_or`.
+
+### Highest bit first
+
+Why the top bit decides: bit $b$ is worth more than all lower bits together. For example $8 = 1000_2$ is more than $7 = 111_2 = 4 + 2 + 1$. In general $2^b > 2^b - 1 = 2^{b-1} + \dots + 1$. So when a best value is wanted, decide it from the highest bit down.
+
+Start with numbers. Largest AND of a pair from $(5, 6, 3)$, that is $101_2, 110_2, 011_2$. Bit 2: two numbers (5 and 6) have it, so the answer can have it. Keep only those two. Bit 1: of 5 and 6 only 6 has it, so we cannot keep it (a pair needs two numbers). Bit 0: only 5 has it, so no. The answer is $100_2 = 4 = 5 \,\&\, 6$.
+
+**Theorem 1.7.4 (the highest differing bit decides).** For integers $0 \le x, y < 2^B$ with $x \ne y$, let $b$ be the highest bit where they differ. Then $x > y$ exactly when $x_b = 1$. So among candidates described bit by bit, the largest is found by deciding bits from $B-1$ down to 0: set bit $b$ to 1 if some candidate agrees with the bits decided so far and has bit $b$ equal to 1, otherwise set it to 0.
+
+Why it works:
+1. Above $b$ the two numbers agree, so $x - y = \sum_{j \le b} (x_j - y_j) 2^j$.
+2. If $x_b = 1$ and $y_b = 0$, this is at least $2^b - (2^b - 1) = 1 > 0$. The case $x_b = 0$ is the mirror image.
+3. For the greedy, suppose the bits above $b$ are already decided as in the largest candidate $m$.
+4. If some candidate with those bits has bit $b$ equal to 1, then $m_b = 1$, because otherwise that candidate would be larger than $m$ by step 2. If none has, then $m_b = 0$.
+5. By induction from the top bit, the decided bits are exactly those of $m$.
+
+This proof needs: (1) all candidates are non-negative and below the same $2^B$ ($B = 31$ for `int`, $B = 61$ for values up to $2 \cdot 10^{18}$). (2) At each bit you can test whether some candidate with the decided bits has that bit, usually by counting. (3) For the smallest value the same greedy puts 0 whenever possible.
+
+<TheoremCode unit="1.7/thm-4" />
+
+How the code works: `ans` holds the decided bits. For bit $b$, `want = ans | (1 << b)`, and we count the values $x$ with `(x & want) == want`. If at least two values contain all of `want`, their AND contains it, so bit $b$ is kept. Dry run on $(5, 6, 3)$: bit 2, `want = 100`, values 5 and 6 contain it, so `ans = 4`. Bit 1, `want = 110`, only 6 contains it, so no. Bit 0, `want = 101`, only 5, so no. Answer 4. Cost: $O(30 n)$, memory $O(1)$. Alternative: once a bit is kept, keep only the values that contain `want`; the list shrinks and the answer is the same.
+
+Common mistake: testing each bit alone, `if ((x >> b) & 1) c++`. Input `3`, then `9 8 5`: bit 3 is in 9 and 8, and bit 0 is in 9 and 5, so the program keeps both and prints 9. No pair has both: $9 \,\&\, 8 = 8$ and $9 \,\&\, 5 = 1$. The correct answer is 8. Fix: a lower bit may be kept only by a pair that also has all the higher bits already chosen, so count the values that contain all of `want`.
 
 ## Question: index of k^th 1
 
@@ -1021,6 +1190,18 @@ Note: B.S. starts with `hi = k`. This is fine because f(k) ≥ k for k ≥ 1. Al
 
 Mistakes to avoid: forgetting that the number 0 writes one character, "0" (zero ones), and forgetting that the index starts from 0 but k starts from 1.
 
+### Example: Masked Popcount (AtCoder ABC356 D)
+
+[ABC356 D, Masked Popcount](https://atcoder.jp/contests/abc356/tasks/abc356_d). Given $N$ and $M$ below $2^{60}$, print the sum of the popcount of $k \,\&\, M$ over $k = 0, 1, \dots, N$, modulo $998244353$. Small example: $N = 5$, $M = 5$: the terms are $0, 1, 0, 1, 1, 2$, so the answer is 5.
+
+Idea. Budget: $N$ is about $10^{18}$, so even $O(N)$ is impossible, and only about 60 bits exist, so $O(60)$ is the budget. Tool: a sum of bitwise results over many terms, so count bit by bit (the contribution technique). The deciding property: bit $b$ of $k \,\&\, M$ is 1 exactly when $M$ has bit $b$ and $k$ has bit $b$, a condition on bit $b$ alone. Exchanging the two sums, the answer is the sum, over the bits $b$ of $M$, of the number of $k \in [0, N]$ with bit $b$ set. That count is the period formula above: $q = \lfloor (N+1) / 2^{b+1} \rfloor$ full periods with $2^b$ ones each, and a partial period of $r = (N+1) \bmod 2^{b+1}$ numbers with $\max(0, r - 2^b)$ ones.
+
+Trace: $N = 5$, $M = 5 = 101_2$. Bit 0: period 2, $N + 1 = 6$, so $q = 3$ and $r = 0$, giving 3 ones. Bit 2: period 8, $q = 0$ and $r = 6$, giving $\max(0, 6 - 4) = 2$ ones. Bit 1 is not in $M$. Total $3 + 2 = 5$, as counted directly.
+
+<CodeSnippet unit="1.7/example-2" />
+
+Cost: $O(60)$ time, $O(1)$ memory. Alternative: walk over the bits of $N$ from the top, counting the block of numbers below $N$ that agree with $N$ above a 1-bit and have 0 there. It gives the same counts, but the period formula is shorter. Common mistake: adding the counts without the modulus. Each count can reach about $10^{18}$, so the sum of 60 of them overflows `long long`; take `cnt % MOD` before adding.
+
 ## Question: sum of all pair xor
 
 Question: given an array arr of size n, find Σ(i=1 to n) Σ(j=i+1 to n) (A[i] ^ A[j]), the sum of the xor of all pairs, with n ≤ 10^5.
@@ -1097,6 +1278,33 @@ For `1 5 7` the output is 12.
 Note: if numbers use all 32 bits, write `1ll << bit_pos` at the last line.
 
 Size check: one bit can give up to (5·10^4)^2 = 2.5·10^9 valid pairs, which is above the `int` limit of about 2.1·10^9. That is why the counts are `long long`.
+
+### Per-bit sums over pairs (Theorem 1.7.3)
+
+Start with numbers. For $a = (1, 2, 3)$, bit 0 is set in 1 and 3, so $c_0 = 2$. Bit 1 is set in 2 and 3, so $c_1 = 2$. The XOR sum is $1 \cdot 2 \cdot 1 + 2 \cdot 2 \cdot 1 = 6$. Direct check: $1 \oplus 2 + 1 \oplus 3 + 2 \oplus 3 = 3 + 2 + 1 = 6$.
+
+**Theorem 1.7.3 (per-bit contribution).** Let $a_1, \dots, a_n \ge 0$ and let $c_b$ be the number of them with bit $b$ set. Then:
+
+1. $\sum_{i < j} (a_i \oplus a_j) = \sum_b 2^b \, c_b (n - c_b)$.
+2. $\sum_{i < j} (a_i \,\&\, a_j) = \sum_b 2^b \binom{c_b}{2}$ and $\sum_{i < j} (a_i \mid a_j) = \sum_b 2^b \left( \binom{n}{2} - \binom{n - c_b}{2} \right)$. Here $\binom{m}{2} = m(m-1)/2$ is the number of pairs among $m$ items.
+3. In general, for any quantity that is a sum of $2^b$ times a condition on bit $b$ alone, the total over pairs, subarrays or subsets is the sum over $b$ of $2^b$ times the number of them that meet the condition at bit $b$.
+
+In plain words: when each bit of the result depends only on the same bit of the inputs, the total is a sum over bits of the bit's weight times how many pairs have that bit set. That count needs only how many inputs have the bit.
+
+Why it works:
+1. Write each term as $\sum_b 2^b t_b$ where $t_b$ is bit $b$ of the term. For a bit operator, $t_b$ depends only on bit $b$ of the operands.
+2. Exchange the two sums. The total is $\sum_b 2^b \cdot (\text{number of terms with } t_b = 1)$. This is part 3.
+3. For XOR, $t_b = 1$ when exactly one number has bit $b$: $c_b (n - c_b)$ pairs.
+4. For AND, both have it: $\binom{c_b}{2}$ pairs.
+5. For OR, every pair except those where neither has it: $\binom{n}{2} - \binom{n - c_b}{2}$ pairs.
+
+This proof needs: (1) the operation acts on each bit separately (AND, OR, XOR, NOT and fixed shifts are fine). Addition is not: carries move between bits, so $\sum (a_i + a_j)$ is not computed per bit. It is simply $(n-1) \sum a_i$. (2) Each bit's count comes from information about that bit only, such as how many numbers have it. (3) The totals can be huge: $2^{30} n^2 / 4 \approx 10^{19}$ for $n = 2 \cdot 10^5$, which is above the `long long` limit $9.2 \cdot 10^{18}$. Check the bound, or take the modulus the problem asks for. For $n \le 10^5$ the total is at most about $2.7 \cdot 10^{18}$, which fits.
+
+<TheoremCode unit="1.7/thm-3" />
+
+Dry run for AND on $(1, 2, 3)$: $c_0 = c_1 = 2$, $\binom{2}{2} = 1$, so the sum is $1 + 2 = 3$; direct: $0 + 1 + 2 = 3$. For OR: $\binom{3}{2} - \binom{1}{2} = 3$ at each bit, so $3 + 6 = 9$; direct: $3 + 3 + 3 = 9$. Alternative to re-reading the array for every bit: count all bits in one pass into an array `c[30]` (`c[b] += (x >> b) & 1`), then apply the formulas; the array of values is not needed afterwards.
+
+Common mistake: counting ordered pairs and self-pairs for AND, with `c * c` instead of `c * (c - 1) / 2`. Input: one value, `3`. There are no pairs, but $c^2 = 1$ pairs the value with itself at bits 0 and 1, so the AND sum is 3 instead of 0 (the output `0 3 0` instead of `0 0 0` for XOR, AND, OR). Fix: use $\binom{c}{2}$. The XOR count $c(n - c)$ needs no fix, because a value is never paired with itself there.
 
 ## Some functions to remember
 
@@ -1202,6 +1410,14 @@ For input `44`, the binary string ends with `...101100`, the msb is 5, the lsb i
 
 Note: `is_pow_of_two` returns false for 1 ($2^0$) because of `n >= 2`.
 
+Why part 3 of Theorem 1.7.5 holds: let $2^k$ be the lowest set bit of $x > 0$. In two's complement $-x = \sim x + 1$. The NOT turns the trailing zeros below $k$ into 1s and bit $k$ into 0. Adding 1 carries through all those 1s and stops at bit $k$, which becomes 1 again. So $-x$ agrees with $x$ at bit $k$ and below, and is the opposite of $x$ above $k$. The AND then leaves only bit $k$. Example: $x = 12 = 1100_2$, $-x = \ldots10100_2$, and $12 \,\&\, -12 = 100_2 = 4$.
+
+## Recognition cards
+
+A card names a kind of problem, the property that decides it, how to test the property, and the signals that kill it. Read the cards, then try them on the drill below.
+
+<Cards topic="1.7" />
+
 ## Quick revision
 
 - Operators: `~ | & ^ << >>`. The leftmost bit is the sign bit; 1 means negative.
@@ -1218,6 +1434,44 @@ Note: `is_pow_of_two` returns false for 1 ($2^0$) because of `n >= 2`.
 - Sum of pair xor: for each bit, zeros × ones × $2^{bit}$. Cost O(32 n).
 - k-th 1 in the binary sequence: for small k (up to 10^5) build the string once. For k up to 10^9 use binary search for the smallest x with f(x) ≥ k. For each bit i: total = x+1, full = total / $2^{i+1}$, left = total % $2^{i+1}$, ones = full × $2^i$ + max(left − $2^i$, 0). The index is (length of S before x) + (position of the needed 1 inside x).
 - Most significant bit: `31 - __builtin_clz(n)`, `63 - __builtin_clzll(n)` or `bit_width(n)-1`. Trailing zeros: `__builtin_ctz` or `countr_zero`. Both clz and ctz are undefined for 0.
+- Theorem 1.7.1: XOR is commutative and associative, $x \oplus x = 0$, $x \oplus 0 = x$, and $x \oplus y = z$ exactly when $x = y \oplus z$. The XOR of a list is the XOR of the values that appear an odd number of times. The XOR of $0..n$ is $n, 1, n+1, 0$ for $n \bmod 4 = 0, 1, 2, 3$.
+- Theorem 1.7.2: the XOR of `arr[l..r]` is $P[r+1] \oplus P[l]$. Subarrays with XOR $k$ are pairs $i < j$ with $P[i] = P[j] \oplus k$: look up first, then record, and start with `seen[0] = 1`.
+- Theorem 1.7.3: pair sums, bit by bit. XOR $c(n-c)$, AND $\binom{c}{2}$, OR $\binom{n}{2} - \binom{n-c}{2}$, each times $2^b$. Addition is not bitwise.
+- Theorem 1.7.4: the highest differing bit decides, so build the best value from the top bit down. Largest AND of a pair: keep a bit if two values contain all decided bits and this one.
+- Theorem 1.7.5: $a + b = (a \oplus b) + 2(a \,\&\, b)$ and $a \mid b = (a \oplus b) + (a \,\&\, b)$. `x & (x-1)` clears the lowest set bit, and `x & -x` is the lowest set bit.
+
+## Check yourself
+
+### Identification drill
+
+Each item names a problem without saying which card decides it. Choose a card, write the property you checked, then reveal the answer.
+
+<Drill topic="1.7" />
+
+### Look-alike pairs
+
+Two problems that read almost the same but need different tools.
+
+<LookalikePairs topic="1.7" />
+
+### Self-test
+
+Answer each question on paper before opening its answer.
+
+<SelfTest topic="1.7" />
+
+### Checkpoint
+
+Three problems in 90 minutes. Pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items. After passing, review sets are due after 3, 14 and 60 days.
+
+<Checkpoint topic="1.7" />
+
+### Decision map update
+
+How this topic's cards are chosen against the tools you already have.
+
+<DecisionMapUpdate topic="1.7" />
+
 
 ## Practice problems
 

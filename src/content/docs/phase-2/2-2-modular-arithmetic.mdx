@@ -6,6 +6,15 @@ topic: "2.2"
 ---
 import TopicHeader from '../../../components/TopicHeader.astro';
 import Ladder from '../../../components/Ladder.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="2.2" />
 
@@ -21,12 +30,40 @@ The topics are:
 
 The totient ($\phi$, the count of numbers from 1 to m that are co-prime to m) was introduced in 2.1, and it is used again here. Two numbers are co-prime when their greatest common divisor (gcd) is 1, that is, they share no common factor except 1.
 
+Two small problems show why. First: print $2^{10^{18}} \bmod (10^9+7)$. Multiplying by 2 a total of $10^{18}$ times, and reducing after each step, needs $10^{18}$ steps. At about $10^9$ multiplications per second that is $10^9$ seconds, about 30 years. But $2^{10^{18}}$ is the square of $2^{5 \cdot 10^{17}}$, which is the square of $2^{2.5 \cdot 10^{17}}$, and so on. Each squaring halves the exponent, so about 60 squarings and 60 more multiplications are enough. The answer is 719,476,260.
+
+Second: a fair die is rolled. Print the probability that it shows a multiple of 3, "as a value modulo $998\,244\,353$". The probability is $\frac{2}{6} = \frac{1}{3}$, which is not an integer. "Modulo $998\,244\,353$" means the integer $x$ with $3x \equiv 1$, and here $x = 332\,748\,118$ (check: $3 \cdot 332\,748\,118 = 998\,244\,354 = 998\,244\,353 + 1$). Such an $x$ exists because $998\,244\,353$ is prime, and Fermat's little theorem gives a formula for it.
+
+So this note is about three jobs: powers with huge exponents, division modulo a prime (including answers that are fractions), and exponents that are themselves too large to write down. Most counting problems after this one print their answer modulo a prime, so these tools are used in almost every later mathematics topic.
+
+Why these two moduli: $10^9+7$ and $998\,244\,353 = 119 \cdot 2^{23} + 1$ are both prime and both below $2^{30}$. Every number that they do not divide has an inverse, and the product of two residues is below $2^{60}$, so it fits in `long long`.
+
+### What you need
+
+<WhatYouNeed topic="2.2" />
+
+### What this note does not cover
+
+- Factorials, binomial coefficients, stars and bars and inclusion-exclusion. They come in topic 2.3, which uses the inverses from this note.
+- Expected values. They come in topic 2.4, whose answers are fractions printed as in the fractions section below.
+- The Chinese remainder theorem, discrete logarithms, and fast multiplication of polynomials modulo $998\,244\,353$. They are not part of this course.
+
+### Terms used in this lesson
+
+- **Binary exponentiation** computes $a^b \bmod m$ by squaring. It reads the bits of $b$ and needs $O(\log b)$ multiplications.
+- A **modular inverse** of $a$ modulo $m$ is an integer $x$ with $ax \equiv 1 \pmod m$, written $a^{-1}$. Example: $3^{-1} \bmod 7 = 5$, because $3 \cdot 5 = 15 = 2 \cdot 7 + 1$.
+- **Fermat's little theorem**: if $p$ is prime and $p$ does not divide $a$, then $a^{p-1} \equiv 1 \pmod p$.
+- **Division modulo $p$**: for a prime $p$ and $p \nmid a$, $\frac{b}{a} \bmod p$ means $b \cdot a^{-1} \bmod p$.
+- A rational answer $\frac{P}{Q}$ **printed modulo $p$** is the number $P \cdot Q^{-1} \bmod p$. Example: $\frac13 \bmod 998\,244\,353 = 332\,748\,118$.
+
 ## Table of contents
 
 - Binary exponentiation → fast power
 - Modulo arithmetic with division → modular inverse, GP sum, binary multiplication
 - Fermat's Little Theorem → $a^{p-1} \equiv 1$, reducing the exponent
 - Euler's Theorem (general version) → reducing the exponent using the totient
+- Recognition cards → the three cards of this topic
+- Check yourself → drill, look-alike pairs, self-test, checkpoint, decision map
 
 ## Binary exponentiation
 
@@ -89,6 +126,51 @@ Common mistakes:
 
 Cost: the loop runs once per bit of the exponent, so about $\log_2 b$ times (30 for $10^9$, 60 for $10^{18}$). Each run does at most two multiplications. Memory is O(1).
 
+**Theorem 2.2.1 (binary exponentiation).** Let $m \ge 1$, $a \ge 0$, $b \ge 0$. Start with $r = 1 \bmod m$ and $x = a \bmod m$. While $b > 0$: multiply $r$ by $x$ if $b$ is odd, square $x$, halve $b$. Then $r = a^b \bmod m$, after at most $\lfloor \log_2 b \rfloor + 1$ rounds with at most two multiplications each.
+
+Small example first: the dry run of $3^5$ above. The bits of 5 are 1, 0, 1, so there are three rounds, and $r = 3 \cdot 81 = 243$.
+
+Why it works:
+1. Invariant: at the start of every round, $r \cdot x^{e} \equiv a^b \pmod m$, where $e$ is the current exponent. At the start $r = 1$, $x \equiv a$ and $e = b$, so it holds.
+2. If $e$ is odd, $r \cdot x^e = (r \cdot x) \cdot (x^2)^{(e-1)/2}$. If $e$ is even, $r \cdot x^e = r \cdot (x^2)^{e/2}$.
+3. In both cases the new $r$, $x$ and $e$ satisfy the invariant again. Reducing modulo $m$ after each product keeps the congruence (topic 0.4).
+4. When $e = 0$ the invariant says $r \equiv a^b$.
+5. Each round halves $e$ (rounded down), so $e$ reaches 0 after as many rounds as $b$ has bits, $\lfloor \log_2 b \rfloor + 1$.
+
+This proof needs: (1) both factors of a product are below $m$ and the product fits in `long long`; for $m$ up to about $4.6 \cdot 10^{18}$ use the add-and-double product of "Binary multiplication" below. (2) The base is reduced first, because $a$ may be large or negative. (3) $a^0 = 1$ even for $a = 0$, and for $m = 1$ every answer is 0, which `1 % m` gives.
+
+<TheoremCode unit="2.2/thm-1" />
+
+The second line is the example from the start of this note. The third line shows the two edge cases of the needs list. The invariant is steps 1 to 3 of the proof.
+
+Common mistake: starting the result at 1 instead of $1 \bmod m$. Take $a = 4$, $b = 0$, $m = 1$. The loop never runs, so the program prints 1. But every residue modulo 1 is 0, so the answer is 0. Fix: start at `1 % m`. (His `bin_exp` above returns 1 early when `pow == 0`, which has the same effect for $m = 1$; it matters only for that modulus.)
+
+Common mistake: squaring before using the bit. Swap the two lines of the loop body, and take $a = 4$, $b = 1$, $m = 7$. The program squares first, then multiplies $r$ by $4^2 = 16 \equiv 2$. It prints 2, but the answer is 4. Bit $k$ of $b$ must be paired with $a^{2^k}$, and the swap pairs it with $a^{2^{k+1}}$. Fix: use `base` for the current bit first, then square it for the next bit.
+
+A recursive form gives the same products from the top bit down: $a^b = (a^{\lfloor b/2 \rfloor})^2 \cdot a^{b \bmod 2}$. Here is the loop form again as a tested unit that multiplies in 128 bits, so it is safe when $m > 3 \cdot 10^9$.
+
+<CodeSnippet unit="2.2/pow-mod" />
+
+The loop keeps `x` equal to $a^{2^k}$ for the current bit $k$ and collects the powers whose bit is 1. Cost: one pass per bit, so $O(\log b)$.
+
+### Example: Sum of gcd of Tuples (Hard)
+
+[AtCoder ABC 162 E](https://atcoder.jp/contests/abc162/tasks/abc162_e). In short: over all $K^N$ sequences of length $N$ with entries from 1 to $K$ ($N, K \le 10^5$), add up the gcd of each sequence, modulo $10^9+7$.
+
+Idea, in the recognition steps:
+
+- Budget: $K^N$ sequences cannot be listed. With $N, K \le 10^5$ we can afford about $K \log K \approx 1.7 \cdot 10^6$ steps plus $K$ fast powers of about 17 rounds each.
+- Tools: group the sequences by their gcd $d$. The answer is $\sum_d d \cdot f(d)$, where $f(d)$ counts the sequences with gcd exactly $d$. "Exactly $d$" is hard. "Every entry is a multiple of $d$" is easy: each entry has $\lfloor K/d \rfloor$ choices, so there are $\lfloor K/d \rfloor^N$ such sequences. That needs the multiples loop of topic 2.1 and a fast power.
+- Deciding property: the gcd is at most $K \le 10^5$, so it fits in an array, and the count $\lfloor K/d \rfloor^N$ is a power modulo $10^9+7$.
+
+Why it works: let $F(d)$ be the number of sequences whose entries are all multiples of $d$. That happens exactly when $d$ divides the gcd, so $F(d) = \sum_{k \ge 1} f(kd)$. Then $f(d) = F(d) - \sum_{k \ge 2} f(kd)$, computed with $d$ going from $K$ down to 1. Every sequence has exactly one gcd, so $\sum_d d \cdot f(d)$ is the requested sum.
+
+Trace for $N = 3$, $K = 2$ (8 sequences). $d = 2$: $f(2) = 1^3 = 1$ (only 2, 2, 2), so we add $2 \cdot 1 = 2$. $d = 1$: $f(1) = 2^3 - f(2) = 7$, so we add $7$. The total is 9. Direct check: seven sequences have gcd 1 and one has gcd 2, so $7 + 2 = 9$.
+
+<CodeSnippet unit="2.2/example-1" />
+
+Cost: $O(K \log K)$ for the subtractions (the sum of $K/d$ over all $d$), plus $K$ fast powers of $O(\log N)$ each. Memory is $O(K)$. Common mistake: skipping the subtraction, that is, adding $d \cdot F(d)$ directly. For $N = 3$, $K = 2$ this gives $1 \cdot 8 + 2 \cdot 1 = 10$, not 9, because each sequence is counted once for every divisor of its gcd. If $K$ were up to $10^{12}$, one would group the values $d$ that share the same $\lfloor K/d \rfloor$; here the direct loop is simpler.
+
 ## Modulo arithmetic with division
 
 Why division needs a new idea: addition, subtraction and multiplication work directly under a modulus, because we may take the remainder after each operation. Division does not. For example, (6 / 3) % 7 = 2 is fine, but for (5 / 3) % 7 the ordinary quotient 1.666... is not an integer, and cutting it down would give a wrong answer. We need a number that behaves like "one third" inside the modulus.
@@ -140,6 +222,35 @@ With inverses, the division problem is solved:
 $\left(\frac{a^b}{c}\right)$ % m = ($a^b \times c^{-1}$) % m
 
 = [binpow (a,b,m) * inv (c,m)] % m
+
+**Theorem 2.2.3 (modular inverse).** Let $m \ge 2$.
+1. $a$ has an inverse modulo $m$ exactly when $\gcd(a, m) = 1$, and then the inverse is unique modulo $m$.
+2. If $\gcd(a, m) = 1$ and the extended Euclidean algorithm (topic 2.1) gives $ax + my = 1$, then $x \bmod m$ is the inverse. This works for every modulus $m$.
+3. If $m = p$ is prime and $p \nmid a$, the inverse is $a^{p-2} \bmod p$.
+4. If $a$ and $b$ have inverses, then $(ab)^{-1} \equiv a^{-1} b^{-1} \pmod m$.
+
+Small example first: $3^{-1} \bmod 7 = 3^5 \bmod 7 = 243 \bmod 7 = 5$. Modulo 10, which is not prime, $3 \cdot 7 = 21 \equiv 1$, so $3^{-1} = 7$. But 4 has no inverse modulo 10, because $\gcd(4, 10) = 2$.
+
+Why it works:
+1. Part 1. $ax \equiv 1 \pmod m$ means $ax + my = 1$ for some integer $y$. By Bezout's identity (topic 2.1) such $x$ and $y$ exist exactly when $\gcd(a, m)$ divides 1, that is, when it equals 1.
+2. Uniqueness. If $x$ and $x'$ are both inverses, then $x' \equiv x'(ax) = (x'a)x \equiv x \pmod m$.
+3. Part 2. Reduce $ax + my = 1$ modulo $m$. The $my$ term disappears, so $ax \equiv 1$.
+4. Part 3. By Fermat's little theorem (proved below), $a \cdot a^{p-2} = a^{p-1} \equiv 1$.
+5. Part 4. $(ab)(a^{-1}b^{-1}) = (aa^{-1})(bb^{-1}) \equiv 1$, and the inverse is unique.
+
+This proof needs: (1) $\gcd(a, m) = 1$. Modulo a prime this means $p \nmid a$. If the value can be a multiple of $p$ (for example 0), there is no inverse, and the formula $a^{p-2}$ silently returns 0. (2) Part 3 needs a prime modulus; part 2 works for every modulus. (3) The extended Euclidean algorithm may return a negative $x$, so normalise it with `((x % m) + m) % m`.
+
+<TheoremCode unit="2.2/thm-3" />
+
+The first line shows parts 2 and 3 agree. The second line shows part 1: modulo 10 the number 3 has an inverse and 4 has none (the code prints -1).
+
+Common mistake: printing the raw coefficient. For $a = 7$, $m = 8$ the extended Euclidean algorithm gives $7 \cdot (-1) + 8 \cdot 1 = 1$, so $x = -1$, and `-1 % 8` is $-1$ in C++. The program prints -1, but the inverse is 7. Worse, -1 is also the code for "no inverse". Fix: `((x % m) + m) % m`.
+
+An inverse for any modulus, with the check on the gcd:
+
+<CodeSnippet unit="2.2/inverse" />
+
+`ext` returns $g = \gcd$ and the coefficients. If $g \ne 1$ there is no inverse and the function returns -1. For a prime modulus, `power(a, p - 2, p)` gives the same inverse, but it returns 0 instead of reporting failure when $p \mid a$. Common mistake: ignoring $g$. For $a = 0$, $m = 5$ the gcd is 5, so there is no inverse, but a program that skips the check prints the coefficient 0, and $0 \cdot 0 \not\equiv 1$. Cost: $O(\log m)$.
 
 ### Finding inverses
 
@@ -255,6 +366,65 @@ long long expressionMod(long long A, long long B, long long C, long long D,
 Compiled and run: the inverses of 1 to 6 modulo 7 come out as 1 4 5 2 3 6, the same as the table above. For the first example of this section, `bin_exp(2, 4, 11) * invMod(4, 11) % 11` is 4. For the sample 5 3 10 3 2 4 6, `expressionMod` returns 499999813, the same as the trace and as an independent 128-bit calculation. On 2000 random inputs it matched that calculation every time, and 1000 random values v satisfied $v \cdot v^{-1} \% (10^9+7) = 1$.
 
 Cost: two fast powers and a few multiplications, so O(log D + log m) time (about 60 steps) and O(1) memory. Common mistake: calling `invMod` with a multiple of m. There is no inverse then, and the function silently returns 0.
+
+**Theorem 2.2.6 (inverses of 1 to n).** Let $p$ be prime and $n < p$. Set $\text{inv}[1] = 1$ and, for $2 \le i \le n$,
+
+$$\text{inv}[i] = -\lfloor p/i \rfloor \cdot \text{inv}[p \bmod i] \bmod p.$$
+
+Then $\text{inv}[i] = i^{-1} \bmod p$ for every $i \le n$, and all of them take $O(n)$ time in total. This matters when many inverses are needed: $n$ separate fast powers cost $n \log p$.
+
+Small example first, $p = 7$. $\text{inv}[2] = -3 \cdot 1 \equiv 4$. $\text{inv}[3] = -2 \cdot 1 \equiv 5$. $\text{inv}[4] = -1 \cdot \text{inv}[3] \equiv 2$. $\text{inv}[5] = -1 \cdot \text{inv}[2] \equiv 3$. $\text{inv}[6] = -1 \cdot 1 \equiv 6$. Check: $4 \cdot 2 = 8 \equiv 1$ and $5 \cdot 3 = 15 \equiv 1$.
+
+Why it works (induction on $i$):
+1. Write $p = qi + r$ with $q = \lfloor p/i \rfloor$ and $r = p \bmod i$.
+2. Then $1 \le r < i$. The remainder $r$ is not 0, because the prime $p$ has no divisor $i$ with $1 < i < p$. So $\text{inv}[r]$ is already correct.
+3. Reducing $p = qi + r$ modulo $p$ gives $qi + r \equiv 0$.
+4. Multiply by $i^{-1} r^{-1}$: $q r^{-1} + i^{-1} \equiv 0$, so $i^{-1} \equiv -q \cdot r^{-1}$.
+
+This proof needs: (1) $p$ is prime and $n < p$. (2) In C++ the product `-(p / i) * inv[p % i] % p` is negative or zero, so add $p$ to make it non-negative.
+
+<TheoremCode unit="2.2/thm-6" />
+
+The output is the table of inverses modulo 7 from the figure above, 1 4 5 2 3 6.
+
+Common mistake: dropping the minus sign. For $p = 5$ and $n = 3$ the program computes $\text{inv}[2] = 2 \cdot 1 = 2$, but $2 \cdot 2 = 4 \not\equiv 1 \pmod 5$; the inverse is 3. The test prints 2 0 instead of 2 1. Fix: $i^{-1} \equiv -\lfloor p/i \rfloor \cdot (p \bmod i)^{-1}$.
+
+<CodeSnippet unit="2.2/inverse-table" />
+
+Cost: one pass, $O(n)$ time and memory. Another way: compute the prefix products $1 \cdot 2 \cdots i$, invert only the last one with Fermat, and walk back with $i^{-1} = (\text{product up to } i-1) \cdot (\text{product up to } i)^{-1}$. It is also $O(n)$ and works for any $n$ numbers, not only $1, \dots, n$.
+
+### Fractions modulo a prime
+
+The die problem from the start of this note is a fraction printed modulo a prime. This section says why that is allowed.
+
+**Theorem 2.2.4 (fractions modulo a prime).** Let $p$ be prime. For integers $P, Q$ with $p \nmid Q$ define $f(P/Q) = P \cdot Q^{-1} \bmod p$. Then:
+1. $f$ does not depend on how the fraction is written: if $P/Q = P'/Q'$ (both denominators not divisible by $p$), the two values agree.
+2. $f$ respects the four operations: $f(u+v) = f(u) + f(v)$, $f(u-v) = f(u) - f(v)$, $f(uv) = f(u)f(v)$ and $f(u/v) = f(u) f(v)^{-1}$ when $f(v) \ne 0$, all modulo $p$.
+
+So a whole computation with fractions can be done modulo $p$, with every division replaced by a multiplication by an inverse. The result is the residue of the exact answer.
+
+Small example first, modulo 7: $\frac12 + \frac13 = \frac56$. Modulo 7, $\frac12 \equiv 4$ and $\frac13 \equiv 5$, so the sum is $9 \equiv 2$. Directly, $5 \cdot 6^{-1} \equiv 5 \cdot 6 = 30 \equiv 2$. Both give 2.
+
+Why it works:
+1. Part 1. $P/Q = P'/Q'$ means $PQ' = P'Q$.
+2. Multiply both sides by $Q^{-1} Q'^{-1}$ modulo $p$. This gives $P Q^{-1} \equiv P' Q'^{-1}$.
+3. Part 2. For $u = P/Q$ and $v = R/S$ we have $u + v = (PS + RQ)/(QS)$, and $p \nmid QS$ because $p$ is prime and divides neither $Q$ nor $S$.
+4. Its value is $(PS + RQ)(QS)^{-1} \equiv (PS + RQ) Q^{-1} S^{-1} = PQ^{-1} + RS^{-1}$, using part 4 of Theorem 2.2.3.
+5. The other three operations are the same calculation.
+
+This proof needs: (1) every denominator that appears, including the intermediate ones, is not divisible by $p$. Check it for your own steps, not only for the final answer. (2) The residue does not show the fraction or which of two fractions is larger. If the problem needs a comparison, compare exact values before reducing.
+
+<TheoremCode unit="2.2/thm-4" />
+
+The last line is the die answer: $\frac13 \bmod 998\,244\,353 = 332\,748\,118$.
+
+A sum of fractions as a function:
+
+<CodeSnippet unit="2.2/fraction-sum" />
+
+Each fraction $P/Q$ becomes $P \cdot Q^{-1}$ and the residues are added, so the exact sum is never formed. Cost: one fast power per fraction, $O(n \log p)$. Another way: keep the sum as one fraction, $\frac{R}{S} + \frac{P}{Q} = \frac{RQ + PS}{SQ}$, and invert once at the end. That needs one inverse instead of $n$.
+
+Common mistake: comparing residues. Modulo 7, $\frac12 \equiv 4$ and $\frac13 \equiv 5$, but $\frac12 > \frac13$. The residue 4 being smaller than 5 says nothing about the fractions.
 
 ### GP sum under mod
 
@@ -429,6 +599,23 @@ Small check with p = 7: $2^6 = 64 = 63 + 1$, so $2^6$ % 7 = 1. Also $3^6 = 729 =
 
 Why it holds: take p = 7 and a = 3. Multiply each of 1, 2, ..., 6 by 3 and take the remainder modulo 7. The results are 3, 6, 2, 5, 1, 4, which are the same six numbers in a different order (two different numbers can never give the same remainder, because 3 has an inverse). So the two products are equal: $3^6 \cdot 6! \equiv 6!$ modulo 7. Since 6! has no factor 7, it can be cancelled, which leaves $3^6 \equiv 1$. The same argument works for any prime p and any a that p does not divide.
 
+**Theorem 2.2.2 (Fermat's little theorem).** Let $p$ be prime. (1) If $p \nmid a$, then $a^{p-1} \equiv 1 \pmod p$. (2) For every integer $a$, $a^p \equiv a \pmod p$.
+
+Small example first: $3^6 = 729 = 104 \cdot 7 + 1$, so $3^6 \equiv 1 \pmod 7$.
+
+Why it works, for any prime $p$ (the $p = 7$, $a = 3$ case above is the same argument with numbers):
+1. Look at the $p-1$ numbers $a \cdot 1, a \cdot 2, \dots, a \cdot (p-1)$ modulo $p$. None is 0. A prime $p$ divides a product only if it divides one of the factors (Euclid's lemma, topic 2.1), and $p$ divides neither $a$ nor $i$.
+2. No two are equal. If $ai \equiv aj$, then $p \mid a(i-j)$, so $p \mid i - j$. Since $|i - j| < p$, this forces $i = j$.
+3. So the remainders are $1, 2, \dots, p-1$ in some order, and the products agree: $a^{p-1} \cdot (p-1)! \equiv (p-1)! \pmod p$.
+4. So $p$ divides $(a^{p-1} - 1) \cdot (p-1)!$. It does not divide $(p-1)!$, a product of numbers below $p$ (Euclid's lemma again). So it divides $a^{p-1} - 1$. This is part 1.
+5. Part 2. If $p \nmid a$, multiply part 1 by $a$. If $p \mid a$, both sides are 0 modulo $p$.
+
+This proof needs: (1) $p$ is prime. For $m = 4$: $3^3 = 27 \equiv 3$, not 1. A composite modulus needs the extended Euclidean algorithm (for inverses) or Euler's theorem below. (2) $p \nmid a$ for part 1, because $0^{p-1} \equiv 0$.
+
+<TheoremCode unit="2.2/thm-2" />
+
+The second line is the composite-modulus warning from the needs list.
+
 For instance, we may want $a^{b^c} \% p = a^{(b^c \% (p-1))} \% p$
 
 Why this is needed: in $a^{b^c}$ the exponent $b^c$ can have millions of digits, so we cannot even store it. The theorem lets us replace it by its remainder modulo p-1, which is small.
@@ -444,6 +631,18 @@ $(a^{3(p-1)} . a^7) \% p$
 So every block of $(p-1)$ in the exponent turns into 1. That is why we take the exponent modulo $p-1$.
 
 Numeric check: p = 7, a = 2, exponent 25. Since 25 % 6 = 1, the claim is $2^{25}$ % 7 = $2^1$ % 7 = 2. Directly: $2^3 = 8 \equiv 1$, and 25 = 24 + 1, so $2^{25} \equiv 2$. Both agree.
+
+**Theorem 2.2.5 (exponent reduction).** Let $p$ be prime and $e \ge 0$. (1) If $p \nmid a$, then $a^e \equiv a^{e \bmod (p-1)} \pmod p$. (2) If $p \mid a$, then $a^e \equiv 0$ for $e \ge 1$.
+
+Small example first: $3^{100} \bmod 7$. Since $100 \bmod 6 = 4$, it is $3^4 = 81 \equiv 4$. And $2^{10^{18}} \bmod (10^9+7) = 2^{10^{18} \bmod (10^9+6)}$, both 719,476,260.
+
+Why it works: write $e = q(p-1) + r$ with $r = e \bmod (p-1)$. Then $a^e = (a^{p-1})^q \cdot a^r \equiv 1^q \cdot a^r$ by Fermat. This is the $a^{3p+4}$ calculation above with $q = 3$. For part 2, every positive power of a multiple of $p$ is a multiple of $p$.
+
+This proof needs: (1) the modulus is prime, and the exponent is reduced modulo $p-1$, not modulo $p$. (2) $p \nmid a$. If $a$ can be a multiple of $p$, handle it first, because reducing $e$ to 0 would give $a^0 = 1$ instead of 0. (3) When the exponent is itself a power or a product, compute it modulo $p-1$ with the rules of topic 0.4. The number $p-1$ is not prime, so never divide inside the exponent.
+
+<TheoremCode unit="2.2/thm-5" />
+
+The first line is the small example, the second is the multiple-of-$p$ case, the third is the example from the start of this note.
 
 Another use: $a \cdot a^{p-2} = a^{p-1} \equiv 1$, so $a^{p-2}$ is the modular inverse of a (division under mod).
 
@@ -511,6 +710,34 @@ Common mistakes:
 - Applying the reduction when p divides a.
 - Computing $b^c$ first as an ordinary number. It overflows, so $b^c$ must itself be computed modulo p-1.
 
+The same job as a tested unit, which handles $0^0$ and multiples of $p$ first:
+
+<CodeSnippet unit="2.2/power-tower" />
+
+For a tower of three or more levels, $a^{b^{c^d}}$, apply the reduction one level at a time. Each level needs its own modulus: $p-1$ for the exponent of the base. Since $p-1$ is not prime, the next level cannot use Fermat again. That case needs Euler's theorem below.
+
+### Example: Divisor Analysis
+
+[CSES 2182](https://cses.fi/problemset/task/2182). In short: a number is given by its prime factorisation, up to $10^5$ distinct primes $x \le 10^6$ with exponents $k \le 10^9$. Print the count, the sum and the product of its divisors, each modulo $10^9+7$.
+
+Idea, in the recognition steps:
+
+- Budget: the number itself would have more than $10^{14}$ bits, so it cannot be built. We can afford a few fast powers per prime, $O(n \log p)$ in all.
+- Tools: the count and the sum come from the exponents, $\prod (k+1)$ and $\prod (1 + x + \dots + x^k)$. Each sum is a geometric sum $\frac{x^{k+1} - 1}{x - 1}$, which needs a division modulo a prime (inverse). The product of divisors is a power of each prime with a huge exponent (exponent reduction).
+- Deciding property: $10^9+7$ is prime, and $x - 1$ lies between 1 and $10^6$, so it is not a multiple of $p$ and has an inverse. Each base $x \le 10^6$ is not a multiple of $p$ either, so exponents may be reduced modulo $p-1$.
+
+Why it works: let $c$ be the number of divisors and $P$ the divisor product of the primes handled so far. Adding a prime $x$ with exponent $k$, the new divisors are exactly $d \cdot x^j$ with $d$ an old divisor and $0 \le j \le k$. Their product is
+
+$$P^{k+1} \cdot x^{(0 + 1 + \dots + k) \cdot c} = P^{k+1} \cdot x^{c \, k(k+1)/2}.$$
+
+The exponent is enormous, but $x$ is not a multiple of $p$, so it can be taken modulo $p-1$. That is why the program keeps $c \bmod (p-1)$ separately: $c \bmod p$ would be the wrong period. The count becomes $c(k+1)$, and the sum is multiplied by $\frac{x^{k+1}-1}{x-1}$.
+
+Trace for $12 = 2^2 \cdot 3^1$. Prime 2, $k = 2$: count 3, sum $1+2+4 = 7$, product $1 \cdot 2 \cdot 4 = 8$. Prime 3, $k = 1$: count $3 \cdot 2 = 6$, sum $7 \cdot 4 = 28$, product $8^2 \cdot 3^{(0+1) \cdot 3} = 64 \cdot 27 = 1728$. The divisors 1, 2, 3, 4, 6, 12 have count 6, sum 28 and product 1728.
+
+<CodeSnippet unit="2.2/example-2" />
+
+Cost: $O(n \log p)$ time, $O(1)$ extra memory. Common mistake: reducing the exponent $c k(k+1)/2$ modulo $p$ instead of $p-1$. Another way is the product of divisors $n^{d(n)/2}$, since divisors pair up as $(d, n/d)$. It fails when $d(n)$ is odd, because halving modulo the even number $p-1$ is not allowed. The prime-by-prime formula never divides inside the exponent.
+
 ## Euler's Theorem: (General version).
 
 For a and m co-prime, that is gcd (a, m) = 1:
@@ -556,6 +783,12 @@ long long euler_power(long long a, long long n, long long m){
 
 Cost: finding $\phi(m)$ by trial division takes O($\sqrt{m}$) steps (about 1000 for $m = 10^6$). The power itself takes O(log n). Memory is O(1). Edge case: if gcd(a, m) is not 1, the answer can be wrong, so check the gcd first (or use the generalised form in the note above).
 
+## Recognition cards
+
+A card names one technique, the property that decides it, and the signals that rule it in or out. Use the cards to decide before you code.
+
+<Cards topic="2.2" />
+
 ## Quick revision
 
 - Inverse (m prime) = $a^{m-2}$ % m. Divide by c → multiply by inv(c). The inverse exists if and only if gcd(a, m) = 1.
@@ -569,6 +802,44 @@ Cost: finding $\phi(m)$ by trial division takes O($\sqrt{m}$) steps (about 1000 
 - Binary multiplication is safe while M is at most about $4.6 \cdot 10^{18}$, because a + a must fit in `long long`.
 - Fermat and Euler both come from the fact that multiplying all numbers co-prime to the modulus by a gives the same set of remainders.
 - Use `long long` and keep results in the range 0 to m-1.
+- Theorem 2.2.1: invariant $r \cdot x^e \equiv a^b$; the loop runs $\lfloor \log_2 b \rfloor + 1$ rounds. Start the result at `1 % m`.
+- Theorem 2.2.2: $a^{p-1} \equiv 1$ needs a prime $p$ with $p \nmid a$; for $m = 4$, $3^3 \equiv 3$.
+- Theorem 2.2.3: the inverse exists if and only if $\gcd(a, m) = 1$ and is unique; extended Euclid works for any $m$; $(ab)^{-1} = a^{-1} b^{-1}$.
+- Theorem 2.2.4: a fraction $P/Q$ with $p \nmid Q$ is $P \cdot Q^{-1}$, and sums and products of fractions agree with the residues. Residues cannot be compared.
+- Theorem 2.2.5: reduce the exponent modulo $p-1$, never modulo $p$, and handle multiples of $p$ first.
+- Theorem 2.2.6: $\text{inv}[i] = -\lfloor p/i \rfloor \cdot \text{inv}[p \bmod i]$ gives all inverses up to $n$ in $O(n)$.
+
+## Check yourself
+
+### Identification drill
+
+Each item names a problem without saying which card decides it. Choose a card, write the property you checked, then reveal the answer.
+
+<Drill topic="2.2" />
+
+### Look-alike pairs
+
+Two problems that read almost the same but need different tools. The flipping difference is the one detail that changes the decision.
+
+<LookalikePairs topic="2.2" />
+
+### Self-test
+
+Answer each question on paper before opening its answer.
+
+<SelfTest topic="2.2" />
+
+### Checkpoint
+
+Three problems in 120 minutes. Solve at least 2 of 3 in time and choose the right card on at least 8 of the 10 drill items.
+
+<Checkpoint topic="2.2" />
+
+### Decision map update
+
+How this topic's cards are chosen against the tools you already have.
+
+<DecisionMapUpdate topic="2.2" />
 
 ## Practice problems
 

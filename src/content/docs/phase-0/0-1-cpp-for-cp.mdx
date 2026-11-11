@@ -61,13 +61,23 @@ Terms used in this lesson:
 - TLE
 - RTE
 - WA
+- Integer ranges (Theorem 0.1.1)
+- Checking a product without overflow (Theorem 0.1.2)
+- Division and rounding (Theorem 0.1.4)
+- Floating point and the integer square root (Theorem 0.1.5)
+- Worked example 1: Weird Algorithm
+- Worked example 3: Between a and b
+- Many test cases in one input (Theorem 0.1.3, inside TLE)
 - Test cases
 - i) Extreme values
 - ii) Code coverage
 - iii) Common themes
 - iv) Stress testing
+- Many tests: a failing input and a worked example
 - Finding the bug fast (binary search, assert, sanitizers, debug macro)
+- Recognition cards
 - Quick revision
+- Check yourself
 - Practice problems
 
 ## Debugging: the 4 things
@@ -97,6 +107,8 @@ After submitting we get a verdict.
 *The five bad verdicts: CE, RTE, TLE, WA and MLE.*
 
 CE = Compilation Error, RTE = Run Time Error, TLE = Time Limit Exceeded, WA = Wrong Answer, MLE = Memory Limit Exceeded.
+
+The good verdict is AC (Accepted): the program is correct on every hidden test. Many judges write RE (Runtime Error) for RTE. The time limit is usually 1 to 2 seconds per test, and the statement gives the exact value.
 
 A test case can come from two places: we write it by ourselves, or the computer generates it.
 
@@ -187,6 +199,50 @@ Print with `'\n'` instead of `endl`. The Fabricator solutions already do this wi
 ```
 
 Note: after `sync_with_stdio(false)`, do not mix `cin/cout` with `scanf/printf`. The two kinds of input and output no longer share one buffer, so the order of the data can be wrong.
+
+The skeleton of a whole program that uses `fastIo` looks like this. From here on the lessons show only the function that does the work.
+
+```cpp
+#include <bits/stdc++.h>  // the whole standard library in one line
+using namespace std;       // write cin and vector instead of std::cin and std::vector
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    // read the input, call the function, print the answer
+}
+```
+
+Fast input and output is a rule, not a decision. It is not chosen per problem: always include the two lines. That is why it has no recognition card.
+
+### Many test cases in one input (Theorem 0.1.3)
+
+Many problems put several test cases in one input. The first number is $t$, and then come $t$ tests. Take $t \le 10^4$ and a total size of $2 \cdot 10^5$. Say the program clears a global array of $2 \cdot 10^5$ entries at the start of every test. That is $10^4 \cdot 2 \cdot 10^5 = 2 \cdot 10^9$ steps, far above the $10^8$ limit, although every test is tiny. If each test only touches its own $n_i$ entries, the whole input costs about $2 \cdot 10^5$ steps. The theorem says exactly this.
+
+**Theorem 0.1.3 (cost of inputs with many tests).** Suppose an input has $t$ test cases of sizes $n_1, \dots, n_t$, and the statement promises $n_1 + \dots + n_t \le N$. If a program spends at most $c \cdot n_i$ steps on test $i$, it spends at most $c \cdot N$ steps in total. If it spends $c \cdot M$ steps on every test for some fixed $M$ (for example, clearing a global array of size $M$), the total is $c \cdot t \cdot M$.
+
+In plain words: if every test costs time in proportion to its own size, all tests together cost time in proportion to the sum of the sizes. If every test costs time in proportion to the largest possible size, the cost is multiplied by the number of tests.
+
+Small example first: three tests of sizes $3, 5, 2$ and $M = 200000$. Working on each test's own array takes $3 + 5 + 2 = 10$ steps. Clearing the global array in every test takes $3 \cdot 200000 = 600000$.
+
+Why it works:
+1. Add the per-test bounds: $c n_1 + \dots + c n_t = c (n_1 + \dots + n_t)$.
+2. The promise says $n_1 + \dots + n_t \le N$, so the total is at most $c N$.
+3. In the second case each of the $t$ tests costs $c M$, so the total is $c t M$.
+
+This proof needs: (1) the statement bounds the sum of the sizes over all tests, not only each size, (2) the work for a test depends only on that test's own size, never on the largest possible size.
+
+<TheoremCode unit="0.1/thm-3" />
+
+The second example line is the one to remember: $10^4$ tests of size 20 cost $2 \cdot 10^5$ steps on their own sizes but $2 \cdot 10^9$ with clearing. Creating a `vector<int> a(n)` inside the test loop avoids both the clearing and the leftovers from the previous test.
+
+The template for one test (everything is created per test):
+
+<CodeSnippet unit="0.1/multi-test" />
+
+Dry run: the first test is `4` / `1 1 1 2`. Then `sum` is 5 and `n` is 4. Only $2 \cdot 4 = 8 > 5$, so the count is 1. The second test is `1` / `7`. Then `sum` is 7 and $7 \cdot 1 > 7$ is false, so the count is 0. Compare `x * n` with `sum` instead of dividing, because the average may not be a whole number. T.C. is $O(n)$ per test, so by Theorem 0.1.3 the total is $O(\text{sum of } n)$, and S.C. is $O(n)$ for one test.
+
+An alternative is to declare arrays once, globally, with the maximum size, and reset only the first `n` entries per test. It is correct when the reset covers everything used, and by the theorem it is fast only when the reset is sized by `n`, not by the maximum. The local `vector` makes both mistakes impossible.
 
 ## RTE
 
@@ -308,6 +364,167 @@ count++;     // reads garbage
 ```
 
 `-Wall` catches this (`'count' is used uninitialized`). These start at zero: global variables, the elements of `vector<int> v(3)`, `int x{}`, `int raw[3] = {}`. A plain local `int x;` does not. Rule: always give a local variable a value.
+
+### Integer ranges (Theorem 0.1.1)
+
+The MOD example above is one case of a general rule: every integer type has a largest value, and a result above it is not stored correctly. A sum of $2 \cdot 10^5$ values up to $10^9$ reaches $2 \cdot 10^{14}$. An `int` stops at 2147483647, and a `long long` at about $9.2 \cdot 10^{18}$. So the type must be chosen before the code is written. Here is the rule for every size.
+
+**Theorem 0.1.1 (integer ranges).** A $b$-bit signed type, as used by C++ compilers, holds exactly the integers from $-2^{b-1}$ to $2^{b-1} - 1$. A $b$-bit unsigned type holds exactly the integers from $0$ to $2^b - 1$. In particular:
+
+| type | bits | largest value | about |
+|---|---|---|---|
+| `int` | 32 | $2^{31} - 1 = 2\,147\,483\,647$ | $2.1 \cdot 10^9$ |
+| `long long` | 64 | $2^{63} - 1 = 9\,223\,372\,036\,854\,775\,807$ | $9.2 \cdot 10^{18}$ |
+| `unsigned long long` | 64 | $2^{64} - 1$ | $1.8 \cdot 10^{19}$ |
+
+In plain words: a 32-bit `int` stops at about 2.1 billion and a 64-bit `long long` at about 9.2 quintillion. A result above the limit is not stored correctly, so the type must be chosen from the largest value any step can reach.
+
+Small example first: a signed type with $b = 3$ bits (smaller than any real one) has $2^3 = 8$ patterns. They stand for $-4, -3, -2, -1, 0, 1, 2, 3$. The smallest is $-2^2 = -4$ and the largest is $2^2 - 1 = 3$.
+
+Why it works:
+1. A $b$-bit type has $2^b$ bit patterns, so it holds at most $2^b$ different values.
+2. An unsigned type uses the patterns for $0, 1, \dots, 2^b - 1$. That is $2^b$ values, so its largest value is $2^b - 1$.
+3. A signed type uses two's complement: the $2^{b-1}$ patterns whose top bit is 1 stand for the negative numbers $-2^{b-1}, \dots, -1$.
+4. The $2^{b-1}$ patterns whose top bit is 0 stand for $0, \dots, 2^{b-1} - 1$.
+5. Together these are all $2^b$ patterns, so no other value fits, and the largest signed value is $2^{b-1} - 1$.
+6. Substituting $b = 32$ and $b = 64$ gives the table.
+
+This proof needs: (1) every intermediate value of the computation, not only the final answer, lies within the type's range, (2) each step is computed in the type C++ uses for it: `int * int` is computed in `int` even when the result is then stored in a `long long`.
+
+<TheoremCode unit="0.1/thm-1" />
+
+His `mulMod` above widens to 64 bits too. This unit adds the table values: the first two example lines are the table for $b = 32$ and $b = 64$. The third line multiplies in 64 bits. Written as `1LL * a * b`, the first operand is a `long long`, so the whole product is computed in 64 bits and $10^{10}$ is stored correctly.
+
+Consequences. A product of two values up to $10^9$ is at most $10^{18}$: it fits `long long` but not `int`. A product of three such values ($10^{27}$) fits no built-in type. A sum of $2 \cdot 10^5$ values up to $10^9$ needs `long long`. When a signed type overflows, C++ gives no promise about the result (the behaviour is undefined). In practice the value usually wraps around to a large negative number.
+
+The type of an expression. In `long long x = a * b;` with `int a, b`, the multiplication happens in `int`, overflows, and only the broken result is copied into `x`. With `a = b = 100000` the true product is $10^{10}$, but `x` holds 1410065408. Write `1LL * a * b` or `(long long)a * b`. `1LL` is the number 1 as a `long long`.
+
+Common mistake: values stored as `int` and multiplied by `n`. In `for (int x : a) if (x * n > sum) count++;` take the test `4` / `999999993 999999991 999999995 999999991`. Here `x * n` is about $4 \cdot 10^9$, which wraps to a negative number in `int`, so no element looks above the sum and the program prints 0 instead of 2. The comparison with the `long long` `sum` happens only after the overflow, because the type of `x * n` is decided by `x` and `n`, not by `sum`. Fix: keep the values in `long long`, or write `1LL * x * n`.
+
+### Checking a product without overflow (Theorem 0.1.2)
+
+Multiply numbers up to $10^9$ one by one and stop as soon as the product passes $L = 10^{18}$. The slow-looking way is to multiply and then compare. It breaks: the product of $1\,000\,000\,001$ and $238\,117\,800\,350\,661\,441$ is about $2.4 \cdot 10^{26}$, so it wraps and can come out small. The better way never forms the product. It asks whether the current product is above $L$ divided by the next value.
+
+**Theorem 0.1.2 (checking a product without overflow).** Let $a \ge 0$, $b \ge 1$ and $L \ge 0$ be integers. Then $a \cdot b > L$ if and only if $a > \lfloor L / b \rfloor$.
+
+In plain words: to ask whether $a$ times $b$ is above a limit $L$, ask whether $a$ is above $L$ divided by $b$, rounded down. The product itself, which might not fit, is never computed.
+
+Small example first: $b = 7$ and $L = 34$, so $\lfloor L / b \rfloor = 4$. For $a = 5$: $5 \cdot 7 = 35 > 34$ and $5 > 4$. For $a = 4$: $4 \cdot 7 = 28 \le 34$ and $4 \le 4$.
+
+Why it works:
+1. Write $q = \lfloor L / b \rfloor$, so $q \cdot b \le L < (q + 1) \cdot b$.
+2. If $a > q$, then $a \ge q + 1$ because $a$ is an integer, so $a \cdot b \ge (q + 1) \cdot b > L$.
+3. If $a \le q$, then $a \cdot b \le q \cdot b \le L$.
+4. So $a \cdot b > L$ exactly when $a > q$.
+
+This proof needs: (1) $a \ge 0$ and $b \ge 1$ (for $b = 0$ the product is 0 and needs no check), (2) $L$ itself fits the type, so $\lfloor L / b \rfloor$ is computed exactly.
+
+<TheoremCode unit="0.1/thm-2" />
+
+The first two example lines sit on the border: $10^9 \cdot 10^9$ equals the limit and is not above it, and one more is. So to stop once a product passes $L$, test `prod > L / x` before computing `prod * x`. The product never leaves the range. The template:
+
+<CodeSnippet unit="0.1/capped-product" />
+
+Dry run on `1000000001 1000000000`: the first step checks $1 > 10^{18} / 1\,000\,000\,001 = 999999999$, which is false, so `prod` becomes 1000000001. The second step checks $1000000001 > 10^{18} / 10^9 = 10^9$, which is true, so the answer is -1. A zero anywhere makes the product 0, even if an earlier part was already above $10^{18}$, so zeros are handled first. T.C. is $O(n)$ and S.C. is $O(1)$ extra.
+
+An alternative is `__int128`: multiply first and compare after, since $10^{18} \cdot 10^{18}$ fits in 128 bits. It is not standard C++ and not every judge supports it. The division check works everywhere.
+
+Common mistake: multiplying first, checking after, as in `if (prod * x > LIMIT)`. Take the input `4` / `1000000001 238117800350661441 1448941 231951276716096835`. The second multiplication wraps to $-3\,038\,340\,545\,052\,900\,031$, which is not above the limit, so the check passes and the program prints a wrong large negative number instead of -1. Fix: compare `prod > LIMIT / x`.
+
+Common mistake: zero not handled first. Without the zero loop, the input `3` / `1081043 0 500000000000000000` makes the program compute `LIMIT / 0`, which crashes ("Floating point exception" on Linux). The correct output is 0. Fix: look at all values for a zero before the multiplying loop.
+
+### Division and rounding (Theorem 0.1.4)
+
+C++ integer division of $a$ by $b \ne 0$ truncates toward zero: it drops the fractional part. So `7 / 2 == 3` and `-7 / 2 == -3`, while $\lfloor -3.5 \rfloor = -4$. The remainder takes the sign of $a$: `-7 % 2 == -1`. This is the same reason `-5 % MOD` is negative above. For $a \ge 0$ truncation is the floor, but for a negative number it is not.
+
+**Theorem 0.1.4 (floor and ceiling division).** Let $a$ and $b$ be integers with $b > 0$.
+1. If $a \ge 0$, then `a / b` equals $\lfloor a/b \rfloor$ and `(a + b - 1) / b` equals $\lceil a/b \rceil$.
+2. For any sign of $a$: $\lfloor a/b \rfloor$ equals `a / b` when `a % b == 0` or $a > 0$, and `a / b - 1` otherwise. And $\lceil a/b \rceil = -\lfloor -a/b \rfloor$.
+
+In plain words: C++ division cuts off the fraction, which rounds toward zero. For non-negative numbers that is rounding down. For a negative number that is not an exact multiple it rounds up, so one must be subtracted to get the floor.
+
+Small example first: $a = 7$, $b = 2$: `7 / 2` is 3, the floor is 3, and the ceiling is 4, which is `(7 + 2 - 1) / 2`. For $a = -7$, $b = 2$: `-7 / 2` is $-3$, but the floor is $-4$ and the ceiling is $-3$. For $a = -6$, $b = 4$: the ceiling is $-1$, but `(-6 + 4 - 1) / 4` is `-3 / 4 = 0`, so the shortcut fails for negative $a$.
+
+Why it works:
+1. Part 1. Write $a = qb + r$ with $0 \le r < b$. Then $\lfloor a/b \rfloor = q$, which is what truncation gives for $a \ge 0$.
+2. If $r = 0$, then $a + b - 1 = qb + (b - 1)$ with $b - 1 < b$, so truncation gives $q = \lceil a/b \rceil$.
+3. If $r \ge 1$, then $a + b - 1 = (q + 1) b + (r - 1)$ with $0 \le r - 1 < b$, so truncation gives $q + 1 = \lceil a/b \rceil$. This proves part 1.
+4. Part 2, floor. When $a/b$ is a whole number or positive, truncation and floor agree.
+5. When $a < 0$ and $b$ does not divide $a$, the value $a/b$ lies strictly between two integers and truncation rounds it up (toward zero), so the floor is one less.
+6. Part 2, ceiling. $\lceil x \rceil = -\lfloor -x \rfloor$ for every real $x$: negating reverses the order, so "smallest integer $\ge x$" becomes "largest integer $\le -x$".
+7. With $x = a/b$ this gives $\lceil a/b \rceil = -\lfloor -a/b \rfloor$.
+
+This proof needs: (1) $b > 0$ (for $b < 0$, divide $-a$ by $-b$ instead, which gives the same quotient), (2) for the shortcut `(a + b - 1) / b`: $a \ge 0$, and $a + b - 1$ fits the type.
+
+<TheoremCode unit="0.1/thm-4" />
+
+The second and third example lines are the ones where truncation and floor differ. For a negative $a$ use $\lceil a/b \rceil = -\lfloor -a/b \rfloor$, never the shortcut. The template also accepts $b < 0$:
+
+<CodeSnippet unit="0.1/floor-ceil" />
+
+Dry run on $a = -7$, $b = 2$: `q` is $-3$, `a % b` is $-1$ (not 0) and $a < 0$, so `q` becomes $-4$, the floor. The ceiling is `-floorDiv(7, 2) = -3`. T.C. is $O(1)$. For $a \ge 0$ and $b > 0$ only, the shortcut `(a + b - 1) / b` is shorter, but it breaks for negative $a$.
+
+Common mistake: truncation used as the floor. If the line `if (a % b != 0 && a < 0) q--;` is removed, the input `372899666868390665 717947711864209419` prints `0 0` instead of `0 1`. The ceiling is computed as $-\lfloor -a/b \rfloor$, and $-a/b \approx -0.52$ truncates to 0 instead of flooring to $-1$. Fix: keep the correction.
+
+Common mistake: `(a + b - 1) / b` for every sign. The input `-6 6` gives 0 for the ceiling instead of $-1$, because $(-6 + 5) / 6 = -1/6$ truncates to 0. Fix: use the shortcut only for $a \ge 0$.
+
+### Floating point and the integer square root (Theorem 0.1.5)
+
+A `double` seems to hold large integers, but it does not hold all of them. Take $x = 10^{18} - 1$. The true integer square root is 999999999, yet `(long long)sqrt((double)x)` gives 1000000000, because converting $x$ to `double` rounds it up to $10^{18}$. The better way uses the floating-point root only as a guess, then fixes it with integer comparisons.
+
+**Theorem 0.1.5 (exact integers in a `double`, and a safe integer square root).**
+1. A `double` stores every integer $x$ with $|x| \le 2^{53} \approx 9 \cdot 10^{15}$ exactly, but not every integer above $2^{53}$.
+2. For an integer $0 \le x \le 10^{18}$, start from any guess $r \ge 0$ (for example the rounded `sqrtl(x)`). Decrease $r$ while $r^2 > x$, and increase it while $(r+1)^2 \le x$. The result is $\lfloor \sqrt{x} \rfloor$.
+
+In plain words: a `double` holds integers exactly only up to about $9 \cdot 10^{15}$, so the square root of a large integer computed in floating point can be off by one. Check the guess with integer comparisons and move it down or up until it fits.
+
+Small example first: $x = 10$: the guess is 3, and $3^2 = 9 \le 10 < 16 = 4^2$, so neither loop moves. For $x = 10^{18} - 1$ the `double` guess is $10^9$. Then $r^2 = 10^{18} > x$, so the first loop lowers it to 999999999. Now $999999999^2 \le x$ and $(r+1)^2 = 10^{18} > x$, so it stops.
+
+Why it works:
+1. Part 1. A `double` has 53 significant bits, so every integer that needs at most 53 bits is stored as is.
+2. The integer $2^{53} + 1$ needs 54 bits. The nearest values a `double` can hold are $2^{53}$ and $2^{53} + 2$, so it is rounded to one of them.
+3. Part 2. Let $s = \lfloor \sqrt{x} \rfloor$, the unique integer with $s^2 \le x < (s+1)^2$.
+4. If $r > s$, then $r^2 \ge (s+1)^2 > x$, so the first loop decreases $r$. It stops at the first $r$ with $r^2 \le x$, which is $s$.
+5. If $r < s$, then $(r+1)^2 \le s^2 \le x$, so the second loop increases $r$ until $(r+1)^2 > x$, which first happens at $r = s$.
+6. If $r = s$, neither loop moves. Each product fits a `long long` because $r$ stays at most about $10^9 + 1$.
+
+This proof needs: (1) $x \ge 0$, and $x$ small enough that $(r+1)^2$ fits the type ($x \le 10^{18}$ is safe in `long long`), (2) all comparisons are done on integers, never on the floating-point root itself.
+
+<TheoremCode unit="0.1/thm-5" />
+
+This function is the template. `sqrtl` computes the root in `long double`, which is usually more precise than `double`, but its result is still only a guess, so the two loops stay. T.C. is $O(1)$, because the guess is off by at most a few units. An alternative needs no floating point: start from $r = 0$ and increase while $(r+1)^2 \le x$. It takes up to $10^9$ steps for $x = 10^{18}$, so it is fine only up to about $x = 10^{12}$ ($10^6$ steps).
+
+The rule that follows: if every quantity in a problem is an integer, compute with integers. Use floating point only when the answer itself is a real number.
+
+Common mistake: a floating-point square root without correction, as in `long long r = sqrt((double)x);`. The input `19659989632387224` gives 140214085, but the correct answer is 140214084. Here $x$ is just below $140\,214\,085^2$ (by 1), and it is above $2^{53}$, so the conversion to `double` rounds it up to that square. Fix: correct the guess with the two integer loops.
+
+### Worked example 1: Weird Algorithm
+
+[CSES 1068 Weird Algorithm](https://cses.fi/problemset/task/1068). Starting from $n$, halve it when it is even and replace it by $3n + 1$ when it is odd, until it reaches 1, and print every value. Here $n \le 10^6$. For $n = 3$ the values are 3, 10, 5, 16, 8, 4, 2, 1.
+
+Idea. Budget: for every such $n$ the process reaches 1 after at most a few hundred steps, so the number of steps is no concern. Only the size of the values matters. Tools: a plain loop, and a choice of type, `int` or `long long` (Theorem 0.1.1). Deciding property: the values climb far above the start. For $n = 113383$ the sequence reaches 2482111348, which is above the largest `int` 2147483647. For all starts up to $10^6$ the values stay below about $6 \cdot 10^{10}$ (checked by running all of them), so `long long` is enough. Decision: `long long n`. The loop applies the rule as stated, so the output is right as long as no step overflows, and none does.
+
+Trace on $n = 3$: 3 is odd so $3 \cdot 3 + 1 = 10$. Then 10 is even so 5. Then 5 is odd so 16, then 8, 4, 2, 1.
+
+<CodeSnippet unit="0.1/example-1" />
+
+Cost: T.C. is $O(\text{number of steps})$, a few hundred, and S.C. is the same for the stored values.
+
+Common mistake: `int n`. The sequence from 113383 passes through 827370449, and $3 \cdot 827370449 + 1 = 2482111348$ overflows `int`. The type `unsigned long long` also works, since all values are positive. There is no meaningfully different algorithm: the statement asks for every value, so the program must produce them one by one.
+
+### Worked example 3: Between a and b
+
+[AtCoder Beginner Contest (ABC) 48, problem B: Between a and b ...](https://atcoder.jp/contests/abc048/tasks/abc048_b). Count the integers in $[a, b]$ divisible by $x$, with $0 \le a \le b \le 10^{18}$ and $1 \le x \le 10^{18}$. For $a = 4$, $b = 8$, $x = 2$ the answer is 3 (4, 6, 8).
+
+Idea. Budget: $b - a$ can be $10^{18}$, so checking every integer is impossible (even $10^9$ steps take seconds). The answer needs a formula, and all values need `long long`. Tools: "how many multiples of $x$ in a range" is a floor division, the card "Exact integer rounding" (Theorem 0.1.4). Another candidate is computing $a/x$ and $b/x$ as `double` and rounding. Theorem 0.1.5 rules that out, because values near $10^{18}$ are not exact in a `double`. Deciding property: the multiples of $x$ in $[0, v]$ are $0, x, 2x, \dots, \lfloor v/x \rfloor x$, so there are $\lfloor v/x \rfloor + 1$ of them for $v \ge 0$. The count in $[a, b]$ is the count in $[0, b]$ minus the count in $[0, a-1]$. The trap is $a = 0$: then $a - 1 = -1$, and C++ computes `-1 / x` as 0, not $\lfloor -1/x \rfloor = -1$. So handle it separately: there are no multiples in $[0, -1]$. All other quantities are non-negative, so plain `/` is the floor.
+
+Trace on $a = 4$, $b = 8$, $x = 2$: the count up to $b$ is $8/2 + 1 = 5$ (0, 2, 4, 6, 8). The count up to $a - 1 = 3$ is $3/2 + 1 = 2$ (0, 2). So the answer is $5 - 2 = 3$.
+
+<CodeSnippet unit="0.1/example-3" />
+
+Cost: T.C. is $O(1)$ and S.C. is $O(1)$. Every intermediate value is at most $10^{18} + 1$, which fits `long long`.
+
+Common mistake: without the special case, $a = 0$, $b = 5$, $x = 2$ gives $3 - ((-1)/2 + 1) = 3 - 1 = 2$ instead of 3. An alternative formula avoids the special case: the answer is $\lfloor b/x \rfloor - \lceil a/x \rceil + 1$, with the ceiling computed as `(a + x - 1) / x` (safe since $a \ge 0$ and $a + x - 1 < 2 \cdot 10^{18}$). For $a = 0$, $b = 5$, $x = 2$ it gives $2 - 0 + 1 = 3$.
 
 ## Test cases
 
@@ -674,6 +891,26 @@ With the original loop as `sol`, this loop stops at the first seed whose array e
 
 Also run a generator with a large n to look for TLE, and change the range of the values (small values expose edge cases, very large values expose overflow).
 
+### Many tests: a failing input and a worked example
+
+When one input holds many tests (Theorem 0.1.3, in the TLE section), nothing may carry over from one test to the next.
+
+Common mistake: a sum declared once, outside the test loop, as in `long long sum = 0;` before `while (t--)`. Take the input `3` / `4` / `1 1 1 2` / `6` / `2 1 5 2 5 1` / `6` / `1 3 1 2 1 3`. The correct output is 1, 2, 3, but the program prints 1, 2, 0. The second test still carries the first test's sum (5), and the third carries both (21). The second answer happens to be right, which is why a single sample can hide this bug. Fix: declare every per-test variable inside the loop.
+
+#### Worked example 2: Multi Test Cases
+
+[AtCoder Beginner Contest (ABC) 284, problem B: Multi Test Cases](https://atcoder.jp/contests/abc284/tasks/abc284_b). For each of $T$ tests, count the odd numbers among the $N$ given. Here $T \le 100$, $N \le 100$ and the values are up to $10^9$.
+
+Idea. Budget: at most $10^4$ numbers in total, and values fit in `int`. Tools: "an input holds multiple test cases" is the weak signal for the card "Many test cases in one input". The choices are about structure: read all tests first and answer afterwards, or answer each test as soon as it is read. Deciding property: the tests are independent and each needs only its own numbers. So answer each test as it is read, with a counter that starts at 0 for every test. Nothing has to be cleared, because nothing is kept between tests.
+
+Trace: test 1 is `5` numbers `1 2 3 4 5`, so the odd ones are 1, 3, 5 and the answer is 3. Test 2 is `2` numbers `4 6`, and the answer is 0.
+
+<CodeSnippet unit="0.1/example-2" />
+
+Cost: the loop reads exactly $N$ numbers per test, so the total work is the total count of numbers, at most $10^4$.
+
+Common mistake: declaring `odd` outside the test loop gives the carry-over bug above. Also, `x % 2 == 1` is right here only because all values are positive: for $-3$, `-3 % 2` is $-1$. An alternative is to read every test into a `vector<vector<int>>` first and answer afterwards. It is correct and uses more memory, so answering immediately is simpler.
+
 ## Finding the bug fast
 
 Binary search the bug: instead of reading the whole code again, print the state (the values of the variables) in the middle. If it is already wrong, the bug is before that point. If it is correct, the bug is after that point. Either way, the range is now half as long. For 16 steps, only about 4 prints are needed (the range goes 16, 8, 4, 2, 1). For 1000 lines of code, about 10 prints are enough, because 2^10 = 1024. This works when the state is correct up to some point and wrong from there on, which is true for most bugs.
@@ -824,6 +1061,50 @@ Overflow checklist: can a sum or product go above 2 x 10^9? Then use `long long`
 - Use `(x + MOD) % MOD` for negative values; widen to 64 bits before the multiplication.
 - Tools: `-Wall`, `-fsanitize=address,undefined`, `-D_GLIBCXX_DEBUG`, `assert`, `debug(x)`, `gcov`.
 - Binary search the bug: print the state in the middle, then halve the range.
+- Theorem 0.1.1: a $b$-bit signed type holds $-2^{b-1}$ to $2^{b-1}-1$, unsigned $0$ to $2^b-1$. `int` stops at about $2.1 \cdot 10^9$, `long long` at $9.2 \cdot 10^{18}$. Choose the type from the largest value any step can reach, and write `1LL * a * b`.
+- Theorem 0.1.2: for $a \ge 0$, $b \ge 1$, $a \cdot b > L$ exactly when $a > \lfloor L/b \rfloor$. Test `prod > L / x` before multiplying; handle zeros first.
+- Theorem 0.1.3: with a promised sum of sizes $N$, work of $c \cdot n_i$ per test costs $c \cdot N$ in total, but $c \cdot M$ per test costs $c \cdot t \cdot M$. Declare per-test data inside the loop.
+- Theorem 0.1.4: C++ truncates toward zero. For $b > 0$: `a / b` is the floor and `(a + b - 1) / b` the ceiling only for $a \ge 0$; otherwise subtract one when `a % b != 0` and $a < 0$, and use $\lceil a/b \rceil = -\lfloor -a/b \rfloor$.
+- Theorem 0.1.5: a `double` is exact up to $2^{53}$. Take `sqrtl` as a guess and correct it with integer loops, comparing $r^2$ with $x$.
+- Fast input and output is a rule, not a card: always include the two lines.
+
+## Recognition cards
+
+A card names one decision to make while reading a problem. Its decisive property is the condition of its theorem, restated in problem words: check it before you write code. Weak signals make a card worth considering, and kill signals rule it out.
+
+<Cards topic="0.1" />
+
+## Check yourself
+
+### Identification drill
+
+Each item names a problem without saying which card decides it. Choose a card, write the property you checked (the largest value, the rounding or the test structure), then reveal the answer.
+
+<Drill topic="0.1" />
+
+### Look-alike pairs
+
+Two problems that read almost the same but fail for different reasons. The flipping difference is the detail that changes which trap you must avoid.
+
+<LookalikePairs topic="0.1" />
+
+### Self-test
+
+Answer each question on paper before opening its answer.
+
+<SelfTest topic="0.1" />
+
+### Checkpoint
+
+Three problems in 90 minutes, one for each card. Pass rule: solve at least 2 of 3 in time and choose the right card on all 8 drill items. After passing, three reviews become due: after 3, 14 and 60 days.
+
+<Checkpoint topic="0.1" />
+
+### Decision map update
+
+How this topic's cards are chosen. These are the first entries of the Recognition Handbook; later topics add to them.
+
+<DecisionMapUpdate topic="0.1" />
 
 ## Practice problems
 

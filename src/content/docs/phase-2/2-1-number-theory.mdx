@@ -372,6 +372,49 @@ map<long long, long long> prime_factors_with_pow(long long n){
 
 Note: `DEF_ARR_SIZE` is `1'000'100` in the repo. Checked 360 → 2 2 2 3 3 5 and 600851475143 = 71 · 839 · 1471 · 6857.
 
+**Theorem 2.1.3 (prime factorisation).**
+
+1. Every $n \ge 2$ has a prime factorisation $n = p_1^{e_1} \cdots p_k^{e_k}$, and it is unique.
+2. The divisors of $n$ are exactly the numbers $p_1^{f_1} \cdots p_k^{f_k}$ with $0 \le f_i \le e_i$. So $d(n) = (e_1 + 1) \cdots (e_k + 1)$ and $\sigma(n) = \prod (1 + p_i + \dots + p_i^{e_i})$.
+3. For $a = \prod p_i^{\alpha_i}$ and $b = \prod p_i^{\beta_i}$ (exponent 0 allowed), $\gcd(a, b) = \prod p_i^{\min(\alpha_i, \beta_i)}$ and $\operatorname{lcm}(a, b) = \prod p_i^{\max(\alpha_i, \beta_i)}$.
+
+Parts 2 and 3 are proved in "Sieve Applications". Here is part 1.
+
+Small example: $360 = 2^3 \cdot 3^2 \cdot 5$. Could another set of primes multiply to 360? Any prime on the other side must divide 360, and dividing out gives back the same primes. The proof makes this exact.
+
+Why part 1 works:
+1. Existence, by induction on $n$. If $n$ is prime, it is its own factorisation. Otherwise $n = p \cdot m$ with $p$ prime (Theorem 2.1.1, part 1) and $2 \le m < n$. Factorise $m$ and add $p$.
+2. Uniqueness. Suppose $n = p_1 \cdots p_s = q_1 \cdots q_t$ with all factors prime. Then $p_1$ divides $q_1 \cdot (q_2 \cdots q_t)$.
+3. By Euclid's lemma (Theorem 2.1.2, part 3), applied repeatedly, $p_1$ divides some $q_j$. A prime has no divisors but 1 and itself, so $p_1 = q_j$.
+4. Cancel it from both sides and apply the induction to $n / p_1$.
+
+This proof needs: $n \ge 2$. (The number 1 has the empty factorisation.)
+
+**Theorem 2.1.5 (trial division).** Let $n \ge 2$. Run: for $d = 2, 3, 4, \dots$ while $d^2 \le n$: while $d$ divides $n$, record $d$ and replace $n$ by $n / d$. At the end, if $n > 1$, record $n$. The recorded numbers are the primes of the factorisation of the original $n$, in increasing order, and at most $\sqrt{n_0}$ values of $d$ are tried, where $n_0$ is the original $n$.
+
+Small example: $n = 360$. $d = 2$ divides three times ($360 \to 45$), $d = 3$ twice ($45 \to 5$), and $d = 4$ stops the loop since $16 > 5$. The leftover 5 is recorded: $2, 2, 2, 3, 3, 5$.
+
+Why it works:
+1. Invariant: when the loop reaches $d$, the recorded numbers times the current $n$ equal $n_0$. Also the current $n$ has no prime factor smaller than $d$, because each one was divided out completely when the loop passed it.
+2. So if $d$ divides the current $n$, then $d$ is prime. A prime factor of $d$ smaller than $d$ would divide $n$.
+3. When the loop stops, $d^2 > n$. If the remaining $n$ were composite, its smallest prime factor $p$ would satisfy $p \ge d$ (invariant) and $p^2 \le n < d^2$ (Theorem 2.1.1, part 2). That is a contradiction.
+4. So the remaining $n$ is 1 or a prime, at least $d$, larger than every recorded one.
+5. The current $n$ never grows, so $d$ only runs while $d^2 \le n_0$.
+
+This proof needs: (1) the leftover $n > 1$ is a prime factor too, possibly larger than $\sqrt{n_0}$. Forgetting it is the most common bug. (2) $\sqrt{n_0}$ trials fit the budget for one number up to about $10^{12}$ ($10^6$ trials). For many numbers up to $10^{12}$, try only the primes up to $10^6$ from a sieve: $78\,498$ trials each. (3) `d * d <= n` must be computed in `long long` when $n$ can exceed about $2 \cdot 10^9$.
+
+<TheoremCode unit="2.1/thm-5" />
+
+In the second example (and the last) the leftover after the loop is the whole number, which is prime: 1999966 splits as 2 times 999983.
+
+Template: the primes with exponents, then the divisor count and sum from the exponents (Theorem 2.1.3):
+
+<CodeSnippet unit="2.1/factorise" />
+
+Alternative: try $d = 2$, then only odd $d$, which halves the trials. For many numbers, sieve the primes up to $10^6$ once and try only them.
+
+Common mistake: `d * d < n` in the loop. For $n = 9$ the loop stops before $d = 3$ because $3 \cdot 3 < 9$ is false, so 9 is recorded as if it were prime. Fix: `d * d <= n`. Squares of primes are the inputs that break a strict comparison, so test them on purpose.
+
 ## Sieve of Eratosthenes
 
 Problem: find all primes $\le 10^7$.
@@ -472,6 +515,52 @@ vector<bool> sieve_of_eratosthenes(){
 ```
 
 Note: `DEF_ARR_SIZE` is `1'000'100` in the repo. Primes below 1,000,100 = 78504.
+
+**Theorem 2.1.1, part 3 (the sieve).** Start with the numbers $2, \dots, N$ unmarked. For $p = 2, 3, \dots$ while $p^2 \le N$: if $p$ is unmarked, mark $p^2, p^2 + p, p^2 + 2p, \dots$ up to $N$. Afterwards the unmarked numbers are exactly the primes up to $N$, and at most $N (1 + \ln N)$ marks were made.
+
+Small example: the primes up to 30. Only $p = 2, 3, 5$ have $p^2 \le 30$, and crossing off from $4, 9, 25$ leaves $2, 3, 5, 7, 11, 13, 17, 19, 23, 29$.
+
+Why it works:
+1. No prime is marked. Every marked number is $p \cdot k$ with $k \ge p \ge 2$, so it has the divisor $p$ with $1 < p < pk$.
+2. Every composite $n \le N$ is marked. Its smallest prime divisor $p$ satisfies $p^2 \le n \le N$ (part 2), so the loop reaches $p$.
+3. At that moment $p$ is unmarked, because it is prime, and $n$ is a multiple of $p$ with $n \ge p^2$. So $n$ is marked.
+4. The loop for $p$ makes at most $N/p$ marks. The total is at most $\sum_{p=2}^{N} N/p \le N H_N \le N (1 + \ln N)$, where $H_N$ is the harmonic sum (topic 0.2).
+
+This proof needs: (1) an array of $N + 1$ flags fits in memory: $10^7$ `char` values take 10 MB. (2) $p^2$ is compared with $N$ without overflow: write `(long long)p * p <= N`. (3) Starting at $p^2$ instead of $2p$ only saves work. Correctness needs that every composite is marked by its smallest prime divisor.
+
+<TheoremCode unit="2.1/thm-1" />
+
+The bound $N(1 + \ln N)$ is loose. The measured count for $N = 10^7$, 22,850,051 marks above, is much smaller, and there are 78,498 primes up to $10^6$.
+
+For many range queries "how many primes in $[l, r]$", add prefix sums (topic 1.2) to the sieve:
+
+<CodeSnippet unit="2.1/prime-count" />
+
+How it works: `cnt[x]` is the number of primes up to $x$, so a range $[l, r]$ is `cnt[r] - cnt[l - 1]`. Cost: $O(N \log \log N)$ once, then $O(1)$ per query.
+
+Alternative: mark from $2p$ instead of $p^2$ and let $p$ run to $N$. The result is the same with about twice the work. To list the primes instead of counting, push every unmarked $x$ into a vector.
+
+Common mistake: stopping the loop before $p^2 = N$. With `p * p < N` and the range $[2, 4]$, nothing is marked, so 4 is counted as a prime and the program prints 3 instead of 2. Fix: the loop must reach every $p$ with $p^2 \le N$, because the smallest prime factor of a composite may be exactly $\sqrt{n}$.
+
+Common mistake: marking from $p$ instead of $p^2$. The prime 2 then marks itself. For the range $[1, 7]$ only 3, 5, 7 remain and the program prints 3 instead of 4. Fix: start at $p^2$ or at $2p$, never at $p$.
+
+### Worked example: 9 Divisors
+
+[AtCoder Beginner Contest (ABC) 383, problem D: 9 Divisors](https://atcoder.jp/contests/abc383/tasks/abc383_d). In short: count the integers from 1 to $N$ with exactly 9 positive divisors, for $N \le 4 \cdot 10^{12}$.
+
+Idea. Budget: no loop over all numbers, since $N = 4 \cdot 10^{12}$. But $\sqrt{N} = 2 \cdot 10^6$, so a sieve up to $\sqrt{N}$ is cheap. Use `long long`. The divisor count depends only on the exponents: $d(n) = (e_1 + 1) \cdots (e_k + 1)$ (Theorem 2.1.3). Nine is $9$ or $3 \cdot 3$. So the numbers are $n = p^8$ or $n = p^2 q^2$ with primes $p < q$. In both forms $p, q \le \sqrt{N}$, which a sieve covers. And $p^2 q^2 \le N$ exactly when $pq \le s$, where $s = \lfloor \sqrt{N} \rfloor$.
+
+Why the count is right: each factor $e_i + 1$ is at least 2 and divides 9, so the factors are $(9)$ or $(3, 3)$. Different primes give different $n$ by uniqueness (Theorem 2.1.3). For a fixed $p$ the valid $q$ are the primes in $(p, \lfloor s/p \rfloor]$, numbering `cnt[s / p] - cnt[p]` when $\lfloor s/p \rfloor > p$.
+
+Trace for $N = 200$: $s = 14$. No $p^8 \le 200$, since $2^8 = 256$. For $p = 2$: $\lfloor 14/2 \rfloor = 7$, and the primes in $(2, 7]$ are 3, 5, 7, so 3 numbers: 36, 100, 196. For $p = 3$: $\lfloor 14/3 \rfloor = 4$, and there is no prime in $(3, 4]$. Larger $p$ give nothing. The answer is 3.
+
+<CodeSnippet unit="2.1/example-2" />
+
+Cost: $O(s \log \log s)$ for the sieve and $O(s)$ for the loop.
+
+Common mistake: computing $s$ with floating point. The code corrects `sqrtl` with two `while` loops, because a result one too small or too large would miscount squares.
+
+Alternative: collect the primes up to $s$ in a list and count the pairs with $pq \le s$ by two pointers. It is the same $O(s)$ after the sieve.
 
 ## Segmented Sieve
 
@@ -713,6 +802,46 @@ vector<int> prime_factors(int n){
 ```
 
 Note: the sp array takes $O(N)$ memory, about 4 MB for $10^6$ numbers. For a single very large number ($10^{12}$), just use trial division in $O(\sqrt{n})$.
+
+**Theorem 2.1.4 (smallest prime factor table).**
+
+1. Set $\operatorname{spf}[x] = 0$ for $2 \le x \le N$. For $p = 2, \dots, N$: if $\operatorname{spf}[p] = 0$, set $\operatorname{spf}[p] = p$, and for $j = p^2, p^2 + p, \dots \le N$ set $\operatorname{spf}[j] = p$ wherever it is still 0. Afterwards $\operatorname{spf}[x]$ is the smallest prime factor of every $x \le N$, after at most $N (1 + \ln N)$ steps.
+2. For $2 \le x \le N$, replacing $x$ by $x / \operatorname{spf}[x]$ until $x = 1$ divides out the primes of $x$ in increasing order, with at most $\log_2 x$ divisions.
+
+(The table `sp[]` above is the same as $\operatorname{spf}$, with `sp[p] = p` set first and the inner loop starting at $2p$.)
+
+Small example: $360 \to 180 \to 90 \to 45 \to 15 \to 5 \to 1$. The divisors are $2, 2, 2, 3, 3, 5$: six divisions, below $\log_2 360 \approx 8.5$.
+
+Why it works:
+1. When the loop reaches $p$, as in Theorem 2.1.1, $\operatorname{spf}[p] = 0$ exactly when $p$ is prime. A prime gets the value $p$, which is right.
+2. A composite $j$ gets its value from the first prime $q$ that reaches it: the smallest prime with $q \mid j$ and $q^2 \le j$. Its smallest prime factor $p$ satisfies $p^2 \le j$ (Theorem 2.1.1, part 2), so $q = p$. The step count is that of Theorem 2.1.1.
+3. Part 2. Each step divides $x$ by a prime factor of it, so the primes divided out multiply to the original $x$. By uniqueness (Theorem 2.1.3) they are its factorisation.
+4. If $p = \operatorname{spf}[x]$, every prime factor of $x / p$ divides $x$, so it is at least $p$. The primes come out in increasing order.
+5. Each step at least halves $x$, so after $k$ steps $x \le x_0 / 2^k$, and $k \le \log_2 x_0$.
+
+This proof needs: (1) every number to factorise is at most $N$, and an `int` array of size $N + 1$ fits: $4 \cdot 10^7$ bytes for $N = 10^7$. Larger numbers need trial division. (2) As in the sieve, $p^2$ must not overflow: start the inner loop at `(long long)p * p`. (3) Equal primes come out one after another, so the exponent of $p$ is the length of the run of $p$.
+
+<TheoremCode unit="2.1/thm-4" />
+
+The first example shows the table values, and the second is the small example: six divisions for 360.
+
+### Worked example: Coprime
+
+[AtCoder Beginner Contest (ABC) 177, problem E: Coprime](https://atcoder.jp/contests/abc177/tasks/abc177_e). In short: given $N \le 10^6$ integers up to $10^6$, decide whether every pair is coprime ("pairwise coprime"), or else whether the GCD of all of them is 1 ("setwise coprime"), or neither.
+
+Idea. Budget: checking every pair is $5 \cdot 10^{11}$ GCDs, far too slow. All values are at most $10^6$, so an array indexed by value fits, and the input is large, so read it fast. The setwise part is the GCD of the array (topic 0.4). For the pairwise part, two numbers are not coprime exactly when some prime divides both. So we need the primes of a million numbers up to $10^6$. A table of smallest prime factors (Theorem 2.1.4) takes $4 \cdot 10^6$ bytes and splits each number in at most 20 divisions.
+
+Why it is correct: $\gcd(A_i, A_j) > 1$ exactly when some prime divides both. A GCD above 1 has a prime divisor (Theorem 2.1.1, part 1) that divides both numbers, and a common prime is a common divisor. The program adds 1 to `used[p]` once for each distinct prime $p$ of $A_i$, so `used[p]` counts the elements divisible by $p$. Some pair shares a prime exactly when some `used[p]` reaches 2.
+
+Trace for $6, 10, 15$: 6 has primes 2, 3; 10 has 2, 5; 15 has 3, 5. So `used[2] = 2`, and the set is not pairwise coprime. The GCD of all three is 1, so it is setwise coprime. For $3, 4, 5$ every count stays 1, so it is pairwise coprime. For $6, 10, 16$ the GCD is 2, so not coprime.
+
+<CodeSnippet unit="2.1/example-1" />
+
+Cost: $O(M \log \log M)$ for the table with $M = 10^6$, plus at most 20 divisions per element.
+
+Common mistake: counting a prime once per power instead of once per element. For $4$ and $9$, counting the two 2s of $4$ would make `used[2] = 2` and wrongly report a shared prime. The code divides out the whole run of $p$ first.
+
+Alternative: count the elements divisible by each $d \ge 2$ by summing over multiples (Theorem 2.1.6). The set is pairwise coprime exactly when every count is at most 1. It is $O(M \log M)$ and needs no factorisation.
 
 ## Sieve Applications
 

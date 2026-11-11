@@ -6,6 +6,15 @@ topic: "2.1"
 ---
 import TopicHeader from '../../../components/TopicHeader.astro';
 import Ladder from '../../../components/Ladder.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="2.1" />
 
@@ -24,10 +33,31 @@ Fast exponentiation with a modulus is needed in a few places. It is explained in
 
 Why this matters: the constraints of most number problems are too large for a plain loop. A loop to $10^9$ takes about 10 seconds at $10^8$ simple operations per second, but a loop to $\sqrt{10^9} \approx 31623$ is instant. Every technique below is a way to replace "try everything up to N" with "try only up to $\sqrt{N}$" or "handle many numbers at once".
 
+Two more ideas are used below. Questions about the divisors and GCDs of all numbers up to $N$ become loops over multiples (Theorem 2.1.6). And the Euclidean algorithm of topic 0.4 does more than compute $\gcd(a, b)$: it can also write it as $ax + by$, which decides which equations $ax + by = c$ have integer solutions (Theorem 2.1.2).
+
+### What you need
+
+<WhatYouNeed topic="2.1" />
+
+### What this note does not cover
+
+- Powers, division and inverses modulo a number (the modular inverse, Fermat's little theorem). These are in topic 2.2, which uses the extended Euclidean algorithm from this note.
+- Counting by inclusion-exclusion over sets of prime factors. This is in topic 2.3.
+- The Möbius function, the Chinese remainder theorem, fast primality tests for numbers up to $10^{18}$ (Miller-Rabin) and fast factorisation of such numbers (Pollard's rho). They are not part of this course.
+
+### Terms used in this lesson
+
+- An integer $n \ge 2$ that is not prime is **composite**: it has a divisor $d$ with $1 < d < n$. The number 1 is neither prime nor composite. Example: 2, 3, 5, 7, 11 are prime, and $9 = 3 \cdot 3$ is composite.
+- $d(n)$ is the number of positive divisors of $n$, and $\sigma(n)$ is their sum. Example: the divisors of 12 are 1, 2, 3, 4, 6, 12, so $d(12) = 6$ and $\sigma(12) = 28$.
+- The **smallest prime factor** $\operatorname{spf}(x)$ of $x \ge 2$ is its smallest prime divisor. Example: $\operatorname{spf}(45) = 3$ and $\operatorname{spf}(13) = 13$. The table `sp[]` below stores it.
+- **Trial division** factorises one number $n$ by trying $d = 2, 3, \dots$ while $d^2 \le n$.
+- The **extended Euclidean algorithm** computes $g = \gcd(a, b)$ together with integers $x, y$ with $ax + by = g$. Such $x, y$ are called **Bézout coefficients**. Example: $240 \cdot (-9) + 46 \cdot 47 = 2 = \gcd(240, 46)$.
+
 ## Table of contents
 
 - Primality Test → is N prime or not, loop up to $\sqrt{N}$
 - Finding divisors → all divisors, as pairs (i, N/i)
+- Extended Euclid and Bezout's identity → ax + by = c in integers
 - Prime factorisation → N = product of primes
 - Sieve of Eratosthenes → all primes up to n
 - Segmented Sieve → primes in a range [a, b]
@@ -38,6 +68,8 @@ Why this matters: the constraints of most number problems are too large for a pl
 - Power of a number in N! → highest power of x in N!, trailing zeros
 - 1/a + 1/b = 1/n → counting integer solutions
 - Harmonic Lemma based summation optimisation → blocks of equal floor(N/x)
+- Recognition cards → how to spot each tool
+- Quick revision, Check yourself, Practice problems
 
 ## Primality Test
 
@@ -106,6 +138,26 @@ bool is_prime_checked(long long x) {
 
 Compiled and run: `is_prime_checked` returns false for 0, 1 and 91, and true for 2, 97 and 1000000007. The original `is_prime(1)` returns true, which is the problem this version fixes. Cost: O(√x) time and O(1) memory.
 
+Why is it enough to stop at $\sqrt{x}$? Two small facts, stated once with numbers and then proved.
+
+**Theorem 2.1.1 (primes and the sieve), parts 1 and 2.**
+
+1. Every integer $n \ge 2$ has a prime divisor: its smallest divisor greater than 1 is prime.
+2. If $n \ge 2$ is composite, its smallest prime divisor $p$ satisfies $p^2 \le n$.
+
+(Part 3, the sieve itself, is stated in the section "Sieve of Eratosthenes".)
+
+Small example: $n = 91$. Its divisors above 1 are 7, 13 and 91, and the smallest, 7, is prime. Also $7^2 = 49 \le 91$. For $n = 36$ the smallest divisor above 1 is 2, and $2^2 = 4 \le 36$.
+
+Why it works:
+1. Part 1. Let $d$ be the smallest divisor of $n$ with $d > 1$. It exists, since $n$ itself is one.
+2. If $d$ had a divisor $e$ with $1 < e < d$, then $e$ would also divide $n$. That contradicts the choice of $d$. So $d$ is prime.
+3. Part 2. Write $n = p \cdot m$ with $p$ the smallest prime divisor. Since $n$ is composite, $m \ge 2$.
+4. By part 1, $m$ has a prime divisor $q$, and $q$ also divides $n$, so $q \ge p$.
+5. Then $m \ge q \ge p$, so $n = p \cdot m \ge p^2$.
+
+This proof needs: nothing beyond the definition of prime, and $n \ge 2$.
+
 ## Finding divisors
 
 Problem: find all the divisors of a number N.
@@ -164,6 +216,65 @@ vector<long long> divisors_of(long long x) {
     return result;
 }
 ```
+
+## Extended Euclid and Bezout's identity
+
+Question: for which $c$ does $12x + 18y = c$ have integer solutions $x, y$?
+
+Try small values. $12 \cdot 1 + 18 \cdot 0 = 12$ and $12 \cdot 0 + 18 \cdot 1 = 18$. Subtracting gives $12 \cdot (-1) + 18 \cdot 1 = 6$. Every value $12x + 18y$ is a multiple of 6, because 6 divides both 12 and 18. So $c = 7$ is impossible and $c = 6$ works. The guess: the values are exactly the multiples of $\gcd(12, 18) = 6$.
+
+Brute force: for $ax + by = c$, try every $x$ from 0 to $b - 1$ and test whether $b$ divides $c - ax$. That is up to $10^9$ steps for $b = 10^9$. The Euclidean algorithm of topic 0.4 already computes the GCD in about 60 steps. The idea is to carry two extra numbers $x, y$ along its steps, so that $ax + by = g$ holds at the end.
+
+Dry run for $a = 240$, $b = 46$. The Euclid steps are $240 = 5 \cdot 46 + 10$, then $46 = 4 \cdot 10 + 6$, then $10 = 1 \cdot 6 + 4$, then $6 = 1 \cdot 4 + 2$, then $4 = 2 \cdot 2 + 0$. So $g = 2$. Now go back up, writing each remainder with the two numbers before it:
+
+$$
+\begin{aligned}
+2 &= 6 - 4 = 6 - (10 - 6) = 2 \cdot 6 - 10 \\
+&= 2(46 - 4 \cdot 10) - 10 = 2 \cdot 46 - 9 \cdot 10 \\
+&= 2 \cdot 46 - 9(240 - 5 \cdot 46) = 47 \cdot 46 - 9 \cdot 240.
+\end{aligned}
+$$
+
+So $240 \cdot (-9) + 46 \cdot 47 = 2$, with $x = -9$ and $y = 47$.
+
+**Theorem 2.1.2 (extended Euclid and Bézout).** Let $a, b \ge 0$, not both 0, and $g = \gcd(a, b)$.
+
+1. The recursive function `ext(a, b)` in the code below returns $g$ and integers $x, y$ with $ax + by = g$, after as many calls as the loop of Theorem 0.4.5 makes steps.
+2. (Bézout's identity.) The integers of the form $ax + by$, with $x, y$ integers, are exactly the multiples of $g$. So $ax + by = c$ has an integer solution exactly when $g \mid c$.
+3. (Euclid's lemma.) If $m \mid ef$ and $\gcd(m, e) = 1$, then $m \mid f$. In particular, if a prime $p$ divides $ef$, then $p \mid e$ or $p \mid f$.
+4. Let $a, b \ge 1$. If $(x_0, y_0)$ is one solution of $ax + by = c$, then the solutions are exactly $x = x_0 + k \cdot \frac{b}{g}$ and $y = y_0 - k \cdot \frac{a}{g}$ for integers $k$.
+
+Small example: $240x + 46y = 10$. The function gives $240 \cdot (-9) + 46 \cdot 47 = 2$, and $2 \mid 10$, so multiply by 5: $(x_0, y_0) = (-45, 235)$. With $b/g = 23$ and $a/g = 120$, all solutions are $(-45 + 23k, \; 235 - 120k)$. For $k = 2$ this is $(1, -5)$, and indeed $240 - 230 = 10$.
+
+Why it works:
+1. Part 1, by induction on the number of calls. If $b = 0$, then $g = a$ and $a \cdot 1 + 0 \cdot 0 = a$.
+2. If $b > 0$, let $q = \lfloor a/b \rfloor$ and $r = a - qb$. By Theorem 0.4.5, $\gcd(b, r) = g$, and by induction $b x' + r y' = g$.
+3. Substituting $r$: $b x' + (a - qb) y' = a y' + b (x' - q y') = g$. That is the returned pair $(y', x' - q y')$.
+4. Part 2. $g$ divides $a$ and $b$, so it divides every $ax + by$. Conversely, part 1 gives $ax + by = g$, so $a (tx) + b (ty) = tg$ for every integer $t$.
+5. Part 3. By part 2 there are $u, v$ with $mu + ev = 1$. Multiply by $f$: $f = muf + (ef)v$. Both terms are multiples of $m$, so $m \mid f$. If a prime $p$ does not divide $e$, then $\gcd(p, e) = 1$, so $p \mid f$.
+6. Part 4. Each listed pair is a solution: $a (x_0 + kb/g) + b (y_0 - ka/g) = c + k (ab/g - ba/g) = c$.
+7. Conversely, let $(x, y)$ be a solution. Subtracting gives $a (x - x_0) = b (y_0 - y)$. Divide by $g$: $a' = a/g$ and $b' = b/g$ are coprime, because a common divisor $t > 1$ would make $tg$ a common divisor of $a$ and $b$.
+8. From $a' (x - x_0) = b' (y_0 - y)$, $a'$ divides $b' (y_0 - y)$, so by part 3 it divides $y_0 - y$. Write $y_0 - y = k a'$. Then $x - x_0 = k b'$.
+
+This proof needs: (1) to solve $ax + by = c$, multiply the coefficients by $c/g$. This can overflow: with $a, b \le 10^9$ the coefficients are below $10^9$, but $c/g$ may be up to $10^{18}$. Reduce $x$ modulo $b/g$ first, or use `__int128`. (2) The smallest non-negative $x$ is $x \bmod (b/g)$, taken non-negative with `((x % m) + m) % m` (topic 0.4). Then $y = (c - ax)/b$. (3) For negative $a$ or $b$, solve with $|a|$ and $|b|$, then flip the sign of the matching coefficient.
+
+<TheoremCode unit="2.1/thm-2" />
+
+The first line is the dry run above. The second line is the small example, with $k = 2$. The third shows that $12x + 18y = 7$ has no solution, because $6 \nmid 7$.
+
+Template for the smallest non-negative $x$:
+
+<CodeSnippet unit="2.1/linear-equation" />
+
+How it works: `ext` gives $g$ and coefficients with $ax + by = g$. If $g \nmid c$ there is no solution. Otherwise $x \cdot (c/g)$ is a solution for $x$, and by part 4 all solutions for $x$ are congruent modulo $m = b/g$. So the smallest non-negative one is $x \cdot (c/g) \bmod m$. Then $y = (c - ax)/b$. Cost: $O(\log \min(a, b))$ time.
+
+Alternative: an iterative version keeps two rows $(r, x, y)$ with $r = ax + by$ and repeats the Euclid step on them. It avoids recursion and gives the same coefficients.
+
+Common mistake: not checking that $g \mid c$. For $8x + 62y = 275$ we have $g = 2$, which does not divide 275, so the answer is $-1$. Without the check the program divides anyway and prints `11 3`, but $8 \cdot 11 + 62 \cdot 3 = 274$.
+
+Common mistake: reducing $x$ modulo $b$ instead of $b/g$. For $6x + 33y = 840$ the answer is `8 24`. Reducing modulo 33 gives `19 22`. Both are solutions ($114 + 726 = 48 + 792 = 840$), but solutions for $x$ repeat every $b/g = 11$, and $19 - 11 = 8$. When $g = 1$ the two moduli agree, which is why coprime tests miss this bug.
+
+Common mistake: a negative remainder. For $14x + 5y = 928$, `ext` gives $14 \cdot (-1) + 5 \cdot 3 = 1$. In C++, $-1 \% 5$ is $-1$, so the "smallest non-negative" $x$ comes out as $-3$ with $y = 194$. The right answer is `2 180`. Fix: `((x % m) + m) % m`.
 
 ## Prime factorisation
 

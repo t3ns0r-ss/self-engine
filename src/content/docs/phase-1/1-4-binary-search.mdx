@@ -5,6 +5,15 @@ sidebar:
 topic: "1.4"
 ---
 import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 import Ladder from '../../../components/Ladder.astro';
 
 <TopicHeader topic="1.4" />
@@ -15,6 +24,20 @@ This note covers BS (Binary Search), from the basic "search an element" to BS on
 
 Why it matters: a sorted list of 1,000,000 numbers needs up to 1,000,000 comparisons with a linear scan, but only about 20 with binary search. When the search range is as large as 10^18, a linear scan is impossible, while binary search needs about 60 steps.
 
+A small problem shows the same thing. A sorted array holds $n = 2 \cdot 10^5$ numbers, and there are $q = 2 \cdot 10^5$ questions of the form "how many numbers are at most $x$?". Scanning the array for every question costs $n \cdot q = 4 \cdot 10^{10}$ steps, about 400 seconds. But in a sorted array the numbers at most $x$ form a prefix, so the answer is the length of that prefix. Find the end of the prefix the way one looks up a word in a dictionary: open the middle page, see on which side the word must be, and throw the other half away. Each look halves what is left, so about $\log_2(2 \cdot 10^5) \approx 18$ looks are enough for one question, and about $18 \cdot 2 \cdot 10^5 = 3.6 \cdot 10^6$ steps for all of them (plus the sort, once).
+
+The idea works far beyond sorted arrays. It needs only a yes/no question whose answers are "no" up to some point and "yes" from then on. Searching on the answer is the main case: if "can the answer be $x$?" is easy to check and gets easier as $x$ grows, about 60 checks find the smallest good $x$ even when $x$ goes up to $10^{18}$.
+
+### What you need
+
+<WhatYouNeed topic="1.4" />
+
+### What this topic does not cover
+
+- Proving that a greedy choice is optimal in general (exchange argument, greedy stays ahead). That is topic 1.5. This note proves directly the one greedy check it needs (Lemma 1.4.4).
+- Searching on the answer when the check itself is a dynamic programming computation. That is Phase 3. The search is the same, only the check is harder.
+- Searching inside a tree structure (segment tree descent). That is topic 5.3.
+
 Terms used in this lesson:
 - search space = the set of values where the answer can still be
 - monotonic = changes in only one direction, i.e. `0 0 0 1 1 1` (a pattern like `0 1 0` never happens)
@@ -23,10 +46,16 @@ Terms used in this lesson:
 - check function = takes a value, returns 1 (yes) or 0 (no)
 - short forms in the notes: no. = number, b/w = between, wrt = with respect to, elem = element, idx = index, pts = points, ans = answer, ques = question
 - WA = wrong answer (the judge rejects the output)
+- predicate = a function that answers each integer in a range with true or false. Example: $p(i) = (a_i \ge 5)$ on the indices of an array
+- the **first true** position of a monotone predicate is the smallest $i$ with $p(i)$ true, or the end of the range if there is none. Example: on $(1, 3, 5, 5, 8)$ the predicate $a_i \ge 5$ gives false, false, true, true, true, so the first true position is 2
+- the **lower bound** of $x$ in a sorted array is the first index with $a_i \ge x$, and the **upper bound** is the first index with $a_i > x$. Both are $n$ (one past the end) if there is none. Example: in $(1, 3, 5, 5, 8)$ they are 2 and 4 for $x = 5$. The code below that returns -1 for "none" is a variation of the Fabricator files, and `std::lower_bound` returns the end
+- **invariant** = a statement that stays true after every step of the loop. Here it is "the predicate is false at `lo` and true at `hi`"
+- **feasibility check** = a predicate $\text{ok}(x)$ asking "can the job be done with answer $x$?". Searching on the answer means a binary search over $x$ with this check
 
 ## Table of contents
 
 - Recognize binary search
+- Recognition cards
 - Search an element
 - Finding first 1 (template problem)
 - lower_bound and upper_bound
@@ -44,6 +73,7 @@ Terms used in this lesson:
 - Ternary Search
 - Question: AtCoder Freefall
 - Quick revision
+- Check yourself
 - Practice problems
 
 ## Binary Search: Recognize
@@ -71,6 +101,12 @@ Observation: binary search needs only one thing, a yes/no strip that flips exact
 | answer up to 10^18 | BS on answer |
 | a curve with one top or one bottom | ternary search / BS on slope |
 | decimal answer, some error allowed | BS on real domain |
+
+## Recognition cards
+
+A card names one family of problems, the property that decides it, how to test the property, and which input sizes force it. Read the cards after the signs above and before the techniques.
+
+<Cards topic="1.4" />
 
 ## Designing check functions
 
@@ -345,6 +381,37 @@ These functions were compiled and run. On [1, 5, 10, 31, 33, 33, 35, 100] with x
 
 Cost: each call is O(log(hi - lo)) checks and O(1) extra memory. Common mistakes: (1) an infinite loop, because with `mid = lo + (hi - lo) / 2` (rounds down) the code `lo = mid` gets stuck when `hi = lo + 1`, so always use `mid + 1` or `mid - 1`; (2) an off by one error, because `hi` is either the last index (`n - 1`) or one past it, and the two must not be mixed; (3) the wrong direction: "first true" moves `hi = mid - 1` on true, and "last true" moves `lo = mid + 1` on true.
 
+### The invariant form and Theorem 1.4.1
+
+The loops above keep `ans` and use `while (lo <= hi)`. This note uses that form in all sections, because it is easy to write. There is a second form that is easier to prove: keep two positions, one where the answer is "no" and one where it is "yes", and never let them touch the answer by mistake.
+
+Small example first. The array is $(1, 3, 5, 5, 8)$ and the question is the first index with $a_i \ge 5$. Start with `lo = -1` and `hi = 5`, the two positions just outside the array. By agreement, a position before the array counts as "no" and a position after it counts as "yes". Test the middle `mid = 2`: $a_2 = 5$ is yes, so `hi = 2`. Then `mid = 0`: $a_0 = 1$ is no, so `lo = 0`. Then `mid = 1`: $a_1 = 3$ is no, so `lo = 1`. Now `hi - lo = 1` and the answer is `hi = 2`. That took 3 tests, and $\lceil \log_2 6 \rceil = 3$.
+
+The template, in words: `lo` is a position where the predicate is false (or one before the range), `hi` is a position where it is true (or one after the range). While `hi - lo > 1`, take `mid = lo + (hi - lo) / 2`. If the predicate is true at `mid`, set `hi = mid`, else set `lo = mid`. The answer is `hi`.
+
+**Theorem 1.4.1 (binary search).** Let $p$ be monotone on the integers $L, \dots, R$. Start with $\text{lo} = L - 1$ and $\text{hi} = R + 1$ (or any $\text{lo} < \text{hi}$ with $p(\text{lo})$ false and $p(\text{hi})$ true). Then the loop ends with $\text{hi}$ equal to the first true position ($R + 1$ if $p$ is false everywhere), after at most $\lceil \log_2(\text{hi} - \text{lo}) \rceil$ tests of $p$, and $p$ is only tested strictly between the starting $\text{lo}$ and $\text{hi}$.
+
+In plain words: keep one position where the answer is no and one where it is yes, test the middle, and each test halves the gap between them. So about $\log n$ tests find the first yes.
+
+Small example: the one above. For $x = 9$ no element qualifies, so `hi` stays at 5, one past the end, after 3 tests. For $x = 0$ the first element already qualifies and the answer is 0 after 2 tests.
+
+Why it works:
+1. The invariant holds at the start by the choice of `lo` and `hi`. It holds after every step: if $p(\text{mid})$ is true, `hi = mid` keeps "$p(\text{hi})$ is true". Otherwise `lo = mid` keeps "$p(\text{lo})$ is false".
+2. While $\text{hi} - \text{lo} \ge 2$, the middle $\text{lo} + \lfloor (\text{hi} - \text{lo})/2 \rfloor$ satisfies $\text{lo} < \text{mid} < \text{hi}$. So `mid` is inside the range, and the new gap is at most $\lceil (\text{hi} - \text{lo})/2 \rceil$, which is smaller than before. (With the gap 1 the middle would equal `lo`, and the loop would never end. This is why the loop stops at gap 1.)
+3. A gap $g$ reaches 1 after at most $\lceil \log_2 g \rceil$ steps, because each step at most halves it (rounding up). So the loop ends.
+4. At the end $\text{hi} = \text{lo} + 1$, with $p(\text{lo})$ false and $p(\text{hi})$ true.
+5. By monotonicity, every position up to $\text{lo}$ is false (a true one there would make $p(\text{lo})$ true). So $\text{hi}$ is the first true position. If $p$ is false everywhere, `lo` only ever moves up to the last position and `hi` never moves, so it stays at $R + 1$.
+
+This proof needs: (1) the predicate is monotone, false then true. Check this on the problem before writing code. (2) The invariant is true at the start, using the positions just outside the range when needed. (3) `mid` is strictly between `lo` and `hi`. Writing it as `lo + (hi - lo) / 2` also avoids the overflow of `lo + hi` near the top of the type.
+
+<TheoremCode unit="1.4/thm-1" />
+
+For the last true of a predicate that goes true, true, false, false (for example "the largest $x$ that works"), keep $p(\text{lo})$ true and $p(\text{hi})$ false and swap the two assignments. The answer is then `lo`. It is the same theorem applied to "not $p$".
+
+Common mistake 1: jumping past `mid` in the invariant form. Take the array $(-5, 5)$ and count the values in $[0, 6]$ as `firstAtLeast(7) - firstAtLeast(0)`. If the else branch is written `lo = mid + 1`, the search for 0 tests $a_0 = -5$ (no), moves `lo` to 1, and stops with `hi = 2`, because the gap is now 1. But $a_1 = 5 \ge 0$, so the right answer is 1. The program prints $2 - 2 = 0$ instead of $1$. The fix is `lo = mid`. Every assignment must keep the invariant. `mid + 1` belongs to the other template (the `ans` form), and mixing the two is the usual source of off-by-one errors.
+
+Common mistake 2: starting inside the array in the invariant form, with `lo = 0` and `hi = n - 1`. Take the array $(0)$ and count the values in $[0, 1]$. Then `firstAtLeast(2)` ends at once and returns 0, but the right answer is 1, because "none" ($n = 1$) can never be returned. The count becomes $0 - 0 = 0$ instead of 1. The fix is to start one position outside the array on each side, `lo = -1` and `hi = n`, where the invariant holds by agreement.
+
 # lower_bound / upper_bound
 
 Many problems ask for one special value x0, in one of these forms:
@@ -525,6 +592,64 @@ int binary_search(vector<int> &arr, int x){
 Note: both start with `ans = -1`, so they return -1 when no element qualifies. The STL (Standard Template Library) `std::lower_bound` returns the end (index n) instead, like `ans = n` above. Both were compared with the STL on arr = [1,3,5,5,5,7,7,9]: x = 5 → 2, 5. x = 6 → 5, 5. x = 10 → -1 (STL: 8).
 
 Each call costs O(log n) time and O(1) extra memory. Typical mistakes: writing `>` in the lower_bound check (this gives the upper_bound, and the count of x is lost), and using the functions on an array that is not sorted.
+
+### Theorem 1.4.2: searching a sorted array
+
+**Theorem 1.4.2 (searching a sorted array).** Let $a_0 \le a_1 \le \dots \le a_{n-1}$.
+1. $p(i) = (a_i \ge x)$ is monotone, so the lower bound of $x$ is found in $O(\log n)$ and equals the number of elements less than $x$. The upper bound (with $a_i > x$) equals the number of elements at most $x$.
+2. The number of elements in $[L, R]$ is $\text{upper}(R) - \text{lower}(L)$. The largest element at most $x$ (if any) is at index $\text{upper}(x) - 1$, and the smallest element at least $x$ is at index $\text{lower}(x)$.
+3. Any non-decreasing sequence can be searched the same way. For example, the prefix sums of non-negative values (topic 1.2): the first $k$ with $P_k \ge t$ is the first moment a running total reaches $t$.
+
+Small example first. In $(1, 3, 3, 5, 8)$ the lower bound of 3 is index 1 (one element below 3), and the upper bound of 3 is index 3 (three elements at most 3). So there are $3 - 1 = 2$ copies of 3. The elements in $[3, 5]$ number $\text{upper}(5) - \text{lower}(3) = 4 - 1 = 3$, which are 3, 3, 5. The largest element at most 4 is at index $\text{upper}(4) - 1 = 3 - 1 = 2$, the value 3. For part 3, take the values $2, 0, 3, 1, 5$. The prefix sums are $2, 2, 5, 6, 11$, and the first one that reaches 5 is the third.
+
+Why it works:
+1. Part 1. If $a_i \ge x$ and $j > i$, then $a_j \ge a_i \ge x$. So the predicate is monotone.
+2. The elements less than $x$ are exactly those before the first index with $a_i \ge x$, so their number is that index. The same argument works for $>$.
+3. Part 2. The elements in $[L, R]$ are those at most $R$, minus those less than $L$.
+4. The elements at most $x$ are the indices below $\text{upper}(x)$, and the last of them is $\text{upper}(x) - 1$.
+5. Part 3. Part 1 used only $a_i \le a_j$ for $i < j$, so it holds for any non-decreasing sequence.
+
+This proof needs: (1) the array (or the derived sequence) is sorted in the direction the predicate assumes. For a non-increasing array, flip the comparison. (2) The array does not change between queries. For a collection that changes, use a `set` (topic 0.6). (3) Prefix sums are sorted only when no value is negative. For $(4, -3, 2)$ the prefix sums are $4, 1, 3$, which is not sorted, and a search on them gives wrong answers.
+
+<TheoremCode unit="1.4/thm-2" />
+
+In C++, `lower_bound(a.begin(), a.end(), x)` returns an iterator, and subtracting `a.begin()` turns it into an index. The two templates above give the same bounds: `ans = n` in the `ans` form, and `hi` in the invariant form. Counting values in a range with the invariant form, with `lo = -1` and `hi = n`, is the difference of two calls:
+
+<CodeSnippet unit="1.4/count-in-range" />
+
+The count of values in $[L, R]$ is the number below $R + 1$ minus the number below $L$. The library form `upper_bound(a.begin(), a.end(), R) - lower_bound(a.begin(), a.end(), L)` gives the same count.
+
+### Nearest value
+
+Question: for each query $x$, print the value in the sorted array closest to $x$ (the smaller one on a tie). Take $(1, 4, 8)$ and $x = 6$. The lower bound of 6 is index 2 (value 8), and the element before it is 4. The distances are $6 - 4 = 2$ and $8 - 6 = 2$, a tie, so the answer is 4. For $x = 7$ the distances are 3 and 1, so the answer is 8.
+
+Why two candidates are enough: `lower_bound` gives the first value at least $x$. Every other value at least $x$ comes after it and is farther. Every value below $x$ is at most `a[i - 1]`, which is the closest of them. So compare these two. When `i` is $n$ or 0, only one of them exists.
+
+<CodeSnippet unit="1.4/nearest-value" />
+
+The same answer comes from `upper_bound`: the largest value at most $x$ is just before it, and the smallest value above $x$ is at it. Either form is correct as long as both neighbours are compared.
+
+Common mistake: no check for the end. Take the one-element array $(4)$ and the query 5. Every value is below 5, so `lower_bound` returns $i = n = 1$, and the code reads `a[1]`, past the end. The fix is to handle `i == n` (no value at least $x$) and `i == 0` (no value below $x$) before reading `a[i]` or `a[i - 1]`. This is why condition 1 above says that the bounds can be $n$.
+
+### Worked example: Triangles (ABC143 D)
+
+[AtCoder Beginner Contest 143, problem D](https://atcoder.jp/contests/abc143/tasks/abc143_d): $N \le 2000$ sticks. Count the sets of three sticks that form a triangle, which means each length is less than the sum of the other two.
+
+Example first. The lengths $2, 3, 4, 6$ give the triples $(2, 3, 4)$ and $(3, 4, 6)$ as triangles. The triples $(2, 3, 6)$ and $(2, 4, 6)$ fail, since $6 \ge 5$ and $6 \ge 6$. The answer is 2.
+
+Idea, in six steps.
+1. Budget. All triples are $N^3/6 \approx 1.3 \cdot 10^9$, too slow. All pairs are about $2 \cdot 10^6$, so $O(N^2 \log N) \approx 2.2 \cdot 10^7$ fits. The count can reach $1.3 \cdot 10^9$, so use `long long`.
+2. Tools. Brute force over triples is the reference (topic 0.5). The answer counts sets of sticks, so the order does not matter and sorting is allowed (topic 1.1). After sorting, for each pair the valid third sticks may form a range of indices, and a sorted search can count them.
+3. Deciding property. Sort so that $L_i \le L_j \le L_k$ for $i < j < k$. The two inequalities $L_i < L_j + L_k$ and $L_j < L_k + L_i$ hold by themselves, because each left side is at most $L_k$ and the right side is $L_k$ plus a positive number. Only $L_k < L_i + L_j$ can fail. Since $L$ is sorted, the $k > j$ that satisfy it form a prefix, so "$L_k \ge L_i + L_j$" is monotone in $k$. Decision: for each pair, count the $k$ before the lower bound of $L_i + L_j$.
+4. Proof. Each triangle is counted exactly once, at the pair of its two smallest sorted indices, with $k$ the largest. By step 3 the three inequalities are the same as $L_k < L_i + L_j$, and the valid $k$ are those before the first index with $L_k \ge L_i + L_j$ (Theorem 1.4.2, part 1). The sum of the counts over all pairs is the answer.
+
+Trace on the sorted $2, 3, 4, 6$. Pair $(2, 3)$: target 5, the sticks after them are $4, 6$, the lower bound of 5 is at 6, so 1 stick (the 4) fits. Pair $(2, 4)$: target 6, only $6$ remains and its lower bound is itself, so 0. Pair $(3, 4)$: target 7, only $6$ remains and it is below 7, so 1. Pairs with 6 as the second stick have nothing after them. Total $1 + 0 + 1 = 2$.
+
+<CodeSnippet unit="1.4/example-1" />
+
+Cost: $N^2/2$ pairs, each with one search of $O(\log N)$, so $O(N^2 \log N)$ time and $O(1)$ extra memory. Mistake: searching from the start of the array instead of from index $j + 1$, which also counts sticks with $k \le j$. The count can reach $1.3 \cdot 10^9$, close to the `int` limit, so keep it in `long long`.
+
+Alternative: for a fixed $i$, as $j$ grows, $L_i + L_j$ grows, so the end of the valid range only moves right. A second index that walks forward (topic 1.3) replaces the search and gives $O(N^2)$ in total. With $N \le 2000$ both are fast.
 
 ## Search an element in a rotated sorted array
 
@@ -842,6 +967,59 @@ long long binary_search(int *arr, int &n, int &k, long long &sumOfAll){
 
 This is the same painter problem (CSES 1085; CSES is a problem set website). [2 4 7 3 5], k = 3 → 8. The cost is O(n log(sum)) time and O(1) extra memory.
 
+### Theorem 1.4.3: search on the answer
+
+The painter code above is one case of a general rule. Take a small instance first: the smallest $x$ with $x^2 \ge 50$ on $1, \dots, 100$. The check $\text{ok}(x) = (x^2 \ge 50)$ is false up to 7 and true from 8 on. Halving tests 50, 25, 12, 6, 9, 7, 8, which is 7 checks, and returns 8. A linear scan would need 8 checks here and 100 in the worst case.
+
+**Theorem 1.4.3 (search on the answer).** Let $\text{ok}(x)$ be monotone on the integers $L, \dots, R$ (if $x$ works, every larger $x$ works), with $\text{ok}(R)$ true. Then the smallest $x$ with $\text{ok}(x)$ is found with $\lceil \log_2(R - L + 2) \rceil$ calls of the check, so $O(C \log(R - L))$ in total, where $C$ is the cost of one check.
+
+In plain words: if a larger value always works whenever a smaller one does, binary search over the possible values, with a check that tests one value at a time, finds the smallest value that works.
+
+Why it works:
+1. This is Theorem 1.4.1 with $p = \text{ok}$, $\text{lo} = L - 1$ and $\text{hi} = R + 1$. Or $\text{hi} = R$, since $\text{ok}(R)$ is known to be true.
+
+This proof needs: (1) monotonicity in $x$. Prove "if $x$ works then $x + 1$ works" for the problem at hand. It usually holds because a larger time, capacity or budget can do everything a smaller one can. (2) A range $L, \dots, R$ that surely contains the answer, with $\text{ok}$ true at the top (for example the sum of everything, or $10^{18}$). (3) The check must not overflow for large $x$. Counts like $\sum \lfloor x / t_i \rfloor$ can pass $10^{18}$, so stop adding once the target is reached (the early return in Factory Machines).
+
+<TheoremCode unit="1.4/thm-3" />
+
+A second example is the painter problem on the walls $2, 4, 7, 3, 5$ with at most 3 parts. With limit 8 the parts $[2, 4]$, $[7]$, $[3, 5]$ work. With limit 7 four parts are needed, because $2 + 4 = 6$, then 7 alone, then $3$ and $5$ cannot share (8 is above 7). So the answer is 8. For $x$ up to $10^{18}$ the search makes at most 60 checks. With an $O(n)$ check and $n = 2 \cdot 10^5$ that is about $1.2 \cdot 10^7$ steps.
+
+### Lemma 1.4.4: filling parts greedily
+
+Checks often cut an array into consecutive parts. The next lemma shows that filling each part as much as possible is the best one can do, so the check is a single pass.
+
+**Lemma 1.4.4 (filling parts greedily).** Let $a_0, \dots, a_{n-1}$ be non-negative and $x \ge \max a_i$. Cut the array into consecutive parts, each with sum at most $x$. The rule "keep adding the next element to the current part while its sum stays at most $x$, otherwise start a new part" uses the fewest parts possible. So "can the array be cut into at most $k$ parts with sums at most $x$?" is answered by one pass, and the answer is monotone in $x$.
+
+Small example: $(2, 4, 7, 3, 5)$ with $x = 8$. The rule gives $[2, 4]$ (sum 6, adding 7 would make 13), then $[7]$ (adding 3 would make 10), then $[3, 5]$ (sum 8). Three parts. Any other valid cutting uses at least three parts too.
+
+Why it works. Let the rule's parts end at indices $g_1 < g_2 < \dots < g_m = n - 1$, and let any valid cutting into $k$ parts end at $o_1 < \dots < o_k = n - 1$. We show $g_j \ge o_j$ for every $j \le \min(m, k)$ by induction.
+1. For $j = 1$: the elements $a_0, \dots, a_{o_1}$ form a valid part, so their sum is at most $x$. The rule never has to start a new part before index $o_1$, so $g_1 \ge o_1$.
+2. For $j > 1$: the rule's $j$-th part starts at $g_{j-1} + 1 \ge o_{j-1} + 1$. The elements from there to $o_j$ lie inside the valid part $o_{j-1} + 1, \dots, o_j$. Values are non-negative, so their sum is at most that part's sum, which is at most $x$. So the rule reaches at least $o_j$, and $g_j \ge o_j$.
+3. In particular $g_k \ge o_k = n - 1$, so the rule finishes within $k$ parts, which means $m \le k$.
+4. Monotone in $x$: a cutting that is valid for $x$ is valid for every larger $x$.
+
+This proof needs: (1) values are non-negative, so a piece of a valid part is valid too. With a negative value the rule can be wrong. (2) $x$ is at least the largest element. Otherwise some element fits in no part, and the answer is "impossible" at once (the `else return 0` branch).
+
+The same argument proves the check for "place $m$ points among sorted positions with every gap at least $d$": always take the next position that is far enough from the last chosen one. This is the classroom check below.
+
+### Worked example: Array Division (CSES 1085)
+
+The statement and code are above (ArrayDivision.cpp). The recognition goes like this.
+
+Example: $(2, 4, 7, 3, 5)$ with $k = 3$ gives 8.
+
+Idea, in six steps.
+1. Budget. For $n = 2 \cdot 10^5$, trying all ways to place the cuts is hopeless. Part sums reach $2 \cdot 10^{14}$, so use `long long`. The answer is below $2^{48}$ (about $2.8 \cdot 10^{14}$), so there are about 48 checks of $O(n)$ each, about $10^7$ steps.
+2. Tools. "Minimise the largest part" is a weak sign for searching on the answer. Other candidates: brute force over the cut positions (topic 0.5), far too many. Prefix sums (topic 1.2) give each part's sum quickly, but they do not say where to cut.
+3. Deciding property. $\text{ok}(s)$ = "the array can be cut into at most $k$ parts with sums at most $s$". It is monotone, because a cutting that works for $s$ works for any larger $s$. It is checked in $O(n)$ by the greedy fill (Lemma 1.4.4, values are non-negative). "At most $k$" is the same as "exactly $k$" here: with positive values, splitting a part keeps every sum at most $s$, and $k \le n$ leaves enough elements to split.
+4. Proof. $\text{ok}(0)$ is false (every value is positive) and $\text{ok}(\text{total})$ is true (one part). So $\text{lo} = 0$ and $\text{hi} = \text{total}$ satisfy the invariant of Theorem 1.4.1, and the search returns the smallest $s$ with $\text{ok}(s)$ true. The greedy check is exact (Lemma 1.4.4), and an element larger than $s$ makes it false at once.
+
+Trace on $(2, 4, 7, 3, 5)$, $k = 3$, with $\text{lo} = 0$ and $\text{hi} = 21$. `mid = 10`: parts $[2, 4]$, $[7, 3]$, $[5]$, three parts, true, so $\text{hi} = 10$. `mid = 5`: 7 is larger than 5, false, so $\text{lo} = 5$. `mid = 7`: parts $[2, 4]$, $[7]$, $[3]$, $[5]$, four parts, false, so $\text{lo} = 7$. `mid = 8`: three parts, true, so $\text{hi} = 8$. Now $\text{hi} - \text{lo} = 1$, and the answer is 8, after 4 checks.
+
+Cost: at most 48 checks of $O(n)$, about $10^7$ steps, and $O(1)$ extra memory. Mistake: forgetting that a single element larger than `mid` makes the check false, and using `int` for sums that reach $2 \cdot 10^{14}$.
+
+Alternative: a table "best largest sum for the first $i$ elements in $j$ parts" can be filled in $O(n^2 k)$ with a method from Phase 3. That is far too slow here, so the search on the answer is the natural solution.
+
 Now the "maximize the minimum" form: the same BS, but in the opposite direction.
 
 Question: N seats are on a line, and K students must sit on K different seats. Make the smallest distance between two students as large as possible. Trying every choice of K seats out of N is far too slow (for N = 10^5 the number of choices is astronomical). Instead, search the distance itself. If a minimum distance d is possible, any smaller distance is possible too (the same seating still works). So the check is true for small mid and false for large mid (a larger minimum distance is harder to achieve), and the aim is the LAST true: on true set `lo = mid + 1`.
@@ -888,6 +1066,14 @@ long long binary_search(vector<int> &seats, int k){
 Seats 1 2 4 8 9, k = 3 → 3 (seats 1, 4, 8 or 1, 4, 9). The seats must be sorted first. Dry run: mid = 3 places students at 1, 4, 8 → 3 students ≥ k, so true. mid = 4 places students at 1, 8 only → 2 &lt; 3, so false.
 
 The outer search on these seats goes over the distances 0 to 8: mid = 4 is false (hi = 3), mid = 1 is true (ans = 1, lo = 2), mid = 2 is true (ans = 2, lo = 3), mid = 3 is true (ans = 3, lo = 4). Then lo > hi and the answer is 3. The cost is O(N log(range)) after the sort, and O(1) extra memory. The typical mistake is to forget the sort. The SPOJ problem Aggressive Cows (AGGRCOW) in the practice list is this same problem.
+
+Now the same classroom problem in the invariant form, which has safe starting values. The check $\text{ok}(d)$ takes the first position and then every position at least $d$ after the last one taken, and asks whether $m$ positions were taken. A smaller $d$ is easier, so $\text{ok}$ goes true, true, false, false. Keep $\text{ok}(\text{lo})$ true and $\text{ok}(\text{hi})$ false, with $\text{lo} = 0$ (true, since any gap is at least 0) and $\text{hi} = \text{span} + 1$ (false, since no two positions are farther apart than the span). The answer is `lo`.
+
+<CodeSnippet unit="1.4/max-min-gap" />
+
+The invariant form can also be turned around: search the smallest $d$ with $\text{ok}(d)$ false and print $d - 1$. Choose the form that makes the invariant easier to state.
+
+Common mistake: an upper end that is not known to fail. Take the positions $1, 8$ and $m = 2$. The right answer is 7 (both positions, gap 7). In the invariant form with `hi = span = 7`, the code treats $\text{ok}(7)$ as false, but it is true. The search never tests `hi`, so it returns 6. The fix is `hi = span + 1`. In the `ans` form of ClassRoom.cpp above this does not happen, because `hi = span` is tested like any other value. The rule is: in the invariant form, start `hi` at a value that is known to fail. When unsure, take a larger bound, because each doubling of the range costs only one more check.
 
 # Patterns:
 
@@ -1025,6 +1211,26 @@ For n = 3 the answer is 3, and for n = 5 the answer is 8. Counting is O(n), so t
 Dry run for n = 3 (the table is 1 2 3 / 2 4 6 / 3 6 9) and k = 5: count(≤ 3) = min(3,3) + min(3,1) + min(3,1) = 5 ≥ 5 → true. count(≤ 2) = 2 + 1 + 0 = 3 &lt; 5 → false. So the answer is 3.
 
 The outer search runs over the values 1 to 9: mid = 5 gives 3 + 2 + 1 = 6 ≥ 5 (ans = 5, hi = 4). mid = 2 gives 3, false (lo = 3). mid = 3 gives 5, true (ans = 3, hi = 2). The loop ends with 3. The first mid with count ≥ k is always a number that really is in the table: the count grows only at values that appear in the table, so the smallest mid that reaches k is such a value. Memory is O(1). A typical mistake is to use `int` for n × n when n is large.
+
+### Theorem 1.4.6: the k-th smallest by counting
+
+Small example first. The $3 \times 3$ multiplication table has the entries $1, 2, 3, 2, 4, 6, 3, 6, 9$. Sorted, they are $1, 2, 2, 3, 3, 4, 6, 6, 9$. The number of entries at most 2 is $c(2) = 3$, and at most 3 is $c(3) = 5$. So the 5th smallest is 3.
+
+**Theorem 1.4.6 (k-th smallest by counting).** Let $S$ be a collection of $m$ integers (repeats allowed), $1 \le k \le m$, and let $c(x)$ be the number of elements of $S$ that are at most $x$. Then $c$ is non-decreasing, and the $k$-th smallest element of $S$ is the smallest integer $x$ with $c(x) \ge k$.
+
+In plain words: to find the k-th smallest of a huge collection, count how many elements are at most $x$ (this never goes down as $x$ grows), and find by binary search the first $x$ where the count reaches $k$.
+
+Why it works:
+1. Raising $x$ can only add elements to those counted, so $c$ is non-decreasing.
+2. Sort $S$ as $s_1 \le \dots \le s_m$ and let $v = s_k$. Then $s_1, \dots, s_k \le v$, so $c(v) \ge k$.
+3. For $x < v$, every element at most $x$ is less than $s_k$, so it is among $s_1, \dots, s_{k-1}$. So $c(x) \le k - 1$.
+4. Hence $v$ is the smallest $x$ with $c(x) \ge k$.
+
+This proof needs: (1) $c(x)$ can be computed much faster than listing $S$ (here $O(n)$ for the $n^2$ entries of the table). (2) The search range contains all elements of $S$, and its lower end has $c$ below $k$ (the code above starts at `lo = 1` with the answer tracked, and the unit uses `lo = 0`, where the count is 0).
+
+<TheoremCode unit="1.4/thm-6" />
+
+Common mistake: counting strictly below $x$. For the 5th smallest of the $3 \times 3$ table the strict count at 3 is 3, and at 4 it is 5, so the search returns 4, but the answer is 3. The check must count "at most $x$", with $\ge k$.
 
 Same idea ("put all elements in one array, sort, take the k-th or the median"): the median of subarray sums. There are O(N^2) sums (for N = 10^5 about 5·10^9), so the array cannot be built. Instead, BS on the sum, and count the subarrays with sum ≤ mid using two pointers. The two pointers keep a window whose sum is at most mid, and for each right end they add the number of valid left ends (right - left + 1).
 
@@ -1266,6 +1472,14 @@ int binary_search(vector<int> &a, vector<int> &b, int &n, int &m, long long &k){
 For A = 1 2 3, B = 4 5 6 and k = 6 the answer is 7. For A = 3 5, B = 2 3 4 and k = 3 the answer is also 7. The T.C. is O(N log M · log(range)).
 
 Dry run for A = 3 5, B = 2 3 4, k = 3, with lo = 5 and hi = 9: mid = 7 counts 3 + 1 = 4 sums ≥ 3 (ans = 7, hi = 6). mid = 5 counts 1 + 0 = 1 &lt; 3 (lo = 6). mid = 6 counts 2 + 0 = 2 &lt; 3 (lo = 7). Then lo > hi and the answer is 7. The memory is O(1) and the counts need `long long`, because they can reach N·M.
+
+The sums of the example lie in $[-2 \cdot 10^9, 2 \cdot 10^9]$ when each array value is within $\pm 10^9$. That range has about $4 \cdot 10^9 \approx 2^{32}$ values, so about 32 counts are enough, and the total cost is $O(n \log m \cdot 32)$. The unit below writes the same search in the invariant form with these safe starting values.
+
+<CodeSnippet unit="1.4/kth-pair-sum" />
+
+A second way to count, when both arrays are sorted: walk $A$ upwards and $B$ downwards with two indices (topic 1.3). The count is then $O(n + m)$ instead of $O(n \log m)$, because as $A_i$ grows, the number of $B_j$ with $A_i + B_j \le x$ can only shrink.
+
+Look-alike: the $k$ smallest pair sums of two sorted arrays with $k \le 10^4$ is a different problem. A priority queue (topic 0.6) lists the pairs in order, $k$ pops of $O(\log k)$, which is fast for a small $k$. Counting wins only when $k$ is huge. In the multiplication table $k$ can be $9 \cdot 10^8$ (for $n = 3 \cdot 10^4$), and $9 \cdot 10^8$ pops would be too slow, while about 30 counts of $3 \cdot 10^4$ steps each (about $10^6$ steps) are not.
 
 ## Binary Search on every step (BS on every start)
 
@@ -1688,6 +1902,28 @@ For a larger n we can easily increase the number of iterations, maybe to 60 or 8
 
 Use the iterative style for very tight questions, in which the precision requirement is very high. For other questions the classical style will work.
 
+### Theorem 1.4.5: searching over the reals
+
+Small example first. The cube root of 2 lies in $[1, 2]$, because $1^3 < 2 < 2^3$. Halving gives $[1, 1.5]$ (since $1.5^3 = 3.375 \ge 2$), then $[1.25, 1.5]$ (since $1.25^3 = 1.95 < 2$), then $[1.25, 1.375]$. The length is $1/2^k$ after $k$ steps. After 100 steps it is below $10^{-30}$.
+
+**Theorem 1.4.5 (searching over the reals).** Let $p$ be monotone on the real interval $[\text{lo}, \text{hi}]$ with $p(\text{lo})$ false and $p(\text{hi})$ true. After $k$ halving steps ($\text{mid} = (\text{lo} + \text{hi})/2$, keeping the invariant), the first true point lies in an interval of length $(\text{hi} - \text{lo})/2^k$.
+
+In plain words: the same halving works on real numbers. Each step halves the length of the interval that holds the answer, so a fixed number of steps, such as 100, gives any precision a judge asks for.
+
+Why it works:
+1. The invariant is kept as in Theorem 1.4.1, so the boundary between false and true always lies in $[\text{lo}, \text{hi}]$.
+2. Each step halves the length of that interval, so after $k$ steps it is $(\text{hi} - \text{lo})/2^k$.
+
+This proof needs: (1) the required precision is known, so the number of steps can be fixed in advance. From length $10^9$ down to $10^{-9}$ takes 60 halvings, and 100 is a safe default. (2) With a fixed number of steps the loop always ends. A loop that tests `hi - lo` against a small number can get stuck when rounding makes `mid` equal to `lo` or `hi`, which is why the EPS rule above (100 times tighter, and a wide enough type) matters.
+
+<TheoremCode unit="1.4/thm-5" />
+
+The cube roots of 27 and $-8$ are exact integers, and the root of 2 prints as 1.259921 to six decimals. For the cube root of $c$, with $|c| \le 10^{18}$, start from an interval that surely holds the root: $10^6$ cubed is $10^{18}$. The check $x^3 \ge c$ is monotone. 100 halvings shrink the interval by $2^{100}$. If the answer must be an integer (the largest integer $x$ with $x^3 \le c$), use the integer template instead, because integer searches have no rounding at all.
+
+<CodeSnippet unit="1.4/cube-root" />
+
+Common mistake: stopping at the printed precision. The cube root of 328 is $6.8964344\ldots$ and six decimals are wanted. The loop `while (hi - lo > 1e-7)` ends with `hi` up to $10^{-7}$ above the root, and the program prints 6.896435 instead of 6.896434. This is EPS equal to the printed precision, which is far from his rule of an EPS 100 times tighter. A fixed number of halvings avoids the choice: 100 halvings of an interval of length $2 \cdot 10^6$ leave less than $10^{-23}$, and the program prints 6.896434.
+
 Example of fixed iterations from the repository: maximize (Σ A_i) / (Σ B_i) over K chosen indices. Check(mid): do K items exist with Σ(A_i - mid·B_i) ≥ 0? If yes, a ratio ≥ mid is possible → lo = mid.
 
 Why this check works (B values must be positive): the ratio (Σ A_i) / (Σ B_i) is ≥ mid exactly when Σ A_i - mid · Σ B_i ≥ 0, which is Σ (A_i - mid · B_i) ≥ 0. To make this sum as large as possible, take the K largest values of A_i - mid · B_i, which is why the code sorts them. If a ratio ≥ mid is possible, a smaller mid is possible too, so the check is true and then false, and the answer is the last true (lo = mid on true). The code starts with hi = 1e5, which must be at least the largest possible ratio. 60 rounds shrink it to 10^5 / 2^60 ≈ 8.7·10^-14. The cost is O(N log N · 60), because every check sorts N values, and the memory is O(N) for the array c.
@@ -1958,6 +2194,46 @@ Dry run of binary_search (slope) for the same input: lo = 0, hi = 10. mid = 5: v
 - Ratio problems: check Σ(A_i - mid·B_i) ≥ 0 on the K largest values (B positive)
 - Ternary: the function must be strictly up-down or down-up. m1 = lo+(hi-lo)/3, m2 = hi-(hi-lo)/3. On integers, slope BS is better (2·log2(n) calls instead of about 3.4·log2(n))
 - Freefall: f(t) = (t-1)B + A/√t, minimum near (A/2B)^\{2/3\}; the code uses op = t-1 and hi = a/b
+
+- Theorem 1.4.1: keep `lo` false and `hi` true (start at -1 and $n$), test strictly between, answer `hi`, at most $\lceil \log_2(\text{hi} - \text{lo}) \rceil$ tests. Needs: monotone, invariant true at the start, `mid` strictly between
+- Theorem 1.4.2: on a sorted array the lower bound is the number of elements $< x$, the upper bound the number $\le x$. Count in $[L, R]$ is $\text{upper}(R) - \text{lower}(L)$, largest element at most $x$ is at $\text{upper}(x) - 1$. Needs: sorted, unchanged, non-negative values for prefix sums. Check the ends for the nearest value
+- Theorem 1.4.3: $\text{ok}$ monotone with $\text{ok}(R)$ true, smallest $x$ in $\lceil \log_2(R - L + 2) \rceil$ checks. Needs: prove $x$ works implies $x + 1$ works, a range that holds the answer, a check that does not overflow
+- Lemma 1.4.4: non-negative values and $x \ge \max a_i$: filling each part greedily uses the fewest parts, so the check is one pass
+- Theorem 1.4.5: on the reals the interval has length $(\text{hi} - \text{lo})/2^k$ after $k$ steps. Use a fixed number of rounds (60 to 100), not an EPS equal to the printed precision
+- Theorem 1.4.6: the k-th smallest is the smallest $x$ with $c(x) \ge k$, where $c$ counts elements at most $x$. Needs: a fast count, a range whose lower end has $c < k$
+- Safe invariant starts: first true uses -1 and $n$; the largest smallest gap uses $\text{lo} = 0$ (true) and $\text{hi} = \text{span} + 1$ (false)
+
+## Check yourself
+
+### Identification drill
+
+Each item names a problem without saying which card decides it. Choose a card, write the property you checked, then reveal the answer.
+
+<Drill topic="1.4" />
+
+### Look-alike pairs
+
+Two problems that read almost the same but need different tools. The flipping difference is the one detail that changes the decision.
+
+<LookalikePairs topic="1.4" />
+
+### Self-test
+
+Answer each question on paper before opening its answer.
+
+<SelfTest topic="1.4" />
+
+### Checkpoint
+
+Three problems in 90 minutes. Pass means solving at least 2 of 3 in time and choosing the right card on at least 8 of the 11 drill items. After passing, three review sets become due, after 3, 14 and 60 days.
+
+<Checkpoint topic="1.4" />
+
+### Decision map update
+
+How this topic's cards are chosen against the tools you already have.
+
+<DecisionMapUpdate topic="1.4" />
 
 ## Practice problems
 

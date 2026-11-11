@@ -14,14 +14,14 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 0 | [0.6 STL toolbox: vector, pair, set, map, priority_queue and their costs](phase-0/0.6-stl-toolbox.md) | 3 | 16 | 11 | 4 | 1 | 35 | complete |
 | 1 | [1.1 Sorting, comparators, coordinate compression](phase-1/1.1-sorting.md) | 6 | 11 | 7 | 0 | 1 | 25 | short |
 | 1 | [1.2 Prefix sums and difference arrays (1D, 2D)](phase-1/1.2-prefix-sums.md) | 7 | 5 | 10 | 4 | 4 | 30 | complete |
-| 1 | [1.3 Two pointers and sliding window](phase-1/1.3-two-pointers.md) | 4 | 5 | 11 | 3 | 3 | 26 | complete |
-| 1 | [1.4 Binary search: invariant template, search on the answer](phase-1/1.4-binary-search.md) | 4 | 4 | 11 | 1 | 3 | 23 | short |
-| 1 | [1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)](phase-1/1.5-greedy-1.md) | 3 | 8 | 9 | 1 | 3 | 24 | complete |
+| 1 | [1.3 Two pointers and sliding window](phase-1/1.3-two-pointers.md) | 4 | 5 | 12 | 3 | 3 | 27 | complete |
+| 1 | [1.4 Binary search: invariant template, search on the answer](phase-1/1.4-binary-search.md) | 4 | 4 | 13 | 1 | 4 | 26 | short |
+| 1 | [1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)](phase-1/1.5-greedy-1.md) | 4 | 8 | 12 | 3 | 3 | 30 | complete |
 | 1 | [1.6 Monotonic stack and deque](phase-1/1.6-monotonic-stack.md) | 2 | 0 | 10 | 5 | 3 | 20 | short |
-| 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 11 | 3 | 2 | 24 | complete |
+| 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 12 | 3 | 2 | 25 | complete |
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 11 | 4 | 3 | 25 | short |
-| 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 2 | 2 | 3 | 5 | 4 | 16 | short |
-| 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 1 | 6 | 7 | 5 | 7 | 26 | short |
+| 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 3 | 3 | 4 | 5 | 4 | 19 | short |
+| 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 5 | 12 | 8 | 5 | 7 | 37 | short |
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 8 | 18 | short |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 2 | 10 | 5 | 3 | 4 | 24 | complete |
 | 3 | [3.2 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.2-dp-foundations.md) | 4 | 14 | 11 | 5 | 1 | 35 | short |

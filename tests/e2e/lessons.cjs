@@ -56,7 +56,9 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml') && /^\
       await item.locator('button:has-text("Hint 1")').click();
       check(await item.locator('text=Struggle budget').isVisible(), `${T} hint 1 shows the reminder`);
       await item.locator('button:has-text("Show hint 1")').click();
-      check(await item.locator(`text=${first.hints[0].slice(0, 40)}`).isVisible(), `${T} hint 1 text revealed`);
+      // Hints can hold $...$ maths or `code`, so match on the plain words before the first marker.
+      const plainStart = first.hints[0].split(/[$`\\]/)[0].trim().slice(0, 40);
+      check(await item.locator(`text=${plainStart}`).isVisible(), `${T} hint 1 text revealed`);
 
       // Log a solve.
       await item.locator('button:has-text("Log")').click();

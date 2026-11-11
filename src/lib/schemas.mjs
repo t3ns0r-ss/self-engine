@@ -186,6 +186,7 @@ export const topicFile = z.strictObject({
   draft: z.boolean().default(false),
   // 'notes' = the lesson is written in the owner's notebook form (Section 6A of PLAN.md); lesson-text rules differ.
   format: z.enum(['template', 'notes']).default('template'),
+  notes_v2: z.boolean().optional(),
   // Revision 2: every earlier topic this lesson relies on; rendered by TopicHeader and WhatYouNeed.
   uses: z.array(z.strictObject({ topic: topicId, what: z.string().min(1) })).optional(),
   theorems: z.array(z.strictObject({ id: z.string().regex(/^[0-7]\.[1-8]\.\d+$/), title: z.string().min(1), plain_words: z.string().min(1), code: z.string().min(1) })).optional(),

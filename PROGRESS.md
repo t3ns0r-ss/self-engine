@@ -7,6 +7,27 @@
 Last completed step: profile sync (PROFILE_SYNC_PLAN.md) milestones S0 to S6 except the LeetCode snippet, on `main` at Saurabh's request (details under "Profile sync" below).
 Next action: Saurabh runs the LeetCode snippet from the Profiles page (gate S4), then the final review.
 
+## Curriculum gaps (CURRICULUM_GAPS_PLAN.md)
+Branch `claude/tender-bohr-ktypz5`. Start conditions checked 2026-11-13: lesson restore Phase 5 is on `main`, no open PRs.
+
+**PR 0 (this PR): foundation.** Done:
+- CI `browser` job: the design placeholder drills (`tests/placeholder-design/make.mjs`) now answer earlier cards (rule D3 had been tightened since they were written), the placeholder no longer deletes the real `src/content/docs/lld` and `hld` folders in its throwaway copy, and `tests/e2e/design.cjs` expects 4 drill items. `bash tests/e2e-design.sh` passes locally.
+- Two-digit topic ids: theorem regexes (`validate-r2.mjs`), topic id pattern, pattern ids, `from_theorem` and theorem ids (`schemas.mjs`, `validate.mjs`) accept `7.10`. Test added.
+- The 10 new topics are in `curriculum.yaml` with their final `order`, marked `draft: true` (new optional field). Validators skip draft rows (no pattern file, bank, topic file, lesson, exam or 7.8 coverage, keywords not scanned) but still check order and `requires`; a live topic may not require a draft. Pages and `bank_md` only see live topics (`data.ts` renumbers them 1..n). Remove `draft: true` from a row when its topic passes the review gate (the same PR must give it pattern file, bank, topic file, lesson, exam and 7.8 coverage).
+- Known, not caused by this work: 6 tests in `tests/validate-r2.test.mjs` fail on `main` because they use 1.6 as a template-format fixture and 1.6 became a notes lesson. They need a template-format fixture topic. `ProgressIsland.tsx` sorts topic ids as strings (`7.10` sorts before `7.2`); fix when 7.10 goes live.
+
+**Decisions (CURRICULUM_GAPS_PLAN.md Section 2), recorded for Saurabh to overrule:**
+- Gaps: interactive problems 1.8 (after 1.4); Eulerian path into 4.2; plain divide and conquer into 3.1, D&C DP and CDQ into 7.3; basic strings into 0.6 and 0.3; geometry 4.8; 2-SAT into 4.7; CRT into the new 2.5, Lucas into 2.3; probability DP card in 3.5 (adds `2.4` to requires); convex hull trick into 7.3 (adds `1.6`); flow and matching 7.9 just before 7.8.
+- Splits: 5.5 sweep with a segment tree, 3.9 meet in the middle, 5.6 Mo, 5.7 binary trie and XOR (Phase 5, not 6), 4.9 state-space search, 7.10 rerooting, 2.5 Diophantine and CRT. LIS (3.4), per-bit contribution (1.7, 2.4) and topological sort (4.2) are deepened in place. Prefix function with Z, suffix array with LCP, 2D prefix sums, bitset knapsack and segment-tree descent stay as subsections.
+- Final order: Phase 1 ... 1.7, 1.8; Phase 2: 2.1, 2.2, 2.5, 2.3, 2.4; Phase 3: 3.1, 3.9, 3.2 ... 3.8; Phase 4: 4.1, 4.2, 4.3, 4.9, 4.4 ... 4.7, 4.8; Phase 5: 5.1, 5.2, 5.3, 5.5, 5.4, 5.6, 5.7; Phase 7: 7.1, 7.10, 7.2 ... 7.7, 7.9, 7.8.
+- Choices of this PR: 2.5 uses the Phase 2 band 1400 to 1700 (the plan's table says 1300 to 1700, but the other Phase 2 topics use 1400). Draft keywords are narrow phrases (for example "meet in the middle", "rerooting") so the later scan stays quiet in earlier lessons until a topic goes live.
+- Scope reality: the plan is 14 PRs of lesson, code, bank and verification work (about 10 new topics with 40+ verified problems each). Status per PR is kept in the table below.
+
+| PR | Content | Status |
+|---|---|---|
+| 0 | CI, two-digit ids, draft rows | in review |
+| 1 to 14 | see CURRICULUM_GAPS_PLAN.md Section 7 | not started |
+
 ## Lesson restore (LESSON_RESTORE_PLAN.md)
 - R_BASE (old template 3.1, used by Phases 1 and 2): `e5d3412` (`git show e5d3412:src/content/docs/phase-3/3-1-backtracking.mdx`).
 - Phase 0 done on branch `claude/vigilant-hypatia-iyajxg` (commit 1020352). Phase R raw import is `c1b7b3c` (the `check_code_unchanged` reference for 3.1). Phase R plain-English pass done (`docs/restore/R-changes-3-1.md`), 16 Fabricator blocks match `check_fabricator.mjs`. Next: Phase 1 inventory, which waits for Saurabh to merge Phases 0 and R.

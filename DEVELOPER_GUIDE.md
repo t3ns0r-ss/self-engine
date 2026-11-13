@@ -12,6 +12,8 @@ Content: **48 topics in 8 phases** (0 Foundations, 1 Core algorithms, 2 Number t
 
 All 48 topics, all phase intros and exams, and the e2e suite are done. All review gates are approved by the owner (Saurabh). New work is feature work or content fixes, not the original milestones. `PROGRESS.md` is the running log (gates, per-topic status, bank table, and a long "Questions for Saurabh" list of weak points per topic). `FEEDBACK.md` is where the owner writes feedback: read it at the start of every session and act on it.
 
+**Planned topics (CURRICULUM_GAPS_PLAN.md).** `curriculum.yaml` also lists topics with `draft: true`: they hold their place in `order`, but validators skip them and pages hide them, so the live count stays 48 until each one passes its review gate and loses the flag. Topic ids can have two digits (`7.10`); never sort ids as strings, use `order`.
+
 ## 3. Quick start
 
 ```

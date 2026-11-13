@@ -91,23 +91,26 @@ export function laterKeywordHits(text, order, curriculum) {
  * @param {Object<string, string|null>} d.notes topic id -> text of notes/bank/{topic}.md (null if missing)
  * @returns {string[]} error messages; empty when everything is valid
  */
-export function validateAll({ curriculum, patterns, banks, notes }) {
+export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
   const errors = [];
   const err = (file, msg) => errors.push(`${file}: ${msg}`);
-  const byId = new Map(curriculum.map((t) => [t.id, t]));
+  // Draft rows (planned topics with no lesson yet) keep their place in the order but are skipped by every other rule.
+  const curriculum = allRows.filter((t) => !t.draft);
+  const byId = new Map(allRows.map((t) => [t.id, t]));
 
   // Curriculum registry.
   const C = 'src/data/curriculum.yaml';
-  curriculum.forEach((t, i) => {
+  allRows.forEach((t, i) => {
     if (t.order !== i + 1) err(C, `topic ${t.id} has order ${t.order}, expected ${i + 1} (rows must be listed in order)`);
     if (t.phase !== Number(t.id.split('.')[0])) err(C, `topic ${t.id} has phase ${t.phase}`);
     for (const r of t.requires) {
       const rt = byId.get(r);
       if (!rt) err(C, `topic ${t.id} requires unknown topic ${r}`);
       else if (rt.order >= t.order) err(C, `topic ${t.id} requires ${r}, which is not earlier`);
+      else if (rt.draft && !t.draft) err(C, `topic ${t.id} requires ${r}, which is still a draft`);
     }
   });
-  if (byId.size !== curriculum.length) err(C, 'duplicate topic ids');
+  if (byId.size !== allRows.length) err(C, 'duplicate topic ids');
 
   // Pattern files.
   const patternIds = new Map(); // topic -> Set of pattern ids
@@ -166,7 +169,7 @@ export function validateAll({ curriculum, patterns, banks, notes }) {
       // 1. Pattern exists.
       let patternTopic = topic;
       if (is78) {
-        const m = /^([0-7]\.[1-8]):(.+)$/.exec(p.pattern);
+        const m = /^([0-7]\.(?:10|[1-9])):(.+)$/.exec(p.pattern);
         if (!m) err(F, `${P}: topic 7.8 patterns must be "{topic}:{pattern-id}"`);
         else {
           patternTopic = m[1];

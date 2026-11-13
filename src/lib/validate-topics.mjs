@@ -81,7 +81,8 @@ const num = (d) => (/^-?\d+$/.test(d) ? Number(d) : { Easy: 1, Medium: 2, Hard: 
  * @param {Object<string, {path: string, text: string}>} d.lessons topic -> lesson file
  * @returns {string[]}
  */
-export function validateTopics({ curriculum, patterns, banks, topics, glossary, lessons }, fsx) {
+export function validateTopics({ curriculum: allRows, patterns, banks, topics, glossary, lessons }, fsx) {
+  const curriculum = allRows.filter((t) => !t.draft); // draft rows have no files yet
   const errors = [];
   const err = (file, msg) => errors.push(`${file}: ${msg}`);
   const byId = new Map(curriculum.map((t) => [t.id, t]));

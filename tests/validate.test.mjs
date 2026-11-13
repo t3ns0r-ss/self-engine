@@ -142,3 +142,22 @@ test('LeetCode Hard is tier 3 or higher', () => {
   expectError(run(hard(2)), /LeetCode Hard problems are tier 3 or higher/);
   assert.deepEqual(run(hard(3)), []);
 });
+
+test('draft rows keep their place in the order but need no files; a live topic may not require a draft', () => {
+  const rows = structuredClone(real.curriculum);
+  assert.ok(rows.some((t) => t.draft), 'the registry has draft rows');
+  const errs = validateAll({ ...base(), curriculum: rows });
+  assert.ok(!errs.some((e) => /draft|pattern file/.test(e) && /1\.8|2\.5/.test(e)), errs.join('\n'));
+  const bad = structuredClone(rows);
+  bad.find((t) => t.id === '1.5').requires.push('1.8'); // 1.8 is later than 1.5 and a draft
+  assert.ok(validateAll({ ...base(), curriculum: bad }).some((e) => /1\.5 requires 1\.8/.test(e)));
+  const gap = structuredClone(rows);
+  gap.find((t) => t.id === '1.8').order = 99;
+  assert.ok(validateAll({ ...base(), curriculum: gap }).some((e) => /topic 1\.8 has order 99/.test(e)));
+});
+
+test('two-digit topic ids pass the id and theorem patterns', async () => {
+  const { TOPIC_ID } = await import('../src/lib/schemas.mjs');
+  for (const id of ['1.8', '2.5', '3.9', '7.9', '7.10']) assert.ok(TOPIC_ID.test(id), id);
+  assert.ok(!TOPIC_ID.test('7.11') && !TOPIC_ID.test('8.1'));
+});

@@ -24,6 +24,9 @@ export const curriculumRow = z.strictObject({
   target_rating: z.tuple([z.number().int(), z.number().int()]),
   // CURRICULUM_GAPS_PLAN.md Phase 0: a planned topic with no lesson yet. Validators skip it, pages and scripts hide it.
   draft: z.boolean().optional(),
+  // A topic with too few real problems for the usual counts (Saurabh, 2026-11-13, for 2.5): 2 cards, ladder of 8, one review set,
+  // and no problem needed in the phase exam or the 7.8 bank. Every other rule still applies.
+  reduced_bank: z.boolean().optional(),
 });
 
 // Design tracks (DESIGN_TRACKS_PLAN.md Sections 5-7). Ids: L{phase}.{n} and H{phase}.{n}; `order` is per track.

@@ -160,7 +160,7 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
   for (const [topic, bf] of Object.entries(banks)) {
     const F = `src/data/bank/${fileId(topic)}.yaml`;
     const t = byId.get(topic);
-    if (!t) continue;
+    if (!t || t.draft) continue;
     const is78 = topic === '7.8';
     const note = notes[topic];
     const N = `notes/bank/${topic}.md`;
@@ -266,7 +266,7 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
         perPhase.set(ph, (perPhase.get(ph) ?? 0) + 1);
       }
       for (let ph = 0; ph <= 7; ph++) if ((perPhase.get(ph) ?? 0) < 2) err(F, `topic 7.8 needs at least 2 problems from phase ${ph}`);
-      for (const x of curriculum) if (x.phase >= 1 && x.phase <= 6 && !perTopic.has(x.id)) err(F, `topic 7.8 needs at least 1 problem for topic ${x.id}`);
+      for (const x of curriculum) if (x.phase >= 1 && x.phase <= 6 && !x.reduced_bank && !perTopic.has(x.id)) err(F, `topic 7.8 needs at least 1 problem for topic ${x.id}`);
       continue;
     }
 

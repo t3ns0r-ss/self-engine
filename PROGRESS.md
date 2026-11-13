@@ -376,6 +376,13 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
   - Total about 22 candidates, 8 of them with an uncertain fit and 12 recalled only. The floor for the roles is about 43. **2.5 as a full topic is not reachable**, even with no ceiling.
   - Recommendation: option (a), a small 2.5 of about 20 problems with 12 ladder rungs, or option (b), fold the cards into 2.2. For (a) the topic-file counts also need a decision: ladder 12 instead of 16, review sets of 3 only, 2 look-alike pairs (the minimum). That is a validator exception for 2.5, which needs your approval.
 
+- **2.5 search in AtCoder ARC and AGC (2026-11-13).** I scanned the titles of all 1603 ARC and AGC tasks (AtCoder Problems list) for number-theory words, opened the likely ones, and searched the web (no editorial list of CRT or extended-Euclid ARC tasks exists). Result:
+  - ac-agc063_d Many CRT (difficulty 3609, read): a system of congruences with non-coprime moduli, the one clear fit. Tier 5.
+  - ac-arc221_a Two Arithmetic Progressions (1686, read): sum of gcd(Ai+B, Ci+D); the gcd divides a fixed number, so it needs gcd reasoning, not the full CRT. A weak fit (maybe a look-alike).
+  - ac-arc182_f Graph of Mod of Linear (3837, read): components of i to (A·i+B) mod N by gcd structure. Too hard and only a weak fit.
+  - Opened and rejected (no Diophantine or CRT need): ac-arc216_d, ac-arc208_b, ac-agc067_c. ARC 175 F and ARC 185 C only use CRT inside a proof or as a fallback.
+  - New total: about 24 candidates, of which 14 are solid fits. Still far below the floor of 43. The conclusion is unchanged: 2.5 is a small topic (option a) or folds into 2.2 (option b).
+
 - The same shortage is likely for 4.8 (geometry) and 7.9 (flow), which have more supply, and for 3.9, 5.5, 5.6 and 5.7. Before each of those PRs I will run the same search first and report the count here.
 - PR 1 is therefore not started. The work that needs no new bank (D&C in 3.1, strings in 0.6, Lucas in 2.3, Eulerian path in 4.2, 2-SAT in 4.7) needs 3 to 4 rungs each; I can start with those if you prefer.
 

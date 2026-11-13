@@ -44,7 +44,7 @@ So the idea of this note is counting without listing. Independent choices multip
 
 - Expected values and probability as a sum over outcomes. They come in topic 2.4.
 - Counting with a table of partial answers built step by step (dynamic programming). It comes in Phase 3.
-- Lucas's theorem (binomial coefficients modulo a small prime), Catalan numbers in general, Burnside's lemma and generating functions. They are not part of this course.
+- Catalan numbers in general, Burnside's lemma and generating functions. They are not part of this course.
 
 ### Terms used in this lesson
 
@@ -62,8 +62,9 @@ So the idea of this note is counting without listing. Independent choices multip
 - Inclusion-Exclusion Principle → counting overlapping sets
 - Counting solutions for Linear Equations → stars and bars
 - Coding math stuff → factorials, $\binom{n}{r}$ tables, inverse factorials
+- Lucas's theorem → $\binom{n}{r}$ modulo a small prime when $n$ is at least the prime
 - Derangement → no item stays in its own place
-- Recognition cards → the five cards of this topic
+- Recognition cards → the six cards of this topic
 - Check yourself → drill, look-alike pairs, self-test, checkpoint, decision map
 
 ## Combinatorics
@@ -1254,6 +1255,69 @@ Trace for $(X, Y) = (3, 3)$: $a = \frac{6 - 3}{3} = 1$ and $b = 1$, so the answe
 
 Cost: $O(X + Y)$ for the factorials and one fast power each. Common mistake: testing only divisibility and not the signs. For $(X, Y) = (1, 5)$ the value $2Y - X = 9$ is divisible by 3, but $2X - Y = -3$ gives $b = -1$, and no sequence exists. Fix: also require $2Y \ge X$ and $2X \ge Y$.
 
+## Lucas's theorem
+
+The factorial tables of Theorem 2.3.3 need a prime $p$ that is larger than every $n$ used. This section is for the other case: the prime is small (2, 3, 5, 7, or any prime up to about $10^6$), and $n$ is at least $p$, possibly as large as $10^{18}$.
+
+A small example. What is $\binom{14}{7} \bmod 7$? The true value is $\binom{14}{7} = 3432 = 7 \cdot 490 + 2$, so the answer is 2. The table formula of Theorem 2.3.3 gives 0 instead: $14!$ and $7!$ both contain the factor 7, so there is no inverse of $7!$ modulo 7, and the formula breaks (the card of this topic, "Binomial coefficients modulo a prime", names this as a kill signal).
+
+Brute force first. Pascal's rule with the modulus applied at each step gives the answer for any $n$, but it fills about $n^2/2$ cells. That is fine for $n \le 5000$ and hopeless for $n = 10^{18}$.
+
+The better way: write $n$ and $r$ in base $p$ and compare them digit by digit. In base 7, $14 = 2 \cdot 7 + 0$ is written $20$, and $7 = 1 \cdot 7 + 0$ is written $10$. Lucas's theorem says
+
+$$\binom{14}{7} \equiv \binom{2}{1} \binom{0}{0} = 2 \cdot 1 = 2 \pmod 7.$$
+
+Each factor is a binomial coefficient of two numbers below $p$, so a table of size $p$ is enough. If some digit of $r$ is larger than the digit of $n$ in the same place, that factor is $\binom{a}{b}$ with $b > a$, which is 0, so the whole answer is 0.
+
+Dry run: $\binom{100}{51} \bmod 7$. In base 7, $100 = 2 \cdot 49 + 0 \cdot 7 + 2$ is $202$, and $51 = 1 \cdot 49 + 0 \cdot 7 + 2$ is $102$. The digit pairs, from the right, are $(2, 2)$, $(0, 0)$ and $(2, 1)$, so the value is $\binom{2}{2} \binom{0}{0} \binom{2}{1} = 1 \cdot 1 \cdot 2 = 2$ (checked against Pascal's rule). For $\binom{100}{30}$: $30 = 0 \cdot 49 + 4 \cdot 7 + 2$ is $042$, and the middle pair is $(0, 4)$, with $4 > 0$. So $\binom{100}{30} \equiv 0 \pmod 7$ without computing anything else (checked).
+
+The case $p = 2$ has a famous form. The digits are bits, and $\binom{a}{b}$ with $a, b \in \{0, 1\}$ is 0 only for $(a, b) = (0, 1)$. So $\binom{n}{r}$ is odd exactly when every bit of $r$ is also a bit of $n$, that is `(n & r) == r`. For example $\binom{10}{3}$: $10$ is $1010$ and $3$ is $0011$, so `10 & 3` is $0010 \ne 3$ and the coefficient is even (it is 120).
+
+```cpp
+// Lucas's theorem: C(n, r) mod p for a prime p with a table of size p.
+struct Lucas {
+    int p;
+    vector<long long> fact, inv;  // i! and (i!)^(-1) modulo p, for 0 <= i < p
+    long long digitC(int a, int b) const { return b > a ? 0 : fact[a] * inv[b] % p * inv[a - b] % p; }
+    long long C(long long n, long long r) const {
+        if (r < 0 || r > n) return 0;
+        long long res = 1 % p;
+        for (; n > 0 && res != 0; n /= p, r /= p) res = res * digitC(n % p, r % p) % p;
+        return res;
+    }
+};
+```
+
+The constructor, which fills `fact` and `inv` exactly as in Theorem 2.3.3 (with $N = p - 1$), is in the tested unit shown with Theorem 2.3.8 below. Checked: the unit agrees with Pascal's triangle for every $n \le 300$ and $p \in \{2, 3, 5, 7, 11, 13\}$, and gives 2 for $\binom{14}{7} \bmod 7$ and for $\binom{100}{51} \bmod 7$.
+
+Cost: building the tables is $O(p)$ plus one fast power. Each coefficient takes one step per base-$p$ digit of $n$, so $O(\log_p n)$, at most 60 steps for $p = 2$ and $n \le 10^{18}$. The reason it is so cheap is that the digits of $n$ are few and every digit pair stays below $p$, where the tables work.
+
+A second use: sums of neighbours modulo 10. Start with a row of $n$ digits and repeatedly replace it by the sums of neighbouring pairs modulo 10, until one digit is left (LeetCode 2221, Find Triangular Sum of an Array). By Pascal's rule the digit $a_i$ ends up counted $\binom{n-1}{i}$ times, so the answer is $\sum_i \binom{n-1}{i} a_i \bmod 10$. The modulus 10 is not prime, but $10 = 2 \cdot 5$: compute the sum modulo 2 and modulo 5 with Lucas, then take the one digit with those two remainders. For the row $3, 1, 4, 1, 5, 9, 2, 6, 5$ ($n = 9$), the weights $\binom{8}{i}$ are $1, 8, 28, 56, 70, 56, 28, 8, 1$; modulo 2 only the first and last are odd, giving $3 + 5 = 8 \equiv 0$, and modulo 5 they are $1, 3, 3, 1, 0, 1, 3, 3, 1$, giving $57 \equiv 2$. The digit that is even and leaves 2 modulo 5 is 2, and simulating the rows gives 2 too.
+
+<CodeSnippet unit="2.3/lucas-mod10" />
+
+Common mistake: using Lucas modulo a number that is not prime. Modulo 4, $\binom{4}{2} = 6 \equiv 2$, but the base-4 digits of 4 and 2 are $10$ and $02$, and the product of digit binomials has the factor $\binom{0}{2} = 0$. The formula would print 0. Fix: split a squarefree modulus into its primes first, as above; prime powers are not part of this course. The other mistake is the opposite one: keeping the factorial table formula for $n \ge p$, which prints 0 for $\binom{14}{7} \bmod 7$ where the answer is 2.
+
+**Theorem 2.3.8 (Lucas's theorem).** Let $p$ be a prime, and write $n = n_k p^k + \dots + n_1 p + n_0$ and $r = r_k p^k + \dots + r_1 p + r_0$ with digits $0 \le n_i, r_i < p$. Then
+$$\binom{n}{r} \equiv \prod_{i=0}^{k} \binom{n_i}{r_i} \pmod p,$$
+where $\binom{a}{b} = 0$ for $b > a$. In particular $\binom{n}{r} \equiv 0$ as soon as one digit of $r$ is above the digit of $n$, and for $p = 2$ the coefficient is odd exactly when `(n & r) == r`.
+
+In plain words: modulo a prime, a binomial coefficient can be computed one base-$p$ digit at a time, and only small binomial coefficients appear.
+
+Tiny instance: $\binom{14}{7} \bmod 7$ with $14 = (2, 0)_7$ and $7 = (1, 0)_7$ gives $\binom{2}{1}\binom{0}{0} = 2$, and $3432 \bmod 7 = 2$.
+
+Proof:
+1. For $0 < k < p$ the prime $p$ divides $\binom{p}{k}$: indeed $\binom{p}{k} \cdot k!\,(p-k)! = p!$, the right side is a multiple of $p$, and $k!\,(p-k)!$ is not (all its factors are below $p$), so $p \mid \binom{p}{k}$ by Euclid's lemma. Hence $(1 + x)^p \equiv 1 + x^p \pmod p$ as polynomials.
+2. By induction $(1 + x)^{p^i} \equiv 1 + x^{p^i}$ for every $i$: raise both sides to the power $p$ and use step 1 with $x^{p^i}$ in place of $x$.
+3. So $(1 + x)^n = \prod_i \left((1+x)^{p^i}\right)^{n_i} \equiv \prod_i \left(1 + x^{p^i}\right)^{n_i}$.
+4. Expand each factor: $\left(1 + x^{p^i}\right)^{n_i} = \sum_{j=0}^{n_i} \binom{n_i}{j} x^{j p^i}$.
+5. In the product, a term has the exponent $\sum_i j_i p^i$ with $0 \le j_i \le n_i < p$. These $j_i$ are base-$p$ digits, and the base-$p$ form of a number is unique, so the exponent $r$ is reached by exactly one choice, $j_i = r_i$ (and by none if some $r_i > n_i$).
+6. So the coefficient of $x^r$ in the product is $\prod_i \binom{n_i}{r_i}$. The coefficient of $x^r$ in $(1+x)^n$ is $\binom{n}{r}$, and polynomials that are equal modulo $p$ have equal coefficients modulo $p$.
+
+This proof needs: (1) $p$ is prime: step 1 uses Euclid's lemma, and for $p = 4$ it fails, since $\binom{4}{2} = 6$ is not a multiple of 4. (2) A table of size $p$ fits in memory, up to about $10^6$ or $10^7$ entries. (3) The digits of $n$ are few, so each coefficient costs $O(\log_p n)$.
+
+<TheoremCode unit="2.3/thm-8" />
+
 ## Derangement
 
 A derangement is a permutation where no element appears in its original position. It is also called a no-fixed-point permutation.
@@ -1445,6 +1509,7 @@ A card names one technique, the property that decides it, and the signals that r
 - Theorem 2.3.5: lower bounds shift away, $\binom{n - L + k - 1}{k - 1}$, and 0 if $L > n$; upper bounds need inclusion-exclusion.
 - Theorem 2.3.6: an element in exactly $t$ sets contributes $(1-1)^t$, so only elements in none are counted; signs alternate.
 - Theorem 2.3.7: paths with $a$ rights and $b$ ups are $\binom{a+b}{a}$; through a point, multiply the two halves.
+- Theorem 2.3.8: modulo a prime $p$, $\binom{n}{r}$ is the product of $\binom{n_i}{r_i}$ over the base-$p$ digits, and 0 if a digit of $r$ is above that of $n$. Parity ($p = 2$): odd exactly when `(n & r) == r`.
 
 ## Check yourself
 

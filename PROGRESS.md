@@ -26,7 +26,8 @@ Branch `claude/tender-bohr-ktypz5`. Start conditions checked 2026-11-13: lesson 
 | PR | Content | Status |
 |---|---|---|
 | 0 | CI, two-digit ids, draft rows | in review |
-| 1 (2.5 and Lucas) | blocked on the bank question above | waiting for Saurabh |
+| 1a (2.5) | built as a `reduced_bank` topic (decided 2026-11-13, see below); lesson, 2 cards, 4 theorems, 3 templates, 9 code units, bank of 18 + 8 drill, 2.1 refilled | in review |
+| 1b (Lucas in 2.3) | not started | |
 | 2 to 14 | see CURRICULUM_GAPS_PLAN.md Section 7 | not started |
 
 ## Lesson restore (LESSON_RESTORE_PLAN.md)
@@ -360,7 +361,15 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
 - Profile sync decisions that went beyond the plan: unknown Codeforces verdicts count as attempts and are noted in the sync log; the checkpoint drill rule becomes "min(8, drill items that still count)" when drill items are compromised; a checkpoint whose three problems are all compromised shows "needs replacement problems" and cannot be passed; LeetCode problems and unlinked platforms in a checkpoint or exam show "confirm by hand".
 - Not built, as the plan says to ask first (Section 19): CSES sync, contest-log import with an automatic upsolve list, multiple learners, background sync.
 
-### Curriculum gaps: questions for Saurabh (PR 1, topic 2.5)
+### Curriculum gaps: topic 2.5 as built
+- Decided by Saurabh on 2026-11-13: build 2.5 as a small topic with a documented shortage of problems (`reduced_bank: true` on its curriculum row). What the exception relaxes: 2 cards instead of 3, a ladder of 8 instead of 12, one review set instead of three, no problem in the phase exam or the 7.8 bank. Worked examples have no minimum in the validator, and 2.5 has none (its templates are walked through instead).
+- Real problems used (16): ladder cf-633A, lc-water-and-jug-problem, ac-abc340_f, cf-1244C (card integer-solutions) and cf-919E, cf-1500B, cf-338D, ac-agc063_d (card merge-congruences); checkpoint cf-7C, cf-687B, ac-abc193_e; review set 1 ac-abc186_e, ac-abc315_g, ac-arc221_a; look-alike sides cf-1055C and lc-check-if-it-is-a-good-array, with partners cf-1260C and cf-1155C.
+- The eight drill problems are `later_drill` problems of the 2.1 bank (six new ones were added there: cf-1091C, cf-1285C, cf-1538D, cf-1114C, cf-1062B, ac-abc149_c; lc-three-divisors and lc-number-of-common-factors already existed). All eight are answered by an earlier card (2.1 trial-division), so the drill trains saying "not this topic". There is no drill item answered by a 2.5 card because no real problem was left for it.
+- Moved out of 2.1: the card `bezout` with its 4 ladder problems, checkpoint cf-7C and review ac-abc186_e. 2.1 now has 4 cards and a ladder of 16; its checkpoint gets ac-abc259_e (new) and its review set 2 gets lc-prime-palindrome (it was an unused review problem). Saurabh's extended Euclid section and Theorem 2.1.2 stay in the 2.1 lesson. In 2.2 the two references to the `bezout` card now point to 0.4 `gcd-lcm`.
+- Weak points: cf-919E, cf-1500B, cf-338D, cf-687B, cf-1055C, cf-1260C, cf-1155C and the six new 2.1 later-drill problems are Codeforces problems whose statements could not be read (notes are recalled, marked †). ac-agc063_d has no editorial yet: its three hints are my own derivation, not checked against a solution, and say so. ac-arc221_a is a weak fit (the totient sum is 2.1 work). The card `merge-congruences` has its easiest rung at rating 2100 (cf-919E) because no easier real problem was available.
+- Not done for 2.5 yet: the phase 2 exam (exempt), the 7.8 recognition set (exempt), the handbook map (generated from the topic file), the e2e scripts (see the gate list in the PR).
+
+### Curriculum gaps: questions for Saurabh (PR 1, topic 2.5), history
 - **2.5 cannot reach its bank floor honestly (checked 2026-11-13).** A new template topic needs about 43 distinct bank problems for its roles: 3 worked, at least 16 ladder rungs, 8 drill, 4 look-alike, 3 checkpoint, 9 review. I searched the Codeforces API (`number theory` tag, 1100 to 2200: 471 problems), the web, and the 2.1 bank. Problems that really need extended Euclid, a Diophantine equation, a linear congruence or CRT are few:
   - Already in 2.1 (the 6 `bezout` problems): lc-water-and-jug-problem, lc-check-if-it-is-a-good-array, ac-abc340_f, cf-1244C, cf-7C, ac-abc186_e.
   - New candidates, mostly Codeforces and only from recalled statements (†): cf-633A (1100, below the band), cf-1055C (1900), cf-919E (2100), cf-1389E (2200, above the Phase 2 ceiling of 2100), cf-1500B (2200, above it), cf-1260C and cf-1155C (gcd only), cf-1146D (gcd only).

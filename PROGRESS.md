@@ -26,7 +26,8 @@ Branch `claude/tender-bohr-ktypz5`. Start conditions checked 2026-11-13: lesson 
 | PR | Content | Status |
 |---|---|---|
 | 0 | CI, two-digit ids, draft rows | in review |
-| 1 to 14 | see CURRICULUM_GAPS_PLAN.md Section 7 | not started |
+| 1 (2.5 and Lucas) | blocked on the bank question above | waiting for Saurabh |
+| 2 to 14 | see CURRICULUM_GAPS_PLAN.md Section 7 | not started |
 
 ## Lesson restore (LESSON_RESTORE_PLAN.md)
 - R_BASE (old template 3.1, used by Phases 1 and 2): `e5d3412` (`git show e5d3412:src/content/docs/phase-3/3-1-backtracking.mdx`).
@@ -358,6 +359,16 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
   (Original note:) (https://codeforces.com/apiHelp) in a normal browser: it is behind a Cloudflare challenge for scripts, so the rate limit (1 request per 2 seconds), anonymous access, and the verdict list in `src/lib/sync/schemas.ts` could not be re-checked.
 - Profile sync decisions that went beyond the plan: unknown Codeforces verdicts count as attempts and are noted in the sync log; the checkpoint drill rule becomes "min(8, drill items that still count)" when drill items are compromised; a checkpoint whose three problems are all compromised shows "needs replacement problems" and cannot be passed; LeetCode problems and unlinked platforms in a checkpoint or exam show "confirm by hand".
 - Not built, as the plan says to ask first (Section 19): CSES sync, contest-log import with an automatic upsolve list, multiple learners, background sync.
+
+### Curriculum gaps: questions for Saurabh (PR 1, topic 2.5)
+- **2.5 cannot reach its bank floor honestly (checked 2026-11-13).** A new template topic needs about 43 distinct bank problems for its roles: 3 worked, at least 16 ladder rungs, 8 drill, 4 look-alike, 3 checkpoint, 9 review. I searched the Codeforces API (`number theory` tag, 1100 to 2200: 471 problems), the web, and the 2.1 bank. Problems that really need extended Euclid, a Diophantine equation, a linear congruence or CRT are few:
+  - Already in 2.1 (the 6 `bezout` problems): lc-water-and-jug-problem, lc-check-if-it-is-a-good-array, ac-abc340_f, cf-1244C, cf-7C, ac-abc186_e.
+  - New candidates, mostly Codeforces and only from recalled statements (†): cf-633A (1100, below the band), cf-1055C (1900), cf-919E (2100), cf-1389E (2200, above the Phase 2 ceiling of 2100), cf-1500B (2200, above it), cf-1260C and cf-1155C (gcd only), cf-1146D (gcd only).
+  - AtCoder ABC and ARC, LeetCode and CSES add a handful (for example ac-abc193_e); nothing that reaches 43.
+  Moving the 6 problems out also leaves 2.1 without its checkpoint problem (cf-7C) and with fewer than 20 practice problems.
+  **Options:** (a) accept a smaller 2.5, about 25 problems, with a ladder of 12 (the plan's "16 rungs" becomes 12) and 2.1's `bezout` stays where it is, so nothing moves out of 2.1; (b) fold the Diophantine and CRT cards into 2.2 as a notes section with 4 to 6 rungs and drop 2.5 as a topic; (c) allow problems above the Phase 2 ceiling (up to about 2300) for 2.5 only; (d) keep 2.5 as planned and accept that it stays a draft until enough problems are found. I recommend (a) plus (c) for two or three problems. Which one?
+- The same shortage is likely for 4.8 (geometry) and 7.9 (flow), which have more supply, and for 3.9, 5.5, 5.6 and 5.7. Before each of those PRs I will run the same search first and report the count here.
+- PR 1 is therefore not started. The work that needs no new bank (D&C in 3.1, strings in 0.6, Lucas in 2.3, Eulerian path in 4.2, 2-SAT in 4.7) needs 3 to 4 rungs each; I can start with those if you prefer.
 
 ### Design tracks: questions for Saurabh (D0)
 - **Redis licence. DECIDED 2026-10-18: Valkey 9.1.2 (BSD), stack verified.** Was: `redis:8.8.3` tri-licensed (RSALv2, SSPLv1 or AGPLv3). Running it locally for labs is fine. Do you want Valkey (BSD-licensed fork) instead? It speaks the same protocol, so no lab changes.

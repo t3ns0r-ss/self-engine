@@ -9,7 +9,7 @@ Output: the task numbers in finishing order.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.6 (queues). Tasks wait in order; the worker gives each at most Q units and sends an unfinished task
+// Queue (first in, first out). Tasks wait in order; the worker gives each at most Q units and sends an unfinished task
 // to the back. Returns the task numbers in finishing order.
 vector<int> finishOrder(const vector<long long>& t, long long Q) {
     queue<pair<int, long long>> q;  // (task number, remaining work); the front is the oldest

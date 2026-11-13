@@ -49,6 +49,10 @@ theorems:
     constant time per step. For brackets, a closing bracket pairs with the most recent opening bracket
     not yet closed.
   code: 0.6/thm-6
+- id: 0.6.7
+  title: Building a string with += is cheap, with s = s + c it is not
+  plain_words: Adding letters with += copies fewer than two letters per call on average, but writing s = s + c builds a new string every time, so n of them write about n squared over two letters. Cutting a piece with substr costs the length of the piece.
+  code: 0.6/thm-7
 cards:
 - id: set-membership
   name: Distinctness and membership
@@ -415,6 +419,69 @@ cards:
       card: heap-extract
     flipping_difference: Priority by value replaces arrival order, so a priority queue replaces the queue.
   complexity: $O(1)$ per push or pop.
+- id: string-ops
+  name: String operations by cost
+  decisive_property: 'Every step is one standard string operation (index, `+=`, `substr`, `find`, compare), and (number of calls) times (letters each call touches) stays within about $10^8$; an operation that touches the whole string on every call is replaced by `+=`, a stack at the end of the string, or a local recount.'
+  from_theorem: 0.6.7
+  how_to_test: 'For every string operation in the plan write down how many letters one call touches (Theorem 0.6.7), multiply by the number of calls, and compare with $10^8$.'
+  constraint_shapes:
+  - 'A string of $2 \cdot 10^5$ letters and $2 \cdot 10^5$ queries or removals: a call that touches the whole string costs $4 \cdot 10^{10}$ in all, but a call that touches the end of the string or three letters costs $6 \cdot 10^5$.'
+  - 'A string of 100 letters and 100 rotations: building each rotation with `substr` touches 100 letters, $10^4$ in all, so the plain string operation is fine.'
+  weak_signals:
+  - form: Asks for a piece of a string, a prefix, a suffix, a window or a rotation, or to search for a piece
+    shape: 'A string of up to $10^3$ letters: all windows cost $(n - m + 1) \cdot m \le 2.5 \cdot 10^5$ letters'
+  - form: Changes a string many times and asks about it after each change
+    shape: 'Length and number of changes both up to $2 \cdot 10^5$, and each answer depends only on the letters near the change'
+  - form: Removes or inserts pieces of a string again and again
+    shape: A string of up to $2 \cdot 10^5$ letters, where erasing inside the string moves the whole tail each time
+  kill_signals:
+  - 'Every call touches the whole string and there are many calls: rotating a string of $5 \cdot 10^5$ letters by `substr` for each of $5 \cdot 10^5$ queries moves $2.5 \cdot 10^{11}$ letters. Keep one number, the shift.'
+  - 'The question is about the letters in any order: for "aabbc" the string operations see the order, but only the counts matter, and an array of 26 counters or a map answers it.'
+  in_action:
+    statement: 'A string of the letters A, B, C. While it contains ABC as a consecutive piece, remove the leftmost ABC. Print what is left.'
+    constraints: 'The string has up to $2 \cdot 10^5$ letters.'
+    budget: 'Repeated `find` and `erase` moves up to $2 \cdot 10^5$ letters per removal, with up to $6.7 \cdot 10^4$ removals: about $1.3 \cdot 10^{10}$ letter moves. A pass with `+=` and `resize` is about $4 \cdot 10^5$ steps.'
+    candidates:
+    - tool: '`find` and `erase` in a loop'
+      verdict: rejected
+      because: 'Each erase in the middle moves the tail, so the total is about $1.3 \cdot 10^{10}$ letter moves.'
+    - tool: 'Build a second string with `+=` and remove the last three letters when they are ABC (this topic)'
+      verdict: chosen
+      because: 'Appending is $O(1)$ on average and `resize` to a smaller size only moves the end (Theorem 0.6.7).'
+    property_check: 'Two copies of ABC never overlap, because A, B, C are different letters, so removing one never destroys another and the final string does not depend on the order. Every step touches only the end of the second string.'
+    decision: 'Append each letter to `t`; when the last three letters of `t` are ABC, `t.resize(t.size() - 3)`; print `t`.'
+  examples:
+    positive:
+    - inline:
+        input: 'How many letters are left of AABCBC after removing the leftmost ABC again and again?'
+        answer: '0'
+        why: 'The second string goes A, AA, AAB, AABC, which drops to A, then AB, then ABC, which drops to nothing. Only the end of the string is touched, so each step is $O(1)$.'
+    - worked_example: cf-71A
+      why: 'Each word of at most 100 letters is cut with its first letter, the number of letters between (written with `to_string`) and its last letter, so 100 words touch about $10^4$ letters.'
+    negative:
+    - inline:
+        input: 'How many times does aa appear in aaaa, if `find` resumes at the end of each match?'
+        answer: '3'
+        method_gives: '2'
+        why: 'The appearances start at 0, 1 and 2 and overlap. Resuming at `pos + 2` finds those at 0 and 2 only. The search has to resume at `pos + 1`.'
+      correct_tool:
+        topic: '0.6'
+        card: string-ops
+    - inline:
+        input: 'Is 10 smaller than 9, if the two numbers are compared as strings?'
+        answer: 'no'
+        method_gives: 'yes'
+        why: 'String comparison goes letter by letter and `1` comes before `9`, so "10" < "9". Numbers written as text must be converted first, or compared by length and then by letters.'
+      correct_tool:
+        topic: '0.6'
+        card: string-ops
+  lookalikes:
+  - description: Rotate a string by moving its last letters to the front, with $5 \cdot 10^5$ letters and $5 \cdot 10^5$ queries
+    tool:
+      topic: '0.3'
+      card: direct-simulation
+    flipping_difference: With 100 letters, building each rotation with `substr` is fine. With $5 \cdot 10^5$ queries it touches $2.5 \cdot 10^{11}$ letters, so the process is replaced by one remembered number.
+  complexity: 'Depends on the operation: $O(1)$ for `+=` and `pop_back`, $O(k)$ for `substr` of length $k$, and $O(n)$ for `s = s + c` and for `erase` inside the string.'
 problems:
 - id: cses-1621
   role: ladder
@@ -436,21 +503,10 @@ problems:
   - Does a set work for strings?
   - 'Yes: `set<string>` compares strings in dictionary order; each operation costs $O(\log N)$ comparisons of up to 10 letters.'
   - Insert every name into a set<string> and print its size.
-- id: ac-abc291_c
-  role: ladder
-  card: set-membership
-  rung: 3
-  twist: The values are positions (pairs) produced by a walk.
-  summary: A walk of $N$ steps ($N \le 2 \cdot 10^5$) on the grid from the origin, each step L, R, U or D; does it visit some point twice?
-  hints:
-  - What do you need to remember about the walk so far to answer "have I been here before?"
-  - The set of points visited so far; a pair<int, int> can be stored in a set.
-  - Insert (0, 0), then after each step check whether the new point is already in the set before inserting
-    it.
 - id: ac-abc278_c
   role: ladder
   card: set-membership
-  rung: 4
+  rung: 3
   twist: Insertions and deletions of pairs, with membership questions in between.
   summary: 'Users up to $10^9$ and $Q \le 2 \cdot 10^5$ operations: A follows B, A unfollows B, or ask whether A and B follow each other.'
   hints:
@@ -478,21 +534,10 @@ problems:
   - Counting unequal pairs directly needs all pairs. What is easier to count?
   - All pairs N(N − 1)/2 minus equal pairs, and equal pairs come from the counts per value.
   - Answer $N(N - 1)/2 - \sum c(c - 1)/2$ over the counts $c$, in long long.
-- id: ac-abc261_c
-  role: ladder
-  card: map-counting
-  rung: 3
-  twist: The count is read before incrementing, while the input is processed.
-  summary: Print $N$ names ($N \le 2 \cdot 10^5$) in order, adding "(k)" to a name that already appeared $k$ times before.
-  hints:
-  - For each name you need the number of earlier equal names. Which theorem gives it?
-  - 'Theorem 0.6.3, part 2: the count read just before incrementing.'
-  - map<string, int> cnt; for each name print it, plus "(" + to_string(cnt[s]) + ")" if cnt[s] > 0; then
-    cnt[s]++.
 - id: ac-abc137_c
   role: ladder
   card: map-counting
-  rung: 4
+  rung: 3
   twist: The key is a summary of the string (its letter counts), not the string itself.
   summary: Count pairs among $N$ strings of 10 letters ($N \le 10^5$) that are anagrams of each other.
   hints:
@@ -502,7 +547,7 @@ problems:
 - id: cf-1702C
   role: ladder
   card: map-counting
-  rung: 5
+  rung: 4
   twist: Store a first and a last position per key instead of a count.
   summary: 'For each of $t$ tests: stations along a route ($n \le 2 \cdot 10^5$, values $\le 10^9$) and $k$ queries "can I go from a to b?" (a must occur before b).'
   hints:
@@ -522,20 +567,10 @@ problems:
     the one just before it.'
   - Keep a map<int, int> start → end; check map.lower_bound(start) (it must start at or after the new
     end) and the one before it (it must end at or before the new start).
-- id: ac-abc294_d
-  role: ladder
-  card: ordered-set-lookup
-  rung: 2
-  twist: Only the smallest element of a changing set is needed.
-  summary: '$N$ people ($\le 5 \cdot 10^5$) and $Q \le 5 \cdot 10^5$ events at a bank: call the next new person, someone arrives, or call again the smallest waiting person; print the calls of the last kind.'
-  hints:
-  - Which people can be called again, and which one is called?
-  - Called but not yet arrived; the smallest of them. The set changes with every event.
-  - 'set<int> waiting: insert on a new call, erase on arrival, print *waiting.begin() for a repeated call.'
 - id: ac-abc253_c
   role: ladder
   card: ordered-set-lookup
-  rung: 3
+  rung: 2
   twist: 'Many equal values with bulk removal: a map of counts that also keeps the keys ordered.'
   summary: '$Q \le 2 \cdot 10^5$ queries on a multiset: add x, remove up to $c$ copies of x, or print maximum minus minimum.'
   hints:
@@ -547,7 +582,7 @@ problems:
 - id: ac-abc241_d
   role: ladder
   card: ordered-set-lookup
-  rung: 4
+  rung: 3
   twist: Walk a few steps from the found iterator instead of just reading it.
   summary: '$Q \le 2 \cdot 10^5$ queries: add x ($\le 10^{18}$), or print the $k$-th largest value $\le x$, or the $k$-th smallest value $\ge x$ ($k \le 5$), or −1.'
   hints:
@@ -618,17 +653,46 @@ problems:
     to all.
   - Store each head as an absolute position in a vector with a front index; on removal add the length
     to the shift; answer head[front + k − 1] − shift. Use long long.
-- id: lc-evaluate-reverse-polish-notation
+- id: ac-abc264_a
   role: ladder
-  card: stack-queue
-  rung: 4
-  twist: The stack holds partial results, not brackets.
-  summary: 'Evaluate an arithmetic expression in reverse Polish notation ($\le 10^4$ tokens: integers and + − * /, division truncating toward zero).'
+  card: string-ops
+  rung: 1
+  twist: Base case of the card
+  summary: 'Print the $L$-th through $R$-th letters of the fixed string `atcoder` ($1 \le L \le R \le 7$).'
   hints:
-  - When an operator arrives, which numbers does it use?
-  - 'The two most recent unused values: the top two of a stack of numbers.'
-  - Push numbers; for an operator pop b, then a, and push a op b (C++ / already truncates toward zero).
-    The answer is the last value left.
+  - Which `string` call returns a piece of a string, and what are its two arguments?
+  - '`s.substr(start, length)`: the start is 0-based and the second argument is a length, not an end position.'
+  - 'Print `string("atcoder").substr(L - 1, R - L + 1)`.'
+- id: lc-compare-version-numbers
+  role: ladder
+  card: string-ops
+  rung: 2
+  twist: 'Cut the string at a separator with `find`, handle `npos` for the last piece, and turn each piece into a number.'
+  summary: 'Compare two version strings such as 1.02.3 and 1.2.0, revision by revision, where a missing revision counts as 0 (each string has at most 500 characters).'
+  hints:
+  - 'How do you find the next dot, and what does `find` return when there is none?'
+  - '`find(''.'', pos)` returns `string::npos` when there is no more dot; then the last revision runs to the end. `stoi` turns a piece into a number and ignores leading zeros.'
+  - 'Walk both strings with a position each; cut the next revision (or use 0 when the string has ended), convert both, compare, and return at the first difference.'
+- id: ac-abc372_c
+  role: ladder
+  card: string-ops
+  rung: 3
+  twist: 'A change touches only the windows that contain it, so recount three windows instead of the whole string.'
+  summary: 'A string of $N$ capital letters ($N \le 2 \cdot 10^5$) and $Q \le 2 \cdot 10^5$ queries: set the $x$-th letter to $c$, then print how many times ABC appears.'
+  hints:
+  - 'Recounting the whole string per query costs $N \cdot Q = 4 \cdot 10^{10}$. Which part of the answer can change when one letter changes?'
+  - 'Only the ABC pieces that contain position $x$: they start at $x - 2$, $x - 1$ or $x$.'
+  - 'Keep the total. Count the ABC pieces among those three starts before the change and after it, and add the difference.'
+- id: ac-abc328_d
+  role: ladder
+  card: string-ops
+  rung: 4
+  twist: 'Remove pieces by adding letters with `+=` and shortening only the end, so the string works as a stack.'
+  summary: 'A string of A, B and C of up to $2 \cdot 10^5$ letters: while it contains ABC, remove the leftmost ABC; print the final string.'
+  hints:
+  - 'Each `erase` in the middle moves the tail. How many removals can there be, and what does that cost?'
+  - 'Build the answer in a second string `t`. Which end of `t` does a removal touch?'
+  - 'Append each letter with `+=`; when the last three letters of `t` are ABC, `resize` to drop them. Two copies of ABC never overlap, so the order does not matter.'
 - id: cses-1640
   role: worked_example
   summary: Find two positions in an array of $n \le 2 \cdot 10^5$ values ($\le 10^9$) whose values add up to x, or report that there are none.
@@ -737,6 +801,20 @@ problems:
   card: stack-queue
   review_set: 3
   summary: Is a string of ( ) [ ] < > (length $\le 2 \cdot 10^5$) a properly nested bracket sequence?
+- id: ac-abc103_b
+  role: lookalike
+  summary: 'Can a string $S$ of at most 100 letters become $T$ by repeatedly moving its last letter to the front?'
+- id: ac-abc258_c
+  role: lookalike
+  summary: '$N, Q \le 5 \cdot 10^5$ queries on a string: move its last $x$ letters to the front, or print the $x$-th letter.'
+- id: ac-abc322_b
+  role: drill
+  summary: 'Is a string $S$ (at most 100 letters) a prefix of $T$, a suffix of $T$, both or neither?'
+- id: lc-simplify-path
+  role: review
+  card: string-ops
+  review_set: 1
+  summary: 'Turn a Unix-style absolute path (at most 3000 characters) into its shortest form: drop `.` and empty pieces, and let `..` go up one directory.'
 - id: lc-reverse-integer
   role: exam
   card: overflow-64bit
@@ -841,6 +919,12 @@ drill:
   property: 'The price is at most about 1250 when the taxes are at most 100: test every price in order
     and print the first that fits.'
   why_others_fail: Reversing the rounding by a formula is error-prone; the range is small.
+- problem: ac-abc322_b
+  answer:
+    topic: '0.6'
+    card: string-ops
+  property: S is a prefix of T when `t.compare(0, n, s) == 0` and a suffix when `t.compare(m - n, n, s) == 0`; two slices of at most 100 letters are compared.
+  why_others_fail: No state has to be carried from letter to letter, so the one-pass scan of topic 0.3 has nothing to remember, and no container is needed.
 lookalike_pairs:
 - a: lc-contains-duplicate
   b: lc-contains-duplicate-ii
@@ -868,6 +952,17 @@ lookalike_pairs:
   shared_surface: Both take the best price from a changing collection of prices, one step at a time.
   flipping_input: 'Prices 3, 7, 10 and a budget of 8: taking the overall largest (A) gives 10, over budget;
     the largest not above 8 (B) is 7.'
+- a: ac-abc103_b
+  b: ac-abc258_c
+  a_tool:
+    topic: '0.6'
+    card: string-ops
+  b_tool:
+    topic: '0.3'
+    card: direct-simulation
+  flipping_difference: In B the string has $5 \cdot 10^5$ letters and there are $5 \cdot 10^5$ queries, so moving letters for each query costs $2.5 \cdot 10^{11}$ and the process is replaced by one remembered shift; in A there are at most 100 rotations of 100 letters, which is cheap.
+  shared_surface: Both move the last letters of a string to the front.
+  flipping_input: 'A string of $5 \cdot 10^5$ letters and $5 \cdot 10^5$ queries "move the last x letters to the front": building the new string with `substr` for each query touches $2.5 \cdot 10^{11}$ letters, while one shift counter touches none.'
 self_test:
 - q: $n = 2 \cdot 10^5$ values, each followed by the question "has this value appeared before?". Compare a vector scan, a set and an array indexed by value when values go up to $10^9$.
   a: 'Vector scan: up to n²/2 = 2·10^10 steps, too slow. Array: 10^9 entries, too much memory. set: n·log
@@ -894,6 +989,8 @@ self_test:
     arrival, (c) matching brackets?'
   a: '(a) stack: the last action is undone first. (b) queue: the earliest arrival is served first. (c)
     stack: a closing bracket matches the most recent unmatched opening one (Theorem 0.6.6).'
+- q: 'A string of $n = 2 \cdot 10^5$ letters is built one letter at a time. How many letters are written in total with `s += c`, and with `s = s + c`?'
+  a: 'With `+=`: fewer than $3n = 6 \cdot 10^5$ (Theorem 0.6.7, part 1). With `s = s + c`: $n(n+1)/2 \approx 2 \cdot 10^{10}$ (part 2), a time limit error.'
 checkpoint:
   time_limit_minutes: 90
   problems:
@@ -945,6 +1042,13 @@ decision_map:
     because: One bracket kind needs only a depth counter (topic 0.3); several kinds, or positions of partners,
       need a stack.
     topic: '0.3'
+- weak_signal: A piece, a window, a rotation or a one-letter change of a string of up to $2 \cdot 10^5$ letters
+  choose: string-ops
+  when: Each string operation touches few letters, or the operation that touches the whole string is replaced by `+=`, an offset or a local recount (Theorem 0.6.7).
+  over:
+  - card: string-processing
+    because: A scan with one small state decides a question about the whole string (topic 0.3); string operations cut, search, compare and build pieces.
+    topic: '0.3'
 glossary_added:
 - STL
 - container
@@ -958,3 +1062,5 @@ glossary_added:
 - deque
 - priority queue
 - heap
+- npos
+- anagram

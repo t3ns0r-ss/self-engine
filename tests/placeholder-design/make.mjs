@@ -10,7 +10,7 @@ const FILES = [
   'src/data/topics/L2-1.yaml', 'src/data/exercises/L2-1.yaml', 'src/content/docs/lld/phase-2/L2-1-strategy.mdx',
   'src/data/topics/H4-2.yaml', 'src/data/exercises/H4-2.yaml', 'src/content/docs/hld/phase-4/H4-2-quorums.mdx',
 ];
-const DIRS = ['code/L2.1', 'code/H4.2', 'exercises/L2.1', 'exercises/H4.2', 'reference/L2.1', 'reference/H4.2', 'src/content/docs/lld', 'src/content/docs/hld'];
+const DIRS = ['code/L2.1', 'code/H4.2', 'exercises/L2.1', 'exercises/H4.2', 'reference/L2.1', 'reference/H4.2'];
 
 if (process.argv.includes('--remove')) {
   if (!existsSync(ACTIVE)) { console.log('no design placeholder to remove'); process.exit(0); }
@@ -178,6 +178,9 @@ exercises:
   - {id: rung-1, role: ladder, type: change_ladder, title: "Hourly plan", prompt: "Implement the hourly plan.", card: strategy, rung: 1, new_force: "One plan", needs_new_structure: false, checkers: [{kind: kit, path: "L2.1/ladder/rung-1"}], reference: "reference/L2.1/ladder/rung-1", hints: ["a", "b", "c"], techniques: ["L2.1"], checked_on: "2026-10-16"}
   - {id: r-1, role: drill, type: recognise, title: "Fees", prompt: "Four parking plans, two more expected: which structure?", answer: {kind: card, card: {topic: "L2.1", card: strategy}, property: "one signature", why_others_fail: "a conditional grows"}, checkers: []}
   - {id: r-2, role: drill, type: recognise, title: "Two plans", prompt: "Two fixed plans forever.", answer: {kind: none, simplest: "a conditional", why: "nothing varies"}, checkers: []}
+  - {id: r-3, role: drill, type: recognise, title: "Earlier card 3", prompt: "A question answered by an earlier card.", answer: {kind: card, card: {topic: "L0.0", card: raii}, property: "a resource is released when its owner goes out of scope", why_others_fail: "the property does not hold elsewhere"}, checkers: []}
+  - {id: r-4, role: drill, type: recognise, title: "Earlier card 4", prompt: "A question answered by an earlier card.", answer: {kind: card, card: {topic: "L0.1", card: class-invariant}, property: "a rule that every public operation keeps true", why_others_fail: "the property does not hold elsewhere"}, checkers: []}
+  - {id: r-5, role: drill, type: recognise, title: "Earlier card 5", prompt: "A question answered by an earlier card.", answer: {kind: card, card: {topic: "L0.2", card: virtual-interface}, property: "several implementations behind one interface", why_others_fail: "the property does not hold elsewhere"}, checkers: []}
   - {id: cp-1, role: checkpoint, type: build, title: "Build a fee calculator", prompt: "Build it.", clarifying: [{q: a, a: a, critical: true}, {q: b, a: b, critical: true}, {q: c, a: c, critical: false}, {q: d, a: d, critical: false}], checkers: [{kind: kit, path: "L2.1/ladder/rung-1"}, {kind: rubric, id: rubric-lld-build-v1}], time_limit_minutes: 60}
 `);
 w('exercises/L2.1/ladder/rung-1/test.sh', '#!/usr/bin/env bash\ntrue\n');
@@ -201,6 +204,8 @@ exercises:
   - {id: est-1, role: worked_example, type: estimate, title: "Peak reads", prompt: "10 million users, 3 reads each a day, peak factor 3.", checkers: [{kind: numeric, calc: "H4.2/calc-x", key: peak_reads, unit: "requests/s", factor: 2}]}
   - {id: r-1, role: drill, type: recognise, title: "Session store", prompt: "Session store across 3 zones, 99.999% for single keys.", answer: {kind: card, card: {topic: "H4.2", card: quorum-replication}, property: "W+R>N", why_others_fail: "async replication loses writes"}, checkers: []}
   - {id: r-2, role: drill, type: recognise, title: "Admin tool", prompt: "A single-region admin tool, 50 requests a day.", answer: {kind: none, simplest: "one database", why: "no scale"}, checkers: []}
+  - {id: r-3, role: drill, type: recognise, title: "Earlier card 3", prompt: "A question answered by an earlier card.", answer: {kind: card, card: {topic: "H4.1", card: logical-clocks}, property: "events need an order without a shared clock", why_others_fail: "the property does not hold elsewhere"}, checkers: []}
+  - {id: r-4, role: drill, type: recognise, title: "Earlier card 4", prompt: "A question answered by an earlier card.", answer: {kind: card, card: {topic: "H4.1", card: happened-before}, property: "whether one event can have caused another", why_others_fail: "the property does not hold elsewhere"}, checkers: []}
   - {id: cp-1, role: checkpoint, type: lab, title: "Read repair", prompt: "Add read repair.", checkers: [{kind: kit, path: "H4.2/lab/rung-1"}], time_limit_minutes: 45}
 `);
 w('exercises/H4.2/lab/rung-1/test.sh', '#!/usr/bin/env bash\ntrue\n');

@@ -1,0 +1,263 @@
+---
+title: "2.5 Linear Diophantine equations and the Chinese remainder theorem"
+sidebar:
+  order: 15.5
+topic: "2.5"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="2.5" />
+
+## 1. Why this topic exists
+
+Here is a small problem. You have coins worth 7 and 12, and you must pay exactly 100. Which counts of each coin work? With sizes up to $10^9$ and a target up to $10^{18}$, trying every count of one coin is up to $10^9$ steps for one question, and a contest can ask $10^5$ of them.
+
+Topic 2.1 showed that extended Euclid finds integers $x$ and $y$ with $a \cdot x + b \cdot y = \gcd(a, b)$ ([Theorem 2.1.2](../../phase-2/2-1-number-theory/)). This topic finishes the job. It answers three questions that come next: when does $a \cdot x + b \cdot y = c$ have a solution at all, what do *all* the solutions look like, and how do you pick the smallest one or count those inside a range? The same tool solves a single congruence $a \cdot x \equiv b \pmod m$ when $m$ is not prime (topic 2.2 only had inverses for a prime modulus).
+
+The second half is about two things that repeat. A train comes every 12 minutes starting at minute 5, a bell rings every 10 minutes starting at minute 3: when do they first happen together? Each condition is a congruence, and the first time is the solution of two congruences at once. The Chinese remainder theorem (CRT) says exactly when two congruences have a common solution, and what the common solutions look like.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="2.5" />
+
+### What this topic does not cover
+
+- Equations with three or more unknowns, or non-linear ones such as $x^2 + y^2 = n$: only loops over all but two unknowns reduce to this topic.
+- Systems with $n$ unknowns solved by Gaussian elimination, including elimination modulo a prime: they are not part of this course.
+- Garner's algorithm (rebuilding a number from its residues modulo several primes without large integers) and discrete logarithms: they are not part of this course.
+- Counting solutions of congruences with binomial coefficients, which uses the counting rules of topic 2.3.
+
+## 3. Definitions
+
+- A **linear Diophantine equation** in two unknowns is an equation $a \cdot x + b \cdot y = c$ whose unknowns $x$ and $y$ must be integers. Here $a$, $b$, $c$ are given integers. Example: $6x + 10y = 14$ has the solution $x = 4$, $y = -1$.
+- $g = \gcd(a, b)$ is the greatest common divisor of $a$ and $b$ (topic 0.4). Example: $\gcd(6, 10) = 2$.
+- A **congruence** $a \cdot x \equiv b \pmod m$ means that $m$ divides $a \cdot x - b$. Example: $6 \cdot 4 \equiv 4 \pmod{10}$ because $24 - 4 = 20$.
+- A **residue class** modulo $m$ is the set of all integers that leave the same remainder when divided by $m$. Example: the class of 3 modulo 5 is $\{\ldots, -2, 3, 8, 13, \ldots\}$. The solutions of $x \equiv r \pmod m$ are exactly one residue class.
+- The **lcm** of $m_1$ and $m_2$ is their least common multiple, $m_1 \cdot m_2 / \gcd(m_1, m_2)$. Example: $\operatorname{lcm}(6, 10) = 30$.
+- A **system of congruences** is a list $x \equiv r_i \pmod{m_i}$ that $x$ must satisfy all at once. The **Chinese remainder theorem** (CRT) describes when a system has a solution: see Theorem 2.5.4.
+
+In code, take care with the remainder operator: in C++ the result of `%` has the sign of the dividend, so `-7 % 5` is `-2`. This topic always normalises with `((x % m) + m) % m` when a value can be negative.
+
+## 4. Theory and proofs
+
+### 4.1 One solution
+
+**Theorem 2.5.1 (one solution of $a x + b y = c$).** Let $a$ and $b$ be integers that are not both 0, $g = \gcd(a, b)$ and $c$ an integer. The equation $a \cdot x + b \cdot y = c$ has an integer solution exactly when $g$ divides $c$. In that case extended Euclid gives integers $u$, $v$ with $a \cdot u + b \cdot v = g$, and $(x_0, y_0) = (u \cdot c/g, \ v \cdot c/g)$ is a solution. The time is $O(\log \min(|a|, |b|))$.
+
+:::tip[In plain words]
+Two whole numbers a and b can build exactly the multiples of their GCD. So $a \cdot x + b \cdot y = c$ has whole-number solutions exactly when the GCD divides c, and extended Euclid hands you one of them.
+:::
+
+**A tiny instance.** $6x + 10y = 14$: $g = 2$ divides 14, and $6 \cdot (-3) + 10 \cdot 2 = 2$, so $(u, v) = (-3, 2)$. Scale by $14/2 = 7$: $(x_0, y_0) = (-21, 14)$ and $6 \cdot (-21) + 10 \cdot 14 = -126 + 140 = 14$. For $6x + 10y = 15$ no solution exists, because $6x + 10y$ is always even.
+
+**Proof.**
+1. $g$ divides $a$ and $b$, so $g$ divides $a \cdot x + b \cdot y$ for all integers $x$, $y$. If the equation has a solution, $g$ divides $c$.
+2. Now let $g$ divide $c$, say $c = g \cdot k$. By Bézout's identity (Theorem 2.1.2) extended Euclid gives $u$, $v$ with $a \cdot u + b \cdot v = g$.
+3. Multiplying by $k = c / g$ gives $a \cdot (u k) + b \cdot (v k) = c$, so $(u k, v k)$ is a solution.
+4. Extended Euclid does the same steps as Euclid's algorithm, which takes $O(\log \min(|a|, |b|))$ steps (topic 0.4). $\square$
+
+:::note[This proof needs]
+1. $a$ and $b$ are not both zero, so $\gcd(a, b)$ exists.
+2. Bézout's identity from topic 2.1: some integer combination of $a$ and $b$ equals $\gcd(a, b)$.
+3. $u \cdot c / g$ and $v \cdot c / g$ fit in the integer type: $|u|, |v| \le \max(|a|, |b|) / g$, so with $c$ near $10^{18}$ the product needs `__int128` or a range check.
+:::
+
+<TheoremCode unit="2.5/thm-1" />
+
+### 4.2 All solutions
+
+**Theorem 2.5.2 (all solutions).** Let $(x_0, y_0)$ be a solution of $a \cdot x + b \cdot y = c$ with $a, b \ne 0$ and $g = \gcd(a, b)$. Then the solutions are exactly $(x_0 + t \cdot b/g, \ y_0 - t \cdot a/g)$ for the integers $t$. If $a, b > 0$, the smallest non-negative $x$ among them is $x_0 \bmod (b/g)$. For ranges $x_1 \le x \le x_2$ and $y_1 \le y \le y_2$, each inequality restricts $t$ to an interval, and the number of solutions is the size of the intersection of the two intervals.
+
+:::tip[In plain words]
+Once you have one solution, every other one is found by moving x by b/g and y by a/g in opposite directions. So the solutions are one arithmetic progression, and the smallest non-negative x is a single remainder.
+:::
+
+**A tiny instance.** $6x + 10y = 14$ with $(x_0, y_0) = (-21, 14)$: $b/g = 5$, $a/g = 3$, so the solutions are $(-21 + 5t, 14 - 3t)$. The smallest non-negative $x$ is $-21 \bmod 5 = 4$ (at $t = 5$), and then $y = -1$.
+
+| $t$ | $x = -21 + 5t$ | $y = 14 - 3t$ | $6x + 10y$ |
+|---|---|---|---|
+| 4 | $-1$ | 2 | 14 |
+| 5 | 4 | $-1$ | 14 |
+| 6 | 9 | $-4$ | 14 |
+
+**Proof.**
+1. Let $(x, y)$ be another solution. Subtracting the two equations gives $a (x - x_0) + b (y - y_0) = 0$, so $(a/g)(x - x_0) = -(b/g)(y - y_0)$.
+2. $a/g$ and $b/g$ are coprime (dividing by the greatest common divisor removes every common factor), so $b/g$ divides $x - x_0$.
+3. Write $x - x_0 = t \cdot b/g$. Then $y - y_0 = -t \cdot a/g$.
+4. Conversely, every such pair satisfies the equation, because the changes cancel: $a \cdot t \cdot b/g - b \cdot t \cdot a/g = 0$.
+5. The $x$ values form the residue class of $x_0$ modulo $b/g$, so the smallest non-negative one is $x_0 \bmod (b/g)$.
+6. A range such as $x_1 \le x_0 + t \cdot b/g \le x_2$ is one interval of $t$ (the direction flips when $b/g < 0$), and likewise for $y$. A solution lies in the box exactly when its $t$ is in both intervals. $\square$
+
+:::note[This proof needs]
+1. $a \ne 0$ and $b \ne 0$, so the steps $b/g$ and $a/g$ are non-zero.
+2. $a/g$ and $b/g$ are coprime.
+3. Floor and ceiling division are correct for negative numbers, which C++'s `/` is not (it rounds toward zero): the code uses a floor division that fixes the sign.
+:::
+
+<TheoremCode unit="2.5/thm-2" />
+
+### 4.3 One congruence
+
+**Theorem 2.5.3 (a single congruence).** Let $m \ge 1$ and $g = \gcd(a, m)$. The congruence $a \cdot x \equiv b \pmod m$ has a solution exactly when $g$ divides $b$. Then the solutions are one residue class modulo $m / g$, and with $a \cdot u + m \cdot v = g$ the smallest non-negative solution is $(u \cdot b/g) \bmod (m/g)$.
+
+:::tip[In plain words]
+The congruence $a \cdot x \equiv b \pmod m$ is the same as $a \cdot x + m \cdot y = b$. It has a solution exactly when gcd(a, m) divides b, and then the solutions are one residue class modulo m/g.
+:::
+
+**A tiny instance.** $6x \equiv 4 \pmod{10}$: $g = 2$ divides 4. $6 \cdot 2 + 10 \cdot (-1) = 2$, so $u = 2$ and $x_0 = 2 \cdot 2 = 4$; the class is $x \equiv 4 \pmod 5$, and the smallest is 4 (check: $24 \equiv 4$). For $6x \equiv 3 \pmod{10}$ there is no solution, since $g = 2$ does not divide 3.
+
+**Proof.**
+1. $a \cdot x \equiv b \pmod m$ means $m$ divides $a \cdot x - b$, that is, $a \cdot x - b = -m \cdot y$ for some integer $y$: the equation $a \cdot x + m \cdot y = b$.
+2. By Theorem 2.5.1 this has a solution exactly when $g = \gcd(a, m)$ divides $b$.
+3. By Theorem 2.5.2 the $x$ values of its solutions are $x_0 + t \cdot m/g$, one residue class modulo $m/g$.
+4. With $a \cdot u + m \cdot v = g$, the solution of Theorem 2.5.1 has $x_0 = u \cdot b/g$; reducing it modulo $m/g$ gives the smallest non-negative one. $\square$
+
+:::note[This proof needs]
+1. $m \ge 1$; reduce $a$ and $b$ modulo $m$ first so that the numbers stay small and non-negative.
+2. The reduction of $u$ to $[0, m/g)$ uses the normalised remainder, because $u$ can be negative.
+:::
+
+<TheoremCode unit="2.5/thm-3" />
+
+### 4.4 Two congruences, then many
+
+**Theorem 2.5.4 (Chinese remainder theorem for any moduli).** Let $m_1, m_2 \ge 1$ and $g = \gcd(m_1, m_2)$. The two congruences $x \equiv r_1 \pmod{m_1}$ and $x \equiv r_2 \pmod{m_2}$ have a common solution exactly when $r_1 \equiv r_2 \pmod g$. In that case the common solutions are one residue class modulo $\operatorname{lcm}(m_1, m_2)$. A system of $n$ congruences is solvable exactly when merging them one at a time never fails, and then its solutions are one class modulo the lcm of all the moduli. When the moduli are pairwise coprime, $g = 1$ always holds, so a solution always exists and is unique modulo the product.
+
+:::tip[In plain words]
+Two congruences x ≡ r1 (mod m1) and x ≡ r2 (mod m2) can be true together only if r1 and r2 agree modulo gcd(m1, m2). When they do, the answers are one residue class modulo the lcm, so a long list is merged two at a time.
+:::
+
+**A tiny instance.** $x \equiv 2 \pmod 6$ and $x \equiv 8 \pmod{10}$: $g = 2$ and $2 \equiv 8 \pmod 2$, so there is a solution, and the class is modulo $30$. The smallest is $x = 8$ ($8 = 6 + 2$ and $8 = 0 \cdot 10 + 8$). For $x \equiv 1 \pmod 4$ and $x \equiv 2 \pmod 6$: $g = 2$ and $1 \not\equiv 2 \pmod 2$, no solution (the first forces $x$ odd, the second even).
+
+**Proof.**
+1. The first congruence says $x = r_1 + m_1 k$ for an integer $k$.
+2. Putting this into the second gives $m_1 k \equiv r_2 - r_1 \pmod{m_2}$: a congruence in $k$, solved by Theorem 2.5.3 with $a = m_1$ and $m = m_2$.
+3. It has a solution exactly when $g$ divides $r_2 - r_1$, which is the same as $r_1 \equiv r_2 \pmod g$.
+4. Then the solutions $k$ are one class modulo $m_2 / g$, so $x = r_1 + m_1 k$ runs over one class modulo $m_1 \cdot m_2 / g = \operatorname{lcm}(m_1, m_2)$.
+5. Every $x$ in that class satisfies both congruences, by the same steps read backwards.
+6. For $n$ congruences, replace the first two by their merged congruence $x \equiv r \pmod{\operatorname{lcm}}$, which has the same solutions, and repeat. If a merge fails, the original system has no solution. $\square$
+
+:::note[This proof needs]
+1. All moduli are positive.
+2. The lcm of all moduli fits the integer type (up to $9.2 \cdot 10^{18}$ for `long long`); otherwise the problem must ask for the answer in another form.
+3. The residues are first reduced modulo their own modulus.
+:::
+
+<TheoremCode unit="2.5/thm-4" />
+
+## 5. Recognition Cards
+
+<Cards topic="2.5" />
+
+## 6. Templates
+
+Three functions, one per use of the theorems, all built on the same `extGcd`. The brute forces test every candidate in a small range; the generators produce small values with many solvable and unsolvable cases.
+
+### Counting solutions in a box (Theorems 2.5.1 and 2.5.2)
+
+<CodeSnippet unit="2.5/diophantine-range" />
+
+**How it works.** One solution comes from extended Euclid with the signs of $a$ and $b$ restored. Each of the two range conditions gives an interval of $t$ through floor and ceiling division (the direction flips when the step is negative), and the answer is the size of the intersection. The cases $a = 0$ or $b = 0$ are handled first because then one of the unknowns is free. Time $O(\log \min(|a|, |b|))$.
+
+### One congruence (Theorem 2.5.3)
+
+<CodeSnippet unit="2.5/linear-congruence" />
+
+**How it works.** Reduce $a$ and $b$ modulo $m$, run extended Euclid on $(a, m)$, and answer $-1$ unless $g$ divides $b$. The smallest solution is $u \cdot b/g$ reduced into $[0, m/g)$; the product goes through `__int128` because $u \cdot b/g$ can reach $10^{18}$.
+
+### A system of congruences (Theorem 2.5.4)
+
+<CodeSnippet unit="2.5/crt-merge" />
+
+**How it works.** `r` and `m` hold the merged congruence so far. Merging with the next one checks that the residues agree modulo $g$, finds $k$ with $m \cdot k \equiv r_2 - r \pmod{m_2}$ in the form $k \equiv ((r_2 - r)/g) \cdot p \pmod{m_2/g}$ where $m \cdot p + m_2 \cdot q = g$, and sets $r \leftarrow r + m \cdot k$, $m \leftarrow \operatorname{lcm}$. Because $k < m_2/g$, the new $r$ is already in $[0, \operatorname{lcm})$.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs checked against the brute force.
+
+### Bug: a negative remainder
+
+Template: one congruence.
+
+```cpp
+return (long long)((__int128)(x % mg) * (b / g) % mg);   // instead of ((x % mg + mg) % mg) * ...
+```
+
+Input: `2 1 5` (find $x$ with $2x \equiv 1 \pmod 5$).
+
+Wrong output `-2`, correct output `3`. Extended Euclid returns $u = -2$ for $2 \cdot (-2) + 5 \cdot 1 = 1$, and C++'s `%` keeps the sign, so the "smallest non-negative" answer is negative.
+
+**Fix:** normalise with `(x % mg + mg) % mg` before multiplying (Theorem 2.5.3, proof step 4).
+
+### Bug: the wrong modulus after merging
+
+Template: a system of congruences.
+
+```cpp
+long long m2g = m2, lcm = m / g * m2;   // instead of m2g = m2 / g
+```
+
+Input: `2` then `2 6` and `8 10`.
+
+Wrong output `38 30`, correct output `8 30`. The step $k$ is found modulo $m_2$ instead of $m_2 / g$, so $k$ is too large and the new residue can exceed the lcm. Only the solution modulo $m_2/g$ is meaningful.
+
+**Fix:** divide by $g$ (Theorem 2.5.4, proof step 4).
+
+### Bug: skipping the consistency test
+
+Template: a system of congruences.
+
+```cpp
+// if ((r2 - r) % g != 0) return false;   deleted
+```
+
+Input: `2` then `10 12` and `20 6` ($x \equiv 10 \pmod{12}$ and $x \equiv 2 \pmod 6$).
+
+Wrong output `10 12`, correct output `-1`. Here $g = 6$ and $10 \not\equiv 2 \pmod 6$ (the first forces $x \bmod 6 = 4$), so no solution exists, but without the test the template returns a value anyway.
+
+**Fix:** always test that the residues agree modulo $g$ before merging (Theorem 2.5.4, proof step 3).
+
+## 8. Worked examples
+
+The problem bank of this topic is small (see the note at the end of this section), so there is no separate worked-example problem. The templates of Section 6 are the worked examples: each one is shown with a short walk through its steps, checked against a brute force on thousands of random inputs. The problem ladder (Section 9) gives three hints for every rung, in the same order as the steps of Section 6: read the condition, check solvability, build the answer from the theorem.
+
+Why the bank is small: the topic needs problems where a linear equation in two integers or a congruence with a non-prime modulus is really the hard part. After checking the Codeforces tag for the Chinese remainder theorem, AtCoder ABC, ARC and AGC contests and LeetCode, only about two dozen such problems exist at suitable levels, and the topic uses 16 of them for its ladder, checkpoint, review set and look-alike pairs.
+
+## 9. Problem ladder
+
+<Ladder topic="2.5" />
+
+## 10. Identification drill
+
+All eight problems below can be solved with a card of an earlier topic. Each one has a number-theory surface (divisors, lcm, primes) that may tempt you to reach for the cards of this topic: the point of the drill is to see that no equation in two integers and no system of congruences has to be solved.
+
+<Drill topic="2.5" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="2.5" />
+
+## 12. Self-test questions
+
+<SelfTest topic="2.5" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="2.5" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="2.5" />

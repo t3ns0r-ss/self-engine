@@ -17,8 +17,8 @@ function* strings(v) {
 /** Topic ids written as "topic 3.2" or "(3.2)" in free text. */
 export function topicMentions(text) {
   const out = new Set();
-  for (const m of text.matchAll(/\btopics?\s+([0-7]\.[1-8])\b/gi)) out.add(m[1]);
-  for (const m of text.matchAll(/\(([0-7]\.[1-8])\)/g)) out.add(m[1]);
+  for (const m of text.matchAll(/\btopics?\s+([0-7]\.(?:10|[1-9]))\b/gi)) out.add(m[1]);
+  for (const m of text.matchAll(/\(([0-7]\.(?:10|[1-9]))\)/g)) out.add(m[1]);
   return out;
 }
 
@@ -30,7 +30,7 @@ export function theoremBlocks(text) {
   let fence = false;
   for (const line of lines) {
     if (/^\s*(```|~~~)/.test(line)) fence = !fence;
-    const m = !fence && /^\*\*Theorem (\d\.\d\.\d+)\b/.exec(line);
+    const m = !fence && /^\*\*Theorem (\d\.\d+\.\d+)\b/.exec(line);
     if (m) {
       cur = { id: m[1], lines: [line] };
       blocks.push(cur);
@@ -167,7 +167,7 @@ export function validateR2({ tid, t, tf, lesson, curriculum, byId, topics, patte
   if (lesson) {
     const text = lesson.text;
     for (const m of text.matchAll(/\]\((?:\.\.\/)+(?:phase-\d\/)?(\d)-(\d)-[a-z0-9-]+\/?(?:#[^)]*)?\)/g)) mustUse(`${m[1]}.${m[2]}`, 'linked in the lesson');
-    for (const m of text.matchAll(/\bTheorem (\d\.\d)\.\d+/g)) mustUse(m[1], `cited as Theorem ${m[0].slice(8)}`);
+    for (const m of text.matchAll(/\bTheorem (\d\.\d+)\.\d+/g)) mustUse(m[1], `cited as Theorem ${m[0].slice(8)}`);
     const need = /### What you need\n([\s\S]*?)### What this topic does not cover/.exec(text);
     if (!need) err(lesson.path, 'missing "What you need" section');
     else {

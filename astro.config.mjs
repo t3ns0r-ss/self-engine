@@ -13,7 +13,8 @@ import { parse } from 'yaml';
 // links to its problem bank page and carries a "soon" badge. data-order lets the browser add
 // a "later" badge to topics after the learner's current topic (see src/styles/later-badge.js).
 const allRows = parse(readFileSync('./src/data/curriculum.yaml', 'utf8'));
-const curriculum = allRows.filter((x) => x.track === 'cp');
+// Draft rows (CURRICULUM_GAPS_PLAN.md) have no pages yet; live topics are numbered 1..n like data.ts does.
+const curriculum = allRows.filter((x) => x.track === 'cp' && !x.draft).map((x, i) => ({ ...x, order: i + 1 }));
 // GitHub Pages serves the site under /<repo>/; BASE_PATH is set by the Pages workflow.
 const base = process.env.BASE_PATH || '/';
 const PHASES = ['Foundations', 'Array techniques', 'Mathematics I', 'Recursion to dynamic programming', 'Graphs', 'Range data structures', 'Strings', 'Integration'];

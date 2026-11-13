@@ -7,6 +7,29 @@
 Last completed step: profile sync (PROFILE_SYNC_PLAN.md) milestones S0 to S6 except the LeetCode snippet, on `main` at Saurabh's request (details under "Profile sync" below).
 Next action: Saurabh runs the LeetCode snippet from the Profiles page (gate S4), then the final review.
 
+## Curriculum gaps (CURRICULUM_GAPS_PLAN.md)
+Branch `claude/tender-bohr-ktypz5`. Start conditions checked 2026-11-13: lesson restore Phase 5 is on `main`, no open PRs.
+
+**PR 0 (this PR): foundation.** Done:
+- CI `browser` job: the design placeholder drills (`tests/placeholder-design/make.mjs`) now answer earlier cards (rule D3 had been tightened since they were written), the placeholder no longer deletes the real `src/content/docs/lld` and `hld` folders in its throwaway copy, and `tests/e2e/design.cjs` expects 4 drill items. `bash tests/e2e-design.sh` passes locally.
+- Two-digit topic ids: theorem regexes (`validate-r2.mjs`), topic id pattern, pattern ids, `from_theorem` and theorem ids (`schemas.mjs`, `validate.mjs`) accept `7.10`. Test added.
+- The 10 new topics are in `curriculum.yaml` with their final `order`, marked `draft: true` (new optional field). Validators skip draft rows (no pattern file, bank, topic file, lesson, exam or 7.8 coverage, keywords not scanned) but still check order and `requires`; a live topic may not require a draft. Pages and `bank_md` only see live topics (`data.ts` renumbers them 1..n). Remove `draft: true` from a row when its topic passes the review gate (the same PR must give it pattern file, bank, topic file, lesson, exam and 7.8 coverage).
+- Known, not caused by this work: 6 tests in `tests/validate-r2.test.mjs` fail on `main` because they use 1.6 as a template-format fixture and 1.6 became a notes lesson. They need a template-format fixture topic. `ProgressIsland.tsx` sorts topic ids as strings (`7.10` sorts before `7.2`); fix when 7.10 goes live.
+
+**Decisions (CURRICULUM_GAPS_PLAN.md Section 2), recorded for Saurabh to overrule:**
+- Gaps: interactive problems 1.8 (after 1.4); Eulerian path into 4.2; plain divide and conquer into 3.1, D&C DP and CDQ into 7.3; basic strings into 0.6 and 0.3; geometry 4.8; 2-SAT into 4.7; CRT into the new 2.5, Lucas into 2.3; probability DP card in 3.5 (adds `2.4` to requires); convex hull trick into 7.3 (adds `1.6`); flow and matching 7.9 just before 7.8.
+- Splits: 5.5 sweep with a segment tree, 3.9 meet in the middle, 5.6 Mo, 5.7 binary trie and XOR (Phase 5, not 6), 4.9 state-space search, 7.10 rerooting, 2.5 Diophantine and CRT. LIS (3.4), per-bit contribution (1.7, 2.4) and topological sort (4.2) are deepened in place. Prefix function with Z, suffix array with LCP, 2D prefix sums, bitset knapsack and segment-tree descent stay as subsections.
+- Final order: Phase 1 ... 1.7, 1.8; Phase 2: 2.1, 2.2, 2.5, 2.3, 2.4; Phase 3: 3.1, 3.9, 3.2 ... 3.8; Phase 4: 4.1, 4.2, 4.3, 4.9, 4.4 ... 4.7, 4.8; Phase 5: 5.1, 5.2, 5.3, 5.5, 5.4, 5.6, 5.7; Phase 7: 7.1, 7.10, 7.2 ... 7.7, 7.9, 7.8.
+- Choices of this PR: 2.5 uses the Phase 2 band 1400 to 1700 (the plan's table says 1300 to 1700, but the other Phase 2 topics use 1400). Draft keywords are narrow phrases (for example "meet in the middle", "rerooting") so the later scan stays quiet in earlier lessons until a topic goes live.
+- Scope reality: the plan is 14 PRs of lesson, code, bank and verification work (about 10 new topics with 40+ verified problems each). Status per PR is kept in the table below.
+
+| PR | Content | Status |
+|---|---|---|
+| 0 | CI, two-digit ids, draft rows | in review |
+| 1a (2.5) | built as a `reduced_bank` topic (decided 2026-11-13, see below); lesson, 2 cards, 4 theorems, 3 templates, 9 code units, bank of 18 + 8 drill, 2.1 refilled | in review |
+| 1b (Lucas in 2.3) | not started | |
+| 2 to 14 | see CURRICULUM_GAPS_PLAN.md Section 7 | not started |
+
 ## Lesson restore (LESSON_RESTORE_PLAN.md)
 - R_BASE (old template 3.1, used by Phases 1 and 2): `e5d3412` (`git show e5d3412:src/content/docs/phase-3/3-1-backtracking.mdx`).
 - Phase 0 done on branch `claude/vigilant-hypatia-iyajxg` (commit 1020352). Phase R raw import is `c1b7b3c` (the `check_code_unchanged` reference for 3.1). Phase R plain-English pass done (`docs/restore/R-changes-3-1.md`), 16 Fabricator blocks match `check_fabricator.mjs`. Next: Phase 1 inventory, which waits for Saurabh to merge Phases 0 and R.
@@ -337,6 +360,40 @@ FILL_SHORT_TOPICS_PLAN.md for the completed topics 0.1–3.8. Full report: `bank
   (Original note:) (https://codeforces.com/apiHelp) in a normal browser: it is behind a Cloudflare challenge for scripts, so the rate limit (1 request per 2 seconds), anonymous access, and the verdict list in `src/lib/sync/schemas.ts` could not be re-checked.
 - Profile sync decisions that went beyond the plan: unknown Codeforces verdicts count as attempts and are noted in the sync log; the checkpoint drill rule becomes "min(8, drill items that still count)" when drill items are compromised; a checkpoint whose three problems are all compromised shows "needs replacement problems" and cannot be passed; LeetCode problems and unlinked platforms in a checkpoint or exam show "confirm by hand".
 - Not built, as the plan says to ask first (Section 19): CSES sync, contest-log import with an automatic upsolve list, multiple learners, background sync.
+
+### Curriculum gaps: topic 2.5 as built
+- Decided by Saurabh on 2026-11-13: build 2.5 as a small topic with a documented shortage of problems (`reduced_bank: true` on its curriculum row). What the exception relaxes: 2 cards instead of 3, a ladder of 8 instead of 12, one review set instead of three, no problem in the phase exam or the 7.8 bank. Worked examples have no minimum in the validator, and 2.5 has none (its templates are walked through instead).
+- Real problems used (16): ladder cf-633A, lc-water-and-jug-problem, ac-abc340_f, cf-1244C (card integer-solutions) and cf-919E, cf-1500B, cf-338D, ac-agc063_d (card merge-congruences); checkpoint cf-7C, cf-687B, ac-abc193_e; review set 1 ac-abc186_e, ac-abc315_g, ac-arc221_a; look-alike sides cf-1055C and lc-check-if-it-is-a-good-array, with partners cf-1260C and cf-1155C.
+- The eight drill problems are `later_drill` problems of the 2.1 bank (six new ones were added there: cf-1091C, cf-1285C, cf-1538D, cf-1114C, cf-1062B, ac-abc149_c; lc-three-divisors and lc-number-of-common-factors already existed). All eight are answered by an earlier card (2.1 trial-division), so the drill trains saying "not this topic". There is no drill item answered by a 2.5 card because no real problem was left for it.
+- Moved out of 2.1: the card `bezout` with its 4 ladder problems, checkpoint cf-7C and review ac-abc186_e. 2.1 now has 4 cards and a ladder of 16; its checkpoint gets ac-abc259_e (new) and its review set 2 gets lc-prime-palindrome (it was an unused review problem). Saurabh's extended Euclid section and Theorem 2.1.2 stay in the 2.1 lesson. In 2.2 the two references to the `bezout` card now point to 0.4 `gcd-lcm`.
+- Weak points: cf-919E, cf-1500B, cf-338D, cf-687B, cf-1055C, cf-1260C, cf-1155C and the six new 2.1 later-drill problems are Codeforces problems whose statements could not be read (notes are recalled, marked †). ac-agc063_d has no editorial yet: its three hints are my own derivation, not checked against a solution, and say so. ac-arc221_a is a weak fit (the totient sum is 2.1 work). The card `merge-congruences` has its easiest rung at rating 2100 (cf-919E) because no easier real problem was available.
+- Not done for 2.5 yet: the phase 2 exam (exempt), the 7.8 recognition set (exempt), the handbook map (generated from the topic file), the e2e scripts (see the gate list in the PR).
+
+### Curriculum gaps: questions for Saurabh (PR 1, topic 2.5), history
+- **2.5 cannot reach its bank floor honestly (checked 2026-11-13).** A new template topic needs about 43 distinct bank problems for its roles: 3 worked, at least 16 ladder rungs, 8 drill, 4 look-alike, 3 checkpoint, 9 review. I searched the Codeforces API (`number theory` tag, 1100 to 2200: 471 problems), the web, and the 2.1 bank. Problems that really need extended Euclid, a Diophantine equation, a linear congruence or CRT are few:
+  - Already in 2.1 (the 6 `bezout` problems): lc-water-and-jug-problem, lc-check-if-it-is-a-good-array, ac-abc340_f, cf-1244C, cf-7C, ac-abc186_e.
+  - New candidates, mostly Codeforces and only from recalled statements (†): cf-633A (1100, below the band), cf-1055C (1900), cf-919E (2100), cf-1389E (2200, above the Phase 2 ceiling of 2100), cf-1500B (2200, above it), cf-1260C and cf-1155C (gcd only), cf-1146D (gcd only).
+  - AtCoder ABC and ARC, LeetCode and CSES add a handful (for example ac-abc193_e); nothing that reaches 43.
+  Moving the 6 problems out also leaves 2.1 without its checkpoint problem (cf-7C) and with fewer than 20 practice problems.
+  **DECIDED 2026-11-13: Saurabh removed the rating ceiling for all topics (option c, for every topic, not only 2.5). The validator has no Codeforces ceiling now and tier 5 is open-ended. This widens the candidate pool (cf-1389E, cf-1500B, cf-710D and similar become usable at tier 5), but the count of problems that truly need the topic is still small; 2.5 stays a draft until the search is redone with the wider range.**
+  **Options (original):** (a) accept a smaller 2.5, about 25 problems, with a ladder of 12 (the plan's "16 rungs" becomes 12) and 2.1's `bezout` stays where it is, so nothing moves out of 2.1; (b) fold the Diophantine and CRT cards into 2.2 as a notes section with 4 to 6 rungs and drop 2.5 as a topic; (c) allow problems above the Phase 2 ceiling (up to about 2300) for 2.5 only; (d) keep 2.5 as planned and accept that it stays a draft until enough problems are found. I recommend (a) plus (c) for two or three problems. Which one?
+- **2.5 search repeated with no ceiling (2026-11-13).** Sources: the Codeforces API tag `chinese remainder theorem` (25 problems) plus `number theory` and `math`; web searches for AtCoder, LeetCode and CRT lists; the 2.1 bank. Several lists (Qiita, drken's blog, hamayanhamayan) could not be opened: the hosts are outside this session's allowed network domains. Problems where the topic is really needed:
+  - Already in 2.1 (6): lc-water-and-jug-problem, lc-check-if-it-is-a-good-array, ac-abc340_f (1516), cf-1244C (2000), cf-7C (1800), ac-abc186_e (1461).
+  - AtCoder, opened and read this session: ac-abc193_e Oversleeping (1948, CRT), ac-abc286_f Guess The Number 2 (1841, CRT, interactive: needs 1.8), ac-abc315_g Ai + Bj + Ck = X (2315, Diophantine).
+  - Codeforces, API title and rating only (†): cf-633A (1100), cf-919E (2100), cf-1500B (2200), cf-338D (2900), cf-1055C (1900), cf-1665D (2000, interactive), cf-687B (1800, remainders and lcm), cf-1117E (2200), cf-2223C (2300). Tag-only, fit unclear: cf-1770C, cf-2097C, cf-1993F1, cf-1438C (2-SAT, not CRT in practice).
+  - LeetCode: only the two above; no other problem found.
+  - Total about 22 candidates, 8 of them with an uncertain fit and 12 recalled only. The floor for the roles is about 43. **2.5 as a full topic is not reachable**, even with no ceiling.
+  - Recommendation: option (a), a small 2.5 of about 20 problems with 12 ladder rungs, or option (b), fold the cards into 2.2. For (a) the topic-file counts also need a decision: ladder 12 instead of 16, review sets of 3 only, 2 look-alike pairs (the minimum). That is a validator exception for 2.5, which needs your approval.
+
+- **2.5 search in AtCoder ARC and AGC (2026-11-13).** I scanned the titles of all 1603 ARC and AGC tasks (AtCoder Problems list) for number-theory words, opened the likely ones, and searched the web (no editorial list of CRT or extended-Euclid ARC tasks exists). Result:
+  - ac-agc063_d Many CRT (difficulty 3609, read): a system of congruences with non-coprime moduli, the one clear fit. Tier 5.
+  - ac-arc221_a Two Arithmetic Progressions (1686, read): sum of gcd(Ai+B, Ci+D); the gcd divides a fixed number, so it needs gcd reasoning, not the full CRT. A weak fit (maybe a look-alike).
+  - ac-arc182_f Graph of Mod of Linear (3837, read): components of i to (A·i+B) mod N by gcd structure. Too hard and only a weak fit.
+  - Opened and rejected (no Diophantine or CRT need): ac-arc216_d, ac-arc208_b, ac-agc067_c. ARC 175 F and ARC 185 C only use CRT inside a proof or as a fallback.
+  - New total: about 24 candidates, of which 14 are solid fits. Still far below the floor of 43. The conclusion is unchanged: 2.5 is a small topic (option a) or folds into 2.2 (option b).
+
+- The same shortage is likely for 4.8 (geometry) and 7.9 (flow), which have more supply, and for 3.9, 5.5, 5.6 and 5.7. Before each of those PRs I will run the same search first and report the count here.
+- PR 1 is therefore not started. The work that needs no new bank (D&C in 3.1, strings in 0.6, Lucas in 2.3, Eulerian path in 4.2, 2-SAT in 4.7) needs 3 to 4 rungs each; I can start with those if you prefer.
 
 ### Design tracks: questions for Saurabh (D0)
 - **Redis licence. DECIDED 2026-10-18: Valkey 9.1.2 (BSD), stack verified.** Was: `redis:8.8.3` tri-licensed (RSALv2, SSPLv1 or AGPLv3). Running it locally for labs is fine. Do you want Valkey (BSD-licensed fork) instead? It speaks the same protocol, so no lab changes.

@@ -26,7 +26,7 @@ if (errors.length) {
 }
 const counts = Object.values(data.banks).map((b) => b.problems.length);
 console.log(
-  `Validation passed: ${data.curriculum.length} topics (+${data.designCurriculum.length} design topics), ${Object.keys(data.patterns).length} pattern files, ` +
+  `Validation passed: ${data.curriculum.filter((t) => !t.draft).length} topics (+${data.curriculum.filter((t) => t.draft).length} drafts, +${data.designCurriculum.length} design topics), ${Object.keys(data.patterns).length} pattern files, ` +
     `${counts.length} bank files, ${counts.reduce((a, b) => a + b, 0)} bank problems, ` +
     `${Object.keys(data.topics).length} topic files, ${Object.keys(data.lessons).length} lessons, ${data.glossary.length} glossary terms.`,
 );

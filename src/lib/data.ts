@@ -85,7 +85,9 @@ export function loadData(): Promise<SiteData> {
   cache ??= (async () => {
     const allRows = (await getCollection('curriculum')).map((e) => e.data);
     // The CP validators and components only ever see the CP track; design rows are validated by validate-design.mjs.
-    const curriculum = allRows.filter((r) => r.track === 'cp').map((r) => r as unknown as Topic).sort((a, b) => a.order - b.order);
+    const allCp = allRows.filter((r) => r.track === 'cp').map((r) => r as unknown as Topic & { draft?: boolean }).sort((a, b) => a.order - b.order);
+    // Validators see every row (drafts keep their place in the order); pages see only live topics, numbered 1..n.
+    const curriculum: Topic[] = allCp.filter((r) => !r.draft).map((r, i) => ({ ...r, order: i + 1 }));
     const designCurriculum = (allRows.filter((r) => r.track !== 'cp') as unknown as DesignTopic[]).sort((a, b) => a.track.localeCompare(b.track) || a.order - b.order);
     const designTopics = Object.fromEntries((await getCollection('designTopics')).map((e) => [e.data.id, e.data as unknown as DesignTopicFile]));
     const patterns = Object.fromEntries((await getCollection('bankPatterns')).map((e) => [e.data.topic, e.data]));
@@ -101,8 +103,8 @@ export function loadData(): Promise<SiteData> {
     const { lessons, errors: lessonErrors } = findLessons(process.cwd());
     const errors = [
       ...lessonErrors,
-      ...validateAll({ curriculum, patterns, banks, notes }),
-      ...validateTopics({ curriculum, patterns, banks, topics, glossary, lessons: Object.fromEntries(Object.entries(lessons).filter(([k]) => !isDesignId(k))) }),
+      ...validateAll({ curriculum: allCp, patterns, banks, notes }),
+      ...validateTopics({ curriculum: allCp, patterns, banks, topics, glossary, lessons: Object.fromEntries(Object.entries(lessons).filter(([k]) => !isDesignId(k))) }),
       ...validateDesignCurriculum(designCurriculum),
     ];
     if (errors.length) throw new Error(`Data validation failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`);

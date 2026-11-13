@@ -127,8 +127,11 @@ const asAtcoder = (b, id, tier, basis, extra = {}) => {
   const [, contest] = /^ac-([a-z]+\d+)_/.exec(id);
   Object.assign(b.problems[0], { id, source: 'atcoder', url: `https://atcoder.jp/contests/${contest}/tasks/${id.slice(3)}`, difficulty: '1500', tier, tier_basis: basis, ...extra });
 };
-test('Codeforces rating above the phase ceiling is rejected', () =>
-  expectError(run((d, b) => { b.problems.find((p) => p.source === 'codeforces').difficulty = '1900'; }), /rating 1900 is above the phase 1 ceiling 1800/));
+test('there is no Codeforces rating ceiling: a very high rating only has to fit tier 5', () => {
+  const errs = run((d, b) => { const p = b.problems.find((q) => q.source === 'codeforces'); p.difficulty = '3200'; p.tier = 5; });
+  assert.ok(!errs.some((e) => /ceiling/.test(e)), errs.join('\n'));
+  assert.ok(!errs.some((e) => /3200 is outside tier 5/.test(e)), errs.join('\n'));
+});
 test('ARC and AGC problems need a judged tier', () => {
   expectError(run((d, b) => { asAtcoder(b, 'ac-arc999_a', 3, 'contest_letter'); d.notes['1.3'] = notesFor(b); }), /ARC and AGC problems need tier_basis: judgement/);
   assert.deepEqual(run((d, b) => { asAtcoder(b, 'ac-arc999_a', 3, 'judgement'); d.notes['1.3'] = notesFor(b); }), []);
@@ -141,4 +144,23 @@ test('LeetCode Hard is tier 3 or higher', () => {
   const hard = (tier) => (d, b) => { Object.assign(b.problems[0], { id: 'lc-fixture-hard', source: 'leetcode', url: 'https://leetcode.com/problems/fixture-hard/', difficulty: 'Hard', tier }); d.notes['1.3'] = notesFor(b); };
   expectError(run(hard(2)), /LeetCode Hard problems are tier 3 or higher/);
   assert.deepEqual(run(hard(3)), []);
+});
+
+test('draft rows keep their place in the order but need no files; a live topic may not require a draft', () => {
+  const rows = structuredClone(real.curriculum);
+  assert.ok(rows.some((t) => t.draft), 'the registry has draft rows');
+  const errs = validateAll({ ...base(), curriculum: rows });
+  assert.ok(!errs.some((e) => /draft|pattern file/.test(e) && /1\.8|2\.5/.test(e)), errs.join('\n'));
+  const bad = structuredClone(rows);
+  bad.find((t) => t.id === '1.5').requires.push('1.8'); // 1.8 is later than 1.5 and a draft
+  assert.ok(validateAll({ ...base(), curriculum: bad }).some((e) => /1\.5 requires 1\.8/.test(e)));
+  const gap = structuredClone(rows);
+  gap.find((t) => t.id === '1.8').order = 99;
+  assert.ok(validateAll({ ...base(), curriculum: gap }).some((e) => /topic 1\.8 has order 99/.test(e)));
+});
+
+test('two-digit topic ids pass the id and theorem patterns', async () => {
+  const { TOPIC_ID } = await import('../src/lib/schemas.mjs');
+  for (const id of ['1.8', '2.5', '3.9', '7.9', '7.10']) assert.ok(TOPIC_ID.test(id), id);
+  assert.ok(!TOPIC_ID.test('7.11') && !TOPIC_ID.test('8.1'));
 });

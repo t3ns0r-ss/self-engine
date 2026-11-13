@@ -2,7 +2,7 @@
 // PLAN.md Sections 4 and 9.1; PROBLEM_BANK_PLAN.md Sections 3 and 5.
 import { z } from 'zod';
 
-export const TOPIC_ID = /^[0-7]\.[1-8]$/;
+export const TOPIC_ID = /^[0-7]\.(?:10|[1-9])$/;
 const topicId = z.string().regex(TOPIC_ID, 'topic id like "1.3"');
 const slug = z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'kebab-case id');
 
@@ -22,6 +22,11 @@ export const curriculumRow = z.strictObject({
   requires: z.array(topicId),
   keywords: z.array(z.string().min(1)),
   target_rating: z.tuple([z.number().int(), z.number().int()]),
+  // CURRICULUM_GAPS_PLAN.md Phase 0: a planned topic with no lesson yet. Validators skip it, pages and scripts hide it.
+  draft: z.boolean().optional(),
+  // A topic with too few real problems for the usual counts (Saurabh, 2026-11-13, for 2.5): 2 cards, ladder of 8, one review set,
+  // and no problem needed in the phase exam or the 7.8 bank. Every other rule still applies.
+  reduced_bank: z.boolean().optional(),
 });
 
 // Design tracks (DESIGN_TRACKS_PLAN.md Sections 5-7). Ids: L{phase}.{n} and H{phase}.{n}; `order` is per track.
@@ -74,7 +79,7 @@ export const bankProblem = z
     tier: z.number().int().min(1).max(5),
     tier_basis: z.enum(['rating', 'contest_letter', 'judgement']),
     // For topic 7.8 the pattern is "{topic}:{pattern-id}".
-    pattern: z.string().regex(/^([0-7]\.[1-8]:)?[a-z0-9]+(-[a-z0-9]+)*$/),
+    pattern: z.string().regex(/^([0-7]\.(?:10|[1-9]):)?[a-z0-9]+(-[a-z0-9]+)*$/),
     set: z.enum(['practice', 'reserved']),
     reserved_for: z.enum(RESERVED_FOR).nullable(),
     lookalike_of: z.string().nullable().default(null),
@@ -111,7 +116,7 @@ export const legacyCard = z.strictObject({
   id: slug,
   name: z.string().min(1),
   decisive_property: z.string().min(1),
-  from_theorem: z.string().regex(/^Theorem [0-7]\.[1-8]\.\d+$/, 'like "Theorem 1.3.1"'),
+  from_theorem: z.string().regex(/^Theorem [0-7]\.\d+\.\d+$/, 'like "Theorem 1.3.1"'),
   how_to_test: z.string().min(1),
   weak_signals: z.array(z.string().min(1)).min(1),
   kill_signals: z.array(z.string().min(1)).min(1),
@@ -132,7 +137,7 @@ export const card = z.strictObject({
   id: slug,
   name: nonEmpty,
   decisive_property: nonEmpty,
-  from_theorem: z.string().regex(/^[0-7]\.[1-8]\.\d+$/, 'like "1.3.1"'),
+  from_theorem: z.string().regex(/^[0-7]\.(?:10|[1-9])\.\d+$/, 'like "1.3.1"'),
   how_to_test: nonEmpty,
   constraint_shapes: z.array(nonEmpty).min(1).max(3),
   weak_signals: z.array(z.strictObject({ form: nonEmpty, shape: nonEmpty })).min(2).max(4),
@@ -189,7 +194,7 @@ export const topicFile = z.strictObject({
   notes_v2: z.boolean().optional(),
   // Revision 2: every earlier topic this lesson relies on; rendered by TopicHeader and WhatYouNeed.
   uses: z.array(z.strictObject({ topic: topicId, what: z.string().min(1) })).optional(),
-  theorems: z.array(z.strictObject({ id: z.string().regex(/^[0-7]\.[1-8]\.\d+$/), title: z.string().min(1), plain_words: z.string().min(1), code: z.string().min(1) })).optional(),
+  theorems: z.array(z.strictObject({ id: z.string().regex(/^[0-7]\.(?:10|[1-9])\.\d+$/), title: z.string().min(1), plain_words: z.string().min(1), code: z.string().min(1) })).optional(),
   cards: z.array(z.union([card, legacyCard])),
   problems: z.array(topicProblem),
   drill: z.array(

@@ -66,8 +66,9 @@ if (data.errors.length) {
   console.error('bank_md: input files are invalid; run `npm run validate` for details.');
   process.exit(1);
 }
-const files = new Map([['README.md', readme(data.curriculum, data.banks)]]);
-for (const t of data.curriculum) files.set(topicFile(t), topicPage(t, data.banks[t.id], data.patterns[t.id]));
+const live = data.curriculum.filter((t) => !t.draft);
+const files = new Map([['README.md', readme(live, data.banks)]]);
+for (const t of live) files.set(topicFile(t), topicPage(t, data.banks[t.id], data.patterns[t.id]));
 
 const existing = (dir) => (existsSync(dir) ? readdirSync(dir, { recursive: true }).map(String).filter((f) => f.endsWith('.md')) : []);
 

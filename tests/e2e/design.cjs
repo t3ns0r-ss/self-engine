@@ -51,7 +51,7 @@ const check = (cond, msg) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${msg}`); 
   check(await page.locator('.design-ladder li').count() === 1, 'ladder list shows the 1 practice rung from the JSON');
   // drill: reserved items are fetched, not in the HTML
   await page.waitForSelector('.drill ol li');
-  check(await page.locator('.drill ol li').count() === 2, 'drill shows the 2 reserved items from the JSON');
+  check(await page.locator('.drill ol li').count() === 4, 'drill shows the 4 reserved items from the JSON');
   const li = page.locator('.drill ol li').first();
   await li.locator('select').selectOption({ index: 1 });
   check(await li.locator('button', { hasText: 'Reveal' }).isDisabled(), 'reveal is disabled until the property sentence is written');

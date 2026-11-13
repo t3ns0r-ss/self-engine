@@ -22,6 +22,8 @@ Notes:
 - Still excluded: Codeforces EDU and Gym problems (need a login), LeetCode premium problems, and AtCoder contests other than ABC, ARC, AGC that were not already allowed.
 
 ### 1.2 Rating ceiling per phase
+
+**Superseded 2026-11-13: Saurabh removed the ceiling for every topic. The table below is history; the validator accepts any Codeforces rating, and tier 5 has no upper bound. Tier 1 to 4 ranges and the tier-fits-rating rule still apply.**
 Harder sources make it tempting to add problems far above the learner's level. A problem may be added to a topic only if its difficulty fits that topic's tiers (`PROBLEM_BANK_PLAN.md` Section 4), which caps it at the top of tier 5:
 
 | Phase | Band [L, H] | Highest Codeforces rating allowed (H + 400) |

@@ -81,7 +81,8 @@ const num = (d) => (/^-?\d+$/.test(d) ? Number(d) : { Easy: 1, Medium: 2, Hard: 
  * @param {Object<string, {path: string, text: string}>} d.lessons topic -> lesson file
  * @returns {string[]}
  */
-export function validateTopics({ curriculum, patterns, banks, topics, glossary, lessons }, fsx) {
+export function validateTopics({ curriculum: allRows, patterns, banks, topics, glossary, lessons }, fsx) {
+  const curriculum = allRows.filter((t) => !t.draft); // draft rows have no files yet
   const errors = [];
   const err = (file, msg) => errors.push(`${file}: ${msg}`);
   const byId = new Map(curriculum.map((t) => [t.id, t]));
@@ -146,9 +147,10 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
     const ladder = ofRole('ladder');
     // Skipped while the topic is a draft (pipeline steps 1–9).
     if (!tf.draft) {
-      if (!is78 && (tf.cards.length < 3 || tf.cards.length > 6)) err(F, `has ${tf.cards.length} cards; 3–6 required`);
+      const reduced = t.reduced_bank === true; // CURRICULUM_GAPS_PLAN.md: a small topic with a documented shortage of problems
+      if (!is78 && (tf.cards.length < (reduced ? 2 : 3) || tf.cards.length > 6)) err(F, `has ${tf.cards.length} cards; ${reduced ? 2 : 3}–6 required`);
       if (!is78) {
-        if (ladder.length < 12 || ladder.length > 20) err(F, `ladder has ${ladder.length} problems; 12–20 required`);
+        if (ladder.length < (reduced ? 8 : 12) || ladder.length > 20) err(F, `ladder has ${ladder.length} problems; ${reduced ? 8 : 12}–20 required`);
         for (const c of tf.cards) {
           const n = ladder.filter((p) => p.card === c.id).length;
           if (n < 3) err(F, `card ${c.id} has ${n} ladder problems; at least 3 required`);
@@ -166,7 +168,7 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
         err(F, `checkpoint time limit must be ${checkpointMinutes(t.phase)} minutes for phase ${t.phase}`);
       for (const s of [1, 2, 3]) {
         const n = ofRole('review').filter((p) => p.review_set === s).length;
-        if (n < 3 || n > 4) err(F, `review set ${s} has ${n} problems; 3–4 required`);
+        if ((n < 3 && !(reduced && s > 1 && n === 0)) || n > 4) err(F, `review set ${s} has ${n} problems; 3–4 required`);
       }
       const exam = ofRole('exam');
       if (exam.length) {
@@ -174,7 +176,7 @@ export function validateTopics({ curriculum, patterns, banks, topics, glossary, 
         if (last.id !== tid) err(F, `exam problems belong in the phase's last topic (${last.id})`);
         if (exam.length < 6 || exam.length > 10) err(F, `phase exam has ${exam.length} problems; 6–10 required`);
         const covered = new Set(exam.map((p) => bankById.get(p.id)?.bankTopic));
-        for (const x of curriculum.filter((c) => c.phase === t.phase)) if (!covered.has(x.id)) err(F, `phase exam has no problem from topic ${x.id}`);
+        for (const x of curriculum.filter((c) => c.phase === t.phase)) if (!x.reduced_bank && !covered.has(x.id)) err(F, `phase exam has no problem from topic ${x.id}`);
       }
     }
 

@@ -43,11 +43,12 @@ export function cfTierRange(tier, [L, H], phase) {
   if (tier === 2) return [L - 200, L];
   if (tier === 3) return [L, H];
   if (tier === 4) return [H, H + 200];
-  return [H + 200, H + 400];
+  return [H + 200, Infinity]; // no upper limit (Saurabh, 2026-11-13)
 }
 
-// Highest Codeforces rating allowed per phase: the band's top plus 400 (FILL_SHORT_TOPICS_PLAN.md Section 1.2).
-export const CF_CEILING = { 0: 1400, 1: 1800, 2: 2100, 3: 2300, 4: 2400, 5: 2500, 6: 2600, 7: 2800 };
+// Highest Codeforces rating allowed per phase. FILL_SHORT_TOPICS_PLAN.md Section 1.2 set the band's top plus 400;
+// Saurabh removed the limit for every topic on 2026-11-13, so the ceiling is infinite (tier 5 is open-ended).
+export const CF_CEILING = { 0: Infinity, 1: Infinity, 2: Infinity, 3: Infinity, 4: Infinity, 5: Infinity, 6: Infinity, 7: Infinity };
 
 // Allowed tiers for each reserved purpose (bank plan Section 6.3).
 export const RESERVED_TIERS = {
@@ -91,23 +92,26 @@ export function laterKeywordHits(text, order, curriculum) {
  * @param {Object<string, string|null>} d.notes topic id -> text of notes/bank/{topic}.md (null if missing)
  * @returns {string[]} error messages; empty when everything is valid
  */
-export function validateAll({ curriculum, patterns, banks, notes }) {
+export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
   const errors = [];
   const err = (file, msg) => errors.push(`${file}: ${msg}`);
-  const byId = new Map(curriculum.map((t) => [t.id, t]));
+  // Draft rows (planned topics with no lesson yet) keep their place in the order but are skipped by every other rule.
+  const curriculum = allRows.filter((t) => !t.draft);
+  const byId = new Map(allRows.map((t) => [t.id, t]));
 
   // Curriculum registry.
   const C = 'src/data/curriculum.yaml';
-  curriculum.forEach((t, i) => {
+  allRows.forEach((t, i) => {
     if (t.order !== i + 1) err(C, `topic ${t.id} has order ${t.order}, expected ${i + 1} (rows must be listed in order)`);
     if (t.phase !== Number(t.id.split('.')[0])) err(C, `topic ${t.id} has phase ${t.phase}`);
     for (const r of t.requires) {
       const rt = byId.get(r);
       if (!rt) err(C, `topic ${t.id} requires unknown topic ${r}`);
       else if (rt.order >= t.order) err(C, `topic ${t.id} requires ${r}, which is not earlier`);
+      else if (rt.draft && !t.draft) err(C, `topic ${t.id} requires ${r}, which is still a draft`);
     }
   });
-  if (byId.size !== curriculum.length) err(C, 'duplicate topic ids');
+  if (byId.size !== allRows.length) err(C, 'duplicate topic ids');
 
   // Pattern files.
   const patternIds = new Map(); // topic -> Set of pattern ids
@@ -156,7 +160,7 @@ export function validateAll({ curriculum, patterns, banks, notes }) {
   for (const [topic, bf] of Object.entries(banks)) {
     const F = `src/data/bank/${fileId(topic)}.yaml`;
     const t = byId.get(topic);
-    if (!t) continue;
+    if (!t || t.draft) continue;
     const is78 = topic === '7.8';
     const note = notes[topic];
     const N = `notes/bank/${topic}.md`;
@@ -166,7 +170,7 @@ export function validateAll({ curriculum, patterns, banks, notes }) {
       // 1. Pattern exists.
       let patternTopic = topic;
       if (is78) {
-        const m = /^([0-7]\.[1-8]):(.+)$/.exec(p.pattern);
+        const m = /^([0-7]\.(?:10|[1-9])):(.+)$/.exec(p.pattern);
         if (!m) err(F, `${P}: topic 7.8 patterns must be "{topic}:{pattern-id}"`);
         else {
           patternTopic = m[1];
@@ -262,7 +266,7 @@ export function validateAll({ curriculum, patterns, banks, notes }) {
         perPhase.set(ph, (perPhase.get(ph) ?? 0) + 1);
       }
       for (let ph = 0; ph <= 7; ph++) if ((perPhase.get(ph) ?? 0) < 2) err(F, `topic 7.8 needs at least 2 problems from phase ${ph}`);
-      for (const x of curriculum) if (x.phase >= 1 && x.phase <= 6 && !perTopic.has(x.id)) err(F, `topic 7.8 needs at least 1 problem for topic ${x.id}`);
+      for (const x of curriculum) if (x.phase >= 1 && x.phase <= 6 && !x.reduced_bank && !perTopic.has(x.id)) err(F, `topic 7.8 needs at least 1 problem for topic ${x.id}`);
       continue;
     }
 

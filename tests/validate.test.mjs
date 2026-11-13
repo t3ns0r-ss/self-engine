@@ -127,8 +127,11 @@ const asAtcoder = (b, id, tier, basis, extra = {}) => {
   const [, contest] = /^ac-([a-z]+\d+)_/.exec(id);
   Object.assign(b.problems[0], { id, source: 'atcoder', url: `https://atcoder.jp/contests/${contest}/tasks/${id.slice(3)}`, difficulty: '1500', tier, tier_basis: basis, ...extra });
 };
-test('Codeforces rating above the phase ceiling is rejected', () =>
-  expectError(run((d, b) => { b.problems.find((p) => p.source === 'codeforces').difficulty = '1900'; }), /rating 1900 is above the phase 1 ceiling 1800/));
+test('there is no Codeforces rating ceiling: a very high rating only has to fit tier 5', () => {
+  const errs = run((d, b) => { const p = b.problems.find((q) => q.source === 'codeforces'); p.difficulty = '3200'; p.tier = 5; });
+  assert.ok(!errs.some((e) => /ceiling/.test(e)), errs.join('\n'));
+  assert.ok(!errs.some((e) => /3200 is outside tier 5/.test(e)), errs.join('\n'));
+});
 test('ARC and AGC problems need a judged tier', () => {
   expectError(run((d, b) => { asAtcoder(b, 'ac-arc999_a', 3, 'contest_letter'); d.notes['1.3'] = notesFor(b); }), /ARC and AGC problems need tier_basis: judgement/);
   assert.deepEqual(run((d, b) => { asAtcoder(b, 'ac-arc999_a', 3, 'judgement'); d.notes['1.3'] = notesFor(b); }), []);

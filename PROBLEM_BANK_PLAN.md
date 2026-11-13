@@ -77,7 +77,7 @@ Tiers are relative to the topic's **phase band** [L, H] from `PLAN.md` Section 4
 | 2 | Easy | L − 200 to L | C | LeetCode Easy–Medium; CSES with high solve counts |
 | 3 | Core | L to H | C–D | LeetCode Medium; CSES mid-section |
 | 4 | Hard | H to H + 200 | D–E | LeetCode Hard; CSES with lower solve counts |
-| 5 | Stretch | H + 200 to H + 400 | E–F | Rarely used |
+| 5 | Stretch | H + 200 and above (no ceiling since 2026-11-13) | E–F | Rarely used |
 
 Rules:
 - **Codeforces:** tier from the rating shown on the problem page (`tier_basis: rating`). Unrated problems are not used.

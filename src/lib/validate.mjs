@@ -43,11 +43,12 @@ export function cfTierRange(tier, [L, H], phase) {
   if (tier === 2) return [L - 200, L];
   if (tier === 3) return [L, H];
   if (tier === 4) return [H, H + 200];
-  return [H + 200, H + 400];
+  return [H + 200, Infinity]; // no upper limit (Saurabh, 2026-11-13)
 }
 
-// Highest Codeforces rating allowed per phase: the band's top plus 400 (FILL_SHORT_TOPICS_PLAN.md Section 1.2).
-export const CF_CEILING = { 0: 1400, 1: 1800, 2: 2100, 3: 2300, 4: 2400, 5: 2500, 6: 2600, 7: 2800 };
+// Highest Codeforces rating allowed per phase. FILL_SHORT_TOPICS_PLAN.md Section 1.2 set the band's top plus 400;
+// Saurabh removed the limit for every topic on 2026-11-13, so the ceiling is infinite (tier 5 is open-ended).
+export const CF_CEILING = { 0: Infinity, 1: Infinity, 2: Infinity, 3: Infinity, 4: Infinity, 5: Infinity, 6: Infinity, 7: Infinity };
 
 // Allowed tiers for each reserved purpose (bank plan Section 6.3).
 export const RESERVED_TIERS = {

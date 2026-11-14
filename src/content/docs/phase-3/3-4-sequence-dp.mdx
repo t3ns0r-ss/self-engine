@@ -35,7 +35,7 @@ The key idea of the first half of this topic: for each length $k$, only one numb
 
 ### What this topic does not cover
 
-- Counting increasing subsequences or computing LIS (longest increasing subsequence) values for many ranges with a Fenwick tree or a segment tree: covered in topics 5.2 and 5.3.
+- Counting increasing subsequences in $O(n \log n)$, or computing LIS (longest increasing subsequence) values for many ranges, with a Fenwick tree or a segment tree: covered in topics 5.2 and 5.3. The quadratic count of the longest ones is in Section 4.6.
 - Faster LCS (longest common subsequence) algorithms with bitsets, and the Hunt–Szymanski method: not part of this course.
 - Approximate string matching (finding where a pattern occurs with a few edits inside a long text) and matching with automata: covered in Phase 6 where needed. Only one band-limited table appears here, as a ladder rung.
 
@@ -46,6 +46,7 @@ The key idea of the first half of this topic: for each length $k$, only one numb
 - A **common subsequence** of two sequences is a sequence that is a subsequence of both. A **longest common subsequence** (LCS) is one of the largest length. Example: "ACB" and "ABC" have the LCSs "AB" and "AC", length 2.
 - The **edit distance** between two strings is the fewest single-character operations (insert, delete, replace) that turn one into the other. Example: "cat" → "cut" is 1 (replace a by u); "kitten" → "sitting" is 3.
 - An **alignment** of two strings lines them up in columns; each column holds a character of the first string, a character of the second, or one of each, and both strings are read in order from left to right. Example: "cat" over "cut" in three columns (c, c), (a, u), (t, t).
+- Two subsequences are **different by position** when they use different positions of the array, even if their values are the same. Example: $(1, 2, 2)$ has two increasing subsequences $(1, 2)$, one with each 2.
 - A **prefix** of length $i$ is the first $i$ elements; for two sequences, the state $(i, j)$ refers to the prefixes of lengths $i$ and $j$.
 
 ## 4. Theory and proofs
@@ -112,7 +113,7 @@ The LIS length is 4. The final `tails` $(1, 2, 5, 6)$ is not a subsequence of th
 
 <TheoremCode unit="3.4/thm-2" />
 
-**Reconstruction.** Store with each `tails` entry the index of the element there, and for each element the index of the entry before it at the moment it was placed (`parent[i]` = index stored in `tails[k − 1]`). Walking back from the last entry with `parent` gives an increasing subsequence of the maximum length, by Theorem 3.2.6.
+**Reconstruction.** Store with each `tails` entry the index of the element there, and for each element the index of the entry before it at the moment it was placed (`parent[i]` = index stored in `tails[k − 1]`). Walking back from the last entry with `parent` gives an increasing subsequence of the maximum length, by Theorem 3.2.6. The code is in Section 6 and the details in Section 4.6.
 
 
 ### 4.3 Reducing to LIS
@@ -207,13 +208,43 @@ Any sequence of single-character edits lines the two strings up in columns. Look
 
 
 
+### 4.6 Printing one longest subsequence, and counting them
+
+**Printing one.** The final `tails` array is not a subsequence: for $(3, 1, 4, 1, 5, 9, 2, 6)$ it is $(1, 2, 5, 6)$, and the 2 comes after the 5 in the input. So store indices. Let `tailIdx[k]` be the index of the element that ends the best subsequence of length $k + 1$, and `parent[i]` the index before $i$ in the subsequence that ended at $i$ when it was placed, which is `tailIdx[k - 1]` for the position $k$ where $a_i$ goes. The last entry of `tailIdx`, followed through `parent` to the start, is one longest subsequence in reverse. A small example: for $(2, 5, 3, 7)$ the elements go to positions $0, 1, 1, 2$; `parent` is $(-1, 0, 0, 2)$ (the 3 replaced the 5 but kept the 2 before it, and the 7 came after the 3); from the last tail, 7, the walk gives $7 \leftarrow 3 \leftarrow 2$, so $(2, 3, 7)$. The cost is $O(n \log n)$ for the search and $O(n)$ for the walk.
+
+**Counting them.** The tails array forgets how many subsequences there are, so use the table of Theorem 3.4.1 with a second number next to each length.
+
+**Theorem 3.4.6 (counting the longest increasing subsequences).** Let $L[i]$ be the length of the longest increasing subsequence ending at position $i$ (Theorem 3.4.1), and $C[i]$ the number of increasing subsequences of that length ending at $i$, different by position. Then $C[i] = 1$ if $L[i] = 1$, and otherwise
+$$C[i] = \sum_{j < i,\ a_j < a_i,\ L[j] = L[i] - 1} C[j].$$
+The number of longest increasing subsequences is $\sum_{i : L[i] = \max L} C[i]$. Time $O(n^2)$.
+
+:::tip[In plain words]
+For each position keep the length of the longest increasing subsequence ending there and how many there are of that length. A longer one found through an earlier smaller element replaces the count, one of equal length adds to it. The answer adds the counts at the positions whose length is the overall maximum.
+:::
+
+**A tiny instance.** For $(3, 1, 4, 1, 5, 9, 2, 6)$: $L = 1, 1, 2, 1, 3, 4, 2, 4$ and $C = 1, 1, 2, 1, 2, 2, 2, 2$. The 4 at position 3 can follow the 3 or the first 1, so $C = 2$; the 5 can follow only that 4, which counts 2, so $C = 2$. The longest length is 4, at the 9 and at the 6, so the answer is $2 + 2 = 4$: $(3, 4, 5, 9)$, $(1, 4, 5, 9)$, $(3, 4, 5, 6)$ and $(1, 4, 5, 6)$.
+
+**Proof.**
+1. An increasing subsequence of length $L[i]$ that ends at $i$ and has more than one element is a subsequence of length $L[i] - 1$ ending at some $j < i$ with $a_j < a_i$, followed by $a_i$.
+2. That subsequence ends at $j$ and has length $L[i] - 1$. It cannot be longer than $L[j]$, so $L[i] - 1 \le L[j]$. And $L[j] + 1 \le L[i]$ because $a_i$ may follow the longest one ending at $j$. So $L[j] = L[i] - 1$.
+3. Removing $a_i$ is one-to-one between the subsequences of length $L[i]$ ending at $i$ whose second-to-last element is at $j$, and the subsequences of length $L[i] - 1$ ending at $j$, which number $C[j]$. Adding over the valid $j$ gives the formula; the groups for different $j$ do not overlap because the second-to-last position differs.
+4. A longest increasing subsequence of the whole array ends at some position $i$ with $L[i] = \max L$, and all subsequences of that length ending at $i$ are counted by $C[i]$. $\square$
+
+:::note[This proof needs]
+1. Subsequences are counted by position (two equal values at different positions give different subsequences).
+2. The count of the longest ones needs only the longest length at each $j$: shorter chains ending at $j$ cannot lead to a longest chain through $j$ (step 2).
+3. The counts can be large: the answer for a sequence of pairs $(2, 1, 4, 3, \dots)$ of length $2m$ is $2^m$. Use `long long`, or a modulus when the statement asks for one (the count is a sum, so remainders add up as in topic 2.2).
+:::
+
+<TheoremCode unit="3.4/thm-6" />
+
 ## 5. Recognition Cards
 
 <Cards topic="3.4" />
 
 ## 6. Templates
 
-Five functions: two for LIS (the tails array and the quadratic table with a general rule), one reduction, and the two prefix-pair tables. The brute forces list subsequences as bitmasks; the "Edit distance" card brute force uses a different description of the answer (choose the kept characters on both sides).
+Seven functions: four for LIS (the tails array, the quadratic table with a general rule, recovering one subsequence and counting the longest ones), one reduction, and the two prefix-pair tables. The brute forces list subsequences as bitmasks; the "Edit distance" card brute force uses a different description of the answer (choose the kept characters on both sides).
 
 ### LIS with the tails array (Theorem 3.4.2)
 
@@ -230,6 +261,22 @@ Five functions: two for LIS (the tails array and the quadratic table with a gene
 **How it works.** The rule "consecutive chosen elements differ by at most `k`" is not an order, so the tails array does not apply. `L[i]`, the longest valid subsequence ending at `i`, is one more than the best `L[j]` over the earlier `j` that `a[i]` may follow (Theorem 3.4.1). Time $O(n^2) = 2.5 \cdot 10^7$ for $n = 5000$.
 
 **Alternative formulation.** Sort the distinct values and keep, for each value, the best `L` of a subsequence ending with it; the transition then looks up a range of values $[a_i - k, a_i + k]$. With a range-maximum structure this becomes $O(n \log n)$; the structures that answer such range queries are later topics, so the quadratic table is the version here.
+
+### Recovering one longest subsequence (Theorem 3.4.2 with parents)
+
+<CodeSnippet unit="3.4/lis-recover" />
+
+**How it works.** The binary search is the one of the tails array, but `tailIdx` stores indices and the comparison reads `a[tailIdx[mid]]`. `lo` is the first position whose tail cannot be followed by `a[i]`: with `strict` a tail may be followed when it is smaller, otherwise when it is not larger. The element before `i` is the tail just before `lo`, which is `parent[i]`. The walk from the last tail follows `parent` and reverses.
+
+**Alternative formulation.** Keep the table of Theorem 3.4.1 and one `prev[i]` per position (the `j` that gave the best `L[i]`). It is $O(n^2)$ but works for any rule between neighbours, and is what a ladder rung with a general rule needs.
+
+### Counting the longest increasing subsequences (Theorem 3.4.6)
+
+<CodeSnippet unit="3.4/lis-count" />
+
+**How it works.** `L[i]` and `C[i]` start at 1 (the element alone). For each earlier smaller `a[j]`, a chain through `j` that is longer than the best so far replaces the count (`C[i] = C[j]`), and a chain of equal length adds (`C[i] += C[j]`). The final sum is over the positions whose `L` equals the maximum. Time $O(n^2) = 4 \cdot 10^6$ for $n = 2000$.
+
+**Alternative formulation.** Process the elements by value with a structure that keeps the pair (best length, count) for each value and answers prefix queries, to count in $O(n \log n)$; it is listed under "What this topic does not cover".
 
 ### Nested envelopes (Theorem 3.4.3)
 
@@ -343,6 +390,48 @@ Input: `b` and `a`.
 Wrong output `0`, correct output `1`. The diagonal move lines up two characters; it is free only when they are equal.
 
 **Fix:** add `(a[i − 1] != b[j − 1])` to the diagonal move. A good first test for any "Edit distance" card program is two different one-letter strings.
+
+### Bug: a longer chain adds to the count
+
+Template: counting the longest increasing subsequences.
+
+```cpp
+if (L[j] + 1 > L[i]) L[i] = L[j] + 1, C[i] += C[j];
+```
+
+Input: `2`, then `1 2`.
+
+Wrong output `2`, correct output `1`. `C[i]` starts at 1 for the element alone, and a longer chain must replace that count, not add to it; the chain of length 1 that is now too short stays in the sum.
+
+**Fix:** `C[i] = C[j]` when a longer chain is found, `C[i] += C[j]` only for an equal one (Theorem 3.4.6, proof step 2). Test with two elements in increasing order.
+
+### Bug: counting the chains of every length
+
+Template: counting the longest increasing subsequences.
+
+```cpp
+if (L[i] <= best) total += C[i];
+```
+
+Input: `3`, then `1 2 0`.
+
+Wrong output `3`, correct output `1`. All three positions are added, although only the chain 1, 2 has the longest length 2; the position with the 0 ends a chain of length 1.
+
+**Fix:** add `C[i]` only where `L[i]` equals the maximum (Theorem 3.4.6). The answer is not the sum of all `C`, and not the `C` of the last position either.
+
+### Bug: printing the tails array
+
+Template: recovering one longest subsequence.
+
+```cpp
+result = tailIdx;  // instead of walking back through parent
+```
+
+Input: `8 0`, then `3 1 4 1 5 9 2 6`.
+
+Wrong output `4 0` (the length is right, but the positions $3, 6, 4, 7$ do not increase), correct output `4 1`. `tailIdx` holds the best end for each length at the moment the scan finishes, and these elements come from different chains.
+
+**Fix:** walk from the last tail through `parent` (Theorem 3.4.2, note 2). The check that positions and values increase is part of the unit's `main`; run it on a sequence whose final tails are out of order.
 
 ## 8. Worked examples
 

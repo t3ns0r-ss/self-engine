@@ -1,0 +1,267 @@
+---
+title: "3.9 Meet in the middle"
+sidebar:
+  order: 18.5
+topic: "3.9"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="3.9" />
+
+## 1. Why this topic exists
+
+Here is a small problem. You have 40 numbers, each up to $10^9$, and a limit $T$. Choose some of them so that their total is as large as possible without passing $T$. Trying every subset is $2^{40} \approx 1.1 \cdot 10^{12}$ subsets, and a computer does about $10^8$ simple steps per second, so that is hours. A table of reachable sums needs up to $10^9$ entries per item. Branch and bound (topic 3.1) has no guarantee: with 40 numbers of nearly the same size, almost every branch survives its estimate.
+
+The way out is to notice that the answer is a sum, and a sum can be cut in two. Take the first 20 numbers and list all $2^{20} \approx 10^6$ of their subset sums. Do the same for the last 20. Every subset of all 40 numbers is one subset of the left half joined to one subset of the right half, and its sum is the sum of the two. So the question "which left sum and which right sum fit together best?" is a search between two lists of $10^6$ numbers, and that is cheap after sorting one list. This is **meet in the middle**: instead of one search of size $2^n$, two searches of size $2^{n/2}$ that meet.
+
+The topic is mostly about two things: reading $n$ to know that the idea is needed and fits (the **size band**), and the ways of joining the two lists (sorting and binary search, two pointers, a map). A third card applies the same cut to paths in a grid.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="3.9" />
+
+### What this topic does not cover
+
+- Choosing an order or a subset of $n \le 20$ items when the answer depends on the whole set chosen so far, with a table indexed by the set: that is topic 3.7 (bitmask dynamic programming). It beats this topic for small $n$.
+- Reachable sums with a table when the values are small, and knapsack tables in general: topic 3.3.
+- Meeting in the middle on a graph of states with breadth-first search, and linear bases for xor: they are not part of this topic.
+- More than two halves (three or four lists), and problems where the two halves are linked by a rule on neighbours: the lesson shows one example of the failure (Section 5) and does not teach a fix.
+
+## 3. Definitions
+
+- A **half** is one of the two parts into which the $n$ choices are split, here the first $\lfloor n/2 \rfloor$ and the rest. Example: for the numbers $(3, 5, 2, 6)$ the halves are $(3, 5)$ and $(2, 6)$.
+- A **half list** is the list of all answers of one half. For subset sums, the half list of $k$ numbers has $2^k$ entries, one per subset, the empty subset giving 0. Example: the half list of $(3, 5)$ is $0, 3, 5, 8$.
+- The **size band** is the range of $n$ where the idea pays off: $2^n$ is too many, and $2^{n/2}$ per half is small enough to store and sort (about $2^{22}$ entries at most).
+- A **partner** of a left entry $x$ is a right entry $y$ that makes the pair meet the goal, for example $x + y = T$.
+- `upper_bound(v, a)` returns the position after the last entry $\le a$ of a sorted list, and `lower_bound(v, a)` the position of the first entry $\ge a$ (topic 1.4).
+
+In code, sums of up to 40 numbers of $10^9$ reach $4 \cdot 10^{10}$, so every sum is a `long long` (topic 0.1).
+
+## 4. Theory and proofs
+
+### 4.1 The split
+
+**Theorem 3.9.1 (meet in the middle).** Given $n$ numbers and a target $T$, the number of subsets with sum exactly $T$ (or at most $T$, or the subset sum closest to $T$) can be found in $O(2^{n/2} \cdot n)$ time. Split the numbers into halves $A$ and $B$, list the $2^{|A|}$ subset sums of $A$ and the $2^{|B|}$ subset sums of $B$, sort the list of $B$, and for each sum $x$ of $A$ look up the sums $y$ of $B$ with $x + y = T$ (or $\le T$, or closest to $T$) by binary search.
+
+:::tip[In plain words]
+Split $n$ numbers into two halves, list the $2^{n/2}$ subset sums of each, sort one list, and for each sum of the other half look up the partner by binary search. That is about $2^{n/2} \cdot n$ steps instead of $2^n$.
+:::
+
+**A tiny instance.** Numbers $(3, 5 \mid 2, 6)$, $T = 8$. Sums of $A$: $0, 3, 5, 8$. Sorted sums of $B$: $0, 2, 6, 8$. Look up $8 - x$. For $x = 0$ the value 8 is found once (the subset $\{2, 6\}$). For $x = 3$ and $x = 5$ the values 5 and 3 are not in the list. For $x = 8$ the value 0 is found once (the subset $\{3, 5\}$). So 2 subsets have sum 8, which a check by hand confirms.
+
+**Proof.**
+1. Every subset $S$ splits uniquely as $S = S_A \cup S_B$ with $S_A \subseteq A$, $S_B \subseteq B$, and $\operatorname{sum}(S) = \operatorname{sum}(S_A) + \operatorname{sum}(S_B)$.
+2. So subsets correspond one-to-one to pairs (a sum from the list of $A$, a sum from the list of $B$), each list entry counted with its own subset.
+3. The subsets with sum $T$ are the pairs with $x + y = T$. For a fixed $x$ the matching $y$ form one block of the sorted list of $B$, and two binary searches (Theorem 1.4.1) find its ends.
+4. Each list has $2^{n/2}$ sums, built in $O(2^{n/2})$ (Theorem 3.9.2 below). The sort costs $O(2^{n/2} \cdot n)$ and the $2^{n/2}$ lookups cost $O(n)$ each. $\square$
+
+:::note[This proof needs]
+1. The objective splits into a part from each half that are combined by a simple rule (a sum, a bitwise exclusive or, a product), and the question about the combination can be answered from a sorted list (equal to, at most, closest to).
+2. Each half is small enough to list: $2^{20} \approx 10^6$ is comfortable, $2^{25}$ is at the edge of memory.
+3. Nothing links the two halves: a rule such as "no two neighbours chosen" breaks step 2.
+:::
+
+<TheoremCode unit="3.9/thm-1" />
+
+### 4.2 The cost of one half
+
+**Theorem 3.9.2 (a half list costs about its own size).** The $2^k$ subset sums of $k$ numbers $v_1, \dots, v_k$ can be listed with $2^k - 1$ additions: start with the list $(0)$, and for each number $v_i$ append $v_i + s$ for every sum $s$ already in the list. Computing each subset's sum from its set bits instead needs $k \cdot 2^{k-1}$ additions.
+
+:::tip[In plain words]
+A list of all $2^k$ subset sums of $k$ numbers is built by adding one number to every sum already listed, so it takes $2^k - 1$ additions. Recomputing each subset from its bits takes about $k$ times more, and that factor is the difference between 40 million and 400 million steps.
+:::
+
+**A tiny instance.** Four numbers: the list grows $1, 2, 4, 8, 16$ entries, with $1 + 2 + 4 + 8 = 15$ additions. From the bits, every subset adds one number per set bit, $4 \cdot 8 = 32$ additions.
+
+**Proof.**
+1. After handling $v_1, \dots, v_i$ the list holds the sums of all subsets of these numbers, $2^i$ of them (induction; the start $i = 0$ holds the empty subset).
+2. A subset of $v_1, \dots, v_{i+1}$ either leaves out $v_{i+1}$ (already listed) or contains it, and then it is a subset of the first $i$ numbers plus $v_{i+1}$.
+3. So appending $v_{i+1} + s$ for each old $s$ gives exactly the new subsets, with $2^i$ additions.
+4. The total is $1 + 2 + \dots + 2^{k-1} = 2^k - 1$.
+5. From the bits: the number of set bits summed over all masks is $k \cdot 2^{k-1}$, because each of the $k$ positions is set in half of the masks. $\square$
+
+:::note[This proof needs]
+1. The sums are stored, not recomputed.
+2. Memory $2^k$ entries of 8 bytes: $2^{20}$ is 8 MB, $2^{25}$ is 256 MB.
+:::
+
+<TheoremCode unit="3.9/thm-2" />
+
+### 4.3 Two pointers instead of binary search
+
+**Theorem 3.9.3 (two pointers on two sorted lists).** Let $L$ and $R$ be sorted ascending. The number of pairs $(x, y)$, $x \in L$, $y \in R$, with $x + y \le T$ can be computed in $O(|L| + |R|)$ time by walking $x$ upwards through $L$ and keeping a pointer $j$ into $R$ that only moves left, always at the number of entries of $R$ that are $\le T - x$.
+
+:::tip[In plain words]
+When both half lists are sorted and the partner test is "sum at most $T$", the number of partners can only shrink as the left value grows. So one pointer that only moves left walks the right list once, and the search per element disappears.
+:::
+
+**A tiny instance.** $L = (0, 3, 5, 8)$, $R = (0, 2, 6, 8)$, $T = 7$. For $x = 0$, entries of $R$ up to 7: 3 (pointer $j = 3$). For $x = 3$: up to 4: 2. For $x = 5$: up to 2: 2. For $x = 8$: up to $-1$: 0. Total $3 + 2 + 2 + 0 = 7$, the number of subsets of $(3, 5, 2, 6)$ with sum at most 7.
+
+**Proof.**
+1. Let $c(x)$ be the number of entries of $R$ that are $\le T - x$. Because $R$ is sorted, these entries are a prefix of $R$ of length $c(x)$.
+2. If $x \le x'$ then $T - x \ge T - x'$, so $c(x) \ge c(x')$: as $x$ grows in sorted order, $c$ never grows.
+3. The pointer $j$ starts at $|R|$. For each $x$ in order, it moves left while $R[j - 1] > T - x$; then $j = c(x)$, by step 1.
+4. The pointer only moves left, at most $|R|$ moves in all, and each $x$ adds one step, so the total is $O(|L| + |R|)$. $\square$
+
+:::note[This proof needs]
+1. Both lists are sorted, which costs $O(2^{n/2} \cdot n)$ once; the pass itself is linear.
+2. The test is monotone in both lists. For "closest to $T$" or for the largest sum modulo $M$, the test is not monotone, and binary search (Theorem 3.9.1) is the safe choice.
+:::
+
+<TheoremCode unit="3.9/thm-3" />
+
+## 5. Recognition Cards
+
+<Cards topic="3.9" />
+
+## 6. Templates
+
+Five functions. The first two share the half-list builder of Theorem 3.9.2. Each has a brute force over all subsets, all paths or all quadruples, and a generator.
+
+### Subsets with sum at most T, by binary search (Theorem 3.9.1)
+
+<CodeSnippet unit="3.9/mitm-count" />
+
+**How it works.** `subsetSums` starts with the empty sum, and each element doubles the list by adding itself to every sum already there. The right list is sorted. For each left sum $x \le T$, the right sums $y$ with $x + y \le T$ are those $\le T - x$, a prefix of the sorted list, and `upper_bound` returns its length.
+
+### The same count by two pointers (Theorem 3.9.3)
+
+<CodeSnippet unit="3.9/sums-two-pointers" />
+
+**How it works.** Both lists are sorted. For each $x$ in ascending order the pointer `j` moves left while the entry before it is above $T - x$; `j` is then the number of right sums at most $T - x$. When $T - x$ is negative the pointer reaches 0 and stays there.
+
+### The largest sum at most T (Theorem 3.9.1)
+
+<CodeSnippet unit="3.9/best-subset-sum" />
+
+**How it works.** For each left sum $x \le T$ the best partner is the largest right sum at most $T - x$, the element just before `upper_bound(T - x)`. The list of the right half contains 0, so this element always exists.
+
+### Four lists, quadruples with sum zero (pairs as halves)
+
+<CodeSnippet unit="3.9/four-sum-pairs" />
+
+**How it works.** The $n^2$ sums $A[i] + B[j]$ are sorted once. Each of the $n^2$ sums $C[k] + D[l]$ looks up the size of the block equal to its negative with `equal_range`. Time $O(n^2 \log n)$ and memory $n^2$ numbers, so $n = 200$ is $40\,000$ entries and $n = 2000$ would already be $4 \cdot 10^6$.
+
+### Paths cut at the middle (Theorem 3.9.1)
+
+<CodeSnippet unit="3.9/grid-xor-paths" />
+
+**How it works.** Every right-and-down path of $n + m - 2$ steps crosses the diagonal $i + j = \text{half}$ in exactly one cell. The forward recursion stores, per cell of that diagonal, a map from the xor of the cells so far (the cut cell included) to the number of paths. The backward recursion from the end xors the cells after the cut cell, and at the cut cell looks up the value $x \oplus k$.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh` on 2000 random inputs, except the overflow, which random small inputs cannot show; that one is shown with a hand-checked input. The inputs shown are small failing inputs checked against the brute force.
+
+### Bug: `lower_bound` for "at most"
+
+Template: subsets with sum at most $T$.
+
+```cpp
+count += lower_bound(right.begin(), right.end(), T - x) - right.begin();   // instead of upper_bound
+```
+
+Input: `1 0` then `4`.
+
+Wrong output `0`, correct output `1`. `lower_bound` stops before the entries equal to $T - x$, so a pair that hits the bound exactly is missed; here the empty subset has sum $0 \le 0$. The two-pointer version has the same bug as `right[j - 1] >= T - x` in the loop.
+
+**Fix:** "at most $v$" is the prefix before the first element greater than $v$, which is `upper_bound` (Theorem 3.9.1, proof step 3). Test with a $T$ that some subset sum hits exactly.
+
+### Bug: the second half starts one element late
+
+Template: subsets with sum at most $T$.
+
+```cpp
+vector<long long> left = subsetSums(a, 0, n / 2), right = subsetSums(a, n / 2 + 1, n);   // instead of n / 2
+```
+
+Input: `3 6` then `1 2 3`.
+
+Wrong output `4`, correct output `8`. The element at index `n / 2` belongs to neither half, so every subset that contains it is lost. With an odd $n$ the halves have different sizes, and the right one must start exactly where the left one ends.
+
+**Fix:** the left half is `[0, n/2)` and the right half is `[n/2, n)` (Theorem 3.9.1, proof step 1).
+
+### Bug: sums in 32 bits
+
+Template: subsets with sum at most $T$.
+
+```cpp
+sums.push_back((int)(sums[j] + v[i]));   // instead of keeping long long
+```
+
+Input: `6 2000000000` then six numbers `1000000000`.
+
+Wrong output `37`, correct output `22` (the empty subset, 6 single numbers and 15 pairs: $1 + 6 + 15$). Three numbers of $10^9$ give $3 \cdot 10^9$, which does not fit in a 32-bit `int` and wraps to a negative value, so subsets with a big sum are counted as small. Random tests with small values cannot show this; the input above does.
+
+**Fix:** every sum is a `long long` (topic 0.1, Theorem 0.1.1).
+
+### Bug: the meeting cell counted twice
+
+Template: paths cut at the middle.
+
+```cpp
+if (i + j == half) { x ^= a[i][j];   // the cut cell is already in the forward xor
+```
+
+Input: `2 2 7` then rows `1 2` and `3 4`.
+
+Wrong output `0`, correct output `1`. The cut cell is xored into the forward half and again into the backward half, so its value cancels and no half-path matches.
+
+**Fix:** put the cut cell in exactly one half (Theorem 3.9.1, proof step 1: a path splits uniquely into two parts that do not overlap).
+
+### Bug: building every half sum from its bits
+
+Template: any of the above.
+
+```cpp
+for (int mask = 1; mask < (1 << k); mask++)
+    for (int i = 0; i < k; i++) if (mask >> i & 1) sums[mask] += v[i];   // instead of doubling the list
+```
+
+The answer is the same, but the work is $k \cdot 2^{k-1}$ additions instead of $2^k - 1$ (Theorem 3.9.2). For 20 numbers the unit `3.9/thm-2` counts $1\,048\,575$ against $10\,485\,760$, ten times more. For $n = 40$ the slow version does about $2 \cdot 10^7$ additions for the two halves, which still passes; it is a speed bug that matters when the halves are larger or the limit is tighter, and only a timing test shows it.
+
+**Fix:** build each list by doubling (Theorem 3.9.2).
+
+## 8. Worked examples
+
+The problem bank of this topic is small (see the note at the end of this section), so there is no separate worked-example problem. The templates of Section 6 are the worked examples: each one is shown with a short walk through its steps, checked against a brute force on thousands of random inputs. The problem ladder (Section 9) gives three hints for every rung, in the same order as the steps of the templates: read the size, say what each half is, say how the two lists meet.
+
+Why the bank is small: the topic needs problems where cutting the choices into two halves really is the idea. The Codeforces tag for the technique lists many problems, but most are rated above 2200 and have statements that could not be read from this environment, and several are about other ideas. After checking that tag, AtCoder ABC contests, LeetCode and CSES, about two dozen problems fit, and the topic uses 20 of them for its ladder, checkpoint, review set and look-alike pairs. Its eight drill problems come from earlier banks and show where the idea does not apply.
+
+## 9. Problem ladder
+
+<Ladder topic="3.9" />
+
+## 10. Identification drill
+
+All eight problems below have the surface of a choice among a few items, which may tempt you to split them in two halves. Each can be solved with a card of an earlier topic: the point of the drill is to read the size and to see that no halves are needed.
+
+<Drill topic="3.9" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="3.9" />
+
+## 12. Self-test questions
+
+<SelfTest topic="3.9" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="3.9" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="3.9" />

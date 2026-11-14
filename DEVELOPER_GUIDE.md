@@ -6,13 +6,13 @@ Read this first, then skim `PLAN.md` (the spec; `CLAUDE.md` and `AGENTS.md` say 
 
 A self-study competitive programming course published as a static site: **Astro + Starlight + React islands**, KaTeX for maths, all learner data in browser `localStorage` (no server). Live at https://t3ns0r-ss.github.io/self-engine/ (GitHub Pages, `.github/workflows/pages.yml`).
 
-Content: **50 topics in 8 phases** (the original 48 plus 2.5 and 3.9; CURRICULUM_GAPS_PLAN.md adds more, each a `draft` row until it goes live) (0 Foundations, 1 Core algorithms, 2 Number theory and counting, 3 DP, 4 Graphs and trees, 5 Range data structures, 6 Strings, 7 Combinations and recognition). Every topic has a lesson, a data file, tested code units and a problem bank. Spec revision: **2.1** (each lesson follows a 14-section template; Phase 7 lessons open with "This topic combines X and Y.").
+Content: **51 topics in 8 phases** (the original 48 plus 2.5, 3.9 and 4.9; CURRICULUM_GAPS_PLAN.md adds more, each a `draft` row until it goes live) (0 Foundations, 1 Core algorithms, 2 Number theory and counting, 3 DP, 4 Graphs and trees, 5 Range data structures, 6 Strings, 7 Combinations and recognition). Every topic has a lesson, a data file, tested code units and a problem bank. Spec revision: **2.1** (each lesson follows a 14-section template; Phase 7 lessons open with "This topic combines X and Y.").
 
 ## 2. Status
 
 All 48 topics, all phase intros and exams, and the e2e suite are done. All review gates are approved by the owner (Saurabh). New work is feature work or content fixes, not the original milestones. `PROGRESS.md` is the running log (gates, per-topic status, bank table, and a long "Questions for Saurabh" list of weak points per topic). `FEEDBACK.md` is where the owner writes feedback: read it at the start of every session and act on it.
 
-**Reduced banks.** A curriculum row may carry `reduced_bank: true` (2.5 and 3.9 do; decided by Saurabh on 2026-11-13 for 2.5 and extended on 2026-11-14 to every new topic, because too few real problems exist): 2 cards, a ladder of 8, one review set, no worked examples needed, and no problem in the phase exam or the 7.8 bank. Every other rule still applies.
+**Reduced banks.** A curriculum row may carry `reduced_bank: true` (2.5, 3.9 and 4.9 do; decided by Saurabh on 2026-11-13 for 2.5 and extended on 2026-11-14 to every new topic, because too few real problems exist): 2 cards, a ladder of 8, one review set, no worked examples needed, and no problem in the phase exam or the 7.8 bank. Every other rule still applies.
 
 **Planned topics (CURRICULUM_GAPS_PLAN.md).** `curriculum.yaml` also lists topics with `draft: true`: they hold their place in `order`, but validators skip them and pages hide them, so the live count stays at the topics already live until each one passes its review gate and loses the flag. Topic ids can have two digits (`7.10`); never sort ids as strings, use `order`.
 

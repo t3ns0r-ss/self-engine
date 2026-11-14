@@ -17,10 +17,14 @@ uses:
   what: 'Monotonic stack and deque: the window maximum that the DP feeds'
 - topic: '2.1'
   what: 'Number theory: divisors, multiples and the gcd'
+- topic: '3.1'
+  what: 'Divide and conquer: split, solve the halves, and why halving gives about log n levels'
 - topic: '3.2'
   what: 'Dynamic programming: states, transitions and the O(n²) tables that get faster'
 - topic: '3.4'
   what: 'Sequence DP: the increasing subsequence DP and its table of tails'
+- topic: '4.3'
+  what: 'Shortest paths: Dijkstra, used between the rounds of flights in one drill problem'
 - topic: '5.1'
   what: 'Sparse table: range minimum and maximum of a fixed array'
 - topic: '5.2'
@@ -58,6 +62,27 @@ theorems:
     are kept in a tree that can add one number to a whole range and report the largest value in a range,
     without touching the states one by one. The adds are left in the tree''s nodes and counted when needed.'
   code: 7.3/thm-4
+- id: 7.3.5
+  title: 'The lowest line: the convex hull trick'
+  plain_words: Among the lines, the lowest one at a point changes as the point moves right, always to
+    a line with a smaller slope. A line that is lowest nowhere can be thrown away at once, and because
+    the points only move right, a line that has just lost to the next line can be thrown away for good.
+    What stays in the deque is the lower envelope, read from the front.
+  code: 7.3/thm-5
+- id: 7.3.6
+  title: 'Lines in any order: the Li Chao tree'
+  plain_words: Every node keeps the line that is lower in the middle of its range. The other line can
+    be lower on one side of the middle only, so it is handed down to that one child, and the other side
+    never needs it. A point meets one line at each level on its way down, and the lowest line of all is
+    among them.
+  code: 7.3/thm-6
+- id: 7.3.7
+  title: The best split point only moves right
+  plain_words: If the best place to cut for a longer prefix is never to the left of the best place for
+    a shorter one, then find the best cut for the middle prefix by trying all the allowed places, and
+    the shorter prefixes only need to look to the left of it and the longer ones to the right. Each level
+    of the recursion scans each place about once, and there are $\log n$ levels.
+  code: 7.3/thm-7
 cards:
 - id: prefix-max-transition
   name: Best over the earlier elements with a smaller key (a prefix of the ranks), by a Fenwick tree
@@ -458,6 +483,230 @@ cards:
     flipping_difference: Assignment and sums need the push-down of topic 5.3; the tree that leaves the
       adds in place is for addition with maximum.
   complexity: O((n + M) log n) time for n positions and M updates; memory O(n); O(k n log n) for k layers.
+- id: line-envelope
+  name: Lowest of straight lines (the convex hull trick), by a deque or a Li Chao tree
+  from_theorem: 7.3.5
+  decisive_property: 'After the cost is expanded, the transition is dp_i = (a term of i) + the least over
+    the earlier j of (m_j · x_i + c_j): every earlier state is a straight line in one number x_i that
+    belongs to i, its line is known as soon as dp_j is final, and either the slopes arrive in order and
+    the points x_i in order (a deque), or they are in any order and lines are only added (a Li Chao tree).'
+  how_to_test: Write the transition as dp_i = min over j of (dp_j + cost(j, i)) and expand cost. Sort
+    every term into a part with only j, a part with only i, and a product of one number of j and one number
+    of i. If the product exists and nothing else mixes j and i (no |a_i − a_j|, no max(a_j, a_i)), then
+    the line of j has the slope of its number in the product and the intercept dp_j plus the j-only part,
+    and it is asked at the number of i. If the slopes fall (or rise) with j and the points rise (or fall)
+    with i, use the deque; otherwise the Li Chao tree.
+  constraint_shapes:
+  - 'N = 2·10^5 stones and a jump cost (h_i − h_j)^2 + C: the DP over pairs is N^2/2 = 2·10^10 steps,
+    against N steps with the deque'
+  - 'n = 10^5 lines in any order and queries at points up to 10^9: a Li Chao tree over the compressed
+    points costs n log n ≈ 1.7·10^6 steps, against n^2/2 = 5·10^9 for scanning all lines'
+  weak_signals:
+  - form: Asks for the least total cost of a path or a split in which a step from j to i costs a square
+      of a difference, or a product of two values, plus a constant
+    shape: n up to 2·10^5, every earlier j allowed, values up to 10^6 so that products reach 10^12
+  - form: Asks for the best total where each item has two numbers (a, b) and going from j to i costs b_j
+      · a_i
+    shape: n up to 10^5, one of the numbers sorted (or sortable) in each direction, answers up to about
+      10^17
+  - form: Asks for the largest (or least) value of a linear expression over the items added so far, after
+      every addition
+    shape: Q up to 2·10^5 operations, coordinates up to 10^9 in absolute value, queries in any order
+  kill_signals:
+  - 'The lines arrive with slopes that do not fall: for the lines 0, x − 1 and 2x added in this order,
+    the deque drops the middle line and answers 0 at the point 0, where the true lowest value is −1 (use
+    a Li Chao tree)'
+  - 'The points do not rise: for the lines 3x, 2x + 1, x + 3 asked at x = 1 and then at x = 0, the front
+    pointer has passed the first line at x = 1 (a tie) and answers 1 at x = 0, where the true answer is
+    0 (use binary search on the deque or a Li Chao tree)'
+  - 'The cost mixes j and i in a way that is not a product, such as |a_i − a_j| or the number of distinct
+    values between them: there is no line for j to write down (the best split card applies if the best
+    cut moves right)'
+  in_action:
+    statement: n boxes stand in a row with weights w_i. They are carried in consecutive trips, and a trip
+      that carries the total weight W costs W^2 + C. Print the least total cost of carrying all the boxes.
+    constraints: n ≤ 2·10^5, 1 ≤ w_i ≤ 10^4, C ≤ 10^12.
+    budget: The DP over the cut points has n^2/2 = 2·10^10 pairs. Need about n or n log n.
+    candidates:
+    - tool: The DP over pairs of cut points (topic 3.2)
+      verdict: rejected
+      because: n^2/2 steps.
+    - tool: A segment tree over the earlier states (topic 5.3)
+      verdict: rejected
+      because: The cost is not a maximum or a sum over a range of states; it depends on the pair through
+        a product, so no range can be asked.
+    - tool: The lowest of lines, by a deque (this topic)
+      verdict: chosen
+      because: With prefix sums P, dp_i = P_i^2 + C + min_j (−2 P_j · P_i + (dp_j + P_j^2)), a line for
+        each j (Theorem 7.3.5).
+    property_check: 'The cost is a square of a difference, which expands into a product −2 P_j P_i plus
+      terms of j alone and i alone. The weights are positive, so the prefix sums rise: the slopes −2 P_j
+      fall as j grows, and the points P_i rise. The property holds.'
+    decision: dp_i = P_i^2 + C + (the lowest line at P_i), lines in a deque, O(n); 64-bit values and a
+      wide product in the useless test.
+  examples:
+    positive:
+    - inline:
+        input: Four stones have the heights 1, 2, 4, 7. A jump from a stone to a later one costs the square
+          of the height difference plus 3. What is the least total cost from the first stone to the last?
+        answer: '23'
+        why: 'The values are dp = 0, 4, 11, 23 (Theorem 7.3.5): the last stone is reached from the third
+          (cost 9 + 3 = 12 on top of 11). Each dp is the lowest line at the next height, the slope −2h_j
+          falling and the heights rising.'
+    - inline:
+        input: The lines y = 3x, y = −2x + 12 and y = 5 are added in this order. What is the lowest value
+          at the point 3?
+        answer: '5'
+        why: The slopes 3, −2, 0 neither rise nor fall, so the deque does not apply; the Li Chao tree
+          (Theorem 7.3.6) accepts them in any order. The values at 3 are 9, 6 and 5.
+    negative:
+    - inline:
+        input: The lines y = 0, y = x − 1 and y = 2x are added in this order (the slopes rise). What is
+          the lowest value at the point 0?
+        answer: '-1'
+        method_gives: '0'
+        why: The test for a useless line assumes that the slopes fall from the front to the back. With
+          rising slopes it removes the middle line, which is the lowest at 0 (value −1), and the deque
+          answers 0. A Li Chao tree takes the lines in any order.
+      correct_tool:
+        topic: '7.3'
+        card: line-envelope
+    - inline:
+        input: The lines y = 3x, y = 2x + 1 and y = x + 3 are asked at the point 1 and then at the point
+          0. What is the answer to the second question?
+        answer: '0'
+        method_gives: '1'
+        why: The front pointer only moves right. At 1 the values are 3, 3 and 4, so it passes the first
+          line (a tie). At 0 the first line is the lowest (0), but the pointer is already on the second
+          (1). Points in any order need a binary search on the deque or a Li Chao tree.
+      correct_tool:
+        topic: '7.3'
+        card: line-envelope
+  lookalikes:
+  - description: The cost of a group is a sum over its elements that is not a product of a number of j
+      and a number of i (the distances to a median, a count of distinct values)
+    tool:
+      topic: '7.3'
+      card: monotone-split
+    flipping_difference: With no product there is no line to write down for j. If the best last cut still
+      never moves left as i grows, divide and conquer on each layer finds every best cut; the deque does
+      not apply.
+  - description: dp_i = (a term of i) + the best dp_j in a window of the last k states, with no product
+      in the cost
+    tool:
+      topic: '7.3'
+      card: window-transition
+    flipping_difference: A product makes every earlier state a different line and the question is the
+      lowest line at a point. Without a product the question is the plain best value in a window, which
+      a deque of values answers.
+  complexity: O(n) with a deque when the slopes and the points are sorted, O(n log s) with a Li Chao tree
+    over s points; memory O(n).
+- id: monotone-split
+  name: Best last cut that only moves right, by divide and conquer on each layer
+  from_theorem: 7.3.7
+  decisive_property: The DP cuts a sequence into k groups; layer t is dp_t[i] = the least over j < i of
+    dp_{t−1}[j] + cost(j, i), where cost(j, i) is O(1) to evaluate (prefix sums) and satisfies the quadrangle
+    inequality, so that the smallest best j never moves left as i grows.
+  how_to_test: Write the layer as dp_t[i] = min over j of dp_{t−1}[j] + cost(j, i). Check that cost(j,
+    i) comes from prefix sums in O(1). Check the quadrangle inequality, cost(a, c) + cost(b, d) ≤ cost(a,
+    d) + cost(b, c) for a ≤ b < c ≤ d, by expanding it (as for a square of a sum) or on a few small arrays.
+    If one small array breaks it, the property fails.
+  constraint_shapes:
+  - 'n = 10^5 numbers and k = 100 groups: the plain layers cost k · n^2/2 = 5·10^11 steps, against k ·
+    n · log2 n ≈ 100 · 10^5 · 17 = 1.7·10^8 with divide and conquer'
+  - 'n = 3000 and k = 3000: the plain layers cost k · n^2/2 = 1.35·10^10 steps, against about n · k ·
+    12 ≈ 10^8'
+  weak_signals:
+  - form: Asks for the least total cost of cutting a sequence into exactly k consecutive groups, where
+      the cost of a group depends on its contents (a sum, a median, a count)
+    shape: n up to 10^5 with k up to about 10^2, or n and k both up to 3000
+  - form: Places k facilities (schools, mailboxes, guards) on a line and asks for the least total distance
+    shape: n up to 3000 or 10^5 positions, k up to n, distances summed over everything
+  - form: A DP table dp[t][i] where the second parameter t is a number of groups given in the input
+    shape: n · k between 10^6 and 10^8 and a log factor allowed
+  kill_signals:
+  - 'The cost rewards uneven groups: for the cost −(sum)^2 and the numbers 1 1 0 2 in 2 groups, divide
+    and conquer gives −8 but the true least is −10 (the groups 1 and 1 0 2), because the best cut can
+    move left'
+  - 'The number of groups is not limited: there is one layer and no layered table, so the lines of the
+    previous card or a plain DP is the tool'
+  in_action:
+    statement: n villages stand on a line at the positions x_1 < ... < x_n. Dig k wells in villages so
+      that the sum over all villages of the distance to the nearest well is as small as possible.
+    constraints: n ≤ 5000, k ≤ 5000, positions up to 10^9.
+    budget: The plain layers cost k · n^2/2 = 6.25·10^10 steps. Need about n · k · log n ≈ 3·10^8.
+    candidates:
+    - tool: The plain layers dp[t][i] = min over j (topic 3.2)
+      verdict: rejected
+      because: 6.25·10^10 steps.
+    - tool: The lowest of lines (this topic, Theorem 7.3.5)
+      verdict: rejected
+      because: The cost of a group is the sum of distances to its median, which does not split into a
+        product of a number of j and a number of i.
+    - tool: Divide and conquer on each layer (this topic)
+      verdict: chosen
+      because: The cost comes from prefix sums in O(1) and the best last cut never moves left (Theorem
+        7.3.7).
+    property_check: The cost of the villages j + 1..i is the sum of the distances to the median village,
+      an O(1) formula with prefix sums. It satisfies the quadrangle inequality (checked on the small cases
+      by the stress test of the template). The property holds.
+    decision: 'Layers t = 1..k, each by fillLayer with the median cost: O(n k log n).'
+  examples:
+    positive:
+    - inline:
+        input: Cut the numbers 3 1 4 1 5 into 2 groups of consecutive numbers. The cost of a group is
+          the square of its sum. What is the least total cost?
+        answer: '100'
+        why: The groups 3 1 4 and 1 5 cost 64 + 36 (Theorem 7.3.7). The square of a sum satisfies the
+          quadrangle inequality, so the best cut for a longer prefix is never left of the best cut for
+          a shorter one.
+    - inline:
+        input: Houses stand at the positions 1, 4, 8, 10, 20. Place 2 mailboxes at houses. What is the
+          least sum of the distances from the houses to the nearest mailbox?
+        answer: '13'
+        why: The groups {1, 4, 8, 10} (mailbox at 4 or 8, cost 13) and {20} (cost 0). The cost of a group
+          is the sum of distances to its median, from prefix sums, and the best cut only moves right.
+    negative:
+    - inline:
+        input: The numbers 1 1 0 2 are cut into 2 groups of consecutive numbers. The cost of a group is
+          MINUS the square of its sum, and the total is made as small as possible. What is the least total?
+        answer: '-10'
+        method_gives: '-8'
+        why: The cost fails the quadrangle inequality (the inequality is reversed), so the best cut can
+          move left. Divide and conquer finds the groups 1 1 0 and 2 (−4 − 4 = −8) and misses 1 and 1
+          0 2 (−1 − 9 = −10). The plain layers over all cuts are exact.
+      correct_tool:
+        topic: '3.2'
+        card: two-index
+    - inline:
+        input: The numbers 1 1 0 3 are cut into 2 groups of consecutive numbers with the same cost, minus
+          the square of the sum. What is the least total?
+        answer: '-17'
+        method_gives: '-13'
+        why: 'The same failure: divide and conquer finds 1 1 0 and 3 (−4 − 9 = −13), but 1 and 1 0 3 gives
+          −1 − 16 = −17. The best cut for the longer prefix lies left of the best cut for the middle one.'
+      correct_tool:
+        topic: '3.2'
+        card: two-index
+  lookalikes:
+  - description: The cost of a group is the square of a difference of prefix sums, a product of a number
+      of j and a number of i
+    tool:
+      topic: '7.3'
+      card: line-envelope
+    flipping_difference: For a cost that expands into a product, every layer is a lowest-line question
+      and a deque gives it in O(n), so all k layers cost O(k n). Divide and conquer is for the costs that
+      do not expand (a median, a count of distinct values).
+  - description: Cutting into groups whose length is limited, so that only the last L positions may start
+      the last group
+    tool:
+      topic: '7.3'
+      card: window-transition
+    flipping_difference: A limit on the group length makes the allowed j a window that moves right, and
+      a deque of values answers the best dp_j in it when the cost does not depend on the pair. If the
+      cost does depend on the pair through prefix sums, the best-cut argument of this card is the one
+      to check.
+  complexity: O(k n log n) evaluations of the cost; memory O(n).
 problems:
 - id: ac-dp_q
   role: worked_example
@@ -475,8 +724,9 @@ problems:
 - id: cf-629D
   role: ladder
   card: prefix-max-transition
-  rung: 2
-  twist: A weighted increasing subsequence where the weight is the volume of a cake.
+  rung: 1
+  twist: 'Base case of the card: a weighted increasing subsequence where the weight is the volume of a
+    cake.'
   summary: n ≤ 10^5 cakes, the i-th a cylinder of radius r_i and height h_i; a cake may be put on a cake
     that comes earlier in the input only if its volume is strictly larger; the largest total volume of
     a stack. †
@@ -487,25 +737,10 @@ problems:
     volume. dp_i = v_i + the best dp among the earlier cakes with a smaller volume.
   - Use r²·h as the volume (the factor π is common), compress the volumes, and keep a Fenwick tree of
     prefix maxima that is asked for the ranks below the cake, before the cake is inserted. 64 bits.
-- id: cf-930C
-  role: ladder
-  card: prefix-max-transition
-  rung: 1
-  twist: 'Base case of the card, used twice: a pass from each end, on counts made with a difference array.'
-  summary: n ≤ 10^5 segments on the positions 1..m (m ≤ 10^5); c[x] is the number of segments that cover
-    x; the longest subsequence of positions whose counts are non-decreasing and then non-increasing. †
-  hints:
-  - What does "non-decreasing, then non-increasing" mean for a subsequence at its highest point?
-  - For each position p let up[p] be the length of the longest non-decreasing subsequence of counts that
-    ends at p, and down[p] the longest non-increasing one that begins at p. A peak at p gives up[p] +
-    down[p] − 1.
-  - Make c with a difference array (topic 1.2). Then up with a Fenwick tree of prefix maxima over the
-    count values, asked up to the count (not strictly below), and down the same from the right. The answer
-    is the largest up[p] + down[p] − 1.
 - id: cf-1667B
   role: ladder
   card: prefix-max-transition
-  rung: 3
+  rung: 2
   twist: The earlier states are split in three groups by the sign of a comparison, one tree for each.
   summary: An array of n ≤ 5·10^5 integers; cut it into consecutive pieces; a piece scores +length if
     its sum is positive, 0 if zero and −length if negative; the largest total score. †
@@ -518,7 +753,7 @@ problems:
 - id: lc-maximum-sum-of-alternating-subsequence-with-distance-at-least-k
   role: ladder
   card: prefix-max-transition
-  rung: 4
+  rung: 3
   twist: Two trees (after a step up, after a step down) and a delayed insertion for the distance.
   summary: An array of n ≤ 10^5 integers (up to 10^5) and a number k; a subsequence whose consecutive
     indices differ by at least k and whose values strictly alternate (up, down, up, … or down, up, …);
@@ -531,27 +766,12 @@ problems:
   - 'Two trees over the values: a prefix-maximum tree for D (asked below nums_i) and a suffix-maximum
     tree for U (asked above nums_i). The index i − k is inserted into both just before i is handled. The
     answer is the largest of all U and D.'
-- id: lc-jump-game-vi
-  role: ladder
-  card: window-transition
-  rung: 1
-  twist: 'Base case of the card: the best score of jumps of at most k cells from the first to the last
-    cell.'
-  summary: An array nums of up to 10^5 integers (some negative) and k; start at the index 0, jump to any
-    index at most k ahead, finish at the last index; the largest sum of the visited numbers.
-  hints:
-  - dp_i is the best score at i. Which indices can come before i?
-  - The window i − k .. i − 1, and its left end only grows. A segment tree would work; a deque is simpler
-    and faster.
-  - Keep a deque of indices with decreasing dp. At each i pop the expired indices from the front, set
-    dp_i = nums_i + dp of the front, pop from the back while dp ≤ dp_i, push i. O(n); the sums fit in
-    64 bits.
 - id: cf-487B
   role: ladder
   card: window-transition
-  rung: 2
-  twist: The window of starts is bounded on the right by a length and on the left by a spread condition,
-    found with two more deques.
+  rung: 1
+  twist: 'Base case of the card: the window of starts is bounded on the right by a length and on the left
+    by a spread condition, found with two more deques.'
   summary: A sequence of n ≤ 10^5 numbers and numbers s and l; cut it into consecutive pieces, each with
     at least l numbers and with max − min ≤ s; the fewest pieces, or −1. †
   hints:
@@ -563,7 +783,7 @@ problems:
 - id: lc-count-partitions-with-max-min-difference-at-most-k
   role: ladder
   card: window-transition
-  rung: 3
+  rung: 2
   twist: The same moving window, with a sum of counts, so prefix sums take the place of the third deque.
   summary: An array of n ≤ 5·10^4 integers and a number k; the number of ways to cut it into consecutive
     segments, in each of which max − min ≤ k, modulo 10^9 + 7.
@@ -576,7 +796,7 @@ problems:
 - id: ac-abc339_e
   role: ladder
   card: window-transition
-  rung: 4
+  rung: 3
   twist: 'The window is over values, not positions: a segment tree with range maximum.'
   summary: A sequence of N ≤ 5·10^5 integers and a number D; the longest subsequence in which any two
     consecutive elements differ by at most D.
@@ -672,6 +892,113 @@ problems:
   - Keep the states in a tree with range addition and range maximum; the state i (road i unrepaired) takes
     the best earlier state. Two kinds of range additions per step; the answer is the best state at the
     end.
+- id: cses-2084
+  role: ladder
+  card: line-envelope
+  rung: 1
+  twist: 'Base case of the card: the product is already there (strength times skill factor), the factors
+    fall and the strengths rise.'
+  summary: n ≤ 2·10^5 levels with monster strengths s_i that do not fall; after killing monster i your
+    skill factor becomes f_i (factors do not rise, all up to 10^6) and killing monster i costs s_i times
+    your current factor; escape is free except at the last level; the least total time.
+  hints:
+  - What does the cost of killing monster i depend on? Only on the level j of the last monster you killed.
+  - Let dp_i be the least time with monster i just killed. dp_i = min over j < i of dp_j + s_i · f_j,
+    where level 0 stands for the start with the factor x. For each j this is a line with slope f_j and
+    intercept dp_j, asked at the point s_i.
+  - The slopes f_j never rise and the points s_i never fall, so a deque of lines does it in O(n). The
+    values reach about 2·10^5 · 10^6 · 10^6, so 64 bits.
+- id: ac-dp_z
+  role: ladder
+  card: line-envelope
+  rung: 2
+  twist: 'The product has to be made by expanding a square: (h_i − h_j)^2 has the cross term −2 h_i h_j.'
+  summary: N ≤ 2·10^5 stones with strictly increasing heights up to 10^6; a jump from stone i to a later
+    stone j costs (h_j − h_i)^2 + C with C up to 10^12; the least total cost from the first stone to the
+    last.
+  hints:
+  - Write the cost of the jump from j to i with the square expanded. Which term contains both h_i and
+    h_j?
+  - 'dp_i = h_i^2 + C + min over j of (−2 h_j · h_i + (dp_j + h_j^2)): a line with slope −2 h_j and intercept
+    dp_j + h_j^2, asked at h_i.'
+  - 'The slopes fall and the points rise, so a deque. The test for a useless line multiplies numbers near
+    10^12 and 10^6 and more: use a wide integer such as __int128.'
+- id: cf-319C
+  role: ladder
+  card: line-envelope
+  rung: 3
+  twist: The two sorted arrays of the statement are the slopes and the points, but the problem has to
+    be read as a DP first. †
+  summary: n ≤ 10^5 trees with heights a_i that increase (a_1 = 1) and charge costs b_i that decrease
+    (b_n = 0); cutting one unit off a tree costs the b of the highest tree that has been cut down completely;
+    the least total cost to cut down every tree. †
+  hints:
+  - Before a tree i is cut down completely, which b is paid per unit? How does it change once a higher
+    tree is gone?
+  - 'Let dp_i be the least cost to have tree i cut down completely. dp_i = min over j < i of dp_j + b_j
+    · a_i: the units of tree i are cut while the charge is that of the highest tree j already gone.'
+  - 'The slopes b_j fall and the points a_i rise: a deque of lines, O(n). Values reach 10^5 · 10^9 · 10^5,
+    so 64 bits.'
+- id: cses-2085
+  role: ladder
+  card: line-envelope
+  rung: 4
+  twist: 'Neither the slopes nor the points are sorted: the Li Chao tree takes the lines as they come.'
+  summary: n ≤ 2·10^5 levels, each with a monster strength s_i and a new skill factor f_i, both in any
+    order and up to 10^6; killing monster i costs s_i times the current factor; the least total time to
+    win.
+  hints:
+  - 'The same DP as the first Monster Game: dp_i = min over j < i of dp_j + s_i · f_j. What changed in
+    the input?'
+  - The slopes f_j arrive in any order and so do the points s_i, so the deque of the first problem is
+    no longer correct (Theorem 7.3.5, note 1 and 2).
+  - 'A Li Chao tree over the points 1..10^6: after computing dp_i, add the line with slope f_i and intercept
+    dp_i; ask the point s_i before each add. O(n log 10^6), 64 bits.'
+- id: cses-2086
+  role: ladder
+  card: monotone-split
+  rung: 1
+  twist: 'Base case of the card: a square of a sum as the cost, one layer by divide and conquer (the same
+    layer is also a lowest-line question).'
+  summary: An array of n ≤ 3000 numbers (up to 10^5) is cut into exactly k consecutive subarrays; the
+    cost of a subarray is the square of its sum; the least total cost.
+  hints:
+  - What is the cost of the subarray j + 1..i in terms of the prefix sums P? How many layers are there?
+  - 'dp[t][i] = min over j < i of dp[t−1][j] + (P_i − P_j)^2. All n · k states have up to n choices: 2.7·10^10
+    steps, too slow. With x, y, z ≥ 0 the quadrangle inequality has the difference −2xz ≤ 0, so the best
+    j never moves left.'
+  - 'Divide and conquer on each layer: k · n · log n ≈ 10^8. Values reach (3000 · 10^5)^2 = 9·10^16, so
+    64 bits.'
+- id: cses-2087
+  role: ladder
+  card: monotone-split
+  rung: 2
+  twist: 'A weighted median as the cost: it needs prefix sums of the children and of children times position.'
+  summary: n ≤ 3000 houses on a street with c_i (up to 10^9) children each; place k schools in houses;
+    each child walks to the nearest school; the least total walking distance.
+  hints:
+  - Where does one school for a group of consecutive houses go when the houses have different numbers
+    of children?
+  - 'To the weighted median: the first house where the children so far reach half of the group. cost(j,
+    i) comes from prefix sums of c and of c · position; the medians can be found by a pointer, or the
+    whole table cost[j][i] built in O(n^2) (about 9·10^6 numbers).'
+  - Then dp[t][i] = min over j of dp[t−1][j] + cost(j, i) by divide and conquer on each layer. The total
+    reaches 3000 · 10^9 · 3000 = 9·10^15, so 64 bits.
+- id: cf-868F
+  role: ladder
+  card: monotone-split
+  rung: 3
+  twist: 'The cost of a group is not a formula of prefix sums: it is kept while two ends move, one step
+    at a time. †'
+  summary: An array of n ≤ 10^5 numbers and k ≤ 20; cut it into k consecutive groups; the cost of a group
+    is the number of pairs of equal elements inside it; the least total cost. †
+  hints:
+  - How does the cost of a group change when its left or right end moves by one position?
+  - Keep a count of each value and the current number of equal pairs for a window [l, r]; moving an end
+    by one updates it in O(1). So cost(j, i) costs the distance the window has to move.
+  - 'Divide and conquer on each layer; if the calls are made in recursion order the window moves O(n log
+    n) positions per layer in total, k layers: about 20 · 10^5 · 17 = 3.4·10^7 moves. 64 bits for the
+    answer.'
 - id: lc-maximum-balanced-subsequence-sum
   role: checkpoint
   card: prefix-max-transition
@@ -800,6 +1127,52 @@ problems:
   role: drill
   summary: n ≤ 5·10^5 skyscrapers with limits a_i; choose heights m_i ≤ a_i so that no skyscraper has
     a higher one on both sides; the largest total height, and any such plan. †
+- id: cf-321E
+  role: ladder
+  card: monotone-split
+  rung: 4
+  twist: The cost of a group is a sum of table entries read from a 2D prefix table; the table is the input.
+    †
+  summary: n ≤ 4000 people in a queue and k ≤ 800 gondolas; a symmetric table gives the unfamiliarity
+    of each pair; cut the queue into k consecutive groups; the cost of a group is the sum over its pairs;
+    the least total. †
+  hints:
+  - What does the cost of the group j + 1..i add up, and how can the sum over all pairs inside a group
+    be read in O(1)?
+  - Build a 2D prefix table of the unfamiliarity. cost(j, i) is the sum over the square of the group,
+    halved (the table is symmetric). dp[t][i] = min over j of dp[t−1][j] + cost(j, i).
+  - k · n^2 = 800 · 1.6·10^7 is far too much. The cost satisfies the quadrangle inequality, so divide
+    and conquer on each layer does k · n · log n ≈ 4·10^7.
+- id: cf-660F
+  role: review
+  card: line-envelope
+  review_set: 2
+  summary: An array of n ≤ 2·10^5 integers; for a subarray the value is the sum of (position inside the
+    subarray) · (element); the largest value over all subarrays. †
+- id: cf-631E
+  role: drill
+  summary: An array of n ≤ 2·10^5 integers; you may move one element to any other position once (or not
+    at all); the largest possible value of the sum of i · a_i. †
+- id: ac-abc244_h
+  role: drill
+  summary: 'Q ≤ 2·10^5 operations: add the point (X, Y), then print the largest A·X + B·Y over all points
+    added so far, for the given A and B; all values up to 10^9 in absolute value.'
+- id: cf-1715E
+  role: drill
+  summary: n ≤ 10^5 cities, m roads with lengths, and up to k ≤ 20 flights, a flight from u to v costing
+    (u − v)^2; the cheapest route from city 1 to every city. †
+- id: cf-1083E
+  role: lookalike
+  card: line-envelope
+  summary: n ≤ 10^6 rectangles that all have a corner at the origin, with widths x_i, heights y_i (no
+    rectangle inside another) and costs a_i; choose some to make the area of their union minus the sum
+    of their costs largest. †
+- id: cf-1527E
+  role: lookalike
+  card: range-update-transition
+  summary: An array of n ≤ 35000 numbers and k ≤ 100; cut it into k consecutive groups; the cost of a
+    group is the sum, over its values, of (last position − first position) of that value inside the group;
+    the least total cost. †
 drill:
 - problem: lc-count-increasing-quadruplets
   answer:
@@ -867,6 +1240,33 @@ drill:
     wins.'
   why_others_fail: The transition comes from the nearest smaller element, a single predecessor, not a
     best over a prefix of keys; a stack does it in O(n).
+- problem: cf-631E
+  answer:
+    topic: '7.3'
+    card: line-envelope
+  property: 'Moving a_i to the place j changes the sum by a_i · (j − i) plus a difference of prefix sums;
+    for the best j that is the largest of j · a_i − P_{j−1}: the lines with slope j and intercept −P_{j−1}
+    asked at the point a_i, in any order.'
+  why_others_fail: A Fenwick tree or a segment tree answers questions about a range of keys; here the
+    term is a product of j and a_i, so each j is a line and the point a_i is in any order (a Li Chao tree).
+- problem: ac-abc244_h
+  answer:
+    topic: '7.3'
+    card: line-envelope
+  property: 'For a query with B > 0, the best point maximises Y + (A/B) · X: each point is a line with
+    slope X and intercept Y asked at the point A/B, and points are added online in any order (the other
+    signs of B are handled the same way with the flipped comparison).'
+  why_others_fail: The points and the queries arrive in any order, so the deque does not apply; there
+    is no prefix of keys to ask, so a Fenwick tree does not apply.
+- problem: cf-1715E
+  answer:
+    topic: '7.3'
+    card: line-envelope
+  property: 'One round of flights is new[v] = min over u of d[u] + (u − v)^2 = v^2 + min over u of (−2u
+    · v + d[u] + u^2): lines with slope −2u (falling in u) asked at v (rising), so a deque gives a whole
+    round in O(n); the roads are a shortest-path step between rounds.'
+  why_others_fail: Putting every flight into the graph gives n^2 edges; the best flight for each city
+    is a lowest-line question, not an edge list.
 lookalike_pairs:
 - a: cf-1799D2
   b: cf-1799D1
@@ -903,10 +1303,31 @@ lookalike_pairs:
     ones are a prefix maximum and a suffix maximum.'
   flipping_input: 'm = 20000, k = 10000: trying the overlapping positions costs about 2·10^4 · 2·10^4
     per day, against m per day with the deque.'
+- a: cf-1083E
+  b: cf-1527E
+  a_tool:
+    topic: '7.3'
+    card: line-envelope
+  b_tool:
+    topic: '7.3'
+    card: range-update-transition
+  shared_surface: Both are a DP over the first i items in which the last group or chosen item starts after
+    an earlier one (dp_i = best over j < i of dp_j plus a cost of the pair), with n from 3.5·10^4 to 10^6,
+    so the first thought is a data structure over j.
+  flipping_difference: 'In the rectangles problem the cost of the pair is a product of a number of j (the
+    width) and a number of i (the height), so every j is a line and the best is the lowest line at a point:
+    a deque. In the partition problem the cost of the group depends on the positions of equal values between
+    j and i, so a new element changes the cost of a whole range of earlier starts by the same amount:
+    a segment tree with range addition and range minimum, once for each layer.'
+  flipping_input: 'n = 10^6 rectangles: a segment tree with a range add per rectangle is about 20 · 10^6
+    node visits, against 10^6 deque steps; for the partition problem there is no product, and no line
+    to write for a start j.'
 self_test:
-- q: Use Theorem 7.3.1 on the keys 2 1 3 with the weights 4 5 6. Give dp and the answer.
-  a: The ranks are 2, 1, 3. dp_1 = 4 (nothing is below 2 yet), dp_2 = 5 (nothing is below 1), dp_3 = 6
-    + max(4, 5) = 11. The answer is 11 (the elements 1 and 3, with weights 5 + 6).
+- q: The lines 3x, 2x + 5 and x + 6 come in this order. Is the middle line useless? Answer with the rule
+    of Theorem 7.3.5 and with two points.
+  a: 'Yes: (5 − 0)(2 − 1) = 5 ≥ (6 − 5)(3 − 2) = 1. At x = 1 the values are 3, 7, 7 and at x = 4 they
+    are 12, 13, 10; the middle line is never strictly the lowest, because it crosses the first line at
+    x = 5 and the third at x = 1, in the wrong order.'
 - q: Why is the tree asked before the element is inserted, and for the ranks below the element's own?
   a: 'If the element were inserted first, a query that reaches its own rank could return its own dp: the
     element would follow itself, or an equal value. Asking for the smaller ranks before the insertion
@@ -934,11 +1355,12 @@ self_test:
   a: 'A 1 at the position i makes the last 1 equal to i, and the string before it may be any string of
     length i − 1, so the new state is the best earlier state. A 0 changes nothing: every state keeps its
     value and its last 1; only the intervals ending at i add their rewards.'
-- q: Compute the states for n = 2 and the intervals (1, 2, 3) and (2, 2, −1).
-  a: 'The states start at 0, 0, 0. Position 1: the state 1 takes the best of the state 0, 0. Position
-    2: the state 2 takes the best of the states 0 and 1, 0; the interval (1, 2, 3) adds 3 to the states
-    1..2: 0, 3, 3; the interval (2, 2, −1) adds −1 to the state 2: 0, 3, 2. The answer is 3 (the string
-    10).'
+- q: Why can the cost (P_i − P_j)^2 be used with divide and conquer on each layer, but the cost −(P_i
+    − P_j)^2 cannot? Give the numbers that break it.
+  a: With x, y, z ≥ 0 the left side minus the right side of the quadrangle inequality is −2xz ≤ 0 for
+    the square, so the inequality holds; for minus the square it is +2xz, so it is reversed and the best
+    cut can move left. For the numbers 1 1 0 2 cut in 2 groups the divide and conquer gives −8 (groups
+    1 1 0 and 2), but the true least is −10 (groups 1 and 1 0 2).
 checkpoint:
   time_limit_minutes: 150
   problems:
@@ -992,4 +1414,34 @@ decision_map:
   - card: difference-array
     topic: '1.2'
     because: Many range updates and one final read.
-glossary_added: []
+- weak_signal: The least total cost over all earlier j of dp_j plus a cost that expands into (a number
+    of j) × (a number of i), such as a square of a difference, with n up to 2·10^5
+  choose: line-envelope
+  when: The cost has a product term and nothing else that mixes j and i; a deque if the slopes and the
+    points are sorted, a Li Chao tree otherwise (Theorems 7.3.5 and 7.3.6).
+  over:
+  - card: prefix-max-transition
+    topic: '7.3'
+    because: There the earlier states are a prefix of the keys and the term of j does not multiply a number
+      of i.
+  - card: window-transition
+    topic: '7.3'
+    because: There only the best dp_j in a window is asked; with a product every j is a different line.
+- weak_signal: The least total cost of cutting a sequence into exactly k groups, or placing k facilities
+    on a line, with a cost from prefix sums and n · k up to about 10^7
+  choose: monotone-split
+  when: The quadrangle inequality holds, so the best last cut never moves left (Theorem 7.3.7).
+  over:
+  - card: line-envelope
+    topic: '7.3'
+    because: If the cost expands into a product, each layer is a lowest-line question and costs O(n) with
+      a deque.
+  - card: two-index
+    topic: '3.2'
+    because: When n · n · k is small enough, or the quadrangle inequality fails, the plain layers are
+      exact.
+glossary_added:
+- lower envelope
+- convex hull trick
+- Li Chao tree
+- quadrangle inequality

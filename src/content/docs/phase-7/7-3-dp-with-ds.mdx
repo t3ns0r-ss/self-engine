@@ -1,5 +1,5 @@
 ---
-title: "7.3 DP sped up with Fenwick or segment trees"
+title: "7.3 DP speed-ups: Fenwick and segment trees, convex hull trick, divide and conquer"
 sidebar:
   order: 43
 topic: "7.3"
@@ -19,7 +19,7 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 <TopicHeader topic="7.3" />
 
-This topic combines [sequence DP](../../phase-3/3-4-sequence-dp/) (a table over the positions of a sequence, each value built from earlier ones) and [the Fenwick tree](../../phase-5/5-2-fenwick/) with [the segment tree](../../phase-5/5-3-segment-tree/) (structures that answer "the best value over a range" and take updates, each in $O(\log n)$ time). A DP that is correct but too slow often has one slow line: a maximum, a minimum or a sum taken over many earlier states. That line is a question to a data structure that holds the earlier states.
+This topic combines [sequence DP](../../phase-3/3-4-sequence-dp/) (a table over the positions of a sequence, each value built from earlier ones) and [the Fenwick tree](../../phase-5/5-2-fenwick/) with [the segment tree](../../phase-5/5-3-segment-tree/) (structures that answer "the best value over a range" and take updates, each in $O(\log n)$ time). A DP that is correct but too slow often has one slow line: a maximum, a minimum or a sum taken over many earlier states. That line is a question to a data structure that holds the earlier states. The last two ideas of the lesson go one step further and use the *shape of the cost*: when the cost of a transition splits into a product of a number of $j$ and a number of $i$, the earlier states are straight lines and the best one is read from a [monotonic deque](../../phase-1/1-6-monotonic-stack/) or a tree of lines; when the best earlier state moves only to the right as $i$ grows, [divide and conquer](../../phase-3/3-1-backtracking/) finds all of them in $O(n \log n)$ steps.
 
 ## 1. Why this topic exists
 
@@ -27,11 +27,15 @@ Here is a small problem. $N = 2 \cdot 10^5$ flowers stand in a row. Flower $i$ h
 
 Look at which flowers the maximum runs over: those whose *height* is below $h_i$, a prefix of the heights $1, \dots, h_i - 1$. A Fenwick tree indexed by height, holding at each height the best $\text{dp}$ found so far, answers "the largest value among heights below $h_i$" in $O(\log N)$ time, and takes the new value in $O(\log N)$ time. The whole DP costs $N \log N \approx 3.6 \cdot 10^6$ steps.
 
-The lesson has four ideas, each a different shape of the set of earlier states that a transition looks at.
+A second small problem. $N = 2 \cdot 10^5$ stones stand in a row with increasing heights $h_i \le 10^6$. A frog jumps forward from stone $j$ to stone $i$ at the cost $(h_i - h_j)^2 + C$, and we want the least total cost from the first stone to the last. The DP is $\text{dp}_i = \min_{j<i} \bigl(\text{dp}_j + (h_i - h_j)^2 + C\bigr)$, again $N^2 / 2 = 2 \cdot 10^{10}$ steps. No prefix of keys and no window helps here, because every earlier stone is allowed. But expand the square: $\text{dp}_i = h_i^2 + C + \min_{j<i} \bigl(-2 h_j \cdot h_i + (\text{dp}_j + h_j^2)\bigr)$. For a fixed $j$ the part in the brackets is a straight line in the number $x = h_i$, with slope $-2h_j$ and intercept $\text{dp}_j + h_j^2$. The question is "what is the lowest of these lines at the point $h_i$", and the slopes fall while the points rise, which a deque answers in $O(1)$ amortised steps.
+
+The lesson has six ideas, each a different shape of the set of earlier states that a transition looks at, or of the cost.
 - A **prefix of a value order**: the earlier states whose key is below the key of the current one. A Fenwick tree for prefix maxima.
 - A **window of positions** that slides to the right: the last $k$ states, or the states between two ends that only move right. A monotonic deque.
 - A **sum** instead of a maximum, counting the ways: a Fenwick tree of sums, with one tree for each length when the length matters, and a replacement when equal sequences must be counted once.
 - A **range of states changed at once**: a new element adds the same amount to many earlier states. A segment tree with range addition and range maximum.
+- A **lowest line**: after expanding the cost, each earlier state is a straight line in a number that belongs to $i$, and the transition is the minimum of these lines at that number. A deque of lines when the slopes and the points are sorted (the convex hull trick), a Li Chao tree when they are not.
+- A **best split point that only moves right**: layers of a DP that cuts a sequence into $k$ groups, where the best last cut for $i$ never lies left of the best last cut for a smaller $i$. Divide and conquer on the cut point.
 
 ## 2. Prerequisites and scope
 
@@ -44,7 +48,8 @@ The lesson has four ideas, each a different shape of the set of earlier states t
 - How the Fenwick tree and the segment tree work inside, and their other uses (counting inversions, tree descent, many kinds of lazy updates): topics 5.2 and 5.3.
 - The longest increasing subsequence in $O(n \log n)$ with a table of tails and binary search, the longest common subsequence and the edit distance: topic 3.4. The weighted version here needs a tree because the tails trick works only for lengths.
 - The monotonic stack and the sliding window maximum on a fixed array: topic 1.6. Here the window maximum is of values that the DP itself produces.
-- Speeding up a DP by the shape of its cost function (the convex hull trick, divide and conquer, Knuth's optimisation) is a different family and is not in this course.
+- Knuth's optimisation (a faster split-point DP over intervals, topic 3.6 has the plain version), the Aliens trick (a penalty on the number of groups that removes a layer) and offline divide and conquer over time (CDQ) are not in this course. The plain divide and conquer method (split, solve, merge) is topic 3.1; here it is used to find best split points.
+- Convex hulls of point sets and cross products: not in this course for the DP, and met only as a picture here (the lowest line is a lower hull).
 - DP over a tree or a DAG: topics 7.1 and 7.2.
 
 ## 3. Definitions
@@ -55,7 +60,10 @@ The lesson has four ideas, each a different shape of the set of earlier states t
 - A **Fenwick tree** (topic 5.2) over $m$ ranks keeps, for each rank $p$, a value for the block of ranks $(p - \text{lowbit}(p), p]$, where $\text{lowbit}(p)$ is the largest power of 2 that divides $p$. It supports a point update and a prefix query in $O(\log m)$ time. Here it holds the **maximum** (or the sum) of the values stored at the ranks of a block.
 - A **window** is a range of positions $L_i \le j \le i - 1$ of the earlier elements. A **deque** (double-ended queue) allows adding and removing at both ends in constant time.
 - A **segment tree** (topic 5.3) stores the maximum of every block of a halving decomposition of the positions; **lazy** means that an addition to a whole block is stored at the block and applied later.
-- In the code, `deque<int> window;` is a deque with `front()`, `back()`, `pop_front()`, `pop_back()` and `push_back(x)`; `array<long long, 3>` is three numbers in a row, and `auto [l, a] = pair` takes a pair apart; `[](auto& x, auto& y) { return x[1] < y[1]; }` is a short function written in place, here the order of the sort; `LLONG_MIN / 2` is a very small number that survives an addition.
+- A **line** is the function $\ell(x) = m x + c$ with a **slope** $m$ and an **intercept** $c$. Two lines with different slopes cross at exactly one point, $x = (c_2 - c_1) / (m_1 - m_2)$. The **lower envelope** of a set of lines is the function $x \mapsto \min_\ell \ell(x)$. Example: $y = 2x$ and $y = -x + 10$ cross at $x = 10/3$; the envelope is $2x$ left of it and $-x + 10$ right of it.
+- The **convex hull trick** is the use of the lower envelope for a DP whose transition is $\text{dp}_i = \min_j (m_j x_i + c_j)$. A **Li Chao tree** is a segment tree over the possible points $x$ in which every node keeps one line; it takes lines in any order and answers the lowest line at any point.
+- A **layer** of a DP is one value of the parameter $t$ (the number of groups) in $\text{dp}_t$; layer $t$ is computed from layer $t - 1$. The **cost** $\text{cost}(j, i)$ is the price of one group that holds the elements $j + 1, \dots, i$. It satisfies the **quadrangle inequality** (QI) if $\text{cost}(a, c) + \text{cost}(b, d) \le \text{cost}(a, d) + \text{cost}(b, c)$ whenever $a \le b < c \le d$: two groups that overlap in the middle (the left side of the inequality) are never dearer than the group that covers both plus the group in the middle. The smallest $j$ that gives $\text{dp}_t[i]$ is called $\text{opt}(i)$.
+- In the code, `deque<int> window;` is a deque with `front()`, `back()`, `pop_front()`, `pop_back()` and `push_back(x)`; `array<long long, 3>` is three numbers in a row, and `auto [l, a] = pair` takes a pair apart; `[](auto& x, auto& y) { return x[1] < y[1]; }` is a short function written in place, here the order of the sort; `LLONG_MIN / 2` is a very small number that survives an addition; `__int128` is a 128-bit integer, used where a product of two 64-bit numbers can exceed $9.2 \cdot 10^{18}$; `template <class Cost>` lets a function take any function as an argument, here the cost of a group.
 
 ## 4. Theory and proofs
 
@@ -167,13 +175,105 @@ Sometimes a new element does not look at the earlier states but changes many of 
 
 The first line lists the states $f_0..f_3$ of the tiny instance and the second the answer. The check compares the answer with the enumeration of all bit strings on 3000 random cases of up to 9 positions and 9 intervals with rewards from $-5$ to $10$.
 
+### 4.5 The lowest line: the convex hull trick
+
+**Theorem 7.3.5 (lines with falling slopes and rising points).** Let $\ell_j(x) = m_j x + c_j$ for $j = 0, 1, 2, \dots$ be lines with strictly decreasing slopes $m_0 > m_1 > \cdots$, and let $x_1 \le x_2 \le \cdots$ be points that do not fall. Let $\text{dp}_i = \min_{j<i} \ell_j(x_i)$, where the line $\ell_i$ is known right after $\text{dp}_i$ (its intercept may be $\text{dp}_i$ plus a term). Keep a deque of lines, and for each $i$ do: (1) while the deque has two lines and the second is not higher than the first at $x_i$, remove the first; (2) $\text{dp}_i$ is the value of the first line at $x_i$; (3) build $\ell_i$, and while the deque has two lines $p, q$ at its back such that $q$ is *useless* against $p$ and $\ell_i$, remove $q$; (4) append $\ell_i$. A line $q$ is useless for $p, q, r$ in this order when
+$$(c_q - c_p)(m_q - m_r) \ge (c_r - c_q)(m_p - m_q).$$
+Then every $\text{dp}_i$ is correct and the whole computation takes $O(n)$ time.
+
+:::tip[In plain words]
+Among the lines, the lowest one at a point changes as the point moves right, always to a line with a smaller slope. A line that is lowest nowhere can be thrown away at once, and because the points only move right, a line that has just lost to the next line can be thrown away for good. What stays in the deque is the lower envelope, read from the front.
+:::
+
+**A tiny instance.** Line $j$ has the slope $b_j$ and the intercept $\text{dp}_j$, with $x_i = a_i$: $a = 1, 2, 3, 4$, $b = 4, 3, 1, 0$, $\text{dp}_0 = 0$. The first line is $4x$. For $i = 1$ ($x = 2$) only that line exists: $\text{dp}_1 = 8$; the new line is $3x + 8$. For $i = 2$ ($x = 3$): the first line gives $12$ and the second $17$, so nothing is removed from the front, and $\text{dp}_2 = 12$. The new line is $x + 12$. Is $3x + 8$ useless between $4x$ and $x + 12$? $(8 - 0)(3 - 1) = 16 \ge (12 - 8)(4 - 3) = 4$: yes, remove it. For $i = 3$ ($x = 4$): the first line gives $16$ and the second ($x + 12$) also $16$; the second is not higher, so the first is removed and $\text{dp}_3 = 16$. The values are $0, 8, 12, 16$. For the three lines $3x$, $2x + 5$, $x + 6$ the middle one is useless ($5 \cdot 1 \ge 1 \cdot 1$): at $x = 1$ the three values are $3, 7, 7$, at $x = 4$ they are $12, 13, 10$, and the middle is never the lowest.
+
+**Proof.**
+1. *Two lines cross once.* For $p < q$ the slope $m_p$ is larger, so $\ell_q - \ell_p$ is a falling straight line, and $\ell_q < \ell_p$ exactly when $x > x_{pq}$, where $x_{pq} = (c_q - c_p)/(m_p - m_q)$.
+2. *The useless rule.* Let $p < q < r$ and $x_{pq} \ge x_{qr}$. For $x \le x_{pq}$ we have $\ell_p \le \ell_q$. For $x > x_{pq}$ we have $x > x_{qr}$, so $\ell_r < \ell_q$. So $\ell_q$ is never strictly the lowest of the three. Multiplying $x_{pq} \ge x_{qr}$ by the positive number $(m_p - m_q)(m_q - m_r)$ gives the inequality of the statement.
+3. *Back removals lose nothing.* By step 2 a removed line $q$ is, at every point, not lower than $\ell_p$ or $\ell_r$; by induction over the removals the lowest line at any later point is still in the deque or is a line that was removed from the front (step 6).
+4. *The deque is an envelope.* Step (3) of the algorithm makes every three neighbouring lines in the deque satisfy $x_{pq} < x_{qr}$ (the loop removes the violator and then checks the new neighbours). So along the deque the crossing points of neighbours increase.
+5. *Values along the deque fall, then rise.* For neighbours $k, k+1$ in the deque, line $k + 1$ is strictly lower at $x$ exactly when $x > x_{k,k+1}$ (step 1). The crossing points increase (step 4), so the neighbour pairs where the next line is strictly lower form a prefix of the deque.
+6. *The front removal.* If the second line is not higher than the first at $x_i$, then at every later point $x_{i'} \ge x_i$ it is not higher either, because its slope is smaller. So the first line is never strictly the lowest again and may go.
+7. *The front is the lowest.* After step (1) of the algorithm the second line is strictly higher than the first at $x_i$, so the first pair does not fall; by step 5 no pair falls, the values do not fall along the deque, and the first line is the lowest. With steps 3 and 6, this is the minimum over all lines $\ell_0, \dots, \ell_{i-1}$.
+8. *Time.* Each line is appended once and removed at most once, so the loops do $O(n)$ steps in total. $\square$
+
+:::note[This proof needs]
+1. **Slopes strictly in order.** The lines must arrive with strictly falling slopes for a minimum (strictly rising for a maximum, or negate the lines). For equal slopes keep only the one with the lower intercept. If the slopes arrive in any order, use the Li Chao tree of the next theorem.
+2. **Points in order.** The points $x_i$ must not fall. If they come in any order but the lines are already all there, binary search on the deque (the crossing points are sorted, step 4) answers each point in $O(\log n)$; with both unsorted, use the Li Chao tree.
+3. **Products can overflow.** The two sides of the useless test multiply a difference of intercepts by a difference of slopes. With intercepts near $10^{18}$ that does not fit in 64 bits; the code multiplies as `__int128`, or the test can be done by comparing the crossing points as fractions.
+4. **Each line is known in time.** The line $\ell_j$ is built from $\text{dp}_j$, and $\text{dp}_j$ must be final before the query of any $i > j$. This holds for a DP that goes left to right over one table, and fails when the table is filled in another order (use a tree of lines or offline divide and conquer).
+:::
+
+<TheoremCode unit="7.3/thm-5" />
+
+The first two lines are the two tables of $\text{dp}$ (the first is the tiny instance, with the tie at the end); the third line is the test for the three lines above. The check compares the deque with the $O(n^2)$ definition on 3000 random inputs of up to 8 numbers.
+
+### 4.6 Lines in any order: the Li Chao tree
+
+**Theorem 7.3.6 (Li Chao tree).** Let the points be the integers $0, \dots, s - 1$. Build a binary tree over them in which the root covers all points and a node covering $[lo, hi]$ has the children $[lo, mid]$ and $[mid + 1, hi]$ with $mid = \lfloor (lo + hi)/2 \rfloor$. Each node keeps one line (at first none). To add a line $L$, start at the root and repeat: (1) let $S$ be the line of the node; if $L(mid) < S(mid)$, swap $L$ and $S$ (so the node keeps the line that is lower at $mid$); (2) if the node is a leaf, stop; (3) if $L(lo) < S(lo)$ continue in the left child; otherwise if $L(hi) < S(hi)$ continue in the right child; otherwise stop. To answer a point $x$, walk from the root to the leaf $x$ and take the smallest value of the lines on the way. Then the answer is the lowest of all added lines at $x$, and each add and each query takes $O(\log s)$ steps.
+
+:::tip[In plain words]
+Every node keeps the line that is lower in the middle of its range. The other line can be lower on one side of the middle only, so it is handed down to that one child, and the other side never needs it. A point meets one line at each level on its way down, and the lowest line of all is among them.
+:::
+
+**A tiny instance.** Points $0..7$. Add $2x$: the root takes it. Add $-x + 10$: at the middle $mid = 3$ the values are $6$ (kept) and $7$, so the root keeps $2x$ and the new line is handed on; it is not lower at $lo = 0$ ($10$ against $0$) but it is lower at $hi = 7$ ($3$ against $14$), so it goes to the right child $[4, 7]$ and stays there. Query $3$: only the root line, $6$. Query $5$: the root line gives $10$, the right child's line gives $5$; the answer is $5$. Two parallel lines $x$ and $x - 2$: the root keeps $x - 2$, and $x$ is lower on neither end, so it is dropped; the query $4$ gives $2$.
+
+**Proof.**
+1. *Two lines cross at most once.* The difference of two lines is a straight line, so if $D$ is not lower than $W$ at $mid$, then the set of points where $D$ is strictly lower is empty or lies on one side of $mid$ and contains the end of the range on that side.
+2. *The claim.* After any adds, for every point $x$ and every added line $L$, some line on the path from the root to the leaf $x$ is not higher than $L$ at $x$. We show that each add keeps the claim.
+3. *One level.* At a node, after step (1) of the add, the node holds $W$, the line that is lower at $mid$, and $D$ is the other one. At every point of the node's range where $W \le D$, $W$ is on every path through the node, so $W$ covers $D$ there.
+4. *The handed-down line.* The points of the range where $D < W$ are, by step 1, on the left of $mid$ (and then $lo$ is one of them) or on the right (and then $hi$ is one). The tests in step (3) of the add find which, and $D$ goes to the child that covers all of those points. If there is none, nothing is lost by stopping.
+5. *Induction.* The child receives $D$ with the same claim to keep; the add ends at a leaf or at a stop, so after the add every added line, including the swapped ones, is covered by lines on the paths, which proves the claim.
+6. *The query.* The lines on the path to $x$ are added lines, so their minimum is not below the lowest line; by step 2 it is not above it either. The answer is exact.
+7. *Cost.* An add goes down one child per step and a query follows one path, so both use at most $\lfloor \log_2 s \rfloor + 1$ nodes. $\square$
+
+:::note[This proof needs]
+1. **Straight lines.** The proof uses that two functions cross at most once. For other families (parabolas) the tree is wrong unless the pair crosses at most once on the range.
+2. **A known range of points.** The points are the integers $0..s-1$. If the queries are known in advance, replace the points by their ranks in the sorted list of the queries and evaluate each line at the true value of its point.
+3. **Adds only.** A line cannot be removed. A removal needs a segment tree over time that adds each line to the nodes of its lifetime (topic 5.3 ideas), which is not in this course.
+4. **Size of the numbers.** An empty node holds a very large intercept and slope $0$; the largest value $m x + c$ and the empty value must both fit in 64 bits.
+:::
+
+<TheoremCode unit="7.3/thm-6" />
+
+The first two lines are the first instance, the third the parallel lines. The check adds up to 8 random lines on the points $0..15$ and compares every point after every add with the minimum over all added lines, 3000 times.
+
+### 4.7 The best split point only moves right: divide and conquer on the layer
+
+**Theorem 7.3.7 (monotone best split).** Let $\text{cost}(j, i)$, $0 \le j < i \le n$, satisfy the quadrangle inequality, let $f_0, \dots, f_{n-1}$ be any numbers, and let $g_i = \min_{j<i} (f_j + \text{cost}(j, i))$ for $i = 1, \dots, n$ with $\text{opt}(i)$ the smallest $j$ that reaches it. Then (a) $\text{opt}(i) \le \text{opt}(i')$ for $i < i'$, and (b) the following procedure computes every $g_i$ with $O(n \log n)$ evaluations of the cost. $\text{fill}(lo, hi, optLo, optHi)$: if $lo > hi$ stop; let $mid = \lfloor (lo + hi)/2 \rfloor$; scan $j$ from $optLo$ to $\min(mid - 1, optHi)$ and take the smallest $j$ that gives the least $f_j + \text{cost}(j, mid)$, call it $b$; set $g_{mid}$; then call $\text{fill}(lo, mid - 1, optLo, b)$ and $\text{fill}(mid + 1, hi, b, optHi)$. The first call has $optLo$ equal to the smallest allowed $j$ and $optHi = n - 1$. For a DP with $k$ layers the total is $O(k n \log n)$.
+
+:::tip[In plain words]
+If the best place to cut for a longer prefix is never to the left of the best place for a shorter one, then find the best cut for the middle prefix by trying all the allowed places, and the shorter prefixes only need to look to the left of it and the longer ones to the right. Each level of the recursion scans each place about once, and there are $\log n$ levels.
+:::
+
+**A tiny instance.** The numbers $1, 2, 3, 4, 5$ have the prefix sums $0, 1, 3, 6, 10, 15$; cut into two groups with the cost $\text{cost}(j, i) = (P_i - P_j)^2$ and $f_j = P_j^2$ (the first group is the first $j$ numbers). For $i = 2, 3, 4, 5$ the best $j$ is $1, 2, 3, 3$: for $i = 4$ the three choices give $1 + 81 = 82$, $9 + 49 = 58$ and $36 + 16 = 52$, so $j = 3$; for $i = 5$ they give $197$, $153$, $117$, $125$ and $j = 3$. The $j$ never falls. The least total cost is $g_5 = 117$. For the numbers $0, 0, 0$ everything ties: the smallest best $j$ is $1$ for both $i = 2$ and $i = 3$ and the cost is $0$.
+
+**Proof.**
+1. *Monotone best.* Suppose $i < i'$ and $p = \text{opt}(i') < q = \text{opt}(i)$. Then $p < q < i < i'$. Since $p < q$ and $q$ is the *smallest* best for $i$, $p$ is not best for $i$: $f_p + \text{cost}(p, i) > f_q + \text{cost}(q, i)$. Since $p$ is the best for $i'$: $f_q + \text{cost}(q, i') \ge f_p + \text{cost}(p, i')$.
+2. *Contradiction.* Adding the two lines and cancelling $f_p + f_q$ gives $\text{cost}(p, i) + \text{cost}(q, i') > \text{cost}(q, i) + \text{cost}(p, i')$. The quadrangle inequality with $a = p$, $b = q$, $c = i$, $d = i'$ says the opposite, so (a) holds.
+3. *The promise.* We show by induction on the recursion that a call $\text{fill}(lo, hi, optLo, optHi)$ is only made when $optLo \le \text{opt}(i) \le optHi$ for every $i \in [lo, hi]$. The first call keeps it because every $j$ is in the allowed range.
+4. *The middle is right.* By the promise the range scanned contains $\text{opt}(mid)$, and the allowed $j$ are $< mid$, so the scan, which keeps the first (smallest) best, finds $b = \text{opt}(mid)$.
+5. *The halves keep the promise.* For $i < mid$, step 1 gives $\text{opt}(i) \le b$; for $i > mid$, $\text{opt}(i) \ge b$. With the old bounds, the two calls keep the promise.
+6. *Cost.* In one level of the recursion the scanned ranges of different calls overlap only at their ends, so one level scans at most $n + c$ values of $j$, where $c \le n$ is the number of calls on the level. There are at most $\lceil \log_2 n \rceil + 1$ levels. So there are $O(n \log n)$ cost evaluations; $k$ layers cost $k$ times that. $\square$
+
+:::note[This proof needs]
+1. **The quadrangle inequality** (or at least that the smallest best $j$ never falls). It has to be shown for the cost at hand. For the square of a sum with non-negative numbers: with $x = P_b - P_a$, $y = P_c - P_b$, $z = P_d - P_c$ (all $\ge 0$) the left side minus the right side of the inequality is $(x+y)^2 + (y+z)^2 - (x+y+z)^2 - y^2 = -2xz \le 0$. For the distance to the median of a group of houses on a line it is also true, with a longer argument.
+2. **A cost that is quick to evaluate.** Each evaluation must be $O(1)$, as from prefix sums; if it takes $O(n)$ the gain is lost.
+3. **The smallest best $j$.** Ties are broken the same way on every call (here by the strict `<`), so that step 1 holds.
+4. **Every layer gets the allowed range.** Layer $t$ uses $j \ge t - 1$ (the earlier layer must have at least $t - 1$ groups), so the first call is $\text{fill}(t, n, t - 1, n - 1)$.
+:::
+
+<TheoremCode unit="7.3/thm-7" />
+
+The first two lines are the best $j$ and the cost of the tiny instance, the last two the all-zero array. The check compares the layer with the $O(n^2)$ definition on 3000 random arrays of up to 9 numbers and checks that the smallest best $j$ never falls.
+
 ## 5. Recognition Cards
 
 <Cards topic="7.3" />
 
 ## 6. Templates
 
-Seven templates. Each shows only the function that matters; the program around it reads the input. The Fenwick tree for maxima (Theorem 7.3.1), the Fenwick tree for sums modulo $10^9 + 7$ (Theorem 7.3.3), the range-add range-maximum tree (Theorem 7.3.4) and the computation of ranks stay in the file outside the shown code, as the theorems show the first three. Each template is checked against a brute force on thousands of random small inputs (up to 8 or 9 elements, small values so that there are many equal keys, negative weights where they make sense) and on fixed tests with one element, equal values and an impossible case.
+Eleven templates. Each shows only the function that matters; the program around it reads the input. The Fenwick tree for maxima (Theorem 7.3.1), the Fenwick tree for sums modulo $10^9 + 7$ (Theorem 7.3.3), the range-add range-maximum tree (Theorem 7.3.4) and the computation of ranks stay in the file outside the shown code, as the theorems show the first three. The last four templates (the deque of lines, the Li Chao tree, and the two divide and conquer layers) are complete in the shown code. Each template is checked against a brute force on thousands of random small inputs (up to 8 or 9 elements, small values so that there are many equal keys, negative weights where they make sense) and on fixed tests with one element, equal values and an impossible case.
 
 ### The heaviest strictly increasing subsequence (Theorem 7.3.1)
 
@@ -230,6 +330,38 @@ Seven templates. Each shows only the function that matters; the program around i
 **How it works.** In the round `c`, `f[j]` is `prev[j]` (the best value of the first `j` numbers in `c - 1` parts) plus the number of different values in `a[j..i)`. When `i` grows by one, the new number `a[i-1]` adds one to every start `j` at or after its previous occurrence (the part `(j, i]` now has it as a new value): a range addition on `last..i-1`. The value for `i` is then the largest `f[j]` over `j < i`. After the round `prev` is replaced by the new values. The cost is $O(k n \log n)$.
 
 **Alternative formulation.** The divide-and-conquer optimisation (not in this course) or the table `dp[c][i]` with the loop over `j` and a distinct count in $O(1)$ per step by moving a window: $O(k n^2)$, enough for $n \le 3000$.
+
+### The frog with squared jumps (Theorem 7.3.5)
+
+<CodeSnippet unit="7.3/hull-frog" />
+
+**How it works.** `dp[i]` is the least cost to reach stone $i$. Expanding $(h_i - h_j)^2$ turns the part that depends on $j$ into the line with slope $-2 h_j$ and intercept $\text{dp}_j + h_j^2$, evaluated at $x = h_i$; the term $h_i^2 + C$ is added after the lowest line is read. `hull` is the deque. The first loop removes lines from the front while the next line is not higher at $h_i$; the second removes from the back lines that the new line and their neighbour make useless (the comparison multiplies as `__int128`, because an intercept difference near $10^{18}$ times a slope difference of about $10^6$ does not fit in 64 bits). The new line goes to the back; its slope is the lowest so far because the heights increase.
+
+**Alternative formulation.** A Li Chao tree (next template) takes the same lines in any order and gives the same answer in $O(n \log h_{\max})$; it is the safe choice when the slopes or the points are not sorted.
+
+### Lines in any order and queries at any point (Theorem 7.3.6)
+
+<CodeSnippet unit="7.3/li-chao" />
+
+**How it works.** The tree has `size` points and four times as many nodes. A node's line is stored as `slope[node]` and `icpt[node]`; an empty node holds slope $0$ and intercept `INF`, so any real line beats it. `add` goes down from the root: the line that is lower at the middle stays in the node (the swap), the loser is handed to the left child if it is lower at `lo`, to the right child if it is lower at `hi`, and dropped otherwise. `query` walks to the leaf of `x` and keeps the smallest value on the way. For a maximum, flip the two comparisons in `add` and use `max` in `query`.
+
+**Alternative formulation.** When all lines come before all queries, sort the lines by slope and use the deque with a binary search, $O(\log n)$ per query and no tree.
+
+### Cutting into $k$ groups, the square of the sum (Theorem 7.3.7)
+
+<CodeSnippet unit="7.3/split-layers" />
+
+**How it works.** `P` holds prefix sums, so the cost of the group $j + 1..i$ is `(P[i] - P[j])^2`, one subtraction and one product. `prev` is the table of the layer before and `cur` the new one; `fillLayer` is the recursion of the theorem, scanning only the range `[optLo, optHi]` for the middle `i`. The first layer is one group, `P[i] * P[i]`; layer $t$ starts at `i = t` and `j = t - 1`, because $t - 1$ groups need at least $t - 1$ elements.
+
+**Alternative formulation.** This cost can also be written as a line in $P_i$ (slope $-2P_j$, intercept $\text{dp}_j + P_j^2$), so the deque of Theorem 7.3.5 solves each layer in $O(n)$, and the total is $O(kn)$. The divide and conquer is the one that works when the cost cannot be split into a product.
+
+### Mailboxes: a cost from the median (Theorem 7.3.7)
+
+<CodeSnippet unit="7.3/split-medians" />
+
+**How it works.** The cost of the houses $j + 1..i$ is the sum of the distances to the median house $m$: the houses left of $m$ contribute $x_m \cdot (m - j) - (S_m - S_j)$ and the houses right of $m$ contribute $(S_i - S_m) - x_m \cdot (i - m)$, with `S` the prefix sums of the positions. This cost is not a product of a number of $j$ and a number of $i$, so no line applies, but its best split point still only moves right, so the same `fillLayer` is used with this `cost`.
+
+**Alternative formulation.** For small $n$ (a few hundred) the plain $O(n^2 k)$ DP is enough; the divide and conquer is for $n$ in the thousands.
 
 ## 7. Bug catalogue
 
@@ -360,6 +492,92 @@ Input: `1 0 1`, then the number `1`.
 Wrong output `-1`, correct output `1`. The start $j = 0$ (the piece begins at the first number) joins the deque only when $i - l = 0$, and with `>` it never does, so no cut that begins at the very first number exists (Theorem 7.3.2, with the start $0$ among the allowed ones).
 
 **Fix:** `if (i - l >= 0)`.
+
+### Bug: the deque never drops its front
+
+Template: the frog with squared jumps.
+
+```cpp
+// the loop  while (hull.size() >= 2 && at(hull[1], h[i]) <= at(hull[0], h[i])) hull.pop_front();  is missing
+```
+
+Input: `5 30`, then the heights `1 4 6 8 14`.
+
+Wrong output `199`, correct output `145`. The first line stays in front for ever, so every query reads the line of the first stone, although for larger heights a later line is lower (Theorem 7.3.5, steps 6 and 7).
+
+**Fix:** remove the front while the second line is not higher at the current point.
+
+### Bug: the loser line is thrown away
+
+Template: lines in any order.
+
+```cpp
+if (m * mid + c < at(node, mid)) { slope[node] = m; icpt[node] = c; return; }   // instead of the swap and the walk down
+```
+
+Input: `3`, then `1 1 0`, `1 -1 10`, `2 0` (add $y = x$, add $y = -x + 10$, ask the point $0$).
+
+Wrong output `10`, correct output `0`. The second line is lower at the middle and takes the node, but the first line, which is lower at the left end, is dropped instead of being handed to the left child (Theorem 7.3.6, steps 3 and 4).
+
+**Fix:** swap, then hand the loser down.
+
+### Bug: the loser is only handed to the left
+
+Template: lines in any order.
+
+```cpp
+// the branch  else if (m * hi + c < at(node, hi)) { node = 2 * node + 1; lo = mid + 1; }  is missing
+```
+
+Input: `3`, then `1 1 0`, `1 3 -80`, `2 63`.
+
+Wrong output `109`, correct output `63`. At the middle $31$ the second line is lower ($13$ against $31$) and takes the node; the first line is lower only on the right ($63$ against $109$ at the point $63$), but with no right branch it is dropped (Theorem 7.3.6, step 1: the loser can be lower on either side).
+
+**Fix:** test both ends, and hand the loser to the side where it wins.
+
+### Bug: the search range of the left half is cut by one
+
+Template: cutting into $k$ groups.
+
+```cpp
+fillLayer(lo, mid - 1, optLo, bestJ - 1, prev, cur, P);          // instead of bestJ
+```
+
+Input: `5 5`, then `1 1 1 1 1`.
+
+Wrong output `2305843009213693951` (the "no value" sentinel), correct output `5`. When every group must hold one number, the only allowed $j$ for $i$ is $i - 1$, so the best $j$ of the middle is also the only $j$ of the left half, and `bestJ - 1` leaves it an empty range (Theorem 7.3.7, step 5: both bounds are inclusive).
+
+**Fix:** pass `bestJ` to both halves.
+
+### Bug: the right half starts one too far
+
+Template: cutting into $k$ groups.
+
+```cpp
+fillLayer(mid + 1, hi, bestJ + 1, optHi, prev, cur, P);          // instead of bestJ
+```
+
+Input: `3 2`, then `3 5 1`.
+
+Wrong output `65`, correct output `45`. For the larger $i$ the best $j$ can be equal to the best $j$ of the middle (ties are allowed to repeat), here the cut after the first number for both $i = 2$ and $i = 3$; starting at `bestJ + 1` misses it (Theorem 7.3.7, step 1 says $\text{opt}(i) \le \text{opt}(i')$, not strictly less).
+
+**Fix:** pass `bestJ`, not `bestJ + 1`.
+
+### Bug: the median is one house off
+
+Template: mailboxes.
+
+```cpp
+int m = (j + i) / 2;                                              // instead of (j + 1 + i) / 2
+```
+
+Input: `5 5`, then the positions `0 4 8 15 16`.
+
+Wrong output `16`, correct output `0`. For the one-house group $j + 1 = i$ the formula points at the house $j$, which is not in the group, so the cost is not zero. The median of the houses $j + 1..i$ is the house $(j + 1 + i)/2$ rounded down.
+
+**Fix:** use `(j + 1 + i) / 2`.
+
+A bug that only the largest inputs show: the test for a useless line multiplies an intercept difference by a slope difference, and with `long long` instead of `__int128` it can overflow on inputs with intercepts near $10^{18}$. The random small inputs of the stress test do not reach that size, so it is not shown here with a failing input; keep the wide multiplication.
 
 ## 8. Worked examples
 

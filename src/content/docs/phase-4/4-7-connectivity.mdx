@@ -1,5 +1,5 @@
 ---
-title: "4.7 Strongly connected components, bridges, articulation points"
+title: "4.7 Strongly connected components, bridges, articulation points, 2-SAT"
 sidebar:
   order: 32
 topic: "4.7"
@@ -27,6 +27,8 @@ The tools of [topic 4.1](../4-1-graph-traversal/) and [topic 4.2](../4-2-graph-s
 
 The key idea is one depth-first walk with two numbers per vertex. The **entry time** $\text{tin}[v]$ is the moment the walk first reaches $v$. In an undirected graph, every edge that the walk does not use joins a vertex to one of its ancestors in the walk tree. So the part of the graph below a vertex $v$ is tied to the rest only by the tree edge above $v$ and by such upward edges; the **low-link value** $\text{low}[v]$ is the smallest entry time that the part below $v$ can reach with one upward edge. If it is not smaller than $\text{tin}[v]$, the part below is cut off from the rest when the edge above is removed: that edge is a **bridge**. The same numbers, with a slightly different comparison, find the **articulation points**. For one-way streets, a second walk on the reversed streets, started in the order the first walk finished, peels off the groups one by one (Kosaraju's method): each group is a **strongly connected component**, and the groups themselves form a graph with no cycle, which can be reasoned about like the DAGs of [topic 4.2](../4-2-graph-structure/).
 
+The same groups answer a question of another kind. A pizza has $m$ toppings, and every guest gives two wishes ("topping 3 in", "topping 5 out") of which at least one must come true. Trying all pizzas is $2^m$ choices. But a guest's two wishes say one thing: if the first fails the second must hold, and if the second fails the first must hold. Draw these as arrows between the statements, and a pizza exists exactly when no statement can reach its own opposite while the opposite reaches it. This is **2-SAT** (two-satisfiability), the last theorem of this lesson.
+
 ## 2. Prerequisites and scope
 
 ### What you need
@@ -35,16 +37,16 @@ The key idea is one depth-first walk with two numbers per vertex. The **entry ti
 
 ### What this topic does not cover
 
-- Using strongly connected components to solve satisfiability problems with clauses of two variables (2-SAT): the component machinery is here, the reduction is a Phase 7 idea.
 - Dynamic programming over the condensation or over the tree of blocks (block-cut tree): Phase 7.
 - Biconnected components in the vertex sense, and the block-cut tree built from them: only the articulation points are found here.
-- Network flow, matchings and Eulerian circuits: not part of this course.
+- Network flow and matchings: not part of this course. Eulerian circuits are covered in topic 4.2.
 - Finding the groups with a data structure that supports edge deletions in the middle of a computation: not part of this course.
 
 ## 3. Definitions
 
 - In a directed graph, vertices $u$ and $v$ are **strongly connected** if $v$ is reachable from $u$ and $u$ is reachable from $v$ ([topic 4.1](../4-1-graph-traversal/)). A **strongly connected component** (SCC) is a largest set of vertices that are pairwise strongly connected. Every vertex lies in exactly one component (Theorem 4.7.5), and a vertex with no cycle through it is a component of its own.
 - The **condensation** of a directed graph has one vertex per strongly connected component and an edge from component $A$ to component $B$ when some edge of the graph goes from a vertex of $A$ to a vertex of $B$. A **source** component has no edge entering it and a **sink** component has no edge leaving it.
+- In a **2-SAT** problem there are $n$ items $x_1, \dots, x_n$ that are each true or false. A **literal** is a statement about one item: $x_i$ ("true") or $\lnot x_i$ ("false"). A **clause** $(a \lor b)$ is a rule that at least one of the two literals $a$, $b$ is true; the two may be the same literal, which forces it. The **implication graph** has one vertex per literal and, for every clause $(a \lor b)$, the two arrows $\lnot a \to b$ and $\lnot b \to a$ (Theorem 4.7.7).
 - In an undirected graph, a **bridge** is an edge whose removal increases the number of connected components. An **articulation point** (cut vertex) is a vertex whose removal, with its edges, increases the number of connected components.
 - A **2-edge-connected component** is a set of vertices that stay connected to each other after the removal of any single edge; the components are the pieces left when all bridges are removed.
 - In a depth-first walk of an undirected graph the **entry time** $\text{tin}[v]$ numbers the vertices $0, 1, 2, \dots$ in the order the walk first reaches them (as in the Euler tour of [topic 4.5](../4-5-trees/)). The edges by which the walk reaches new vertices are the **tree edges**; every other edge is a **back edge**. The **low-link value** $\text{low}[v]$ is the smallest $\text{tin}$ of a vertex that can be reached from the subtree of $v$ using tree edges downward and at most one back edge (Theorem 4.7.1).
@@ -227,13 +229,49 @@ Squeeze every group into one dot: what is left is a map of one-way roads without
 
 The examples are a diamond ($1\!\to\!2$, $1\!\to\!3$, $2\!\to\!4$, $3\!\to\!4$, where vertex 1 reaches everything and vertex 2 does not) and a pair $1 \leftrightarrow 2$ with an edge $3\!\to\!1$ (vertex 3 reaches everything, vertex 1 does not). The check compares the answer for every start vertex of thirty thousand random graphs with the reachability table.
 
+### 4.7 Two options per item (2-SAT)
+
+**Theorem 4.7.7 (two options per item).** Let $x_1, \dots, x_n$ be items that are true or false, and let there be $m$ clauses $(a \lor b)$ of two literals each. Build the implication graph and number its strongly connected components as in Theorem 4.7.5, so that every arrow goes from a smaller or equal number to a larger or equal number. Write $c(\ell)$ for the number of the component of a literal $\ell$. Then:
+
+(a) all clauses can be made true at the same time exactly when no item has $c(x_i) = c(\lnot x_i)$;
+
+(b) in that case, setting $x_i$ true exactly when $c(x_i) > c(\lnot x_i)$ makes every clause true;
+
+(c) the graph has $2n$ vertices and $2m$ arrows, so everything is found in $O(n + m)$ time.
+
+:::tip[In plain words]
+Write every rule "at least one of these two statements is true" as two arrows, "if the first is false then the second is true" and "if the second is false then the first is true". If a statement and its opposite can reach each other through the arrows, no choice works. If none can, take for each item the statement whose group comes later in the order of Theorem 4.7.5, and every rule holds.
+:::
+
+**A tiny instance.** The clauses $(x_1 \lor x_2)$ and $(\lnot x_1 \lor x_2)$ give the arrows $\lnot x_1 \to x_2$, $\lnot x_2 \to x_1$, $x_1 \to x_2$ and $\lnot x_2 \to \lnot x_1$. The groups are all single vertices, numbered in the order of Theorem 4.7.5: $\lnot x_2$ gets 1, $\lnot x_1$ gets 2, $x_1$ gets 3 and $x_2$ gets 4 (every arrow goes up). Then $c(x_1) = 3 > c(\lnot x_1) = 2$ and $c(x_2) = 4 > c(\lnot x_2) = 1$, so both items are true, and both clauses hold. With the four clauses $(x_1 \lor x_2)$, $(x_1 \lor \lnot x_2)$, $(\lnot x_1 \lor x_2)$, $(\lnot x_1 \lor \lnot x_2)$ the path $x_1 \to x_2 \to \lnot x_1$ and the path $\lnot x_1 \to \lnot x_2 \to x_1$ put $x_1$ and $\lnot x_1$ in one group: no choice exists.
+
+**Proof.**
+1. *Arrows come in pairs.* The clause $(a \lor b)$ gives $\lnot a \to b$ and $\lnot b \to a$, which is the arrow $u \to v$ together with the arrow $\lnot v \to \lnot u$ for $u = \lnot a$, $v = b$. So if a path leads from $u$ to $v$, a path leads from $\lnot v$ to $\lnot u$ (take the path backwards and negate every literal).
+2. *Truth moves along arrows.* Fix a choice that makes all clauses true. If an arrow $u \to v$ comes from the clause $(\lnot u \lor v)$ and $u$ is true, then $\lnot u$ is false, so $v$ is true. Repeating this: if $u$ is true and $u$ reaches $v$, then $v$ is true.
+3. *Claim (a), "only if".* Suppose $x$ and $\lnot x$ are in one group, so each reaches the other. If $x$ were true, $\lnot x$ would be true by step 2, which is absurd. If $x$ were false, $\lnot x$ would be true, so $x$ would be true by step 2, absurd again. No choice exists.
+4. *Claim (b), the choice is well defined.* Now suppose no item has $c(x_i) = c(\lnot x_i)$. Then the two numbers differ, so "$x_i$ is true exactly when $c(x_i) > c(\lnot x_i)$" gives every item one value. A literal $\ell$ is true under this choice exactly when $c(\ell) > c(\lnot \ell)$, for both kinds of literal.
+5. Suppose a clause $(a \lor b)$ is false: both $a$ and $b$ are false. By step 4, $c(a) < c(\lnot a)$ and $c(b) < c(\lnot b)$.
+6. The clause gives the arrows $\lnot a \to b$ and $\lnot b \to a$, and every arrow goes from a smaller or equal number to a larger or equal one: $c(\lnot a) \le c(b)$ and $c(\lnot b) \le c(a)$.
+7. Put these together: $c(a) < c(\lnot a) \le c(b) < c(\lnot b) \le c(a)$, so $c(a) < c(a)$, which is absurd. Hence no clause is false, and the choice of step 4 makes all of them true. This shows (a), the "if" direction, and (b).
+8. *Claim (c).* The graph has $2n$ vertices and $2m$ arrows; Theorem 4.7.5 finds the groups in $O(n + m)$ time, and the rule of step 4 is one comparison per item. $\square$
+
+:::note[This proof needs]
+1. Every rule involves exactly two literals (a forced item is the clause $(a \lor a)$). A rule with three literals gives no pair of arrows, so step 6 has nothing to use.
+2. The numbers are those of Theorem 4.7.5, in which every arrow goes from a smaller to a larger or equal number. A numbering that is not in this order breaks step 6.
+3. Both arrows of every clause are in the graph. With only one of them, step 1 and step 6 fail, and clauses can be broken.
+:::
+
+<TheoremCode unit="4.7/thm-7" />
+
+The first example is the four clauses of the tiny instance, where no choice exists. The second has the forced item ($(x_1 \lor x_1)$) and follows the arrows $x_1 \to x_2 \to \lnot x_3$, so the only choice is $x_1 = 1$, $x_2 = 1$, $x_3 = 0$ (steps 2 and 7). The third is the other clause pair of the tiny instance, with the numbers $c(x_1) = 3 > 2$ and $c(x_2) = 4 > 1$ of step 4. The check tries every set of clauses over two items and a large random sample over three to six items against all $2^n$ choices, and tests that every choice it returns makes all clauses true.
+
 ## 5. Recognition Cards
 
 <Cards topic="4.7" />
 
 ## 6. Templates
 
-Eight templates. Each shows only the function that matters; the program around it reads the input. The functions use `LowLink` of Theorem 4.7.1 (for two-way graphs), `edgeComponents` and `orientEdges` of Theorem 4.7.4, and `stronglyConnected` of Theorem 4.7.5 (for one-way graphs), and say so. Vertices are numbered from 1 and roads from 0. Each template is checked against a brute force with a different method (closing every road, removing every town, trying all sets of start towns or all directions of the roads, and the table of who reaches whom) on thousands of random small inputs, including parallel roads, towns without roads and a single town.
+Ten templates. Each shows only the function that matters; the program around it reads the input. The functions use `LowLink` of Theorem 4.7.1 (for two-way graphs), `edgeComponents` and `orientEdges` of Theorem 4.7.4, `stronglyConnected` of Theorem 4.7.5 (for one-way graphs) and `solveTwoSat` of Theorem 4.7.7 (for rules on pairs), and say so. Vertices are numbered from 1 and roads from 0. Each template is checked against a brute force with a different method (closing every road, removing every town, trying all sets of start towns or all directions of the roads, trying all $2^n$ choices of the items, and the table of who reaches whom) on thousands of random small inputs, including parallel roads, towns without roads and a single town.
 
 ### Kingdoms (Theorem 4.7.5)
 
@@ -298,6 +336,22 @@ Eight templates. Each shows only the function that matters; the program around i
 **How it works.** All streets can be made one-way, keeping every town reachable from every other, exactly when no street is a bridge (the connected graph case of Theorem 4.7.4 (c)). The program around the function builds the orientation (`orientEdges`) and checks it with two searches from town 1, one on the streets and one on the reversed streets, so a wrong answer would be noticed.
 
 **Alternative formulation.** If the graph may fall into several pieces, apply the test to every piece. If only some streets may be directed, the others need two-way travel and the question changes.
+
+### Giant pizza (Theorem 4.7.7)
+
+<CodeSnippet unit="4.7/giant-pizza" />
+
+**How it works.** A wish "topping $x$ is good" is the literal $+x$ and "topping $x$ is bad" is the literal $-x$. A guest's two wishes are one clause $(a \lor b)$, so the list of guests is exactly the list of clauses that `solveTwoSat` takes. The answer string has one symbol per topping, taken from the assignment. The program around the function checks the pizza against every guest, so a wrong assignment would be noticed.
+
+**Alternative formulation.** To print the number of toppings that the pizza must contain, nothing short of trying choices works (Section 5, the second negative example): the assignment is a valid pizza, not the smallest one.
+
+### Distinct picks (Theorem 4.7.7)
+
+<CodeSnippet unit="4.7/distinct-picks" />
+
+**How it works.** Item $i$ takes $a_i$ (the literal $+i$) or $b_i$ (the literal $-i$). For every number we list the literals that take it, and at most one of them may be true. Writing a clause for every pair of the list costs $k^2$ clauses for $k$ takers. The chain needs three: the extra variable $q_j$ means "one of the first $j$ takers is true". If $t_j$ is true then $q_j$ is true; $q_{j-1}$ implies $q_j$; and $q_{j-1}$ implies that $t_j$ is false. Two true takers $t_j$ and $t_k$ with $j < k$ would give $q_j$, then $q_{k-1}$ along the chain, and then $t_k$ false: a contradiction. If at most one taker is true, set every $q_j$ to "one of the first $j$ takers is true" and all three kinds of clause hold. Every item adds two takers, so there are $n + 2n$ variables and at most $6n$ clauses. An item with $a_i = b_i$ lists both $+i$ and $-i$ for the same number, which is fine: exactly one of them is true, and every other taker of that number must then be false.
+
+**Alternative formulation.** For the groups of a prime factor, as in the stretch problem of the ladder, the list of each prime is built from the factorisation of the shown values, and the chain is the same.
 
 ## 7. Bug catalogue
 
@@ -414,6 +468,77 @@ Input: `3 2`, then the lines `1 2` and `1 3`.
 Wrong output `2`, correct output `1`. One guide at stop 1 reaches both other stops. The wrong code marks the group that a line *leaves*, so it counts the groups with no line leaving them (sinks, here 2 and 3). The guides are needed for the groups that no line *enters* (Theorem 4.7.6).
 
 **Fix:** mark `comp[to]`, the group at the end of the line.
+
+### Bug: the later group is false
+
+Template: giant pizza (Theorem 4.7.7).
+
+```cpp
+value[x] = comp[x] < comp[n + x];       // instead of comp[x] > comp[n + x]
+```
+
+Input: `1 1`, then the guest `+ 1 + 1` (one guest who wants topping 1 twice).
+
+Wrong output `-`, correct output `+`. With the clause $(x_1 \lor x_1)$ the arrow is $\lnot x_1 \to x_1$, so $\lnot x_1$ gets the smaller number and $x_1$ the larger. The wrong test sets the item true when its group comes **earlier**, so the topping is left out and the guest gets nothing. The program around the function notices and stops (Theorem 4.7.7, step 4: a literal is true when its number is the larger).
+
+**Fix:** use `>`.
+
+### Bug: one arrow per clause
+
+Template: giant pizza.
+
+```cpp
+adj[node(-a)].push_back(node(b));       // and the line adj[node(-b)].push_back(node(a)); is missing
+```
+
+Input: `1 2`, then the guest `- 2 - 1`.
+
+Wrong pizza `++`, correct pizza `+-`. The guest wants topping 2 out or topping 1 out. With only the arrow $x_2 \to \lnot x_1$ the graph has no arrow leaving $x_1$, so nothing stops both toppings from being included, and the guest gets neither wish. The clause needs both arrows, $x_2 \to \lnot x_1$ and $x_1 \to \lnot x_2$ (Theorem 4.7.7, step 1).
+
+**Fix:** add the second arrow.
+
+### Bug: the clause as an arrow from $a$ to $b$
+
+Template: giant pizza.
+
+```cpp
+adj[node(a)].push_back(node(b));        // instead of adj[node(-a)].push_back(node(b))
+adj[node(b)].push_back(node(a));        // instead of adj[node(-b)].push_back(node(a))
+```
+
+Input: `1 1`, then the guest `- 1 + 1` (a guest who wants topping 1 out or in: always satisfied).
+
+Wrong output `IMPOSSIBLE`, correct output `+`. The wrong code draws arrows $\lnot x_1 \to x_1$ and $x_1 \to \lnot x_1$, so the two literals share a group. The clause says "if $a$ is false then $b$ is true", so the arrow starts at the opposite of $a$ (Theorem 4.7.7, step 1).
+
+**Fix:** start the arrows at `node(-a)` and `node(-b)`.
+
+### Bug: the chain forgets to stop the next taker
+
+Template: distinct picks.
+
+```cpp
+if (before) clauses.push_back({-before, -lit});  // this line is missing
+```
+
+Input: `2`, then `2 2` and `2 2`.
+
+Wrong output `YES`, correct output `NO`. Both items must take the number 2. The chain sets the variables $q_j$ but without "$q_{j-1}$ implies that taker $j$ is false" nothing is forbidden, so two takers are allowed to be true. The third kind of clause is the one that makes the chain an "at most one" (proof in Section 6).
+
+**Fix:** add the clause $(\lnot q_{j-1} \lor \lnot t_j)$.
+
+### Bug: the chain is cut
+
+Template: distinct picks.
+
+```cpp
+if (before) clauses.push_back({-before, q});     // this line is missing
+```
+
+Input: `3`, then `2 3`, `3 2` and `3 2`.
+
+Wrong output `YES`, correct output `NO`. Three items each have the numbers 2 and 3, so by counting two of them must take the same number. Without "$q_{j-1}$ implies $q_j$", the information that an earlier taker is true does not travel past the next taker, so a taker that is two places later is not stopped. The chain has to carry the truth of $q$ from every position to the next.
+
+**Fix:** add the clause $(\lnot q_{j-1} \lor q_j)$.
 
 ## 8. Worked examples
 

@@ -14,6 +14,13 @@ int main() {
     for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) brute += a[i] & a[j];
     for (int b = 0; b < 3; b++) { long long c = 0; for (int x : a) c += x >> b & 1; method += (1LL << b) * c * (c - 1) / 2; }
     cout << "P2 brute=" << brute << " method=" << method << '\n';
+    // P3: the sum of the XOR of every subarray of (1, 2, 3). Method: per-bit pair counts over the prefix values 0, 1, 3, 0.
+    brute = method = 0;
+    for (int l = 0; l < n; l++) { int x = 0; for (int r = l; r < n; r++) x ^= a[r], brute += x; }
+    vector<int> pre = {0};
+    for (int x : a) pre.push_back(pre.back() ^ x);
+    for (int b = 0; b < 3; b++) { long long c = 0; for (int x : pre) c += x >> b & 1; method += (1LL << b) * c * (n + 1 - c); }
+    cout << "P3 brute=" << brute << " method=" << method << '\n';
     // N1: the sum of a_i + a_j over pairs (addition mixes bits), answered with the per-bit XOR formula.
     brute = 0;
     for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) brute += a[i] + a[j];

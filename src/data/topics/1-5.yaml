@@ -54,6 +54,13 @@ theorems:
     a state at least as good as any other choice's state, the greedy result is at least as good as any
     other result.
   code: 1.5/thm-5
+- id: 1.5.6
+  title: One scan of the sorted events gives the answer on every stretch
+  plain_words: Between two neighbouring event positions nothing changes, so a running total over the sorted
+    starts and ends gives the answer for every stretch at once. When one interval ends exactly where another
+    starts, the order of the two events decides whether they overlap, ends first when the end is not
+    included and starts first when it is.
+  code: 1.5/thm-6
 cards:
 - id: exchange-order
   name: Order by an exchange argument
@@ -463,6 +470,114 @@ cards:
       card: prefix-extremes
     flipping_difference: One trade is a pair of days (prefix minimum), not a sequence of choices.
   complexity: $O(n \log n)$.
+- id: events-scanned
+  name: Events sorted and scanned
+  decisive_property: The quantity at a point is a sum, over the intervals that contain it, of a term that
+    belongs to the interval alone (1, or a weight), so a start adds the term and an end takes it back.
+    Then one scan over the sorted starts and ends with a running total gives the answer on every stretch
+    between neighbouring ends, and the order at equal positions follows the statement's rule for touching ends.
+  from_theorem: 1.5.6
+  how_to_test: Write the quantity at a point $x$ as a sum over the intervals that contain $x$. Check that
+    each term belongs to one interval, then check whether an end is part of its interval, and put the
+    events in the matching order.
+  constraint_shapes:
+  - 'Times up to $10^9$ and $n = 10^5$ visits: marking every second is up to $10^{14}$ steps (and an array
+    of $10^9$ cells), while $2n = 2 \cdot 10^5$ events sort in about $3.5 \cdot 10^6$ steps and the scan is
+    $2 \cdot 10^5$.'
+  - 'The answer for every $k = 1, \dots, n$: one scan per $k$ is $n \cdot 2n = 2 \cdot 10^{10}$ steps, while one
+    scan with a bucket per counter value and a suffix sum fills every $k$ at once.'
+  weak_signals:
+  - form: Asks for the length (or the number of points) covered by at least $k$ intervals, for one $k$ or
+      for every $k$
+    shape: $n$ up to $10^5$ intervals with ends up to $10^9$, so the answer is a length and no array over
+      the line fits
+  - form: Asks for the busiest moment, the largest total weight of the intervals that are active together,
+      or the first year that reaches the maximum
+    shape: Logs or bookings with a start and an end up to $10^9$, or years in a small range, $n$ up to $10^5$
+  - form: Asks, for each of many query points, how many intervals contain it
+    shape: $n$ and $q$ up to $5 \cdot 10^4$, points up to $10^9$, and the answers printed in the order
+      of the queries (offline)
+  kill_signals:
+  - 'The quantity is not a sum of terms that an end can take back: the largest height among active
+    buildings cannot be subtracted. With the height 5 on [1, 4) and the height 3 on [2, 6), a running
+    maximum stays 5 after the first building ends at 4, but the true maximum is 3. The active heights need
+    a multiset, not a counter.'
+  - 'The question is which intervals to keep, not how many overlap: for [1, 5), [2, 3), [4, 6), [7, 8)
+    the busiest point has 2 intervals, but 3 intervals can be kept without overlap, so the answer comes
+    from the earliest-end rule.'
+  in_action:
+    statement: A shop logs $n$ visits. Visit $i$ covers the whole seconds $l_i$ to $r_i$, both included. For
+      every $k = 1, \dots, n$ print how many seconds have at least $k$ visitors.
+    constraints: $n \le 10^5$, $0 \le l_i \le r_i \le 10^9$.
+    budget: Marking every second of every visit is up to $10^{14}$ marks, and an array over the seconds has
+      $10^9$ cells. One sort of $2n = 2 \cdot 10^5$ events is about $3.5 \cdot 10^6$ steps, and the scan is
+      $2 \cdot 10^5$.
+    candidates:
+    - tool: Mark every second of every visit in an array
+      verdict: rejected
+      because: Up to $10^{14}$ marks and $10^9$ cells.
+    - tool: Prefix sums over the seconds (topic 1.2)
+      verdict: rejected
+      because: The array over the seconds is $10^9$ cells; only the $2n$ event positions matter.
+    - tool: Sort the starts and ends and scan with a counter (this topic)
+      verdict: chosen
+      because: The count changes only at the events, so each gap has one count.
+    property_check: A visit $[l, r]$ of whole seconds is the half-open $[l, r + 1)$. The number of visitors at
+      second $x$ is the number of starts at most $x$ minus the number of ends at most $x$, which is the
+      counter after the events up to $x$, so it is constant between neighbouring events (Theorem 1.5.6).
+      Each term is 1 for one visit, so a start can add it and an end can take it back.
+    decision: Events $(l, +1)$ and $(r + 1, -1)$, sorted with ends first at equal positions. Scan, add each
+      gap to the bucket of the counter, and take suffix sums for "at least $k$".
+  examples:
+    positive:
+    - inline:
+        input: The seconds covered by at least 2 of the closed visits [1, 4], [2, 6], [6, 7]
+        answer: '4'
+        why: 'Written as [1, 5), [2, 7), [6, 8) the counter is 1, 2, 1, 2, 1, 0 after the events at 1, 2, 5,
+          6, 7, 8. The stretches with counter 2 are 2 to 5 (3 seconds) and 6 to 7 (1 second), so 4 seconds
+          have at least 2 visitors (Theorem 1.5.6, part 1).'
+    - inline:
+        input: The largest total weight at one second for the closed visits [1, 3] with weight 5, [3, 5]
+          with weight 2, [4, 6] with weight 10
+        answer: '12'
+        why: 'The events add 5 at 1, 2 at 3 and 10 at 4, and take back 5 at 4 (the end of [1, 3]), 2 at
+          6 and 10 at 7. With the end first at position 4 the running weight is 5, 7, 2, 12, 10, 0, so the
+          largest is 12 at the seconds 4 and 5 (Theorem 1.5.6, part 3).'
+    negative:
+    - inline:
+        input: The most closed visits [1, 3] and [3, 5] that share a second, with the end event placed at $r$
+          instead of $r + 1$
+        answer: '2'
+        method_gives: '1'
+        why: Both visits contain the second 3. With the end of the first at position 3 (before the start
+          at 3) the counter never reaches 2. For whole seconds the end belongs at $r + 1$.
+      correct_tool:
+        topic: '1.5'
+        card: events-scanned
+    - inline:
+        input: The most pairwise disjoint intervals among [1, 5), [2, 3), [4, 6), [7, 8), answered with the
+          largest overlap
+        answer: '3'
+        method_gives: '2'
+        why: The scan measures overlap at each moment. The question keeps as many intervals as possible,
+          which the earliest-end rule answers, taking [2, 3), [4, 6) and [7, 8).
+      correct_tool:
+        topic: '1.5'
+        card: interval-selection
+  lookalikes:
+  - description: Choose the most intervals that do not overlap, or the fewest points that hit every interval
+    tool:
+      topic: '1.5'
+      card: interval-selection
+    flipping_difference: The scan measures overlap at every moment; choosing which intervals to keep needs
+      the earliest-end rule.
+  - description: Only the busiest moment of the intervals, with no lengths, weights or queries
+    tool:
+      topic: '1.1'
+      card: event-sweep
+    flipping_difference: It is the same scan with a plain counter; this card adds lengths bucketed by
+      count (at least $k$), weights, and queries placed in the same sorted list.
+  complexity: $O(n \log n)$ for sorting the $2n$ events, then $O(n)$ for the scan.
 problems:
 - id: cses-1630
   role: ladder
@@ -548,31 +663,10 @@ problems:
   - Does a box's value depend on which other boxes are taken? What is the only limit?
   - 'No, and the limit is a count of boxes: take boxes with the most units first (Theorem 1.5.3).'
   - Sort the types by units per box in decreasing order and take as many boxes of each as still fit.
-- id: ac-abc229_c
-  role: ladder
-  card: extreme-first
-  rung: 2
-  twist: The goods are cheese in grams, which can be split; the limit is in grams.
-  summary: $N \le 3 \cdot 10^5$ cheeses, B_i grams each with deliciousness A_i per gram; the tastiest pizza with
-    at most W grams.
-  hints:
-  - Each gram is an independent unit worth A_i. Which grams should be used?
-  - The most delicious grams first (Theorem 1.5.3, part 2).
-  - Sort by A_i in decreasing order and take min(B_i, grams left) of each; long long.
-- id: ac-abc121_c
-  role: ladder
-  card: extreme-first
-  rung: 3
-  twist: Minimise a cost instead of maximising a value; the cheapest units come first.
-  summary: Buy exactly $M \le 10^5$ cans; store i sells up to B_i cans at A_i yen each; the least total.
-  hints:
-  - 'Mirror the previous rung: which cans should be bought first?'
-  - The cheapest cans, store by store in increasing price.
-  - 'Sort stores by price and buy the cheapest cans first (Theorem 1.5.3): min(B_i, cans still needed) at each; `long long`.'
 - id: ac-abc187_d
   role: ladder
   card: extreme-first
-  rung: 4
+  rung: 2
   twist: The value of choosing a town has to be computed first; it is 2A_i + B_i.
   summary: $N \le 2 \cdot 10^5$ towns with A_i voters for Aoki and B_i for Takahashi; a speech in a town turns all
     its voters to Takahashi; the fewest speeches to win.
@@ -584,7 +678,7 @@ problems:
 - id: cf-158B
   role: ladder
   card: extreme-first
-  rung: 5
+  rung: 3
   twist: The items are groups that must stay together, so the greedy works on counts of each group size.
   summary: Groups of 1 to 4 children must each ride in one taxi of capacity 4; the fewest taxis.
   hints:
@@ -631,6 +725,64 @@ problems:
     Among them, the length decides.
   - Sort chocolates and boxes by width descending; insert the boxes wide enough into a multiset of lengths;
     give each chocolate the shortest sufficient length (`s.lower_bound`, Theorem 1.5.4), or answer No.
+- id: lc-maximum-population-year
+  role: ladder
+  card: events-scanned
+  rung: 1
+  twist: Base case of the card
+  summary: Birth and death years of up to 100 people are given, and a person counts in the years from the birth
+    year up to but not including the death year. Find the earliest year with the most people alive.
+  hints:
+  - A person is alive in the half-open range from birth to death. How does the number of people alive change
+    from one year to the next?
+  - It changes only at births (+1) and at deaths (−1). Sort these events; at the same year a death must come
+    before a birth (Theorem 1.5.6).
+  - Scan the events with a counter and keep the first year at which the counter reaches a new maximum
+    (strictly greater than before).
+- id: ac-abc207_c
+  role: ladder
+  card: events-scanned
+  rung: 2
+  twist: Each interval is closed, half-open or open by a type, so the touching case has to be decided separately
+    for each of the four types.
+  summary: $N \le 2000$ intervals are given, each closed, half-open on either side, or open; count the pairs of
+    intervals that share a point on the real line.
+  hints:
+  - Do $[1, 3]$ and $[3, 5]$ share a point? Do $[1, 3)$ and $[3, 5]$? What decides it?
+  - 'Whether an end is included decides it. Multiply every coordinate by 2 and move an open end one step
+    inward ($l + 1$ for an open left end, $r - 1$ for an open right end): all four types become closed
+    integer intervals.'
+  - Two closed intervals share a point exactly when $\max(l_i, l_j) \le \min(r_i, r_j)$. With $N \le 2000$ a
+    double loop over all pairs is enough; the care is in the ends (the same rule as ends first or starts
+    first in the scan).
+- id: lc-number-of-flowers-in-full-bloom
+  role: ladder
+  card: events-scanned
+  rung: 3
+  twist: The query times go into the same sorted list as the starts and ends, and the answers return to the
+    queries in their original order.
+  summary: Flowers bloom on closed ranges $[start, end]$ with times up to $10^9$ ($5 \cdot 10^4$ flowers). For each of
+    $5 \cdot 10^4$ arrival times, count the flowers in bloom.
+  hints:
+  - A flower is in bloom at $t$ when $start \le t \le end$. How does the number in bloom change over time?
+  - It goes up at each start and down at $end + 1$. Put the queries in the same list, in an order that
+    follows the closed ends at equal times (Theorem 1.5.6).
+  - 'Sort the events (ends at $end + 1$ first, then starts, then queries at one time) and scan with a counter.
+    At a query write the counter into that query''s answer, using the query''s index.'
+- id: lc-the-skyline-problem
+  role: ladder
+  card: events-scanned
+  rung: 4
+  twist: The running state is the largest height among the active buildings, which a counter cannot take back,
+    so the active heights live in a multiset.
+  summary: Buildings $[left, right)$ with a height are given ($10^4$ of them, coordinates up to $2^{31} - 1$). Print the
+    points where the outline of all buildings changes height.
+  hints:
+  - The outline can only change at a left or a right edge. What must you know between two neighbouring edges?
+  - The highest active building. A start adds a height and an end removes one, so keep the active heights in a
+    multiset (topic 0.6); a counter is not enough, because a maximum cannot be subtracted.
+  - After all events at one $x$, read the largest height (0 if the set is empty), and print the point $(x, height)$ only
+    when the height differs from the last printed one.
 - id: lc-lemonade-change
   role: ladder
   card: left-to-right-forced
@@ -726,6 +878,18 @@ problems:
 - id: ac-abc321_d
   role: drill
   summary: The sum over all $N \cdot M$ pairs of a main dish and a side dish of min(price sum, P) ($N, M \le 2 \cdot 10^5$).
+- id: lc-points-that-intersect-with-cars
+  role: drill
+  summary: Cars parked on the number line are given as closed ranges $[start, end]$ with positions up to 100;
+    count the integer points covered by at least one car.
+- id: lc-number-of-intersecting-interval-pairs-ii
+  role: lookalike
+  summary: Count the pairs among $n \le 10^5$ closed intervals with ends up to $10^9$ that share at least one
+    point, touching ends included.
+- id: lc-number-of-intersecting-interval-pairs-i
+  role: lookalike
+  summary: Count the pairs among at most 100 closed intervals with ends up to 100 that share at least one
+    point, touching ends included.
 - id: lc-non-overlapping-intervals
   role: lookalike
   summary: The fewest intervals to remove from a list ($n \le 10^5$) so that the rest do not overlap.
@@ -896,6 +1060,15 @@ drill:
   property: Sort the side dishes; for each main dish A, the sides with A + $B < P$ form a prefix found by
     a bound, summed with prefix sums, and the rest cost P each.
   why_others_fail: All $N \cdot M$ pairs are $4 \cdot 10^{10}$; no greedy choice is involved, only counting in sorted order.
+- problem: lc-points-that-intersect-with-cars
+  answer:
+    topic: '1.2'
+    card: difference-array
+  property: The cars are closed ranges, so add 1 at the start and take 1 back at the end plus one; with
+    positions up to 100 an array over the line has 101 cells, and one pass of prefix sums counts the
+    positive ones.
+  why_others_fail: Sorting events works but is not needed, since the positions are tiny; the only trap is the
+    closed end, which sits at end + 1, the same rule as in the scan.
 lookalike_pairs:
 - a: lc-non-overlapping-intervals
   b: lc-divide-intervals-into-minimum-number-of-groups
@@ -924,6 +1097,22 @@ lookalike_pairs:
   shared_surface: Both ask for the best profit from a list of daily prices.
   flipping_input: 'Prices 7, 1, 5, 3, 6, 4: with any number of trades (A) the profit is $(5 - 1) + (6 -
     3) = 7$; with one trade (B) it is $6 - 1 = 5$.'
+- a: lc-number-of-intersecting-interval-pairs-ii
+  b: lc-number-of-intersecting-interval-pairs-i
+  a_tool:
+    topic: '1.5'
+    card: events-scanned
+  b_tool:
+    topic: '0.5'
+    card: nested-loops
+  flipping_difference: With $10^5$ intervals and ends up to $10^9$ the pairs cannot be tested one by one,
+    so the problem is answered by sorting the events and counting the intervals that ended before each
+    start (starts first, because touching closed intervals overlap). With at most 100 intervals a double
+    loop is enough.
+  shared_surface: Both count the pairs of closed intervals that share at least one point, touching ends
+    included.
+  flipping_input: 'For [1, 3], [3, 5], [6, 8] both versions count 1 pair, but at $n = 10^5$ the double loop
+    needs about $5 \cdot 10^9$ pair tests, while the scan sorts $2 \cdot 10^5$ events.'
 self_test:
 - q: Coins of values 1, 3 and 4 (any number of each). Does "take the largest coin that fits" give the
     fewest coins for the amount 6?
@@ -953,6 +1142,11 @@ self_test:
     badly.
   a: 'When intervals have weights and the total weight counts. [1, 2] with weight 1 and [1, 10] with weight
     100: earliest end first takes [1, 2] and then nothing else fits, for 1 instead of 100.'
+- q: Two visits cover the whole seconds 1 to 3 and 3 to 5. How many seconds are covered by both, and what
+    does a scan print if it puts the end event at $r$ instead of $r + 1$?
+  a: One second, the second 3. With the end of the first visit at position 3, ahead of the start at 3, the
+    counter never reaches 2, and the scan prints 0. For whole seconds the end belongs at $r + 1$, so the
+    ends are at 4 and 6 and the counter is 2 on the stretch from 3 to 4 (Theorem 1.5.6, step 6).
 checkpoint:
   time_limit_minutes: 90
   problems:
@@ -960,6 +1154,20 @@ checkpoint:
   - cf-545C
   - cses-1632
 decision_map:
+- weak_signal: The length or number of points covered by at least $k$ intervals; the largest total weight
+    active together; how many intervals contain each of many query points
+  choose: events-scanned
+  when: The quantity at a point is a sum of terms of the intervals that contain it, so a start adds and an
+    end takes back, with the order at equal positions set by the statement (Theorem 1.5.6).
+  over:
+  - card: event-sweep
+    because: The same scan with a plain counter; this card adds lengths bucketed by count, weights and
+      queries in the sorted list.
+    topic: '1.1'
+  - card: difference-array
+    because: An array over the line works when positions are small; with positions up to $10^9$ only the
+      $2n$ events matter.
+    topic: '1.2'
 - weak_signal: '"In which order should the tasks be done", total waiting time, deadlines and durations'
   choose: exchange-order
   when: Comparing two adjacent items in both orders gives a key, independent of the others (Theorem 1.5.1).

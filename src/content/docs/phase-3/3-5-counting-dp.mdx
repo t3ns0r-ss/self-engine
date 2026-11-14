@@ -38,6 +38,7 @@ The key idea: every walk that reaches a cell arrives either from the cell above 
 - Grids where moves go in all four directions, and shortest paths in grids: these walks can revisit cells, so there is no filling order; they are graph searches (topic 4.1).
 - Counting for lengths up to $10^{18}$ with a fixed small state: matrix exponentiation (topic 7.6).
 - Counting over all subsets of a small set of positions (topic 3.7) and counting numbers up to a huge bound digit by digit (topic 3.8).
+- Markov chains with cycles (a process that can come back to an earlier state after several steps, such as a random walk between two walls): the table has no filling order and a system of equations is needed. It is not part of this course.
 
 ## 3. Definitions
 
@@ -45,6 +46,8 @@ The key idea: every walk that reaches a cell arrives either from the cell above 
 - **Counting modulo $p$** means computing the number of objects, which may be astronomically large, as its remainder modulo a prime $p$ such as $10^9 + 7$ or $998244353$.
 - An **acyclic order** on states is a numbering of the states such that every transition goes from a smaller number to a larger one. Example: in a grid with right and down moves, reading the cells row by row, left to right, is such an order.
 - A **composition** of $n$ is an ordered sum of positive parts equal to $n$; an **integer partition** of $n$ is an unordered one. Example: $3 = 1 + 2 = 2 + 1 = 1 + 1 + 1 = 3$ gives 4 compositions but 3 partitions.
+- A **probability table** has, for each state, the probability of reaching it; an **expected value table** has the expected remaining cost from it. Example: after 2 coins with heads probabilities $\frac12$ and $\frac13$, the probabilities of 0, 1 and 2 heads are $\frac13, \frac12, \frac16$.
+- A **self-loop** is a step from a state back to the same state, such as a die roll that changes nothing. Example: rolling a die until a 6 shows has the state "no 6 yet", and each roll of 1 to 5 returns to it.
 - A **range transition** is a rule $\text{dp}[i][j] = \sum_{k = l}^{r} \text{dp}[i-1][k]$, where the earlier entries summed form a contiguous range of indices.
 
 ## 4. Theory and proofs
@@ -183,9 +186,45 @@ The answer is 5: (2, 1, 0), (2, 0, 1), (1, 1, 1), (1, 0, 2), (0, 1, 2).
 
 
 
-### 4.5 Probabilities
+### 4.5 Probabilities and expected values
 
-When every step is chosen uniformly at random (a knight picks one of its 8 moves), the probability of an outcome after $k$ steps is the number of step sequences that produce it divided by the total number of sequences. So a probability table is the counting table with each transition multiplied by the probability of the step, here $1/8$, computed with doubles or as a fraction modulo $p$ (topic 2.2). Theorems 3.5.1 and 3.5.2 hold with these weights: the proof splits the outcomes by the last step in the same way.
+When every step is chosen at random, the probability of an outcome is a sum over the ways to reach it, each way weighted by the chances of its steps. Theorem 3.5.1 counted objects by their last step; here every step also carries a weight. The same table works, with the sum rule replaced by a weighted sum, in two directions: forward for the probability of reaching a state, and backward for an expected value.
+
+**Theorem 3.5.5 (probabilities and expected values over states).** A process moves among states. From a state $s$ it takes one step to a state $t$ with probability $\pi(s, t)$, where the probabilities out of $s$ add up to 1, and the choice depends only on $s$. Suppose the states have an acyclic order, except that a state may step to itself.
+1. **Forward.** Let $\text{prob}[t]$ be the probability that the process is ever in $t$, starting from a given state with probability 1. Then $\text{prob}[t] = \sum_{s \to t} \text{prob}[s] \cdot \pi(s, t)$ (for $t$ with a self-loop of probability $q$, this sum over the other states is divided by $1 - q$).
+2. **Backward.** Let each step cost $c(s)$ (for the expected number of steps, $c = 1$) and let $E[s]$ be the expected total cost from $s$ until the process stops, with $E = 0$ in a stopping state. Then $E[s] = c(s) + \sum_{t} \pi(s, t) E[t]$ (with a self-loop of probability $q$, $E[s] = \bigl(c(s) + \sum_{t \ne s} \pi(s, t) E[t]\bigr) / (1 - q)$).
+3. Modulo a prime $p$, a weight $a / b$ is the remainder $a \cdot b^{-1}$ (topic 2.2), valid when $b$ is not a multiple of $p$. Time $O(\text{states} \cdot \text{steps per state})$.
+
+:::tip[In plain words]
+When every step is chosen at random depending only on the current state, the probability of being in a state is the sum, over the earlier states, of their probability times the chance of the step. The expected remaining cost from a state is the cost of one step plus the chance-weighted expected costs of the states it leads to, so fill the table backwards.
+:::
+
+**A tiny instance.** Two coins show heads with probabilities $\frac12$ and $\frac13$. The state is the number of heads so far, and the rows are the probabilities after each coin:
+
+| coins used | 0 heads | 1 head | 2 heads |
+|---|---|---|---|
+| 0 | 1 | 0 | 0 |
+| 1 | $\frac12$ | $\frac12$ | 0 |
+| 2 | $\frac13$ | $\frac12$ | $\frac16$ |
+
+(Row 2, 0 heads: $\frac12 \cdot \frac23 = \frac13$; 1 head: $\frac12 \cdot \frac13 + \frac12 \cdot \frac23 = \frac12$.) For the backward direction, roll a fair die and stop at the first 6 or after 2 rolls. With $k$ rolls left, $E[k] = 1 + \frac56 E[k-1]$ and $E[0] = 0$, so $E[1] = 1$ and $E[2] = \frac{11}{6}$.
+
+**Proof.**
+1. Split the ways to be in $t$ by the state $s$ just before the last step. The groups do not overlap and cover everything, as in Theorem 3.5.1.
+2. The probability of being in $s$ and then taking the step to $t$ is $\text{prob}[s] \cdot \pi(s, t)$, because the step depends only on $s$.
+3. Adding over $s$ gives part 1. With a self-loop of probability $q$ at $t$, the probability of $t$ is the sum over the other states plus $q \cdot \text{prob}[t]$, which is solved for $\text{prob}[t]$ by dividing by $1 - q$.
+4. For part 2, condition on the first step. It costs $c(s)$ and leads to $t$ with probability $\pi(s, t)$; after it the expected remaining cost is $E[t]$, whatever happened before, because the step depends only on the state. So $E[s] = c(s) + \sum_t \pi(s, t) E[t]$; the self-loop equation is solved the same way as in step 3.
+5. In the acyclic order, forward fills the states from the start and backward from the end, so every entry on the right is known. Part 3: a remainder of a sum or product is the sum or product of the remainders (topic 2.2), and $1 - q$ is invertible when it is not a multiple of $p$. $\square$
+
+:::note[This proof needs]
+1. The next step depends **only on the state**. Drawing cards without replacement changes the chances after every draw, so the cards left must be part of the state.
+2. The states have an acyclic order, except for steps that return to the same state. A cycle through two or more states needs a system of equations (not part of this course).
+3. The weights out of every state add up to 1 (or the missing weight is a step to a stopping state). With doubles, an error of $10^{-9}$ is fine for tables of $10^7$ entries; the answer modulo $p$ is exact.
+:::
+
+<TheoremCode unit="3.5/thm-5" />
+
+For a game where a player may stop or go on, the backward table has a maximum in place of the weighted sum for the player's choice: $E[k] = \sum_x \pi(x) \max(x, E[k-1])$ stops exactly when the throw beats the expectation of going on.
 
 ## 5. Recognition Cards
 
@@ -193,7 +232,7 @@ When every step is chosen uniformly at random (a knight picks one of its 8 moves
 
 ## 6. Templates
 
-Four functions, one per card: paths in a grid, strings with a limit on equal letters in a row, sums of allowed parts with an "at least one" condition, and shares with lower and upper limits. Each brute force lists the objects one by one (by recursion or as numbers in base $k$) and counts them.
+Five functions, one per card: paths in a grid, strings with a limit on equal letters in a row, sums of allowed parts with an "at least one" condition, shares with lower and upper limits, and a race that gives a probability and an expected value. Each brute force lists the objects one by one (by recursion or as numbers in base $k$) and counts them.
 
 ### Paths in a grid (Theorem 3.5.1)
 
@@ -227,9 +266,17 @@ Four functions, one per card: paths in a grid, strings with a limit on equal let
 
 **Alternative formulation.** Without lower limits ($lo_i = 0$), compare $\text{dp}[i][j]$ with $\text{dp}[i][j - 1]$: their ranges of the previous row, $[j - hi_i, j]$ and $[j - 1 - hi_i, j - 1]$, differ by one entry at each end, so $\text{dp}[i][j] = \text{dp}[i][j-1] + \text{dp}[i-1][j] - \text{dp}[i-1][j - hi_i - 1]$ (the last term only when $j - hi_i - 1 \ge 0$). It is the same idea without a separate prefix array.
 
+### Probability and expected value of a race (Theorem 3.5.5)
+
+<CodeSnippet unit="3.5/race" />
+
+**How it works.** The state $(x, y)$ is the number of round wins that A and B still need. The first round decides everything: A wins it with probability $w$ (the fraction $num / den$ as a remainder) and the state becomes $(x - 1, y)$, otherwise $(x, y - 1)$. So `P[x][y]` is the weighted sum of two entries, and `E[x][y]` is 1 for the round plus the same weighted sum (Theorem 3.5.5). The match is over when one of them needs nothing: `P[0][y] = 1` for $y \ge 1$, and every other border entry is 0. The weights are remainders, so the answers are exact modulo $10^9 + 7$. Time and memory $O(ab)$.
+
+**Alternative formulation.** Forward, from the start: `reach[x][y]` is the probability that the match is ever in state $(x, y)$, and the answer $P$ is the sum of `reach` over the states with $x = 0$. The expected number of rounds is the sum of `reach` over all states where the match is still going, since each such state costs one more round.
+
 ## 7. Bug catalogue
 
-Each bug below was made by changing a template from Section 6. The first five were caught by `scripts/stress.sh`, and the input shown is a short failing input (the shortest among the first 2000 random seeds, or a hand-made one of the same size). The last two only appear once the counts pass the modulus, which small random inputs never reach; they were caught by the large fixed tests, which is why every template has some.
+Each bug below was made by changing a template from Section 6. The first five were caught by `scripts/stress.sh`, and the input shown is a short failing input (the shortest among the first 2000 random seeds, or a hand-made one of the same size). The last two of those seven only appear once the counts pass the modulus, which small random inputs never reach; they were caught by the large fixed tests, which is why every template has some. The three bugs after them (the race) were all caught by `scripts/stress.sh`.
 
 ### Bug: a blocked cell keeps the count from above
 
@@ -334,6 +381,48 @@ Input: `0 38 3 3`, then the parts `1 2 3` (ordered sums of 38 with at least one 
 Wrong output `-16926651`, correct output `983073356`. Both counts are remainders; the remainder of all sums (46319335) happens to be smaller than the remainder of the sums without 3 (63245986), although the true counts are in the opposite order. In C++ `%` of a negative number is negative.
 
 **Fix:** `(A - B + MOD) % MOD` (Theorem 3.5.3, note 2). Any subtraction of remainders needs it, even when the true difference is positive.
+
+### Bug: the weight as an integer division
+
+Template: probability and expected value of a race.
+
+```cpp
+long long w = num / den % MOD;
+```
+
+Input: `2 2 1 2` (A wins each round with probability 1/2).
+
+Wrong output `0 2`, correct output `500000004 500000006` (that is $\frac12$ and $\frac52$). In integer arithmetic $1 / 2$ is 0, so A never wins a round and B takes the match in 2 rounds.
+
+**Fix:** a probability $num / den$ modulo a prime is $num \cdot den^{-1}$ (topic 2.2); never divide before reducing. Test with a weight that is not 0 or 1.
+
+### Bug: the weight of losing as a negative remainder
+
+Template: probability and expected value of a race.
+
+```cpp
+long long lose = (1 - w) % MOD;
+```
+
+Input: `2 2 1 2`.
+
+Wrong output `-500000003 -500000001`, correct output `500000004 500000006`. When $w > 1$ as a remainder, $1 - w$ is negative, and C++ keeps the sign of `%`.
+
+**Fix:** `(1 - w + MOD) % MOD` (Theorem 3.5.3, note 2). The probability that A loses a round is one minus a remainder, which needs the same repair as any difference of remainders.
+
+### Bug: a round counted on one branch only
+
+Template: probability and expected value of a race.
+
+```cpp
+E[x][y] = (w * (E[x - 1][y] + 1) + lose * E[x][y - 1]) % MOD;
+```
+
+Input: `1 1 1 3`.
+
+Wrong output `333333336 333333336`, correct output `333333336 1` (the probability $\frac13$ is right; the expected number of rounds is exactly 1, since one round decides). The cost of the step is added to the branch where A wins the round, and not to the branch where B wins it, so each branch is weighted by its own probability and the cost is added only with probability $w$.
+
+**Fix:** add the cost of the step once, outside the weighted sum, $E[s] = c(s) + \sum_t \pi(s, t) E[t]$ (Theorem 3.5.5, part 2). The weights add up to 1, so adding the cost inside every term is also correct, but adding it to some terms only is not.
 
 ## 8. Worked examples
 

@@ -17,6 +17,9 @@ uses:
   what: 'Modular arithmetic: sums, products and differences modulo a prime'
 - topic: '2.3'
   what: 'Combinatorics: binomial coefficients, used here to check small cases'
+- topic: '2.4'
+  what: 'Expected value: linearity of expectation, compared with a table over states, and the geometric
+    wait'
 - topic: '3.1'
   what: 'Backtracking: search with visited marks'
 - topic: '3.2'
@@ -49,6 +52,13 @@ theorems:
     prefix sums of that row once. Then every entry is a difference of two prefix sums, so a row costs
     its own length instead of its length squared.
   code: 3.5/thm-4
+- id: 3.5.5
+  title: Probabilities and expected values over states
+  plain_words: When every step is chosen at random depending only on the current state, the probability
+    of being in a state is the sum, over the earlier states, of their probability times the chance of
+    the step. The expected remaining cost from a state is the cost of one step plus the chance-weighted
+    expected costs of the states it leads to, so fill the table backwards.
+  code: 3.5/thm-5
 cards:
 - id: grid-paths
   name: Paths in a grid with one-way moves
@@ -362,6 +372,101 @@ cards:
     flipping_difference: A minimum cannot be undone by subtraction, so prefix sums do not apply; the window
       moves right, so a deque of candidates gives each minimum in O(1).
   complexity: O(rows × row length).
+- id: probability-dp
+  name: Probability and expected value over states
+  decisive_property: Each step is chosen at random with a known probability that depends only on the current
+    state, and the states have an acyclic order (a step counter, a shrinking amount, counts that only
+    fall). Then the probability of reaching a state is a weighted sum over the earlier states (forward),
+    and the expected remaining cost is a weighted sum over the later states plus the cost of the step
+    (backward).
+  from_theorem: 3.5.5
+  how_to_test: Write the state and check that the probability of the next step depends on nothing else.
+    Check that all weights out of a state add up to 1, and that the states have an order in which every
+    step goes forward (a step that stays in place is a self-loop, removed by dividing by 1 minus its probability).
+    Decide forward (the probability of each outcome) or backward (an expected value).
+  constraint_shapes:
+  - 'N up to 3000 coins and "the probability of more heads than tails": the outcomes are 2^3000, while
+    the table over (coins used, heads so far) has 3000 · 3000 = 9 · 10^6 entries.'
+  weak_signals:
+  - form: The probability that a random process ends in a given way, or the expected number of steps until
+      it ends
+    shape: a state of two or three small counts, or an amount up to 10^4
+  - form: Print the probability (or the expectation) as a remainder modulo a prime
+    shape: the weights are fractions a / b, replaced by a times the inverse of b (topic 2.2)
+  - form: A player may stop or go on, and plays to maximise the expected score
+    shape: at most 100 turns; the table over the turns left, with a maximum in each state
+  kill_signals:
+  - 'The steps depend on more than the state: drawing two cards without replacement from 2 red and 2 black,
+    both red has probability 1/6, but a table that uses 1/2 for every draw gives 1/4.'
+  - 'The expected value is a sum of single events and no state matters: the expected number of fixed points
+    of a random permutation is 1 by linearity, and a table over arrangements is hopeless.'
+  - 'The process can return to an earlier state through a cycle longer than one step: a table cannot be
+    filled in an order, and a system of equations is needed (not part of this course).'
+  in_action:
+    statement: Coins 1..N are tossed, coin i shows heads with probability p_i. Print the probability that
+      there are more heads than tails.
+    constraints: N ≤ 2999 (odd), p_i with two decimals, absolute error 10^-9.
+    budget: Listing the 2^2999 outcomes is impossible. A table over (coins used, heads so far) has about
+      4.5 · 10^6 entries, each from two earlier ones.
+    candidates:
+    - tool: List every outcome and add up its probability
+      verdict: rejected
+      because: 2^2999 outcomes.
+    - tool: A product of the probabilities of single coins
+      verdict: rejected
+      because: The event depends on how many coins show heads, not on one coin, so one product cannot
+        describe it.
+    - tool: A table over (coins used, heads so far)
+      verdict: chosen
+      because: The next coin only needs to know the number of heads so far, and each entry is a weighted
+        sum of two entries of the previous row.
+    property_check: The state is the number of heads so far, the weights p_i and 1 - p_i add up to 1,
+      and the coin index is an acyclic order (Theorem 3.5.5).
+    decision: prob[h] = prob[h] (1 - p) + prob[h - 1] p for every coin, with one row of doubles; the answer
+      is the sum of prob[h] for h above N/2.
+  examples:
+    positive:
+    - inline:
+        input: 'Three coins with heads probabilities 0.5, 0.4 and 0.1: the probability of at least 2 heads'
+        answer: '0.25'
+        why: The rows are (1), (0.5, 0.5), (0.3, 0.5, 0.2) and (0.27, 0.48, 0.23, 0.02); the last two
+          entries add up to 0.25.
+    - inline:
+        input: The expected number of rolls of a fair die until a 6, stopping after at most 2 rolls
+        answer: '1.833'
+        why: With 1 roll left the expectation is 1, and with 2 left it is 1 + (5/6) · 1 = 11/6, filled
+          backwards from 0 rolls left.
+    negative:
+    - inline:
+        input: The probability that both of 2 cards drawn without replacement from 2 red and 2 black are
+          red, computed with the fixed probability 1/2 per draw
+        answer: '0.1667'
+        method_gives: '0.25'
+        why: The second draw depends on the first, so the state must include the cards left; the direct
+          count is 1 pair out of C(4, 2) = 6.
+      correct_tool:
+        topic: '2.3'
+        card: product-sum-rules
+    - inline:
+        input: The expected number of tosses of a fair coin until the first head, computed by the table
+          with at most 3 tosses
+        answer: '2'
+        method_gives: '1.75'
+        why: The process has no fixed length, so a table cut at 3 tosses misses the tail; the wait for
+          a success with probability 1/2 is 1 / (1/2) = 2.
+      correct_tool:
+        topic: '2.4'
+        card: geometric-wait
+  lookalikes:
+  - description: Independent experiments each fire with its own probability; print the probability that
+      at least one of a chosen group fires
+    tool:
+      topic: '2.3'
+      card: product-sum-rules
+    flipping_difference: If the event is "at least one", it is 1 minus the product of the chances that
+      none fires, with no table. A table is needed when the event depends on how many succeed, or on what
+      happened earlier.
+  complexity: O(steps × states × transitions per state); for the coin table O(N^2) with one row of memory.
 problems:
 - id: cses-1638
   role: worked_example
@@ -384,36 +489,10 @@ problems:
     3.5.1).
   - ways[i][j] = ways[i − 1][j] + ways[i][j − 1] on free cells, 0 on obstacles (the start too, if it is
     blocked); fill row by row.
-- id: lc-triangle
-  role: ladder
-  card: grid-paths
-  rung: 2
-  twist: A minimum instead of a count, on a triangle where each step goes to one of two cells below.
-  summary: The smallest sum of a path from the top of a number triangle (up to 200 rows) to the bottom
-    row, each step going to one of the two adjacent numbers below.
-  hints:
-  - Which cells can a path come from, and is there an order in which to fill them?
-  - Cell j of a row is reached from cells j − 1 and j of the row above; rows go only downwards, so row
-    by row is an acyclic order.
-  - best[j] = row[j] + min of the two cells above (only one at the edges); or fill bottom-up with best[j]
-    = row[j] + min(best[j], best[j + 1]) and read best[0].
-- id: lc-maximal-square
-  role: ladder
-  card: grid-paths
-  rung: 3
-  twist: The value of a cell is the size of the largest square ending there, not a count of paths.
-  summary: The area of the largest square of 1s in a 0/1 matrix (up to 300 × 300).
-  hints:
-  - If a square of side s has its bottom-right corner at (i, j), what squares end at its three neighbours
-    up, left and up-left?
-  - Each of them ends a square of side at least s − 1. Conversely, if all three end squares of side at
-    least t, then (i, j) ends one of side t + 1.
-  - side[i][j] = 1 + min(side[i − 1][j], side[i][j − 1], side[i − 1][j − 1]) on 1-cells, 0 on 0-cells;
-    answer the largest side squared.
 - id: lc-paths-in-matrix-whose-sum-is-divisible-by-k
   role: ladder
   card: grid-paths
-  rung: 4
+  rung: 2
   twist: A remainder is added to the cell as a third index.
   summary: Count the right/down paths through an m × n grid (m·n ≤ 5·10^4, values ≤ 100) whose sum is
     divisible by k ≤ 50, modulo 10^9 + 7.
@@ -427,7 +506,7 @@ problems:
 - id: lc-cherry-pickup-ii
   role: ladder
   card: grid-paths
-  rung: 5
+  rung: 3
   twist: Two walkers move together, one row per step, and the state holds both columns.
   summary: Two robots start in the top corners of a grid (rows, columns ≤ 70) and move one row down per
     step, each to the same or an adjacent column; collect the most cherries, counting a shared cell once.
@@ -440,7 +519,7 @@ problems:
 - id: ac-abc175_e
   role: ladder
   card: grid-paths
-  rung: 6
+  rung: 4
   twist: A small counter (items taken in this row) is added to the cell, and moving down resets it.
   summary: Move right/down through an R × C grid (R, C ≤ 3000) with valued items on some cells; take at
     most 3 items per row. The largest total value.
@@ -512,23 +591,10 @@ problems:
     upward or end here.
   - 'With J = top row joined and S = split: J′ = 2J + S, S′ = J + 4S, from J = S = 1 at height 1; store
     J + S for every height up to 10^6 and answer the queries from the table.'
-- id: lc-number-of-ways-to-stay-in-the-same-place-after-some-steps
-  role: ladder
-  card: sequence-counting
-  rung: 6
-  twist: The state space is huge (array length 10^6) but only a small part can matter.
-  summary: A pointer starts at index 0 of an array of length up to 10^6; each of steps ≤ 500 moves goes
-    left, right or stays, never outside. Count the ways to be at 0 at the end, modulo 10^9 + 7.
-  hints:
-  - Can the pointer use positions far to the right and still return to 0?
-  - 'No: to come back it must spend as many steps returning as going, so positions beyond steps/2 never
-    count.'
-  - Keep ways[p] for p up to min(arrLen − 1, steps/2); each step new[p] = ways[p − 1] + ways[p] + ways[p
-    + 1] (within bounds). O(steps²).
 - id: ac-abc104_d
   role: ladder
   card: sequence-counting
-  rung: 7
+  rung: 6
   twist: Sum a count over all fillings of the "?" at once, with states for "matched A", "matched AB",
     "matched ABC".
   summary: For a string of A, B, C and ? (length ≤ 10^5), add up over all 3^Q ways to replace the ? the
@@ -615,6 +681,65 @@ problems:
     modulo k.'
   - dp[i][k] = Σ dp[j][k − 1] over earlier j with prefix[j] ≡ prefix[i] (mod k); keep acc[k][r] = sum
     of dp[j][k − 1] for each remainder r, updated as i advances. O(N²).
+- id: lc-new-21-game
+  role: ladder
+  card: probability-dp
+  rung: 1
+  twist: Base case of the card, and the transition is a window sum of the row, kept as a running total.
+  summary: Alice draws a number from 1 to maxPts (all equally likely) while she has fewer than k points,
+    and stops at k or more; print the probability that she ends with n or fewer points (k, n, maxPts at
+    most 10^4).
+  hints:
+  - What is the probability of ever having exactly x points, in terms of the probabilities for smaller
+    scores?
+  - She reaches x from x - j after drawing j, which has probability 1/maxPts, but only from a score below
+    k (she stops at k or more). So f[x] is the sum of f[y] over y in [x - maxPts, x - 1] with y < k, divided
+    by maxPts.
+  - 'Keep the window sum as a running total: add f[x] when it is below k, subtract f[x - maxPts]. The
+    answer is the sum of f[x] for k <= x <= n. O(n + maxPts).'
+- id: ac-dp_j
+  role: ladder
+  card: probability-dp
+  rung: 2
+  twist: 'Expected number of steps: the table is filled backwards, and a roll that does nothing is a self-loop.'
+  summary: N <= 300 dishes hold 1, 2 or 3 pieces of sushi; roll an N-sided die, and if the dish has a
+    piece, eat one. Print the expected number of rolls until everything is eaten (relative error 1e-9).
+  hints:
+  - Do you need to know which dishes have how many pieces, or only how many dishes have 1, 2 and 3 pieces?
+  - Only the counts (c1, c2, c3) matter, and E[c1][c2][c3] is the expected number of rolls from there.
+    A roll that hits an empty dish changes nothing, which is a self-loop with probability c0 / N.
+  - E = (N + c1 E[c1-1][c2][c3] + c2 E[c1+1][c2-1][c3] + c3 E[c1][c2+1][c3-1]) / (c1 + c2 + c3), and E[0][0][0]
+    = 0. Fill by the total number of pieces, or memoise.
+- id: ac-abc300_e
+  role: ladder
+  card: probability-dp
+  rung: 3
+  twist: The answer is a remainder, and the roll of 1 is a self-loop removed by dividing by 5/6 (the inverse
+    of 5 modulo the prime).
+  summary: Start with 1 and multiply by a fair die roll until the number is at least N (N <= 10^18); print
+    the probability, modulo 998244353, that it ends exactly at N.
+  hints:
+  - Which N can be reached at all, and what describes the state of the process?
+  - Only N = 2^a 3^b 5^c can be reached. The state is the exponents (a, b, c) still needed; the rolls
+    2, 3, 4, 5, 6 lower them, and a roll that goes too far leads to probability 0.
+  - P(a,b,c) = (1/5) times the sum over the five rolls other than 1 (the roll of 1 repeats the state,
+    so it is divided out), with P(0,0,0) = 1. Use the inverse of 5 modulo the prime and memoise about
+    60^3 / 6 states.
+- id: cf-540D
+  role: ladder
+  card: probability-dp
+  rung: 4
+  twist: Three counts as the state, and meetings of two animals of the same kind do nothing, so the weights
+    are renormalised. †
+  summary: r rocks, s scissors and p papers (each at most 100) live on an island; repeatedly two random
+    individuals meet and the loser of the usual rock-paper-scissors rule dies (same kinds do nothing).
+    Print the probability that each kind is the one that survives.
+  hints:
+  - What describes the island at any time, and which meetings change it?
+  - The numbers of animals of each kind (r, s, p). A meeting of different kinds happens with probability
+    (rs + sp + pr) / C(total, 2); only those change the state.
+  - 'Forward: from (r, s, p), the step to (r, s-1, p) has weight rs / (rs + sp + pr), and similarly for
+    the others. Add the probability of each state where exactly one kind is left. O(r s p).'
 - id: lc-minimum-path-sum
   role: drill
   summary: The smallest sum of a right/down path from the top-left to the bottom-right cell of an m ×
@@ -752,6 +877,25 @@ problems:
   review_set: 3
   summary: A rook on an H × W board (H, W ≤ 10^9) makes K ≤ 10^6 moves, each to another cell of its row
     or column; count the move sequences from one given cell to another, modulo 998244353.
+- id: ac-abc266_e
+  role: drill
+  summary: A die is thrown at most N <= 100 times; after each throw except the last you may stop and take
+    the number shown as your score. Print the largest possible expected score.
+- id: lc-soup-servings
+  role: review
+  card: probability-dp
+  review_set: 3
+  summary: Two soups of n mL each (n up to 10^9) are served in random portions from four operations of
+    100/0, 75/25, 50/50 and 25/75 mL; print the probability that A runs out before B plus half the probability
+    that both run out together.
+- id: ac-dp_i
+  role: lookalike
+  summary: N <= 2999 (odd) coins show heads with given probabilities; print the probability of more heads
+    than tails.
+- id: cf-1461C
+  role: lookalike
+  summary: A permutation is sorted in its first r_i positions with probability p_i by each of m independent
+    experiments; print the probability that the permutation ends up sorted (n, m up to 10^5). †
 drill:
 - problem: lc-minimum-path-sum
   answer:
@@ -843,6 +987,15 @@ drill:
     cells with P[i][j] ≤ k.
   why_others_fail: 'It looks like a table filled from the top-left, but nothing is counted over paths:
     each rectangle is one cell of the prefix-sum table.'
+- problem: ac-abc266_e
+  answer:
+    topic: '3.5'
+    card: probability-dp
+  property: 'The best expected score with k throws left depends only on k: E[1] = 3.5 and E[k] = the average
+    over the six faces x of max(x, E[k - 1]), because after a throw you stop exactly when it beats the
+    expectation of going on.'
+  why_others_fail: Linearity of expectation (2.4) needs a fixed rule, but here the rule (stop or go on)
+    is what is being chosen; a greedy rule such as "stop at 4" is not optimal for every N.
 lookalike_pairs:
 - a: ac-dp_h
   b: ac-dp_y
@@ -875,6 +1028,23 @@ lookalike_pairs:
     1, 1, 2, 3, 5 takes the sum of two earlier entries, answered by prefix sums. B: the cheapest cost
     to reach position 6 with jumps of length 1 to 2 takes the minimum of two earlier entries, which needs
     a deque of candidates.'
+- a: ac-dp_i
+  b: cf-1461C
+  a_tool:
+    topic: '3.5'
+    card: probability-dp
+  b_tool:
+    topic: '2.3'
+    card: product-sum-rules
+  flipping_difference: Both combine independent coins or experiments with given probabilities. In A the
+    event depends on how many coins show heads, so the table tracks the number of heads so far. In B the
+    event is "at least one experiment fires", which is 1 minus the product of the chances that none fires;
+    no count is needed.
+  shared_surface: Both give independent random trials with their own probabilities and ask for the probability
+    of an event.
+  flipping_input: 'A: coins with probabilities 0.5, 0.4, 0.1 and the event "at least 2 heads" gives 0.25
+    from the table (0.27, 0.48, 0.23, 0.02). B: the same three numbers as experiments that each repair
+    the permutation, and the event "at least one fires", gives 1 - 0.5 · 0.6 · 0.9 = 0.73 as one product.'
 self_test:
 - q: Fill the path counts of a 3 × 3 grid whose centre cell is blocked (right and down moves). What is
     the answer, and how does a binomial coefficient confirm it?
@@ -902,6 +1072,12 @@ self_test:
     it stays on the board, and how does the table compute it?
   a: 2 of its 8 moves stay on the board, so 2/8 = 0.25. The table sends 1/8 of the probability of each
     cell to each move that stays on the board and adds up what arrives.
+- q: A fair die is rolled until a 6 shows. Why is E = 1 + (5/6) E true, and what is E? What goes wrong
+    if you fill a table backwards from "0 rolls left"?
+  a: 'After the first roll, with probability 5/6 the process is back in the same state, so E = 1 + (5/6)
+    E and E = 6. A table that starts from "0 rolls left" has no end for this process: it is a self-loop,
+    solved as an equation (divide by 1 - 5/6), or the table is cut at a number of rolls and only gives
+    an approximation.'
 checkpoint:
   time_limit_minutes: 120
   problems:
@@ -960,9 +1136,27 @@ decision_map:
   - card: range-sum
     because: Prefix sums of a fixed array answer range queries; here the array is the DP row being built.
     topic: '1.2'
+- weak_signal: The probability or the expected number of steps of a random process whose next step depends
+    only on a small state
+  choose: probability-dp
+  when: Each step has a known probability depending on the current state only, and the states have an
+    acyclic order, so every entry is a weighted sum of earlier (forward) or later (backward) entries (Theorem
+    3.5.5).
+  over:
+  - card: product-sum-rules
+    because: If the event is built from independent choices that multiply (at least one, none, all), a
+      product or a complement gives it with no table.
+    topic: '2.3'
+  - card: indicator-linearity
+    because: An expected count that is a sum of single events needs one probability per event, not a table
+      over states.
+    topic: '2.4'
 glossary_added:
 - monotone path
 - acyclic order
 - composition
 - integer partition
 - range transition
+- probability table
+- expected value table
+- self-loop

@@ -24,12 +24,12 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 2 | [2.5 Linear Diophantine equations and the Chinese remainder theorem](phase-2/2.5-diophantine-crt.md) | 1 | 0 | 1 | 1 | 5 | 8 | short |
 | 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 5 | 13 | 9 | 6 | 8 | 41 | short |
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 8 | 18 | short |
-| 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 3 | 12 | 6 | 3 | 4 | 28 | complete |
+| 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 3 | 12 | 5 | 2 | 0 | 22 | short |
 | 3 | [3.9 Meet in the middle](phase-3/3.9-meet-in-the-middle.md) | 0 | 0 | 0 | 1 | 9 | 10 | short |
 | 3 | [3.2 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.2-dp-foundations.md) | 4 | 14 | 11 | 5 | 1 | 35 | short |
 | 3 | [3.3 Knapsack family: 0/1, unbounded, bounded](phase-3/3.3-knapsack.md) | 0 | 7 | 8 | 4 | 2 | 21 | short |
-| 3 | [3.4 LIS in O(n log n), LCS, edit distance](phase-3/3.4-sequence-dp.md) | 1 | 7 | 6 | 2 | 4 | 20 | short |
-| 3 | [3.5 Grid and counting DP modulo a prime](phase-3/3.5-counting-dp.md) | 0 | 8 | 9 | 5 | 1 | 23 | short |
+| 3 | [3.4 LIS in O(n log n), LCS, edit distance](phase-3/3.4-sequence-dp.md) | 1 | 7 | 7 | 2 | 4 | 21 | short |
+| 3 | [3.5 Grid and counting DP modulo a prime](phase-3/3.5-counting-dp.md) | 0 | 8 | 12 | 6 | 1 | 27 | short |
 | 3 | [3.6 Interval DP](phase-3/3.6-interval-dp.md) | 0 | 3 | 10 | 4 | 5 | 22 | short |
 | 3 | [3.7 Bitmask DP](phase-3/3.7-bitmask-dp.md) | 0 | 0 | 8 | 9 | 5 | 22 | short |
 | 3 | [3.8 Digit DP](phase-3/3.8-digit-dp.md) | 1 | 1 | 5 | 4 | 8 | 19 | short |

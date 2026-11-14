@@ -48,6 +48,7 @@ The same idea with a sharper check cuts optimisation searches: stop when even an
 - Fractals
 - Self-similar problems: Caracal vs Monster, Christmas burger, Nephren's riddle
 - Branch and bound
+- Divide and conquer (inversions by merging, largest subarray sum, why the split must be even)
 - Recognition cards
 - Check yourself (drill, look-alike pairs, self-test, checkpoint, decision map)
 - Quick revision
@@ -72,6 +73,7 @@ Quick definitions before we start:
 - Search over the states of a graph, visiting each state once. That is topic 4.1 (breadth-first search and depth-first search).
 - Bitmask dynamic programming for choosing an order of $n \le 20$ items. That is topic 3.7.
 - Randomised search, heuristics such as simulated annealing, and constraint solvers. These are not part of this course.
+- Counting inversions with a Fenwick tree instead of merging (topic 5.2), and divide and conquer used to speed up a table of answers (topic 7.3). This page uses only merging.
 
 ### Terms used in this lesson
 
@@ -81,6 +83,9 @@ Quick definitions before we start:
 - **Bound**: a test that rejects a partial solution that cannot be completed to an answer better than the best found so far.
 - **Optimistic estimate**: for a maximisation, a number $U(s)$ for a partial solution $s$ that is at least the value of every complete solution extending $s$. Example: with items of non-negative value, "value so far plus the values of all undecided items" is optimistic. For a minimisation it is the reverse: the estimate is at most the cost of every completion.
 - **Branch and bound**: backtracking for an optimisation problem that prunes with an optimistic estimate.
+- **Divide and conquer**: split the input into two halves, solve each half with the same function, and merge the two answers. Example: count the inversions of an array by counting inside each half and then while merging.
+- **Inversion**: a pair of positions $i < j$ with $a_i > a_j$. Example: $(4, 3, 1, 2)$ has 5 inversions.
+- **Crossing pair**: a pair with one position in the left half and one in the right half of a split. Example: in $(4, 3 \mid 1, 2)$ the pair $(4, 1)$ is a crossing pair.
 
 ## Recursion
 
@@ -186,6 +191,8 @@ Recursion is used in 4 ways.
 *Recursion is used in four ways*
 
 There is no code for Divide and Conquer here (split the problem in half, solve both halves, merge the answers). The other three come below.
+
+(Added later: the section "Divide and conquer", near the end of this note, has its code, a theorem and a recognition card.)
 
 ## Palindrome and tail recursion
 
@@ -2024,6 +2031,78 @@ Common mistake (a symmetry cut that is too strong). Using `load[v] <= load[w]` i
 
 Common mistake (an estimate that is not optimistic). Cutting with `currentMax + job[i] >= best`. Input `3 3` with jobs `8 1 1` gives 9 instead of 8. The estimate assumes the next job lands on the most loaded worker, but it can go to an empty one. After loads $(9, 1, 0)$ set $\text{best} = 9$, the branch with 8 on worker 0 and 1 on worker 1 has estimate $8 + 1 = 9 \ge 9$ and is cut, although its completion has largest load 8. Fix: the estimate must never be worse than some completion. The current largest load is safe, "plus the next job" is not.
 
+## Divide and conquer
+
+Divide and conquer is the first of the four uses of recursion listed near the top of this note, and it is the one that has no code above. Backtracking cuts a problem by choices. Divide and conquer cuts the input itself into two halves. It has three steps: split the input in the middle, solve each half with the same function, and merge the two answers. A part with one element (or none) is the base case and is answered at once.
+
+A small example. Count the inversions of $(4, 3, 1, 2)$, that is, the pairs of positions $i < j$ with $a_i > a_j$. They are $(4, 3)$, $(4, 1)$, $(4, 2)$, $(3, 1)$ and $(3, 2)$, so the answer is 5.
+
+Brute force first. Check every pair. That is $n(n-1)/2$ checks, which is about $2 \cdot 10^{10}$ for $n = 2 \cdot 10^5$, two hundred times the budget of $10^8$ simple operations (topic 0.2).
+
+The better way. Cut the array into a left half and a right half. Every inversion is of one of three kinds: both positions in the left half, both in the right half, or one in each half (a crossing pair). The first two kinds are the same question on a shorter array, so the recursion answers them. For the crossing pairs, only the set of values in each half matters, not their order. So let each call return its part sorted, and merge the two sorted halves with two pointers (topic 1.3). Whenever the merge takes a value from the right half, that value is smaller than every left value still waiting, and each of them forms one crossing inversion with it. So add the number of waiting left values at that moment.
+
+For $(4, 3 \mid 1, 2)$: the left half $(4, 3)$ has 1 inversion inside and the right half $(1, 2)$ has 0. The sorted halves are $(3, 4)$ and $(1, 2)$. The merge takes 1 from the right with 2 values waiting (add 2), then takes 2 from the right with 2 waiting (add 2), then takes 3 and 4. So the crossing pairs are 4, and the total is $1 + 0 + 4 = 5$.
+
+Dry run on $(5, 2, 4, 6, 1, 3)$, which has 9 inversions:
+1. Split into $(5, 2, 4)$ and $(6, 1, 3)$.
+2. $(5, 2, 4)$ splits into $(5)$ and $(2, 4)$. The part $(2, 4)$ has no inversion. Merging $(5)$ with $(2, 4)$ takes 2 with 1 waiting (add 1) and 4 with 1 waiting (add 1), then 5. So this half has 2 inversions and comes back sorted as $(2, 4, 5)$.
+3. $(6, 1, 3)$ splits into $(6)$ and $(1, 3)$. Merging takes 1 (add 1) and 3 (add 1), then 6. This half has 2 inversions and comes back as $(1, 3, 6)$.
+4. Merge $(2, 4, 5)$ with $(1, 3, 6)$. Take 1 with 3 waiting (add 3). Take 2 from the left. Take 3 with 2 waiting, $4$ and $5$ (add 2). Take 4, 5 and 6. The crossing pairs are 5.
+5. The total is $2 + 2 + 5 = 9$, which matches the brute force count.
+
+<CodeSnippet unit="3.1/dc-inversions" />
+
+How it works: `countInversions` handles the part `a[l..r-1]`. It counts inside both halves by recursion, then merges them into `tmp` and copies the merged part back, so the caller sees a sorted part. In the merge, `a[i] <= a[j]` takes the left value on a tie, so equal values are not counted as an inversion, and `cnt += m - i` adds the left values that are still waiting.
+
+Cost: each call splits its part into two nearly equal halves, so the recursion has about $\log_2 n$ levels, and the merges of one level together touch every element once, which is $O(n)$ work per level. The time is $T(n) = 2T(n/2) + O(n) = O(n \log n)$, about $3.5 \cdot 10^6$ steps for $n = 2 \cdot 10^5$. The extra space is $O(n)$ for `tmp`, and the stack depth is only $O(\log n)$. The same argument tells how much the merge may cost. If it costs $O(1)$ (take the larger of two numbers), the total is $O(n)$. If it costs $O(n)$, the total is $O(n \log n)$. If it costs $O(n^2)$, the top call alone already costs as much as the whole brute force, so nothing is gained.
+
+Common mistake (equal values). Writing `a[i] < a[j]` in the merge sends equal values to the right half first, so each equal pair is counted as an inversion. Input `2 2` gives 1, and the correct answer is 0. Fix: on a tie take the left value first, and test with equal values.
+
+Common mistake (`int` for the count). A reversed array of $10^5$ values has $4\,999\,950\,000$ inversions, which is more than $2^{31} - 1 = 2\,147\,483\,647$. Fix: keep the count in `long long`.
+
+Common mistake (not copying the merged part back). If the merge result stays in `tmp`, the caller merges halves that are not sorted. Input `2 3 1` gives 1, and the correct answer is 2. Fix: copy `tmp[l..r-1]` back into `a`, or merge into a second array and swap the roles of the two arrays at each level.
+
+### Largest sum of a subarray
+
+Take the numbers $(-2, 1, -3, 4, -1, 2, 1, -5, 4)$. The subarray $(4, -1, 2, 1)$ has the largest sum, 6. Brute force tries every subarray with a running sum, $O(n^2)$ time. Topic 1.2 already gives an $O(n)$ way with prefix sums, so this problem is here only to show the shape of divide and conquer on a different question.
+
+Cut the array in the middle. The best subarray lies in the left half, in the right half, or crosses the middle. A crossing subarray contains the last element of the left half and the first element of the right half, so it is the best suffix of the left half plus the best prefix of the right half. Each is found by one scan that starts at the middle and walks outward, which is $O(n)$ in total.
+
+Dry run. Split $(-2, 1, -3, 4 \mid -1, 2, 1, -5, 4)$. Walking left from the middle, the sums are $4, 1, 2, 0$, so the best suffix of the left half is 4. Walking right, the sums are $-1, 1, 2, -3, 1$, so the best prefix of the right half is 2. The crossing subarray has sum $4 + 2 = 6$. The best inside the left half is 4 and the best inside the right half is 4. The answer is the largest of $4$, $4$ and $6$, which is 6.
+
+<CodeSnippet unit="3.1/dc-max-subarray" />
+
+Cost: the same recurrence, $T(n) = 2T(n/2) + O(n) = O(n \log n)$, because the crossing scan is linear. Prefix sums (topic 1.2) beat it with $O(n)$, so when a one-pass method exists, use that. Divide and conquer pays when the merge cannot be replaced by a simple scan, as in the inversion count.
+
+Common mistake (an empty crossing part). Starting `bestLeft` and `bestRight` at 0 lets the crossing part be empty on one side. Input `-3 -1` then gives 0, and the correct answer is $-1$. Fix: start both at the smallest possible value, so that each side takes at least one element.
+
+### When there is nothing to merge
+
+Sometimes the split is not at the middle but at a position that no answer can contain, and the pieces are solved separately. For example, find the longest substring in which every letter that appears, appears at least $k = 2$ times. In `aabcc` the letter `b` appears only once, so no valid substring contains it. Cut at `b`: the pieces are `aa` and `cc`, both valid, and the answer is 2. In general, find a letter whose count in the current piece is below $k$, cut at every occurrence of it, and recurse on the pieces. Each level removes one letter from play, so there are at most 26 levels, and the cost is $O(26 n)$ with no merge step.
+
+### Why the split must be even
+
+The $O(n \log n)$ bound needs both halves to be about half the size. If a call removes only one element, then $T(n) = T(n-1) + O(n)$, which is $O(n^2)$ and the depth is $n$. Cutting a sorted array at its largest element, for example, leaves parts of size $n-1$ and $0$. For $n = 1024$ the work is $524\,799$ element visits instead of $10\,240$ for an even split. So check that the split is even, or choose the cut position so that it is.
+
+**Theorem 3.1.5 (counting inversions by divide and conquer).** Let $a$ be an array of $n$ numbers. The number of pairs $i < j$ with $a_i > a_j$ can be found in $O(n \log n)$ time. Split the array into a left half and a right half, count the inversions inside each half recursively, and count the crossing pairs while merging the two sorted halves: each time the merge takes a value from the right half, add the number of values still waiting in the left half.
+
+In plain words: count inside the left half, count inside the right half, and count the pairs that use one value from each half while merging. Halving gives about $\log_2 n$ levels, and every level costs $O(n)$.
+
+Small example: $(4, 3 \mid 1, 2)$. Inside the halves there are 1 and 0 inversions. Merging $(3, 4)$ and $(1, 2)$ adds 2 when 1 is taken and 2 when 2 is taken, so the total is $1 + 0 + 4 = 5$.
+
+Why it works:
+1. Every pair $i < j$ is of exactly one kind: both in the left half, both in the right half, or $i$ in the left half and $j$ in the right half. The left half lies entirely before the right half, so the kind is fixed by the positions.
+2. The first two kinds are the same question on halves, so the recursion counts them.
+3. A crossing pair is one value from the left half and one from the right half. Whether it is an inversion depends only on the two values, not on the order inside each half, so the halves may be sorted before the crossing pairs are counted.
+4. In the merge, the right value $y$ is taken only when the smallest waiting left value is greater than $y$. The waiting left values are in sorted order, so all of them are greater than $y$.
+5. A left value taken earlier was taken because it was at most some right value, and that right value is at most $y$ (the right half is sorted), so it forms no inversion with $y$.
+6. So $y$ forms crossing inversions with exactly the waiting left values, and each crossing pair is counted once, when its right value is taken.
+7. The recursion halves the length, so it has $\lceil \log_2 n \rceil$ levels. The merges of one level handle each element once, which is $O(n)$ per level, and the total is $O(n \log n)$.
+
+This proof needs: (1) the two halves interact only through the crossing pairs, because one half lies entirely before the other. (2) The number of crossing pairs depends on the values in each half and not on their order, so sorting the halves costs nothing. (3) The halves have nearly equal length, so the depth is $\log n$ and not $n$.
+
+<TheoremCode unit="3.1/thm-5" />
+
 ## Recognition cards
 
 A card is one tool of this topic written in a fixed form: the property that decides it, how to test it, the shape of the constraints, the weak and kill signals, the cost, and a worked example. Read the card when a problem's limits and question look like its signals.
@@ -2050,6 +2129,7 @@ A card is one tool of this topic written in a fixed form: the property that deci
 - Theorem 3.1.1: if the check never rejects a completable partial solution, every valid sequence is output exactly once. With an exact check, calls are at most $(L + 1) \cdot S + 1$, the best possible when printing all. Placement with checks has no clean formula: try the worst input (queens up to about 12 are fast).
 - Theorem 3.1.2: choose the next only among larger indices; with repeated values sort and skip `a[i] == a[i-1]` when `i > start` (same loop). Permutations of repeated values: skip `i` when `a[i] == a[i-1]` and `i-1` is unused.
 - Theorem 3.1.3: keep `best`, prune when the optimistic estimate cannot beat it. No guarantee, good for $n$ around 10 to 20 with few choices per step, a good order and a sharp estimate.
+- Theorem 3.1.5: split in half, solve both halves, merge. Inversions: count inside each half, then add the number of waiting left values each time the merge takes a right value. $T(n) = 2T(n/2) + O(n) = O(n \log n)$ if the split is even; a split into $n-1$ and $0$ costs $O(n^2)$. Largest subarray sum: best in the left half, best in the right half, or the best suffix of the left plus the best prefix of the right.
 - Four templates, each with its own brute-force check (bitmasks, `next_permutation`, every assignment): distinct sub-multisets, distinct arrangements, queen placements, smallest largest load.
 - Backtracking bugs rarely crash. They print a wrong list or count, often only with repeated values or ties, so stress-test against a brute force.
 - Decision map: return all combinations, subsets, permutations, partitions means generating every candidate. Puzzle on a small board (queens, Sudoku, tiles, word path) means placement with checks. Minimise the maximum or maximise the minimum means bound pruning (or binary search on the answer, topic 1.4). $n$ up to 40 with a target is topic 3.9 (the choices are split into two halves). $n \le 20$ and choose some items means bitmask (topic 0.5), unless items conflict.

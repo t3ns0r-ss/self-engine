@@ -66,6 +66,12 @@ theorems:
   plain_words: A path with a steps right and b steps up is fixed by choosing which of its a + b steps go
     right, so there are C(a + b, a) of them. This is a bijection between paths and subsets.
   code: 2.3/thm-7
+- id: 2.3.8
+  title: Lucas's theorem
+  plain_words: Modulo a prime p, write n and r in base p. Then C(n, r) is the product of the binomial
+    coefficients of the digit pairs, and it is 0 as soon as one digit of r is above the digit of n. Only
+    a table of size p is needed, however large n is.
+  code: 2.3/thm-8
 cards:
 - id: ncr-mod-p
   name: Binomial coefficients modulo a prime
@@ -441,6 +447,89 @@ cards:
       card: include-exclude
     flipping_difference: The blocked cells break the bijection; subtract the paths through them, sorted by position.
   complexity: $O(1)$ per count after the factorial tables.
+- id: lucas
+  name: Binomial coefficients modulo a small prime (Lucas)
+  decisive_property: The modulus is a small prime $p$ (a table of size $p$ fits) and $n$ or $r$ may be at
+    least $p$, up to $10^{18}$; then $\binom{n}{r} \bmod p$ is the product of the binomials of the
+    base-$p$ digits, $O(p + \log_p n)$ in all.
+  from_theorem: 2.3.8
+  how_to_test: Check that the modulus is a prime and small enough for a table, and that $n$ (or $r$) is at
+    least $p$ or too large for a factorial table. Write both in base $p$ and test a few digit pairs.
+  constraint_shapes:
+  - '$n, r$ up to $10^{18}$ and a prime $p \le 10^6$, many queries: a factorial table up to $n$ is
+    $10^{18}$ entries, while Lucas needs a table of $p$ entries once and at most $\log_p n \le 60$ digit
+    steps per query.'
+  weak_signals:
+  - form: Parity of a binomial coefficient, or a pyramid whose cells are XORs or sums modulo 2 of the two
+      cells below
+    shape: $n$ up to $2 \cdot 10^5$ or more, the answer needs the weight of each bottom cell modulo 2
+  - form: C(n, r) modulo a small prime such as 2, 3, 5 or 7 with $n$ far above the prime
+    shape: $n$ up to $10^{18}$ or $10^9$, modulus below $10^6$
+  - form: Repeated sums of neighbours modulo 10 (or modulo a product of small primes)
+    shape: Length up to $10^5$, so the process cannot be simulated
+  kill_signals:
+  - 'The modulus is a prime power or composite: C(4, 2) modulo 4 is 2, but digit by digit in base 4 the
+    product is C(1, 0) times C(0, 2), which is 0. Split a squarefree modulus into primes first.'
+  - 'The prime is large and $n$ is below it: Lucas has one digit and is just the factorial table of
+    Theorem 2.3.3; with $p$ near $10^9$ its table of size $p$ would not fit.'
+  in_action:
+    statement: Print $\binom{n}{r}$ modulo a prime $p$ for many queries.
+    constraints: $n, r \le 10^{18}$, $p \le 10^6$ prime, up to $10^5$ queries.
+    budget: A table up to $n$ is $10^{18}$ entries, Pascal's triangle is worse. A table of size $p$ is $10^6$
+      entries, and a query is at most 60 digit steps for $p = 2$, fewer for larger $p$.
+    candidates:
+    - tool: Factorial tables up to n (Theorem 2.3.3)
+      verdict: rejected
+      because: It needs $n < p$, and here $n$ is far above $p$, so $n!$ is a multiple of $p$.
+    - tool: Pascal's triangle
+      verdict: rejected
+      because: It needs $n^2 / 2$ entries.
+    - tool: Lucas's theorem
+      verdict: chosen
+      because: The modulus is a small prime, so digit binomials come from a table of size $p$ and the digits
+        of $n$ are few.
+    property_check: The modulus is prime and at most $10^6$, so a table of size $p$ fits, and $n$ is above
+      $p$ (Theorem 2.3.8).
+    decision: Build `fact` and `inv` up to $p - 1$ once; for each query multiply the digit binomials
+      of $n$ and $r$ in base $p$, and stop with 0 as soon as one digit of $r$ is above the digit of $n$.
+  examples:
+    positive:
+    - inline:
+        input: C(14, 7) modulo 7
+        answer: '2'
+        why: 14 is 20 and 7 is 10 in base 7, so the value is C(2, 1) times C(0, 0), which is 2 (the table
+          formula gives 0 here).
+    - inline:
+        input: C(10, 3) modulo 2 (is it odd?)
+        answer: '0'
+        why: 10 is 1010 and 3 is 0011 in binary; the lowest bit of 3 is set but that of 10 is not, so a
+          digit pair is C(0, 1), which is 0. The coefficient 120 is even.
+    negative:
+    - inline:
+        input: C(4, 2) modulo 4 (the modulus is a prime power)
+        answer: '2'
+        method_gives: '0'
+        why: Base-4 digits give C(1, 0) times C(0, 2), which is 0, but C(4, 2) = 6 and 6 mod 4 = 2. The
+          proof needs a prime; prime powers are not in this course. For small n use Pascal's rule.
+      correct_tool:
+        topic: '0.5'
+        card: recursive-choices
+    - inline:
+        input: C(9, 3) modulo 9 (the modulus is a prime power)
+        answer: '3'
+        method_gives: '0'
+        why: Base-9 digits give C(1, 0) times C(0, 3), which is 0, but C(9, 3) = 84 and 84 mod 9 = 3.
+      correct_tool:
+        topic: '0.5'
+        card: recursive-choices
+  lookalikes:
+  - description: C(n, r) modulo $10^9 + 7$ for $n \le 10^6$
+    tool:
+      topic: '2.3'
+      card: ncr-mod-p
+    flipping_difference: Here $n$ is below the prime, so there is a single digit and the factorial tables of
+      Theorem 2.3.3 are the whole method.
+  complexity: $O(p)$ to build the tables, $O(\log_p n)$ per coefficient.
 problems:
 - id: ac-abc145_d
   role: worked_example
@@ -473,23 +562,10 @@ problems:
   - Divide the $n!$ orders by the orders inside each group of equal letters.
   - $n!/(c_a! \cdot c_b! \cdot \ldots \cdot c_z!)$ (Theorem 2.3.4), from one factorial table and inverse
     factorials.
-- id: cf-1462E1
-  role: ladder
-  card: ncr-mod-p
-  rung: 3
-  twist: Sort, fix the smallest chosen element, and choose the others from a window.
-  summary: Count the triples $i < j < z$ in which the largest and the smallest value differ by at most
-    $2$ (values $a_i \le n$, total $n \le 2 \cdot 10^5$ over the tests).
-  hints:
-  - Sort first. Which elements can join a triple whose smallest element is `a[i]`?
-  - 'Exactly those after $i$ with value at most $a_i + 2$: a window ending at some index $j$, found with
-    a pointer (topic 1.3).'
-  - Add $\binom{j - i}{2}$ for each $i$ (Theorem 2.3.2). The total is at most $\binom{n}{3}$, so it fits
-    in `long long`.
 - id: cf-1475E
   role: ladder
   card: ncr-mod-p
-  rung: 4
+  rung: 3
   twist: Only the ties at the boundary of the best k create choices.
   summary: Choose $k$ of $n$ bloggers ($n \le 1000$) to maximise their total followers; count the ways
     to reach the maximum, modulo $10^9 + 7$.
@@ -499,22 +575,10 @@ problems:
     with exactly $x$ followers.
   - If $c$ bloggers have $x$ followers and $r$ of them are in the top $k$, the answer is $\binom{c}{r}$
     (Theorem 2.3.2).
-- id: lc-count-anagrams
-  role: ladder
-  card: ncr-mod-p
-  rung: 5
-  twist: A product of multinomial coefficients, one per word.
-  summary: Count the strings obtained by permuting the letters within each word of a sentence ($\text{length}
-    \le 10^5$), modulo $10^9 + 7$.
-  hints:
-  - The words are independent, so multiply the counts of the words (Theorem 2.3.1).
-  - One word gives its length factorial divided by the factorials of its letter counts.
-  - Build one factorial table up to $10^5$ and multiply the multinomial coefficients of all words (Theorem
-    2.3.4).
 - id: cf-1359E
   role: ladder
   card: ncr-mod-p
-  rung: 6
+  rung: 4
   twist: Prove which arrays work, then count chains of multiples with one binomial each.
   summary: Count the increasing arrays $1 \le a_1 < \ldots < a_k \le n$ ($n, k \le 5 \cdot 10^5$) for
     which taking a number modulo the elements in any order always gives the same result; modulo $998244353$.
@@ -549,24 +613,10 @@ problems:
     column, independently.
   - Count the 1s per row and per column. Add $(r - 1)(c - 1)$ over all 1-cells, with $r$ and $c$ the counts
     in the row and column of the corner (Theorem 2.3.1).
-- id: lc-number-of-ways-to-split-a-string
-  role: ladder
-  card: product-sum-rules
-  rung: 3
-  twist: Two independent cut positions, plus a separate case with no 1s.
-  summary: Split a binary string ($\text{length} \le 10^5$) into three non-empty parts with equal numbers
-    of 1s; count the ways modulo $10^9 + 7$.
-  hints:
-  - Let $t$ be the number of 1s. If $3 \nmid t$ the answer is $0$. Otherwise each part holds $t/3$ of
-    them. Where can the first cut go?
-  - Anywhere between the $(t/3)$-th and the $(t/3 + 1)$-th one. The second cut likewise after the $(2t/3)$-th
-    one. The two choices are independent.
-  - 'Multiply the two gap sizes (Theorem 2.3.1). If $t = 0$, any 2 of the $n - 1$ gaps work: $\binom{n
-    - 1}{2}$.'
 - id: lc-count-all-valid-pickup-and-delivery-options
   role: ladder
   card: product-sum-rules
-  rung: 4
+  rung: 3
   twist: Build the sequence by inserting one order at a time.
   summary: Count the sequences of $n$ pickups and $n$ deliveries ($n \le 500$) where each delivery comes
     after its pickup, modulo $10^9 + 7$.
@@ -578,7 +628,7 @@ problems:
 - id: ac-abc220_e
   role: ladder
   card: product-sum-rules
-  rung: 5
+  rung: 4
   twist: Split by the top vertex of the path and the depth reached on each side.
   summary: Count ordered pairs $(i, j)$ of vertices at distance $D$ in a perfect binary tree with $2^N
     - 1$ vertices ($N \le 10^6$, $D \le 2 \cdot 10^6$), modulo $998244353$.
@@ -703,6 +753,49 @@ problems:
     b = K + 1$.
   - 'Bad rows correspond to all rows with $M + K + 1$ whites: the answer is $\binom{N + M}{N} - \binom{N
     + M}{M + K + 1}$ (Theorem 2.3.7).'
+- id: cses-2419
+  role: ladder
+  card: lucas
+  rung: 1
+  twist: 'The smallest prime, p = 2: an odd binomial coefficient is a submask test.'
+  summary: Given the bottom row of a pyramid with up to $2 \cdot 10^5$ numbers, where every number above is
+    the XOR of the two below it, print the top number.
+  hints:
+  - 'Work out the pyramids with 2, 3 and 4 rows by hand. The top is the XOR of some of the bottom numbers:
+    which ones?'
+  - The bottom number $a_i$ is used $\binom{n - 1}{i}$ times, and a number XORed an even number of times
+    cancels, so only the parity of $\binom{n - 1}{i}$ matters.
+  - 'By Lucas with $p = 2$ (Theorem 2.3.8), $\binom{n - 1}{i}$ is odd exactly when every bit of $i$ is also
+    a bit of $n - 1$, that is `i & (n - 1) == i`. XOR those $a_i$.'
+- id: lc-find-triangular-sum-of-an-array
+  role: ladder
+  card: lucas
+  rung: 2
+  twist: 'A composite modulus, 10 = 2 * 5: Lucas for each prime, then combine the two remainders.'
+  summary: Given at most $1000$ digits, repeatedly replace the array by the sums of neighbouring pairs
+    modulo $10$ until one digit is left; return it (the formula also works for far larger lengths).
+  hints:
+  - By Pascal's rule, after $n - 1$ rounds the digit $a_i$ has been added $\binom{n - 1}{i}$ times, so the
+    answer is $\sum_i \binom{n - 1}{i} a_i \bmod 10$.
+  - 10 is not prime, so one prime cannot do it. Compute the sum modulo 2 and modulo 5, each coefficient
+    by Lucas (Theorem 2.3.8).
+  - 'Only one digit $d$ from 0 to 9 has the remainders you found modulo 2 and modulo 5: print it.'
+- id: ac-abc251_h
+  role: ladder
+  card: lucas
+  rung: 3
+  twist: A row $N - K$ steps above, with $N$ up to $10^9$, modulo 7, and a bottom row given in runs.
+  summary: A triangle of height $N \le 10^9$ has a bottom row of at most $200$ runs of equal values from 0 to
+    6, and every cell is the sum of the two cells below it modulo $7$; print row $K$ ($K \le 5 \cdot 10^5$).
+  hints:
+  - 'A cell of row $K$ is a sum of bottom cells with weights $\binom{N - K}{i}$ modulo 7. $N - K$ is huge
+    and 7 is tiny: which theorem fits?'
+  - Lucas gives $\binom{7^k}{j} \equiv 0 \pmod 7$ unless $j = 0$ or $j = 7^k$ (a middle digit of $j$ is above
+    the zero digit of $7^k$; Theorem 2.3.8), so a row $7^k$ above is the sum of two shifted copies of the
+    row below.
+  - 'The editorial skips down by $7^k$ for $k$ from large to small, keeping each row as runs of equal
+    values (read from the editorial, not derived here). This is the hardest rung of the card: attempt it
+    after the other two.'
 - id: ac-abc132_d
   role: drill
   summary: Arrange $K$ blue and $N − K$ red balls ($N \le 2000$); for each $i$, count the rows in which
@@ -754,6 +847,13 @@ problems:
   role: lookalike
   summary: Count the ways to split $n \le 50$ candies among 3 children with at most $\text{limit} \le
     50$ each.
+- id: lc-check-if-digits-are-equal-in-string-after-operations-ii
+  role: lookalike
+  summary: Replace a string of up to $10^5$ digits by the sums of neighbouring pairs modulo 10 until two
+    digits remain; say whether they are equal.
+- id: lc-check-if-digits-are-equal-in-string-after-operations-i
+  role: lookalike
+  summary: The same process on a string of at most 100 digits.
 - id: lc-ugly-number-iii
   role: lookalike
   summary: The $n$-th positive integer divisible by $a$, $b$ or $c$ (all up to $10^9$).
@@ -944,6 +1044,21 @@ lookalike_pairs:
     alternating sum of three sets. B: with two divisors 2 and 3 the count is $x − \lfloor x/2 \rfloor −
     \lfloor x/3 \rfloor + \lfloor x/6 \rfloor$, two sets and the overlap, and the work is the binary
     search.'
+- a: lc-check-if-digits-are-equal-in-string-after-operations-ii
+  b: lc-check-if-digits-are-equal-in-string-after-operations-i
+  a_tool:
+    topic: '2.3'
+    card: lucas
+  b_tool:
+    topic: '0.5'
+    card: nested-loops
+  flipping_difference: The same process on a string of digits. With length at most 100 it is a few thousand
+    steps, so a loop that runs it is enough. With length up to $10^5$ it is about $5 \cdot 10^9$ steps, and
+    the final digits are sums with binomial weights modulo 10, found with Lucas modulo 2 and modulo 5.
+  shared_surface: Replace a string of digits by the sums of neighbouring pairs modulo 10 until two digits
+    remain, then compare them.
+  flipping_input: 'B: a string of 6 digits, which takes 4 rounds to run by hand. A: a string of $10^5$ digits,
+    where only the weights $\binom{n - 2}{i}$ modulo 2 and modulo 5 are affordable.'
 self_test:
 - q: How many 4-letter strings over {a, b, c} have no two equal neighbours, and why may the options be
     multiplied?
@@ -964,6 +1079,12 @@ self_test:
 - q: Why is the number of lattice paths from $(0, 0)$ to $(3, 2)$ not $2^5$?
   a: '2^5 counts all sequences of 5 steps, but a path to (3, 2) must have exactly 3 right steps; it is
     fixed by their positions: C(5, 3) = 10 (Theorem 2.3.7).'
+- q: Why can the table of Theorem 2.3.3 not give C(14, 7) modulo 7, and what does Lucas give?
+  a: 14! contains the factor 7, so the table formula collapses to 0. In base 7, 14 is 20 and 7 is 10, so
+    Lucas gives C(2, 1) times C(0, 0) = 2 (the coefficient is 3432 and 3432 mod 7 = 2; Theorem 2.3.8).
+- q: Is C(12, 5) odd? Decide it with bits only.
+  a: 12 is 1100 and 5 is 0101. The lowest bit of 5 is set but not that of 12, so one digit pair is C(0, 1)
+    = 0 and the coefficient is even (it is 792). It would be odd exactly if 5 & 12 equalled 5.
 checkpoint:
   time_limit_minutes: 120
   problems:
@@ -1026,6 +1147,19 @@ decision_map:
     because: The bijection is what turns the question into C(n, r); after it, the table computes the number.
   - card: include-exclude
     because: A few blocked cells are removed by subtracting the paths through them, in order of position.
+- weak_signal: C(n, r) modulo a small prime with n far above it; parity of binomial coefficients; repeated
+    neighbour sums modulo 2, 5 or 10
+  choose: lucas
+  when: The modulus is a prime (or a product of small primes, handled one by one) small enough for a table
+    of size p, and n or r can be at least p (Theorem 2.3.8).
+  over:
+  - card: ncr-mod-p
+    because: The factorial tables need every n below the prime; when n is at least p they give 0 and
+      Lucas takes over digit by digit.
+  - card: nested-loops
+    because: When the length is about 100, running the process is enough; Lucas is for sizes that cannot
+      be simulated.
+    topic: "0.5"
 glossary_added:
 - product rule
 - factorial
@@ -1035,3 +1169,4 @@ glossary_added:
 - inclusion–exclusion
 - bijection
 - lattice path
+- Lucas's theorem

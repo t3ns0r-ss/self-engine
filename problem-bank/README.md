@@ -22,7 +22,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 9 | 3 | 2 | 21 | short |
 | 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 3 | 3 | 4 | 5 | 3 | 18 | short |
 | 2 | [2.5 Linear Diophantine equations and the Chinese remainder theorem](phase-2/2.5-diophantine-crt.md) | 1 | 0 | 1 | 1 | 5 | 8 | short |
-| 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 5 | 12 | 8 | 5 | 7 | 37 | short |
+| 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 5 | 13 | 9 | 6 | 8 | 41 | short |
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 8 | 18 | short |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 2 | 10 | 5 | 3 | 4 | 24 | complete |
 | 3 | [3.2 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.2-dp-foundations.md) | 4 | 14 | 11 | 5 | 1 | 35 | short |

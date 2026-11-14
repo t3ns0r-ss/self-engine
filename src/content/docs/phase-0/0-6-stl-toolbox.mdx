@@ -81,6 +81,7 @@ Terms used in this lesson:
 - Range maintenance: segments covering a point
 - Range maintenance: fill, clear, check
 - Histogram problem (Hacker Cup)
+- Strings in C++: what each operation costs
 - Recognition cards
 - Quick revision
 - Check yourself
@@ -2057,6 +2058,117 @@ Cost: the update touches only the pieces inside [l, r), but the area and perimet
 
 Tested: add [0,4) h=3 → area 12, perimeter 14. add [2,6) h=5 → 26, 22. add [3,5) h=2 → 26, 22 (nothing changes, already inside). 2000 random games match a unit-grid brute force.
 
+## Strings in C++: what each operation costs
+
+A `string` is a vector of characters with extra tools. Many string problems have an easy idea, and the solution fails only because one string operation touches the whole string on every call. So, as with the containers above, we first write down what each operation costs.
+
+Question: a string $S$ of the letters A, B, C. While $S$ contains ABC as a consecutive piece, remove the leftmost ABC. Print what is left. For $S$ = `AABCBC`: the leftmost ABC starts at position 1, removing it leaves `ABC`, removing that leaves nothing.
+
+Brute force: loop `s.find("ABC")` and `s.erase(p, 3)`. Each `erase` moves every letter after the piece one block to the left, up to $n$ letters. There are up to $n / 3$ removals. For $n = 2 \cdot 10^5$ that is up to $(2 \cdot 10^5 / 3) \cdot 2 \cdot 10^5 \approx 1.3 \cdot 10^{10}$ letter moves, over 100 seconds at $10^8$ per second.
+
+First the costs. $n$ is the length of `s`.
+
+| Operation | Cost |
+|---|---|
+| `s[i]`, `s.size()`, `s.back()`, `s.pop_back()` | $O(1)$ |
+| `s += c`, `s.push_back(c)` | $O(1)$ on average (the buffer doubles, Theorem 0.6.1) |
+| `s = s + c`, `s + t`, a copy `t = s` | $O(\lvert s \rvert + \lvert t \rvert)$: a whole new string is built |
+| `s.substr(i, k)` | $O(k)$ |
+| `s == t`, `s < t`, `s.compare(...)` | at most the length of the shorter string |
+| `s.find(t)` | at most $(n - \lvert t \rvert + 1) \cdot \lvert t \rvert$ comparisons |
+| `s.erase(i, k)`, `s.insert(i, t)` | $O(n - i)$: the letters after $i$ move |
+| `to_string(x)`, `stoi(s)` | $O(\text{number of digits})$ |
+
+**Theorem 0.6.7 (what building and cutting strings costs).**
+1. $n$ calls of `s += c` from the empty string write fewer than $3n$ letters in total.
+2. $n$ calls of `s = s + c` write exactly $1 + 2 + \dots + n = n(n+1)/2$ letters.
+3. `s.substr(i, k)` writes $\min(k, n - i)$ letters. Cutting every window of length $m$ out of a text of length $n$ touches $(n - m + 1) \cdot m$ letters.
+
+Small example first: build `abcde` letter by letter. With `+=` the buffer holds 1, 2, 4, 8 letters. It is full before the 2nd, 3rd and 5th letter and copies 1, 2 and 4 letters: $1 + 2 + 4 = 7$ copies plus 5 new letters, 12 writes. With `s = s + c` the calls build strings of 1, 2, 3, 4, 5 letters: 15 writes. For $n = 1000$ it is 2023 against 500500. For $n = 2 \cdot 10^5$ it is under $6 \cdot 10^5$ against about $2 \cdot 10^{10}$.
+
+Why it works:
+1. Part 1. A letter is copied only when the buffer is full and grows from $c$ to $2c$. This is the situation of Theorem 0.6.1 with letters instead of elements, so fewer than $2n$ letters are copied in all.
+2. Every call also writes its one new letter, which is $n$ more writes. The total is less than $3n$.
+3. Part 2. In `s = s + c` the part `s + c` builds a new string from the $i - 1$ letters of `s` and the letter `c`: $i$ letters. The old `s` is thrown away. Summing $i$ from 1 to $n$ gives $n(n+1)/2$.
+4. Part 3. `s.substr(i, k)` builds a new string from the letters $i, \dots, \min(i + k, n) - 1$, so it writes $\min(k, n - i)$ letters.
+5. The windows start at $0, 1, \dots, n - m$, which is $n - m + 1$ windows of $m$ letters each.
+
+This proof needs: (1) the buffer grows by a constant factor when it is full (GCC doubles it; the standard only promises $O(1)$ on average for `+=`). (2) `s + c` builds a new string, as the standard defines it. (3) Part 3 is the worst case: comparing two windows stops at the first different letter, so it can be faster, never slower.
+
+<TheoremCode unit="0.6/thm-7" />
+
+So for Take ABC the brute force spends $O(n)$ per `erase`. A fix needs both: add letters with `+=`, and remove only at the end of the string. The string then works as a stack (Theorem 0.6.6), only the stack holds letters.
+
+Idea: read $S$ from left to right and keep the letters that are still alive in a second string `t`. Append the next letter with `+=`. If the last three letters of `t` are ABC, remove them with `resize`, which only moves the end of the string. Two copies of ABC never overlap, because the letters A, B, C are different. So removing one copy never destroys another, and the final string does not depend on which copy is removed first. The stack finds the copies in the order of their last letter, which is allowed. The tests below compare it with the leftmost-first brute force on 5000 random strings.
+
+Dry run on `AABCBC`:
+
+| next letter | `t` after `+=` | last three | `t` after the check |
+|---|---|---|---|
+| A | `A` | too short | `A` |
+| A | `AA` | too short | `AA` |
+| B | `AAB` | AAB | `AAB` |
+| C | `AABC` | ABC | `A` |
+| B | `AB` | too short | `AB` |
+| C | `ABC` | ABC | empty |
+
+The answer is the empty string, as in the brute force.
+
+<CodeSnippet unit="0.6/take-abc" />
+
+Cost: $n$ appends and at most $n / 3$ removals, each $O(1)$, so $O(n)$ time and $O(n)$ space. For $n = 2 \cdot 10^5$ that is about $4 \cdot 10^5$ steps against $1.3 \cdot 10^{10}$.
+
+Common mistake: `t = t + c` instead of `t += c`. It is correct, but by Theorem 0.6.7 part 2 it writes $n(n+1)/2 \approx 2 \cdot 10^{10}$ letters for $n = 2 \cdot 10^5$, which is a time limit error (TLE). The second mistake is `t.erase(...)` in the middle of the string.
+
+Tested: `BAABCBCCABCAC` → `BCAC`, `ABCABC` → empty, `AAABCBCBC` → empty. 5000 random strings match the brute force.
+
+Second question: a string $S$ of $N$ capital letters and $Q$ queries "$x$ $c$". Each query sets the $x$-th letter to $c$ and then asks how many times ABC appears in $S$. With $N = Q = 2 \cdot 10^5$.
+
+Brute force: after every query cut every window of 3 letters with `substr` and compare. One query touches about $3N$ letters, so all queries touch $Q \cdot 3N = 1.2 \cdot 10^{11}$ letters.
+
+Idea: a change at position $x$ can only create or destroy an ABC that contains position $x$. Such a piece starts at $x - 2$, $x - 1$ or $x$. So keep the total, count those three windows before the change, apply it, count them again, and add the difference.
+
+Dry run on `ABCDABC` with the queries `4 B`, `3 A`, `5 B`, `5 A`. At the start ABC starts at positions 0 and 4: total 2.
+
+| query | position (0-based) | windows before | windows after | total |
+|---|---|---|---|---|
+| `4 B` | 3 | none | none | 2 |
+| `3 A` | 2 | ABC at 0 | none | 1 |
+| `5 B` | 4 | ABC at 4 | none | 0 |
+| `5 A` | 4 | none | ABC at 4 | 1 |
+
+<CodeSnippet unit="0.6/count-abc-updates" />
+
+Cost: the first count is $O(N)$. Each query looks at 3 windows of 3 letters, 9 letters in all, so $O(1)$. In total $O(N + Q)$, about $6 \cdot 10^5$ steps against $1.2 \cdot 10^{11}$.
+
+Common mistake: recounting only the window that starts at $x$. The changed letter can be the first, the second or the third letter of an ABC, so three windows contain it. In the second query of the dry run the destroyed ABC starts at position 0, two places before the changed letter at position 2. The window at position 2 reads `CBA` before and `ABA` after, so a recount of that window alone sees no change and the total stays 2 instead of 1.
+
+Tested: `ABCDABC` → 2 1 0 1. `AAC` with `2 B`, `1 A`, `3 C` → 1 1 1. `ABCABC` with `1 C`, `4 C`, `1 A` → 1 0 1. 5000 random cases match the brute force.
+
+Finding a piece: `s.find(t)` returns the first position where `t` starts in `s`. If there is none it returns `string::npos`, which is the largest value of the unsigned type `size_t`, not $-1$. Pass a second argument to start the search later: `s.find(t, from)`.
+
+Question: how many times does $T$ appear in $S$, if appearances may overlap? `aa` appears 3 times in `aaaa`, at positions 0, 1 and 2. Loop `find`, and continue from `pos + 1`.
+
+<CodeSnippet unit="0.6/count-occurrences" />
+
+Dry run on `aaaa` and `aa`: `find` gives 0, then `find(t, 1)` gives 1, then `find(t, 2)` gives 2, then `find(t, 3)` gives `npos` and the loop stops: count 3.
+
+Cost: each `find` scans at most $\lvert s \rvert$ positions and compares at most $\lvert t \rvert$ letters at each, so one call costs up to $\lvert s \rvert \cdot \lvert t \rvert$. The loop calls it $\text{count} + 1$ times. This is fine for lengths up to 1000 and not for $10^6$ (later topics give faster ways to search).
+
+Common mistakes: `pos + t.size()` instead of `pos + 1` skips the overlapping matches, and `aa` in `aaaa` gives 2. And `if (s.find(t) >= 0)` is always true, because `size_t` has no negative values. Compare with `string::npos`.
+
+Tested: `aaaa`, `aa` → 3. `abababa`, `aba` → 3. `abc`, `d` → 0. 5000 random cases match a brute force.
+
+Three more things that come up all the time:
+
+- **Counting letters.** For lowercase letters use an array of 26 counters and `cnt[c - 'a']++`. Two strings are anagrams (the same letters in another order) exactly when the two arrays are equal. `listen` and `silent` are, `rat` and `car` are not.
+- **Comparing.** `s < t` compares letter by letter (lexicographic order), not as numbers: `"10" < "9"` is true because `'1' < '9'`. To compare numbers written as text, compare the lengths first (when there are no leading zeros), or convert them.
+- **Converting.** `to_string(x)` turns a number into text. `stoi(s)` turns text into an `int` and throws `out_of_range` when the value does not fit, so `stoi("2147483648")` crashes the program. Use `stoll` for a `long long`.
+
+Tested: `stoi("10") < stoi("9")` is false while `"10" < "9"` is true. `stoll("2147483648")` is 2147483648 and `stoi("2147483648")` throws `out_of_range`.
+
+Not covered here: searching long texts quickly and comparing strings through hashes (Phase 6).
+
 ## Recognition cards
 
 A recognition card names one container and the question it answers fast. Its decisive property is what must be true about the problem. Weak signals suggest the card, and kill signals rule it out.
@@ -2087,6 +2199,9 @@ A recognition card names one container and the question it answers fast. Its dec
 - Theorem 0.6.4: largest $\le x$ is `prev(upper_bound(x))` with a `begin` check. Smallest $\ge x$ is `lower_bound(x)` with an `end` check.
 - Theorem 0.6.5: a process that takes the largest again and again is a `priority_queue`, $O(k \log n)$ for $k$ steps.
 - Theorem 0.6.6: push positions of `(`, pop at `)`. Each `)` matches the nearest unmatched `(`, and pairs never cross.
+- Strings: `s += c` is $O(1)$ on average, `s = s + c` copies the whole string, `substr(i, k)` costs $k$, `erase` in the middle moves the tail, and `find` returns `string::npos` (not $-1$) when there is no match.
+- Theorem 0.6.7: $n$ calls of `+=` write fewer than $3n$ letters, $n$ calls of `s = s + c` write $n(n+1)/2$, and cutting all windows of length $m$ touches $(n - m + 1) \cdot m$ letters.
+- A change at one position of a string only affects the windows that contain it. Count those before and after, instead of recounting everything.
 
 ## Check yourself
 
@@ -2110,7 +2225,7 @@ Answer each question on paper before opening its answer.
 
 ### Checkpoint
 
-Three problems in 90 minutes. Pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items. After passing, review sets become due after 3, 14 and 60 days.
+Three problems in 90 minutes. Pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 12 drill items. After passing, review sets become due after 3, 14 and 60 days.
 
 <Checkpoint topic="0.6" />
 

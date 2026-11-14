@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.1.6. The fewest moves that turn the number start into target when a move adds 1 or doubles the number and no number may
+// Theorem 4.9.1. The fewest moves that turn the number start into target when a move adds 1 or doubles the number and no number may
 // exceed limit; -1 if it cannot be done. The states are the numbers; their distances live in a map.
 int fewestMoves(int start, int target, int limit) {
     map<int, int> dist;

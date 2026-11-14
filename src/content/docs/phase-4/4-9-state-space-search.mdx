@@ -1,0 +1,310 @@
+---
+title: "4.9 State-space search"
+sidebar:
+  order: 28.5
+topic: "4.9"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="4.9" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A map has at most 400 cells, with walls, a start, a goal and up to 8 keys lying on the floor. A door can be entered only while you hold the key of its colour. What is the fewest number of steps from the start to the goal?
+
+The search of [topic 4.1](../4-1-graph-traversal/) marks every cell once and never comes back to it. Here that is wrong: the walk that reaches a cell without a key and the walk that reaches the same cell with the key are different situations, and the second one may open a door that the first could not. Trying every order of picking up the keys is $8! = 40\,320$ orders, and each order needs several searches of its own.
+
+The way out is to notice that the cell alone is not the situation. The situation is the pair (cell, set of keys held). There are $400 \cdot 2^8 = 102\,400$ such pairs, each with 4 moves, so about $4 \cdot 10^5$ steps, and the queue-based search of topic 4.1 runs on the pairs exactly as it ran on the cells. The graph of pairs is never written down: the program computes the pairs one move away from a pair when it removes that pair from the queue. This is **state-space search**.
+
+The skill of the topic is choosing the state. First, which facts must be remembered so that the future depends on the state alone. Second, what to do when the moves have different costs (Dijkstra's algorithm over the pairs), when the extra part is a set of at most about 18 items (a bitmask), and when the number of states is too large (a state that is no better than another can be skipped).
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="4.9" />
+
+### What this topic does not cover
+
+- Searching from both ends of a huge state space at once and joining in the middle (the idea of [topic 3.9](../../phase-3/3-9-meet-in-the-middle/) applied to a graph): not part of this course.
+- Games where two players move in turn and a state is winning or losing: topic 7.5. Here one person moves.
+- A memoised search over states that all move to a smaller measure, so that there is no cycle: topic 7.2.
+- Counting the number of routes or of shortest routes over states: counting tables are topic 3.5; counting shortest routes is not part of this course.
+- A\* and other searches that use a guess of the distance to the goal: not part of this course.
+
+## 3. Definitions
+
+- A **state** is a complete description of the situation: everything that the rules for the next moves and the goal depend on. For the map with keys it is the cell together with the set of keys held. Two situations that differ in something that matters are two states; two that differ in nothing that matters are one state.
+- A **state graph** has one vertex for each state and an edge from a state to every state one move away; it is **implicit**: it is never written down, because the program computes the neighbours of a state from the rules when it needs them. **State-space search** is a search over a state graph: a queue-based search when every move costs the same, Dijkstra's algorithm when the costs differ.
+- A **resource** is a number carried in the state that moves can spend or collect: coupons left, fuel, obstacles still allowed.
+- A set of at most about 20 items is stored as a **bitmask**: the integer whose bit $i$ is 1 exactly when item $i$ is in the set ([topic 1.7](../../phase-1/1-7-bits/)). In C++, `mask | (1 << i)` adds item $i$, `mask ^ (1 << i)` toggles it and `mask >> i & 1` tests it; a set of $k$ items has $2^k$ values.
+- A state $a$ **dominates** a state $b$ (we also say $b$ is a **dominated state**) when both are at the same place, $a$ has at least as much of a resource that never hurts, and everything that can be done from $b$ can be done from $a$ at the same cost.
+
+In code, a state is an index into a table (a cell number times the number of extra values, plus the extra value) or a key of a `map`, and distances that can pass $2 \cdot 10^9$ are `long long` ([topic 0.1](../../phase-0/0-1-cpp-for-cp/)).
+
+## 4. Theory and proofs
+
+### 4.1 States as vertices
+
+**Theorem 4.9.1 (states).** A puzzle has a start state and a rule that lists, for every state, the states one move away. Let the states be the vertices and the moves the edges. If every move costs 1 and the states reachable from the start number $S$, with at most $k$ moves from each, then a traversal with a queue (Theorem 4.1.3) finds the fewest moves from the start to every reachable state in $O(S \cdot k)$ steps (times $O(\log S)$ when the distances are kept in a map instead of a table). The graph is not stored; the neighbours of a state are computed from the rule when the state is removed from the queue.
+
+:::tip[In plain words]
+Any puzzle where you want the fewest moves and every move counts the same is a search through a graph whose dots are the positions of the puzzle. Walk it with a queue, remember each position you saw, and the first time you reach the goal is the fewest moves.
+:::
+
+**A tiny instance.** Turn 3 into 10 using the moves "add 1" and "double". Ring 0: $\{3\}$. Ring 1: $\{4, 6\}$. Ring 2: $\{5, 8, 7, 12\}$. Ring 3 reaches 10 from 5 by doubling. So the fewest moves is 3: $3 \to 4 \to 5 \to 10$.
+
+**Proof.**
+1. A sequence of moves from the start to a state $t$ is exactly a path from the start to $t$ in the state graph, so the fewest moves to $t$ equals $d(\text{start}, t)$.
+2. Theorem 4.1.3 computes $d(\text{start}, t)$ for every reachable $t$ by a queue-based traversal, using the neighbour lists only through "look at all neighbours of $u$"; computing the list of $u$ from the rule when $u$ is removed gives the same neighbours (as in Theorem 4.1.5).
+3. Each reachable state is removed from the queue once (Theorem 4.1.1(b)), and each removal tries at most $k$ moves, each with one lookup of the stored distance: $O(1)$ in a table, $O(\log S)$ in a map. This gives $O(S \cdot k)$, or $O(S \cdot k \log S)$. $\square$
+
+:::note[This proof needs]
+1. The state contains everything that the rules of the moves and the goal depend on. Two situations that differ in anything relevant must be two states; two situations that differ in nothing relevant must be the same state (or the search counts them separately and may be too slow).
+2. Every move costs the same, 1.
+3. The number of reachable states $S$ fits in the time and memory limits: $S \cdot k$ steps and the distance table or map.
+:::
+
+<TheoremCode unit="4.9/thm-1" />
+
+The first example is the tiny instance (step 1: the path $3, 4, 5, 10$). The second target is the start itself, which costs 0 moves, and in the third no move ever lowers a number, so a smaller target is unreachable and the search ends with an empty queue.
+
+### 4.2 Dijkstra over pairs
+
+**Theorem 4.9.2 (Dijkstra over pairs).** Suppose a trip is described by the vertex and a small extra fact $f$ from a set $F$ (a coupon used or not, the parity of the number of steps, a fuel level), and each step goes from $(u, f)$ to $(v, f')$ and costs $c \ge 0$. Then the cheapest trip to a goal pair equals the shortest path in the graph whose vertices are the pairs $(v, f)$, and Dijkstra's algorithm on that graph finds it in $O(|F| (n + m) \log (|F| m))$ time.
+
+:::tip[In plain words]
+If what you may do next depends on a small extra fact, make a separate vertex for every pair (place, fact) and run Dijkstra on those pairs.
+:::
+
+**A tiny instance.** The roads $1\!-\!2$ (4) and $2\!-\!3$ (6), and one road of your choice may be used for free. The pairs are (vertex, free road already used?). From $(1, \text{no})$ at cost 0: crossing $1\!-\!2$ costs 4 to $(2, \text{no})$ or 0 to $(2, \text{yes})$. From $(2, \text{yes})$, crossing $2\!-\!3$ costs 6 to $(3, \text{yes})$; from $(2, \text{no})$ it costs 0 to $(3, \text{yes})$, for a total of 4. The cheapest is 4.
+
+**Proof.**
+1. A trip, with its choices of when to use the free road, is exactly a path in the graph of pairs, and its cost is the sum of the costs of the steps. So the cheapest trip is a shortest path there.
+2. Every cost is at least 0, so Theorem 4.3.1 applies to the graph of pairs.
+3. That graph has $|F| n$ vertices and at most $|F| \cdot 4m$ edges (each road can be used from each fact, in both directions, paid or free), which gives the time bound. $\square$
+
+:::note[This proof needs]
+1. The extra fact together with the vertex is the whole state: the possible next steps and their costs depend on nothing else (Theorem 4.9.1).
+2. All step costs are non-negative, including the free ones.
+3. $|F|$ is small, because the graph grows by that factor.
+:::
+
+<TheoremCode unit="4.9/thm-2" />
+
+The first example is the path of two roads: the free road is the 6-minute road (step 1), and the cost is 4. In the second example, the cheapest trip frees the expensive road $3\!-\!4$ after the 2-minute road $1\!-\!3$, for a total of 2. With one vertex, the trip is empty and costs 0.
+
+### 4.3 A set as part of the state
+
+**Theorem 4.9.3 (a set as part of the state).** A walker moves between $P$ places along given moves, with at most $d$ moves from each place. A set $S$ of at most $k$ items starts as a given set, and entering a place $v$ changes it by a rule that depends only on the pair $(v, S)$: for example $S \cup \{v\}$ (the item is collected) or $S$ with the bit of $v$ toggled. Whether the walk is finished depends only on the pair (place, set). Then the fewest moves to a finished pair, or, when moves cost $c \ge 0$, the cheapest cost, equals the distance in the graph of pairs $(v, S)$, which has $P \cdot 2^k$ vertices. A queue-based search (equal costs) or Dijkstra's algorithm (costs at least 0) finds it in $O(P \cdot 2^k \cdot d)$ steps (times a logarithm for the heap).
+
+:::tip[In plain words]
+If every move changes a small set of items by a fixed rule (add an item, toggle an item), make the pair (place, set) a vertex. A search over these pairs answers the question, and there are only places times $2^k$ of them for $k$ items.
+:::
+
+**A tiny instance.** The path $0 - 1 - 2$ and the question "the fewest moves of a walk that visits every vertex". A state is (vertex, set of vertices seen), at most $3 \cdot 2^3 = 24$ pairs. Start at $(0, \{0\})$. One move gives $(1, \{0, 1\})$, a second gives $(2, \{0, 1, 2\})$, and the set is full. No walk with one move sees three vertices, so the answer is 2, the length of the path.
+
+**Proof.**
+1. The set after a move is fixed by the pair before it and by the move (the rule of the theorem), so a walk together with its sets is exactly a path from the start pair in the graph of pairs.
+2. The moves available from a pair, their costs, and whether the pair is finished depend on the pair alone (the preconditions below), so the pairs are states in the sense of Theorem 4.9.1.
+3. With equal costs, Theorem 4.9.1 applies to the graph of pairs; with costs at least 0, Theorem 4.9.2 does, with $F$ the $2^k$ sets.
+4. The graph has $P \cdot 2^k$ vertices and at most $d$ edges from each, which gives $O(P \cdot 2^k \cdot d)$. $\square$
+
+:::note[This proof needs]
+1. The rule that changes the set depends only on the place entered and the current pair, never on how the walker got there.
+2. $k$ is small: $2^k$ values of the set times $P$ places must fit in time and memory (about $10^7$ to $10^8$ steps; $k \le 18$ or so).
+3. Moves cost the same, or at least 0 (use Dijkstra's algorithm in that case).
+:::
+
+<TheoremCode unit="4.9/thm-3" />
+
+The star is a walk that must return to the centre between the leaves: leaf, centre, leaf, centre, leaf, 4 moves (step 1: the walk is a path of pairs). The path of four vertices is walked from one end, 3 moves, and a single vertex is already finished, 0 moves.
+
+### 4.4 A dominated state can be skipped
+
+**Theorem 4.9.4 (a dominated state can be skipped).** Let a search run over states $(v, r)$: a place $v$ and an amount $r$ of a resource (free roads left, obstacles still allowed), with move costs at least 0. Say that more of the resource *never hurts* when, whenever $r' \ge r$, every move from $(v, r)$ is also a move from $(v, r')$ at the same cost, leading to a state with at least as much of the resource as the first move leads to, and whether a place is a goal does not depend on $r$. Run Dijkstra's algorithm over the states, but skip a state $(v, r)$ when it is removed from the heap if a state $(v, r')$ with $r' \ge r$ was finished earlier. Then the search returns the same cheapest cost to a goal place as the search that skips nothing. It is enough to store, for each place, the largest amount finished so far.
+
+:::tip[In plain words]
+If two states are at the same place and one has at least as much of a resource that never hurts, then once that one is finished the other can be thrown away: no answer changes. Keep only the best amount per place.
+:::
+
+**A tiny instance.** The roads $1\!-\!2$ (4) and $2\!-\!3$ (6), one free road allowed, so the resource is "free roads left", starting at 1. The search finishes $(1, 1)$ at cost 0, then $(2, 0)$ at cost 0 (the first road driven for free), then $(2, 1)$ at cost 4, which has more left than the finished $(2, 0)$ and is therefore kept. From $(2, 1)$ the second road is free and gives $(3, 0)$ at cost 4. The state $(1, 0)$, reached from $(2, 0)$ at cost 4, is skipped because $(1, 1)$ was finished at cost 0 and has more left. The answer, 4, is the same as without skipping.
+
+**Proof.**
+1. A state is *finished* when it is removed from the heap and not skipped. Finished states come out in non-decreasing order of cost, and the cost of each is the cost of some route.
+2. *Claim:* for every route from the start of cost $c$ that ends in a state $s = (v, r)$, there is a finished state $(v, r_a)$ with $r_a \ge r$ and cost at most $c$.
+3. A route with no moves ends in the start state, which is finished first at cost 0.
+4. Take a route whose last move goes from $p$ to $s$ at cost $w \ge 0$. The claim holds for the shorter route to $p$, giving a finished $a_p$ with cost at most that of the shorter route. Because more never hurts, $a_p$ has the same move at cost $w$, to a state $s'$ at the place of $s$ with at least as much of the resource as $s$.
+5. When $a_p$ was finished, the search pushed $s'$ with cost at most $\operatorname{cost}(a_p) + w \le c$ (or an entry that cheap was already there), so the first removal of $s'$ happens at a cost of at most $c$.
+6. At that removal $s'$ is either finished (take $a = s'$) or skipped because a state $b$ at the same place with at least as much of the resource was finished earlier, at a cost of at most $c$ (take $a = b$). Either way $a$ has at least as much of the resource as $s$, so the claim holds.
+7. Apply the claim to a cheapest route to a goal place, of cost $T$: a finished state at that place has cost at most $T$. The cost of every finished state is the cost of a route, so it is exactly $T$, and the search reports $T$. $\square$
+
+:::note[This proof needs]
+1. More of the resource never hurts: every move of the state with less is a move, at the same cost, of the state with more, and the result is again at least as good.
+2. All costs are at least 0, so states are finished in non-decreasing order of cost. (With equal costs, a queue-based search finishes states in order of distance and the same proof works.)
+3. The goal depends on the place only, not on how much of the resource is left.
+:::
+
+<TheoremCode unit="4.9/thm-4" />
+
+The first example is the tiny instance, where the skipped state is $(1, 0)$ (step 6). With two free roads both roads are driven for free and the cost is 0. With none, the resource is always 0, so the first finished state at each place dominates every later one and the search is plain Dijkstra, cost 10.
+
+**A second cut: a cap.** If no route can use more than $C$ units of the resource in all, the states $(v, r)$ and $(v, C)$ with $r \ge C$ can do exactly the same, so they are one state and the search stores $\min(r, C)$. A trip along at most 49 roads that each cost at most 50 silver coins spends at most $49 \cdot 50 = 2450$ coins, so every amount above 2500 can be stored as 2500, and an amount that can reach $10^9$ becomes 2501 values.
+
+## 5. Recognition Cards
+
+<Cards topic="4.9" />
+
+## 6. Templates
+
+Four templates. The program around each reads the input; the shown function is what matters. Each has a brute force that uses a different method (trying every order, relaxing every state again and again, or searching every state with no skipping) and a generator, and passed 5000 random small cases.
+
+### Doors and keys (Theorem 4.9.1)
+
+<CodeSnippet unit="4.9/key-door" />
+
+**How it works.** A state is the cell and the set of keys held, stored as four bits of `keys`; the table `dist` has `rows * cols * 16` entries, one per state. Stepping onto a key sets its bit, and stepping onto a door is allowed only if its bit is set. The reference `slot` is the table entry of the next state: if it is already filled the state was seen before, otherwise it receives `here + 1`. The search stops at the first time a state on `T` is removed, whatever keys are held.
+
+**Alternative formulation.** For a state with too many values to index, keep the distances in a `map` from the state (a `tuple` or a `pair`) to the distance, as in Theorem 4.9.1; it costs an extra logarithm.
+
+### Clearing symptoms with medicines (Theorems 4.9.2 and 4.9.3)
+
+<CodeSnippet unit="4.9/clear-all" />
+
+**How it works.** The state is the bitmask of the symptoms present; the start is the mask with all $k$ bits set, and the goal is the mask 0. Medicine `i` leads from `state` to `(state & ~cure[i]) | cause[i]`: first the cured symptoms are removed, then the caused ones are added, and the order matters. The heap holds (days, state) pairs, and `d > dist[state]` skips an old entry. The first time the mask 0 is removed from the heap its distance is the answer, because Dijkstra's algorithm finishes states in order of cost. Total days can reach $10^9$ times many medicines, so `days` and `dist` are `long long`.
+
+**Alternative formulation.** If every medicine takes the same time, a queue replaces the heap and the search is the one of Theorem 4.9.1.
+
+### Up to $k$ free roads (Theorem 4.9.2)
+
+<CodeSnippet unit="4.9/free-rides" />
+
+**How it works.** The state is the pair (town, free roads used so far), `dist[v][used]` is the cheapest cost to be in state `(v, used)`, and the heap works on triples. From a state two moves are tried along each road: pay for it and keep `used`, or drive it for free (cost unchanged) and go to `used + 1`, as long as `used < k`. The answer is the cheapest of the states `(n, 0)` to `(n, k)`; using fewer than $k$ free roads is allowed, which is why all are looked at.
+
+**Alternative formulation.** For $k = 1$, run Dijkstra from both ends and take the best $\text{dist}_1[a] + \text{dist}_n[b]$ over all roads $a - b$ with the road itself free (the same value, found without the extra dimension).
+
+### Walking through at most $k$ obstacles (Theorem 4.9.4)
+
+<CodeSnippet unit="4.9/eliminate" />
+
+**How it works.** The state is (cell, obstacles still allowed). `bestLeft[cell]` holds the largest "left" with which the cell has been entered. A move into a cell is made only if it leaves more obstacles than ever before in that cell: an earlier entry arrived no later and could do everything the new one can (Theorem 4.9.4). The queue holds row, column, obstacles left and steps, and serves smaller step counts first, so the first time the bottom-right cell is removed its step count is the answer. A cell is entered at most $k + 1$ times, but memory is one number per cell instead of $k + 1$.
+
+**Alternative formulation.** Without skipping, keep `dist[cell][used]` for every pair; it gives the same answers with $k + 1$ times the memory, and it is the brute force of the stress test.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh` on 5000 random inputs. The inputs shown are small failing inputs checked against the brute force.
+
+### Bug: a state that forgets the keys
+
+Template: doors and keys.
+
+```cpp
+int& slot = dist[(nr * cols + nc) * 16];  // the keys left out of the index
+```
+
+Input: `2 5`, then the rows `S.A.T` and `#a###`.
+
+Wrong output `-1`, correct output `6`. The cell with the key was reached with the key, but the table cannot tell that state from the same cell without it; the cell next to the door is already filled, so the walk never returns to it with the key. This is a place where the cell alone is not the state (Theorem 4.9.1, precondition 1).
+
+**Fix:** index the table by the cell and the keys, `dist[(nr * cols + nc) * 16 + nextKeys]`.
+
+### Bug: using exactly $k$ free roads
+
+Template: up to $k$ free roads.
+
+```cpp
+best = dist[n][k];                    // instead of the minimum over all used
+```
+
+Input: `2 1 2`, then the road `1 2 7`.
+
+Wrong output `7`, correct output `0`. The only road can be free, which is state $(2, 1)$ at cost 0. Reaching $(2, 2)$ takes two moves along the road: pay 7 for one of them and drive the other for free. The program therefore pays for a road it never needed. The question allows *up to* $k$ free roads.
+
+**Fix:** take the minimum of `dist[n][used]` over `used = 0..k`.
+
+### Bug: curing and causing in the wrong order
+
+Template: clearing symptoms.
+
+```cpp
+int next = (state | cause[i]) & ~cure[i];   // instead of (state & ~cure[i]) | cause[i]
+```
+
+Input: `1 1`, then the medicine `3 1 1`.
+
+Wrong output `3`, correct output `-1`. The medicine cures the symptom and causes it again, so it is present after every dose and never clears. With the caused symptoms added first, the cure removes them and the program reports a cure after 3 days.
+
+**Fix:** remove the cured symptoms first, then add the caused ones (Theorem 4.9.3, precondition 1: the rule is fixed by the pair and the move).
+
+### Bug: days in 32 bits
+
+Template: clearing symptoms.
+
+```cpp
+const int INF = INT_MAX;
+vector<int> dist(1 << k, INF);   // instead of long long, and the heap pairs of int
+```
+
+Input: `3 3`, then the medicines `1000000000 1 0`, `1000000000 2 0` and `1000000000 4 0`.
+
+Wrong output `-1`, correct output `3000000000`. Each medicine cures one of the three symptoms, so all three are needed, and the total passes $2 \cdot 10^9$, the limit of a 32-bit `int`. The random test found a failing case too (a seed of 829 with 3 symptoms), because its generator sometimes uses days near $10^9$.
+
+**Fix:** keep the days in `long long` (topic 0.1).
+
+### Bug: marking a cell as seen, not the cell with its obstacles left
+
+Template: walking through at most $k$ obstacles.
+
+```cpp
+if (nextLeft < 0 || bestLeft[nr * cols + nc] != -1) continue;   // instead of nextLeft <= bestLeft[...]
+```
+
+Input: `4 2 1`, then the rows `..`, `#.`, `##` and `..`.
+
+Wrong output `-1`, correct output `4`. The cell $(1, 1)$ is first reached through the obstacle at $(1, 0)$ with 0 obstacles left, and the cell is then closed for good. The route through $(0, 1)$ reaches it with 1 left, which is what the obstacle at $(2, 1)$ needs. This is the failure of Theorem 4.9.4 when the states are not comparable: a visit with less left is not better than one with more.
+
+**Fix:** enter a cell again only when it leaves strictly more obstacles than every earlier visit.
+
+## 8. Worked examples
+
+The problem bank of this topic is small (see the note at the end of this section), so there is no separate worked-example problem. The templates of Section 6 are the worked examples: each is shown with a short walk through its steps and checked against a brute force on thousands of random inputs. The problem ladder (Section 9) gives three hints for every rung, in the same order as the steps of the templates: say what the state is, count the states, say what a move does to it.
+
+Why the bank is small: the topic needs problems where inventing the state is the idea. The problems that fit already lay in the banks of topics 4.1 and 4.3, and they moved here with their cards. A search of the Codeforces API tags, the AtCoder Problems list, LeetCode and CSES added about a dozen more, so the topic has about 45 candidates in all and uses 20 for its ladder; the rest are in the reserved roles or in the list of dropped candidates. Meeting in the middle on a state space and 0-1 search over states each have only one or two problems, so they have no card of their own.
+
+## 9. Problem ladder
+
+<Ladder topic="4.9" />
+
+## 10. Identification drill
+
+Three of the eight problems below are answered by a card of this topic. The other five look like a search over states (a swap or not, a game on a grid, choosing coins, placing mailboxes, ordering numbers) but have a simpler structure: a table over positions, intervals or subsets. The point of the drill is to say which.
+
+<Drill topic="4.9" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="4.9" />
+
+## 12. Self-test questions
+
+<SelfTest topic="4.9" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="4.9" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="4.9" />

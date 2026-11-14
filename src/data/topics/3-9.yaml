@@ -1,0 +1,528 @@
+# Topic 3.9 data file (CURRICULUM_GAPS_PLAN.md Section 5.1, S2). Problems reference the bank by id. reduced_bank: see PROGRESS.md.
+id: '3.9'
+uses:
+- topic: '0.1'
+  what: 'Overflow: sums of up to 20 numbers of $10^9$ need 64-bit integers (Theorem 0.1.1)'
+- topic: '0.2'
+  what: Reading the constraints against a budget of about $10^8$ steps
+- topic: '0.4'
+  what: Remainders modulo $M$, used when the halves are combined modulo a number
+- topic: '0.5'
+  what: 'Brute force: bitmasks as subsets (Theorem 0.5.2), the reference solutions in the tests'
+- topic: '0.6'
+  what: Sets and maps, used to match the two halves by an exact key
+- topic: '1.1'
+  what: Sorting one list of half answers
+- topic: '1.3'
+  what: Two sorted lists walked by pointers that only move one way (Theorem 1.3.5)
+- topic: '1.4'
+  what: Binary search in a sorted list, `lower_bound` and `upper_bound` (Theorem 1.4.1)
+- topic: '1.7'
+  what: Exclusive or, used as the value that combines the two halves of a path
+- topic: '2.3'
+  what: Counting by a formula instead of listing, the right tool when the numbers are all equal
+- topic: '3.1'
+  what: Recursion over choices to list the answers of one half (Theorem 3.1.1)
+theorems:
+- id: 3.9.1
+  title: Meet in the middle
+  plain_words: Split $n$ numbers into two halves, list the $2^{n/2}$ subset sums of each, sort one list, and for each sum of the other half look up the partner by binary search. That is about $2^{n/2} \cdot n$ steps instead of $2^n$.
+  code: 3.9/thm-1
+- id: 3.9.2
+  title: Each half list costs about its own size
+  plain_words: A list of all $2^k$ subset sums of $k$ numbers is built by adding one number to every sum already listed, so it takes $2^k - 1$ additions. Recomputing each subset from its bits takes about $k$ times more, and that factor is the difference between 40 million and 400 million steps.
+  code: 3.9/thm-2
+- id: 3.9.3
+  title: A monotone merge needs only two pointers
+  plain_words: When both half lists are sorted and the partner test is "sum at most $T$", the number of partners can only shrink as the left value grows. So one pointer that only moves left walks the right list once, and the search per element disappears.
+  code: 3.9/thm-3
+cards:
+- id: size-band
+  name: Read the size first
+  decisive_property: There are about 30 to 45 yes-or-no choices (or 20 to 25 choices with three options), so $b^n$ is far too many, each half has at most about $2^{22}$ entries, and the objective is a part from each half combined by a simple rule (a sum, an exclusive or), so that a full answer is one entry of each half list.
+  from_theorem: 3.9.2
+  how_to_test: Read $n$ and the number of options $b$ of each choice, and compare $b^n$ and $2 \cdot b^{n/2}$ with about $10^8$. The band is $b^n$ above $10^9$ and $b^{n/2}$ at most about $4 \cdot 10^6$. Then check that the answer is a combination of one value from each half with nothing linking the halves.
+  constraint_shapes:
+  - '$n = 40$ numbers: $2^{40} = 1.1 \cdot 10^{12}$ subsets, while two lists of $2^{20} = 10^6$ sums, a sort and $10^6$ binary searches are about $5 \cdot 10^7$ steps.'
+  - '25 quests with 3 options each: $3^{25} = 8.5 \cdot 10^{11}$, while the halves have $3^{12}$ and $3^{13}$ entries, about $2 \cdot 10^6$ in all.'
+  weak_signals:
+  - form: $n$ is around 40, too many for $2^n$ but $2^{n/2} \approx 10^6$ fits
+    shape: n between 30 and 45
+  - form: Subset sums equal to, at most, or closest to a target, possibly with signs, and values up to $10^9$ so that no table of sums fits
+    shape: Sums up to $4 \cdot 10^{10}$
+  - form: A bracket, a vote or a sequence of games with a few choices per step and a total around $2^{30}$ outcomes
+    shape: 30 to 36 binary choices
+  kill_signals:
+  - 'A constraint couples the two halves: counting the subsets of 4 3 4 3 with sum 7 and no two neighbours chosen gives 1, but the halves ignore the neighbours across the middle and count 2.'
+  - '$n \le 20$: a plain bitmask search is enough, and when the numbers are all equal or very small a formula or a table beats both.'
+  in_action:
+    statement: Choose some of $n \le 40$ numbers with total at most $T$ so that the total is as large as possible.
+    constraints: $n \le 40$, $T$ and the numbers up to $10^9$.
+    budget: $2^{40}$ subsets are $1.1 \cdot 10^{12}$. Two lists of $2^{20}$ sums, a sort and $2^{20}$ binary searches are about $5 \cdot 10^7$ steps.
+    candidates:
+    - tool: Try every subset
+      verdict: rejected
+      because: $2^{40}$ subsets, $10^4$ times over the budget.
+    - tool: A table of reachable sums
+      verdict: rejected
+      because: The sums go up to $10^9$ or more, so the table has too many entries.
+    - tool: Meet in the middle
+      verdict: chosen
+      because: The total is a sum that splits into one part per half, and the best partner is found by binary search in a sorted list.
+    property_check: Every subset is a pair (left sum, right sum), and the largest right sum at most T − x is a binary search (Theorem 3.9.1); each half list is built in about its own size (Theorem 3.9.2).
+    decision: List the subset sums of each half, sort the right list, and for each left sum $x \le T$ take $x$ plus the largest right sum at most $T - x$.
+  examples:
+    positive:
+    - inline:
+        input: The subsets of 3 5 2 6 with sum 8
+        answer: '2'
+        why: The halves {3, 5} and {2, 6} have sums 0, 3, 5, 8 and 0, 2, 6, 8; the pairs (0, 8) and (8, 0) give the subsets {2, 6} and {3, 5}.
+    - inline:
+        input: The largest subset sum at most 20 of 7 11 5 9 4 13
+        answer: '20'
+        why: The halves {7, 11, 5} and {9, 4, 13}; the left sum 7 pairs with the right sum 13 (9 + 4), and 7 + 13 = 20 is the largest total that does not pass 20.
+    negative:
+    - inline:
+        input: The subsets of 4 3 4 3 with sum 7 and no two neighbours chosen
+        answer: '1'
+        method_gives: '2'
+        why: The neighbour rule links the two halves across the middle, so the halves cannot be combined by their sums alone; with n this small, a bitmask check of every subset is exact.
+      correct_tool:
+        topic: '0.5'
+        card: subset-bitmask
+    - inline:
+        input: The subsets with sum at most 10 of 50 numbers that are all equal to 1
+        answer: '13432735556'
+        method_gives: too-slow
+        why: Halves of 25 would list $2^{25}$ sums each, but every subset is described by its size, so the answer is the sum of $\binom{50}{k}$ for k up to 10, a counting formula.
+      correct_tool:
+        topic: '2.3'
+        card: ncr-mod-p
+  lookalikes:
+  - description: Count the subsets of $n \le 20$ numbers with sum at most $T$
+    tool:
+      topic: '0.5'
+      card: subset-bitmask
+    flipping_difference: $n \le 20$ makes $2^n \approx 10^6$ small enough to list directly; splitting only pays off when $n$ is around 40.
+  complexity: '$O(2^{n/2} \cdot n)$ time and $O(2^{n/2})$ memory for two lists.'
+- id: sorted-merge
+  name: Merge the half lists by sorting
+  decisive_property: The test on a pair (left entry, right entry) is answered by one sorted list. For each left entry the partners that give "equal to", "at most" or "closest to" the target form one block found by binary search (Theorem 3.9.1), and when the test is monotone in both lists one pass of two pointers does the same without the search (Theorem 3.9.3). A four-sum is the same with the $n^2$ pair sums of two lists as one half.
+  from_theorem: 3.9.3
+  how_to_test: Write the condition as f(left) combined with g(right) compared with a target, and say which question is asked of the right list (count equal, count at most, largest at most, closest). If the question is "at most" or "largest at most", check that the left values sorted ascending give a right pointer that only moves left (two pointers); otherwise use binary search.
+  constraint_shapes:
+  - '$n = 40$ with sums up to $4 \cdot 10^{10}$ and a target: two sorted lists of $10^6$, then $10^6$ binary searches (20 steps each) or one pointer pass.'
+  - 'Four lists of 200 numbers: $200^4 = 1.6 \cdot 10^9$ quadruples, while the $40\,000$ pair sums of two lists sorted once and looked up $40\,000$ times is about $10^6$ steps.'
+  weak_signals:
+  - form: Subset sum equal to, at most, or closest to a target with n around 40
+    shape: n = 40, values up to $10^9$
+  - form: Four values from four lists, or four chosen positions, with a given total
+    shape: n up to $10^3$, $n^4$ too large and $n^2$ pairs fit in memory
+  - form: A count of pairs whose product or sum stays below a bound, over two big lists of generated numbers
+    shape: Two lists of about $10^6$ numbers
+  kill_signals:
+  - 'Counting the subsets of the single number 4 with sum at most 0 and using `lower_bound` finds 0: it stops before the sums equal to the bound and misses the empty subset.'
+  - 'Looking only for the largest sum that does not pass the target misses the closest sum above it: the closest subset sum to 6 of the number 7 is 7, at distance 1, but the search below 6 reports distance 6.'
+  in_action:
+    statement: Four lists of $n \le 200$ numbers each. Count the quadruples, one number from each list, whose sum is 0.
+    constraints: $n \le 200$, values up to $2^{28}$ in absolute value.
+    budget: All quadruples are $200^4 = 1.6 \cdot 10^9$. The $n^2 = 40\,000$ sums of the first two lists, sorted, and one lookup for each of the $40\,000$ sums of the other two is about $10^6$ steps.
+    candidates:
+    - tool: Four nested loops
+      verdict: rejected
+      because: $1.6 \cdot 10^9$ steps with no early exit.
+    - tool: Three nested loops and a lookup of the fourth value
+      verdict: rejected
+      because: $8 \cdot 10^6$ lookups would do, but the count of pairs is what matters; this is the same idea with the split in the wrong place and a cost of $n^3$.
+    - tool: Sorted pair sums, then a lookup for each pair of the other two lists
+      verdict: chosen
+      because: Every quadruple is one pair sum of A and B plus one of C and D, so the count is the number of matching pairs.
+    property_check: Each full answer is a pair of entries, one from each half list, whose combination is a sum compared with 0; the question "how many equal" is a block of the sorted list (Theorem 3.9.1).
+    decision: Sort all sums A[i] + B[j]; for every C[k] + D[l] add the size of the block equal to its negative.
+  examples:
+    positive:
+    - inline:
+        input: 'Largest subset sum at most 15 of 9 4 6 3 8'
+        answer: '15'
+        why: The halves {9, 4} and {6, 3, 8}; for left sum 9 the largest right sum at most 6 is 6, and 9 + 6 = 15.
+    - inline:
+        input: 'Quadruples with sum 0 from A = (1, −1, 2), B = (−2, 1, 0), C = (0, −1, 2), D = (1, −1, −2)'
+        answer: '15'
+        why: The nine sums of A and B are sorted once, and each of the nine sums of C and D counts the entries equal to its negative; the counts add up to 15.
+    negative:
+    - inline:
+        input: The subsets of the single number 4 with sum at most 0, counted with `lower_bound`
+        answer: '1'
+        method_gives: '0'
+        why: '`lower_bound` returns the first sum not below the bound, so the sums equal to the bound are not counted; "at most" needs `upper_bound`, and the empty subset is the one subset that counts.'
+      correct_tool:
+        topic: '3.9'
+        card: sorted-merge
+    - inline:
+        input: The distance from 6 to the closest subset sum of the single number 7
+        answer: '1'
+        method_gives: '6'
+        why: Only the largest right sum that does not pass the target is tried, so the sum 7 above the target is never looked at; the closest sum needs the first entry above as well.
+      correct_tool:
+        topic: '3.9'
+        card: sorted-merge
+  lookalikes:
+  - description: Count the quadruples $a + b + c = d$ among $n \le 50$ numbers
+    tool:
+      topic: '0.5'
+      card: nested-loops
+    flipping_difference: With $n \le 50$ the plain nested loops finish in about $2.6 \cdot 10^5$ steps; the pair split pays off only when $n^4$ is far above the budget and the $n^2$ pair sums still fit.
+  complexity: '$O(2^{n/2} \cdot n)$ with binary search, $O(2^{n/2})$ after the sorts with two pointers; $O(n^2 \log n)$ for a four-sum.'
+- id: grid-path-split
+  name: Cut a path at its middle
+  decisive_property: A path of $2k$ steps (a walk on a grid, a sequence of moves) can be cut after $k$ steps, every path passes through exactly one cell of the cut line, and the condition on the whole path is a combination (xor, sum, a product modulo $M$) of one value from the first half and one from the second. Each half is listed by recursion, and the halves are matched per middle cell.
+  from_theorem: 3.9.1
+  how_to_test: Name the middle line (the cells with $i + j = k$) and check that every path crosses it exactly once. Write the whole-path value as first-half value combined with second-half value, counting the meeting cell once, and check that the combination can be looked up.
+  constraint_shapes:
+  - '$n, m \le 20$: $\binom{38}{19} = 3.5 \cdot 10^{10}$ paths, while each half has at most $2^{19} = 5 \cdot 10^5$ and the lists are kept per cell of the middle diagonal.'
+  weak_signals:
+  - form: A path in a grid of side about 20 with right and down moves, and an xor, a sum modulo $M$ or a product asked of the whole path
+    shape: n, m up to 20
+  - form: A sequence of up to 40 moves or signs where the final position or value is a combination of the first and second halves
+    shape: 2 options per move, 40 moves
+  kill_signals:
+  - 'A condition on the whole path that the halves cannot see: counting the paths of the grid with rows 1 2 3 and 3 1 4 whose cells are all different gives 1, but joining the two halves counted separately gives 3.'
+  - 'The meeting cell xored into both halves cancels out: for the grid with rows 1 2 and 3 4 and target 7, the answer is 1 and the double count gives 0.'
+  in_action:
+    statement: In an $n \times m$ grid of numbers, count the paths from the top-left cell to the bottom-right cell (moves right or down) whose cell values have xor equal to $k$.
+    constraints: $n, m \le 20$, values below $2^{60}$.
+    budget: There are up to $\binom{38}{19} = 3.5 \cdot 10^{10}$ paths. Two halves of 19 steps have at most $2^{19}$ paths each.
+    candidates:
+    - tool: Walk every path
+      verdict: rejected
+      because: $3.5 \cdot 10^{10}$ paths times the path length.
+    - tool: A table over cells and xor values
+      verdict: rejected
+      because: The xor can take $2^{60}$ values, so the table has no bounded size.
+    - tool: Cut after half the steps and match per cell of the cut line
+      verdict: chosen
+      because: Every path crosses the diagonal once, and the xor of the path is the xor of the first part and the second part.
+    property_check: The path value is first xor second, with the meeting cell counted once, so a lookup of $x \oplus k$ in a map per cell counts the matching pairs (Theorem 3.9.1).
+    decision: Walk forward from the start for $\lfloor (n + m - 2)/2 \rfloor$ steps and count the xor values per cell of the diagonal; walk backward from the end to the same diagonal without xoring the meeting cell, and add the count stored for the value $x \oplus k$.
+  examples:
+    positive:
+    - inline:
+        input: The paths of the grid with rows 1 2 and 3 4 with xor 7
+        answer: '1'
+        why: The two paths have xor $1 \oplus 2 \oplus 4 = 7$ and $1 \oplus 3 \oplus 4 = 6$, so one path has xor 7; the cut after one step gives the same count.
+    - inline:
+        input: The paths of the grid with rows 1 2 3, 4 5 6 and 7 8 9 with xor 1
+        answer: '1'
+        why: Six paths of 5 cells; the cut after two steps stores the xor of the first three cells per cell of the middle diagonal and finds exactly one matching second half.
+    negative:
+    - inline:
+        input: The paths of the grid with rows 1 2 and 3 4 with xor 7, with the meeting cell xored into both halves
+        answer: '1'
+        method_gives: '0'
+        why: A cell xored twice cancels, so every half-path loses the value of its meeting cell; the meeting cell must be counted exactly once.
+      correct_tool:
+        topic: '3.9'
+        card: grid-path-split
+    - inline:
+        input: The paths of the grid with rows 1 2 3 and 3 1 4 whose cell values are all different
+        answer: '1'
+        method_gives: '3'
+        why: A repeated value across the cut, such as the 1 before the middle and the 1 after it, is invisible to each half, so the halves' counts overstate the answer; a search that checks every cell of the whole path is exact.
+      correct_tool:
+        topic: '3.1'
+        card: constraint-placement
+  lookalikes:
+  - description: Count the paths of a grid with $n, m \le 20$ whose cells have a sum below a bound (not an xor or equality)
+    tool:
+      topic: '3.9'
+      card: sorted-merge
+    flipping_difference: A bound instead of an exact value turns the per-cell map into a per-cell sorted list searched with `upper_bound`; the cut itself is the same.
+  complexity: $O(2^{(n+m)/2})$ paths per half times a map lookup, so about $2 \cdot 2^{19} \cdot \log$ for $n = m = 20$.
+problems:
+- id: ac-abc326_f
+  role: ladder
+  card: size-band
+  rung: 1
+  twist: 'Base case of the card: two independent sign problems, each of 40 terms, so the size is read twice.'
+  summary: A robot turns left or right before every step of lengths $A_1, \dots, A_N$ ($N \le 80$); is there a choice of turns that ends at a given point, and which?
+  hints:
+  - The moves alternate between the two axes, so the choices for the x-axis and for the y-axis are independent. How many terms does each axis have?
+  - Each axis has at most 40 signed terms, so $2^{40}$ is too many but $2^{20}$ per half is fine (Theorem 3.9.2); each axis is a subset-sum-with-signs question.
+  - 'For each axis split its terms in two halves, store the signed sums of one half in a map to a choice mask, and look up the target minus each sum of the other half (Theorem 3.9.1); then rebuild the turn letters from the signs.'
+- id: cf-1105E
+  role: ladder
+  card: size-band
+  rung: 2
+  twist: The halves interact through a graph, so the second half is summarised by a table over its subsets.
+  summary: Choose the largest set of up to 40 friends so that no two of them want the same name in the same stretch between two changes †
+  hints:
+  - Two friends conflict if their wishes fall in the same stretch of the log. What kind of graph question is "the largest group with no conflict"?
+  - It is the largest set of vertices with no edge between them on at most 40 vertices; $2^{40}$ is too many, so split the vertices into two halves of 20 (Theorem 3.9.2).
+  - 'For the second half compute, for every subset, the largest conflict-free subset inside it; then for each conflict-free subset of the first half, add the best subset of the second half that avoids its neighbours. This is the recalled idea, not checked against an editorial.'
+- id: cf-585D
+  role: ladder
+  card: size-band
+  rung: 3
+  twist: 'Three options per choice: the band is read from the base 3, and the halves meet through three totals at once.'
+  summary: For up to 25 quests, choose which two of three companions go on each so that all three totals end equal and as large as possible †
+  hints:
+  - Each quest has 3 choices, so there are $3^{25}$ plans. Compare $3^{25}$ and $2 \cdot 3^{13}$ with the budget.
+  - 'Split the quests into halves of 12 and 13: $3^{12}$ and $3^{13}$ plans, a few million entries, fit (Theorem 3.9.2).'
+  - Describe each half plan by the differences between its three totals and the largest total; match a left plan to a right plan whose differences are the negatives, and keep the best sum. These hints are the recalled idea.
+- id: cf-1569E
+  role: ladder
+  card: size-band
+  rung: 4
+  twist: 'The "choices" are the results of 31 games in a bracket, and the halves meet through a sum that is part of the hash.'
+  summary: Given a hash of the final places of a playoff of $2^k$ teams ($k \le 5$), find one set of game results that gives that hash †
+  hints:
+  - 32 teams play 31 games, so $2^{31}$ result sets. Where does the bracket split into two equal independent parts?
+  - The two halves of 16 teams each have 15 games and $2^{15}$ results, independent of each other until the final (Theorem 3.9.2).
+  - For each half compute its winner and the part of the hash that comes from the places of its teams; the final decides which winner gets place 1 and which place 2, so match the two halves by the needed total. These hints are the recalled idea.
+- id: ac-abc184_f
+  role: ladder
+  card: sorted-merge
+  rung: 1
+  twist: 'Base case of the card: the largest sum at most T, one binary search per left sum.'
+  summary: Choose some of $N \le 40$ times, each up to $10^9$, so that the total is at most $T \le 10^9$ and as large as possible.
+  hints:
+  - 'Try all subsets: $2^{40}$. Split the times into two halves of 20; how many sums does each half have?'
+  - 'Each half has $2^{20}$ sums (Theorem 3.9.2); for a fixed left sum $x$, the best partner is the largest right sum at most $T - x$ (Theorem 3.9.1).'
+  - Sort the right list; for each left sum $x \le T$, take the element just before `upper_bound(T - x)`, and keep the largest total. The empty choice is a sum 0 in both lists.
+- id: cf-912E
+  role: ladder
+  card: sorted-merge
+  rung: 2
+  twist: Two pointers instead of binary search, because the test "product at most x" is monotone in both lists; the whole thing sits inside a binary search on the answer †
+  summary: 'Given 16 primes, find the k-th smallest number up to $10^{18}$ whose prime factors are all among them (the answer is at most $10^{18}$) †'
+  hints:
+  - Numbers built from 16 primes and at most $10^{18}$ are too many to list together. Which split of the primes gives two lists of about $10^6$ each?
+  - Put every other prime in one group, list every product of each group up to $10^{18}$, and sort both lists; a product of a left number and a right number is a candidate.
+  - Binary search on the answer $x$ (topic 1.4); to count the pairs with product at most $x$, walk the left list upwards and the right pointer downwards (Theorem 3.9.3). These hints are the recalled idea.
+- id: cf-1257F
+  role: ladder
+  card: sorted-merge
+  rung: 3
+  twist: The merge key is a whole vector of bit-count differences, so the halves are matched by a hash map instead of an order.
+  summary: Find one number $x$ below $2^{30}$ so that all $n \le 100$ numbers $a_i \oplus x$ have the same number of set bits †
+  hints:
+  - 'Try every $x$: $2^{30}$ candidates, each checked on $n$ numbers. Split $x$ into its low 15 bits and its high 15 bits.'
+  - The number of set bits of $a_i \oplus x$ is the sum of the counts of its low half and its high half, so each half contributes a vector (one entry per $i$).
+  - 'Fix $a_1$ as reference: for each half store the vector of differences to $a_1$''s count in a map, and look up the negated vector from the other half. These hints are the recalled idea.'
+- id: ac-abc402_f
+  role: ladder
+  card: grid-path-split
+  rung: 1
+  twist: 'Base case of the card: the whole-path value is a number read digit by digit, so the combination is (left times a power of ten, plus right) modulo $M$, maximised.'
+  summary: On an $N \times N$ grid of digits ($N \le 20$) walk right and down from the top-left to the bottom-right and read the digits as one number; find the largest value modulo $M \le 10^9$.
+  hints:
+  - The grid has up to $\binom{38}{19}$ paths. Which cells does every path pass through exactly once?
+  - 'Cut at the anti-diagonal $i + j = N - 1$ (Theorem 3.9.1): the prefix value times a power of ten plus the suffix value, both modulo $M$, so each half is one list of residues per cell of the cut.'
+  - For each cell sort the suffix residues; for each prefix residue $x$ the best partner is the largest suffix residue below $M - x$, and also the largest overall (wrapping once).
+- id: ac-abc271_f
+  role: ladder
+  card: grid-path-split
+  rung: 2
+  twist: Counting instead of maximising, with an equality on the xor.
+  summary: Count the right-and-down paths of an $N \times N$ grid ($N \le 20$) whose cell values have xor 0.
+  hints:
+  - 'Walks from the top-left cell to the bottom-right cell: how long is every path, and where is its middle?'
+  - Cut at the anti-diagonal; every path crosses it exactly once. Forward from the start the xor of the cells up to and including the cut cell; backward from the end the xor of the cells after it.
+  - 'Store the forward xor values per cut cell in a map with counts, and for each backward value look up the same value (xor 0 means equal halves); count the meeting cell once.'
+- id: cf-1006F
+  role: ladder
+  card: grid-path-split
+  rung: 3
+  twist: The same cut with an arbitrary target k and a rectangular grid †
+  summary: Count the right-and-down paths of an $n \times m$ grid ($n, m \le 20$) whose cell values have xor equal to a given $k$ †
+  hints:
+  - The path has $n + m - 2$ steps. Where is the middle, and how many paths does each half have?
+  - 'Cut after $\lfloor (n + m - 2)/2 \rfloor$ steps: each half has at most $2^{19}$ paths, kept per cell of the cut diagonal (Theorem 3.9.1).'
+  - For each backward xor $x$ look up $x \oplus k$ among the forward values of the same cell, and do not xor the meeting cell twice. These hints are the recalled idea; the template `3.9/grid-xor-paths` is checked against brute force.
+- id: cses-1628
+  role: checkpoint
+  card: size-band
+  summary: Count the subsets of $n \le 40$ numbers (up to $10^9$) whose sum is exactly $x \le 10^9$.
+- id: lc-split-array-with-same-average
+  role: checkpoint
+  card: size-band
+  summary: Can an array of up to 30 numbers be split into two non-empty parts with the same average?
+- id: cf-888E
+  role: checkpoint
+  card: sorted-merge
+  summary: Choose a subset of $n \le 35$ numbers so that the sum modulo $m \le 10^9$ is as large as possible †
+- id: cf-525E
+  role: review
+  card: size-band
+  review_set: 1
+  summary: Each of $n \le 25$ cubes can be skipped, taken, or taken with a factorial sticker (at most $k$ stickers); count the choices with total exactly $S \le 10^{16}$ †
+- id: cses-1642
+  role: review
+  card: sorted-merge
+  review_set: 1
+  summary: Find four values at distinct positions of an array of $n \le 1000$ numbers with a given sum $x$, or report that none exist.
+- id: lc-partition-array-into-two-arrays-to-minimize-sum-difference
+  role: review
+  card: sorted-merge
+  review_set: 1
+  summary: Split $2n$ numbers ($n \le 15$) into two groups of $n$ so that the difference of the sums is as small as possible.
+- id: lc-closest-subsequence-sum
+  role: lookalike
+  summary: Choose a subsequence of up to 40 numbers (absolute value up to $10^7$) so that its sum is as close as possible to a goal up to $10^9$.
+- id: lc-target-sum
+  role: lookalike
+  summary: Count the ways to give each of at most 20 non-negative numbers a plus or a minus sign so that the signed sum equals a target.
+- id: lc-4sum-ii
+  role: lookalike
+  summary: Four lists of $n \le 200$ numbers; count the quadruples, one number from each list, whose sum is 0.
+- id: lc-count-special-quadruplets
+  role: lookalike
+  summary: Count the index quadruples $a < b < c < d$ of an array of at most 50 numbers with $x_a + x_b + x_c = x_d$.
+- id: ac-abc173_c
+  role: drill
+  summary: Choose a set of rows and a set of columns of a grid with at most 6 rows and 6 columns to paint red, and count the choices that leave exactly K black squares.
+- id: ac-abc404_d
+  role: drill
+  summary: Visit each of $N \le 10$ zoos 0, 1 or 2 times at given fees so that every one of up to 100 animals is seen at least twice, at the lowest total fee.
+- id: ac-abc302_c
+  role: drill
+  summary: Can $N \le 8$ strings of equal length be put in an order in which neighbouring strings differ in exactly one position?
+- id: ac-abc197_c
+  role: drill
+  summary: Cut a sequence of $N \le 20$ numbers into blocks, OR the numbers inside each block, and XOR the block values; find the smallest result.
+- id: cf-886A
+  role: drill
+  summary: Can six players with given scores be split into two teams of three with equal total score?
+- id: lc-minimum-difference-between-highest-and-lowest-of-k-scores
+  role: drill
+  summary: Choose $k$ of up to 1000 scores so that the highest minus the lowest is as small as possible.
+- id: lc-minimum-swaps-to-group-all-1s-together-ii
+  role: drill
+  summary: The fewest swaps that bring all the 1s of a circular binary array (up to $10^5$ cells) together.
+- id: lc-longest-square-streak-in-an-array
+  role: drill
+  summary: The longest chain $x, x^2, x^4, \dots$ whose members all appear in an array of up to $10^5$ numbers.
+drill:
+- problem: ac-abc173_c
+  answer:
+    topic: '0.5'
+    card: subset-bitmask
+  property: 'At most 6 rows and 6 columns make $2^{12} = 4096$ choices, each checked in a few dozen steps: a bitmask over rows and one over columns.'
+  why_others_fail: The sizes are tiny, so there is nothing to split; the halves would only add code to a search of 4096 cases.
+- problem: ac-abc404_d
+  answer:
+    topic: '0.5'
+    card: recursive-choices
+  property: 'Each of at most 10 zoos has three options, so $3^{10} = 59\,049$ plans, each checked against 100 animals.'
+  why_others_fail: $3^{10}$ is far below the budget, so no split is needed even though the choices have three options.
+- problem: ac-abc302_c
+  answer:
+    topic: '0.5'
+    card: permutations
+  property: With at most 8 strings, all $8! = 40\,320$ orders are tried with `next_permutation`.
+  why_others_fail: The orders are not a sum of two independent parts, and 40 320 is already small.
+- problem: ac-abc197_c
+  answer:
+    topic: '0.5'
+    card: subset-bitmask
+  property: Each of the at most 19 gaps is a cut or not, so $2^{19}$ masks, each evaluated in $O(N)$.
+  why_others_fail: $2^{19}$ masks is half a million; the objective (OR inside blocks, XOR between them) does not combine two independent halves by a lookup, so a split would not help.
+- problem: cf-886A
+  answer:
+    topic: '0.5'
+    card: nested-loops
+  property: Three nested loops choose one team of three out of six players, 20 teams in all.
+  why_others_fail: Six numbers have 64 subsets; no band to read.
+- problem: lc-minimum-difference-between-highest-and-lowest-of-k-scores
+  answer:
+    topic: '1.1'
+    card: sort-then-scan
+  property: After sorting, the $k$ closest scores are $k$ neighbours, so one pass over the windows of $k$ scores finds the answer.
+  why_others_fail: The question sounds like choosing $k$ of $n$ items, but sorting makes the best choice a window; no subset list is needed.
+- problem: lc-minimum-swaps-to-group-all-1s-together-ii
+  answer:
+    topic: '1.3'
+    card: fixed-window
+  property: The 1s end up in a window of fixed length equal to their count, and each step of the window updates the number of 0s inside it by one add and one remove.
+  why_others_fail: The $2^n$ choices of which cells to swap never need to be listed; a window of fixed length decides.
+- problem: lc-longest-square-streak-in-an-array
+  answer:
+    topic: '0.6'
+    card: set-membership
+  property: From each value follow its squares while the next square is in a set; a chain has at most 5 links below $10^5$.
+  why_others_fail: Chains are found by membership tests, not by choosing subsets, so no halves exist.
+lookalike_pairs:
+- a: lc-closest-subsequence-sum
+  b: lc-target-sum
+  a_tool:
+    topic: '3.9'
+    card: sorted-merge
+  b_tool:
+    topic: '0.5'
+    card: subset-bitmask
+  shared_surface: Both ask about the sums of the subsequences of a list of numbers against a goal.
+  flipping_difference: In A there are up to 40 numbers, so $2^{40}$ subsequences are too many and the sums of two halves of 20 are merged by a sorted list. In B there are at most 20 numbers, so $2^{20}$ signed sums can be listed directly, with a bitmask or a plain take-or-not recursion.
+  flipping_input: 'A: 40 numbers and a goal, the closest sum is wanted (halves of 20). B: the numbers 1 1 1 1 1 with target 3 give 10 sign patterns by a bitmask over 5 numbers.'
+- a: lc-4sum-ii
+  b: lc-count-special-quadruplets
+  a_tool:
+    topic: '3.9'
+    card: sorted-merge
+  b_tool:
+    topic: '0.5'
+    card: nested-loops
+  shared_surface: Both count quadruples of numbers that satisfy one sum equation.
+  flipping_difference: In A the four lists have 200 numbers each, so $200^4$ quadruples are too many and the $n^2$ pair sums of two lists meet the pair sums of the other two. In B the single array has at most 50 numbers, and the plain nested loops take about $2.6 \cdot 10^5$ steps.
+  flipping_input: 'A: four lists of 200 numbers, count the zero-sum quadruples. B: the array 1 1 1 3 gives 1 quadruple with $x_a + x_b + x_c = x_d$.'
+self_test:
+- q: How many subsets does a set of 40 numbers have, and how many sums does each of two halves of 20 have?
+  a: $2^{40} \approx 1.1 \cdot 10^{12}$ subsets, and $2^{20} \approx 10^6$ sums per half, so two lists and a sort fit the budget (Theorem 3.9.1).
+- q: Why can the list of the $2^k$ subset sums of one half be built in about $2^k$ steps and not $k \cdot 2^k$?
+  a: Each new number is added to every sum already listed, so the list doubles with one addition per new entry, $2^k - 1$ additions in all (Theorem 3.9.2).
+- q: In "count the subsets with sum at most T", which function finds the number of right sums at most T − x, and what goes wrong with the other one?
+  a: '`upper_bound` returns the position after the last sum at most T − x; `lower_bound` stops before the sums equal to T − x and misses every subset whose total is exactly T.'
+- q: When can the binary searches of the merge be replaced by two pointers?
+  a: When both lists are sorted ascending and the test is "sum at most T", so the number of usable right entries only shrinks as the left value grows (Theorem 3.9.3).
+- q: For a grid path of $n + m - 2$ steps, where is the cut, and what happens to the meeting cell?
+  a: At the diagonal $i + j = \lfloor (n + m - 2)/2 \rfloor$, which every path crosses exactly once; the meeting cell is counted in one half only.
+- q: Why does meet in the middle fail for "the subsets with sum T and no two neighbours chosen"?
+  a: The neighbour rule links an element of the left half with one of the right half, so the halves are not independent and their sums cannot be combined alone.
+- q: 'Four lists of 200 numbers each: how do you count the quadruples with sum 0 in about $10^6$ steps?'
+  a: Sort the $200^2$ sums of the first two lists and look up the negative of each of the $200^2$ sums of the other two.
+checkpoint:
+  time_limit_minutes: 120
+  problems:
+  - cses-1628
+  - lc-split-array-with-same-average
+  - cf-888E
+decision_map:
+- weak_signal: About 40 numbers (or 25 choices with three options), a sum or an xor over the choices, and values too big for a table
+  choose: size-band
+  when: '$b^n$ is far too many, each half has at most about $2^{22}$ entries, and the answer is one entry of each half list combined by a sum or an xor (Theorems 3.9.1 and 3.9.2).'
+  over:
+  - card: subset-bitmask
+    topic: '0.5'
+    because: Bitmasks over all subsets are enough when $n \le 20$ and cheaper to write.
+  - card: bound-pruning
+    topic: '3.1'
+    because: Branch and bound has no guarantee, and with nearly equal values the estimate cuts little; the halves are guaranteed.
+- weak_signal: Equal to, at most or closest to a target over two lists of half answers; a four-sum
+  choose: sorted-merge
+  when: The pair test is a lookup in one sorted list (binary search), or monotone in both lists so one pass of two pointers does it (Theorems 3.9.1 and 3.9.3).
+  over:
+  - card: nested-loops
+    topic: '0.5'
+    because: Nested loops are enough when the total number of tuples is below about $10^8$.
+  - card: merge-walk
+    topic: '1.3'
+    because: Two pointers on two given sorted lists is the same pass; here the lists are first produced from the halves.
+- weak_signal: A grid path or a sequence of moves of length about 40 with a combination condition on the whole path
+  choose: grid-path-split
+  when: Every path crosses a middle line once and the whole-path value is a combination of a first-half and a second-half value, matched per middle cell.
+  over:
+  - card: constraint-placement
+    topic: '3.1'
+    because: A condition that the halves cannot see (all values different, a visited set) needs the search over whole paths.
+glossary_added:
+- meet in the middle
+- half list

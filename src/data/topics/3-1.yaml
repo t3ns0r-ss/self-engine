@@ -17,7 +17,7 @@ uses:
 - topic: '1.1'
   what: 'Sorting: putting equal values next to each other and large values first'
 - topic: '1.4'
-  what: 'Binary search: combining two sorted lists in meet in the middle'
+  what: 'Binary search: the invariant for the largest value that fits, used with a sorted list'
 - topic: '1.5'
   what: Greedy choices
 - topic: '1.7'
@@ -45,10 +45,6 @@ theorems:
     answer whose most optimistic completion cannot beat it. As long as the estimate never understates
     what is still possible, the optimum is still found.
   code: 3.1/thm-3
-- id: 3.1.4
-  title: Meet in the middle
-  plain_words: Split $n$ numbers into two halves, list the $2^{n/2}$ subset sums of each, sort one list, and for each sum of the other half look up the partner by binary search. That is about $2^{n/2} \cdot n$ steps instead of $2^n$.
-  code: 3.1/thm-4
 cards:
 - id: generate-all
   name: List every valid object
@@ -180,11 +176,11 @@ cards:
       correct_tool:
         topic: '2.3'
         card: product-sum-rules
-    - problem: ac-abc184_f
-      why: With 40 numbers any prefix with sum at most $T$ is feasible, so the check cuts almost nothing and about $2^{40}$ prefixes are visited.
+    - problem: ac-abc128_c
+      why: Every on-off pattern of at most 10 switches has to be tried and a bulb is checked only once all its switches are fixed, so a partial pattern is never rejected early; a bitmask over the switches is the plain tool.
       correct_tool:
-        topic: '3.1'
-        card: meet-in-middle
+        topic: '0.5'
+        card: subset-bitmask
   lookalikes:
   - description: Count the ways to place $n$ non-attacking rooks on an $n \times n$ board
     tool:
@@ -211,7 +207,7 @@ cards:
   - form: A good greedy answer exists but is not always optimal
     shape: Small n, exact answer needed
   kill_signals:
-  - 'The bound does not cut: for 36 values near $10^9$ and a target of half their total, the estimate "sum so far plus the rest" rarely prunes and the search gives up after $5 \cdot 10^6$ calls; the answer 13276527604 comes from meet in the middle.'
+  - 'The estimate is not optimistic: cutting a branch when "the current largest load plus the next job" already reaches the best answer throws away completions that put the next job on an empty worker; for 3 jobs 8 1 1 on 3 workers it reports 9 instead of 8.'
   - 'There is nothing to optimise: counting the walks of a grid has no best value to bound against, and
     the search is plain backtracking.'
   in_action:
@@ -242,13 +238,13 @@ cards:
         why: $5 + 3 = 8$, $5 + 3 = 8$ and 4 gives 8; the total 20 forces at least $\lceil 20/3 \rceil = 7$, and 7 is not reachable.
     negative:
     - inline:
-        input: The largest subset sum at most half the total of 36 values near $10^9$
-        answer: '13276527604'
-        method_gives: too-slow
-        why: The estimate does not cut, so the search explores about $2^{36}$ nodes; the objective splits into two halves of 18 numbers, which meet in the middle handles with $2^{18}$ sums per half.
+        input: Give the jobs 8 1 1 to 3 workers with the smallest possible largest load, cutting a branch when the current largest load plus the next job reaches the best answer
+        answer: '8'
+        method_gives: '9'
+        why: The cut assumes the next job lands on the most loaded worker, but it can go to an empty one; the estimate must never exceed what some completion achieves, and the current largest load alone is safe.
       correct_tool:
         topic: '3.1'
-        card: meet-in-middle
+        card: bound-pruning
     - problem: ac-abc378_d
       why: The walks are counted, not optimised, so there is no best value to bound against; every complete
         walk counts.
@@ -256,85 +252,16 @@ cards:
         topic: '3.1'
         card: constraint-placement
   lookalikes:
-  - description: Split $n \le 40$ numbers into two groups with sums as close as possible
+  - description: Count the ways to give $n$ jobs to $k$ workers with no best value to look for
     tool:
       topic: '3.1'
-      card: meet-in-middle
-    flipping_difference: 'Two groups and $n \approx 40$: the objective is a sum that splits into halves, so meet in the middle gives $O(2^{n/2} n)$ with a guarantee instead of hoping the bound cuts enough.'
+      card: generate-all
+    flipping_difference: Counting has no best value to compare with, so no estimate can cut a branch; branch and bound needs something to optimise.
   complexity: No useful worst case; exponential, cut by how tight the estimate is.
-- id: meet-in-middle
-  name: Meet in the middle
-  decisive_property: There are $n \approx 30\text{–}45$ binary (or few-valued) choices, too many for $2^n$, and the objective splits into a part from each half combined by a simple rule (a sum, an exclusive or), so that the question about the combination can be answered by searching a sorted list of one half for each element of the other.
-  from_theorem: 3.1.4
-  how_to_test: Write the objective as f(left choices) ⊕ g(right choices) and check that "equal to", "at
-    most" or "closest to" a target for the combination is a lookup in the sorted list of g-values.
-  constraint_shapes:
-  - '$n = 40$ numbers: $2^{40} = 1.1 \cdot 10^{12}$ subsets, while two lists of $2^{20} = 10^6$ sums, a sort and $10^6$ binary searches are about $5 \cdot 10^7$ steps.'
-  weak_signals:
-  - form: $n$ is around 40, too many for $2^n$ but $2^{n/2} \approx 10^6$ fits
-    shape: n between 30 and 45
-  - form: Subset sums equal to, at most, or closest to a target, possibly modulo m
-    shape: Sums up to $4 \cdot 10^{10}$
-  - form: Paths of fixed length in a grid with an exclusive-or or sum condition
-    shape: Split at the middle diagonal
-  kill_signals:
-  - 'A constraint couples the two halves: counting the subsets of 4 3 4 3 with sum 7 and no two neighbours
-    chosen gives 1, but the halves ignore the neighbours across the middle and count 2.'
-  - '$n \le 20$: a plain bitmask search is enough, and the sums can be small enough that a table of sums is smaller than the lists.'
-  in_action:
-    statement: Choose some of $n \le 40$ numbers with total at most $T$ so that the total is as large as possible.
-    constraints: $n \le 40$, $T$ and the numbers up to $10^9$.
-    budget: $2^{40}$ subsets are $1.1 \cdot 10^{12}$. Two lists of $2^{20}$ sums, a sort and $2^{20}$ binary searches are about $5 \cdot 10^7$ steps.
-    candidates:
-    - tool: Try every subset
-      verdict: rejected
-      because: $2^{40}$ subsets.
-    - tool: Meet in the middle
-      verdict: chosen
-      because: The total is a sum that splits into one part per half, and the best partner is found by
-        binary search in a sorted list.
-    property_check: The objective is a sum, so every subset is a pair (left sum, right sum), and the largest
-      right sum at most T − x is a binary search (Theorem 3.1.4).
-    decision: List the subset sums of each half, sort the right list, and for each left sum $x \le T$ take $x$ + the largest right sum at most $T - x$.
-  examples:
-    positive:
-    - inline:
-        input: The subsets of 3 5 2 6 with sum 8
-        answer: '2'
-        why: The halves {3, 5} and {2, 6} have sums 0, 3, 5, 8 and 0, 2, 6, 8; the pairs (0, 8) and (8,
-          0) give the subsets {2, 6} and {3, 5}.
-    - worked_example: ac-abc184_f
-      why: $N \le 40$ problems, the best total at most $T$ is the best pair of half sums, found by binary search.
-    negative:
-    - inline:
-        input: The subsets of 4 3 4 3 with sum 7 and no two neighbours chosen
-        answer: '1'
-        method_gives: '2'
-        why: The neighbour rule links the two halves across the middle, so the halves cannot be combined
-          by their sums alone; with n this small, a bitmask check of every subset is exact.
-      correct_tool:
-        topic: '0.5'
-        card: subset-bitmask
-    - problem: ac-abc378_d
-      why: A walk on a grid is not a sum that splits into two halves; each step depends on the cells already
-        visited, so the search extends one walk with checks.
-      correct_tool:
-        topic: '3.1'
-        card: constraint-placement
-  lookalikes:
-  - description: Count subsets of $n \le 20$ numbers with sum at most $T$
-    tool:
-      topic: '0.5'
-      card: subset-bitmask
-    flipping_difference: $n \le 20$ makes $2^n \approx 10^6$ small enough to list directly; splitting only pays off when $n$ is around 40.
-  complexity: '$O(2^{n/2} \cdot n)$ time: two lists, a sort, and a binary search per element.'
 problems:
 - id: ac-abc378_d
   role: worked_example
   summary: Count the walks of exactly $K \le 11$ moves between side-adjacent empty cells of an $H \times W$ grid ($H, W \le 10$) that never visit a cell twice.
-- id: ac-abc184_f
-  role: worked_example
-  summary: The largest total of a subset of $N \le 40$ times (each $\le 10^9$) that does not exceed $T \le 10^9$.
 - id: lc-combinations
   role: ladder
   card: generate-all
@@ -520,72 +447,6 @@ problems:
     cells are split into two parts, and a single path cannot cover both.'
   - Backtrack over the 48 moves with the given letters forced, marking visited cells; apply both cuts
     at every step before recursing; count the paths that end at the corner after exactly 48 moves.
-- id: cf-888E
-  role: ladder
-  card: meet-in-middle
-  rung: 1
-  twist: Base case of the card
-  summary: Choose a subset of $n \le 35$ numbers to maximise the sum of the chosen numbers modulo $m$ ($m \le 10^9$).
-  hints:
-  - $2^{35}$ subsets are too many. How many subsets does each half have, and what must you look up for one subset of the left half?
-  - Keep both lists of subset sums modulo m. For a left value a, the best partner is the largest right
-    value b < m − a (no wrap), or else the largest right value overall (the sum wraps past m and loses
-    m) (Theorem 3.1.4).
-  - Sort the right list; for each $a$, binary-search the largest $b \le m - 1 - a$ and also try the largest $b$; take the best $(a + b) \bmod m$ over all $a$.
-- id: lc-partition-array-into-two-arrays-to-minimize-sum-difference
-  role: ladder
-  card: meet-in-middle
-  rung: 2
-  twist: The two halves must contribute a fixed total number of elements, so the lists are grouped by
-    how many elements they take.
-  summary: Split $2n \le 30$ numbers into two arrays of $n$ each so that the absolute difference of their sums is as small as possible.
-  hints:
-  - If k elements of the first array come from the left half, how many must come from the right half?
-  - n − k. So list the left sums grouped by count k and the right sums grouped by count, sort each group,
-    and for a left sum s with count k search the right group n − k for the value closest to total/2 −
-    s.
-  - For each $k$ and each left sum $s$ in group $k$, binary-search the sorted right group $n - k$ around $\text{total}/2 - s$ and check the neighbours; the difference is $|\text{total} - 2 \cdot (s + y)|$.
-- id: ac-abc402_f
-  role: ladder
-  card: meet-in-middle
-  rung: 3
-  twist: The halves are not halves of a list but halves of a path in a grid, met on the anti-diagonal;
-    each cell there has its own pair of lists.
-  summary: On an $N \times N$ grid of digits ($N \le 20$), walk right or down from corner to corner and read the $2N - 1$ digits as a number; maximise it modulo $M \le 10^9$.
-  hints:
-  - A full path has $2^{2N-2}$ choices. Where can you cut every path into two parts of $N - 1$ moves each?
-  - Every path crosses the anti-diagonal exactly once. For each cell on it, list the values of the first
-    halves (the prefix digits times the right power of 10, modulo M) and of the second halves (the suffix
-    values modulo M).
-  - For each anti-diagonal cell, sort one list; for each x in the other, take the largest y < M − x, or
-    else the largest y; keep the best (x + y) mod M over all cells.
-- id: ac-abc271_f
-  role: ladder
-  card: meet-in-middle
-  rung: 4
-  twist: 'Count instead of maximise, and XOR instead of a sum: the halves are matched by equal values
-    in a map.'
-  summary: Count the right-or-down paths through an $N \times N$ grid ($N \le 20$) whose XOR of all visited numbers is 0.
-  hints:
-  - Where do all paths cross, and which value must the second half of a path have, given the first half?
-  - Every path crosses the anti-diagonal once. XOR of the whole path is 0 exactly when the XOR of the
-    first part (including the meeting cell) equals the XOR of the second part (excluding it).
-  - For each anti-diagonal cell, store in a map the count of each first-half XOR value; then walk all
-    second halves from the far corner back to that cell and add the count of the matching value.
-- id: ac-abc326_f
-  role: ladder
-  card: meet-in-middle
-  rung: 5
-  twist: Two independent sign problems (one per axis), each solved by meet in the middle, and the answer
-    must be rebuilt as a sequence of turns.
-  summary: A robot alternately moves along the $y$ and $x$ axes by given lengths ($N \le 80$) and chooses a left or right turn before each move; reach a target point and print the turns, or report it is impossible.
-  hints:
-  - What freedom does each move really have once you look only at its axis?
-  - 'Each y-move gets a free sign, independently, and so does each x-move: each axis is a problem "choose
-    signs of at most 40 numbers to hit a target", solved by meet in the middle with a map from half-sums
-    to sign choices.'
-  - Solve both axes; if either fails print No. Otherwise convert the chosen signs to the direction of
-    each move and, from the current heading, to L or R.
 - id: lc-combination-sum-ii
   role: drill
   summary: List every distinct combination of up to 100 candidates (values $\le 50$, with repeats, each used at most once) that sums to a target $\le 30$.
@@ -596,9 +457,6 @@ problems:
   role: drill
   summary: Choose a subset of up to 14 words, using a given pool of at most 100 letters at most once each,
     to maximise the total letter score.
-- id: cses-1628
-  role: drill
-  summary: Count the subsets of $n \le 40$ numbers (each $\le 10^9$) whose sum is exactly $x \le 10^9$.
 - id: ac-abc310_d
   role: drill
   summary: Split $N \le 10$ players into exactly $T$ non-empty teams so that none of $M$ incompatible pairs share a team; count the divisions.
@@ -617,12 +475,6 @@ problems:
 - id: lc-minimum-limit-of-balls-in-a-bag
   role: drill
   summary: Split bags of balls ($n \le 10^5$ bags, each $\le 10^9$ balls) with at most maxOperations $\le 10^9$ splits to minimise the largest bag.
-- id: lc-closest-subsequence-sum
-  role: lookalike
-  summary: Choose a subsequence of $n \le 40$ numbers ($|value| \le 10^7$) whose sum is as close as possible to a goal; print the smallest $|sum - goal|$.
-- id: lc-target-sum
-  role: lookalike
-  summary: Put + or − before each of $n \le 20$ numbers (total $\le 1000$) and count the ways to reach a target.
 - id: cses-1622
   role: lookalike
   summary: List, in alphabetical order, every different string made from the letters of a string of length $n \le 8$.
@@ -672,21 +524,27 @@ problems:
   card: generate-all
   review_set: 2
   summary: Assign distinct digits to the letters of three words (each $\le 10$ letters) so that the first two numbers add up to the third, with no leading zeros; print one solution or UNSOLVABLE.
-- id: lc-split-array-with-same-average
-  role: review
-  card: meet-in-middle
-  review_set: 3
-  summary: Can $n \le 30$ numbers ($\le 10^4$) be split into two non-empty groups with the same average?
 - id: lc-verbal-arithmetic-puzzle
   role: review
   card: constraint-placement
   review_set: 3
   summary: Decide whether up to 5 words ($\le 7$ letters each, at most 10 different letters) can be given distinct digits so that their sum equals a result word, without leading zeros.
-- id: cf-525E
+- id: lc-construct-the-lexicographically-largest-valid-sequence
   role: review
-  card: meet-in-middle
+  card: constraint-placement
   review_set: 3
-  summary: Choose some of $n \le 25$ cubes and put factorial stickers on at most $k$ of the chosen ones so that the numbers add up to exactly $S$; count the ways.
+  summary: Fill a sequence of length $2n - 1$ ($n \le 20$) with the numbers 1 to n, the number 1 once and every other number twice with exactly that distance between its two copies, so that the sequence is as large as possible in dictionary order.
+- id: cf-1036C
+  role: review
+  card: generate-all
+  review_set: 3
+  summary: For each of up to $10^4$ queries count the numbers in a range up to $10^{18}$ that have at most three non-zero digits †
+- id: lc-maximum-points-in-an-archery-competition
+  role: lookalike
+  summary: Choose which of 12 target sections to win, each by shooting one more arrow than the opponent did there, within a limit on arrows, to score as many points as possible.
+- id: lc-find-the-punishment-number-of-an-integer
+  role: lookalike
+  summary: For each i up to 1000 decide whether the digits of i squared can be cut into pieces that add up to i, and sum the squares of those i.
 drill:
 - problem: lc-combination-sum-ii
   answer:
@@ -714,12 +572,6 @@ drill:
   why_others_fail: 'Greedy by word score (1.5) fails: two cheaper words can beat one expensive word that
     uses their letters. A plain bitmask (0.5) also works here; the recursion with counts avoids rechecking
     every word for each mask.'
-- problem: cses-1628
-  answer:
-    topic: '3.1'
-    card: meet-in-middle
-  property: $n = 40$ is too many for $2^{40}$ subsets, the values are too large for a table of sums, and the sum splits into a left part and a right part; for each left sum, count the right sums equal to $x - (\text{left sum})$ in a sorted list.
-  why_others_fail: Bitmasks (0.5) need $2^{40} \approx 10^{12}$ steps; branch and bound has no guarantee when many sums are close to $x$.
 - problem: ac-abc310_d
   answer:
     topic: '3.1'
@@ -765,17 +617,6 @@ drill:
   property: 'Feasibility of a penalty $p$ is monotone: if bags of at most $p$ are reachable, so are bags of at most $p + 1$; the splits needed are $\sum (\lceil x/p \rceil - 1)$, so binary search on $p$.'
   why_others_fail: Searching over ways to split (3.1) is hopeless with $10^5$ bags and $10^9$ operations; the choices of different bags are independent once $p$ is fixed.
 lookalike_pairs:
-- a: lc-closest-subsequence-sum
-  b: lc-target-sum
-  a_tool:
-    topic: '3.1'
-    card: meet-in-middle
-  b_tool:
-    topic: '0.5'
-    card: subset-bitmask
-  flipping_difference: Both choose a sign or a subset to hit a target. A has $n = 40$, so $2^{40}$ is too many and the sums must be split into halves; B has $n \le 20$, so $2^{20} \approx 10^6$ patterns can simply be tried.
-  shared_surface: Both choose a sign or a subset to hit a target.
-  flipping_input: 'A: 40 numbers and a target, where $2^{40}$ subsets are too many and the sums are split into halves. B: 12 numbers and a target, where the $2^{12} = 4096$ sign patterns are simply tried.'
 - a: cses-1622
   b: lc-minimum-number-of-operations-to-make-string-sorted
   a_tool:
@@ -789,6 +630,17 @@ lookalike_pairs:
   flipping_input: 'A: print every distinct arrangement of the 3 letters A A B (3 lines). B: the position
     of an arrangement of a string of length 3000, where the list has astronomically many entries and counting
     with multinomial coefficients replaces listing.'
+- a: lc-maximum-points-in-an-archery-competition
+  b: lc-find-the-punishment-number-of-an-integer
+  a_tool:
+    topic: '0.5'
+    card: subset-bitmask
+  b_tool:
+    topic: '3.1'
+    card: generate-all
+  shared_surface: Both try every choice of a small number of options and keep the best or count the good ones.
+  flipping_difference: In A each of 12 sections is won or skipped, so the choices are the subsets of a fixed set and a bitmask lists them. In B a number is cut into pieces at unknown places, so the choices are ordered cuts, and a recursion with a canonical order lists each cut once.
+  flipping_input: 'A: 12 sections and 9 arrows, win a subset of sections (a bitmask over 12). B: the number 36 squared is 1296, cut into 1 + 29 + 6, so the cuts of the digits are listed by recursion.'
 self_test:
 - q: For 4 queens, a programmer adds the test "reject a queen placed in column 0" to make the search faster.
     What does the program print, and which condition of Theorem 3.1.1 is broken?
@@ -803,11 +655,8 @@ self_test:
   a: 'No. It never exceeds the best completion, so it is pessimistic: with best = 5 found and a partial
     solution of value 3 that can still add an item of value 4, the estimate 3 ≤ 5 cuts the branch although
     7 is reachable. "Value so far + values of all undecided items" is optimistic.'
-- q: For meet in the middle with n = 40, why split 20/20 and not 10/30? How much memory do the two lists
-    need?
-  a: The work is about 2^a + 2^b for halves of a and b items; 2^10 + 2^30 ≈ 10^9 is far worse than 2·2^20
-    ≈ 2·10^6, since the larger half dominates. Two lists of 2^20 long long values take 16 megabytes (8
-    each).
+- q: With a budget of about $10^8$ steps, why does a search over 40 yes-or-no choices fail even with a good bound, and which topic covers the way out?
+  a: 'The bound has no guarantee: with nearly equal values it cuts little, and $2^{40} \approx 10^{12}$ is $10^4$ times the budget. Splitting the choices into two halves of 20 is covered in topic 3.9.'
 - q: For 3 queens there is no solution. How many calls does the queens search make, and how many would
     it make with an exact test?
   a: 'The queens test makes 6 calls: the root, the 3 queens of row 0, and 2 queens of row 1 (after columns
@@ -875,15 +724,6 @@ decision_map:
     because: Greedy "largest item to the least loaded group" is a good first answer for the bound, but
       not always optimal.
     topic: '1.5'
-- weak_signal: n up to 40 (30–45); choose a subset or signs to hit, approach or stay under a target
-  choose: meet-in-middle
-  when: $2^n$ is too many but $2^{n/2}$ fits, and the objective splits into a left part and a right part combined by a lookup in a sorted list (Theorem 3.1.4).
-  over:
-  - card: subset-bitmask
-    because: Trying all $2^{40} \approx 10^{12}$ subsets is out of budget; bitmasks are right for $n \le 20$.
-    topic: '0.5'
-  - card: bound-pruning
-    because: Branch and bound has no worst-case guarantee; with many nearly equal values it cuts little.
 - weak_signal: Small $n$ ($\le 20$) and "choose some of the items"
   choose: generate-all
   when: Chosen items conflict with each other or use up a shared resource, so a recursion that checks
@@ -899,4 +739,3 @@ glossary_added:
 - pruning
 - optimistic estimate
 - branch and bound
-- meet in the middle

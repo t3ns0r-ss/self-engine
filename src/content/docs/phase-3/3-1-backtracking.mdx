@@ -26,7 +26,7 @@ Here is why the idea matters. Place $n = 10$ queens on a $10 \times 10$ board so
 
 Most of that work is wasted. Suppose the queens in rows 0 and 1 already attack each other. Then none of the $10^8$ ways to fill the other eight rows can help, and we should not even look at them. The same is true after three rows, after four rows and so on. So the rule is: build the answer one choice at a time, check the partial answer after every choice, and stop extending it as soon as it cannot succeed. For 10 queens this makes 35,539 calls instead of $10^{10}$ checks, and it finds all 724 solutions in a few milliseconds.
 
-The same idea with a sharper check cuts optimisation searches: stop when even an optimistic guess cannot beat the best answer so far (branch and bound, below). A different trick, splitting the choices into two halves, takes $2^{40}$ subsets down to about $2 \cdot 2^{20}$ (meet in the middle, below).
+The same idea with a sharper check cuts optimisation searches: stop when even an optimistic guess cannot beat the best answer so far (branch and bound, below). A different trick, splitting the choices into two halves, takes $2^{40}$ subsets down to about $2 \cdot 2^{20}$ (covered in topic 3.9).
 
 - Recursion
 - Fibonacci and the recursion tree
@@ -48,7 +48,6 @@ The same idea with a sharper check cuts optimisation searches: stop when even an
 - Fractals
 - Self-similar problems: Caracal vs Monster, Christmas burger, Nephren's riddle
 - Branch and bound
-- Meet in the middle
 - Recognition cards
 - Check yourself (drill, look-alike pairs, self-test, checkpoint, decision map)
 - Quick revision
@@ -68,6 +67,7 @@ Quick definitions before we start:
 
 ### What this topic does not cover
 
+- Splitting $n \approx 40$ choices into two halves, listing each half and joining the two lists, when the answer is a combination of one value from each half: covered in topic 3.9.
 - Storing the answer of each recursive call so that a repeated call is answered at once (memoisation), and building tables of answers bottom-up. That is topic 3.2 (dynamic programming foundations). Nothing on this page teaches it.
 - Search over the states of a graph, visiting each state once. That is topic 4.1 (breadth-first search and depth-first search).
 - Bitmask dynamic programming for choosing an order of $n \le 20$ items. That is topic 3.7.
@@ -81,7 +81,6 @@ Quick definitions before we start:
 - **Bound**: a test that rejects a partial solution that cannot be completed to an answer better than the best found so far.
 - **Optimistic estimate**: for a maximisation, a number $U(s)$ for a partial solution $s$ that is at least the value of every complete solution extending $s$. Example: with items of non-negative value, "value so far plus the values of all undecided items" is optimistic. For a minimisation it is the reverse: the estimate is at most the cost of every completion.
 - **Branch and bound**: backtracking for an optimisation problem that prunes with an optimistic estimate.
-- **Meet in the middle**: split $n$ choices into two halves, list all $2^{n/2}$ choices of each half separately, and combine the two lists, usually after sorting one of them.
 
 ## Recursion
 
@@ -2025,54 +2024,6 @@ Common mistake (a symmetry cut that is too strong). Using `load[v] <= load[w]` i
 
 Common mistake (an estimate that is not optimistic). Cutting with `currentMax + job[i] >= best`. Input `3 3` with jobs `8 1 1` gives 9 instead of 8. The estimate assumes the next job lands on the most loaded worker, but it can go to an empty one. After loads $(9, 1, 0)$ set $\text{best} = 9$, the branch with 8 on worker 0 and 1 on worker 1 has estimate $8 + 1 = 9 \ge 9$ and is cut, although its completion has largest load 8. Fix: the estimate must never be worse than some completion. The current largest load is safe, "plus the next job" is not.
 
-## Meet in the middle
-
-Brute force over $n = 40$ numbers is $2^{40} \approx 1.1 \cdot 10^{12}$ subsets, far out of budget. Two lists of $2^{20} \approx 10^6$ sums, one sort and $10^6$ binary searches of 20 steps are about $5 \cdot 10^7$ operations.
-
-**Theorem 3.1.4 (meet in the middle).** Given $n$ numbers and a target $T$, the number of subsets with sum exactly $T$ (or at most $T$, or the subset sum closest to $T$) can be found in $O(2^{n/2} \cdot n)$ time. Split the numbers into halves $A$ and $B$, list the $2^{|A|}$ subset sums of $A$ and the $2^{|B|}$ subset sums of $B$, sort the list of $B$, and for each sum $x$ of $A$ look up the sums $y$ of $B$ with $x + y = T$ (or $\le T$, or closest to $T$) by binary search.
-
-In plain words: split $n$ numbers, list the $2^{n/2}$ subset sums of each half, sort one list, and binary-search the partner of every sum of the other. That is about $2^{n/2} \cdot n$ steps instead of $2^n$.
-
-Small example first: numbers $(3, 5 \mid 2, 6)$, $T = 8$. Sums of $A$: $0, 3, 5, 8$. Sorted sums of $B$: $0, 2, 6, 8$. Look up $8 - x$. For $x = 0$ the value 8 is found once (the subset $\{2, 6\}$). For $x = 3$ and $x = 5$ the values 5 and 3 are not in the list. For $x = 8$ the value 0 is found once (the subset $\{3, 5\}$). So 2 subsets have sum 8, which a check by hand confirms.
-
-Why it works:
-1. Every subset $S$ splits uniquely as $S = S_A \cup S_B$ with $S_A \subseteq A$, $S_B \subseteq B$, and $\operatorname{sum}(S) = \operatorname{sum}(S_A) + \operatorname{sum}(S_B)$.
-2. So subsets correspond one-to-one to pairs (a sum from the list of $A$, a sum from the list of $B$), each list entry counted with its own subset.
-3. The subsets with sum $T$ are the pairs with $x + y = T$. For a fixed $x$ the matching $y$ form one block of the sorted list of $B$, and two binary searches (Theorem 1.4.1) find its ends.
-4. Each list has $2^{n/2}$ sums, built in $O(2^{n/2} \cdot n)$ by bitmasks or recursion. The sort and the lookups cost $O(2^{n/2} \cdot n)$ each.
-
-This proof needs: (1) the objective splits into a part from each half that are combined by a simple rule (a sum, a bitwise exclusive or, a product), and the question about the combination can be answered from a sorted list (equal to, at most, closest to); (2) each half is small enough to list: $2^{20} \approx 10^6$ is comfortable, $2^{25}$ is at the edge of memory.
-
-<TheoremCode unit="3.1/thm-4" />
-
-The template for counting subsets with a bounded sum:
-
-<CodeSnippet unit="3.1/mitm-count" />
-
-How it works: `subsetSums` starts with the empty sum, and each element doubles the list by adding itself to every sum already there. The right list is sorted. For each left sum $x \le T$, the right sums $y$ with $x + y \le T$ are those $\le T - x$, a prefix of the sorted list, and `upper_bound` returns its length.
-
-Alternative: sort both lists and use two pointers (topic 1.3). As $x$ increases, the largest valid $y$ only moves down, so one pass of $O(2^{n/2})$ replaces the binary searches.
-
-Common mistake: `lower_bound` for "at most". It stops at the first $y \ge T - x$, so it counts only $y < T - x$ and misses every subset whose sum is exactly $T$. Input `1 0` with the number `4` gives 0, and the correct answer is 1 (the empty subset has sum $0 \le 0$). Fix: "at most $v$" is the prefix before the first element greater than $v$, which is `upper_bound`. Test with a $T$ that some subset sum hits exactly.
-
-### Programming Contest (AtCoder ABC184 F)
-
-[AtCoder Beginner Contest 184, problem F](https://atcoder.jp/contests/abc184/tasks/abc184_f). Given $N \le 40$ times $A_i \le 10^9$ and a limit $T \le 10^9$, find the largest total of a subset of the times that is at most $T$.
-
-Idea, in six small steps.
-1. Budget. $N = 40$ gives $2^{40} \approx 1.1 \cdot 10^{12}$ subsets, out of budget by a factor of $10^4$. But $2^{20} \approx 10^6$ is comfortable even with a sort and a binary search per element: about $2^{20} \cdot 20 \cdot 2 \approx 4 \cdot 10^7$ steps.
-2. Tools. Branch and bound with "sum so far plus all remaining times" as the estimate has no guarantee: with 40 times of nearly equal size, very many subsets have sums just below $T$ and the estimate cuts little. A table indexed by the sum needs $10^9$ entries, too big. Meet in the middle fits, because the objective is a sum.
-3. Deciding property. The total is (left sum) + (right sum). For a fixed left sum $x \le T$ the best partner is the largest right sum $\le T - x$, the element just before `upper_bound(T - x)` in the sorted right list. Each half has 20 elements. Meet in the middle beats branch and bound because its running time is guaranteed.
-4. Proof for this problem. Every subset splits uniquely into a left part and a right part and the sums add (Theorem 3.1.4). The empty right sum 0 is in the list, so every $x \le T$ has a partner. Left sums above $T$ have none, since all times are positive. The maximum over $x$ covers every pair. Time $O(2^{N/2} \cdot N)$.
-
-Trace on times $(3, 5 \mid 2, 6)$ with $T = 7$. Left sums $0, 3, 5, 8$; right sorted $0, 2, 6, 8$. $x = 0$: largest $y \le 7$ is 6, total 6. $x = 3$: largest $y \le 4$ is 2, total 5. $x = 5$: largest $y \le 2$ is 2, total 7. $x = 8 > 7$ is skipped. The answer is 7.
-
-<CodeSnippet unit="3.1/example-2" />
-
-Cost: two lists of $2^{N/2}$ sums, a sort and $2^{N/2}$ binary searches, so $O(2^{N/2} \cdot N)$ time and $O(2^{N/2})$ space (about 16 MB for two lists of $2^{20}$ `long long`).
-
-Alternative: sort both lists and move two pointers (topic 1.3). The best partner can only move down the right list as $x$ grows, so one pass replaces the binary searches.
-
 ## Recognition cards
 
 A card is one tool of this topic written in a fixed form: the property that decides it, how to test it, the shape of the constraints, the weak and kill signals, the cost, and a worked example. Read the card when a problem's limits and question look like its signals.
@@ -2099,10 +2050,9 @@ A card is one tool of this topic written in a fixed form: the property that deci
 - Theorem 3.1.1: if the check never rejects a completable partial solution, every valid sequence is output exactly once. With an exact check, calls are at most $(L + 1) \cdot S + 1$, the best possible when printing all. Placement with checks has no clean formula: try the worst input (queens up to about 12 are fast).
 - Theorem 3.1.2: choose the next only among larger indices; with repeated values sort and skip `a[i] == a[i-1]` when `i > start` (same loop). Permutations of repeated values: skip `i` when `a[i] == a[i-1]` and `i-1` is unused.
 - Theorem 3.1.3: keep `best`, prune when the optimistic estimate cannot beat it. No guarantee, good for $n$ around 10 to 20 with few choices per step, a good order and a sharp estimate.
-- Theorem 3.1.4: split into halves, list $2^{n/2}$ sums each, sort one, binary-search the partner. $O(2^{n/2} \cdot n)$, for $n$ around 30 to 45 when the objective splits. Use `upper_bound` for "at most".
-- Five templates, each with its own brute-force check (bitmasks, `next_permutation`, every assignment): distinct sub-multisets, distinct arrangements, queen placements, smallest largest load, subsets with a bounded sum.
+- Four templates, each with its own brute-force check (bitmasks, `next_permutation`, every assignment): distinct sub-multisets, distinct arrangements, queen placements, smallest largest load.
 - Backtracking bugs rarely crash. They print a wrong list or count, often only with repeated values or ties, so stress-test against a brute force.
-- Decision map: return all combinations, subsets, permutations, partitions means generating every candidate. Puzzle on a small board (queens, Sudoku, tiles, word path) means placement with checks. Minimise the maximum or maximise the minimum means bound pruning (or binary search on the answer, topic 1.4). $n$ up to 40 with a target means meet in the middle. $n \le 20$ and choose some items means bitmask (topic 0.5), unless items conflict.
+- Decision map: return all combinations, subsets, permutations, partitions means generating every candidate. Puzzle on a small board (queens, Sudoku, tiles, word path) means placement with checks. Minimise the maximum or maximise the minimum means bound pruning (or binary search on the answer, topic 1.4). $n$ up to 40 with a target is topic 3.9 (the choices are split into two halves). $n \le 20$ and choose some items means bitmask (topic 0.5), unless items conflict.
 - Common mistakes: missing base case, missing revert, off-by-one in levels, `int` overflow in `1 << n`, building the object instead of counting.
 
 ## Check yourself
@@ -2115,7 +2065,7 @@ A card is one tool of this topic written in a fixed form: the property that deci
 
 <LookalikePairs topic="3.1" />
 
-Two pairs to remember. Closest subsequence sum with $n = 40$ needs meet in the middle, while target sum with $n \le 20$ is a bitmask or a plain take or not take recursion. Printing the distinct arrangements of a string is generating every candidate, while counting them is a multinomial (topic 2.3) with no search at all.
+One pair to remember. Printing the distinct arrangements of a string is generating every candidate, while counting them is a multinomial (topic 2.3) with no search at all.
 
 ### Self-test
 

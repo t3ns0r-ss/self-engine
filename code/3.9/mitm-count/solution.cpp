@@ -7,7 +7,7 @@ Output: the number of such subsets.
 using namespace std;
 
 // snippet:begin
-// Theorem 3.1.4. All subset sums of v[from..to-1], built one element at a time (sums reach 4 * 10^10: long long).
+// Theorem 3.9.1. All subset sums of v[from..to-1], built one element at a time (sums reach 4 * 10^10: long long).
 vector<long long> subsetSums(const vector<long long>& v, int from, int to) {
     vector<long long> sums = {0};
     for (int i = from; i < to; i++) {

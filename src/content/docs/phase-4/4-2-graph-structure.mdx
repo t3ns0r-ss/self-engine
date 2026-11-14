@@ -27,7 +27,9 @@ Trying the orders one by one ([topic 0.5](../../phase-0/0-5-brute-force/)) means
 
 The key idea: if a good order exists, its first course has no rule pointing at it. So take any course that no remaining rule points at, cross it off together with the rules it started, and repeat. If at some moment every remaining course is still waiting for another remaining course, then following the "waits for" rules from any course can never stop, so it must come back to a course it has already visited: the rules contain a **cycle**, and no order exists. This costs one pass over the courses and rules, $n + m = 4 \cdot 10^5$ steps.
 
-That is one of three questions about the *shape* of a graph that this lesson answers by a walk: is there a cycle (in a two-way graph, or in a graph of arrows), can the vertices be split into two sides with every edge going from one side to the other, and in what order can the vertices be listed so that all arrows go forward.
+That is one of four questions about the *shape* of a graph that this lesson answers by a walk: is there a cycle (in a two-way graph, or in a graph of arrows), can the vertices be split into two sides with every edge going from one side to the other, in what order can the vertices be listed so that all arrows go forward, and can one trip use every edge exactly once.
+
+The last question is about edges, not vertices. A postman has to drive along each of $m = 2 \cdot 10^5$ streets exactly once. Trying all orders of the streets costs $m!$ ($10! = 3\,628\,800$ already for ten streets). The key idea is again a count: each time the route passes through a crossing it uses two streets there, one to arrive and one to leave, so every crossing that is not the start or the end must have an even number of streets. If these counts are right and all streets lie in one piece, walking along unused streets with a stack builds the route in $m$ steps.
 
 ## 2. Prerequisites and scope
 
@@ -42,6 +44,8 @@ That is one of three questions about the *shape* of a graph that this lesson ans
 - Strongly connected components (the groups of vertices that all reach one another in a directed graph), bridges and articulation points: topic 4.7. Here a directed cycle is only found, not described by components.
 - Counting or maximising something along a topological order with a table (dynamic programming on an acyclic graph): topic 7.2.
 - Matching the two sides of a bipartite graph (pairing vertices of one side with the other): not part of this course.
+- The Euler tour of a tree (the list of vertices in the order a walk enters and leaves them, used to turn subtrees into ranges): topic 4.5. It is a different object from the Euler trail of this lesson, which uses every edge once.
+- A route that visits every vertex exactly once (a Hamiltonian path) is a different question; for up to about 20 vertices it is answered with a table over visited sets, as in [topic 3.7](../../phase-3/3-7-bitmask-dp/). The shortest closed route through every edge when the edges have lengths and may be repeated is not part of this course.
 
 ## 3. Definitions
 
@@ -53,6 +57,9 @@ That is one of three questions about the *shape* of a graph that this lesson ans
 - A **topological order** of a directed graph is a list of all its vertices in which every arrow goes from an earlier vertex to a later one. A **directed acyclic graph (DAG)** is a directed graph without a directed cycle. "Sorting the vertices in a topological order" is called **topological sort**.
 - During a depth-first search each vertex is in one of three **states**: not entered yet, **on the stack** (entered but not finished: the search is still working below it), or **finished** (all its arrows have been tried).
 - The **lexicographic order** of two sequences (topic 1.1) compares them at the first position where they differ.
+- A **multigraph** may have several edges between the same two vertices and loops (an edge from a vertex to itself). The **degree** of a vertex in an undirected multigraph is the number of edge ends at it, so a loop counts twice; a vertex is **odd** or **even** by its degree. Example: in the path $1\!-\!2\!-\!3$ the degrees are $1, 2, 1$.
+- A **trail** is a list of vertices in which every two neighbours in the list are joined by an edge, and no edge is used twice (a vertex may repeat). An **Euler trail** is a trail that uses every edge of the graph exactly once; it is an **Euler circuit** if it starts and ends at the same vertex. For arrows, a trail follows the arrows. Example: in the triangle $1\!-\!2\!-\!3$ the list $1, 2, 3, 1$ is an Euler circuit; in the path $1\!-\!2\!-\!3$ the list $1, 2, 3$ is an Euler trail that is not a circuit.
+- In the removal process of Theorem 4.2.3, the vertices that have no unused arrow into them at one moment, taken together, form one **round**. Example: for the arrows $1 \to 2$ and $1 \to 3$ the first round is $\{1\}$ and the second is $\{2, 3\}$.
 
 ## 4. Theory and proofs
 
@@ -245,13 +252,91 @@ To get vertex 1 as early as possible, then vertex 2, and so on, build the order 
 
 The first example is the tiny instance (steps 2 to 4: the vertex 2 is the largest vertex without an arrow out, and goes last). In the second, vertex 2 has arrows to 1 and 3, so it stands first; the vertices without an arrow out are 1, 3 and 4, and they take the places 4, 3 and 2 in the order 4, 3, 1. The third is a chain, which has a single valid order.
 
+### 4.7 A trail through every edge
+
+Sections 4.1 to 4.6 asked about vertices. A different question is about edges: can one trip use every road exactly once? Trying all orders of the roads costs $m!$ ($10! = 3\,628\,800$ already). Counting the roads at each crossing answers it.
+
+**Theorem 4.2.7 (Euler trails).** Let $G$ be an undirected multigraph with $m \ge 1$ edges, all lying in one connected piece (every vertex that has an edge can be reached from every other by edges). Then:
+
+(a) $G$ has an Euler circuit if and only if every vertex has even degree;
+
+(b) $G$ has an Euler trail from $s$ to a different vertex $t$ if and only if $s$ and $t$ are the only vertices of odd degree.
+
+The same holds for a directed multigraph whose arrows are connected once the directions are forgotten: in (a) every vertex has as many arrows in as out, and in (b) $s$ has one more arrow out than in, $t$ has one more in than out, and every other vertex has as many in as out.
+
+The **stack method** builds the trail. Put the start $s$ on a stack ($s$ in (b); any vertex with an edge in (a)). While the stack is not empty, look at its top vertex $v$: if $v$ has an unused edge (an unused arrow out of $v$), mark it used and put its other end on the stack; otherwise take $v$ off the stack and write it at the end of a list. The list read backwards is the trail, and it has $m + 1$ vertices exactly when every edge was used. Time $O(n + m)$.
+
+:::tip[In plain words]
+A trail that uses every edge exactly once exists when the edges form one connected piece and at most two vertices have an odd number of edges (for arrows: as many in as out everywhere, except one start and one end). Walk along unused edges with a stack and write a vertex down when it is stuck; the list, read backwards, is the trail.
+:::
+
+**A tiny instance.** The roads $1\!-\!2$, $2\!-\!3$, $3\!-\!1$ and $3\!-\!4$ have degrees $2, 2, 3, 1$: only the crossings 3 and 4 are odd, and the roads form one piece, so a trail from 3 to 4 exists. The stack method starts at 3 and goes $3, 2, 1, 3, 4$, where 4 has no unused road. Vertices leave the stack in the order $4, 3, 1, 2, 3$, and read backwards this is $3, 2, 1, 3, 4$, which uses every road once. In the star with centre 1 and leaves 2, 3, 4 (degrees $3, 1, 1, 1$) four vertices are odd, so no trail exists: each leaf has one road, so a trail can pass through it only if it starts or ends there, and there are only two ends.
+
+**Proof.** Write $p_1, p_2, \dots, p_k$ for the vertices in the order they leave the stack. Every stack entry except the bottom one ($s$) was put there by using an edge; call $e_i$ the edge that put $p_i$ on the stack and $u_i$ the entry just below $p_i$, so $e_i$ joins $u_i$ and $p_i$. Let $t = s$ in (a).
+1. *Only if.* A trail uses two edges at a vertex each time it passes through, one to arrive and one to leave, so a closed trail gives even degrees, and an open trail from $s$ to $t$ leaves exactly $s$ and $t$ with an unpaired edge, so they are the odd vertices. (For arrows, count arrivals and departures separately: a pass adds one of each, the start has one more departure, the end one more arrival.)
+2. *Lemma.* Let $H$ be a graph in which every degree is even (put $b = a$), or exactly the vertices $a$ and $b$ are odd. A trail that starts at $a$ and takes an unused edge whenever it can is stuck only at $b$. Reason: a trail that ends at $v \ne a$ has used an odd number of the edges at $v$, and one that ends at $a$ an even number; stuck means all edges at $v$ are used, so $\deg v$ is odd for $v \ne a$ and even for $v = a$. In the even case this forces $v = a$; in the odd case $a$ is odd, so $v \ne a$ and $v = b$. (For arrows, compare the arrows out of $v$ with those into it.)
+3. *The first vertex to leave the stack is $t$.* Before that the stack is a trail from $s$ that always took an unused edge, so step 2 with $H = G$ and $a = s$ gives $p_1 = t$.
+4. *Claim, by induction on $i$: the vertex that leaves after $p_i$ is $u_i$, and $e_i$ joins $p_i$ to it.* Just after $p_i$ leaves, the used edges are the stack (a trail from $s$ to $u_i$), then $e_i$, $e_{i-1}$, …, $e_1$, which by the claim for smaller $i$ continue the trail through $p_i, p_{i-1}, \dots$ to $p_1 = t$. So the used edges form a trail from $s$ to $t$, and the unused edges have all degrees even.
+5. *Continuing the claim.* If $u_i$ has no unused edge, it leaves next. Otherwise the method goes on from $u_i$; the unused degrees are even (step 4), so by step 2 with $a = b = u_i$ it is stuck again only at $u_i$, and that copy leaves next. In both cases the next vertex is $u_i$, joined to $p_i$ by $e_i$.
+6. *The reversed list is a trail.* By step 5 the list $p_k, p_{k-1}, \dots, p_1$ goes from each vertex to the next along $e_{k-1}, \dots, e_1$, which are different edges because each edge is used once. The bottom entry leaves last, so $p_k = s$ and $p_1 = t$: a trail from $s$ to $t$ that uses exactly the edges that were used (for arrows, $e_i$ points from $u_i$ to $p_i$, so reading the list backwards follows the arrows).
+7. *Every edge is used when the edges are one piece.* A vertex that was on the stack has no unused edge at the end: it had none when it left, and used edges stay used (for arrows, the used arrows form a trail from $s$ to $t$, so all arrows into a vertex are also used once all arrows out of it are). If an edge were unused, follow edges from $s$ to it; the first vertex on this path that was never on the stack is joined to an earlier one that was, but that edge is used, which put the later vertex on the stack: a contradiction.
+8. *Conclusion.* The list has $m + 1$ entries exactly when all $m$ edges were used (the bottom entry plus one per used edge), so under the conditions of (a) or (b) steps 3 to 7 build the trail, and step 1 shows the conditions are needed. Each edge is used once and each vertex scans its edges once with a pointer: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. All the edges lie in one connected piece. If they do not, the method writes down fewer than $m + 1$ vertices, which is the test for it.
+2. The degree condition: no odd vertex, or exactly two (for arrows: balanced everywhere except one start with one more arrow out and one end with one more in), and in the second case the method starts at the odd vertex (the start of the arrows).
+3. Every edge is used exactly once. Visiting every vertex once is a different question.
+:::
+
+<TheoremCode unit="4.2/thm-7" />
+
+The first example is the tiny instance: the method starts at the odd vertex 3 and gives $3, 2, 1, 3, 4$ (steps 3 to 6). In the second example the roads $1\!-\!2$ appear twice. The first trail goes $1, 2, 1$ and is stuck at 1 after two of five roads; going back, the method finds the triangle $2, 3, 4$ at vertex 2 and splices it in, giving $1, 2, 3, 4, 2, 1$ (steps 4 and 5). In the third example every degree is even, but the second triangle is a different piece: only 4 of the 7 vertices are written, so there is no trail (step 7).
+
+### 4.8 Rounds, and when the order is unique
+
+Sometimes any number of tasks can be done at the same moment, and the question is how many rounds are needed, or whether the order is forced at all. The removal process of Theorem 4.2.3 answers both when all vertices that are free at one moment are taken together, as one **round**.
+
+**Theorem 4.2.8 (rounds and unique orders).** Let $G$ be a directed graph without a directed cycle and let $n$ be its number of vertices. Run the removal process in rounds: round 1 takes all vertices with in-degree 0; after they are removed, round 2 takes all vertices that now have in-degree 0, and so on. Let $L(v)$ be the number of vertices on a longest path that ends at $v$. Then:
+
+(a) vertex $v$ is taken in round $L(v)$, so the number of rounds is the number of vertices on a longest path of $G$;
+
+(b) no arrow joins two vertices of the same round;
+
+(c) $G$ has exactly one topological order if and only if there are $n$ rounds, that is, every round holds one vertex; and this happens exactly when $G$ has a path through all $n$ vertices.
+
+Time $O(n + m)$.
+
+:::tip[In plain words]
+Take all free vertices together, round after round: the number of rounds is the number of vertices on a longest chain of arrows, and the order is unique exactly when there are as many rounds as vertices.
+:::
+
+**A tiny instance.** The arrows $1 \to 2$, $1 \to 3$, $2 \to 4$, $3 \to 4$ give the rounds $\{1\}$, $\{2, 3\}$, $\{4\}$: 3 rounds, and the longest path $1, 2, 4$ has 3 vertices. Round 2 holds two vertices, so there are two orders, $1, 2, 3, 4$ and $1, 3, 2, 4$. The chain $1 \to 2 \to 3$ has 3 rounds of one vertex each, and $1, 2, 3$ is its only order.
+
+**Proof.**
+1. *Induction on $L(v)$ shows that $v$ is taken in round $L(v)$.* If $L(v) = 1$, no arrow enters $v$ and it is taken in round 1. If $L(v) = k > 1$, every in-neighbour $u$ has $L(u) \le k - 1$ (otherwise a path through $u$ to $v$ would have more than $k$ vertices), so it is taken in round $k - 1$ or earlier; and the vertex before $v$ on a longest path has $L = k - 1$, so it is taken in round exactly $k - 1$.
+2. *Continuing step 1.* The in-degree of $v$ reaches 0 when its last in-neighbour has been removed, at the end of round $k - 1$, so $v$ is taken in round $k$. The largest $L(v)$ is the number of vertices on a longest path, which is the number of rounds: (a).
+3. For an arrow $u \to w$ we have $L(w) \ge L(u) + 1$ (extend a longest path that ends at $u$ by $w$), so $w$ is in a later round than $u$: (b).
+4. *Two vertices in one round give two orders.* Suppose round $r$ holds $x$ and $y$. List the vertices round by round, with $x$ and $y$ next to each other, once as $x, y$ and once as $y, x$. By (b) every arrow goes to a later round, so both lists are topological orders, and they differ.
+5. *One vertex per round gives one order.* Let $v_1, \dots, v_n$ be the vertices in round order. By (a), $L(v_k) = k$, so for $k \ge 2$ some in-neighbour of $v_k$ has $L = k - 1$, and the only vertex of round $k - 1$ is $v_{k-1}$: the arrows $v_1 \to v_2 \to \dots \to v_n$ exist. A topological order must list the vertices of a path in the order of the path, and this path has all $n$ vertices, so $v_1, \dots, v_n$ is the only order.
+6. Steps 4 and 5 give the first part of (c). For the second part: $n$ rounds mean a longest path with $n$ vertices (step 2), and a path through all vertices makes $L(v) = n$ for its last vertex, so there are $n$ rounds. The process handles each vertex and each arrow once: $O(n + m)$. $\square$
+
+:::note[This proof needs]
+1. The graph has no directed cycle; with a cycle the process stops before all vertices are taken (Theorem 4.2.3).
+2. Any number of vertices may be taken in one round. With a limit on how many can be done at the same time, the number of rounds is not the length of a longest path.
+3. Every round counts as one step. Rounds that take different amounts of time are not covered by this theorem.
+:::
+
+<TheoremCode unit="4.2/thm-8" />
+
+The first example is the tiny instance (steps 1 to 4: round 2 holds the vertices 2 and 3, so two orders exist). The second is a chain through all four vertices, one vertex per round, so its order is the only one (steps 5 and 6). In the third, vertex 1 is taken in round 1, but 2 and 3 wait for each other and the process stops (Theorem 4.2.3(c)).
+
 ## 5. Recognition Cards
 
 <Cards topic="4.2" />
 
 ## 6. Templates
 
-Five templates (one for each card, and one more for the early places). Each shows only the function that matters; the program around it reads the input and builds `adj` as in [topic 4.1](../4-1-graph-traversal/) (the vertices are numbered from 1, so `adj` has `n + 1` entries; for arrows, `adj[a]` gets `b` only). The theorem units of Section 4 print a cycle; the templates answer the questions that contests ask about the same ideas. Each is checked against a brute force with a different method (all splits, all sets of removed edges, all orders, following every arrow `n` times) on thousands of random small inputs and on fixed tests with isolated vertices, self-loops of arrows and several components.
+Eight templates: five for the first four cards and the early places, and three more for the Euler trails (two) and the unique order. Each shows only the function that matters; the program around it reads the input and builds `adj` as in [topic 4.1](../4-1-graph-traversal/) (the vertices are numbered from 1, so `adj` has `n + 1` entries; for arrows, `adj[a]` gets `b` only). The theorem units of Section 4 print a cycle; the templates answer the questions that contests ask about the same ideas. Each is checked against a brute force with a different method (all splits, all sets of removed edges, all orders, following every arrow `n` times) on thousands of random small inputs and on fixed tests with isolated vertices, self-loops of arrows and several components. The three newer templates answer yes or no and a length, because a route has many correct forms: the program around the function checks that the route uses every edge once and prints only its length, and the brute force tries every order of the edges.
 
 ### Two sides (Theorem 4.2.1)
 
@@ -293,9 +378,33 @@ Five templates (one for each card, and one more for the early places). Each show
 
 **Alternative formulation.** Run the process of Theorem 4.2.3 on the reversed arrows with a max-heap and reverse the output; it is the same computation read forwards.
 
+### A route through every street (Theorem 4.2.7)
+
+<CodeSnippet unit="4.2/mail-route" />
+
+**How it works.** `adj[v]` holds, for every street at crossing `v`, its other end and its street number; a street is in the lists of both its ends, and the number lets the program mark it used from both sides at once. An odd number of streets at any crossing rules out a closed route (step 1 of the proof), so the function returns an empty list at once. `next[v]` is the first entry of `adj[v]` that may still be unused: the inner `while` skips entries whose street is already used. The `stack` is the route being built. When its top crossing has no unused street, that crossing is final and goes to `route`; otherwise the street is marked used and its other end is pushed. If `route` has fewer than $m + 1$ crossings, some streets lie in another piece (step 7). The program around the function checks the route before it prints its length.
+
+**Alternative formulation.** The same method can be written as a recursive function: for every unused street at `v`, mark it and call the function on its other end, and write `v` into `route` after the loop. It builds the same list, but $2 \cdot 10^5$ nested calls can overflow the call stack, which is why the template keeps its own stack.
+
+### A route through every teleporter (Theorem 4.2.7, arrows)
+
+<CodeSnippet unit="4.2/teleporter-path" />
+
+**How it works.** `balance[v]` is the number of teleporters that leave level `v` minus the number that enter it. The route must start at level 1, so level 1 needs balance $+1$, level $n$ needs $-1$, and every other level $0$; any other value returns an empty list. A teleporter works in one direction only, so using it is just moving the pointer `next[v]` forward, and no used marks are needed. The levels are finished from the end of the route backwards, so the list is reversed at the end; without the reversal it reads from level $n$ to level 1. If the list has fewer than $m + 1$ entries, some teleporters cannot be reached from level 1.
+
+**Alternative formulation.** For a closed route in a directed graph (all balances 0), start at any level that has a teleporter and skip the check on level $n$.
+
+### The only order (Theorem 4.2.8)
+
+<CodeSnippet unit="4.2/unique-order" />
+
+**How it works.** This is the removal process of Theorem 4.2.3 with the free vertices kept in a list, `ready`. Whenever one vertex is taken, the list must hold no other: two free vertices can be taken in either order (step 4 of Theorem 4.2.8), so as soon as `ready.size() > 1` the function returns an empty list. When the loop ends with fewer than $n$ vertices taken, a directed cycle blocks every order and the list is cleared too. The program prints Yes and the position of each vertex in the order only when the list is not empty.
+
+**Alternative formulation.** Compute the rounds with the function of Theorem 4.2.8 and compare their number with $n$: the order is unique exactly when there are $n$ rounds.
+
 ## 7. Bug catalogue
 
-Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, checked against the brute force. (For the first two, the program's own check of the colouring also stops the run; the output shown is what the function alone would give.)
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. For the route templates, the program around the function checks the route, so a wrong route is reported as `INVALID`; a judge would receive the wrong route itself. The inputs shown are small failing inputs, checked against the brute force. (For the first two, the program's own check of the colouring also stops the run; the output shown is what the function alone would give.)
 
 ### Bug: colouring only the component of vertex 1
 
@@ -425,6 +534,133 @@ Input: `3 1`, then the rule `3 1` (course 3 before course 1).
 Wrong output `2 3 1`, correct output `3 1 2`. The forward process with a min-heap gives the smallest sequence, which finishes course 1 last, here at place 3; the order from the back finishes it at place 2. The two goals differ (Theorem 4.2.6, precondition 2).
 
 **Fix:** build from the back with the largest course that nothing remaining must follow, or run the forward process on the reversed rules with a max-heap and reverse the result.
+
+### Bug: no test for odd degrees
+
+Template: a route through every street.
+
+```cpp
+for (int v = 1; v <= n; v++)
+    if (false) return {};                 // the odd-degree check removed
+```
+
+Input: `2 1`, then the street `1 2`.
+
+Wrong output `INVALID`, correct output `IMPOSSIBLE`. With one street the stack method still writes two crossings, $m + 1 = 2$, so the length test passes, but the list is the route $1, 2$, which does not return to crossing 1. The program around the function checks the route and reports it; a judge would receive a wrong route. A closed route needs an even degree everywhere (step 1 of Theorem 4.2.7).
+
+**Fix:** return at once when a crossing has an odd number of streets.
+
+### Bug: no test on the length of the route
+
+Template: a route through every street.
+
+```cpp
+// if ((int)route.size() != m + 1) return {};   removed
+```
+
+Input: `5 2`, then the streets `3 2` and `2 3`.
+
+Wrong output `INVALID`, correct output `IMPOSSIBLE`. Every degree is even, but crossing 1 has no street and the two streets between 2 and 3 are in another piece. The method from crossing 1 writes down only the vertex 1 and returns a route that misses both streets. The length $m + 1$ is the only test for "all edges in one piece" (step 7).
+
+**Fix:** keep the comparison with $m + 1$ and return an empty list when it fails.
+
+### Bug: a street marked used from one end only
+
+Template: a route through every street.
+
+```cpp
+stack.push_back(adj[v][next[v]++].first); // instead of marking used[...] = true
+```
+
+Input: `3 3`, then `1 2`, `2 3`, `3 1` (a triangle).
+
+Wrong output `IMPOSSIBLE`, correct output `4`. Advancing `next[v]` forgets the street only in the list of `v`; the same street is still unused in the list of its other end, and the method walks it a second time. Some streets are then never reached and the route is too short.
+
+**Fix:** mark the street by its number, `used[id] = true`, so that both ends see it.
+
+### Bug: the teleporter route not reversed
+
+Template: a route through every teleporter.
+
+```cpp
+// reverse(route.begin(), route.end());   removed
+```
+
+Input: `3 2`, then the teleporters `1 2` and `2 3`.
+
+Wrong output `INVALID`, correct output `3`. The levels leave the stack from the end of the route, $3, 2, 1$, and the unreversed list goes from level 3 down to level 1 against the teleporters (step 6 of the proof).
+
+**Fix:** reverse the list at the end, or read it from the back.
+
+### Bug: no check of start and end
+
+Template: a route through every teleporter.
+
+```cpp
+if (false) return {};                     // the balance check removed
+```
+
+Input: `2 2`, then the teleporters `1 2` and `2 1`.
+
+Wrong output `INVALID`, correct output `IMPOSSIBLE`. The balances are all 0, so a closed route $1, 2, 1$ exists and the method writes it, but the route has to end at level $n = 2$. The balance of level 1 must be $+1$ and that of level $n$ must be $-1$ (Theorem 4.2.7(b)).
+
+**Fix:** check `balance[v]` for every level before the walk.
+
+### Bug: teleporters that cannot be reached
+
+Template: a route through every teleporter.
+
+```cpp
+// if (route.size() != teleporters.size() + 1) return {};   removed
+```
+
+Input: `3 2`, then the teleporters `1 3` and `2 2` (level 2 has a teleporter into itself).
+
+Wrong output `INVALID`, correct output `IMPOSSIBLE`. All balances are right ($+1$ at level 1, $-1$ at level 3, 0 at level 2), but the teleporter at level 2 cannot be reached from level 1, so the route is too short.
+
+**Fix:** compare the length of the route with $m + 1$.
+
+### Bug: a cycle that still prints an order
+
+Template: the only order.
+
+```cpp
+// if ((int)order.size() < n) order.clear();   removed
+```
+
+Input: `3 2`, then `1 2` and `2 1`.
+
+Wrong output `Yes` and `0 0 1`, correct output `No`. Vertex 3 is free and is taken; vertices 1 and 2 wait for each other and are never freed. The function returns the part of the order it found, and the program prints positions for only one vertex. Fewer than $n$ vertices means a directed cycle (Theorem 4.2.3(c)).
+
+**Fix:** clear the order when fewer than $n$ vertices were taken.
+
+### Bug: looking at the free list only at the start
+
+Template: the only order.
+
+```cpp
+if (order.empty() && ready.size() > 1) return {};   // instead of if (ready.size() > 1)
+```
+
+Input: `3 2`, then `1 2` and `1 3`.
+
+Wrong output `Yes` and `1 3 2`, correct output `No`. Vertex 1 is the only free vertex at first, so the test at the start passes. After 1 is taken, vertices 2 and 3 are both free and can be taken in either order: two orders exist (Theorem 4.2.8, step 4).
+
+**Fix:** test the size of `ready` before every vertex that is taken.
+
+### Bug: allowing two free vertices
+
+Template: the only order.
+
+```cpp
+if (ready.size() > 2) return {};          // instead of > 1
+```
+
+Input: `2 0` (two items, no facts).
+
+Wrong output `Yes` and `2 1`, correct output `No`. Both items are free at the start, so either can come first: two permutations fit. The bound is off by one: the order is unique only when at most one vertex is free at every step.
+
+**Fix:** return as soon as the free list holds more than one vertex.
 
 ## 8. Worked examples
 

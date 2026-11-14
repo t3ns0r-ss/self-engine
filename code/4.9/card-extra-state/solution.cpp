@@ -7,7 +7,7 @@ typedef vector<array<long long, 3>> Edges;  // {from, to, weight}, one-way
 // A voucher changes the cost of ONE road: `mode` 0 = free (cost 0), 1 = paid back (cost -w).
 long long voucherCost(long long w, int mode) { return mode == 0 ? 0 : -w; }
 
-// Method: Dijkstra on pairs (vertex, voucher used), finishing a pair the first time it comes out of the heap (Theorem 4.3.5).
+// Method: Dijkstra on pairs (vertex, voucher used), finishing a pair the first time it comes out of the heap (Theorem 4.9.2).
 long long pairsDijkstra(int n, const Edges& edges, int t, int mode) {
     vector<vector<pair<int, long long>>> adj(2 * n + 2);
     for (auto [a, b, w] : edges) {

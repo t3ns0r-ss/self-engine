@@ -8,7 +8,7 @@ Output: the fewest steps (to a side neighbour) from S to T, or -1 if T cannot be
 using namespace std;
 
 // snippet:begin
-// Theorem 4.1.6. Fewest steps from 'S' to 'T' when keys 'a'-'d' open the doors 'A'-'D'. The state is the cell together with
+// Theorem 4.9.1. Fewest steps from 'S' to 'T' when keys 'a'-'d' open the doors 'A'-'D'. The state is the cell together with
 // the set of keys held (4 bits), so there are rows * cols * 16 states; -1 if 'T' cannot be reached.
 int fewestStepsWithKeys(const vector<string>& grid) {
     int rows = grid.size(), cols = grid[0].size();

@@ -39,11 +39,6 @@ theorems:
   plain_words: Allow the vertices as stop-overs one at a time. A route that may stop over at vertex $k$
     either does not use it, or goes to $k$ and then on from $k$, and both parts only used earlier stop-overs.
   code: 4.3/thm-4
-- id: 4.3.5
-  title: Dijkstra over pairs
-  plain_words: If what you may do next depends on a small extra fact, make a separate vertex for every
-    pair (place, fact) and run Dijkstra on those pairs.
-  code: 4.3/thm-5
 cards:
 - id: dijkstra
   name: Non-negative weights (Dijkstra)
@@ -209,11 +204,11 @@ cards:
         answer: impossible
         method_gives: '2'
         why: Two walls lie on the way, so with a limit of one wall the trip is impossible. The deque only
-          knows the number of walls broken on the cheapest route to each cell, not the limit; with a limit,
-          (cell, walls broken so far) is the state.
+          knows the number of walls broken on the cheapest route to each cell, not the limit; here the
+          walls can be tried one choice at a time (brute force) because the row is tiny.
       correct_tool:
-        topic: '4.3'
-        card: extra-state
+        topic: '0.5'
+        card: recursive-choices
     - problem: cses-1667
       why: Every connection counts the same, so the fewest connections is found by the plain queue of
         topic 4.1; there are no free moves and no weights.
@@ -416,101 +411,6 @@ cards:
     flipping_difference: One start needs one run of Dijkstra, not the whole table; the table pays off
       when many different starts are asked.
   complexity: O(n³) time and O(n²) memory.
-- id: extra-state
-  name: Extra state (Dijkstra over pairs)
-  from_theorem: 4.3.5
-  decisive_property: A cheapest-route problem has a small extra fact that changes what you may do or what
-    a step costs (a voucher used or not, the parity of the steps, the number of walls broken, the fuel
-    left), that fact has only a few values, and the step costs stay at least 0.
-  how_to_test: Write the state as (vertex, extra fact); count the states (n times the number of values
-    of the fact) and the moves per state; check that every cost is at least 0. Then run Dijkstra (or the
-    deque if the costs are 0 and 1) on the pairs.
-  constraint_shapes:
-  - 'n = 10^5 vertices and 3 values of the fact: 3·10^5 states and about 6·m edges, a few million heap
-    steps'
-  - 'A fuel level from 0 to 100 on n = 1000 cities: 10^5 states; a fact with 10^9 values is impossible'
-  weak_signals:
-  - form: You may use a discount, coupon or free ride at most once (or at most k times)
-    shape: n, m ≤ 2·10^5 and k ≤ 2 or so
-  - form: Asks for the cheapest or shortest route with at most k special moves (walls broken, flights
-      taken)
-    shape: k up to about 20 on a grid with up to 10^5 cells
-  - form: 'The cost of a step depends on a small state: the time of day modulo something, the fuel left,
-      a switch'
-    shape: a few values; n ≤ 10^5
-  - form: Asks for the cheapest route with a parity condition (an even number of edges, or an odd number)
-    shape: n, m ≤ 2·10^5; the parity is the extra fact
-  kill_signals:
-  - 'The fact has too many values (the set of visited vertices of a big graph, a fuel of 10^9): the pairs
-    do not fit in the limits'
-  - 'The costs can be negative: with a bonus voucher that pays the price of one road, Dijkstra over pairs
-    reports 0 where the true total is −4 (the first negative example below)'
-  in_action:
-    statement: A subway has n stations and m tracks with ticket prices. A pass lets you ride at most two
-      tracks for free. Find the cheapest trip from station 1 to station n.
-    constraints: n ≤ 10^5, m ≤ 2·10^5.
-    budget: 'Choosing the two free tracks: about m² / 2 = 2·10^10 pairs, each needing a shortest-path
-      run. The pairs (station, free rides used) number 3n = 3·10^5, with about 6m = 1.2·10^6 edges.'
-    candidates:
-    - tool: Try every choice of two free tracks and run Dijkstra each time (this topic)
-      verdict: rejected
-      because: 2·10^10 runs.
-    - tool: Dijkstra over the pairs (station, free rides used) (this topic)
-      verdict: chosen
-      because: The extra fact has 3 values and every price is at least 0 (Theorem 4.3.5).
-    property_check: 'The extra fact (0, 1 or 2 free rides used) has 3 values, and prices are non-negative:
-      yes. The fact together with the station is the whole state.'
-    decision: Keep dist[v][k] for k = 0, 1, 2; a track costs its price (same k) or, if k < 2, costs 0
-      and moves to k + 1. Print the smallest of dist[n][0..2]. Time O((n + m) log m).
-  examples:
-    positive:
-    - inline:
-        input: One-way roads 1→2 (5), 2→3 (6), 3→4 (7); one road may be used for free; the cheapest trip
-          from 1 to 4?
-        answer: '11'
-        why: The whole trip costs 18; the best free road is the most expensive one (7), leaving 5 + 6
-          = 11. The pairs (station, free road used) give 11, and freeing each road in turn gives the same.
-    - inline:
-        input: The 3 × 4 map "..#.", ".##.", "...." where one wall may be broken; the fewest steps from
-          the top-left to the top-right cell?
-        answer: '3'
-        why: 'Without breaking a wall the route goes down, along the bottom row and up: 7 steps. Breaking
-          the wall in the top row gives 3 steps along the top row. The search over (cell, wall broken
-          yet) finds 3, and breaking each wall in turn agrees.'
-    negative:
-    - inline:
-        input: One-way roads 1→3 (1), 1→2 (5), 2→3 (10), 3→4 (1); a bonus voucher pays you the price of
-          ONE road instead of you paying it (that road costs −w); the cheapest total from 1 to 4?
-        answer: '-4'
-        method_gives: '0'
-        why: 'The best use is on the road 2→3 after 1→2: 5 − 10 + 1 = −4. Dijkstra over the pairs has
-          already finished the pair (3, voucher used) with the value −1 (voucher on the road 1→3) before
-          the route through 2 offers −5, because the costs are negative. Negative costs break Dijkstra;
-          Bellman–Ford on the pairs gives −4.'
-      correct_tool:
-        topic: '4.3'
-        card: negative-weights
-    - problem: ac-abc176_d
-      why: The cost depends on the kind of move only (walk 0, warp 1), with nothing extra to remember,
-        so a deque on the cells is enough; the pairs would only waste memory.
-      correct_tool:
-        topic: '4.3'
-        card: zero-one-weights
-  lookalikes:
-  - description: Cheapest route when every move goes forward to a later position and the extra fact is
-      small
-    tool:
-      topic: '3.2'
-      card: extra-small-state
-    flipping_difference: When every move goes to a larger position, a table indexed by (position, fact)
-      is filled in order without a heap. Dijkstra over pairs is needed when moves can go back.
-  - description: Count the ways to reach the end using exactly k special moves
-    tool:
-      topic: '3.5'
-      card: sequence-counting
-    flipping_difference: Counting ways needs a table that adds the counts of every state; a shortest-path
-      search finds only how cheap, and visits each pair once.
-  complexity: O(|F| (n + m) log(|F| m)) for |F| values of the extra fact.
 problems:
 - id: ac-abc340_d
   role: worked_example
@@ -704,46 +604,6 @@ problems:
     middle vertex, which is one outer round of Theorem 4.3.4 with the vertices in any order.
   - Add the vertices in reverse order; after adding k, relax every pair through k, then sum the distances
     among the vertices added so far (in 64-bit) and print the sums in the order of the deletions.
-- id: cses-1195
-  role: ladder
-  card: extra-state
-  rung: 1
-  twist: 'Base case of the card: one coupon is one extra bit.'
-  summary: Given n ≤ 10^5 cities and m ≤ 2·10^5 one-way flights with prices, one flight on the trip from
-    city 1 to city n may be taken at half price (rounded down); find the least total price.
-  hints:
-  - What do you need to know about a trip so far, besides where it is? Which values can it take?
-  - 'Whether the coupon has been used: a single bit. The state is (city, bit), and Theorem 4.3.5 gives
-    the cost with one free edge in the same way.'
-  - 'Dijkstra on 2n states: pay the full price and keep the bit, or pay half the price and set the bit;
-    print the cheapest cost of (n, 0) and (n, 1).'
-- id: ac-abc395_e
-  role: ladder
-  card: extra-state
-  rung: 2
-  twist: The extra fact is the direction of all edges.
-  summary: Given a directed graph with N, M ≤ 2·10^5, moving along an arrow costs 1 and reversing the
-    direction of all arrows at once costs X; find the least cost to go from vertex 1 to vertex N.
-  hints:
-  - What does the next move depend on, apart from the current vertex?
-  - 'On whether the arrows are in their original or in the reversed direction: one bit again.'
-  - 'Two layers: in layer 0 the original edges cost 1, in layer 1 the reversed edges cost 1, and switching
-    layers at a vertex costs X; Dijkstra on 2N states.'
-- id: ac-abc164_e
-  role: ladder
-  card: extra-state
-  rung: 3
-  twist: 'The extra fact is a number: cap it so the states are finite.'
-  summary: Given N ≤ 50 cities, M ≤ 100 roads each costing some silver coins and some time, and at each
-    city an exchange of one gold coin into some silver coins taking some time, find for every city the
-    least time to reach it from city 1 with a given amount of silver.
-  hints:
-  - What do you need to know about the trip, besides where it is? Could the amount be huge?
-  - The amount of silver; but a trip uses at most N − 1 roads, each costing at most 50 silver, so any
-    amount above 2500 is as good as 2500.
-  - 'Dijkstra over (city, silver capped at 2500): driving a road lowers the silver and costs time, an
-    exchange raises the silver (capped) and costs time; the answer for a city is the cheapest over all
-    silver amounts.'
 - id: lc-path-with-maximum-probability
   role: drill
   summary: A graph of at most 10^4 nodes with edges carrying a success probability; find the largest probability
@@ -774,11 +634,6 @@ problems:
   role: drill
   summary: The matrix of shortest distances between n ≤ 300 cities is given, then k new roads are added
     one by one; after each, print the sum of the shortest distances over all pairs of cities.
-- id: lc-minimum-cost-to-reach-destination-in-time
-  role: drill
-  summary: Cities and roads with travel times and a passing fee in every city (at most 1000 cities, total
-    time at most 1000); find the least total fee of a trip from city 0 to the last city that takes no
-    more than the given time, or −1.
 - id: lc-rotting-oranges
   role: drill
   summary: 'A grid of fresh and rotten oranges (at most 10 × 10): every minute, each fresh orange next
@@ -864,13 +719,6 @@ problems:
   review_set: 2
   summary: N, M ≤ 2000 towns and one-way roads with lengths; for each town, find the length of the shortest
     round trip that leaves it and comes back, or −1.
-- id: cf-1801D
-  role: review
-  card: extra-state
-  review_set: 2
-  summary: n ≤ 800 cities and m ≤ 3000 one-way roads with ticket prices; in each city you can earn money
-    by performing, at a rate depending on the city; find the fewest performances needed to get from city
-    1 to city n.
 - id: ac-abc342_e
   role: review
   card: dijkstra
@@ -960,15 +808,6 @@ drill:
     4.3.4: allow a new middle vertex and relax every pair).'
   why_others_fail: Running the triple loop again after each road costs k · n³ = 8·10^9 steps; a search
     from every city is slower.
-- problem: lc-minimum-cost-to-reach-destination-in-time
-  answer:
-    topic: '4.3'
-    card: extra-state
-  property: Two things limit the trip, the fee (to minimise) and the time (to stay within the limit);
-    the time used is an extra fact in the state, so the state is (city, time used) and the search on fees
-    runs over n · maxTime states (Theorem 4.3.5).
-  why_others_fail: Dijkstra on the cities alone keeps only one number per city, and the cheapest fee to
-    a city may need more time than allowed, losing a trip that is dearer but quicker.
 - problem: lc-rotting-oranges
   answer:
     topic: '4.1'
@@ -1065,11 +904,6 @@ self_test:
   a: One Dijkstra costs about (n + m) log n; for 10^5 questions on a dense graph (m up to 160000) this
     is roughly 10^5 · 1.6·10^5 · 9 ≈ 10^11. Floyd–Warshall costs 400³ = 6.4·10^7 once, and every question
     is a lookup.
-- q: A trip may use at most k free roads. Why is the state of the search (town, number of free roads used)
-    and not just the town? Give the number of states.
-  a: The cheapest cost to a town depends on how many free roads are left, and a cheaper arrival with all
-    free roads used can be worse than a dearer arrival with some left; one number per town cannot hold
-    both. The number of states is n · (k + 1).
 - q: In Floyd–Warshall, what goes wrong if the loops are ordered i, j, k instead of k, i, j?
   a: After the round of k the table must be correct for all routes through the vertices 1..k (Theorem
     4.3.4). With k innermost, the entry for (i, j) is finished before the entries it needs (through the
@@ -1125,17 +959,6 @@ decision_map:
       would not fit.
   - card: components
     because: If only "can I get from a to b" is asked, the groups of one traversal answer it.
-    topic: '4.1'
-- weak_signal: 'Cheapest route where something extra counts: a coupon, a number of stops, a direction
-    switch, a resource that is spent or collected.'
-  choose: extra-state
-  when: The next move depends on one more small fact; the search runs on (place, fact) pairs (Theorem
-    4.3.5).
-  over:
-  - card: dijkstra
-    because: If the extra fact does not change the later cost, a search over the places alone is enough.
-  - card: state-graph
-    because: If every move costs the same, a BFS over the (place, fact) pairs is enough.
     topic: '4.1'
 glossary_added:
 - weighted graph

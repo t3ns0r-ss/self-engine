@@ -17,7 +17,7 @@ Topics merged before this revision are brought up to the new standard in the ret
 
 ---
 
-**Revision 2.2 note (CURRICULUM_GAPS_PLAN.md).** Topics are added to Section 4 as they go live, with their own `order` in `src/data/curriculum.yaml`: 2.5 (Linear Diophantine equations and the Chinese remainder theorem, after 2.2, requires 2.1 and 2.2) is the first, and 3.9 (Meet in the middle, after 3.1, requires 3.1, 1.3 and 1.4) the second. The registry file, not the table in Section 4, is authoritative for order and `requires`.
+**Revision 2.2 note (CURRICULUM_GAPS_PLAN.md).** Topics are added to Section 4 as they go live, with their own `order` in `src/data/curriculum.yaml`: 2.5 (Linear Diophantine equations and the Chinese remainder theorem, after 2.2, requires 2.1 and 2.2) is the first, and 3.9 (Meet in the middle, after 3.1, requires 3.1, 1.3 and 1.4) the second. Topic 7.3 also gains the convex hull trick and divide and conquer DP (title and `requires` 1.6 in the registry). The registry file, not the table in Section 4, is authoritative for order and `requires`.
 
 ## Table of contents
 

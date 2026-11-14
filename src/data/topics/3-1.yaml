@@ -16,6 +16,10 @@ uses:
   what: Sets and maps, used to count equal values
 - topic: '1.1'
   what: 'Sorting: putting equal values next to each other and large values first'
+- topic: '1.2'
+  what: 'Prefix sums: the linear way to the largest subarray sum, compared with divide and conquer'
+- topic: '1.3'
+  what: 'Two pointers: merging two sorted lists in divide and conquer, and the window that cannot be cut at a forbidden letter'
 - topic: '1.4'
   what: 'Binary search: combining two sorted lists in meet in the middle'
 - topic: '1.5'
@@ -49,6 +53,10 @@ theorems:
   title: Meet in the middle
   plain_words: Split $n$ numbers into two halves, list the $2^{n/2}$ subset sums of each, sort one list, and for each sum of the other half look up the partner by binary search. That is about $2^{n/2} \cdot n$ steps instead of $2^n$.
   code: 3.1/thm-4
+- id: 3.1.5
+  title: Counting inversions by divide and conquer
+  plain_words: Count the inversions inside the left half, inside the right half, and across the middle while merging the two sorted halves. Each time the merge takes a value from the right half, add the number of values still waiting in the left half. Halving gives about $\log_2 n$ levels and each level costs $O(n)$, so the total is $O(n \log n)$ instead of $n^2/2$ pair checks.
+  code: 3.1/thm-5
 cards:
 - id: generate-all
   name: List every valid object
@@ -328,6 +336,73 @@ cards:
       card: subset-bitmask
     flipping_difference: $n \le 20$ makes $2^n \approx 10^6$ small enough to list directly; splitting only pays off when $n$ is around 40.
   complexity: '$O(2^{n/2} \cdot n)$ time: two lists, a sort, and a binary search per element.'
+- id: divide-conquer
+  name: Divide and conquer (split, solve, merge)
+  decisive_property: The answer for a range is made from the answers of its two halves and a cross term (the pairs or the segments that use both halves). The halves do not interact, the cross term costs $O(n)$ (for example because the halves come back sorted), and the split is even, so there are $\log_2 n$ levels of $O(n)$ work, $O(n \log n)$ in all.
+  from_theorem: 3.1.5
+  how_to_test: Write the answer for the whole range as (answer for the left half) combined with (answer for the right half) and a cross term. Check that nothing else links the halves, and that the cross term can be found in $O(n)$, for instance by merging two sorted halves or by scanning outward from the middle.
+  constraint_shapes:
+  - '$n$ up to $2 \cdot 10^5$ and "count the pairs $i < j$ with a condition on $a_i$ and $a_j$": the $n(n-1)/2 \approx 2 \cdot 10^{10}$ pair checks are 200 times the budget, while $n \log_2 n \approx 3.5 \cdot 10^6$ merge steps are far below it.'
+  weak_signals:
+  - form: Count the pairs $i < j$ with $a_i > a_j$ (inversions), or with a condition such as $a_i > 2 a_j$
+    shape: $n$ up to $2 \cdot 10^5$; the answer reaches $n^2/2$, so it needs 64 bits
+  - form: The best segment (largest sum, longest run) may lie in either half or cross the middle
+    shape: $n$ up to $10^5$; a crossing segment is a suffix of the left half plus a prefix of the right half
+  - form: A forbidden element or letter that no answer can contain cuts the input into independent pieces
+    shape: Strings or arrays of a few thousand elements; recurse on the pieces, no merge step
+  - form: A structure built by repeated halving, such as the winners of two halves meeting
+    shape: $2^N$ items with $N \le 16$, or a length $2^k$
+  kill_signals:
+  - 'The split is uneven: cutting a sorted array at its largest element leaves parts of size $n - 1$ and 0, so the depth is $n$ and the work is about $n^2/2$ (for $n = 1024$, 524 799 element visits against 10 240 for an even split).'
+  - 'The cross term is as hard as the whole problem: the longest subarray in which every value appears at most twice, in 1 2 3 1 2 3 1 2, is 6 and crosses the middle, but the halves alone give 4; the counts of both halves would have to be combined.'
+  - '$n \le 3000$ and only a count is asked: the double loop has $4.5 \cdot 10^6$ steps, which fits, and it is simpler than a merge.'
+  in_action:
+    statement: Count the pairs $i < j$ with $a_i > a_j$ in an array.
+    constraints: $n \le 2 \cdot 10^5$, $|a_i| \le 10^9$.
+    budget: Checking every pair is $n(n-1)/2 \approx 2 \cdot 10^{10}$ steps, 200 times the $10^8$ budget. Halving $n$ gives about 18 levels, and the merges of one level cost $n$, so $n \log_2 n \approx 3.5 \cdot 10^6$ steps.
+    candidates:
+    - tool: Check every pair with a double loop
+      verdict: rejected
+      because: $2 \cdot 10^{10}$ checks.
+    - tool: Sort the array once and compare positions
+      verdict: rejected
+      because: Sorting forgets the original order, and an inversion is a pair that is out of order, so the sorted array alone does not say how many pairs were.
+    - tool: Divide and conquer, counting while merging
+      verdict: chosen
+      because: A pair is inside the left half, inside the right half or crossing; the first two are the same problem on halves, and the crossing pairs are counted while the sorted halves are merged.
+    property_check: The two halves interact only through the crossing pairs, a crossing pair depends on the two values and not on their order inside the halves, and the cross term is found during an $O(n)$ merge (Theorem 3.1.5).
+    decision: Recurse on both halves, merge them into a sorted part, and add the number of waiting left values every time the merge takes a right value. Keep the count in `long long` and take the left value first on a tie.
+  examples:
+    positive:
+    - inline:
+        input: The inversions of 4 3 1 2
+        answer: '5'
+        why: The halves (4, 3) and (1, 2) have 1 and 0 inversions inside. Merging the sorted halves (3, 4) and (1, 2) takes 1 with 2 values waiting and 2 with 2 waiting, so 4 crossing pairs, and $1 + 0 + 4 = 5$.
+    - inline:
+        input: The largest sum of a non-empty subarray of -2 1 -3 4 -1 2 1 -5 4
+        answer: '6'
+        why: The best inside the left half is 4 and inside the right half is 4. A crossing subarray is the best suffix of the left half (4) plus the best prefix of the right half ($-1 + 2 + 1 = 2$), which is 6.
+    negative:
+    - inline:
+        input: The longest subarray of 1 2 3 1 2 3 1 2 in which every value appears at most twice
+        answer: '6'
+        method_gives: '4'
+        why: The halves alone give 4, and the cross term would have to combine the counts of both halves, which is as hard as the whole problem. The answer 6 crosses the middle. A window whose left end only moves forward finds it directly.
+      correct_tool:
+        topic: '1.3'
+        card: shrinkable-window
+    - problem: lc-maximum-subarray
+      why: Divide and conquer does give the right answer, but the best of the prefix sums minus the smallest earlier prefix sum finds it in one pass, $O(n)$ against $O(n \log n)$, so the merge is not needed.
+      correct_tool:
+        topic: '1.2'
+        card: prefix-extremes
+  lookalikes:
+  - description: The longest subarray of $n \le 10^5$ numbers in which every value appears at most $k$ times
+    tool:
+      topic: '1.3'
+      card: shrinkable-window
+    flipping_difference: With "at most $k$", a window that breaks the rule is repaired by moving its left end, so two pointers work. With "at least $k$" a longer piece can repair the rule, so no pointer rule exists; but a letter that appears fewer than $k$ times in the piece lies in no valid substring, and cutting at it gives independent pieces.
+  complexity: '$O(n \log n)$ time for an even split with an $O(n)$ merge, $O(\log n)$ depth of recursion, $O(n)$ extra space for the merge buffer.'
 problems:
 - id: ac-abc378_d
   role: worked_example
@@ -369,48 +444,10 @@ problems:
   - 'Allow only one order of equal copies, left to right: skip `a[i]` when `a[i] == a[i - 1]` and index `i - 1` is still unused.'
   - Sort; keep used[]; at each position try every unused index except skipped repeats; mark, recurse,
     unmark (the distinct arrangements template).
-- id: lc-palindrome-partitioning
-  role: ladder
-  card: generate-all
-  rung: 4
-  twist: 'The choices are pieces of a string: each choice is where the next piece ends, and a piece is
-    allowed only if it is a palindrome.'
-  summary: List every way to cut a string (length $\le 16$) into pieces that are all palindromes.
-  hints:
-  - What does one recursive call decide, and what is left for the next call?
-  - A call at position start chooses the end of the next piece; only palindromic pieces are allowed, so
-    every recorded partition is valid and each partition has one sequence of ends.
-  - 'rec(start): if start = n, record the pieces; else for end = start..n − 1, if s[start..end] is a palindrome,
-    push it, rec(end + 1), pop. A table isPal[i][j] avoids rechecking.'
-- id: lc-split-a-string-into-the-max-number-of-unique-substrings
-  role: ladder
-  card: generate-all
-  rung: 5
-  twist: All pieces must be different, so a set of used pieces is shared state to add to and remove from;
-    and the answer is a maximum, not a list.
-  summary: Cut a string (length $\le 16$) into the largest number of pieces that are all different.
-  hints:
-  - What shared state does the "all different" rule need, and when must it be restored?
-  - Keep a set of the pieces used so far; a piece may be taken only if it is not in the set; insert before
-    the call, erase after (Theorem 3.1.1, condition 2).
-  - '`rec(start, count)`: at the end update the best count; else for each end, if the piece is new, insert it, `rec(end + 1, count + 1)`, erase it. Optional cut: `count` + (characters left) $\le$ `best`.'
-- id: lc-maximum-length-of-a-concatenated-string-with-unique-characters
-  role: ladder
-  card: generate-all
-  rung: 6
-  twist: The conflict test between chosen strings is done with 26-bit letter masks (topic 1.7).
-  summary: Choose some of up to 16 strings whose letters are all different across the chosen ones; maximise
-    the total length.
-  hints:
-  - How do you test in $O(1)$ that a new string shares no letter with the strings chosen so far?
-  - Turn each string into a mask of its letters (drop strings with a repeated letter); a string fits when
-    the bitwise and (&) of its mask and the current mask is 0.
-  - 'rec(i, mask): update best with the number of bits of mask; for j = i..n − 1, if masks[j] & mask is
-    0, rec(j + 1, mask | masks[j]).'
 - id: lc-expression-add-operators
   role: ladder
   card: generate-all
-  rung: 7
+  rung: 4
   twist: Each choice changes a value that must be evaluated as you go, and multiplication binds tighter
     than + and −.
   summary: Insert +, − or * between the digits of a string (length $\le 10$) in all ways that evaluate to a target; numbers may not have leading zeros.
@@ -445,23 +482,10 @@ problems:
     test only reads chosen values).
   - 'rec(i): if i = n, count one subset; else skip a[i] with rec(i + 1), and if allowed, increase cnt[a[i]],
     rec(i + 1), decrease it. Subtract 1 for the empty subset.'
-- id: lc-restore-ip-addresses
-  role: ladder
-  card: constraint-placement
-  rung: 3
-  twist: Besides the per-piece checks (no leading zero, at most 255), a length check cuts a partial split
-    that cannot be completed.
-  summary: Insert three dots into a digit string (length $\le 20$) in every way that gives four valid address parts.
-  hints:
-  - After choosing some parts, how can you tell that the rest of the string cannot be split into the remaining
-    parts?
-  - Each remaining part has 1 to 3 digits, so the remaining length must be between (parts left) and $3 \cdot$ (parts left); reject otherwise. Each part must have no leading zero and value $\le 255$.
-  - 'rec(pos, parts): if parts = 4, record when pos = n; else for length 1..3, if the part is valid and
-    the length check passes, push it, recurse, pop.'
 - id: lc-split-array-into-fibonacci-sequence
   role: ladder
   card: constraint-placement
-  rung: 4
+  rung: 3
   twist: 'Only the first two choices are free: every later number is forced, so the search is over the
     first two numbers only.'
   summary: Split a digit string (length $\le 200$) into a Fibonacci-like sequence of at least 3 numbers below $2^{31}$, without leading zeros; return one.
@@ -687,6 +711,63 @@ problems:
   card: meet-in-middle
   review_set: 3
   summary: Choose some of $n \le 25$ cubes and put factorial stickers on at most $k$ of the chosen ones so that the numbers add up to exactly $S$; count the ways.
+- id: ac-abc188_c
+  role: ladder
+  card: divide-conquer
+  rung: 1
+  twist: Base case of the card
+  summary: $2^N$ players ($N \le 16$) with different ratings play a knockout tournament in which neighbours meet first; print the label of the player who loses the final.
+  hints:
+  - Look at the left half of the players only. What does the tournament among them look like, compared with the whole tournament?
+  - 'It is the same kind of tournament on half the players. So the winner of the whole tournament is the better of the winners of the two halves, and the final is played between exactly those two.'
+  - '$\text{win}(l, r)$ returns the player with the highest rating among $l..r-1$ by recursing on both halves. Compute the winners of the left and right halves of all players and print the label of the one with the lower rating. There are $O(2^N)$ calls.'
+- id: lc-longest-nice-substring
+  role: ladder
+  card: divide-conquer
+  rung: 2
+  twist: There is no merge step. A letter that has only one case in the piece cuts the piece.
+  summary: Find the longest substring of a string of at most $100$ letters in which every letter that appears, appears in both uppercase and lowercase (the earliest one if two are equally long).
+  hints:
+  - Can a letter that appears in only one case be inside a nice substring?
+  - No. So cut the string at every such letter. A nice substring lies inside one piece, and each piece is the same question on a shorter string.
+  - '$\text{rec}(l, r)$: if every letter of the piece has both cases, the whole piece is nice; otherwise recurse on each piece between the bad letters and keep the longer answer (the earlier one on a tie). Each cut removes a letter from play, so the depth is at most 52.'
+- id: lc-sort-an-array
+  role: ladder
+  card: divide-conquer
+  rung: 3
+  twist: The merge step itself. The same split and merge now sorts the array.
+  summary: Sort an array of at most $5 \cdot 10^4$ integers in $O(n \log n)$ time without using a library sort.
+  hints:
+  - Cut the array into two halves and sort each half with the same function. What is left to do?
+  - 'Merge two sorted halves into one: look at the front value of each half and take the smaller one (the left one on a tie, so equal values keep their order). This is the two-pointer merge of topic 1.3.'
+  - '$\text{msort}(l, r)$: if $r - l \le 1$ return; $m = (l + r)/2$; sort both halves; merge them into a buffer; copy the buffer back. The time is $T(n) = 2T(n/2) + O(n) = O(n \log n)$ (Theorem 3.1.5).'
+- id: cf-1385D
+  role: ladder
+  card: divide-conquer
+  rung: 4
+  twist: The recursion carries a parameter, the letter its part must be made of, and tries both ways to split the work. †
+  summary: A string of $n = 2^k$ lowercase letters ($n \le 131072$) is $c$-good if it has length 1 and is the letter $c$, or one half is all $c$ and the other half is $(c+1)$-good. Find the fewest letter changes that make it 'a'-good. †
+  hints:
+  - 'What are the two ways a string can be $c$-good? What must one half look like, and what must the other half be?'
+  - 'If the left half is all $c$, the right half must be $(c+1)$-good, which is the same question on half the length with the next letter. The same holds with the halves swapped. Take the cheaper way.'
+  - '$\text{cost}(l, r, c)$: if the length is 1, return $s_l \ne c$; otherwise return the smaller of (letters in the left half different from $c$) + $\text{cost}(\text{right}, c+1)$ and (letters in the right half different from $c$) + $\text{cost}(\text{left}, c+1)$. Each level scans $n$ letters in total, so $O(n \log n)$.'
+- id: cf-873D
+  role: review
+  card: divide-conquer
+  review_set: 1
+  summary: Given $n \le 100000$ and $k \le 200000$, build a permutation for which a given merge sort (split in the middle, sort both halves, merge; a part that is already sorted is not split again) makes exactly $k$ calls of its recursive function, or say there is none. †
+- id: lc-maximum-binary-tree
+  role: drill
+  summary: Build the tree of a list of at most $1000$ distinct numbers in which the root is the maximum and the left and right subtrees are built in the same way from the numbers before and after it.
+- id: lc-majority-element
+  role: drill
+  summary: Find the value that occurs more than $\lfloor n/2 \rfloor$ times in an array of $n \le 5 \cdot 10^4$ numbers (such a value exists).
+- id: lc-longest-substring-with-at-least-k-repeating-characters
+  role: lookalike
+  summary: Find the length of the longest substring of a string of at most $10^4$ lowercase letters in which every letter that appears, appears at least $k$ times.
+- id: lc-length-of-longest-subarray-with-at-most-k-frequency
+  role: lookalike
+  summary: Find the length of the longest subarray of $n \le 10^5$ numbers in which every value appears at most $k$ times.
 drill:
 - problem: lc-combination-sum-ii
   answer:
@@ -764,6 +845,18 @@ drill:
     card: answer-search
   property: 'Feasibility of a penalty $p$ is monotone: if bags of at most $p$ are reachable, so are bags of at most $p + 1$; the splits needed are $\sum (\lceil x/p \rceil - 1)$, so binary search on $p$.'
   why_others_fail: Searching over ways to split (3.1) is hopeless with $10^5$ bags and $10^9$ operations; the choices of different bags are independent once $p$ is fixed.
+- problem: lc-maximum-binary-tree
+  answer:
+    topic: '3.1'
+    card: divide-conquer
+  property: The list splits at its maximum into the numbers before it and the numbers after it, the two parts are independent, and the tree is the root with the two subtrees built by the same function. With $n \le 1000$ even an uneven split costs about $n^2/2 = 5 \cdot 10^5$ visits.
+  why_others_fail: A stack (0.6) builds the tree in $O(n)$ but needs a separate argument, and is needed only when $n$ is large, because a sorted list makes the recursion cost $n^2/2$. Trying shapes of trees directly has no structure to prune.
+- problem: lc-majority-element
+  answer:
+    topic: '0.6'
+    card: map-counting
+  property: Only how often each value occurs matters, so one pass with a map of counts finds the value whose count is above $n/2$ in $O(n \log n)$.
+  why_others_fail: Divide and conquer also works, since the majority of the whole array is the majority of one half, but each merge needs a counting scan and the code is longer than one pass with a map. Checking every pair is $n^2/2 \approx 1.25 \cdot 10^9$.
 lookalike_pairs:
 - a: lc-closest-subsequence-sum
   b: lc-target-sum
@@ -789,6 +882,17 @@ lookalike_pairs:
   flipping_input: 'A: print every distinct arrangement of the 3 letters A A B (3 lines). B: the position
     of an arrangement of a string of length 3000, where the list has astronomically many entries and counting
     with multinomial coefficients replaces listing.'
+- a: lc-longest-substring-with-at-least-k-repeating-characters
+  b: lc-length-of-longest-subarray-with-at-most-k-frequency
+  a_tool:
+    topic: '3.1'
+    card: divide-conquer
+  b_tool:
+    topic: '1.3'
+    card: shrinkable-window
+  flipping_difference: With "at most $k$", a window that breaks the rule is repaired by moving its left end, and the best window ending at each position never moves backwards, so two pointers work. With "at least $k$", a longer piece can repair the rule, so no pointer rule exists; but a letter that appears fewer than $k$ times in the piece lies in no valid substring, and cutting at it gives independent pieces.
+  shared_surface: Both ask for the longest substring or subarray in which the count of every value is compared with $k$.
+  flipping_input: 'B: 1 2 3 1 2 3 1 2 with $k = 2$, where a window that gets a third copy of a value is shortened from the left and the answer is 6. A: aabcc with $k = 2$, where b appears once and is cut out, leaving the pieces aa and cc, so the answer is 2.'
 self_test:
 - q: For 4 queens, a programmer adds the test "reject a queen placed in column 0" to make the search faster.
     What does the program print, and which condition of Theorem 3.1.1 is broken?
@@ -819,6 +923,10 @@ self_test:
     branches have the same best value. Workers with different loads are not interchangeable: for jobs
     (2, 6, 8, 14, 8, 6, 9) on 2 workers, forbidding the more loaded worker gives 28 instead of the optimum
     27.'
+- q: When the merge takes a value from the right half, why does it add `m - i`, and why must a tie take the left value?
+  a: 'The right value is smaller than the smallest waiting left value, and the waiting left values are sorted, so all `m - i` of them are greater: each is a crossing inversion with it. Equal values are not an inversion, so on a tie the left value goes first. For 2 2 the answer is 0; sending ties to the right half would count 1 (Theorem 3.1.5).'
+- q: Why does cutting at the largest element not give $O(n \log n)$ in general? Give the work for a sorted array of $n = 1024$.
+  a: 'The parts have sizes $k$ and $n - 1 - k$. For a sorted array they are $n - 1$ and 0, so $T(n) = T(n-1) + O(n) = O(n^2)$ and the depth is $n$. The $O(n \log n)$ bound needs an even split. For $n = 1024$ the work is 524 799 element visits against 10 240 for an even split.'
 checkpoint:
   time_limit_minutes: 120
   problems:
@@ -892,6 +1000,16 @@ decision_map:
   - card: subset-bitmask
     because: A bitmask checks every subset in full, which is fine for $n \le 20$; recursion pays off when conflicts cut most branches or the work per subset is large.
     topic: '0.5'
+- weak_signal: Count the pairs $i < j$ with a condition between the two values, or the best segment that may cross the middle, with $n$ up to $2 \cdot 10^5$
+  choose: divide-conquer
+  when: The answer for a range is the answer for its two halves plus a cross term that takes $O(n)$ (for example while merging two sorted halves), and the split is even (Theorem 3.1.5).
+  over:
+  - card: sort-then-scan
+    because: Sorting alone forgets the original positions, which an inversion depends on; sorting inside a merge keeps the count.
+    topic: '1.1'
+  - card: shrinkable-window
+    because: Two pointers need a rule that stays broken once a window is too long; a crossing pair, or an "at least $k$" rule, is not monotone like that.
+    topic: '1.3'
 glossary_added:
 - partial solution
 - search tree
@@ -900,3 +1018,6 @@ glossary_added:
 - optimistic estimate
 - branch and bound
 - meet in the middle
+- divide and conquer
+- inversion of an array
+- crossing pair

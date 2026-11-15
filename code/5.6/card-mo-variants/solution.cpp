@@ -78,13 +78,12 @@ int main() {
         for (int i = 1; i <= 3; i++) brute = max(brute, (long long)a[i] * ++c[a[i]]);
         cout << "P2 brute=" << brute << " method=" << got[0] << "\n";
     }
-    // N1: the tree 0-1, 0-2, 1-3, 1-4, 2-5, 2-6 with colours 1 2 3 1 2 3 4, and the path from 4 to 5 (vertices 4, 1, 0, 2, 5).
-    // Mo's algorithm on the plain preorder (0 1 3 4 2 5 6) would take the range from 4 to 5, which holds the vertices 4, 2, 5.
+    // N1: a = 1 1 2 3. The first question is (0, 3) with the answer 3. The second is written (1, 2) and means
+    // ((1 + 3) mod 4, (2 + 3) mod 4) = (0, 1). Sorting the written pairs as if they were the real ranges answers (1, 2).
     {
-        vector<int> colour = {1, 2, 3, 1, 2, 3, 4}, preorder = {0, 1, 3, 4, 2, 5, 6};
-        set<int> truth, plain;
-        for (int v : {4, 1, 0, 2, 5}) truth.insert(colour[v]);
-        for (int i = 3; i <= 5; i++) plain.insert(colour[preorder[i]]);
-        cout << "N1 brute=" << truth.size() << " method=" << plain.size() << "\n";
+        vector<int> a = {1, 1, 2, 3};
+        int last = set<int>(a.begin(), a.end()).size();
+        int l = (1 + last) % 4, r = (2 + last) % 4;
+        cout << "N1 brute=" << set<int>(a.begin() + l, a.begin() + r + 1).size() << " method=" << set<int>(a.begin() + 1, a.begin() + 3).size() << "\n";
     }
 }

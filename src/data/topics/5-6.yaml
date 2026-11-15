@@ -1,0 +1,713 @@
+# Topic 5.6 data file (CURRICULUM_GAPS_PLAN.md Section 5.1, S3). Problems reference the bank by id. reduced_bank: see PROGRESS.md.
+id: '5.6'
+uses:
+- topic: '0.5'
+  what: 'Brute force: the reference solution of every check, and recounting a range when the questions
+    cannot be reordered'
+- topic: '1.1'
+  what: 'Sorting: the order of the questions, and compressing values'
+- topic: '1.2'
+  what: 'Prefix sums: the prefix values of one problem and the contrast problem'
+- topic: '1.3'
+  what: 'Two pointers: the window in one drill problem'
+- topic: '1.4'
+  what: 'Binary search: the first prefix sum that reaches a number'
+- topic: '1.5'
+  what: 'Greedy choices: one drill problem priced by sorted arrival times'
+- topic: '1.6'
+  what: 'Monotonic stack: two drill problems over one array'
+- topic: '0.6'
+  what: 'STL toolbox: a map from each remainder to its first index in one drill problem'
+- topic: '1.7'
+  what: 'Bit operations: prefix XOR values in a checkpoint problem'
+- topic: '2.1'
+  what: 'Divisors: the contrast problem about divisibility'
+- topic: '2.2'
+  what: 'Modular arithmetic: factorials and inverses in one rung'
+- topic: '3.2'
+  what: 'Dynamic programming over one index: one drill problem'
+- topic: '4.5'
+  what: 'Trees: the order of entry that turns a subtree into a range, and the Euler order (Theorem 5.6.4)'
+- topic: '4.6'
+  what: 'Lowest common ancestor: the vertex that is added on its own for a path'
+- topic: '5.1'
+  what: 'Sparse table: the tool when the answer comes from the answers of the halves'
+- topic: '5.2'
+  what: 'Fenwick tree: the tool for counts with changes and the offline sweep'
+- topic: '5.3'
+  what: 'Segment tree: the tool when a tag or a node fits'
+- topic: '5.4'
+  what: 'Square-root decomposition: blocks of positions, the buckets of one rung, and the block size of
+    the order'
+theorems:
+- id: 5.6.1
+  title: Mo's order
+  plain_words: 'Group the questions by the block of their left end. Inside a group the left end hops around
+    within one block (less than $B$ steps for each question) while the right end only goes one way, up
+    or down, so it moves at most $n$ for the whole group. Going from one group to the next costs at most
+    $n$ for the right end and about $2B$ for the left. Count: $q$ questions times $B$, plus $n / B$ groups
+    times about $2n$.'
+  code: 5.6/thm-1
+- id: 5.6.2
+  title: Mo's algorithm
+  plain_words: Keep a window and its answer. To go to the next question, move each end until it is where
+    the question wants it, adding or removing one element at a time and repairing the answer after each
+    step. Grow before shrinking, so that the window is never "negative" and a removed element was really
+    added before.
+  code: 5.6/thm-2
+- id: 5.6.3
+  title: Mo's algorithm with changes
+  plain_words: Add time as a third coordinate. Group the questions by the block of their left end, then
+    the block of their right end, then by time, with blocks of about $n^{2/3}$ positions. Then the three
+    pointers move about $n^{5/3}$ steps in all. Moving the time pointer applies or undoes one change,
+    and repairs the window if the changed position is inside it.
+  code: 5.6/thm-3
+- id: 5.6.4
+  title: Mo's algorithm on a tree
+  plain_words: Walk the tree and write each vertex down when you enter it and when you leave it. A path
+    becomes a range of this list. A vertex that is not on the path appears twice in the range or not at
+    all, so switching a vertex on at its first appearance and off at its second leaves exactly the path,
+    and the lowest common ancestor is added by hand when it is not in the range.
+  code: 5.6/thm-4
+- id: 5.6.5
+  title: Mo's algorithm that only adds
+  plain_words: When the answer cannot be repaired after a removal, never remove. For the questions whose
+    left ends lie in one block, grow a window to the right only, add the short left part for each question,
+    read the answer, and undo exactly that part. The left part is shorter than a block, so the cost is
+    the same as for plain Mo.
+  code: 5.6/thm-5
+cards:
+- id: mo-offline
+  name: Offline range queries, with a cheap add and remove (Mo's algorithm)
+  from_theorem: 5.6.2
+  decisive_property: All questions about ranges of a fixed array are known beforehand, and the answer
+    for a window can be repaired in O(1) steps when one element enters or leaves it (a count array, a
+    sum, a count of counts), but it is not a combination of the answers of the halves.
+  how_to_test: Write what changes in the answer when one element at one end enters or leaves the window.
+    If the change is a constant number of operations on a count array, answer the questions in Mo's order.
+    Check that the array does not change between the questions and that the answers are not needed in
+    a given order.
+  constraint_shapes:
+  - 'n = q = 2·10^5: scanning each range is up to 4·10^10 steps; Mo''s order moves the ends about 3 ·
+    2·10^5 · 450 ≈ 2.7·10^8 times, each in O(1)'
+  - 'n up to 10^6 and q up to 10^5: the block size is about n / √q ≈ 3000, and the right end moves about
+    3 · 10^6 · 316 ≈ 10^9 steps in all: the limit must be generous'
+  weak_signals:
+  - form: Asks for the number of different values, or a sum of powers of the counts, in many ranges of
+      a fixed array
+    shape: n, q up to 2·10^5, all ranges given in the input
+  - form: Asks for the number of pairs inside a range that satisfy an equality (equal values, equal prefix
+      XOR)
+    shape: n, q up to 10^5 and values up to 10^6
+  - form: Asks for the most common value of a range, or a similar maximum over counts, where the halves
+      do not give the answer
+    shape: n, q up to 3·10^5 and a time limit of several seconds
+  kill_signals:
+  - 'The array changes between the questions: for [1, 2, 3] with a_3 set to 1 the range has 2 different
+    values, but Mo''s order on the array as first read gives 3 (the second card of this topic adds time
+    as a third coordinate)'
+  - 'The answer is a combination of the halves: a Fenwick tree or a segment tree does it in O(log n) steps'
+  in_action:
+    statement: An array of n numbers and q questions (l, r). For each question print the sum, over every
+      value v, of v multiplied by the square of the number of times v occurs in positions l to r.
+    constraints: n, q ≤ 2·10^5, values up to 10^6.
+    budget: 'Counting each range separately: up to n · q = 4·10^10 steps, about 400 seconds. Need about
+      n √q ≈ 10^8.'
+    candidates:
+    - tool: Segment tree (topic 5.3)
+      verdict: rejected
+      because: 'The answer of a range is not a combination of the answers of its halves: the same value
+        can be in both.'
+    - tool: Fenwick tree with an offline sweep (topic 5.2)
+      verdict: rejected
+      because: The sweep marks one position per value; here every occurrence counts, in squares.
+    - tool: Mo's algorithm (this topic)
+      verdict: chosen
+      because: 'Adding a value v that occurs c times raises the answer by v (2c + 1), removing lowers
+        it by v (2c − 1): O(1) per step (Theorem 5.6.2), and the order of Theorem 5.6.1 bounds the steps.'
+    property_check: All questions are known, the array is fixed, and a step of the window changes the
+      answer in O(1). The property holds.
+    decision: Sort the questions in Mo's order with block size n / √q; keep counts and the answer; use
+      64-bit numbers.
+  examples:
+    positive:
+    - inline:
+        input: a = [1, 2, 1, 3, 2, 2, 4, 1]. How many different values are in positions 0 to 3?
+        answer: '3'
+        why: Adding the positions one by one keeps a count array; the number of different values grows
+          when a count goes from 0 to 1. The window holds 1, 2, 1, 3 and the answer is 3.
+    - inline:
+        input: a = [2, 1, 2, 2, 1]. For the whole array, what is the sum over the values v of v times
+          the square of the number of occurrences of v?
+        answer: '22'
+        why: The value 2 occurs 3 times (2 · 9 = 18) and the value 1 occurs twice (1 · 4 = 4). Adding
+          one occurrence of v to a count c raises the sum by v (2c + 1), so each step is O(1).
+    negative:
+    - inline:
+        input: a = [1, 2, 3]. Position 3 is set to 1, and then the number of different values in positions
+          1 to 3 is asked. What is it, if the question is answered by Mo's algorithm on the array as first
+          read?
+        answer: '2'
+        method_gives: '3'
+        why: After the change the array is [1, 2, 1] and has 2 different values. Mo's algorithm works
+          on the array it was given and does not know about the change. With changes between the questions
+          the order needs time as a third coordinate (the second card of this topic).
+      correct_tool:
+        topic: '5.6'
+        card: mo-variants
+    - problem: cses-1734
+      why: 'Distinct values in many ranges of a fixed array: the offline sweep with a Fenwick tree takes
+        O((n + q) log n) steps, which is much less than n √q.'
+      correct_tool:
+        topic: '5.2'
+        card: offline-sweep-count
+  lookalikes:
+  - description: The number of different values in a range, with all questions known
+    tool:
+      topic: '5.2'
+      card: offline-sweep-count
+    flipping_difference: The sweep by right end with a tree marks the last occurrences; it needs one mark
+      per value, which is the case for distinct counts but not for sums of squares of counts.
+  - description: A combination of two halves, such as the minimum of a range
+    tool:
+      topic: '5.1'
+      card: idempotent-range-query
+    flipping_difference: When the answer comes from the answers of the halves, a table or a tree is enough
+      and no order of questions is needed.
+  complexity: O(n √q + q log q) with block size n / √q, and O(n) memory.
+- id: mo-variants
+  name: Mo's order with changes, on a tree path, or with adds only
+  decisive_property: 'All questions are known beforehand, and a window that moves one step at a time is
+    repaired in O(1) steps, in one of three shapes: the array changes between the questions, one position
+    at a time, and each question says how many changes have happened (time is a third coordinate); or
+    the questions are paths of a tree, which become ranges of the Euler order (every vertex written when
+    entered and when left) in which a vertex seen twice cancels; or the answer can be repaired when an
+    element enters but not when it leaves (a maximum), so the window only grows and the left part is added
+    and then undone.'
+  from_theorem: 5.6.3
+  how_to_test: 'Say what breaks plain Mo''s order: the array changes (add time), the question is a path
+    in a tree (use the Euler order and cancel twice-seen vertices), or removal cannot be repaired (add
+    only, with a rollback). Then check that one step still repairs the answer in O(1), that all questions
+    are known first, and that the number of moves fits: about n^(5/3) with changes, about n √q on a tree
+    and with adds only.'
+  constraint_shapes:
+  - 'n = q = 10^5 with up to 10^5 changes: blocks of n^(2/3) ≈ 2154 positions; the two ends move about
+    2 · 10^5 · 2154 ≈ 4·10^8 times and the time pointer about 10^5 · 2154 ≈ 2·10^8 times, so the limit
+    must be generous (4 seconds or more); plain Mo moves about 10^8 times'
+  - 'A tree of 10^5 vertices and 10^5 paths: the Euler order has 2·10^5 entries, the block is about 2·10^5
+    / √(10^5) ≈ 632, and the ends move about 3 · 2·10^5 · 316 ≈ 2·10^8 times, each step flipping one vertex'
+  weak_signals:
+  - form: Asks the number of different values, or a count of counts, in many ranges while single values
+      of the array are changed between the questions
+    shape: n, q up to 10^5, the changes and questions in one list, a limit of several seconds
+  - form: Asks about the path between two vertices of a tree, where the answer depends on how often each
+      colour or type occurs on the path
+    shape: a tree of up to 10^5 vertices and about 10^5 paths known in advance
+  - form: Asks for a maximum (or another aggregate that cannot be undone) of the counts of values in many
+      ranges
+    shape: n, q up to 10^5, large values that are compressed first
+  kill_signals:
+  - 'The questions are online, each decoded with the previous answer, so they cannot be sorted: for a
+    = [1, 1, 2, 3], after the first answer 3 the question written as (1, 2) means (0, 1) and has 1 different
+    value, while the same numbers read as an offline question (1, 2) give 2'
+  - 'Too many changes: with n = 10^5 and 10^6 changes the time pointer alone moves about 10^6 · 2154 ≈
+    2·10^9 times'
+  in_action:
+    statement: 'An array of n numbers and q operations: change a_p to x, or print the number of different
+      values in a_l..a_r.'
+    constraints: n, q ≤ 10^5, values up to 10^9 (compress them first).
+    budget: 'Counting the values of each range: up to n · q = 10^10 steps, about 100 seconds. Need about
+      n^(5/3) ≈ 2·10^8 steps.'
+    candidates:
+    - tool: Fenwick tree with an offline sweep (topic 5.2)
+      verdict: rejected
+      because: The sweep sorts the questions by right end and keeps the last occurrence of each value;
+        a change in the middle of the array breaks that order.
+    - tool: Mo's algorithm in its plain form (the first card of this topic)
+      verdict: rejected
+      because: It answers every question on the array as first read, so it does not know about the changes.
+    - tool: Mo's algorithm with changes (this card)
+      verdict: chosen
+      because: Each change touches one position and is undone by applying it again, so time is a third
+        pointer (Theorem 5.6.3).
+    property_check: The questions are known first, a change repairs the window in O(1) steps (remove the
+      old value, add the new one if the position is inside), and n^(5/3) ≈ 2·10^8 moves fit. The property
+      holds.
+    decision: Blocks of about n^(2/3) positions; sort by (block of l, block of r, time); keep a count
+      array and the number of different values; apply or undo changes as the time pointer moves.
+  examples:
+    positive:
+    - inline:
+        input: a = [1, 2, 1, 3, 2] and the change a_1 = 3 (positions from 0). How many different values
+          are in positions 0 to 3 after the change?
+        answer: '2'
+        why: 'After the change the array is [1, 3, 1, 3, 2] and the range holds 1, 3, 1, 3. The window
+          method reaches the same array by applying the change when the time pointer moves, removing the
+          old value 2 and adding the new value 3 because position 1 is inside the window: 2 different
+          values.'
+    - inline:
+        input: a = [2, 1, 2, 2, 1]. What is the largest value of x times the number of times x occurs,
+          in positions 1 to 3?
+        answer: '4'
+        why: 'The range holds 1, 2, 2, so x = 1 gives 1 and x = 2 gives 4. A window that only grows can
+          keep the best value so far, and the left part of the range is added and then undone, so a maximum
+          that could not be repaired on removal is still correct: 4.'
+    negative:
+    - inline:
+        input: a = [1, 1, 2, 3]. The first question is (0, 3). The second is written (1, 2) and means
+          ((1 + the first answer) mod 4, (2 + the first answer) mod 4). How many different values does
+          the second question ask about?
+        answer: '1'
+        method_gives: '2'
+        why: 'The first answer is 3, so the second question is (0, 1): the values 1, 1 and only 1 different
+          value. Sorting the written pairs as if they were the real ranges answers (1, 2): the values
+          1, 2 and 2 different values. Questions that depend on earlier answers cannot be reordered, so
+          no Mo order applies; for small n and q the range is simply recounted.'
+      correct_tool:
+        topic: '0.5'
+        card: nested-loops
+    - problem: cses-1649
+      why: 'Single values change and the question is the minimum of a range, which is a combination of
+        the minimums of its halves: a segment tree answers each operation in O(log n) steps, with no order
+        of questions and no time coordinate.'
+      correct_tool:
+        topic: '5.3'
+        card: point-update-range-query
+  lookalikes:
+  - description: Single values change and the question is a sum, a minimum or a maximum of a range
+    tool:
+      topic: '5.3'
+      card: point-update-range-query
+    flipping_difference: When the answer of a range is a combination of the answers of its halves, a tree
+      answers every question in O(log n) steps, with no order of questions and no n^(5/3).
+  - description: The number of times a value occurs on the path from a vertex to the root (or to an ancestor)
+    tool:
+      topic: '4.6'
+      card: path-counts
+    flipping_difference: Counts on a vertical path come from the counts at the two ends, by subtraction;
+      the number of different values on a general path does not subtract, so it needs the window.
+  complexity: 'With changes: O(n^(5/3)) moves for blocks of n^(2/3) when q and the number of changes are
+    about n. On a tree and with adds only: O(n √q) moves, as for plain Mo; memory O(n).'
+problems:
+- id: cf-375D
+  role: ladder
+  card: mo-offline
+  rung: 1
+  twist: 'Base case: the window is over an Euler order of a tree, and the answer is read from a count
+    of counts.'
+  summary: 'A rooted tree of n ≤ 10^5 vertices with colours, and m ≤ 10^5 questions (v, k): the number
+    of colours that appear at least k times among the vertices of the subtree of v. †'
+  hints:
+  - A subtree is a range of the entry order of a depth-first search ([topic 4.5](../../phase-4/4-5-trees/)),
+    so the question is about a range of an array of colours.
+  - Keep cnt[colour] and ge[j], the number of colours with count at least j. When a colour goes from c
+    to c + 1, increase ge[c + 1]; when it goes down, decrease ge[c].
+  - The answer is ge[k]. Order the questions as Mo does and use the entry order as the array.
+- id: ac-abc384_g
+  role: ladder
+  card: mo-offline
+  rung: 2
+  twist: Two pointers, one for each sequence; the repair of each step is a Fenwick query.
+  summary: 'Two sequences A and B of N ≤ 10^5 numbers and K ≤ 10^4 questions (X, Y): the sum of |A_i −
+    B_j| over i ≤ X and j ≤ Y.'
+  hints:
+  - Think of the pair (X, Y) as the ends of a window over two sequences. Moving X by one adds or removes
+    the terms of one row; moving Y by one, one column.
+  - Moving X to X + 1 adds the sum over j ≤ Y of |A_{X+1} − B_j|. Keep a Fenwick tree over the compressed
+    values of B[1..Y] with counts and sums to read this in O(log N).
+  - Order the questions as Mo does (block of X, then Y), keep a second tree for A[1..X] for the moves
+    of Y, and the total is about N √K log N steps.
+- id: cf-1000F
+  role: ladder
+  card: mo-offline
+  rung: 3
+  twist: The answer is any item with a count of one; the repair keeps a set of such items in O(1).
+  summary: 'An array of n ≤ 5·10^5 numbers and q ≤ 5·10^5 questions (l, r): print any value that occurs
+    exactly once among a_l..a_r, or 0 if there is none. †'
+  hints:
+  - Keep cnt[v] in Mo's window. You need one value with cnt[v] = 1, and the set of such values changes
+    by one item per step.
+  - A set from the standard library is too slow for 10^8 steps. Keep a presence array over the values
+    and, over it, a count for each bucket of √V values.
+  - 'Adding or removing is O(1) (flip one entry and one bucket count). To read an answer find a non-empty
+    bucket and then an entry in it: O(√V).'
+- id: ac-abc405_g
+  role: ladder
+  card: mo-offline
+  rung: 4
+  twist: The structure that reads the answer is not an O(1) number but a bucketed array on the values.
+  summary: 'An array of N ≤ 2.5·10^5 numbers and Q ≤ 2.5·10^5 questions (L, R, X): count the different
+    sequences that can be made by arranging the elements smaller than X among A_L..A_R, modulo 998244353.'
+  hints:
+  - For the elements below X in the range, with counts c_v, the number of arrangements is (Σ c_v)! divided
+    by the product of the c_v!.
+  - Mo's algorithm keeps the counts c_v of the window. To read the product of the inverse factorials and
+    the sum of counts for the values below X quickly, split the values into buckets of √N and keep a sum
+    and a product per bucket.
+  - 'An add or remove of one element is O(1) (it changes one count and one bucket); a question combines
+    the whole buckets below X and the single values of the last bucket: O(√N).'
+- id: cf-852I
+  role: ladder
+  card: mo-variants
+  rung: 1
+  twist: 'Base case of the card: a path of a tree is a range of the Euler order, and a vertex seen twice
+    cancels.'
+  summary: 'A tree of n ≤ 10^5 vertices, each with a kind and a value, and q ≤ 10^5 paths (u, v): a count
+    over the pairs of vertices of the path that depends on how many vertices of each kind have each value
+    (the exact condition needs a spot-check). †'
+  hints:
+  - The answer depends only on, for each value, how many vertices of each kind are on the path, so a window
+    that keeps these counts and a running total is enough.
+  - Write every vertex twice in the order of a depth-first search (when it is entered and when it is left).
+    The path from u to v is the range between the end of u and the start of v, where a vertex that is
+    not on the path appears twice or not at all; flip a vertex on at its first appearance and off at its
+    second.
+  - If u is an ancestor of v the range runs from the start of u to the start of v. Otherwise add the lowest
+    common ancestor on its own for the question and remove it again.
+- id: cf-940F
+  role: ladder
+  card: mo-variants
+  rung: 2
+  twist: 'The array changes between the questions: time is a third coordinate of the order.'
+  summary: 'An array of n ≤ 10^5 numbers and q ≤ 10^5 operations: change one number, or print the mex
+    of the counts of the values in a range, that is, the smallest positive number that is not the number
+    of occurrences of any value in it. †'
+  hints:
+  - Questions in one order of time do not form a window of one array. Give every question the number of
+    changes made before it, and treat that number as a third coordinate.
+  - Sort by (block of l, block of r, time) with blocks of about n^(2/3). Moving the time pointer applies
+    a change, or undoes it by swapping the old and new values back; if the changed position is inside
+    the window, remove the old value and add the new one.
+  - Keep cnt[v] and cc[c], the number of values that occur c times. The answer is the first c ≥ 1 with
+    cc[c] = 0; it is below about √(2n), so scanning from 1 is fast.
+- id: ac-joisc2014_c
+  role: ladder
+  card: mo-variants
+  rung: 3
+  twist: 'Removal cannot be repaired (a maximum): the window only grows and the left part is rolled back.'
+  summary: 'An array of n numbers (n and q up to about 10^5; the values may be large) and q ranges: for
+    each, the largest value of t times the number of times t occurs in the range.'
+  hints:
+  - Adding a number can only raise the best value; removing one cannot be repaired, because the next best
+    value was never kept.
+  - Group the questions by the block of their left end and sort each group by right end. For one group
+    keep a window that starts empty just after the block and only grows to the right.
+  - For each question add the part from its left end to the end of the block, read the best value, and
+    undo only that part (lower the counts and restore the saved best). Questions that lie inside one block
+    are done directly. About n √q steps.
+- id: cf-1476G
+  role: ladder
+  card: mo-variants
+  rung: 4
+  twist: Changes between the questions, with a heavier repair at each step.
+  summary: 'An array of n ≤ 10^5 numbers and q ≤ 10^5 operations: change one number, or answer a question
+    about a range and a number k that is read from how many times each value occurs in the range (the
+    exact question needs a spot-check). †'
+  hints:
+  - Questions and changes come in one list, so every question gets the number of changes before it and
+    the order of the first card is extended with time.
+  - Moving the window or the time pointer changes the count of one value by one. Keep the counts of values,
+    and the values grouped by count, so that a step is O(1) amortised.
+  - Sort by (block of l, block of r, time) with blocks of about n^(2/3), answer each question from the
+    grouped counts as the page asks, and use 64-bit numbers.
+- id: cf-617E
+  role: checkpoint
+  card: mo-offline
+  summary: 'An array of n ≤ 10^5 numbers up to 10^6, a number k, and m ≤ 10^5 questions (l, r): the number
+    of subsegments inside l..r whose XOR is exactly k. †'
+- id: cf-877F
+  role: checkpoint
+  card: mo-offline
+  summary: 'n ≤ 10^5 books, each of type 1 (value +a_i) or type 2 (value −a_i), and a number k; q questions
+    (l, r): the number of subsegments of l..r whose total value is exactly k. †'
+- id: ac-abc477_g
+  role: checkpoint
+  card: mo-variants
+  summary: 'A tree of N ≤ 2·10^5 vertices with a number on each, and Q ≤ 2·10^5 questions (s, t, a, b):
+    how many values y occur between a and b times on the path from s to t.'
+- id: cf-1514D
+  role: review
+  review_set: 1
+  card: mo-offline
+  summary: 'An array of n ≤ 3·10^5 numbers and q ≤ 3·10^5 questions (l, r): the fewest subsequences into
+    which a_l..a_r can be cut so that in each no value occurs more than ceil(len / 2) times.'
+- id: cf-86D
+  role: review
+  review_set: 1
+  card: mo-offline
+  summary: 'An array of n ≤ 2·10^5 numbers up to 10^6 and t ≤ 2·10^5 questions (l, r): the sum over the
+    values s of s times the square of the number of times s occurs in a_l..a_r. †'
+- id: cses-1139
+  role: review
+  review_set: 1
+  card: mo-offline
+  summary: A rooted tree of n ≤ 2·10^5 vertices with a colour on each; for every vertex print the number
+    of different colours in its subtree.
+- id: cf-522D
+  role: lookalike
+  summary: 'An array of n ≤ 5·10^5 numbers and m questions (l, r): the smallest distance between two equal
+    elements inside l..r, or −1. †'
+  card: point-update-range-query
+- id: ac-abc242_g
+  role: lookalike
+  summary: 'N ≤ 10^5 people with colours and Q ≤ 10^6 questions (l, r): the largest number of disjoint
+    pairs of people of the same colour inside l..r.'
+  card: mo-offline
+- id: cf-301D
+  role: lookalike
+  summary: 'A permutation of n ≤ 2·10^5 numbers and m questions (l, r): the number of pairs of positions
+    inside l..r whose values divide one another. †'
+  card: offline-sweep-count
+- id: ac-abc293_g
+  role: lookalike
+  summary: 'An array of N ≤ 2·10^5 numbers and Q ≤ 2·10^5 questions (l, r): the number of triples i <
+    j < k in l..r with equal values.'
+  card: mo-offline
+- id: lc-next-greater-element-iv
+  role: drill
+  summary: For each element of an array of up to 10^5 numbers, find the second element to its right that
+    is larger than it, or −1.
+- id: lc-minimum-operations-to-convert-all-elements-to-zero
+  role: drill
+  summary: An array of up to 10^5 numbers; one operation picks a subarray and sets every occurrence of
+    the smallest non-negative number in it to 0; the fewest operations to make all zero.
+- id: lc-continuous-subarray-sum
+  role: drill
+  summary: An array of up to 10^5 numbers and a number k; is there a subarray of length at least two whose
+    sum is a multiple of k?
+- id: cf-279B
+  role: drill
+  summary: n ≤ 10^5 books with reading times and t minutes of free time; the largest number of books that
+    can be read in a row, starting from any book.
+- id: lc-describe-the-painting
+  role: drill
+  summary: Up to 2·10^4 half-open segments with a colour each, overlapping; describe the painting as the
+    fewest non-overlapping segments with the sum of colours that cover each.
+- id: lc-random-pick-with-weight
+  role: drill
+  summary: An array of up to 10^4 positive weights; a call picks an index with probability proportional
+    to its weight.
+- id: lc-eliminate-maximum-number-of-monsters
+  role: drill
+  summary: Up to 10^5 monsters with distances and speeds; one can be shot per minute; the largest number
+    that can be shot before one reaches the city.
+- id: cf-1155D
+  role: drill
+  summary: An array of up to 3·10^5 numbers and a number x; one subarray may be multiplied by x; the largest
+    sum of a subarray of the result (the empty one counts as 0).
+- id: cf-1654E
+  role: exam
+  card: threshold-split
+  summary: An array of n ≤ 10^5 numbers up to 10^5; the fewest numbers to change so that the array becomes
+    an arithmetic progression with an integer step. †
+- id: cf-1904D2
+  role: exam
+  card: idempotent-range-query
+  summary: Several tests (Σ n ≤ 2·10^5); arrays a and b; an operation sets a_i to the maximum of a over
+    a stretch that contains i; can a become b? †
+- id: lc-minimum-possible-integer-after-at-most-k-adjacent-swaps-on-digits
+  role: exam
+  card: updates-and-range-sums
+  summary: A number as a string of up to 3·10^4 digits and a number k ≤ 10^9; the smallest number reachable
+    by at most k swaps of neighbouring digits.
+- id: lc-reverse-pairs
+  role: exam
+  card: inversion-count
+  summary: An array of up to 5·10^4 numbers; the number of pairs i < j with nums[i] > 2 · nums[j].
+- id: lc-maximum-sum-of-subsequence-with-non-adjacent-elements
+  role: exam
+  card: custom-node
+  summary: An array of up to 5·10^4 numbers and as many changes "set nums[i] to x"; after each change
+    take the largest sum of a subsequence with no two neighbours, and print the total of these answers
+    modulo 10^9 + 7.
+- id: cf-1263E
+  role: exam
+  card: lazy-range-update
+  summary: A text editor with a cursor and up to 10^6 commands (move left, move right, write a letter
+    or a bracket); after each command print the fewest colours that colour the text as a bracket sequence,
+    or −1 if it is not correct. †
+drill:
+- problem: lc-next-greater-element-iv
+  answer:
+    topic: '1.6'
+    card: nearest-greater
+  property: 'Each element waits for two larger ones: a stack of elements that have seen no larger one
+    yet and a stack of elements that have seen one, both kept in order, answer all positions in one pass.'
+  why_others_fail: The ranges are all of the form "to the right of i", so there is nothing to sort by
+    blocks; and a window cannot find the second larger element by adding and removing single values.
+- problem: lc-minimum-operations-to-convert-all-elements-to-zero
+  answer:
+    topic: '1.6'
+    card: nearest-greater
+  property: 'A stack that keeps the values in increasing order: a value that is smaller than the top ends
+    the top values; each distinct positive value that stays on the stack costs one operation.'
+  why_others_fail: There are no questions about ranges at all, only one array and one count; a window
+    with a repair step has nothing to move over.
+- problem: lc-continuous-subarray-sum
+  answer:
+    topic: '1.2'
+    card: prefix-count-lookup
+  property: Two prefix sums with the same remainder modulo k enclose a subarray with sum divisible by
+    k; keep the first index of each remainder and check that the distance is at least two.
+  why_others_fail: There is one question, not many ranges, so no order of questions can save steps; the
+    prefix remainders answer it in one pass.
+- problem: cf-279B
+  answer:
+    topic: '1.3'
+    card: shrinkable-window
+  property: All times are positive, so a window of books that fits in t stays valid when it shrinks; move
+    the right end forward and the left end only when the sum exceeds t. †
+  why_others_fail: There is a single question about the whole array, which a two-pointer window answers
+    in O(n); sorting many questions is not needed.
+- problem: lc-describe-the-painting
+  answer:
+    topic: '1.1'
+    card: event-sweep
+  property: Each segment adds its colour at its start and subtracts it at its end; sorting the ends and
+    keeping a running sum gives the pieces.
+  why_others_fail: The coordinates are the ends of the segments and one sweep over them is enough; there
+    are no separate questions to answer in a clever order.
+- problem: lc-random-pick-with-weight
+  answer:
+    topic: '1.4'
+    card: sorted-search
+  property: Prefix sums of the weights are sorted; pick a random number up to the total and binary search
+    the first prefix sum that reaches it.
+  why_others_fail: The questions arrive one at a time and online (each is a fresh random number); they
+    cannot be gathered and ordered, and no window is involved.
+- problem: lc-eliminate-maximum-number-of-monsters
+  answer:
+    topic: '1.5'
+    card: sorted-matching
+  property: The time at which each monster arrives is ⌈dist / speed⌉; sort these times and shoot in order,
+    stopping when the next monster arrives no later than the minute of the shot.
+  why_others_fail: It is a greedy choice on sorted arrival times, with no ranges and no repair steps.
+- problem: cf-1155D
+  answer:
+    topic: '3.2'
+    card: extra-small-state
+  property: The state is the position and one of three phases (before, inside, after the multiplied part);
+    the best sum ending at each position in each phase follows from the previous position. †
+  why_others_fail: The subarray is chosen freely and there is a single question, so the structure is a
+    table over positions and phases, not a set of ranges to answer offline.
+lookalike_pairs:
+- a: ac-abc242_g
+  b: cf-522D
+  a_tool:
+    topic: '5.6'
+    card: mo-offline
+  b_tool:
+    topic: '5.3'
+    card: point-update-range-query
+  shared_surface: Both ask a question about the equal elements inside a range of an array, for up to 10^6
+    and 5·10^5 ranges known in advance.
+  flipping_difference: In Range Pairing Query the answer is a sum over the colours of a quantity that
+    changes by 0 or 1 when one element enters the window, so Mo's algorithm moves the window in O(1) steps.
+    In Closest Equals the answer is a minimum, which cannot be undone when an element leaves the window;
+    instead the questions are sorted by the right end, the distance to the previous equal element is stored
+    at its left position, and a tree answers the minimum over positions at least l.
+  flipping_input: 'a = [5, 3, 5, 3, 5]. Range 1..5: 5 occurs 3 times and 3 occurs twice, so the largest
+    number of disjoint pairs is 1 + 1 = 2. The smallest distance between two equal elements is 2 (positions
+    1 and 3), and it does not change when the range is shortened from the left to 2..5: then it is the
+    distance 2 between positions 2 and 4; a removal cannot tell what the new minimum is without the stored
+    distances.'
+- a: ac-abc293_g
+  b: cf-301D
+  a_tool:
+    topic: '5.6'
+    card: mo-offline
+  b_tool:
+    topic: '5.2'
+    card: offline-sweep-count
+  shared_surface: Both count tuples of positions inside a range that satisfy a condition, for up to 2·10^5
+    ranges known in advance.
+  flipping_difference: In Triple Index the tuples are three equal values, and one element entering the
+    window changes the count by C(c, 2), so Mo's algorithm works. In Yaroslav and Divisors the pairs are
+    positions whose values divide one another; there are only about n ln n such pairs in all, so each
+    pair becomes a segment, and counting the segments that lie inside the range is an offline sweep with
+    a Fenwick tree. The window of Mo would have to add all pairs of a new element at once.
+  flipping_input: 'Values 1 1 1 1: the triples of equal values in the range 1..4 number C(4, 3) = 4, and
+    adding a fourth copy to a window with 3 copies adds C(3, 2) = 3. For the permutation 2 1 4 3 the divisor
+    pairs (1 divides 2, 1 divides 4, 2 divides 4) become the segments [1,2], [2,3], [1,3] of positions,
+    and a range counts those inside it.'
+self_test:
+- q: n = 9 and the questions (0,2), (4,8), (1,5), (3,3). Give the block size of Mo's order, the order
+    of the questions, and the number of steps the window makes from the empty window.
+  a: 'B = ⌊9 / √4⌋ = 4. The blocks of the left ends are 0, 1, 0, 0. Block 0 (even) is sorted by r ascending:
+    (0,2), (3,3), (1,5); block 1 holds (4,8). The order is the questions 0, 3, 2, 1. The steps are 3,
+    then 4, then 4, then 6, in all 17.'
+- q: The window holds the values 2, 2, 3, 2 and the number of equal pairs is 3. What happens to the count
+    when another 2 enters, and when the 3 leaves?
+  a: 'A 2 enters with count 3 in the window, so it makes 3 new pairs: the count becomes 6 (four 2s make
+    C(4, 2) = 6 pairs). The 3 leaves: its count goes from 1 to 0 and the pairs lost are that count after
+    the decrease, 0: nothing changes.'
+- q: The window is [0, 1] and the next question is [5, 6]. Why does Mo's algorithm grow the window before
+    it shrinks it? What goes wrong if the left end is moved first?
+  a: 'If the left end moves first it passes the right end and removes the positions 2, 3, 4, which were
+    never added: the counts become negative, and for the number of different values the answers are wrong.
+    Growing first adds 2..6 before the positions 0..4 are removed, so only positions that are in the window
+    are removed.'
+- q: The array [1, 2, 1, 3, 2] has the change a_1 = 3 and the questions (0, 3, 0), (0, 3, 1). With changes,
+    what is the third number of a question, and how many different values does each question ask about?
+  a: The third number is how many changes have happened before the question. The first question sees [1,
+    2, 1, 3] and has 3 different values; the second sees [1, 3, 1, 3] and has 2.
+- q: A tree has the edges 0-1, 0-2, 1-3, 1-4. Write its Euler order, and give the range for the path from
+    3 to 2 and the vertex that is added on its own.
+  a: 'Enter and leave every vertex, children in the order of the edges: 0 1 3 3 4 4 1 2 2 0. The vertex
+    3 is not an ancestor of 2, so the range runs from the end of 3 (position 3) to the start of 2 (position
+    7): 3 4 4 1 2 contains 3, 1 and 2 once and 4 twice; the lowest common ancestor 0 is added on its own.
+    The path is 3, 1, 0, 2.'
+- q: Why can the best value x · count(x) not be repaired when an element leaves the window, and what does
+    the rollback version do instead?
+  a: 'A window holds 2, 2, 1 and the stored best value is 4. When one 2 leaves, the best value becomes
+    2, but the window never kept the second best value, so finding it needs a pass over all values. The
+    rollback version never removes: per block of left ends it grows the right end only, adds the left
+    part for one question, and then undoes exactly those additions and restores the saved best value.'
+checkpoint:
+  time_limit_minutes: 150
+  problems:
+  - cf-617E
+  - cf-877F
+  - ac-abc477_g
+decision_map:
+- weak_signal: Many questions about ranges of an array that never changes, all known in advance, where
+    adding or removing one element repairs the answer in O(1) (distinct values, sums of squares of counts,
+    pairs)
+  choose: mo-offline
+  when: The answer of a window is repaired in constant time when one end moves one step (Theorem 5.6.2);
+    order the questions as Theorem 5.6.1 and move the window.
+  over:
+  - topic: '5.2'
+    card: offline-sweep-count
+    because: If one mark per value is enough (distinct values), the sweep with a Fenwick tree is O((n
+      + q) log n).
+  - topic: '5.1'
+    card: idempotent-range-query
+    because: If the answer comes from the answers of the halves, a table or a tree does it with no order
+      of questions.
+  - topic: '0.5'
+    card: nested-loops
+    because: If n and q are small, recount each range.
+- weak_signal: The same offline questions, but the array changes between them, or the questions are paths
+    of a tree, or the answer is a maximum that cannot be repaired when an element leaves
+  choose: mo-variants
+  when: 'A step still repairs the answer in O(1): add time as a third coordinate (Theorem 5.6.3), use
+    the Euler order with cancelling (Theorem 5.6.4), or grow the window only and roll back the left part
+    (Theorem 5.6.5).'
+  over:
+  - topic: '5.6'
+    card: mo-offline
+    because: If the array never changes and the questions are ranges, the plain order has fewer moves.
+  - topic: '5.3'
+    card: point-update-range-query
+    because: If the answer of a range is a combination of the answers of its halves, a tree answers in
+      O(log n) steps with changes.
+  - topic: '4.6'
+    card: path-counts
+    because: If the quantity on a path is a sum, it comes from the two root-to-vertex values and the common
+      ancestor.
+glossary_added:
+- Mo's algorithm
+- time pointer
+- Euler order
+- rollback

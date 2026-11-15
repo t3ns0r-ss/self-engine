@@ -1,0 +1,464 @@
+---
+title: "2.6 Basic geometry: cross product, orientation, segments, polygons"
+sidebar:
+  order: 32.5
+topic: "2.6"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="2.6" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A land office keeps the border of a field as $n = 10^5$ corner stones at integer points with coordinates up to $10^9$ in absolute value. A clerk has $q = 10^5$ wells and asks, for each one, whether it is inside the field, outside it, or exactly on its border. The border does not cross itself.
+
+Marking every cell of the plane near the field would need up to $4 \cdot 10^{18}$ cells. Testing every well against every border edge is $n \cdot q = 10^{10}$ steps, which is about 100 seconds at $10^8$ steps per second. Measuring angles with real numbers is not exact, and the question "is the well exactly on the border" needs an exact answer.
+
+The way out is to turn every question about points into the sign of one integer. For two arrows from the same point, the number $u_x v_y - u_y v_x$ (the cross product) is positive when the second arrow points to the left of the first, negative when it points to the right and zero when they lie on one line. It is built from products and differences of integers, so it is exact, and for coordinates up to $10^9$ it fits in a `long long`. With this one test the polygon question becomes a loop over the edges that counts crossings, the area of the polygon becomes a sum of cross products, and for a convex polygon a binary search over the corners answers each well in $O(\log n)$ steps.
+
+The same turn test, applied to points sorted by their $x$ coordinate, builds the convex hull (the fence around all points) with a stack in one pass, and a sorted sweep with a window finds the two closest points among $2 \cdot 10^5$ in $O(n \log n)$ instead of $2 \cdot 10^{10}$ pair tests. The skill of the topic is to write the question as a sign, to check how large the numbers get, and to settle the boundary cases (touching segments, points on an edge, collinear points) before the general case.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="2.6" />
+
+### What this topic does not cover
+
+- Circles, three-dimensional points, half-plane intersection and the intersection of many segments at once: not part of this course.
+- Geometry with real coordinates and a tolerance (`eps`), and questions about angles or lengths that are not whole numbers: not part of this course. Every number in this lesson is an integer.
+- Sorting points by angle around a centre, rotating calipers (the farthest pair of points) and the smallest circle that holds the points: not part of this course.
+- A hull or a nearest pair that must be kept up to date while points are inserted and removed: not part of this course.
+- The convex hull trick for dynamic programming (lines instead of points): topic 7.3.
+
+## 3. Definitions
+
+- A **point** is a pair $(x, y)$ of integers. The **vector** from a point $A$ to a point $B$ is $B - A = (b_x - a_x, \, b_y - a_y)$. We write $|u|$ for the length of a vector.
+- The **cross product** of two vectors $u = (u_x, u_y)$ and $v = (v_x, v_y)$ is the number $u \times v = u_x v_y - u_y v_x$. For three points we write
+$$\mathrm{cross}(A, B, C) = (B - A) \times (C - A) = (b_x - a_x)(c_y - a_y) - (b_y - a_y)(c_x - a_x).$$
+- Three points $A, B, C$ are **collinear** when they all lie on one straight line.
+- The **orientation** of $A, B, C$ says how the walk from $A$ to $B$ and on to $C$ turns: **left** (counterclockwise), **right** (clockwise) or straight (the points are collinear). We say that $C$ is *left of* the directed line from $A$ to $B$ when the walk turns left.
+- The **bounding box** of two points $A$ and $B$ is the smallest axis-parallel rectangle that holds them: $\min(a_x, b_x) \le x \le \max(a_x, b_x)$ and $\min(a_y, b_y) \le y \le \max(a_y, b_y)$.
+- A **segment** $AB$ is the set of points on the straight piece between $A$ and $B$, ends included. Two segments *meet* when they have at least one point in common (touching and overlapping count).
+- A **polygon** is a closed chain of segments (its **edges**) between points (its **corners**) listed in order. It is a **simple polygon** when the edges meet only at the shared corners of neighbouring edges. The **inside** of a simple polygon is the set of points from which a ray in a direction that passes through no corner crosses the boundary an odd number of times. For a simple polygon this number has the same parity for every such ray, and we use that as the definition. The corners are in **counterclockwise** order when the inside lies on the left of every edge as you walk along it.
+- A **lattice point** is a point with integer coordinates.
+- A polygon is **convex** when going around it you always turn the same way, that is, every inner angle is less than $180^\circ$. The **convex hull** of a set of points is the smallest convex polygon that contains all of them. Its **corners** are points of the set; a point of the set in the middle of an edge of the hull is on the boundary but is not a corner.
+- **Pick's theorem** is a classical result about a simple polygon with lattice-point corners: its area $A$, the number $I$ of lattice points strictly inside and the number $B$ of lattice points on the border satisfy $A = I + B/2 - 1$. It is used in this lesson without proof; the code in Section 4.3 agrees with it on every small lattice triangle.
+
+In code, a coordinate difference reaches $2 \cdot 10^9$, a cross product $8 \cdot 10^{18}$ and a squared distance $8 \cdot 10^{18}$, so all of them are `long long` ([topic 0.1](../../phase-0/0-1-cpp-for-cp/)), and a sum of many cross products is kept in `__int128`. The greatest common divisor (gcd) is `__gcd` ([topic 0.4](../../phase-0/0-4-elementary-math/)).
+
+## 4. Theory and proofs
+
+### 4.1 The cross product gives the side of a line
+
+**Theorem 2.6.1 (orientation).** Let $A, B, C$ be points with integer coordinates and $A \ne B$, and let $c = \mathrm{cross}(A, B, C)$. Then:
+
+(a) $c > 0$ exactly when $C$ is strictly left of the directed line from $A$ to $B$, $c < 0$ exactly when $C$ is strictly right of it, and $c = 0$ exactly when $A, B, C$ are collinear;
+
+(b) the triangle $ABC$ has area $|c| / 2$;
+
+(c) if all coordinates have absolute value at most $M$, then $|c| \le 8M^2$. For $M = 10^9$ this is $8 \cdot 10^{18}$, below $2^{63} - 1 \approx 9.22 \cdot 10^{18}$, so $c$ fits in a `long long`.
+
+:::tip[In plain words]
+Subtract the first point from the other two and cross the two arrows: a positive number means the third point is to the left of the walk from the first point to the second, a negative number means to the right, and zero means all three points are on one line. The size of the number is twice the area of the triangle.
+:::
+
+**A tiny instance.** Take $A = (0, 0)$, $B = (4, 0)$ and $C = (1, 3)$. Then $c = 4 \cdot 3 - 0 \cdot 1 = 12$. Walking east from $A$ to $B$, the point $C$ is above the road, which is to the left, and the triangle with base 4 and height 3 has area 6, which is $12 / 2$. For $C = (1, -3)$ the value is $-12$ (right), and for $C = (7, 0)$ it is $0$ (on the line).
+
+**Proof.**
+1. Write $u = B - A$ and $v = C - A$, so $c = u_x v_y - u_y v_x$. Let $w = (-u_y, u_x)$, the vector $u$ turned a quarter turn counterclockwise. It is not the zero vector because $A \ne B$, it is perpendicular to $u$, and $|w| = |u|$.
+2. The dot product $w \cdot v = -u_y v_x + u_x v_y$ equals $c$.
+3. The directed line from $A$ to $B$ is the set of points $A + v$ with $w \cdot v = 0$, and $w$ points to its left. So $C$ is strictly left when $w \cdot v > 0$, strictly right when $w \cdot v < 0$, and on the line when $w \cdot v = 0$. By step 2 this is (a).
+4. The distance from $C$ to the line is $|w \cdot v| / |w| = |c| / |u|$, the length of the part of $v$ along the unit vector $w / |w|$.
+5. The triangle has base $|u|$ and height $|c| / |u|$, so its area is $\frac{1}{2} |u| \cdot |c| / |u| = |c| / 2$. This is (b).
+6. Each difference of coordinates has absolute value at most $2M$, each product at most $4M^2$, and the difference of two products at most $8M^2$. This is (c). $\square$
+
+:::note[This proof needs]
+1. The coordinates are integers, so the sign is exact and there is no rounding; the differences and the products are computed in 64 bits.
+2. $A \ne B$ for statement (a); if $A = B$ the value is always 0.
+3. The largest coordinate is at most about $1.07 \cdot 10^9$ in absolute value, so that $8M^2 < 2^{63}$ (for larger coordinates use `__int128`).
+:::
+
+<TheoremCode unit="2.6/thm-1" />
+
+The first example is the tiny instance (steps 3 and 5). The second has three points on one line, so the value is 0 (step 3). The third puts $C$ on the right, giving $-12$. The fourth uses the largest coordinates: $4 \cdot 10^{18}$ is still below $9.22 \cdot 10^{18}$ (step 6).
+
+### 4.2 Two segments meet
+
+**Theorem 2.6.2 (segments).** Let $AB$ and $CD$ be segments with integer coordinates, $A \ne B$ and $C \ne D$. Write $d_1 = \mathrm{sign}\,\mathrm{cross}(A, B, C)$, $d_2 = \mathrm{sign}\,\mathrm{cross}(A, B, D)$, $d_3 = \mathrm{sign}\,\mathrm{cross}(C, D, A)$ and $d_4 = \mathrm{sign}\,\mathrm{cross}(C, D, B)$, where the sign is $-1$, $0$ or $1$. A point $P$ is **on the segment** $XY$ when $\mathrm{cross}(X, Y, P) = 0$ and $P$ is in the bounding box of $X$ and $Y$. The segments meet if and only if
+
+(1) $d_1 d_2 < 0$ and $d_3 d_4 < 0$ (they cross properly), or
+
+(2) one of the four ends is on the other segment.
+
+:::tip[In plain words]
+Look at which side of each segment the two ends of the other one are on. If they are on opposite sides both ways, the segments cross. Otherwise they can only touch, and that happens exactly when an end lies on the other segment, which includes two segments on one line.
+:::
+
+**A tiny instance.** The segments $(0,0)$-$(4,4)$ and $(0,4)$-$(4,0)$ cross at $(2, 2)$: the signs are $d_1 = +1$, $d_2 = -1$, $d_3 = -1$, $d_4 = +1$, so condition (1) holds. The segments $(0,0)$-$(2,0)$ and $(2,0)$-$(2,3)$ touch at the end $(2, 0)$: then $d_1 = 0$ for the end $(2, 0)$ and it is in the bounding box of the first segment, so condition (2) holds.
+
+**Proof.**
+1. *A point on a segment.* If $\mathrm{cross}(X, Y, P) = 0$ then $P$ is on the line $XY$ (Theorem 2.6.1(a)). Along this line both coordinates change in one direction, so $P$ is between $X$ and $Y$ exactly when each of its coordinates is between those of $X$ and $Y$, which is the bounding box test. So the definition of "on the segment" is the usual one.
+2. *(2) implies they meet.* An end that is on the other segment is a common point, by step 1.
+3. *(1) implies they meet.* The number $f(t) = \mathrm{cross}(A, B, C + t(D - C))$ changes linearly with $t$. Since $f(0)$ and $f(1)$ have opposite strict signs, $f(t_0) = 0$ for some $0 < t_0 < 1$, so $X = C + t_0 (D - C)$ is on the segment $CD$ and on the line $AB$. In the same way the segment $AB$ meets the line $CD$ at a point $Y$. The lines are not parallel ($C$ and $D$ are strictly on opposite sides of $AB$), so they have exactly one common point, and $X = Y$ is on both segments.
+4. *They meet implies (1) or (2).* Let $P$ be a common point. If $P$ is an end of one segment, it is on the other, and (2) holds by step 1.
+5. Otherwise $P = C + t_0 (D - C)$ with $0 < t_0 < 1$ and $f(t_0) = 0$. Since $f(t_0) = (1 - t_0) f(0) + t_0 f(1)$ with positive weights, either $f(0) = f(1) = 0$ or $f(0)$ and $f(1)$ have strictly opposite signs. So $d_1 d_2 < 0$ or $d_1 = d_2 = 0$, and in the same way $d_3 d_4 < 0$ or $d_3 = d_4 = 0$.
+6. If both products are negative, (1) holds. If $d_1 = d_2 = 0$, then $C$ and $D$ lie on the line $AB$, so all four points are on one line; the same holds if $d_3 = d_4 = 0$.
+7. On one line the two segments are intervals that share $P$. The interval whose left end is larger has that end inside the other interval, so an end of one segment is on the other: (2) holds.
+8. So (1) or (2) holds in every case. $\square$
+
+:::note[This proof needs]
+1. The coordinates are integers and every cross product is exact in 64 bits (Theorem 2.6.1(c)).
+2. Both segments have positive length ($A \ne B$, $C \ne D$).
+3. The code multiplies the signs $d_1 d_2$, which are $-1$, $0$ or $1$, and never the cross products themselves: two cross products near $4 \cdot 10^{18}$ would overflow.
+:::
+
+<TheoremCode unit="2.6/thm-2" />
+
+The first example is the proper crossing of step 3. The second touches at an end (steps 2 and 4). The third is two overlapping segments on one line, where all four signs are 0 and the answer comes from step 7. The fourth is two segments on one line that do not overlap: all four signs are 0 again, but no end is in the other bounding box, so the answer is no.
+
+### 4.3 Area and lattice points of a polygon
+
+**Theorem 2.6.3 (area).** Let a simple polygon have corners $P_0, P_1, \dots, P_{n-1}$ with integer coordinates $P_i = (x_i, y_i)$, indices taken modulo $n$, and let $A$ be its area.
+
+(a) If the corners are in counterclockwise order, then $\displaystyle\sum_{i=0}^{n-1} (x_i y_{i+1} - x_{i+1} y_i) = 2A$.
+
+(b) If they are in clockwise order the sum is $-2A$.
+
+(c) The edge from $P_i$ to $P_{i+1}$ holds exactly $g_i = \gcd(|x_{i+1} - x_i|, |y_{i+1} - y_i|)$ lattice points, not counting $P_{i+1}$, so the border holds $B = \sum_i g_i$ lattice points.
+
+:::tip[In plain words]
+Walk around the polygon and add up one cross product for every edge: the total is twice the area, and it is negative if you walk clockwise. An edge from one lattice point to another holds gcd(dx, dy) lattice points, not counting the end, so the boundary count is a sum of gcds.
+:::
+
+**A tiny instance.** The rectangle $(0,0), (4,0), (4,3), (0,3)$ in this order is counterclockwise. The four terms are $0 \cdot 0 - 4 \cdot 0 = 0$, $4 \cdot 3 - 4 \cdot 0 = 12$, $4 \cdot 3 - 0 \cdot 3 = 12$ and $0 \cdot 0 - 0 \cdot 3 = 0$. The sum is 24, and the area is $4 \cdot 3 = 12$. The edges have $\gcd = 4, 3, 4, 3$, so $B = 14$.
+
+**Proof.**
+1. Take a vertical line through an $x$ that is no corner's $x$. Going up along it, each crossing of the boundary changes the parity of the number of crossings above the point (the count of crossings of an upward ray), so inside and outside alternate. Far above there are no crossings (outside), so the crossings in order $y_1 < y_2 < \dots < y_{2k}$ are even in number and the inside parts are the stretches from $y_1$ to $y_2$, from $y_3$ to $y_4$, and so on.
+2. For counterclockwise corners the inside is on the left of every edge. At $y_{2j-1}$ the inside is above the edge, which is on the left only if the edge goes to the right ($+x$). At $y_{2j}$ the inside is below, so the edge goes to the left ($-x$).
+3. So the length of the inside on this line is the sum of the heights of the left-going edges at $x$ minus the sum of the heights of the right-going edges.
+4. An edge from $(x_i, y_i)$ to $(x_{i+1}, y_{i+1})$ is straight, so its height changes linearly, and summed over all lines between its ends it contributes the width times the average height with a sign: $(x_i - x_{i+1}) \cdot \frac{y_i + y_{i+1}}{2}$ (positive when it goes left, negative when it goes right). Adding over all vertical lines, $A = \frac{1}{2} \sum_i (x_i - x_{i+1})(y_i + y_{i+1})$.
+5. Expand $(x_i - x_{i+1})(y_i + y_{i+1}) = x_i y_i + x_i y_{i+1} - x_{i+1} y_i - x_{i+1} y_{i+1}$. Over the closed chain the terms $x_i y_i$ and $-x_{i+1} y_{i+1}$ cancel in pairs, which leaves $2A = \sum_i (x_i y_{i+1} - x_{i+1} y_i)$. This is (a).
+6. Reversing the order of the corners turns every term $x_i y_{i+1} - x_{i+1} y_i$ into its negative, so the sum is $-2A$. This is (b).
+7. For (c), let $d = (dx, dy) \ne (0, 0)$ be the edge vector and $g = \gcd(|dx|, |dy|)$. The points $P_i + k \cdot d / g$ for $k = 0, \dots, g$ are lattice points on the edge. A lattice point on the edge is $P_i + s \cdot d$ with $s = p / q$ in lowest terms, $0 \le s \le 1$; for $s \cdot dx$ and $s \cdot dy$ to be integers, $q$ divides both $dx$ and $dy$, so $q$ divides $g$ and $s = k / g$ for an integer $k$. So the edge holds $g + 1$ lattice points with both ends, and $g$ without the end $P_{i+1}$. $\square$
+
+:::note[This proof needs]
+1. The polygon is simple, the corners are listed in order, and the coordinates are integers (for (c) and for an integer answer).
+2. "Counterclockwise" means that the inside is on the left of every edge (Section 3).
+3. The sum of the terms is kept in `__int128` in the code: one term reaches $2 \cdot 10^{18}$, and the running total can pass $9.2 \cdot 10^{18}$ before negative terms bring it back.
+:::
+
+<TheoremCode unit="2.6/thm-3" />
+
+The first example is the tiny instance. The second lists the same corners clockwise, and the sum changes sign (step 6). The third is a triangle with legs of length 5 ($2A = 25$, so the area is not a whole number, which is why problems ask for twice the area) and the fourth is a slanted triangle whose edges hold few lattice points. In the last, an L-shaped polygon, the sum is again twice the true area (step 5): the polygon is not convex, and the formula does not need it to be.
+
+**Pick's theorem.** With $2A$ from the sum and $B$ from the gcds, Pick's theorem $A = I + B/2 - 1$ gives the number of lattice points strictly inside:
+$$I = \frac{2A - B + 2}{2}.$$
+For the rectangle: $I = (24 - 14 + 2) / 2 = 6$, the six points with $1 \le x \le 3$ and $1 \le y \le 2$. For the triangle with legs 5: $I = (25 - 15 + 2) / 2 = 6$. The unit of Theorem 2.6.3 counts the lattice points of every triangle with corners in $0..4$ directly and checks that $2A = 2I + B - 2$ in each case.
+
+### 4.4 Where is a point, relative to a polygon?
+
+**Theorem 2.6.4 (point in polygon).** Let a simple polygon have corners $P_0, \dots, P_{n-1}$ with integer coordinates in either order, and let $Q = (q_x, q_y)$ be a lattice point.
+
+(a) $Q$ is on the border exactly when some edge $P_i P_{i+1}$ has $Q$ on it (Theorem 2.6.2).
+
+(b) Suppose $Q$ is not on the border. Call the edge $P_i P_{i+1}$ *counted* when exactly one of $y_i$, $y_{i+1}$ is greater than $q_y$, and $\mathrm{cross}(P_i, P_{i+1}, Q)$ has the same sign as $y_{i+1} - y_i$. Then $Q$ is inside exactly when the number of counted edges is odd.
+
+:::tip[In plain words]
+First test whether the point is on an edge. If not, shoot a ray to the right and count the edges it crosses, treating a corner at the height of the ray as if it were slightly above the ray. An odd count means inside.
+:::
+
+**A tiny instance.** For the square $(0,0), (4,0), (4,4), (0,4)$ and $Q = (2, 2)$, only the right edge from $(4,0)$ to $(4,4)$ is counted: its ends are on the two sides of height 2, and $\mathrm{cross}((4,0), (4,4), (2,2)) = 8$ has the sign of $4 - 0$. The left edge from $(0,4)$ to $(0,0)$ goes down and has cross value $+8$, the wrong sign for a downward edge, so it is not counted. One counted edge: inside.
+
+**Proof.**
+1. Part (a) is the definition of "on a segment" from Theorem 2.6.2, step 1, applied to every edge.
+2. Now $Q$ is not on the border. Move every corner whose height is exactly $q_y$ down by a tiny amount. Since $Q$ has a positive distance to the border, a small enough move keeps the polygon simple and does not change whether $Q$ is inside. After the move no corner is at the height $q_y$, so the horizontal ray from $Q$ to the right passes through no corner, and by the definition of "inside" its crossings decide.
+3. An edge can cross the ray only if its (moved) ends are on different sides of the line $y = q_y$. After the move a corner that was at height $q_y$ is below the line, so exactly one end is above the line, that is, exactly one of $y_i$, $y_{i+1}$ is greater than $q_y$. This is the first condition.
+4. For such an edge let $X$ be the point where it crosses the line $y = q_y$. It crosses the ray exactly when $X$ is to the right of $Q$. Here $x$ of $X$ differs from $q_x$, because $X = Q$ would put $Q$ on the edge, and the small move does not change on which side of $Q$ the crossing is.
+5. If the edge is traversed upward (from the lower end to the upper end), $X$ is to the right of $Q$ exactly when $Q$ is to the left of the edge, that is, $\mathrm{cross}(P_i, P_{i+1}, Q) > 0$ (Theorem 2.6.1(a)); traversed downward the sign reverses. The value is not 0: a zero would put $Q$ on the line of the edge at the height $q_y$, so on the edge. So the crossing happens exactly when the cross value has the sign of $y_{i+1} - y_i$, the second condition.
+6. So the counted edges are exactly the crossings of the ray, and their parity decides (b). $\square$
+
+:::note[This proof needs]
+1. The polygon is simple (so that "inside" is well defined by the parity of crossings), with integer coordinates and exact cross products.
+2. The border test comes first and covers every edge; the crossing count is used only for points off the border.
+3. A corner at the height of $Q$ counts as lying below the ray (the test is "greater than $q_y$" on one end only).
+:::
+
+<TheoremCode unit="2.6/thm-4" />
+
+The first three lines show a point in the middle of the square, on its right edge, and level with that edge but beyond it. The last two are the case that makes the half-open rule necessary: for the diamond, the ray to the right of $(1, 2)$ passes through the corner $(4, 2)$, and the ray to the right of $(-1, 2)$ passes through the corners $(0, 2)$ and $(4, 2)$. The rule counts one edge at a corner where the polygon continues on the other side of the ray, and 0 or 2 edges where it only touches, so the first point is inside and the second outside (steps 2 and 3).
+
+### 4.5 The convex hull in one sorted pass
+
+**Theorem 2.6.5 (monotone chain).** Let $S$ be a set of $m \ge 3$ different points, not all on one line, sorted by $x$ and then by $y$: $p_0 < p_1 < \dots < p_{m-1}$. Go through them in this order with a stack. Before a point $p$ is pushed, remove the top of the stack as long as the stack has at least two points and, with $s$ the point below the top $t$, $\mathrm{cross}(s, t, p) \le 0$. Let $L$ be the final stack (the **lower chain**). Do the same on the reversed list to get the **upper chain** $U$. Then $L$ followed by $U$, without the last point of each chain, is the list of the corners of the convex hull in counterclockwise order, starting at $p_0$.
+
+:::tip[In plain words]
+Sort the points, then add them one at a time to a stack. Before a point is added, remove the top of the stack while the last two stack points and the new point do not make a left turn. What is left is the lower edge of the hull; do the same from the other side for the upper edge.
+:::
+
+**A tiny instance.** The points $(0,0), (4,0), (4,4), (0,4), (2,2), (2,0)$ sorted are $(0,0), (0,4), (2,0), (2,2), (4,0), (4,4)$. The lower chain ends as $(0,0), (4,0), (4,4)$: the point $(2,0)$ is removed because it is on the segment from $(0,0)$ to $(4,0)$ (cross product 0). The upper chain is $(4,4), (0,4), (0,0)$. Together the corners are $(0,0), (4,0), (4,4), (0,4)$.
+
+**Proof.**
+1. Every vector between two points of $S$, from the earlier to the later in the sorted order, has $\Delta x \ge 0$, and $\Delta y > 0$ when $\Delta x = 0$, so its direction angle is in $(-90^\circ, 90^\circ]$. For two such directions $u$ and $v$, $u \times v > 0$ exactly when $v$ has the larger angle. A strict left turn at a point of the stack therefore means that the angle of the edges increases.
+2. The loop stops removing only when $\mathrm{cross}(s, t, p) > 0$, so after each push every inner stack point is a strict left turn. The edge angles increase strictly inside a range of less than $180^\circ$, so the vector from the end of an edge to any later stack point is a sum of edge vectors turned counterclockwise from this edge by less than $180^\circ$, and its cross product with the edge is positive. So every stack point is strictly on the left of the line of every edge that does not end in it (the stack is a convex chain).
+3. A removed point $t$ with $s$ below it and the new point $p$ has $\mathrm{cross}(s, t, p) \le 0$, that is, $\mathrm{cross}(s, p, t) \ge 0$: $t$ is on or on the left of the chord $s \to p$, with $s < t < p$.
+4. *Claim:* if $a, b$ are neighbours in the final stack $L$ and $a < q < b$ in the sorted order, then $\mathrm{cross}(a, b, q) \ge 0$. Suppose not, and among the violators take the one removed last. It was removed with $s'$ below it and $p'$ the new point. The points $a$ and $b$ are never removed, so $a \le s'$ and $p' \le b$. By step 3, $q$ is on or on the left of the chord $s' p'$. The value $\mathrm{cross}(a, b, \cdot)$ changes linearly along a chord, so $s'$ or $p'$ has a value at most that of $q$, which is below 0. That end is strictly between $a$ and $b$ (the ends have value 0), so it is a violator; it was still on the stack, or not yet pushed, when $q$ was removed, so it is removed later than $q$. This contradicts the choice of $q$.
+5. So every point of $S$ is on or on the left of the line of every edge of $L$: points between the ends by step 4, and the other points because they are on or above an edge of their own and the chain is convex (step 2).
+6. Turning the plane by $180^\circ$ ($p \mapsto -p$) keeps every cross product and reverses the sorted order, so the same argument for the reversed list gives the upper chain $U$ with every point of $S$ on or on the left of every edge of $U$.
+7. $L$ followed by $U$ is a closed polygon with strict left turns inside each chain, and also at the two joints because $S$ is not on one line. It is convex and every point of $S$ is on or left of each of its edges, so it contains $S$. A convex polygon with corners in $S$ that contains $S$ is the convex hull, and each corner is needed because of the strict turn. The corners are listed counterclockwise from $p_0$.
+8. Each point is pushed once and removed at most once, so the pass costs $O(m)$ after the $O(m \log m)$ sort. $\square$
+
+:::note[This proof needs]
+1. The points are different and sorted by $x$ and then by $y$; the points do not change while the chains are built.
+2. The removal test includes 0 ($\le 0$): a point in the middle of an edge is not a corner. Removing only for $< 0$ keeps such points.
+3. For fewer than 3 points, or all points on one line, the hull is a point or a segment: the code returns the one or two end points.
+:::
+
+<TheoremCode unit="2.6/thm-5" />
+
+The first example is the tiny instance. In the second all four points are on one line: both chains end up as the two end points, so the hull has two points. The third has a repeated point, which the code removes first, and the fourth has a point inside the triangle and one in the middle of its long side. The code compares the result with a brute force on thousands of random small sets (a point is a corner when no segment and no triangle of the other points holds it).
+
+### 4.6 The closest pair of points by a sorted sweep
+
+**Theorem 2.6.6 (closest pair).** Let $p_0, \dots, p_{n-1}$ be $n \ge 2$ different points sorted by $x$. Keep $\mathrm{best}$, the smallest squared distance among the points seen so far ($\infty$ at the start), and a window set of the seen points ordered by $y$. When $p_i$ arrives, let $r = \lfloor \sqrt{\mathrm{best}} \rfloor + 1$ (an integer larger than $\sqrt{\mathrm{best}}$). Remove from the window every point with $x$ at least $r$ less than $p_i$'s, test $p_i$ against the window points with $|y - y_i| \le r$, lower $\mathrm{best}$ to the smallest squared distance found, and insert $p_i$. Then:
+
+(a) at the end $\mathrm{best}$ is the smallest squared distance between two of the points;
+
+(b) at most 32 window points are tested for each new point, so the sweep takes $O(n \log n)$ steps.
+
+:::tip[In plain words]
+Sort by x and keep the recent points in a set ordered by y. For a new point only the points that are closer than the best distance so far in both x and y matter, and only a few of them can fit there, so each point needs only a few distance tests.
+:::
+
+**A tiny instance.** The points $(0,0), (1,1), (3,4), (5,5)$ sorted by $x$. The point $(0,0)$ enters an empty window. When $(1,1)$ arrives, $\mathrm{best}$ is $\infty$ and the window holds $(0,0)$: squared distance 2, so $\mathrm{best} = 2$ and from now on $r = \lfloor \sqrt{2} \rfloor + 1 = 2$. When $(3,4)$ arrives, both earlier points are at least 2 behind in $x$ ($3 - 1 = 2$), so both are removed and nothing is tested. The same happens for $(5,5)$ ($5 - 3 = 2$). The answer is 2.
+
+**Proof.**
+1. Let $\delta$ be the true smallest squared distance, reached by $p_j$ and $p_i$ with $j < i$. At every time $\mathrm{best} \ge \delta$, because $\mathrm{best}$ is a smallest value over some of the pairs, so $r > \sqrt{\mathrm{best}} \ge \sqrt{\delta}$. Since $p_i.x - p_j.x \le \sqrt{\delta} < r$ and the window removes only points at distance at least $r$ in $x$, the point $p_j$ is in the window when $p_i$ arrives (at an earlier step $k$ the test was against $p_k.x - p_j.x \le p_i.x - p_j.x < r_k$ too). Also $|p_i.y - p_j.y| \le \sqrt{\delta} < r$, so $p_j$ is tested and $\mathrm{best}$ becomes at most $\delta$ at that step. Every value of $\mathrm{best}$ is a real squared distance, so it never goes below $\delta$. This is (a).
+2. Let $d = \sqrt{\mathrm{best}}$ at the time $p_i$ arrives. All the points seen before $p_i$ are at least $d$ apart. The window points that are tested lie in the rectangle $p_i.x - r < x \le p_i.x$, $p_i.y - r \le y \le p_i.y + r$ with $r \le d + 1 \le 2d$ (when $d \ge 1$). Cut it into squares of side $d / 2$: there are at most $4 \cdot 8 = 32$ of them, and two points in one square are at most $d / \sqrt{2} < d$ apart, so a square holds at most one tested point.
+3. Each point is inserted once and removed at most once, each in $O(\log n)$, and each new point makes at most 32 distance tests plus one search in the set. With the sort, this is $O(n \log n)$. This is (b). $\square$
+
+:::note[This proof needs]
+1. The points are different (a repeated point would be dropped by the set), sorted by $x$, and fixed while the sweep runs.
+2. $r$ is an integer larger than the best distance, so that equal distances are kept and no square root of a large number is needed: the code takes $\lfloor \sqrt{\mathrm{best}} \rfloor + 1$ and compares squared distances, which fit in `long long` (at most $8 \cdot 10^{18}$).
+3. The window is ordered by $y$ (a `set` of pairs $(y, x)$), so that the points with $y$ near $p_i.y$ are found with `lower_bound`.
+:::
+
+<TheoremCode unit="2.6/thm-6" />
+
+The first example is the tiny instance (step 1). In the second, three points are on one line and the best squared distance is the smaller gap squared (25). In the third, all points are in one column, so every test is decided by $y$ only. The fourth uses the farthest possible pair of coordinates: $8 \cdot 10^{18}$ still fits.
+
+## 5. Recognition Cards
+
+<Cards topic="2.6" />
+
+## 6. Templates
+
+Six templates. The program around each reads the input; the shown code is what matters. Each has a brute force that uses a different method (solving for the common point, a search over all lines, a count of every lattice point, a line that has all points on one side, all pairs of positions) and a generator, and passed 5000 random small cases.
+
+### Lines through at least $k$ points (Theorem 2.6.1)
+
+<CodeSnippet unit="2.6/line-groups" />
+
+**How it works.** For every pair $i < j$ the code finds all the points on the line through them with `cross(p[i], p[j], p[m]) != 0` as the test to skip a point. A line is counted once, at the pair made of its two points with the smallest numbers: if a point with a number smaller than $j$ (other than $i$) is on the line, `first` becomes false. `onLine` counts the points, starting from $i$ and $j$. For $k = 1$ there are infinitely many lines through any point, so the function returns $-1$ and the program prints `Infinity`. The cross product is exact: no slope is ever divided.
+
+**Alternative formulation.** Write each line as $a x + b y = c$ in lowest terms (divide by the gcd of $a$ and $b$ and fix the sign), put the lines in a `set`, and count the points of each line; this is the brute force of the unit, and it needs the gcd and a canonical sign.
+
+### Do two segments meet? (Theorem 2.6.2)
+
+<CodeSnippet unit="2.6/segments-meet" />
+
+**How it works.** The first two tests return false when the bounding boxes do not overlap in $x$ or in $y$. The last line asks that the ends of each segment are on the line of the other or on opposite sides of it: `sign(...) * sign(...) <= 0`. Multiplying the signs, never the cross products, avoids overflow (a bug below). Touching at an end and overlapping on one line both give true.
+
+**Alternative formulation.** This compact test is equivalent to Theorem 2.6.2. If the segments meet, the boxes overlap, and by the theorem either (1) holds (both products are negative) or an end is on the other segment (a sign is 0; the other pair of ends is then on opposite sides or on the line, since the line through the end and the other segment's end passes through the common point). Conversely, if the boxes overlap and both products are at most 0: either both are negative, which is (1); or a sign is 0, say the end $C$ is on the line $AB$, and then either the lines coincide and the boxes overlap on that line (so the segments overlap), or the lines meet exactly at $C$, and $d_3 d_4 \le 0$ says that $AB$ reaches that line, so $C$ is on $AB$.
+
+### Lattice points of a polygon (Theorem 2.6.3 and Pick's theorem)
+
+<CodeSnippet unit="2.6/polygon-count" />
+
+**How it works.** `sum` adds the cross term of each edge in `__int128`, and `boundary` adds the gcd of each edge's $|dx|$ and $|dy|$; `llabs` is needed because a gcd of negative numbers is not what we want. The sign of `sum` depends on the direction of the corners, so its absolute value is twice the area. The last line is Pick's theorem solved for $I$. The three numbers are printed as twice the area, the boundary count and the interior count.
+
+**Alternative formulation.** When a problem asks only for the interior count of one polygon, no other formulation is shorter; the brute force of the unit visits every lattice point of the bounding box, which is fine only for tiny coordinates.
+
+### A convex polygon and many points (Theorem 2.6.1 and binary search)
+
+<CodeSnippet unit="2.6/convex-locate" />
+
+**How it works.** The corners come in counterclockwise order, so seen from `p[0]` the rays to `p[1], ..., p[n-1]` also come in counterclockwise order. `toFirst` and `toLast` tell on which side of the first and the last edge at `p[0]` the point `q` is: a point outside this angle is outside the polygon, and a point on one of the two lines is on the border only if it is in the bounding box of that edge. Otherwise the `while` loop is a binary search (topic 1.4) for the neighbouring corners `lo` and `hi` such that `q` is left of `p[0] -> p[lo]` and not left of `p[0] -> p[hi]`; the sign of the cross product with the far edge `p[lo] -> p[hi]` says outside, on the border or inside. A query costs $O(\log n)$.
+
+**Alternative formulation.** The simple test of Theorem 2.6.4, one pass over all edges, gives the same answers in $O(n)$ per query; it is the brute force of the unit. Choosing `>= 0` in the binary search also works (a query on a diagonal from `p[0]` is inside either way).
+
+### The hull with the points on its sides (Theorem 2.6.5)
+
+<CodeSnippet unit="2.6/hull-boundary" />
+
+**How it works.** The loop is the chain of Theorem 2.6.5 with one change: the removal test is `< 0`, so a point in the middle of an edge (cross product 0) stays. When all points are on one line, or a point is on the joint between the chains, a point can appear in both chains, so the result is sorted and `unique` removes the repeats. Fewer than 3 points are returned as they are.
+
+**Alternative formulation.** The version of the theorem, `<= 0`, returns only the corners and needs no sort at the end; it is the one to use when the problem asks for the perimeter, the area or the number of corners.
+
+### The closest pair of the prefix sums (Theorem 2.6.6)
+
+<CodeSnippet unit="2.6/tricky-value" />
+
+**How it works.** `closestPairSquared` is the sweep of Theorem 2.6.6: `behind` is the first point still in the window, `r` is the integer larger than the best distance, and the `for` loop over the window runs from `lower_bound` of $y - r$ until $y + r$. `smallestValue` uses the prefix sums $S_i$: for positions $i < j$ the sum $g(i, j)$ of the entries after $i$ up to $j$ is $S_j - S_i$, so $(i - j)^2 + g(i, j)^2$ is the squared distance between the points $(i, S_i)$ and $(j, S_j)$. The positions are all different, so the points are different.
+
+**Alternative formulation.** For $n \le 3000$ a double loop over all pairs with the prefix sums is short and fast enough.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template from Section 6. The first, second, fifth, sixth, seventh and eighth were caught by `scripts/stress.sh` on random inputs. The third and the fourth are caught by a fixed test, because a random small input never reaches the overflow or the rounding. The inputs shown are small failing inputs checked against the brute force.
+
+### Bug: a strict inequality for touching segments
+
+Template: do two segments meet.
+
+```cpp
+return sign(cross(a, b, c)) * sign(cross(a, b, d)) < 0 && sign(cross(c, d, a)) * sign(cross(c, d, b)) < 0;   // instead of <= 0
+```
+
+Input: `1`, then `0 0 2 0 2 0 2 3`.
+
+Wrong output `NO`, correct output `YES`. The segments touch at $(2, 0)$, so the signs are $d_1 = 0$ and the product is 0, not below 0 (Theorem 2.6.2, condition (2)).
+
+**Fix:** use `<= 0` in both products.
+
+### Bug: no bounding box test
+
+Template: do two segments meet.
+
+```cpp
+// the two lines "if (max(min(a.x, b.x), ...) > min(max(...))) return false;" removed
+```
+
+Input: `1`, then `0 0 1 0 2 0 3 0`.
+
+Wrong output `YES`, correct output `NO`. The segments are on one line and apart, so all four cross products are 0 and the products are 0, which passes the test. Only the bounding boxes tell that no end is on the other segment (Theorem 2.6.2, step 7).
+
+**Fix:** keep the two box tests.
+
+### Bug: multiplying the cross products
+
+Template: do two segments meet.
+
+```cpp
+return cross(a, b, c) * cross(a, b, d) <= 0 && cross(c, d, a) * cross(c, d, b) <= 0;   // instead of the product of signs
+```
+
+Input: `1`, then `-500000000 0 500000000 0 0 1000000000 0 -1000000000`.
+
+Wrong output `NO`, correct output `YES`. Here the cross values are $10^{18}$ and $-10^{18}$, and their product $-10^{36}$ wraps around in 64 bits to a positive number, so the test fails. The segments cross at $(0, 0)$. Random small inputs never reach $9.2 \cdot 10^{18}$, so the stress test passes; the fixed test with coordinates near $10^9$ catches it (Theorem 2.6.2, precondition 3).
+
+**Fix:** multiply the signs, not the cross products.
+
+### Bug: `double` and a test for equality with 0
+
+Template: do two segments meet.
+
+```cpp
+struct Point { double x, y; };   // and double cross(...), double sign(...), instead of long long
+```
+
+Input: `1`, then `0 0 1000000000 999999999 999999999 999999998 999999998 999999997`.
+
+Wrong output `YES`, correct output `NO`. The point $(10^9 - 1, 10^9 - 2)$ is at cross value $-1$ from the first segment, so it is not on it. In doubles the two products are about $10^{18}$ and are rounded to the same value, so the difference is exactly 0 and the point looks collinear, and it is inside the bounding box. A `double` keeps only 53 bits, and a test `== 0` on a rounded number is wrong. Again the stress test passes on small inputs.
+
+**Fix:** keep the coordinates and the cross product in `long long`.
+
+### Bug: the area of a clockwise polygon
+
+Template: lattice points of a polygon.
+
+```cpp
+long long twice = (long long)sum;   // instead of the absolute value
+```
+
+Input: `3`, then `0 0`, `0 5`, `5 0`.
+
+Wrong output `-25 15 -19`, correct output `25 15 6`. The corners are clockwise, so the sum is $-25$, and the number inside is computed from it (Theorem 2.6.3, part (b)).
+
+**Fix:** take the absolute value of the sum.
+
+### Bug: the gcd of negative numbers
+
+Template: lattice points of a polygon.
+
+```cpp
+boundary += __gcd(b.x - a.x, b.y - a.y);   // instead of llabs of both differences
+```
+
+Input: `4`, then `0 0`, `4 0`, `4 3`, `0 3`.
+
+Wrong output `24 0 13`, correct output `24 14 6`. The edges that go left or down have negative differences, and the gcd of a negative number and 0 is not the length of the edge.
+
+**Fix:** use `llabs` on both differences.
+
+### Bug: dropping the points on a side
+
+Template: the hull with the points on its sides.
+
+```cpp
+while (h.size() >= start + 2 && cross(h[h.size() - 2], h.back(), p) <= 0) h.pop_back();   // instead of < 0
+```
+
+Input: `3`, then `0 0`, `1 1`, `2 2`.
+
+Wrong output `2`, then `0 0` and `2 2`, correct output `3`, then all three points. A point in the middle of an edge has cross product 0 and the test `<= 0` removes it (Theorem 2.6.5, precondition 2). The problem asks for every point on the border.
+
+**Fix:** pop only for `< 0` when the points on the sides must be kept; keep `<= 0` when only the corners are wanted.
+
+### Bug: a window that is one too narrow
+
+Template: the closest pair of the prefix sums.
+
+```cpp
+long long r = (long long)sqrtl((long double)best);   // instead of + 1
+```
+
+Input: `3`, then `0 1 0`.
+
+Wrong output `2`, correct output `1`. The points are $(1, 0)$, $(2, 1)$ and $(3, 1)$; after the first two the best is 2 and $\lfloor \sqrt{2} \rfloor = 1$, so a point at distance 1 behind is removed from the window before it is tested, although its squared distance, 1, is smaller than 2 (Theorem 2.6.6, precondition 2).
+
+**Fix:** use $\lfloor \sqrt{\mathrm{best}} \rfloor + 1$.
+
+## 8. Worked examples
+
+The problem bank of this topic is small (see the note at the end of this section), so there is no separate worked-example problem. The templates of Section 6 are the worked examples: each is shown with a short walk through its steps, and each agrees with a brute force on thousands of random inputs. The problem ladder (Section 9) gives three hints for every rung, in the order of the steps of the theorems: say what the question asks (a side, an area, a boundary, a hull, a distance), say what number settles it, and say how large that number can get.
+
+Why the bank is small: the topic needs problems in which the sign or the value of a cross product, a hull or a closest pair is really the tool, with integer coordinates. The searches (the Codeforces API tag `geometry`, the AtCoder Problems list, LeetCode and the CSES geometry section) found 34 such problems; 16 are rungs, and the rest are in the checkpoint, the review set, the look-alike pairs and the drill. Most of the 265 Codeforces problems tagged `geometry` and rated 1000 to 2600 need circles, real numbers with a tolerance, ternary search or a construction, so they are not used.
+
+## 9. Problem ladder
+
+<Ladder topic="2.6" />
+
+## 10. Identification drill
+
+All eight problems below have points, rectangles or distances in the statement, so a geometry card looks possible. None of them needs a cross product or a hull. Each is answered by a card of an earlier topic (sorting, running extremes, counting with a set, brute force or a closed form). The point of the drill is to say which one, and why the distance or the shape does not call for a side test.
+
+<Drill topic="2.6" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="2.6" />
+
+## 12. Self-test questions
+
+<SelfTest topic="2.6" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="2.6" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="2.6" />

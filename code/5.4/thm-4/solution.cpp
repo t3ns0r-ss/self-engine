@@ -1,56 +1,51 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-vector<int> moOrder(const vector<array<int, 2>>& queries, int n) {
-    int B = max(1, (int)(n / sqrt((double)max<size_t>(1, queries.size()))));
-    vector<int> order(queries.size());
-    iota(order.begin(), order.end(), 0);
-    sort(order.begin(), order.end(), [&](int x, int y) {
-        int bx = queries[x][0] / B, by = queries[y][0] / B;
-        if (bx != by) return bx < by;
-        return bx % 2 == 0 ? queries[x][1] < queries[y][1] : queries[x][1] > queries[y][1];
-    });
-    return order;
-}
-
 // snippet:begin
-// Theorem 5.4.4. Mo's algorithm for the number of different values in a[l..r] (0-based). The window [l, r] starts empty (r = l - 1).
-vector<int> distinctByMo(const vector<int>& a, const vector<array<int, 2>>& queries) {
-    vector<int> cnt(*max_element(a.begin(), a.end()) + 1, 0), answer(queries.size());
-    int l = 0, r = -1, distinct = 0;  // the window holds a[l..r]; distinct is the answer for it
-    auto add = [&](int i) { distinct += cnt[a[i]]++ == 0; };
-    auto remove = [&](int i) { distinct -= --cnt[a[i]] == 0; };
-    for (int q : moOrder(queries, a.size())) {
-        auto [ql, qr] = queries[q];
-        while (l > ql) add(--l);  // grow first, so that the window never has a negative length
-        while (r < qr) add(++r);
-        while (l < ql) remove(l++);
-        while (r > qr) remove(r--);
-        answer[q] = distinct;
+// Theorem 5.4.4. For every question (l, r) (0-based) count the values x that occur exactly x times in a[l..r].
+// Only values x that occur at least x times in the whole array can qualify; there are at most sqrt(2n) of them.
+vector<int> exactlyXTimes(const vector<int>& a, const vector<array<int, 2>>& queries) {
+    int n = a.size();
+    vector<int> total(n + 1, 0), answer(queries.size(), 0), prefix(n + 1, 0);
+    for (int x : a)
+        if (x <= n) total[x]++;
+    for (int x = 1; x <= n; x++) {
+        if (total[x] < x) continue;  // this value cannot reach x occurrences anywhere
+        for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] + (a[i] == x);  // one pass for this value
+        for (size_t j = 0; j < queries.size(); j++) answer[j] += prefix[queries[j][1] + 1] - prefix[queries[j][0]] == x;
     }
     return answer;
 }
 // snippet:end
 
 int main() {
-    vector<int> a = {1, 2, 1, 3, 2, 2, 4, 1};
-    vector<array<int, 2>> queries = {{0, 3}, {1, 4}, {2, 2}, {0, 7}, {5, 6}, {3, 7}};
-    cout << "distinct:";
-    for (int x : distinctByMo(a, queries)) cout << ' ' << x;
+    vector<int> a = {3, 1, 2, 2, 3, 3, 1, 3};
+    vector<array<int, 2>> queries = {{0, 7}, {0, 4}, {2, 5}, {6, 7}};
+    cout << "answers:";
+    for (int x : exactlyXTimes(a, queries)) cout << ' ' << x;
     cout << "\n";
-    // Check against: a set of the range, on random arrays and queries.
-    mt19937 rng(8);
+    vector<int> w;  // the array 1, 2, 2, 3, 3, 3, ..., 100 repeated x times: every value x qualifies, and n = 5050
+    for (int x = 1; x <= 100; x++)
+        for (int j = 0; j < x; j++) w.push_back(x);
+    cout << "array of length " << w.size() << " with the values 1.." << 100 << ": answer " << exactlyXTimes(w, {{0, (int)w.size() - 1}})[0] << ", bound sqrt(2n) = " << (int)sqrt(2.0 * w.size()) << "\n";
+    // Check against: counting inside the range, on random arrays and queries.
+    mt19937 rng(6);
     for (int round = 0; round < 3000; round++) {
-        int n = rng() % 12 + 1, q = rng() % 12 + 1;
-        vector<int> w(n);
-        for (int& x : w) x = rng() % 5;
+        int n = rng() % 14 + 1, q = rng() % 10 + 1;
+        vector<int> v(n);
+        for (int& x : v) x = rng() % 5 + 1;
         vector<array<int, 2>> qs(q);
         for (auto& x : qs) {
             x[0] = rng() % n, x[1] = rng() % n;
             if (x[0] > x[1]) swap(x[0], x[1]);
         }
-        vector<int> got = distinctByMo(w, qs);
-        for (int i = 0; i < q; i++)
-            if ((int)set<int>(w.begin() + qs[i][0], w.begin() + qs[i][1] + 1).size() != got[i]) return 1;
+        vector<int> got = exactlyXTimes(v, qs);
+        for (int i = 0; i < q; i++) {
+            map<int, int> cnt;
+            for (int j = qs[i][0]; j <= qs[i][1]; j++) cnt[v[j]]++;
+            int want = 0;
+            for (auto [x, c] : cnt) want += x == c;
+            if (want != got[i]) return 1;
+        }
     }
 }

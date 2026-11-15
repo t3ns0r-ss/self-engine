@@ -20,7 +20,7 @@ Output: one line per question, in the order of the input.
 */
 
 // snippet:begin
-// Mo's algorithm: the questions are answered in the order of Theorem 5.4.3 and the window [l, r] is moved by add and remove.
+// Mo's algorithm: the questions are answered in the order of Theorem 5.6.1 and the window [l, r] is moved by add and remove.
 vector<long long> powerOfRanges(const vector<int>& a, const vector<array<int, 2>>& queries) {
     vector<int> cnt(*max_element(a.begin(), a.end()) + 1, 0);
     vector<long long> answer(queries.size());

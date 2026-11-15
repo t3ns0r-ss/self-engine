@@ -1,0 +1,333 @@
+---
+title: "5.7 Binary trie and XOR"
+sidebar:
+  order: 36.7
+topic: "5.7"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="5.7" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A box starts with the number 0 in it. Then $q = 2 \cdot 10^5$ operations arrive: "put $x$ in the box", "take one copy of $x$ out of the box", and "which number $y$ in the box makes $x \oplus y$ the largest?" The numbers are below $2^{30}$.
+
+Looking at every number in the box for each question costs up to $q$ steps, so $q$ questions cost about $2 \cdot 10^{10}$ steps, which is too slow. The method of [topic 1.7](../../phase-1/1-7-bits/) builds the best partner digit by digit from the top with a set of prefixes, but it works on a fixed array: when a number is put in or taken out, the sets of prefixes at all 30 levels change, and every question has its own $x$.
+
+The way out is to write every number in binary with exactly 30 digits and store the numbers in a tree in which **numbers with the same top digits share the same path**. A question about the largest XOR is then one walk from the root of 30 steps, and a change is one walk too. This tree is the **binary trie** ("trie" comes from the word "retrieval"). The same tree answers "how many numbers $y$ give $x \oplus y$ below a bound $k$?", and the split by the top digit that the tree makes visible solves a second kind of question: the cheapest way to connect numbers when the cost between two of them is their XOR.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="5.7" />
+
+### What this topic does not cover
+
+- A trie of words made of letters, with the counts of words that begin the same way: topic 6.3 (a later topic in the strings phase). Here the digits are only 0 and 1 and every number has the same length.
+- The XOR linear basis (the set of all XORs of some of the numbers) and persistent versions of the tree that keep every earlier state: not part of this course.
+- Minimum spanning trees on a graph given by a list of edges: topic 4.4. Here the graph is never listed.
+
+## 3. Definitions
+
+- A **binary trie** stores numbers below $2^B$ written with exactly $B$ binary digits (leading zeros included), highest digit first. It is a rooted tree. Every edge carries the digit 0 or 1, and every stored number is a path of exactly $B$ edges from the root. Two numbers with the same top digits share the beginning of their path. For every node $v$, $\text{cnt}[v]$ is the number of stored numbers (with repeats) whose path goes through $v$. Example with $B = 3$: the numbers 1, 5, 6 are 001, 101, 110; the node reached by the digit 1 has $\text{cnt} = 2$ (101 and 110).
+- The **XOR** of two numbers is taken digit by digit: 1 if the digits differ, 0 if they are equal ([topic 1.7](../../phase-1/1-7-bits/)). Example: $5 \oplus 6 = 101 \oplus 110 = 011 = 3$.
+- The **highest differing digit** of two different numbers is the highest place where their binary digits differ. The XOR of the two numbers has its highest 1 exactly there. Example: 5 = 101 and 6 = 110 differ first at the place of value 2 (the second digit from the top is 0 against 1), so $5 \oplus 6$ has its highest 1 at the place of value 2.
+- A **spanning tree** of a set of numbers, where every two numbers are joined by an edge with a weight, is a set of edges that joins all the numbers without a cycle; a cheapest one has the smallest total weight ([topic 4.4](../../phase-4/4-4-dsu-mst/)). The **XOR spanning tree** is the cheapest spanning tree when the edge between two numbers weighs their XOR. Example: for 1, 2, 3, 4 it has weight 8.
+- In the code a node is a number (its place in a vector). `vector<array<int, 2>> child = {{0, 0}};` starts the vector with one element, the root, whose two children are "none"; the entry 0 means "no such child", because the root, node 0, is never a child. `x >> b & 1` is the digit of $x$ at the place $b$ (counting from 0 at the lowest): the shift moves it to the bottom and `& 1` keeps it.
+
+## 4. Theory and proofs
+
+### 4.1 The binary trie and the largest XOR
+
+**Theorem 5.7.1 (the largest XOR).** Store the numbers of a set $Y$ below $2^B$ in a binary trie, with $\text{cnt}[v]$ the number of stored numbers that go through $v$. For a number $x$ below $2^B$, walk down from the root: at each level, with $d$ the digit of $x$ at this level, go to the child with the digit $1 - d$ if that child exists and its count is positive; otherwise go to the child with the digit $d$. The number $y$ found at the bottom gives the largest value of $x \oplus y$ over $y \in Y$, in $B$ steps.
+
+:::tip[In plain words]
+The XOR of two numbers is decided by the highest digit where they differ: if it is 1 there, the XOR is bigger than any XOR that has 0 there, whatever the lower digits are. So from the top, always try to find a stored number with the opposite digit. If there is one, taking it is never worse; if there is none, no stored number in this branch can do better.
+:::
+
+**A tiny instance.** $B = 5$, $Y = \{3, 10, 5, 25, 2, 8\}$, that is 00011, 01010, 00101, 11001, 00010, 01000, and $x = 5 = 00101$. The top digit of $x$ is 0, so the walk wants a stored number with top digit 1. Only 25 has it, so the walk goes there, and $5 \oplus 25 = 00101 \oplus 11001 = 11100 = 28$. For $x = 8 = 01000$ the walk again goes to 25, with $8 \oplus 25 = 10001 = 17$.
+
+**Proof.**
+1. For numbers with the same number of digits, comparing by value is the same as comparing the digit strings from the left: the first place where they differ decides. The same holds for the values $x \oplus y$.
+2. Let $g$ be the number found by the walk, and suppose $y' \in Y$ is any stored number with $y' \ne g$. Let $b$ be the highest digit place where the paths of $g$ and $y'$ differ; above it they go through the same nodes, so $x \oplus g$ and $x \oplus y'$ agree above $b$.
+3. At the node where the paths split, the walk took the child with the digit $1 - d$ or the child with the digit $d$. If it took the child with $d$, then the child with $1 - d$ did not exist or had count 0, so no stored number has $1 - d$ at this place below this node, and $y'$ (which is stored and goes through this node) has the digit $d$ as well, contradicting that the paths split here. So the walk took the child with $1 - d$.
+4. Then $g$ has the digit $1 - d$ at the place $b$, so $x \oplus g$ has the digit 1 there. And $y'$ went the other way, so it has the digit $d$, and $x \oplus y'$ has the digit 0 there. By step 1, $x \oplus g > x \oplus y'$. So $g$ gives the largest XOR (and for the numbers on the same path it is equal). $\square$
+
+:::note[This proof needs]
+1. All numbers have the same number of digits $B$ (leading zeros), so that "highest digit first" means the same place for all.
+2. The counts are needed only when numbers are removed: a node whose count dropped to 0 still exists, and the walk must not enter it. Without removals "the child exists" is enough.
+3. The set must not be empty, otherwise the walk has no number to find.
+:::
+
+<TheoremCode unit="5.7/thm-1" />
+
+The first line gives the best partners of 5 and 8 in the set (steps 2 to 4): 28 and 17. The second line is the largest XOR of two numbers of the set, 28. Removing 25 changes the answer for 5 to 15 (with 10: $00101 \oplus 01010 = 01111$). The last line is a set with one number, 7, whose best partner is itself, XOR 0. The check compares the walk with the maximum over the set, with repeats and after a removal, on every set of up to four numbers below 16.
+
+### 4.2 Counting the numbers whose XOR is below a bound
+
+**Theorem 5.7.2 (counting by a bound).** With the binary trie of Theorem 5.7.1 and numbers $x$ and $k$ below $2^B$, the number of stored numbers $y$ with $x \oplus y < k$ is found in $B$ steps: start at the root with the total 0; at each level, with $d$ the digit of $x$ and $e$ the digit of $k$ at this level: if $e = 1$, add $\text{cnt}$ of the child with the digit $d$ (it exists or the add is 0) to the total and continue in the child with the digit $1 - d$; if $e = 0$, continue in the child with the digit $d$; stop when the child does not exist.
+
+:::tip[In plain words]
+Compare $x \oplus y$ with $k$ from the top digit. At a place where $k$ has a 1, a number $y$ that makes the XOR digit 0 is already smaller than $k$, whatever follows, so the whole branch counts at once. The numbers that make the XOR digit 1 stay equal to $k$ so far, and the walk goes on with them. Where $k$ has a 0, the XOR digit must be 0 to stay equal.
+:::
+
+**A tiny instance.** $B = 3$, $Y = \{1, 2, 3, 4\}$ (001, 010, 011, 100), $x = 1$ (001), $k = 3$ (011). Top digit: $k$ has 0, so go to the child with the digit of $x$, which is 0: this branch holds 001, 010, 011. Second digit: $k$ has 1, $x$ has 0: add the child with digit 0 (it holds only 001: count 1); continue in the child with digit 1 (010 and 011). Third digit: $k$ has 1, $x$ has 1: add the child with digit 1 (011: count 1); continue in the child with digit 0 (010). The total is 2: $1 \oplus 1 = 0$ and $1 \oplus 3 = 2$ are below 3, while $1 \oplus 2 = 3$ and $1 \oplus 4 = 5$ are not.
+
+**Proof.**
+1. Compare $x \oplus y$ with $k$ as digit strings of length $B$ from the left (as in the proof of Theorem 5.7.1): $x \oplus y < k$ exactly when, at the first place where they differ, the digit of $x \oplus y$ is 0 and the digit of $k$ is 1.
+2. Fix a level, and consider the stored numbers $y$ whose digits above this level make $x \oplus y$ agree with $k$ above this level (the walk's current node holds exactly these, by induction on the level: it starts with all numbers at the root).
+3. At this level, $x \oplus y$ has the digit $d \oplus (\text{digit of } y)$. If $e = 1$: the numbers $y$ with the digit $d$ have the XOR digit 0 here, which is smaller than $e = 1$, so by step 1 they are below $k$; all of them are counted at once, as $\text{cnt}$ of the child with the digit $d$. The numbers with the digit $1 - d$ have the XOR digit 1, equal to $e$, so they stay equal to $k$ so far: the walk continues with them.
+4. If $e = 0$: numbers with the digit $d$ have the XOR digit 0, equal to $e$, and continue; numbers with the digit $1 - d$ have the XOR digit 1, which is larger than $e = 0$, so they are above $k$ and are dropped.
+5. After the last level, the numbers that remain have $x \oplus y = k$, which is not below $k$ and is not counted. Every number below $k$ was counted exactly once, at the first level where it separated from $k$. $\square$
+
+:::note[This proof needs]
+1. The counts $\text{cnt}[v]$ must be correct for every node, including after removals; the sum uses the counts of whole branches.
+2. A bound $k$ equal to $2^B$ or more counts every stored number; the code is used with $k < 2^B$, and larger bounds are cut to $2^B - 1$ plus a separate test, or $B$ is increased by one.
+3. For a count of pairs, each number is inserted after it is counted against the earlier ones; inserting first counts the number with itself (XOR 0).
+:::
+
+<TheoremCode unit="5.7/thm-2" />
+
+The four examples use the set 1, 2, 3, 4 (the tiny instance and three more): with $x = 0$ and $k = 3$ the numbers 1 and 2 count; with $x = 5$ and $k = 5$ the XORs are 4, 7, 6, 1 and two are below 5; with $k = 0$ nothing is below 0. The check compares the walk with a count over the set, with repeats, for every set of up to four numbers below 8, every $x$ below 8 and every $k$ up to 8.
+
+### 4.3 The cheapest tree on XOR weights
+
+**Theorem 5.7.3 (the XOR spanning tree).** Let $S$ be a set of distinct numbers below $2^B$, with at least two numbers, and let $b$ be the highest digit place at which two numbers of $S$ differ. Let $S_0$ and $S_1$ be the numbers with the digit 0 and with the digit 1 at the place $b$ (both are non-empty). The weight of a cheapest spanning tree of $S$, where an edge between $x$ and $y$ weighs $x \oplus y$, is
+$$\text{mst}(S) = \text{mst}(S_0) + \text{mst}(S_1) + \min_{x \in S_0,\, y \in S_1} (x \oplus y),$$
+with $\text{mst}$ of a set with one number equal to 0. The cheapest crossing edge is found with a binary trie of $S_1$: for each $x \in S_0$ walk down, taking the child with the same digit as $x$ whenever it exists, and read the XOR of the end. The whole recursion takes $O(nB^2)$ time for $n$ numbers.
+
+:::tip[In plain words]
+Two numbers that agree on the top digit have a smaller XOR than two that differ on it. So a cheapest tree first joins each group completely and then adds one cheapest edge across, and that edge is found with the same walk as the largest XOR, preferring the same digit.
+:::
+
+**A tiny instance.** The numbers 1, 2, 3, 4 (001, 010, 011, 100). The highest differing digit is the place of value 4: $S_0 = \{1, 2, 3\}$ and $S_1 = \{4\}$. Inside $S_0$ the highest differing place is the value 2: $\{1\}$ and $\{2, 3\}$. The set $\{2, 3\}$ costs $2 \oplus 3 = 1$; the cheapest edge between $\{1\}$ and $\{2, 3\}$ is $1 \oplus 3 = 2$. So $\text{mst}(S_0) = 3$. The cheapest edge between $S_0$ and $\{4\}$ is $1 \oplus 4 = 5$. The total is $3 + 0 + 5 = 8$.
+
+**Proof.**
+1. All numbers of $S$ agree above the place $b$, so an edge inside $S_0$ or inside $S_1$ has an XOR with all digits above $b$ equal to 0 and the digit $b$ equal to 0: its weight is below $2^b$.
+2. An edge between $x \in S_0$ and $y \in S_1$ has the digit 1 at the place $b$ and 0 above it: its weight is at least $2^b$. So every edge inside a group is lighter than every edge across.
+3. Run Kruskal's algorithm ([topic 4.4](../../phase-4/4-4-dsu-mst/)): it considers the edges in increasing weight. It considers all edges inside the groups first.
+4. The complete graph on $S_0$ is connected, so after the inside edges of $S_0$ are considered, $S_0$ is one component, and the edges chosen inside it are exactly the edges Kruskal chooses on the complete graph of $S_0$ alone, a cheapest spanning tree of $S_0$. The same holds for $S_1$.
+5. Then the first crossing edge considered joins the two components, and every later crossing edge makes a cycle and is skipped. The first crossing edge is the cheapest one, of weight $\min (x \oplus y)$.
+6. So the tree has weight $\text{mst}(S_0) + \text{mst}(S_1) + \min (x \oplus y)$.
+7. *The cheapest crossing edge.* Compare $x \oplus y$ for $y \in S_1$ as digit strings from the left, as in Theorem 5.7.1: the first place where two candidates $y$, $y'$ give different XORs decides. At each level the XOR digit is 0 if $y$ has the same digit as $x$, so the walk that takes the same digit whenever the trie has it gives the smallest XOR, by the argument of Theorem 5.7.1 with the roles of 0 and 1 swapped.
+8. *The cost.* The trie of $S_1$ has at most $|S_1| B$ nodes, and each $x \in S_0$ walks $B$ steps. Over the recursion, each number is inserted or walked once per level and there are at most $B$ levels, so $O(nB \cdot B)$ steps. $\square$
+
+:::note[This proof needs]
+1. The numbers are distinct. Equal numbers are joined by an edge of weight 0, so removing repeats first (and adding nothing) gives the same total.
+2. The edge weight is the XOR: it is what makes every inside edge lighter than every crossing edge. With the weight $x + y$ this fails (see the card).
+3. The total can reach $(n - 1) \cdot 2^B$, about $2 \cdot 10^5 \cdot 10^9$, so it needs a 64-bit integer.
+:::
+
+<TheoremCode unit="5.7/thm-3" />
+
+The first line is the tiny instance (weight 8). The second, 5, 6, 7, has weight 3 ($6 \oplus 7 = 1$ and $5 \oplus 7 = 2$). The third, 0 and 8, is one edge of weight 8. The fourth has three equal numbers, which cost 0 together. The check compares the weight with Prim's algorithm on every list of up to five numbers below 8, repeats included.
+
+## 5. Recognition Cards
+
+<Cards topic="5.7" />
+
+## 6. Templates
+
+Four templates. Each shows only the function that matters; the program around it reads the input. The first three use the `BinaryTrie` of Theorem 5.7.1 (it stays in the file outside the shown code and is said to be used); the last one builds its own small trie. Each template is checked against a brute force that compares numbers directly, on thousands of random small inputs (numbers below 41, or below 64 with repeats, so that equal beginnings are common) and on fixed tests with one element, all elements equal and large numbers.
+
+### The largest XOR of two numbers of an array (Theorem 5.7.1)
+
+<CodeSnippet unit="5.7/max-xor-pair" />
+
+**How it works.** The numbers are taken from left to right. Before a number is inserted, `maxXor` asks the trie of the numbers before it for its best partner, so each pair is considered once and a number is never paired with itself. The `BinaryTrie` has 30 levels, enough for numbers below $2^{30}$; the walk takes $B = 30$ steps for a number, so the cost is $30 n$.
+
+**Alternative formulation.** The method of [topic 1.7](../../phase-1/1-7-bits/): build the answer digit from the top, with a set of the prefixes of the numbers at each level; it uses a hash set instead of the tree and also takes $O(30 n)$ for a fixed array.
+
+### Pairs whose XOR is below a bound (Theorem 5.7.2)
+
+<CodeSnippet unit="5.7/xor-pairs-below" />
+
+**How it works.** For each number `x` in order, `countXorBelow(x, k)` counts the numbers inserted before it with `x ^ y < k`, and then `x` is inserted. Inserting `x` first would count the pair of `x` with itself (XOR 0), which is below every positive `k`. The bound `k` must be below $2^{30}$: the walk reads only the 30 low digits of `k`, so $k = 2^{30}$ would be read as 0 (use a 31st level, or cap `k` at $2^{30} - 1$ and add the equal case separately). The total can reach $n(n-1)/2$, which needs a `long long`.
+
+**Alternative formulation.** For a count of pairs in a range [low, high], use `countPairsBelow(high + 1) - countPairsBelow(low)`; for a fixed array and one bound, sort the numbers by their top digits and divide the problem recursively, which is longer to write.
+
+### A multiset with additions, removals and largest-XOR questions (Theorem 5.7.1)
+
+<CodeSnippet unit="5.7/xor-multiset" />
+
+**How it works.** The `BinaryTrie` is created with the number 0 in it, so a question always has an answer (the problem promises that 0 is in the multiset). `add(x, +1)` and `add(x, -1)` change the counts along the path of `x`; a removal does not delete nodes, and the walk of `maxXor` enters a child only when its count is positive (the `cnt[opposite] > 0` test). `auto [sign, x]` unpacks a pair into two names. Each operation is one walk of 30 steps.
+
+**Alternative formulation.** Offline, if all operations are known: no simpler method; a balanced set of the numbers ([topic 0.6](../../phase-0/0-6-stl-toolbox/)) cannot answer the XOR question, because XOR does not follow the order of the numbers.
+
+### The cheapest tree on XOR weights (Theorem 5.7.3)
+
+<CodeSnippet unit="5.7/xor-mst" />
+
+**How it works.** The numbers are sorted and made distinct, so every group of numbers that agree above a digit is a stretch `a[lo, hi)`. `xorMst` looks for the first number with the digit `b` equal to 1: `mid` is where the stretch splits. If all numbers have the same digit, it goes on to the next digit without adding anything. Otherwise it puts the right part into a small trie (digits `b - 1` down to 0) and walks every number of the left part in it, taking the same digit when the trie has it (`d ^= 1` and the added `1 << c` happen only when it does not); `x` starts at `1 << b` because the digit `b` differs for every crossing pair. The answer is the two sub-answers plus the smallest `x`.
+
+**Alternative formulation.** Borůvka's algorithm ([topic 4.4](../../phase-4/4-4-dsu-mst/)): in each round every component finds its cheapest outgoing edge with a trie that skips its own numbers; it needs the numbers of a component to be removed from the trie and is longer to write.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: the digits are read from the lowest
+
+Template: the largest XOR of two numbers of an array.
+
+```cpp
+for (int b = 0; b < BITS; b++) {                   // in maxXor, instead of b = BITS - 1 down to 0
+```
+
+Input: `2`, then `2 1`.
+
+Wrong output `268435457`, correct output `3`. The walk takes the opposite digit at the lowest place first, but the trie is built from the highest digit down, so the digit it looks at is not the one it thinks (and the shifts build a wrong number). The greedy choice is valid only from the highest digit (Theorem 5.7.1, step 1).
+
+**Fix:** go from the highest digit to the lowest, in the same order as the insertion.
+
+### Bug: a number is counted against itself
+
+Template: pairs whose XOR is below a bound.
+
+```cpp
+t.add(x, +1);                                       // before pairs += t.countXorBelow(x, k), instead of after it
+```
+
+Input: `1 4`, then the number `1`.
+
+Wrong output `1`, correct output `0`. With one number there is no pair. Inserted first, the number is counted against itself, and $1 \oplus 1 = 0 < 4$ (Theorem 5.7.2, note 3).
+
+**Fix:** count against the earlier numbers first, insert afterwards.
+
+### Bug: following the wrong child where the bound has a 1
+
+Template: pairs whose XOR is below a bound.
+
+```cpp
+v = child[v][d];                                    // in countXorBelow, where k has a 1, instead of child[v][d ^ 1]
+```
+
+Input: `2 7`, then `1 1`.
+
+Wrong output `3`, correct output `1`. Where $k$ has a digit 1, the numbers with the digit equal to $x$'s give the XOR digit 0 and are counted at once; the walk must then continue with the others, whose XOR digit is 1, equal to $k$'s. The wrong line continues with the ones already counted, and counts them again at every level (Theorem 5.7.2, step 3).
+
+**Fix:** continue in the other child.
+
+### Bug: a removed number is still reachable
+
+Template: a multiset with additions, removals and largest-XOR questions.
+
+```cpp
+if (opposite) best |= 1 << b, v = opposite;         // in maxXor, instead of if (opposite && cnt[opposite] > 0)
+```
+
+Input: `3`, then the operations `+ 2`, `- 2`, `? 0`.
+
+Wrong output `2`, correct output `0`. After the removal the multiset holds only 0, but the nodes of 2 stay in the trie with the count 0, and the walk enters them and reports $0 \oplus 2 = 2$. A removal lowers counts, it does not delete nodes, so the walk must look at the count (Theorem 5.7.1, note 2).
+
+**Fix:** enter a child only if its count is positive.
+
+### Bug: the digit of the split is not added to the crossing edge
+
+Template: the cheapest tree on XOR weights.
+
+```cpp
+int v = 0, x = 0;                                   // instead of x = 1 << b
+```
+
+Input: `2`, then `0 1`.
+
+Wrong output `0`, correct output `1`. Every number of the left part and every number of the right part differ at the digit `b` of the split, so the XOR of any crossing pair contains `1 << b`; the walk only adds the lower digits where the trie has no matching child. Without the start value the edge between 0 and 1 costs 0 (Theorem 5.7.3, step 2).
+
+**Fix:** start `x` at `1 << b`.
+
+### Bug: the walk of the largest XOR is copied
+
+Template: the cheapest tree on XOR weights.
+
+```cpp
+int d = (a[i] >> c & 1) ^ 1;                        // in the walk, instead of  int d = a[i] >> c & 1;
+```
+
+Input: `2`, then `1 2`.
+
+Wrong output `2`, correct output `3`. The walk of Theorem 5.7.1 prefers the opposite digit because that makes the XOR large. The cheapest crossing edge needs the opposite: the same digit whenever the trie has it (Theorem 5.7.3, step 7). With the flipped digit the walk takes the existing child without recording that the digits differ, and the result matches neither the smallest nor the largest XOR.
+
+**Fix:** prefer the child with the same digit as `a[i]`.
+
+### Bug: the sum of the weights is kept in an `int`
+
+Template: the cheapest tree on XOR weights.
+
+```cpp
+cout << (int)xorMst(a, 0, a.size(), 29) << "\n";    // in main, instead of printing the long long
+```
+
+Input: the 16 numbers $0, 2^{26}, 2 \cdot 2^{26}, \dots, 15 \cdot 2^{26}$ (fixed test 5 of the unit).
+
+Wrong output `-2147483648`, correct output `2147483648`. The tree has 15 edges and its weight is $4 \cdot 2^{29} = 2^{31}$, one more than the largest `int`. The random stress test uses numbers below 64 and cannot show it; the fixed test does (Theorem 5.7.3, note 3).
+
+**Fix:** keep and print the total as `long long`.
+
+## 8. Worked examples
+
+### Example 1: Maximum Xor Subarray
+
+[CSES 1655: Maximum Xor Subarray](https://cses.fi/problemset/task/1655). In short: given an array of $n \le 2 \cdot 10^5$ numbers up to $10^9$, print the largest XOR of a subarray.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$ gives $n^2 / 2 = 2 \cdot 10^{10}$ subarrays, too many even with a running XOR. A solution in about $30 n = 6 \cdot 10^6$ steps is needed.
+
+#### Step 2: Question form → candidate tools
+
+- All subarrays with a running XOR ([topic 0.5](../../phase-0/0-5-brute-force/)): $2 \cdot 10^{10}$ steps.
+- Prefix XORs ([topic 1.7](../../phase-1/1-7-bits/)) turn a subarray into a pair of prefix values; the largest XOR of a pair of numbers by building the answer digit by digit from the top ([topic 1.7](../../phase-1/1-7-bits/)).
+- A binary trie of the prefix values: the card "XOR against a set of numbers: the largest XOR and counts below a bound (binary trie)".
+
+#### Step 3: Property check → decision
+
+The XOR of a subarray $a[l..r]$ is $P[r+1] \oplus P[l]$ for the prefix XORs $P$ with $P[0] = 0$ ([topic 1.7](../../phase-1/1-7-bits/)). So the answer is the largest XOR of two prefix values $P[i]$, $P[j]$ with $i < j$: a question about the largest XOR of a pair. All values are below $2^{30}$ ($10^9 < 2^{30}$), so a binary trie with 30 levels. Decision: insert the prefix values one by one and ask for each new value its best partner among the earlier ones.
+
+#### Step 4: Proof for this problem
+
+Every non-empty subarray $a[l..r]$ corresponds to the pair of prefix values $P[l]$ and $P[r+1]$ with $l < r + 1$, and every such pair corresponds to a subarray, so the answer is the largest $P[i] \oplus P[j]$ over $i < j$. For each $j$, Theorem 5.7.1 gives the largest $P[j] \oplus P[i]$ over the earlier prefix values $P[i]$ in the trie. The maximum over $j$ is the answer. The set starts with $P[0] = 0$, so it is never empty.
+
+#### Step 5: Code
+
+<CodeSnippet unit="5.7/example-1" />
+
+#### Step 6: Alternative approach
+
+The method of [topic 1.7](../../phase-1/1-7-bits/) applies to the array of prefix values too: ask, from the top digit down, whether the answer can have this digit 1, with a set of the prefixes of the values at that level. It takes about $30 n$ steps and a hash set, and needs no tree.
+
+## 9. Problem ladder
+
+<Ladder topic="5.7" />
+
+## 10. Identification drill
+
+<Drill topic="5.7" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="5.7" />
+
+## 12. Self-test questions
+
+<SelfTest topic="5.7" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="5.7" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="5.7" />

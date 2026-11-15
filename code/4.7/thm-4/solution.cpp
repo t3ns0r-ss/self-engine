@@ -1,153 +1,137 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-using Graph = vector<vector<pair<int, int>>>;
-
-// Theorem 4.7.1. adj[v] holds (neighbour, edge number) pairs, vertices are 1..n, edges 0..m-1 (parallel edges differ); parentEdge is -1 at a root.
-struct LowLink {
-    vector<int> tin, low, parent, parentEdge, order;
-    LowLink(const vector<vector<pair<int, int>>>& adj) {
-        int n = adj.size() - 1, timer = 0;
-        tin.assign(n + 1, -1), low.assign(n + 1, 0), parent.assign(n + 1, 0), parentEdge.assign(n + 1, -1);
-        vector<int> next(n + 1, 0);  // next[v]: how many neighbours of v were looked at
-        for (int root = 1; root <= n; root++) {
-            if (tin[root] != -1) continue;
-            vector<int> stack = {root};
-            tin[root] = low[root] = timer++, order.push_back(root);
-            while (!stack.empty()) {
-                int v = stack.back();
-                if (next[v] < (int)adj[v].size()) {
-                    auto [to, id] = adj[v][next[v]++];
-                    if (id == parentEdge[v]) continue;  // the edge we came by, not a second one to the parent
-                    if (tin[to] != -1) low[v] = min(low[v], tin[to]);  // a back edge
-                    else {
-                        parent[to] = v, parentEdge[to] = id;
-                        tin[to] = low[to] = timer++, order.push_back(to);
-                        stack.push_back(to);
-                    }
-                } else {
-                    stack.pop_back();
-                    if (parent[v]) low[parent[v]] = min(low[parent[v]], low[v]);  // the subtree of v is done
-                }
+struct Rooted {
+    vector<int> order, parent, depth;
+};
+Rooted rootAt(const vector<vector<int>>& adj, int root) {
+    int n = adj.size() - 1;
+    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
+    vector<int> stack = {root};
+    while (!stack.empty()) {
+        int u = stack.back();
+        stack.pop_back();
+        t.order.push_back(u);
+        for (int v : adj[u])
+            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
+                t.parent[v] = u;
+                t.depth[v] = t.depth[u] + 1;
+                stack.push_back(v);
             }
-        }
+    }
+    return t;
+}
+
+struct Lifting {
+    vector<vector<int>> up;  // up[j][v]: the 2^j-th ancestor of v, or 0 if there is none (up[j][0] = 0)
+    vector<int> depth;
+    Lifting(const vector<vector<int>>& adj, int root) {
+        int n = adj.size() - 1, levels = 1;
+        while ((1 << levels) <= n) levels++;
+        Rooted t = rootAt(adj, root);
+        depth = t.depth;
+        up.assign(levels, t.parent);  // up[0] is the parent
+        for (int j = 1; j < levels; j++)
+            for (int v = 1; v <= n; v++) up[j][v] = up[j - 1][up[j - 1][v]];  // two jumps of 2^(j-1)
+    }
+    int kthAncestor(int v, int k) const {  // 0 if v has fewer than k ancestors
+        if (k > depth[v]) return 0;
+        for (int j = 0; j < (int)up.size(); j++)
+            if (k >> j & 1) v = up[j][v];
+        return v;
     }
 };
 
+int lca(const Lifting& L, int u, int v) {
+    if (L.depth[u] < L.depth[v]) swap(u, v);
+    u = L.kthAncestor(u, L.depth[u] - L.depth[v]);
+    if (u == v) return u;
+    for (int j = (int)L.up.size() - 1; j >= 0; j--)
+        if (L.up[j][u] != L.up[j][v]) u = L.up[j][u], v = L.up[j][v];  // still below the meeting point: take the jump
+    return L.up[0][u];
+}
+
 // snippet:begin
-// Theorem 4.7.4. Label the pieces of the walk tree left after cutting the bridges (they are the 2-edge-connected components), and
-// orient every edge: tree edges downwards, back edges upwards. If the graph is connected and has no bridge, the result is strongly connected.
-vector<int> edgeComponents(const Graph& adj, int& count) {
-    LowLink L(adj);
-    vector<int> comp(adj.size(), 0);
-    count = 0;
-    for (int v : L.order) {  // parents come before children
-        int p = L.parent[v];
-        comp[v] = (p && L.low[v] <= L.tin[p]) ? comp[p] : ++count;  // the edge above v is not a bridge: same piece as the parent
+// Theorem 4.7.4. The smallest edge weight on the path from u to v. mn[j][v] is the smallest weight among the 2^j edges going up from
+// v (INF if there are fewer); mn[0][v] is the weight of the edge from v to its parent.
+struct MinOnPaths {
+    const Lifting& L;
+    vector<vector<long long>> mn;
+    MinOnPaths(const Lifting& lifting, const vector<long long>& upWeight) : L(lifting), mn(lifting.up.size(), upWeight) {
+        for (size_t j = 1; j < mn.size(); j++)
+            for (size_t v = 1; v < upWeight.size(); v++) {
+                int mid = L.up[j - 1][v];
+                mn[j][v] = mid == 0 ? mn[j - 1][v] : min(mn[j - 1][v], mn[j - 1][mid]);  // the first half, then the second half
+            }
     }
-    return comp;
-}
-vector<pair<int, int>> orientEdges(const Graph& adj, int m) {
-    LowLink L(adj);
-    vector<pair<int, int>> direction(m);  // (from, to) for each edge number
-    for (int v = 1; v < (int)adj.size(); v++)
-        for (auto [to, id] : adj[v])
-            if (L.parentEdge[to] == id || (L.parentEdge[v] != id && L.tin[v] > L.tin[to])) direction[id] = {v, to};
-    return direction;
-}
+    long long query(int u, int v) const {  // INF if u == v
+        const long long INF = LLONG_MAX / 4;
+        long long best = INF;
+        if (L.depth[u] < L.depth[v]) swap(u, v);
+        for (int j = 0; j < (int)mn.size(); j++)
+            if ((L.depth[u] - L.depth[v]) >> j & 1) best = min(best, mn[j][u]), u = L.up[j][u];  // lift u, collecting the minimum
+        if (u == v) return best;
+        for (int j = (int)mn.size() - 1; j >= 0; j--)
+            if (L.up[j][u] != L.up[j][v]) best = min({best, mn[j][u], mn[j][v]}), u = L.up[j][u], v = L.up[j][v];
+        return min({best, mn[0][u], mn[0][v]});  // the last edge on each side
+    }
+};
 // snippet:end
 
-// Test helpers: build a graph from an edge list, random multigraphs, and the number of components with some edge or vertex left out.
-Graph build(int n, const vector<pair<int, int>>& edges) {
-    Graph adj(n + 1);
-    for (int i = 0; i < (int)edges.size(); i++) {
-        adj[edges[i].first].push_back({edges[i].second, i});
-        adj[edges[i].second].push_back({edges[i].first, i});
-    }
-    return adj;
-}
-vector<pair<int, int>> randomEdges(mt19937& rng, int n, int m) {
-    vector<pair<int, int>> edges;
-    for (int i = 0; i < m; i++) {
-        int a = rng() % n + 1, b = rng() % n + 1;
-        if (a != b) edges.push_back({a, b});  // parallel edges are possible, self-loops are not used
-    }
-    return edges;
-}
-int countComponents(int n, const vector<pair<int, int>>& edges, int skipEdge, int skipVertex) {
-    vector<int> leader(n + 1);
-    iota(leader.begin(), leader.end(), 0);
-    function<int(int)> find = [&](int x) { return leader[x] == x ? x : leader[x] = find(leader[x]); };
-    for (int i = 0; i < (int)edges.size(); i++)
-        if (i != skipEdge && edges[i].first != skipVertex && edges[i].second != skipVertex) leader[find(edges[i].first)] = find(edges[i].second);
-    int count = 0;
-    for (int v = 1; v <= n; v++)
-        if (v != skipVertex && find(v) == v) count++;
-    return count;
-}
-
 int main() {
+    const long long INF = LLONG_MAX / 4;
+    auto upWeights = [](const vector<vector<int>>& adj, int root, const vector<array<int, 3>>& edges) {
+        int n = adj.size() - 1;
+        map<pair<int, int>, long long> w;
+        for (auto [a, b, c] : edges) w[{a, b}] = w[{b, a}] = c;
+        auto t = rootAt(adj, root);
+        vector<long long> up(n + 1, LLONG_MAX / 4);
+        for (int v : t.order) if (t.parent[v]) up[v] = w[{v, t.parent[v]}];
+        return up;
+    };
     {
-        auto edges = vector<pair<int, int>>{{1, 2}, {2, 3}, {3, 1}, {3, 4}, {4, 5}, {5, 6}, {6, 4}};
-        int count;
-        auto comp = edgeComponents(build(6, edges), count);
-        cout << "two triangles joined by the edge 3-4: " << count << " components, labels:";
-        for (int v = 1; v <= 6; v++) cout << ' ' << comp[v];
-        cout << "\n";
+        vector<array<int, 3>> edges = {{1, 2, 3}, {2, 3, 4}, {2, 4, 1}, {4, 5, 6}, {1, 6, 2}};
+        vector<vector<int>> adj(7);
+        for (auto [a, b, c] : edges) adj[a].push_back(b), adj[b].push_back(a);
+        Lifting L(adj, 1);
+        MinOnPaths M(L, upWeights(adj, 1, edges));
+        cout << "tree 1-2 (3), 2-3 (4), 2-4 (1), 4-5 (6), 1-6 (2): min(3, 5) = " << M.query(3, 5) << ", min(6, 3) = " << M.query(6, 3) << ", min(3, 2) = " << M.query(3, 2) << ", min(3, 3) = " << (M.query(3, 3) == INF ? string("none") : to_string(M.query(3, 3))) << "\n";
     }
-    {
-        auto edges = vector<pair<int, int>>{{1, 2}, {2, 3}, {3, 1}};
-        auto dir = orientEdges(build(3, edges), 3);
-        cout << "the triangle oriented:";
-        for (auto [a, b] : dir) cout << ' ' << a << "->" << b;
-        cout << "\n";
-    }
-    {
-        auto edges = vector<pair<int, int>>{{1, 2}, {2, 3}, {3, 4}, {4, 1}, {1, 3}, {1, 2}};
-        auto dir = orientEdges(build(4, edges), 6);
-        cout << "a square with a diagonal and a double edge oriented:";
-        for (auto [a, b] : dir) cout << ' ' << a << "->" << b;
-        cout << "\n";
-    }
-    // Check against the definitions: the pieces are the components after removing the bridges (found by trying every edge), and
-    // a connected graph without bridges gets a strongly connected orientation.
-    mt19937 rng(4704);
-    int orientedChecks = 0;
-    for (int trial = 0; trial < 30000; trial++) {
-        int n = rng() % 8 + 1, m = rng() % 16;
-        auto edges = randomEdges(rng, n, m);
-        int base = countComponents(n, edges, -1, -1);
-        vector<int> leader(n + 1);
-        iota(leader.begin(), leader.end(), 0);
-        function<int(int)> find = [&](int x) { return leader[x] == x ? x : leader[x] = find(leader[x]); };
-        bool bridgeless = true;
-        for (int i = 0; i < (int)edges.size(); i++) {
-            if (countComponents(n, edges, i, -1) > base) bridgeless = false;
-            else leader[find(edges[i].first)] = find(edges[i].second);
+    mt19937 rng(4604);
+    auto randomWeighted = [](mt19937& rng, int n, int maxW, vector<array<int, 3>>& edges) {
+        vector<int> label(n);
+        iota(label.begin(), label.end(), 1);
+        shuffle(label.begin(), label.end(), rng);
+        vector<vector<int>> adj(n + 1);
+        edges.clear();
+        for (int i = 1; i < n; i++) {
+            int a = label[i], b = label[rng() % i], w = rng() % (maxW + 1);
+            adj[a].push_back(b);
+            adj[b].push_back(a);
+            edges.push_back({a, b, w});
         }
-        int count;
-        auto comp = edgeComponents(build(n, edges), count);
-        for (int a = 1; a <= n; a++)
-            for (int b = 1; b <= n; b++)
-                if ((find(a) == find(b)) != (comp[a] == comp[b])) return 1;
-        if (bridgeless && base == 1) {
-            auto dir = orientEdges(build(n, edges), edges.size());
-            vector<vector<bool>> reach(n + 1, vector<bool>(n + 1, false));
-            for (int v = 1; v <= n; v++) reach[v][v] = true;
-            for (int i = 0; i < (int)edges.size(); i++) {
-                auto [a, b] = dir[i];
-                if (!((a == edges[i].first && b == edges[i].second) || (a == edges[i].second && b == edges[i].first))) return 1;
-                reach[a][b] = true;
+        return adj;
+    };
+    for (int trial = 0; trial < 20000; trial++) {
+        int n = rng() % 12 + 1, root = rng() % n + 1;
+        vector<array<int, 3>> edges;
+        auto adj = randomWeighted(rng, n, 9, edges);
+        Lifting L(adj, root);
+        MinOnPaths M(L, upWeights(adj, root, edges));
+        // reference: the walk from u to v along the unique path, found by a search that records the smallest weight on the way
+        for (int u = 1; u <= n; u++) {
+            vector<long long> low(n + 1, -1);
+            low[u] = INF;
+            vector<int> stack = {u};
+            while (!stack.empty()) {
+                int x = stack.back();
+                stack.pop_back();
+                for (auto [a, b, c] : edges) {
+                    int y = a == x ? b : (b == x ? a : 0);
+                    if (y && low[y] < 0) low[y] = min<long long>(low[x], c), stack.push_back(y);
+                }
             }
-            for (int k = 1; k <= n; k++)
-                for (int i = 1; i <= n; i++)
-                    for (int j = 1; j <= n; j++)
-                        if (reach[i][k] && reach[k][j]) reach[i][j] = true;
-            for (int i = 1; i <= n; i++)
-                for (int j = 1; j <= n; j++)
-                    if (!reach[i][j]) return 1;
-            orientedChecks++;
+            for (int v = 1; v <= n; v++) if (M.query(u, v) != low[v]) return 1;
         }
     }
-    if (orientedChecks < 200) return 1;  // the random graphs must contain enough bridgeless ones
 }

@@ -1,31 +1,36 @@
 /*
-Problem: LeetCode 132 Palindrome Partitioning II, as a program. Cut a string into pieces that are all
-palindromes, using as few cuts as possible.
-Input: a string s of lowercase letters (1 <= |s| <= 2000).
-Output: the minimum number of cuts.
+Problem: AtCoder ABC 179 D, Leaping Tak. Cells 1..N; from cell i, jump to i + d for any d in the union S of K
+disjoint segments [L, R], never past cell N. Count the ways to go from cell 1 to cell N, modulo 998244353.
+Input: N K (N <= 2 * 10^5, K <= 10), then K lines L R.
+Output: the count modulo 998244353.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
 // snippet:begin
-// LeetCode 132. pal[l][r]: is s[l..r] a palindrome (l runs downwards so the inner segment is ready); pieces[i] = the fewest
-// palindromes covering the prefix of length i, with the last piece s[j..i-1]. The cuts are pieces - 1.
-int minCuts(const string& s) {
-    int n = s.size();
-    vector<vector<char>> pal(n, vector<char>(n, 0));
-    for (int l = n - 1; l >= 0; l--)
-        for (int r = l; r < n; r++) pal[l][r] = (s[l] == s[r]) && (r - l < 2 || pal[l + 1][r - 1]);
-    vector<int> pieces(n + 1, INT_MAX);
-    pieces[0] = 0;
-    for (int i = 1; i <= n; i++)
-        for (int j = 0; j < i; j++)
-            if (pal[j][i - 1] && pieces[j] + 1 < pieces[i]) pieces[i] = pieces[j] + 1;
-    return pieces[n] - 1;
+// ABC 179 D. ways[i] = the ways to reach cell i; the previous cell is i - d for d in a segment [lo, hi], a range of ways,
+// summed with prefix sums.
+long long leapingTak(int n, const vector<pair<int, int>>& seg) {
+    const long long MOD = 998244353;
+    vector<long long> ways(n + 1, 0), prefix(n + 2, 0);
+    ways[1] = 1;
+    prefix[2] = 1;
+    for (int i = 2; i <= n; i++) {
+        for (auto [lo, hi] : seg) {
+            int from = max(1, i - hi), to = i - lo;
+            if (to < 1) continue;
+            ways[i] = (ways[i] + prefix[to + 1] - prefix[from] + MOD) % MOD;
+        }
+        prefix[i + 1] = (prefix[i] + ways[i]) % MOD;
+    }
+    return ways[n];
 }
 // snippet:end
 
 int main() {
-    string s;
-    cin >> s;
-    cout << minCuts(s) << "\n";
+    int n, k;
+    cin >> n >> k;
+    vector<pair<int, int>> seg(k);
+    for (auto& [lo, hi] : seg) cin >> lo >> hi;
+    cout << leapingTak(n, seg) << "\n";
 }

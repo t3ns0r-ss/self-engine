@@ -1,98 +1,113 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-using Digraph = vector<vector<int>>;
+struct Rooted {
+    vector<int> order, parent, depth;
+};
+Rooted rootAt(const vector<vector<int>>& adj, int root) {
+    int n = adj.size() - 1;
+    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
+    vector<int> stack = {root};
+    while (!stack.empty()) {
+        int u = stack.back();
+        stack.pop_back();
+        t.order.push_back(u);
+        for (int v : adj[u])
+            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
+                t.parent[v] = u;
+                t.depth[v] = t.depth[u] + 1;
+                stack.push_back(v);
+            }
+    }
+    return t;
+}
+
+struct Lifting {
+    vector<vector<int>> up;  // up[j][v]: the 2^j-th ancestor of v, or 0 if there is none (up[j][0] = 0)
+    vector<int> depth;
+    Lifting(const vector<vector<int>>& adj, int root) {
+        int n = adj.size() - 1, levels = 1;
+        while ((1 << levels) <= n) levels++;
+        Rooted t = rootAt(adj, root);
+        depth = t.depth;
+        up.assign(levels, t.parent);  // up[0] is the parent
+        for (int j = 1; j < levels; j++)
+            for (int v = 1; v <= n; v++) up[j][v] = up[j - 1][up[j - 1][v]];  // two jumps of 2^(j-1)
+    }
+    int kthAncestor(int v, int k) const {  // 0 if v has fewer than k ancestors
+        if (k > depth[v]) return 0;
+        for (int j = 0; j < (int)up.size(); j++)
+            if (k >> j & 1) v = up[j][v];
+        return v;
+    }
+};
+
+int lca(const Lifting& L, int u, int v) {
+    if (L.depth[u] < L.depth[v]) swap(u, v);
+    u = L.kthAncestor(u, L.depth[u] - L.depth[v]);
+    if (u == v) return u;
+    for (int j = (int)L.up.size() - 1; j >= 0; j--)
+        if (L.up[j][u] != L.up[j][v]) u = L.up[j][u], v = L.up[j][v];  // still below the meeting point: take the jump
+    return L.up[0][u];
+}
 
 // snippet:begin
-// Theorem 4.7.5 (Kosaraju). walk lists the unseen vertices reachable from s in finishing order: pass 1 on the graph, pass 2 on the reversed graph.
-vector<int> walk(const Digraph& g, int s, vector<bool>& seen) {
-    vector<int> done;
-    vector<pair<int, int>> stack = {{s, 0}};  // (vertex, how many of its edges were looked at)
-    seen[s] = true;
-    while (!stack.empty()) {
-        auto [v, i] = stack.back();
-        if (i == (int)g[v].size()) done.push_back(v), stack.pop_back();
-        else {
-            stack.back().second++;
-            if (!seen[g[v][i]]) seen[g[v][i]] = true, stack.push_back({g[v][i], 0});
-        }
-    }
-    return done;
-}
-vector<int> stronglyConnected(const Digraph& adj, int& count) {
+// Theorem 4.7.5. Many paths {u, v} are known in advance. Returns, for every vertex v other than the root, the number of paths that use
+// the edge between v and its parent: +1 at u and at v, -2 at their lowest common ancestor, then the sums over the subtrees.
+vector<long long> pathsPerEdge(const vector<vector<int>>& adj, int root, const vector<pair<int, int>>& paths) {
     int n = adj.size() - 1;
-    Digraph rev(n + 1);
-    for (int v = 1; v <= n; v++) for (int to : adj[v]) rev[to].push_back(v);
-    vector<bool> seen(n + 1, false);
-    vector<int> finish, comp(n + 1, 0);
-    for (int s = 1; s <= n; s++) if (!seen[s]) for (int v : walk(adj, s, seen)) finish.push_back(v);
-    seen.assign(n + 1, false), count = 0;
-    for (int i = n - 1; i >= 0; i--) {  // the vertex that finished last first; each walk is one component, numbered 1, 2, ... as found
-        if (seen[finish[i]]) continue;
-        count++;
-        for (int v : walk(rev, finish[i], seen)) comp[v] = count;
-    }
-    return comp;
+    Rooted t = rootAt(adj, root);
+    Lifting L(adj, root);
+    vector<long long> count(n + 1, 0);
+    for (auto [u, v] : paths) count[u]++, count[v]++, count[lca(L, u, v)] -= 2;
+    for (int i = n - 1; i > 0; i--) count[t.parent[t.order[i]]] += count[t.order[i]];  // the subtree sums of Theorem 4.6.2
+    return count;
 }
 // snippet:end
 
-// Test helpers: random directed graphs and the reachability table by Floyd-Warshall.
-Digraph randomDigraph(mt19937& rng, int n, int m) {
-    Digraph adj(n + 1);
-    for (int i = 0; i < m; i++) adj[rng() % n + 1].push_back(rng() % n + 1);
-    return adj;
-}
-vector<vector<bool>> reachability(const Digraph& adj) {
-    int n = adj.size() - 1;
-    vector<vector<bool>> reach(n + 1, vector<bool>(n + 1, false));
-    for (int v = 1; v <= n; v++) {
-        reach[v][v] = true;
-        for (int to : adj[v]) reach[v][to] = true;
-    }
-    for (int k = 1; k <= n; k++)
-        for (int i = 1; i <= n; i++)
-            for (int j = 1; j <= n; j++)
-                if (reach[i][k] && reach[k][j]) reach[i][j] = true;
-    return reach;
-}
-
 int main() {
     {
-        // 1 -> 2 -> 3 -> 1 is a cycle; 3 -> 4; 4 <-> 5; 6 is alone with 6 -> 1.
-        Digraph adj(7);
-        auto edge = [&](int a, int b) { adj[a].push_back(b); };
-        edge(1, 2), edge(2, 3), edge(3, 1), edge(3, 4), edge(4, 5), edge(5, 4), edge(6, 1);
-        int count;
-        auto comp = stronglyConnected(adj, count);
-        cout << "cycle 1-2-3, then 3->4, the pair 4<->5, and 6->1: " << count << " components, labels:";
-        for (int v = 1; v <= 6; v++) cout << ' ' << comp[v];
+        vector<vector<int>> adj(7);
+        auto edge = [&](int a, int b) { adj[a].push_back(b), adj[b].push_back(a); };
+        edge(1, 2), edge(1, 3), edge(2, 4), edge(2, 5), edge(3, 6);
+        auto c = pathsPerEdge(adj, 1, {{4, 5}, {4, 6}, {5, 6}});
+        cout << "tree 1-2, 1-3, 2-4, 2-5, 3-6, paths 4-5, 4-6, 5-6: edge to parent of 2..6 used by";
+        for (int v = 2; v <= 6; v++) cout << ' ' << c[v];
+        cout << "\n";
+        auto e = pathsPerEdge(adj, 1, {});
+        cout << "no paths:";
+        for (int v = 2; v <= 6; v++) cout << ' ' << e[v];
         cout << "\n";
     }
-    {
-        Digraph adj(4);
-        adj[1] = {2}, adj[2] = {3};
-        int count;
-        auto comp = stronglyConnected(adj, count);
-        cout << "the path 1->2->3: " << count << " components, labels:";
-        for (int v = 1; v <= 3; v++) cout << ' ' << comp[v];
-        cout << "\n";
-    }
-    // Check against the definition: same component exactly when each reaches the other; every edge goes from a smaller to a larger or an
-    // equal label (components are numbered in a topological order of the condensation).
-    mt19937 rng(4705);
-    for (int trial = 0; trial < 30000; trial++) {
-        int n = rng() % 8 + 1, m = rng() % 14;
-        auto adj = randomDigraph(rng, n, m);
-        int count;
-        auto comp = stronglyConnected(adj, count);
-        auto reach = reachability(adj);
-        for (int a = 1; a <= n; a++) {
-            for (int b = 1; b <= n; b++)
-                if ((reach[a][b] && reach[b][a]) != (comp[a] == comp[b])) return 1;
-            for (int to : adj[a])
-                if (comp[a] > comp[to]) return 1;
+    mt19937 rng(4605);
+    auto randomTree = [](mt19937& rng, int n) {
+        vector<int> label(n);
+        iota(label.begin(), label.end(), 1);
+        shuffle(label.begin(), label.end(), rng);
+        vector<vector<int>> adj(n + 1);
+        for (int i = 1; i < n; i++) {
+            int a = label[i], b = label[rng() % i];
+            adj[a].push_back(b);
+            adj[b].push_back(a);
         }
-        set<int> labels(comp.begin() + 1, comp.end());
-        if ((int)labels.size() != count || *labels.begin() != 1 || *labels.rbegin() != count) return 1;
+        return adj;
+    };
+    for (int trial = 0; trial < 20000; trial++) {
+        int n = rng() % 12 + 1, root = rng() % n + 1, q = rng() % 6;
+        auto adj = randomTree(rng, n);
+        vector<pair<int, int>> paths;
+        for (int i = 0; i < q; i++) paths.push_back({(int)(rng() % n + 1), (int)(rng() % n + 1)});
+        auto got = pathsPerEdge(adj, root, paths);
+        auto t = rootAt(adj, root);
+        // reference: climb from both ends of each path, counting every edge on the way
+        vector<long long> expected(n + 1, 0);
+        for (auto [u, v] : paths) {
+            int a = u, b = v;
+            while (a != b) {
+                if (t.depth[a] >= t.depth[b]) expected[a]++, a = t.parent[a];
+                else expected[b]++, b = t.parent[b];
+            }
+        }
+        for (int v = 1; v <= n; v++) if (v != root && got[v] != expected[v]) return 1;
     }
 }

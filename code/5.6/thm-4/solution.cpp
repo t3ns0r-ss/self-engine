@@ -13,7 +13,7 @@ struct Tree {
             if (w != parent[v]) parent[w] = v, depth[w] = depth[v] + 1, walk(w);
         tout[v] = timer++, euler.push_back(v);
     }
-    int lca(int u, int v) const {  // by climbing; topic 4.6 does this in O(log n)
+    int lca(int u, int v) const {  // by climbing; topic 4.7 does this in O(log n)
         while (u != v) {
             if (depth[u] < depth[v]) swap(u, v);
             u = parent[u];

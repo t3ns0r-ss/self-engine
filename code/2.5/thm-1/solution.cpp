@@ -2,46 +2,34 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.5.1. a*x + b*y = c has integer solutions exactly when gcd(a, b) divides c; extended Euclid gives one.
-long long extGcd(long long a, long long b, long long& x, long long& y) {  // a, b >= 0, not both 0: a*x + b*y = gcd(a, b)
-    x = 1, y = 0;
-    long long x1 = 0, y1 = 1;
-    while (b != 0) {
-        long long q = a / b;
-        tie(a, b) = make_pair(b, a - q * b);
-        tie(x, x1) = make_pair(x1, x - q * x1);
-        tie(y, y1) = make_pair(y1, y - q * y1);
-    }
-    return a;
+// Theorem 2.5.1. Product rule: strings of length k over m symbols with no two equal neighbours, m * (m-1)^(k-1);
+// and the sum rule over disjoint cases. Also n! orders and n!/(n-r)! ordered selections.
+long long noEqualNeighbours(int m, int k) {
+    long long ways = m;                    // the first symbol: m options
+    for (int i = 1; i < k; i++) ways *= m - 1;  // every later symbol: m - 1 options, whatever came before
+    return ways;
 }
-bool solveOne(long long a, long long b, long long c, long long& x, long long& y) {  // a, b not both 0
-    long long g = extGcd(llabs(a), llabs(b), x, y);          // |a|*x + |b|*y = g
-    if (c % g != 0) return false;
-    x *= (a < 0 ? -1 : 1) * (c / g);                          // restore the signs, then scale by c / g
-    y *= (b < 0 ? -1 : 1) * (c / g);
-    return true;
+long long ordered(int n, int r) {
+    long long ways = 1;
+    for (int i = 0; i < r; i++) ways *= n - i;
+    return ways;
 }
 // snippet:end
 
 int main() {
-    long long cases[][3] = {{6, 10, 14}, {6, 10, 15}, {7, 12, 100}, {-4, 6, 2}, {9, 0, 27}};
-    for (auto& cs : cases) {
-        long long a = cs[0], b = cs[1], c = cs[2], x = 0, y = 0;
-        if (solveOne(a, b, c, x, y)) {
-            cout << a << "x + " << b << "y = " << c << ": x = " << x << ", y = " << y << "\n";
-            if (a * x + b * y != c) return 1;
-        } else {
-            cout << a << "x + " << b << "y = " << c << ": no solution\n";
+    cout << "strings of length 3 over {a, b, c} with no equal neighbours: " << noEqualNeighbours(3, 3) << '\n';
+    cout << "all strings of length 3 over 3 symbols: " << 27 << ", orders of 4 elements: " << ordered(4, 4) << ", ordered selections of 3 from 5: " << ordered(5, 3) << '\n';
+    for (int m = 1; m <= 4; m++) for (int k = 1; k <= 5; k++) {
+        long long brute = 0;
+        long long total = 1;
+        for (int i = 0; i < k; i++) total *= m;
+        for (long long code = 0; code < total; code++) {
+            long long c = code;
+            int prev = -1;
+            bool ok = true;
+            for (int i = 0; i < k; i++) { int d = c % m; c /= m; if (d == prev) ok = false; prev = d; }
+            brute += ok;
         }
+        if (brute != noEqualNeighbours(m, k)) return 1;
     }
-    for (long long a = -12; a <= 12; a++)
-        for (long long b = -12; b <= 12; b++)
-            for (long long c = -30; c <= 30; c++) {
-                if (a == 0 && b == 0) continue;
-                bool brute = false;
-                for (long long x = -60; x <= 60 && !brute; x++)
-                    for (long long y = -60; y <= 60 && !brute; y++) brute = a * x + b * y == c;
-                long long x, y;
-                if (solveOne(a, b, c, x, y) != brute) return 1;
-            }
 }

@@ -22,54 +22,40 @@ Rooted rootAt(const vector<vector<int>>& adj, int root) {
     return t;
 }
 
-struct Lifting {
-    vector<vector<int>> up;  // up[j][v]: the 2^j-th ancestor of v, or 0 if there is none (up[j][0] = 0)
-    vector<int> depth;
-    Lifting(const vector<vector<int>>& adj, int root) {
-        int n = adj.size() - 1, levels = 1;
-        while ((1 << levels) <= n) levels++;
-        Rooted t = rootAt(adj, root);
-        depth = t.depth;
-        up.assign(levels, t.parent);  // up[0] is the parent
-        for (int j = 1; j < levels; j++)
-            for (int v = 1; v <= n; v++) up[j][v] = up[j - 1][up[j - 1][v]];  // two jumps of 2^(j-1)
-    }
-    int kthAncestor(int v, int k) const {  // 0 if v has fewer than k ancestors
-        if (k > depth[v]) return 0;
-        for (int j = 0; j < (int)up.size(); j++)
-            if (k >> j & 1) v = up[j][v];
-        return v;
-    }
-};
-
 // snippet:begin
-// Theorem 4.6.2. The lowest common ancestor of u and v: lift the deeper vertex to the depth of the other, then jump from the largest
-// jump to the smallest whenever the two ancestors reached are different; the parent of the stopping point is the answer.
-int lca(const Lifting& L, int u, int v) {
-    if (L.depth[u] < L.depth[v]) swap(u, v);
-    u = L.kthAncestor(u, L.depth[u] - L.depth[v]);
-    if (u == v) return u;
-    for (int j = (int)L.up.size() - 1; j >= 0; j--)
-        if (L.up[j][u] != L.up[j][v]) u = L.up[j][u], v = L.up[j][v];  // still below the meeting point: take the jump
-    return L.up[0][u];
+// Theorem 4.6.2. For every vertex, the sum of value[] over its subtree (with value = 1 everywhere: the subtree size).
+vector<long long> subtreeSums(const Rooted& t, const vector<long long>& value) {
+    vector<long long> sum = value;  // sum[v] starts as the value of v alone
+    for (int i = t.order.size() - 1; i > 0; i--) {  // backwards: all children of v come after v in the order, so they are added already
+        int v = t.order[i];
+        sum[t.parent[v]] += sum[v];
+    }
+    return sum;
 }
 // snippet:end
 
 int main() {
     {
-        vector<vector<int>> adj(9);
+        vector<vector<int>> adj(6);
         auto edge = [&](int a, int b) { adj[a].push_back(b), adj[b].push_back(a); };
-        edge(1, 2), edge(2, 3), edge(3, 4), edge(4, 5), edge(5, 6), edge(2, 7), edge(7, 8);
-        Lifting L(adj, 1);
-        cout << "same tree: lca(6, 8) = " << lca(L, 6, 8) << ", lca(6, 4) = " << lca(L, 6, 4) << ", lca(8, 7) = " << lca(L, 8, 7) << ", lca(5, 5) = " << lca(L, 5, 5) << "\n";
+        edge(1, 2), edge(1, 3), edge(3, 4), edge(3, 5);
+        auto t = rootAt(adj, 1);
+        auto size = subtreeSums(t, vector<long long>(6, 1));
+        cout << "tree 1-2, 1-3, 3-4, 3-5 from 1, sizes:";
+        for (int v = 1; v <= 5; v++) cout << ' ' << size[v];
+        cout << "\n";
+        auto sum = subtreeSums(t, {0, 10, 20, 30, 40, 50});
+        cout << "values 10 20 30 40 50, subtree sums:";
+        for (int v = 1; v <= 5; v++) cout << ' ' << sum[v];
+        cout << "\n";
     }
     {
         vector<vector<int>> adj(2);
-        Lifting L(adj, 1);
-        cout << "one vertex: lca(1, 1) = " << lca(L, 1, 1) << "\n";
+        auto t = rootAt(adj, 1);
+        cout << "one vertex: size " << subtreeSums(t, {0, 1})[1] << "\n";
     }
-    // Check against: marking the ancestors of u by climbing, then climbing from v to the first marked vertex.
-    mt19937 rng(4602);
+    // Check against: for each vertex, a separate walk that counts the vertices whose path to the root passes through it.
+    mt19937 rng(4502);
     auto randomTree = [](mt19937& rng, int n) {
         vector<int> label(n);
         iota(label.begin(), label.end(), 1);
@@ -83,17 +69,18 @@ int main() {
         return adj;
     };
     for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 12 + 1, root = rng() % n + 1;
+        int n = rng() % 9 + 1, root = rng() % n + 1;
         auto adj = randomTree(rng, n);
-        Lifting L(adj, root);
         auto t = rootAt(adj, root);
-        for (int u = 1; u <= n; u++)
-            for (int v = 1; v <= n; v++) {
-                vector<bool> mark(n + 1, false);
-                for (int x = u; x != 0; x = t.parent[x]) mark[x] = true;
-                int x = v;
-                while (!mark[x]) x = t.parent[x];
-                if (lca(L, u, v) != x) return 1;
-            }
+        vector<long long> value(n + 1);
+        for (int v = 1; v <= n; v++) value[v] = (long long)(rng() % 100) - 20;
+        auto sum = subtreeSums(t, value);
+        for (int v = 1; v <= n; v++) {
+            long long expected = 0;
+            for (int u = 1; u <= n; u++)
+                for (int x = u; x != 0; x = t.parent[x])
+                    if (x == v) { expected += value[u]; break; }
+            if (sum[v] != expected) return 1;
+        }
     }
 }

@@ -1,66 +1,49 @@
 /*
-Problem: AtCoder ABC 202 E, Count Descendants.
-Input: N, then P_2..P_N (the parent of vertex i is P_i < i; vertex 1 is the root), then Q, then Q lines "U D".
-Output: for each question, the number of vertices in the subtree of U (U included) that have depth exactly D.
+Problem: LeetCode 1584, Min Cost to Connect All Points.
+Input: n, then n lines "x y". Connecting two points costs |x1 - x2| + |y1 - y2|.
+Output: the least total cost that makes all points connected.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Rooted {
-    vector<int> order, parent, depth;
-};
-Rooted rootAt(const vector<vector<int>>& adj, int root) {
-    int n = adj.size() - 1;
-    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
-    vector<int> stack = {root};
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        t.order.push_back(u);
-        for (int v : adj[u])
-            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
-                t.parent[v] = u;
-                t.depth[v] = t.depth[u] + 1;
-                stack.push_back(v);
-            }
+struct Dsu {
+    vector<int> parent, size;
+    Dsu(int n) : parent(n), size(n, 1) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) {
+        while (parent[x] != x) parent[x] = parent[parent[x]], x = parent[x];
+        return x;
     }
-    return t;
-}
+    bool unite(int a, int b) {
+        a = find(a), b = find(b);
+        if (a == b) return false;
+        if (size[a] < size[b]) swap(a, b);
+        parent[b] = a;
+        size[a] += size[b];
+        return true;
+    }
+};
 
 // snippet:begin
-// Example 3. The subtree of u is the block tin[u] .. tin[u] + size[u] - 1 of the visit order. For every depth keep the positions of its
-// vertices in increasing order; the answer is the number of positions of depth d inside the block, by two binary searches.
-vector<int> countDescendants(const vector<vector<int>>& adj, const vector<pair<int, int>>& questions) {
-    int n = adj.size() - 1;
-    auto t = rootAt(adj, 1);
-    vector<int> tin(n + 1), size(n + 1, 1);
-    for (int i = 0; i < n; i++) tin[t.order[i]] = i;
-    for (int i = n - 1; i > 0; i--) size[t.parent[t.order[i]]] += size[t.order[i]];
-    vector<vector<int>> atDepth(n);  // atDepth[d]: positions of the vertices of depth d, increasing because we go through the order
-    for (int i = 0; i < n; i++) atDepth[t.depth[t.order[i]]].push_back(i);
-    vector<int> answer;
-    for (auto [u, d] : questions) {
-        if (d >= n) { answer.push_back(0); continue; }
-        auto& list = atDepth[d];
-        answer.push_back(upper_bound(list.begin(), list.end(), tin[u] + size[u] - 1) - lower_bound(list.begin(), list.end(), tin[u]));
-    }
-    return answer;
+// Example 3. Kruskal on the complete graph of the points: list every link, sort by cost, keep a link when it joins two groups.
+int minCostConnectPoints(const vector<vector<int>>& points) {
+    int n = points.size();
+    vector<array<int, 3>> links;
+    for (int a = 0; a < n; a++)
+        for (int b = a + 1; b < n; b++)
+            links.push_back({abs(points[a][0] - points[b][0]) + abs(points[a][1] - points[b][1]), a, b});
+    sort(links.begin(), links.end());  // by cost first
+    Dsu dsu(n);
+    int total = 0;
+    for (auto [cost, a, b] : links)
+        if (dsu.unite(a, b)) total += cost;
+    return total;
 }
 // snippet:end
 
 int main() {
     int n;
     cin >> n;
-    vector<vector<int>> adj(n + 1);
-    for (int i = 2; i <= n; i++) {
-        int p;
-        cin >> p;
-        adj[p].push_back(i);
-        adj[i].push_back(p);
-    }
-    int q;
-    cin >> q;
-    vector<pair<int, int>> questions(q);
-    for (auto& x : questions) cin >> x.first >> x.second;
-    for (int a : countDescendants(adj, questions)) cout << a << "\n";
+    vector<vector<int>> points(n, vector<int>(2));
+    for (auto& p : points) cin >> p[0] >> p[1];
+    cout << minCostConnectPoints(points) << "\n";
 }

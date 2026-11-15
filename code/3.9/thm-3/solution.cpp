@@ -1,46 +1,37 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-vector<long long> subsetSums(const vector<long long>& v, int from, int to) {
-    vector<long long> sums = {0};
-    for (int i = from; i < to; i++) {
-        int size = sums.size();
-        for (int j = 0; j < size; j++) sums.push_back(sums[j] + v[i]);
-    }
-    return sums;
-}
-
 // snippet:begin
-// Theorem 3.9.3. With both lists sorted ascending, the number of right sums y <= T - x can only shrink as x grows,
-// so one pointer j that only moves left finds it for every x: O(2^(n/2)) after the sorts.
-long long countAtMostTwoPointers(const vector<long long>& a, long long T) {
-    int n = a.size();
-    vector<long long> left = subsetSums(a, 0, n / 2), right = subsetSums(a, n / 2, n);
-    sort(left.begin(), left.end());
-    sort(right.begin(), right.end());
-    long long count = 0;
-    int j = right.size();  // right[0 .. j-1] are the sums that are <= T - x for the current x
-    for (long long x : left) {
-        while (j > 0 && right[j - 1] > T - x) j--;
-        count += j;
-    }
-    return count;
+// Theorem 3.9.3. The started flag: while only zeros have been read, the state is untouched, so the rule "no two equal neighbouring
+// digits" sees the digits of the number without padding. Counts 1..N; pass useFlag = false to see the padded count.
+long long neighbours(long long N, bool useFlag) {
+    string digits = to_string(N);
+    int L = digits.size();
+    function<long long(int, int, bool, bool)> go = [&](int pos, int prev, bool tight, bool started) -> long long {
+        if (pos == L) return 1;
+        int hi = tight ? digits[pos] - '0' : 9;
+        long long total = 0;
+        for (int c = 0; c <= hi; c++) {
+            if (useFlag && !started && c == 0) { total += go(pos + 1, 10, tight && c == hi, false); continue; }
+            if (prev != 10 && c == prev) continue;
+            total += go(pos + 1, c, tight && c == hi, true);
+        }
+        return total;
+    };
+    return go(0, 10, true, false) - (useFlag ? 1 : 0);  // minus the number 0, which only the flag version counts
 }
 // snippet:end
 
 int main() {
-    cout << "subsets of 3 5 2 6 with sum at most 7: " << countAtMostTwoPointers({3, 5, 2, 6}, 7) << '\n';
-    mt19937 rng(9);
-    for (int round = 0; round < 300; round++) {
-        int n = 1 + rng() % 12;
-        vector<long long> a(n);
-        for (auto& x : a) x = 1 + rng() % 9;
-        long long T = rng() % 50, brute = 0;
-        for (int mask = 0; mask < (1 << n); mask++) {
-            long long s = 0;
-            for (int i = 0; i < n; i++) if (mask >> i & 1) s += a[i];
-            brute += s <= T;
+    cout << "numbers in 1..100 with all neighbouring digits different: " << neighbours(100, true) << " with the flag, " << neighbours(100, false) << " without\n";
+    for (long long n = 1; n <= 400; n += 13) {
+        long long brute = 0;
+        for (long long x = 1; x <= n; x++) {
+            string s = to_string(x);
+            bool ok = true;
+            for (size_t i = 1; i < s.size(); i++) if (s[i] == s[i - 1]) ok = false;
+            brute += ok;
         }
-        if (brute != countAtMostTwoPointers(a, T)) return 1;
+        if (brute != neighbours(n, true)) return 1;
     }
 }

@@ -1,27 +1,16 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-map<vector<int>, bool> memo;
-bool win(vector<int> heaps) {  // the player to move wins? a search over all multisets of heaps
-    sort(heaps.begin(), heaps.end());
-    auto it = memo.find(heaps);
-    if (it != memo.end()) return it->second;
-    bool result = false;
-    for (size_t i = 0; i < heaps.size() && !result; i++)
-        for (int a = 1; a < heaps[i] - a && !result; a++) {
-            vector<int> next = heaps;
-            next[i] = a;
-            next.push_back(heaps[i] - a);
-            result = !win(next);
-        }
-    return memo[heaps] = result;
-}
 int main() {
-    int t;
-    cin >> t;
-    while (t--) {
-        int n;
-        cin >> n;
-        cout << (win({n}) ? "first" : "second") << "\n";
+    int n;
+    cin >> n;
+    vector<pair<int, int>> c(n);
+    for (auto& [a, b] : c) cin >> a >> b;
+    int best = 0;  // the most customers present on one day
+    for (int day = 1; day <= 30; day++) {
+        int present = 0;
+        for (auto& [a, b] : c) present += a <= day && day <= b;
+        best = max(best, present);
     }
+    cout << best << "\n";
 }

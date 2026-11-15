@@ -1,49 +1,48 @@
 /*
-Problem: AtCoder ABC 361 E, Tree and Hamilton Path 2.
-Input: N, then N - 1 lines "A B C": a road of length C (1 <= C <= 10^9) between cities A and B; the roads form a tree.
-Output: the least total distance of a trip that visits every city at least once; it may start anywhere and need not return.
+Problem: AtCoder ABC 120 D, Decayed Bridges.
+Input: N M, then M lines "A B": a bridge between islands A and B; the bridges collapse in the order they are listed.
+Output: for i = 1..M, the number of pairs of islands that cannot reach each other just after the i-th bridge collapses.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
-// snippet:begin
-// Example 2. Visiting everything and coming back uses every road twice; not coming back saves the path from the start to the end,
-// best the longest one: 2 * (sum of all lengths) - diameter. adj[u] holds {neighbour, length}.
-// Distances from s to every vertex of a weighted tree; returns a vertex at the largest distance.
-int farthestFrom(const vector<vector<pair<int, long long>>>& adj, int s, vector<long long>& dist) {
-    dist.assign(adj.size(), -1);
-    dist[s] = 0;
-    vector<int> stack = {s};
-    int far = s;
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        if (dist[u] > dist[far]) far = u;
-        for (auto [v, w] : adj[u])
-            if (dist[v] < 0) dist[v] = dist[u] + w, stack.push_back(v);
+struct Dsu {
+    vector<int> parent, size;
+    Dsu(int n) : parent(n), size(n, 1) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) {
+        while (parent[x] != x) parent[x] = parent[parent[x]], x = parent[x];
+        return x;
     }
-    return far;
-}
-long long shortestTrip(const vector<vector<pair<int, long long>>>& adj) {
-    long long total = 0;
-    for (auto& edges : adj) for (auto [v, w] : edges) total += w;  // every road is counted from both ends: this is twice the sum
-    vector<long long> dist;
-    int a = farthestFrom(adj, 1, dist);
-    int b = farthestFrom(adj, a, dist);
-    return total - dist[b];
+    bool unite(int a, int b) {
+        a = find(a), b = find(b);
+        if (a == b) return false;
+        if (size[a] < size[b]) swap(a, b);
+        parent[b] = a;
+        size[a] += size[b];
+        return true;
+    }
+};
+
+// snippet:begin
+// Example 2. Add the bridges back from the last to the first; before adding the i-th, the number of linked pairs is known.
+vector<long long> inconvenience(int n, const vector<pair<int, int>>& bridges) {
+    int m = bridges.size();
+    vector<long long> answer(m);
+    Dsu dsu(n + 1);
+    long long linked = 0, total = 1LL * n * (n - 1) / 2;
+    for (int i = m - 1; i >= 0; i--) {
+        answer[i] = total - linked;  // all bridges i+1..m-1 are in place: the state just after the i-th (counting from 1) collapses
+        int a = dsu.find(bridges[i].first), b = dsu.find(bridges[i].second);
+        if (a != b) linked += 1LL * dsu.size[a] * dsu.size[b], dsu.unite(a, b);
+    }
+    return answer;
 }
 // snippet:end
 
 int main() {
-    int n;
-    cin >> n;
-    vector<vector<pair<int, long long>>> adj(n + 1);
-    for (int i = 0; i + 1 < n; i++) {
-        int a, b;
-        long long c;
-        cin >> a >> b >> c;
-        adj[a].push_back({b, c});
-        adj[b].push_back({a, c});
-    }
-    cout << shortestTrip(adj) << "\n";
+    int n, m;
+    cin >> n >> m;
+    vector<pair<int, int>> bridges(m);
+    for (auto& b : bridges) cin >> b.first >> b.second;
+    for (long long x : inconvenience(n, bridges)) cout << x << "\n";
 }

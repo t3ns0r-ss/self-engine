@@ -1,23 +1,19 @@
-// Brute force: try every order of combinations by recursion on the current row of slimes.
+// Brute force: walk every right/down path by recursion and count those that avoid traps.
 #include <bits/stdc++.h>
 using namespace std;
 
-long long solve(vector<long long> row) {
-    if (row.size() == 1) return 0;
-    long long best = LLONG_MAX;
-    for (size_t i = 0; i + 1 < row.size(); i++) {
-        vector<long long> next(row.begin(), row.begin() + i);
-        next.push_back(row[i] + row[i + 1]);
-        next.insert(next.end(), row.begin() + i + 2, row.end());
-        best = min(best, row[i] + row[i + 1] + solve(next));
-    }
-    return best;
+int n;
+vector<string> g;
+
+long long walk(int r, int c) {
+    if (r >= n || c >= n || g[r][c] == '*') return 0;
+    if (r == n - 1 && c == n - 1) return 1;
+    return walk(r + 1, c) + walk(r, c + 1);
 }
 
 int main() {
-    int n;
     cin >> n;
-    vector<long long> a(n);
-    for (auto& x : a) cin >> x;
-    cout << solve(a) << "\n";
+    g.resize(n);
+    for (auto& row : g) cin >> row;
+    cout << walk(0, 0) % 1'000'000'007 << "\n";
 }

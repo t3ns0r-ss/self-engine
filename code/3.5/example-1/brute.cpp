@@ -1,19 +1,18 @@
-// Brute force: walk every right/down path by recursion and count those that avoid traps.
+// Brute force: the quadratic table of Theorem 3.5.1 (a different method).
 #include <bits/stdc++.h>
 using namespace std;
 
-int n;
-vector<string> g;
-
-long long walk(int r, int c) {
-    if (r >= n || c >= n || g[r][c] == '*') return 0;
-    if (r == n - 1 && c == n - 1) return 1;
-    return walk(r + 1, c) + walk(r, c + 1);
-}
-
 int main() {
+    int n;
     cin >> n;
-    g.resize(n);
-    for (auto& row : g) cin >> row;
-    cout << walk(0, 0) % 1'000'000'007 << "\n";
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    vector<int> L(n, 1);
+    int best = 0;
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < i; j++)
+            if (a[j] < a[i]) L[i] = max(L[i], L[j] + 1);
+        best = max(best, L[i]);
+    }
+    cout << best << "\n";
 }

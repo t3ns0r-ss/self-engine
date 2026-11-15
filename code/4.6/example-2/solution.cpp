@@ -1,82 +1,49 @@
 /*
-Problem: CSES 1135, Distance Queries.
-Input: n q, then n - 1 lines "a b": the roads of a tree; then q lines "a b".
-Output: for each query, the number of roads on the trip between a and b.
+Problem: AtCoder ABC 361 E, Tree and Hamilton Path 2.
+Input: N, then N - 1 lines "A B C": a road of length C (1 <= C <= 10^9) between cities A and B; the roads form a tree.
+Output: the least total distance of a trip that visits every city at least once; it may start anywhere and need not return.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Rooted {
-    vector<int> order, parent, depth;
-};
-Rooted rootAt(const vector<vector<int>>& adj, int root) {
-    int n = adj.size() - 1;
-    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
-    vector<int> stack = {root};
+// snippet:begin
+// Example 2. Visiting everything and coming back uses every road twice; not coming back saves the path from the start to the end,
+// best the longest one: 2 * (sum of all lengths) - diameter. adj[u] holds {neighbour, length}.
+// Distances from s to every vertex of a weighted tree; returns a vertex at the largest distance.
+int farthestFrom(const vector<vector<pair<int, long long>>>& adj, int s, vector<long long>& dist) {
+    dist.assign(adj.size(), -1);
+    dist[s] = 0;
+    vector<int> stack = {s};
+    int far = s;
     while (!stack.empty()) {
         int u = stack.back();
         stack.pop_back();
-        t.order.push_back(u);
-        for (int v : adj[u])
-            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
-                t.parent[v] = u;
-                t.depth[v] = t.depth[u] + 1;
-                stack.push_back(v);
-            }
+        if (dist[u] > dist[far]) far = u;
+        for (auto [v, w] : adj[u])
+            if (dist[v] < 0) dist[v] = dist[u] + w, stack.push_back(v);
     }
-    return t;
+    return far;
 }
-
-struct Lifting {
-    vector<vector<int>> up;  // up[j][v]: the 2^j-th ancestor of v, or 0 if there is none (up[j][0] = 0)
-    vector<int> depth;
-    Lifting(const vector<vector<int>>& adj, int root) {
-        int n = adj.size() - 1, levels = 1;
-        while ((1 << levels) <= n) levels++;
-        Rooted t = rootAt(adj, root);
-        depth = t.depth;
-        up.assign(levels, t.parent);  // up[0] is the parent
-        for (int j = 1; j < levels; j++)
-            for (int v = 1; v <= n; v++) up[j][v] = up[j - 1][up[j - 1][v]];  // two jumps of 2^(j-1)
-    }
-    int kthAncestor(int v, int k) const {  // 0 if v has fewer than k ancestors
-        if (k > depth[v]) return 0;
-        for (int j = 0; j < (int)up.size(); j++)
-            if (k >> j & 1) v = up[j][v];
-        return v;
-    }
-};
-
-int lca(const Lifting& L, int u, int v) {
-    if (L.depth[u] < L.depth[v]) swap(u, v);
-    u = L.kthAncestor(u, L.depth[u] - L.depth[v]);
-    if (u == v) return u;
-    for (int j = (int)L.up.size() - 1; j >= 0; j--)
-        if (L.up[j][u] != L.up[j][v]) u = L.up[j][u], v = L.up[j][v];  // still below the meeting point: take the jump
-    return L.up[0][u];
-}
-
-// snippet:begin
-// Theorem 4.6.3. The number of edges between a and b: depth[a] + depth[b] - 2 * depth[lca]. L is the lifting table of the tree rooted at 1.
-vector<int> distances(const Lifting& L, const vector<pair<int, int>>& queries) {
-    vector<int> answer;
-    for (auto [a, b] : queries) answer.push_back(L.depth[a] + L.depth[b] - 2 * L.depth[lca(L, a, b)]);
-    return answer;
+long long shortestTrip(const vector<vector<pair<int, long long>>>& adj) {
+    long long total = 0;
+    for (auto& edges : adj) for (auto [v, w] : edges) total += w;  // every road is counted from both ends: this is twice the sum
+    vector<long long> dist;
+    int a = farthestFrom(adj, 1, dist);
+    int b = farthestFrom(adj, a, dist);
+    return total - dist[b];
 }
 // snippet:end
 
 int main() {
-    int n, q;
-    cin >> n >> q;
-    vector<vector<int>> adj(n + 1);
+    int n;
+    cin >> n;
+    vector<vector<pair<int, long long>>> adj(n + 1);
     for (int i = 0; i + 1 < n; i++) {
         int a, b;
-        cin >> a >> b;
-        adj[a].push_back(b);
-        adj[b].push_back(a);
+        long long c;
+        cin >> a >> b >> c;
+        adj[a].push_back({b, c});
+        adj[b].push_back({a, c});
     }
-    Lifting L(adj, 1);
-    vector<pair<int, int>> queries(q);
-    for (auto& x : queries) cin >> x.first >> x.second;
-    for (int d : distances(L, queries)) cout << d << "\n";
+    cout << shortestTrip(adj) << "\n";
 }

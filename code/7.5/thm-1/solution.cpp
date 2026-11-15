@@ -3,71 +3,47 @@ using namespace std;
 
 
 // snippet:begin
-// Theorem 7.5.1. A game on a graph: a move goes along an edge, and the player who cannot move loses. The result of a position is WIN
-// (the player to move wins), LOSE or DRAW. A position without moves is LOSE; one with a move to a LOSE position is WIN; one whose
-// moves all lead to WIN positions is LOSE. left[v] counts the moves of v not yet seen to lead to a WIN position.
-enum { DRAW, WIN, LOSE };
-vector<int> solveGame(const vector<vector<int>>& moves) {
-    int n = moves.size();
-    vector<vector<int>> back(n);
-    vector<int> left(n), result(n, DRAW);
-    queue<int> ready;
-    for (int v = 0; v < n; v++) {
-        left[v] = moves[v].size();
-        for (int u : moves[v]) back[u].push_back(v);
-        if (left[v] == 0) result[v] = LOSE, ready.push(v);
+// Theorem 7.5.1. Courses (duration, last day) in the order of the last days. Take every course; when the total time passes the last
+// day of the course just added, drop the longest course taken so far. The heap holds the durations of the courses taken.
+int mostCourses(vector<pair<int, int>> courses) {
+    sort(courses.begin(), courses.end(), [](auto& a, auto& b) { return a.second < b.second; });
+    priority_queue<int> taken;
+    long long total = 0;
+    for (auto [duration, lastDay] : courses) {
+        taken.push(duration), total += duration;
+        if (total > lastDay) total -= taken.top(), taken.pop();
     }
-    while (!ready.empty()) {
-        int u = ready.front();
-        ready.pop();
-        for (int v : back[u]) {
-            if (result[v] != DRAW) continue;
-            if (result[u] == LOSE) result[v] = WIN, ready.push(v);
-            else if (--left[v] == 0) result[v] = LOSE, ready.push(v);
-        }
-    }
-    return result;
+    return taken.size();
 }
 // snippet:end
 
-vector<int> bruteGame(const vector<vector<int>>& moves) {  // repeat the three rules on all positions until nothing changes
-    int n = moves.size();
-    vector<int> result(n, DRAW);
-    for (bool changed = true; changed;) {
-        changed = false;
-        for (int v = 0; v < n; v++) {
-            if (result[v] != DRAW) continue;
-            bool anyLose = false, allWin = true;
-            for (int u : moves[v]) anyLose |= result[u] == LOSE, allWin &= result[u] == WIN;
-            if (anyLose) result[v] = WIN, changed = true;
-            else if (allWin) result[v] = LOSE, changed = true;
-        }
+int bruteCourses(const vector<pair<int, int>>& courses) {  // every subset, taken in the order of the last days
+    int n = courses.size(), best = 0;
+    vector<int> order(n);
+    iota(order.begin(), order.end(), 0);
+    sort(order.begin(), order.end(), [&](int a, int b) { return courses[a].second < courses[b].second; });
+    for (int mask = 0; mask < (1 << n); mask++) {
+        long long time = 0;
+        bool ok = true;
+        for (int i : order)
+            if (mask >> i & 1) {
+                time += courses[i].first;
+                ok &= time <= courses[i].second;
+            }
+        if (ok) best = max(best, __builtin_popcount(mask));
     }
-    return result;
+    return best;
 }
 
 int main() {
-    auto show = [](const char* name, const vector<vector<int>>& g) {
-        auto r = solveGame(g);
-        cout << name << ":";
-        for (int x : r) cout << " " << "DWL"[x];
-        cout << "\n";
-    };
-    vector<vector<int>> heap(6);  // a heap of 0..5 stones, remove 1 or 2
-    for (int x = 1; x <= 5; x++) {
-        heap[x].push_back(x - 1);
-        if (x >= 2) heap[x].push_back(x - 2);
-    }
-    show("heap 0..5", heap);
-    show("with a cycle", {{1}, {0}, {0, 3}, {}});
-    // Check (not printed): 3000 random graphs of up to 7 positions, against the repeated rules.
-    mt19937 rng(31);
+    cout << "courses 1: " << mostCourses({{100, 200}, {200, 1300}, {1000, 1250}, {2000, 3200}}) << "\n";
+    cout << "courses 2: " << mostCourses({{3, 3}, {2, 4}, {2, 5}}) << "\n";
+    // Check (not printed): 3000 random sets of up to 8 courses, against all subsets.
+    mt19937 rng(21);
     for (int it = 0; it < 3000; it++) {
-        int n = rng() % 7 + 1;
-        vector<vector<int>> g(n);
-        for (int v = 0; v < n; v++)
-            for (int u = 0; u < n; u++)
-                if (rng() % 100 < 25) g[v].push_back(u);
-        if (solveGame(g) != bruteGame(g)) return 1;
+        int n = rng() % 8 + 1;
+        vector<pair<int, int>> c(n);
+        for (auto& [d, l] : c) d = rng() % 6 + 1, l = rng() % 14 + 1;
+        if (mostCourses(c) != bruteCourses(c)) return 1;
     }
 }

@@ -2,46 +2,67 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 5.4.3. Queries (p, k): the sum of a[p], a[p + k], a[p + 2k], ... up to the end (p is 0-based, k >= 1).
-// Steps k < B are answered from a table; steps k >= B by walking, at most n / B jumps.
-struct StepSums {
-    int n, B;
-    vector<long long> a;
-    vector<vector<long long>> table;  // table[k][p] = a[p] + table[k][p + k]
-    StepSums(const vector<long long>& v, int threshold) : n(v.size()), B(threshold), a(v), table(threshold) {
-        for (int k = 1; k < B; k++) {
-            table[k].assign(n + k, 0);  // the extra entries stay 0: positions past the end
-            for (int p = n - 1; p >= 0; p--) table[k][p] = a[p] + table[k][p + k];
+// Theorem 5.4.3. A tree over the positions 0 .. m-1 (all values 0 at the start) with add(l, r, d) on positions l .. r-1,
+// the maximum value, and the leftmost position that holds it. Nothing is pushed down.
+struct MaxTree {
+    int m;
+    vector<long long> best;  // best[v]: the maximum over the node of what was added at the node or below it
+    vector<long long> here;  // here[v]: what was added to the whole node
+    MaxTree(int m) : m(m), best(4 * m), here(4 * m) {}
+    void add(int v, int lo, int hi, int l, int r, long long d) {  // the node covers positions lo .. hi-1
+        if (r <= lo || hi <= l) return;
+        if (l <= lo && hi <= r) {
+            here[v] += d, best[v] += d;
+            return;
         }
+        int mid = (lo + hi) / 2;
+        add(2 * v, lo, mid, l, r, d), add(2 * v + 1, mid, hi, l, r, d);
+        best[v] = here[v] + max(best[2 * v], best[2 * v + 1]);
     }
-    long long query(int p, int k) const {
-        if (k < B) return table[k][p];
-        long long s = 0;
-        for (; p < n; p += k) s += a[p];  // at most n / k <= n / B jumps
-        return s;
+    void add(int l, int r, long long d) { add(1, 0, m, l, r, d); }
+    long long maximum() const { return best[1]; }
+    int leftmostMaximum() const {
+        int v = 1, lo = 0, hi = m;
+        while (hi - lo > 1) {
+            int mid = (lo + hi) / 2;
+            if (best[2 * v] == best[v] - here[v]) v = 2 * v, hi = mid;  // the left child reaches the maximum
+            else v = 2 * v + 1, lo = mid;
+        }
+        return lo;
     }
 };
 // snippet:end
 
 int main() {
-    vector<long long> v = {3, 1, 4, 1, 5, 9, 2, 6, 5, 3};
-    StepSums s(v, 3);
-    cout << "table[2] =";
-    for (int p = 0; p < 10; p++) cout << ' ' << s.table[2][p];
-    cout << "\n";
-    cout << "(p=1,k=2) = " << s.query(1, 2) << ", (p=0,k=3) = " << s.query(0, 3) << ", (p=4,k=7) = " << s.query(4, 7) << ", (p=9,k=1) = " << s.query(9, 1) << "\n";
-    // Check against: a loop, for every p and k, on random arrays and several thresholds.
-    mt19937 rng(2);
-    for (int n = 1; n <= 25; n++)
-        for (int th : {1, 2, 3, 5, 8}) {
-            vector<long long> w(n);
-            for (auto& x : w) x = (long long)(rng() % 21) - 10;
-            StepSums t(w, th);
-            for (int p = 0; p < n; p++)
-                for (int k = 1; k <= n + 2; k++) {
-                    long long want = 0;
-                    for (int i = p; i < n; i += k) want += w[i];
-                    if (t.query(p, k) != want) return 1;
-                }
+    {
+        MaxTree t(8);
+        t.add(0, 4, 1), t.add(2, 6, 1), t.add(3, 5, 1);
+        cout << "add 1 to [0,4), [2,6), [3,5) on positions 0..7: maximum " << t.maximum() << " at position " << t.leftmostMaximum() << "\n";
+    }
+    {
+        MaxTree t(8);
+        t.add(0, 2, 5), t.add(4, 6, 5);
+        cout << "add 5 to [0,2) and to [4,6): maximum " << t.maximum() << " at position " << t.leftmostMaximum() << "\n";
+    }
+    {
+        MaxTree t(3);
+        t.add(0, 3, 4), t.add(0, 3, -4);
+        cout << "add 4 to [0,3), then add -4 to [0,3): maximum " << t.maximum() << " at position " << t.leftmostMaximum() << "\n";
+    }
+    // Check against a plain array on random sequences with positive and negative additions.
+    mt19937 rng(777);
+    for (int round = 0; round < 4000; round++) {
+        int m = rng() % 9 + 1;
+        MaxTree tree(m);
+        vector<long long> plain(m, 0);
+        for (int step = 0; step < 25; step++) {
+            int l = rng() % m, r = l + 1 + rng() % (m - l);
+            long long d = (long long)(rng() % 11) - 5;
+            tree.add(l, r, d);
+            for (int g = l; g < r; g++) plain[g] += d;
+            long long best = *max_element(plain.begin(), plain.end());
+            int first = max_element(plain.begin(), plain.end()) - plain.begin();  // the first maximum is the leftmost
+            if (tree.maximum() != best || tree.leftmostMaximum() != first) return 1;
         }
+    }
 }

@@ -2,15 +2,19 @@
 using namespace std;
 
 int main() {
-    int n, k;
-    cin >> n >> k;
-    vector<long long> nums(n), dp(n);
-    for (long long& x : nums) cin >> x;
-    long long best = LLONG_MIN;
-    for (int i = 0; i < n; i++) {
-        dp[i] = nums[i];
-        for (int j = max(0, i - k); j < i; j++) dp[i] = max(dp[i], dp[j] + nums[i]);
-        best = max(best, dp[i]);
+    int n, m;
+    cin >> n >> m;
+    vector<vector<int>> out(n);
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        cin >> a >> b;
+        out[a - 1].push_back(b - 1);
     }
-    cout << best << "\n";
+    long long count = 0;
+    function<void(int)> go = [&](int v) {
+        if (v == n - 1) count++;
+        for (int u : out[v]) go(u);
+    };
+    go(0);
+    cout << count % 1000000007 << "\n";
 }

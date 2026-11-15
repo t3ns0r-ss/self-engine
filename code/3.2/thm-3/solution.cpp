@@ -1,23 +1,46 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+vector<long long> subsetSums(const vector<long long>& v, int from, int to) {
+    vector<long long> sums = {0};
+    for (int i = from; i < to; i++) {
+        int size = sums.size();
+        for (int j = 0; j < size; j++) sums.push_back(sums[j] + v[i]);
+    }
+    return sums;
+}
+
 // snippet:begin
-// Theorem 3.2.3. Tabulation in increasing order: every transition goes from a smaller (i, j) to a larger one. The number of
-// lattice paths to (i, j) is the sum of the paths to (i - 1, j) and (i, j - 1).
-long long gridPaths(int rows, int cols) {
-    vector<vector<long long>> dp(rows + 1, vector<long long>(cols + 1, 0));
-    dp[0][0] = 1;  // base case
-    for (int i = 0; i <= rows; i++)
-        for (int j = 0; j <= cols; j++) {
-            if (i > 0) dp[i][j] += dp[i - 1][j];
-            if (j > 0) dp[i][j] += dp[i][j - 1];
-        }
-    return dp[rows][cols];
+// Theorem 3.2.3. With both lists sorted ascending, the number of right sums y <= T - x can only shrink as x grows,
+// so one pointer j that only moves left finds it for every x: O(2^(n/2)) after the sorts.
+long long countAtMostTwoPointers(const vector<long long>& a, long long T) {
+    int n = a.size();
+    vector<long long> left = subsetSums(a, 0, n / 2), right = subsetSums(a, n / 2, n);
+    sort(left.begin(), left.end());
+    sort(right.begin(), right.end());
+    long long count = 0;
+    int j = right.size();  // right[0 .. j-1] are the sums that are <= T - x for the current x
+    for (long long x : left) {
+        while (j > 0 && right[j - 1] > T - x) j--;
+        count += j;
+    }
+    return count;
 }
 // snippet:end
 
-long long brute(int i, int j) { return i < 0 || j < 0 ? 0 : (i == 0 && j == 0) ? 1 : brute(i - 1, j) + brute(i, j - 1); }
 int main() {
-    cout << "paths to (2, 2): " << gridPaths(2, 2) << ", paths to (3, 3): " << gridPaths(3, 3) << '\n';
-    for (int i = 0; i <= 7; i++) for (int j = 0; j <= 7; j++) if (gridPaths(i, j) != brute(i, j)) return 1;
+    cout << "subsets of 3 5 2 6 with sum at most 7: " << countAtMostTwoPointers({3, 5, 2, 6}, 7) << '\n';
+    mt19937 rng(9);
+    for (int round = 0; round < 300; round++) {
+        int n = 1 + rng() % 12;
+        vector<long long> a(n);
+        for (auto& x : a) x = 1 + rng() % 9;
+        long long T = rng() % 50, brute = 0;
+        for (int mask = 0; mask < (1 << n); mask++) {
+            long long s = 0;
+            for (int i = 0; i < n; i++) if (mask >> i & 1) s += a[i];
+            brute += s <= T;
+        }
+        if (brute != countAtMostTwoPointers(a, T)) return 1;
+    }
 }

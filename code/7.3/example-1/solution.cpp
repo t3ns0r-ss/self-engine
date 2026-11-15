@@ -2,46 +2,57 @@
 using namespace std;
 
 /*
-Problem: AtCoder Educational DP Contest, task Q, Flowers. N flowers stand in a row; flower i has a height h_i (all heights are
-different, a permutation of 1..N) and a beauty a_i. Remove some flowers so that the heights of the remaining ones increase from left
-to right. Print the largest possible sum of the beauties of the remaining flowers. (N up to 2·10^5, a_i up to 10^9.)
-Input: N, then the heights, then the beauties.
+Problem: CSES 1680, Longest Flight Route. A directed acyclic graph of n cities and m flights (n up to 10^5, m up to 2·10^5). Find a route
+from the city 1 to the city n through the largest number of cities. Print that number and the route, or IMPOSSIBLE.
+(This program prints the route in which every city has the smallest possible predecessor, so that the answer is unique.)
+Input: n, m, then the flights "a b".
 */
 
-// Theorem 7.3.1: prefix maxima over ranks (0 when nothing is stored).
-struct FenwickMax {
-    vector<long long> t;
-    FenwickMax(int n) : t(n + 1, 0) {}
-    void update(int r, long long v) {
-        for (; r < (int)t.size(); r += r & -r) t[r] = max(t[r], v);
-    }
-    long long query(int r) {
-        long long best = 0;
-        for (; r > 0; r -= r & -r) best = max(best, t[r]);
-        return best;
-    }
-};
+vector<int> topologicalOrder(const vector<vector<int>>& out, vector<int> indeg) {
+    int n = out.size();
+    vector<int> order;
+    for (int v = 0; v < n; v++)
+        if (indeg[v] == 0) order.push_back(v);
+    for (size_t i = 0; i < order.size(); i++)
+        for (int u : out[order[i]])
+            if (--indeg[u] == 0) order.push_back(u);
+    return order;
+}
 
 // snippet:begin
-// Theorem 7.3.1: dp = a[i] + max dp[j] over j < i with h[j] < h[i]. The heights are 1..N, so they are their own ranks.
-long long mostBeautiful(const vector<int>& h, const vector<long long>& a) {
-    FenwickMax tree(h.size());
-    long long best = 0;
-    for (size_t i = 0; i < h.size(); i++) {
-        long long dp = a[i] + tree.query(h[i] - 1);
-        tree.update(h[i], dp);
-        best = max(best, dp);
+// Theorem 7.3.1: dp[v] = the largest number of cities on a route from the city 0 to v (or -1 if v cannot be reached), and
+// before[v] = the smallest city u with an edge u -> v and dp[u] + 1 = dp[v], from which the route is read backwards.
+vector<int> longestRoute(const vector<vector<int>>& out, const vector<int>& order) {
+    int n = out.size();
+    vector<int> dp(n, -1), before(n, -1);
+    dp[0] = 1;
+    for (int v : order) {
+        if (dp[v] < 0) continue;
+        for (int u : out[v]) {
+            if (dp[v] + 1 > dp[u]) dp[u] = dp[v] + 1, before[u] = v;
+            else if (dp[v] + 1 == dp[u]) before[u] = min(before[u], v);
+        }
     }
-    return best;
+    vector<int> route;
+    if (dp[n - 1] < 0) return route;
+    for (int v = n - 1; v >= 0; v = before[v]) route.push_back(v);
+    reverse(route.begin(), route.end());
+    return route;
 }
 // snippet:end
 
 int main() {
-    int n;
-    cin >> n;
-    vector<int> h(n);
-    vector<long long> a(n);
-    for (int& x : h) cin >> x;
-    for (long long& x : a) cin >> x;
-    cout << mostBeautiful(h, a) << "\n";
+    int n, m;
+    cin >> n >> m;
+    vector<vector<int>> out(n);
+    vector<int> indeg(n, 0);
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        cin >> a >> b;
+        out[a - 1].push_back(b - 1), indeg[b - 1]++;
+    }
+    vector<int> route = longestRoute(out, topologicalOrder(out, indeg));
+    if (route.empty()) return cout << "IMPOSSIBLE\n", 0;
+    cout << route.size() << "\n";
+    for (size_t i = 0; i < route.size(); i++) cout << route[i] + 1 << (i + 1 < route.size() ? " " : "\n");
 }

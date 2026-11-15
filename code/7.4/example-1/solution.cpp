@@ -2,31 +2,46 @@
 using namespace std;
 
 /*
-Problem: LeetCode 630, Course Schedule III. n courses (up to 10^4); course i takes duration_i days and must be finished by day lastDay_i.
-One course at a time, no breaks. Print the largest number of courses that can be taken.
-Input: n, then n lines "duration lastDay".
+Problem: AtCoder Educational DP Contest, task Q, Flowers. N flowers stand in a row; flower i has a height h_i (all heights are
+different, a permutation of 1..N) and a beauty a_i. Remove some flowers so that the heights of the remaining ones increase from left
+to right. Print the largest possible sum of the beauties of the remaining flowers. (N up to 2·10^5, a_i up to 10^9.)
+Input: N, then the heights, then the beauties.
 */
 
+// Theorem 7.4.1: prefix maxima over ranks (0 when nothing is stored).
+struct FenwickMax {
+    vector<long long> t;
+    FenwickMax(int n) : t(n + 1, 0) {}
+    void update(int r, long long v) {
+        for (; r < (int)t.size(); r += r & -r) t[r] = max(t[r], v);
+    }
+    long long query(int r) {
+        long long best = 0;
+        for (; r > 0; r -= r & -r) best = max(best, t[r]);
+        return best;
+    }
+};
 
 // snippet:begin
-// Theorem 7.4.1: courses in the order of the last days; take each; when the total time passes the last day of the course just
-// added, drop the longest course taken so far (it may be the one just added).
-int scheduleCourses(vector<pair<int, int>> courses) {
-    sort(courses.begin(), courses.end(), [](auto& a, auto& b) { return a.second < b.second; });
-    priority_queue<int> taken;
-    long long total = 0;
-    for (auto [duration, lastDay] : courses) {
-        taken.push(duration), total += duration;
-        if (total > lastDay) total -= taken.top(), taken.pop();
+// Theorem 7.4.1: dp = a[i] + max dp[j] over j < i with h[j] < h[i]. The heights are 1..N, so they are their own ranks.
+long long mostBeautiful(const vector<int>& h, const vector<long long>& a) {
+    FenwickMax tree(h.size());
+    long long best = 0;
+    for (size_t i = 0; i < h.size(); i++) {
+        long long dp = a[i] + tree.query(h[i] - 1);
+        tree.update(h[i], dp);
+        best = max(best, dp);
     }
-    return taken.size();
+    return best;
 }
 // snippet:end
 
 int main() {
     int n;
     cin >> n;
-    vector<pair<int, int>> courses(n);
-    for (auto& [d, l] : courses) cin >> d >> l;
-    cout << scheduleCourses(courses) << "\n";
+    vector<int> h(n);
+    vector<long long> a(n);
+    for (int& x : h) cin >> x;
+    for (long long& x : a) cin >> x;
+    cout << mostBeautiful(h, a) << "\n";
 }

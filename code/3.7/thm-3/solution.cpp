@@ -2,43 +2,33 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.7.3. Packing into groups: best[mask] = the smallest pair (groups used, weight in the last group); the last item added
-// goes into the last group or opens a new one.
-pair<int, long long> packing(const vector<long long>& w, long long cap) {
-    int n = w.size();
-    vector<pair<int, long long>> best(1 << n, {INT_MAX, 0});
-    best[0] = {1, 0};
-    for (int mask = 1; mask < (1 << n); mask++)
-        for (int j = 0; j < n; j++) {
-            if (!(mask >> j & 1)) continue;
-            auto [groups, fill] = best[mask ^ 1 << j];
-            pair<int, long long> option = (fill + w[j] <= cap) ? make_pair(groups, fill + w[j]) : make_pair(groups + 1, w[j]);
-            best[mask] = min(best[mask], option);
+// Theorem 3.7.3. D[l][r] = the score difference for the player to move on a[l..r]: take an end, and the opponent is then ahead by
+// D of what remains. The first player's total is (sum + D) / 2.
+long long firstTotal(const vector<long long>& a) {
+    int n = a.size();
+    vector<vector<long long>> D(n, vector<long long>(n, 0));
+    for (int l = 0; l < n; l++) D[l][l] = a[l];
+    for (int len = 2; len <= n; len++)
+        for (int l = 0; l + len - 1 < n; l++) {
+            int r = l + len - 1;
+            D[l][r] = max(a[l] - D[l + 1][r], a[r] - D[l][r - 1]);
         }
-    return best[(1 << n) - 1];
+    return (accumulate(a.begin(), a.end(), 0LL) + D[0][n - 1]) / 2;
 }
 // snippet:end
 
-int bruteGroups(const vector<long long>& w, long long cap, int i, vector<long long>& groups) {  // put each item in a group, recursively
-    if (i == (int)w.size()) return groups.size();
-    int best = INT_MAX;
-    for (size_t g = 0; g < groups.size(); g++)
-        if (groups[g] + w[i] <= cap) { groups[g] += w[i]; best = min(best, bruteGroups(w, cap, i + 1, groups)); groups[g] -= w[i]; }
-    groups.push_back(w[i]);
-    best = min(best, bruteGroups(w, cap, i + 1, groups));
-    groups.pop_back();
-    return best;
+long long minimax(const vector<long long>& a, int l, int r) {  // the best total of the player to move on a[l..r]
+    if (l > r) return 0;
+    long long rest = accumulate(a.begin() + l, a.begin() + r + 1, 0LL);
+    return rest - min(minimax(a, l + 1, r), minimax(a, l, r - 1));
 }
 int main() {
-    auto r = packing({4, 8, 6, 1}, 10);
-    cout << "weights 4 8 6 1, capacity 10: " << r.first << " groups, last fill " << r.second << '\n';
-    mt19937 rng(63);
-    for (int round = 0; round < 200; round++) {
-        int n = 1 + rng() % 8;
-        long long cap = 5 + rng() % 8;
-        vector<long long> w(n);
-        for (auto& x : w) x = 1 + rng() % cap;
-        vector<long long> groups;
-        if (packing(w, cap).first != bruteGroups(w, cap, 0, groups)) return 1;
+    cout << "row 3 9 1 2: the first player gets " << firstTotal({3, 9, 1, 2}) << " of 15\n";
+    mt19937 rng(53);
+    for (int round = 0; round < 300; round++) {
+        int n = 1 + rng() % 9;
+        vector<long long> a(n);
+        for (auto& x : a) x = 1 + rng() % 9;
+        if (firstTotal(a) != minimax(a, 0, n - 1)) return 1;
     }
 }

@@ -1,27 +1,33 @@
 /*
-Problem: CSES 1158, Book Shop. n books with prices h_i and page counts s_i; buy each book at most once with total
-price at most x, maximising the total number of pages.
-Input: n x (n <= 1000, x <= 10^5), then the n prices, then the n page counts (each <= 1000).
-Output: the largest total number of pages.
+Problem: AtCoder ABC 291 D, Flip Cards. N cards in a row show A_i (front) or B_i (back); count the ways to choose
+which cards show their back so that neighbouring cards always show different numbers, modulo 998244353.
+Input: N (N <= 2 * 10^5), then N lines A_i B_i.
+Output: the number of valid choices modulo 998244353.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
 // snippet:begin
-// CSES 1158. best[c] = the most pages with total price at most c; each book is used at most once.
-int bookShop(const vector<int>& h, const vector<int>& s, int x) {
-    vector<int> best(x + 1, 0);  // at most 10^6 pages, so int is enough
-    for (size_t i = 0; i < h.size(); i++)
-        for (int c = x; c >= h[i]; c--) best[c] = max(best[c], best[c - h[i]] + s[i]);
-    return best[x];
+// ABC 291 D. ways[s] = the valid choices for cards 0..i with card i showing side s; neighbours must differ.
+long long flipCards(const vector<array<long long, 2>>& side) {
+    const long long MOD = 998244353;
+    int n = side.size();
+    array<long long, 2> ways = {1, 1};  // base case: card 0 alone, either side
+    for (int i = 1; i < n; i++) {
+        array<long long, 2> next = {0, 0};
+        for (int s = 0; s < 2; s++)
+            for (int t = 0; t < 2; t++)
+                if (side[i][s] != side[i - 1][t]) next[s] = (next[s] + ways[t]) % MOD;
+        ways = next;
+    }
+    return (ways[0] + ways[1]) % MOD;
 }
 // snippet:end
 
 int main() {
-    int n, x;
-    cin >> n >> x;
-    vector<int> h(n), s(n);
-    for (int& p : h) cin >> p;
-    for (int& p : s) cin >> p;
-    cout << bookShop(h, s, x) << "\n";
+    int n;
+    cin >> n;
+    vector<array<long long, 2>> side(n);
+    for (auto& c : side) cin >> c[0] >> c[1];
+    cout << flipCards(side) << "\n";
 }

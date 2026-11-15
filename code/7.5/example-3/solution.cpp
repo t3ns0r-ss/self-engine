@@ -2,32 +2,42 @@
 using namespace std;
 
 /*
-Problem: CSES 2207, Grundy's Game. A heap of n coins (n up to 2000). A move splits one heap into two non-empty heaps of different sizes. The player
-who cannot move loses. For each of t heap sizes print "first" if the first player wins and "second" otherwise.
-Input: t, then t numbers n.
-Output: t lines.
+Problem: CSES 1164, Room Allocation. n customers (up to 2·10^5); customer i arrives on day a_i and leaves on day b_i (both days included).
+Give each customer a room so that no two customers share a room on the same day, using the fewest rooms. The full program prints the
+number of rooms and a room for each customer; this one prints only the number of rooms, and checks the rooms it assigned.
+Input: n, then n lines "a b".
 */
 
 
 // snippet:begin
-// Theorem 7.5.3: a heap of x coins has the Grundy value g(x) = mex of g(a) xor g(x - a) over the splits a < x - a (the two parts are
-// independent games, so their values combine by xor). The first player wins exactly when g(n) is not 0.
-vector<int> grundyOfSplits(int n) {
-    vector<int> g(n + 1, 0);
-    for (int x = 1; x <= n; x++) {
-        set<int> reach;
-        for (int a = 1; a < x - a; a++) reach.insert(g[a] ^ g[x - a]);
-        while (reach.count(g[x])) g[x]++;
+// Theorem 7.5.4 (the partition form): customers by arrival; the heap holds (departure day, room) of the rooms in use. If the room that
+// frees up first is free before the arrival, reuse it; otherwise open a new room. Returns the number of rooms; room[i] is filled in.
+int allocateRooms(const vector<pair<int, int>>& customers, vector<int>& room) {
+    int n = customers.size(), rooms = 0;
+    vector<int> order(n);
+    iota(order.begin(), order.end(), 0);
+    sort(order.begin(), order.end(), [&](int x, int y) { return customers[x] < customers[y]; });
+    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<>> inUse;
+    room.assign(n, 0);
+    for (int i : order) {
+        auto [arrival, departure] = customers[i];
+        if (!inUse.empty() && inUse.top().first < arrival) room[i] = inUse.top().second, inUse.pop();
+        else room[i] = ++rooms;
+        inUse.push({departure, room[i]});
     }
-    return g;
+    return rooms;
 }
 // snippet:end
 
 int main() {
-    int t;
-    cin >> t;
-    vector<int> ns(t);
-    for (int& n : ns) cin >> n;
-    auto g = grundyOfSplits(*max_element(ns.begin(), ns.end()));
-    for (int n : ns) cout << (g[n] ? "first" : "second") << "\n";
+    int n;
+    cin >> n;
+    vector<pair<int, int>> customers(n);
+    for (auto& [a, b] : customers) cin >> a >> b;
+    vector<int> room;
+    int rooms = allocateRooms(customers, room);
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if (room[i] == room[j] && customers[i].first <= customers[j].second && customers[j].first <= customers[i].second) return 1;
+    cout << rooms << "\n";
 }

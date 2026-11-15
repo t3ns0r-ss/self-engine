@@ -8,10 +8,11 @@ int main(int argc, char** argv) {
     }
     mt19937 rng(atoi(argv[1]));
     auto randInt = [&](int lo, int hi) { return (int)(rng() % (unsigned)(hi - lo + 1)) + lo; };
-    int n = randInt(1, 9);
-    printf("%d\n", n);
-    for (int i = 0; i < n; i++) {
-        int a = randInt(1, 10);
-        printf("%d %d\n", a, a + randInt(0, 4));
+    int n = randInt(1, 9), m = randInt(1, 9);
+    printf("%d %d\n", n, m);
+    for (int i = 0; i < m; i++) {
+        int l = randInt(1, n), r = randInt(1, n);
+        if (l > r) swap(l, r);
+        printf("%d %d %d\n", l, r, randInt(-5, 10));
     }
 }

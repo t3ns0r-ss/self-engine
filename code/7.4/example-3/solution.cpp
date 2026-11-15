@@ -2,42 +2,50 @@
 using namespace std;
 
 /*
-Problem: CSES 1164, Room Allocation. n customers (up to 2·10^5); customer i arrives on day a_i and leaves on day b_i (both days included).
-Give each customer a room so that no two customers share a room on the same day, using the fewest rooms. The full program prints the
-number of rooms and a room for each customer; this one prints only the number of rooms, and checks the rooms it assigned.
-Input: n, then n lines "a b".
+Problem: AtCoder Educational DP Contest, task W, Intervals. A string of N bits (each 0 or 1) is chosen. There are M intervals
+(l_i, r_i, a_i): if the string has at least one 1 among the positions l_i..r_i, the reward a_i (possibly negative) is added. Print the
+largest total reward over all strings. (N, M up to 2·10^5, |a_i| up to 10^9.)
+Input: N and M, then M lines "l r a".
 */
 
+// Theorem 7.4.4: range add, range maximum (the add at a node is not pushed down).
+struct AddMax {
+    vector<long long> mx, add;
+    AddMax(int n) : mx(4 * n, 0), add(4 * n, 0) {}
+    void update(int v, int lo, int hi, int l, int r, long long x) {
+        if (r < lo || hi < l) return;
+        if (l <= lo && hi <= r) { mx[v] += x, add[v] += x; return; }
+        int mid = (lo + hi) / 2;
+        update(2 * v, lo, mid, l, r, x), update(2 * v + 1, mid + 1, hi, l, r, x);
+        mx[v] = max(mx[2 * v], mx[2 * v + 1]) + add[v];
+    }
+    long long query(int v, int lo, int hi, int l, int r) {
+        if (r < lo || hi < l) return LLONG_MIN / 2;
+        if (l <= lo && hi <= r) return mx[v];
+        int mid = (lo + hi) / 2;
+        return max(query(2 * v, lo, mid, l, r), query(2 * v + 1, mid + 1, hi, l, r)) + add[v];
+    }
+};
 
 // snippet:begin
-// Theorem 7.4.4 (the partition form): customers by arrival; the heap holds (departure day, room) of the rooms in use. If the room that
-// frees up first is free before the arrival, reuse it; otherwise open a new room. Returns the number of rooms; room[i] is filled in.
-int allocateRooms(const vector<pair<int, int>>& customers, vector<int>& room) {
-    int n = customers.size(), rooms = 0;
-    vector<int> order(n);
-    iota(order.begin(), order.end(), 0);
-    sort(order.begin(), order.end(), [&](int x, int y) { return customers[x] < customers[y]; });
-    priority_queue<pair<int, int>, vector<pair<int, int>>, greater<>> inUse;
-    room.assign(n, 0);
-    for (int i : order) {
-        auto [arrival, departure] = customers[i];
-        if (!inUse.empty() && inUse.top().first < arrival) room[i] = inUse.top().second, inUse.pop();
-        else room[i] = ++rooms;
-        inUse.push({departure, room[i]});
+// Theorem 7.4.4: f[j] = the best total when the last 1 so far is at position j (0: none). A 1 at position i starts the state i from the
+// best state before it; an interval (l, r, a) with r = i adds a to the states l..i (their last 1 lies inside the interval).
+long long bestString(int n, vector<array<long long, 3>> intervals) {
+    sort(intervals.begin(), intervals.end(), [](auto& x, auto& y) { return x[1] < y[1]; });
+    AddMax f(n + 1);
+    size_t p = 0;
+    for (int i = 1; i <= n; i++) {
+        f.update(1, 0, n, i, i, f.query(1, 0, n, 0, i - 1));
+        for (; p < intervals.size() && intervals[p][1] == i; p++) f.update(1, 0, n, intervals[p][0], i, intervals[p][2]);
     }
-    return rooms;
+    return f.query(1, 0, n, 0, n);
 }
 // snippet:end
 
 int main() {
-    int n;
-    cin >> n;
-    vector<pair<int, int>> customers(n);
-    for (auto& [a, b] : customers) cin >> a >> b;
-    vector<int> room;
-    int rooms = allocateRooms(customers, room);
-    for (int i = 0; i < n; i++)
-        for (int j = i + 1; j < n; j++)
-            if (room[i] == room[j] && customers[i].first <= customers[j].second && customers[j].first <= customers[i].second) return 1;
-    cout << rooms << "\n";
+    int n, m;
+    cin >> n >> m;
+    vector<array<long long, 3>> intervals(m);
+    for (auto& iv : intervals) cin >> iv[0] >> iv[1] >> iv[2];
+    cout << bestString(n, intervals) << "\n";
 }

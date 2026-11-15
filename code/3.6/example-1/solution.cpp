@@ -1,35 +1,32 @@
 /*
-Problem: AtCoder EDPC N, Slimes. N slimes in a row with sizes a_1..a_N; combining two neighbours of sizes x and y
-gives one slime of size x + y and costs x + y. Combine all of them into one slime at the least total cost.
-Input: N (2 <= N <= 400), then a_1..a_N (1 <= a_i <= 10^9).
-Output: the minimum total cost.
+Problem: CSES 1638, Grid Paths I. Count the paths from the upper-left to the lower-right square of an n x n grid
+that move only right or down and never enter a trap, modulo 10^9 + 7.
+Input: n (n <= 1000), then n lines of n characters, '.' empty and '*' a trap.
+Output: the number of paths modulo 10^9 + 7.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
 // snippet:begin
-// EDPC N. best[l][r] = the least cost to combine slimes l..r into one: the last combination joins [l, k] and [k + 1, r] and
-// costs the total size, found with prefix sums.
-long long slimes(const vector<long long>& a) {
-    int n = a.size();
-    vector<long long> prefix(n + 1, 0);
-    for (int i = 1; i <= n; i++) prefix[i] = prefix[i - 1] + a[i - 1];
-    vector<vector<long long>> best(n + 2, vector<long long>(n + 2, 0));
-    for (int len = 2; len <= n; len++)
-        for (int l = 1; l + len - 1 <= n; l++) {
-            int r = l + len - 1;
-            long long low = LLONG_MAX;
-            for (int k = l; k < r; k++) low = min(low, best[l][k] + best[k + 1][r]);
-            best[l][r] = low + prefix[r] - prefix[l - 1];
+// CSES 1638. The paths from the upper-left to the lower-right square moving right or down, never entering a trap.
+long long trapPaths(const vector<string>& g) {
+    const long long MOD = 1'000'000'007;
+    int n = g.size();
+    vector<vector<long long>> ways(n + 1, vector<long long>(n + 1, 0));  // a border of zeros outside the grid
+    for (int r = 1; r <= n; r++)
+        for (int c = 1; c <= n; c++) {
+            if (g[r - 1][c - 1] == '*') continue;  // a trap keeps 0
+            if (r == 1 && c == 1) ways[r][c] = 1;
+            else ways[r][c] = (ways[r - 1][c] + ways[r][c - 1]) % MOD;  // from above + from the left
         }
-    return best[1][n];
+    return ways[n][n];
 }
 // snippet:end
 
 int main() {
     int n;
     cin >> n;
-    vector<long long> a(n);
-    for (auto& x : a) cin >> x;
-    cout << slimes(a) << "\n";
+    vector<string> g(n);
+    for (auto& row : g) cin >> row;
+    cout << trapPaths(g) << "\n";
 }

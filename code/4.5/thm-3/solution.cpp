@@ -1,86 +1,84 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Rooted {
-    vector<int> order, parent, depth;
-};
-Rooted rootAt(const vector<vector<int>>& adj, int root) {
-    int n = adj.size() - 1;
-    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
-    vector<int> stack = {root};
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        t.order.push_back(u);
-        for (int v : adj[u])
-            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
-                t.parent[v] = u;
-                t.depth[v] = t.depth[u] + 1;
-                stack.push_back(v);
-            }
-    }
-    return t;
-}
-
 // snippet:begin
-// Theorem 4.5.3. The positions tin[v]..tout[v] of the subtree of v in the visit order; u is an ancestor of v (or u = v) exactly
-// when tin[u] <= tin[v] <= tout[u].
-void eulerRanges(const Rooted& t, vector<int>& tin, vector<int>& tout) {
-    int n = t.order.size();
-    vector<int> size(n + 1, 1);
-    tin.assign(n + 1, 0);
-    tout.assign(n + 1, 0);
-    for (int i = 0; i < n; i++) tin[t.order[i]] = i;
-    for (int i = n - 1; i > 0; i--) size[t.parent[t.order[i]]] += size[t.order[i]];
-    for (int v = 1; v <= n; v++) tout[v] = tin[v] + size[v] - 1;  // the subtree is the next size[v] positions
+// Theorem 4.5.3. Edges are {a, b, weight}; side[v] is 0 or 1 and describes the cut. Returns the index of a lightest edge that
+// crosses the cut (-1 if none): adding it to a set of edges that lies inside one MST and crosses no cut edge keeps it inside one.
+int lightestCrossing(const vector<array<long long, 3>>& edges, const vector<int>& side) {
+    int best = -1;
+    for (int i = 0; i < (int)edges.size(); i++) {
+        auto [a, b, w] = edges[i];
+        if (side[a] != side[b] && (best == -1 || w < edges[best][2])) best = i;  // crosses, and lighter than the best so far
+    }
+    return best;
 }
 // snippet:end
 
-int main() {
-    {
-        vector<vector<int>> adj(6);
-        auto edge = [&](int a, int b) { adj[a].push_back(b), adj[b].push_back(a); };
-        edge(1, 2), edge(1, 3), edge(3, 4), edge(3, 5);
-        auto t = rootAt(adj, 1);
-        vector<int> tin, tout;
-        eulerRanges(t, tin, tout);
-        cout << "tree 1-2, 1-3, 3-4, 3-5 from 1, ranges:";
-        for (int v = 1; v <= 5; v++) cout << ' ' << v << "=[" << tin[v] << ',' << tout[v] << "]";
-        cout << "\n";
-        cout << "is 3 an ancestor of 4: " << (tin[3] <= tin[4] && tin[4] <= tout[3]) << ", of 2: " << (tin[3] <= tin[2] && tin[2] <= tout[3]) << "\n";
-    }
-    {
-        vector<vector<int>> adj(2);
-        auto t = rootAt(adj, 1);
-        vector<int> tin, tout;
-        eulerRanges(t, tin, tout);
-        cout << "one vertex: [" << tin[1] << "," << tout[1] << "]\n";
-    }
-    // Check against: the ancestor test by following parents, and the subtree as the set of vertices with tin inside the range.
-    mt19937 rng(4503);
-    auto randomTree = [](mt19937& rng, int n) {
+// All spanning trees of a connected graph with n <= 7 vertices: the bitmasks of n - 1 edges that connect everything.
+vector<int> spanningTrees(int n, const vector<array<long long, 3>>& edges) {
+    vector<int> trees;
+    int m = edges.size();
+    for (int mask = 0; mask < (1 << m); mask++) {
+        if (__builtin_popcount(mask) != n - 1) continue;
         vector<int> label(n);
-        iota(label.begin(), label.end(), 1);
-        shuffle(label.begin(), label.end(), rng);
-        vector<vector<int>> adj(n + 1);
-        for (int i = 1; i < n; i++) {
-            int a = label[i], b = label[rng() % i];
-            adj[a].push_back(b);
-            adj[b].push_back(a);
-        }
-        return adj;
-    };
-    for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 9 + 1, root = rng() % n + 1;
-        auto adj = randomTree(rng, n);
-        auto t = rootAt(adj, root);
-        vector<int> tin, tout;
-        eulerRanges(t, tin, tout);
-        for (int u = 1; u <= n; u++)
-            for (int v = 1; v <= n; v++) {
-                bool ancestor = false;
-                for (int x = v; x != 0; x = t.parent[x]) if (x == u) ancestor = true;
-                if (ancestor != (tin[u] <= tin[v] && tin[v] <= tout[u])) return 1;
+        iota(label.begin(), label.end(), 0);
+        for (int i = 0; i < m; i++)
+            if (mask >> i & 1) {
+                int a = label[edges[i][0]], b = label[edges[i][1]];
+                for (int& x : label) if (x == b) x = a;
             }
+        if (set<int>(label.begin(), label.end()).size() == 1) trees.push_back(mask);
+    }
+    return trees;
+}
+
+int main() {
+    vector<array<long long, 3>> edges = {{0, 1, 4}, {1, 2, 2}, {0, 2, 3}, {2, 3, 7}, {1, 3, 5}};
+    auto show = [&](vector<int> side) {
+        int i = lightestCrossing(edges, side);
+        return i < 0 ? string("none") : to_string(edges[i][0]) + "-" + to_string(edges[i][1]) + " (" + to_string(edges[i][2]) + ")";
+    };
+    cout << "cut {0} | {1,2,3}: " << show({0, 1, 1, 1}) << "\n";
+    cout << "cut {0,1,2} | {3}: " << show({0, 0, 0, 1}) << "\n";
+    cout << "cut {1} | {0,2,3}: " << show({0, 1, 0, 0}) << "\n";
+    // Check against: all spanning trees. Take a random minimum spanning tree T, a random part F of it, and a random cut that no edge
+    // of F crosses (each group of F is on one side). Some minimum spanning tree must contain F and the lightest crossing edge.
+    mt19937 rng(4403);
+    for (int trial = 0; trial < 6000; trial++) {
+        int n = rng() % 5 + 2, m = rng() % 6 + n - 1;
+        vector<array<long long, 3>> es;
+        for (int v = 1; v < n; v++) es.push_back({(long long)(rng() % v), v, (long long)(rng() % 6 + 1)});  // a random tree: connected
+        while ((int)es.size() < m) {
+            long long a = rng() % n, b = rng() % n;
+            if (a != b) es.push_back({a, b, (long long)(rng() % 6 + 1)});
+        }
+        m = es.size();
+        auto trees = spanningTrees(n, es);
+        auto weight = [&](int mask) {
+            long long s = 0;
+            for (int i = 0; i < m; i++) if (mask >> i & 1) s += es[i][2];
+            return s;
+        };
+        long long best = LLONG_MAX;
+        for (int t : trees) best = min(best, weight(t));
+        vector<int> msts;
+        for (int t : trees) if (weight(t) == best) msts.push_back(t);
+        int T = msts[rng() % msts.size()], F = 0;
+        for (int i = 0; i < m; i++) if ((T >> i & 1) && rng() % 2) F |= 1 << i;
+        vector<int> label(n);  // groups of F
+        iota(label.begin(), label.end(), 0);
+        for (int i = 0; i < m; i++)
+            if (F >> i & 1) {
+                int a = label[es[i][0]], b = label[es[i][1]];
+                for (int& x : label) if (x == b) x = a;
+            }
+        vector<int> sideOfGroup(n), side(n);
+        for (int g = 0; g < n; g++) sideOfGroup[g] = rng() % 2;
+        for (int v = 0; v < n; v++) side[v] = sideOfGroup[label[v]];
+        int e = lightestCrossing(es, side);
+        if (e < 0) continue;  // all vertices on one side
+        bool ok = false;
+        for (int t : msts) if ((t & F) == F && (t >> e & 1)) ok = true;
+        if (!ok) return 1;
     }
 }

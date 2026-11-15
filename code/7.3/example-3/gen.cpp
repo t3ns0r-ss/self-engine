@@ -8,11 +8,12 @@ int main(int argc, char** argv) {
     }
     mt19937 rng(atoi(argv[1]));
     auto randInt = [&](int lo, int hi) { return (int)(rng() % (unsigned)(hi - lo + 1)) + lo; };
-    int n = randInt(1, 9), m = randInt(1, 9);
-    printf("%d %d\n", n, m);
-    for (int i = 0; i < m; i++) {
-        int l = randInt(1, n), r = randInt(1, n);
-        if (l > r) swap(l, r);
-        printf("%d %d %d\n", l, r, randInt(-5, 10));
-    }
+    int n = randInt(1, 7);
+    vector<pair<int, int>> edges;
+    for (int a = 1; a <= n; a++)
+        for (int b = 1; b <= n; b++)
+            if (a != b && randInt(1, 100) <= 25) edges.push_back({a, b});
+    printf("%d %d\n", n, (int)edges.size());
+    for (int i = 0; i < n; i++) printf("%d%c", randInt(1, 9), i + 1 < n ? ' ' : '\n');
+    for (auto [a, b] : edges) printf("%d %d\n", a, b);
 }

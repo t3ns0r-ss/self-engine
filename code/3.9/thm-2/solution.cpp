@@ -2,40 +2,29 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.9.2. The 2^k subset sums of k numbers, built from the sums of the first i - 1 numbers: each step adds one
-// number to every sum already listed, so the whole list costs 2^k - 1 additions (not k * 2^(k-1)).
-vector<long long> subsetSums(const vector<long long>& v, long long& additions) {
-    vector<long long> sums = {0};
-    for (long long x : v) {
-        int size = sums.size();
-        for (int j = 0; j < size; j++) { sums.push_back(sums[j] + x); additions++; }
+// Theorem 3.9.2. Ranges: the count in [A, B] is F(B) - F(A - 1), with F(-1) = 0. F here counts the digit sums that are multiples of 4.
+long long countUpTo(long long N) {
+    if (N < 0) return 0;
+    long long total = 0;
+    for (long long x = 0; x <= N; x++) {
+        int s = 0;
+        for (long long y = x; y > 0; y /= 10) s += y % 10;
+        total += s % 4 == 0;
     }
-    return sums;
+    return total;
 }
+long long countRange(long long A, long long B) { return countUpTo(B) - countUpTo(A - 1); }
 // snippet:end
 
-// the same list, recomputing every mask from its bits: one addition per set bit
-vector<long long> subsetSumsByMask(const vector<long long>& v, long long& additions) {
-    int k = v.size();
-    vector<long long> sums(1 << k, 0);
-    for (int mask = 1; mask < (1 << k); mask++)
-        for (int i = 0; i < k; i++)
-            if (mask >> i & 1) { sums[mask] += v[i]; additions++; }
-    return sums;
-}
-
 int main() {
-    vector<long long> v = {3, 5, 2, 6};
-    long long fast = 0, slow = 0;
-    vector<long long> a = subsetSums(v, fast), b = subsetSumsByMask(v, slow);
-    sort(a.begin(), a.end());
-    sort(b.begin(), b.end());
-    cout << "4 numbers, additions: building on the previous list " << fast << ", from the bits of every mask " << slow << '\n';
-    cout << "same sums: " << (a == b ? "yes" : "no") << '\n';
-    fast = slow = 0;
-    vector<long long> w(20, 1);
-    subsetSums(w, fast);
-    subsetSumsByMask(w, slow);
-    cout << "20 numbers, additions: " << fast << " against " << slow << '\n';
-    if (fast != (1 << 20) - 1) return 1;
+    cout << "[10, 25]: F(25) - F(9) = " << countUpTo(25) << " - " << countUpTo(9) << " = " << countRange(10, 25) << '\n';
+    for (long long a = 0; a <= 60; a += 7) for (long long b = a; b <= 120; b += 11) {
+        long long brute = 0;
+        for (long long x = a; x <= b; x++) {
+            int s = 0;
+            for (long long y = x; y > 0; y /= 10) s += y % 10;
+            brute += s % 4 == 0;
+        }
+        if (brute != countRange(a, b)) return 1;
+    }
 }

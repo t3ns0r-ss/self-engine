@@ -8,13 +8,12 @@ int main(int argc, char** argv) {
     }
     mt19937 rng(atoi(argv[1]));
     auto randInt = [&](int lo, int hi) { return (int)(rng() % (unsigned)(hi - lo + 1)) + lo; };
-    int n = randInt(1, 10);
-    vector<int> label(n);
-    iota(label.begin(), label.end(), 1);
-    shuffle(label.begin(), label.end(), rng);
-    vector<pair<int, int>> edges;
-    for (int i = 1; i < n; i++) edges.push_back({label[i], label[randInt(0, i - 1)]});
-    shuffle(edges.begin(), edges.end(), rng);
-    printf("%d\n", n);
-    for (auto [a, b] : edges) printf("%d %d\n", a, b);
+    int H = randInt(1, 5), W = randInt(1, 5);
+    vector<pair<int, int>> cells;
+    for (int r = 1; r <= H; r++)
+        for (int c = 1; c <= W; c++) cells.push_back({r, c});
+    shuffle(cells.begin(), cells.end(), rng);
+    int M = randInt(1, (int)cells.size());
+    printf("%d %d %d\n", H, W, M);
+    for (int i = 0; i < M; i++) printf("%d %d\n", cells[i].first, cells[i].second);
 }

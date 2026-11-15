@@ -1,70 +1,70 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+// The structure of Theorem 4.5.1.
+struct Dsu {
+    vector<int> parent, size;
+    Dsu(int n) : parent(n), size(n, 1) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) {
+        while (parent[x] != x) parent[x] = parent[parent[x]], x = parent[x];
+        return x;
+    }
+    bool unite(int a, int b) {
+        a = find(a), b = find(b);
+        if (a == b) return false;
+        if (size[a] < size[b]) swap(a, b);
+        parent[b] = a;
+        size[a] += size[b];
+        return true;
+    }
+};
+
 // snippet:begin
-// Theorem 4.5.6. The sum of the distances over all pairs of vertices {u, v} of a weighted tree: an edge of weight w whose lower side has
-// s vertices lies on s * (n - s) of the paths. adj[u] holds {neighbour, weight}; vertices are 1..n.
-long long sumOfAllDistances(const vector<vector<pair<int, long long>>>& adj) {
-    int n = adj.size() - 1;
-    vector<int> parent(n + 1, 0), order, size(n + 1, 1);
-    vector<long long> up(n + 1, 0);  // the weight of the edge from v to its parent
-    vector<int> stack = {1};
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        order.push_back(u);
-        for (auto [v, w] : adj[u])
-            if (v != parent[u]) parent[v] = u, up[v] = w, stack.push_back(v);
+// Theorem 4.5.6. The smallest possible largest edge on a path from s to t (-1 if there is none): the weight of the edge at which
+// Kruskal's algorithm first puts s and t into one group.
+long long smallestLargestEdge(int n, vector<array<long long, 3>> edges, int s, int t) {
+    if (s == t) return 0;  // the empty path has no edge
+    sort(edges.begin(), edges.end(), [](const auto& x, const auto& y) { return x[2] < y[2]; });
+    Dsu dsu(n);
+    for (auto [a, b, w] : edges) {
+        dsu.unite(a, b);
+        if (dsu.find(s) == dsu.find(t)) return w;  // every earlier edge was lighter or equal, and they did not connect s and t
     }
-    long long total = 0;
-    for (int i = n - 1; i > 0; i--) {  // children before parents
-        int v = order[i];
-        size[parent[v]] += size[v];
-        total += up[v] * size[v] * (n - size[v]);  // the pairs on both sides of the edge to the parent
-    }
-    return total;
+    return -1;
 }
 // snippet:end
 
 int main() {
-    auto build = [](int n, vector<array<long long, 3>> es) {
-        vector<vector<pair<int, long long>>> adj(n + 1);
-        for (auto [a, b, w] : es) adj[a].push_back({(int)b, w}), adj[b].push_back({(int)a, w});
-        return adj;
-    };
-    cout << "path 1-2-3 (weights 1, 1): " << sumOfAllDistances(build(3, {{1, 2, 1}, {2, 3, 1}})) << "\n";
-    cout << "star with centre 1 and leaves 2, 3, 4 (weights 5, 2, 3): " << sumOfAllDistances(build(4, {{1, 2, 5}, {1, 3, 2}, {1, 4, 3}})) << "\n";
-    cout << "one vertex: " << sumOfAllDistances(build(1, {})) << "\n";
-    // Check against: Floyd-Warshall, the sum over all pairs u < v.
-    mt19937 rng(4506);
-    auto randomTree = [](mt19937& rng, int n, int maxW) {
-        vector<int> label(n);
-        iota(label.begin(), label.end(), 1);
-        shuffle(label.begin(), label.end(), rng);
-        vector<vector<pair<int, long long>>> adj(n + 1);
-        for (int i = 1; i < n; i++) {
-            int a = label[i], b = label[rng() % i];
-            long long w = rng() % (maxW + 1);
-            adj[a].push_back({b, w});
-            adj[b].push_back({a, w});
-        }
-        return adj;
-    };
-    auto floyd = [](const vector<vector<pair<int, long long>>>& adj) {
-        int n = adj.size() - 1;
-        const long long INF = LLONG_MAX / 4;
-        vector<vector<long long>> d(n + 1, vector<long long>(n + 1, INF));
-        for (int v = 1; v <= n; v++) d[v][v] = 0;
-        for (int u = 1; u <= n; u++) for (auto [v, w] : adj[u]) d[u][v] = min(d[u][v], w);
-        for (int k = 1; k <= n; k++) for (int i = 1; i <= n; i++) for (int j = 1; j <= n; j++) d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
-        return d;
-    };
+    cout << "path 0-1 (5), 1-2 (3); 0 to 2: " << smallestLargestEdge(3, {{0, 1, 5}, {1, 2, 3}}, 0, 2) << "\n";
+    cout << "direct 0-2 (9) or via 1 (4 and 6); 0 to 2: " << smallestLargestEdge(3, {{0, 2, 9}, {0, 1, 4}, {1, 2, 6}}, 0, 2) << "\n";
+    cout << "no road between 0 and 3: " << smallestLargestEdge(4, {{0, 1, 1}, {2, 3, 1}}, 0, 3) << "\n";
+    // Check against: for each limit L from 1 up, look for a path using edges of weight at most L with a plain walk.
+    mt19937 rng(4406);
     for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 9 + 1;
-        auto adj = randomTree(rng, n, rng() % 2 ? 1 : 9);
-        auto d = floyd(adj);
-        long long expected = 0;
-        for (int i = 1; i <= n; i++) for (int j = i + 1; j <= n; j++) expected += d[i][j];
-        if (sumOfAllDistances(adj) != expected) return 1;
+        int n = rng() % 6 + 1;
+        int m = n > 1 ? rng() % 10 : 0;
+        vector<array<long long, 3>> es;
+        for (int i = 0; i < m; i++) {
+            long long a = rng() % n, b = rng() % n;
+            if (a != b) es.push_back({a, b, (long long)(rng() % 7 + 1)});
+        }
+        int s = rng() % n, t = rng() % n;
+        long long expected = s == t ? 0 : -1;
+        for (long long limit = 1; limit <= 7 && s != t; limit++) {
+            vector<bool> seen(n, false);
+            vector<int> stack = {s};
+            seen[s] = true;
+            while (!stack.empty()) {
+                int u = stack.back();
+                stack.pop_back();
+                for (auto [a, b, w] : es) {
+                    if (w > limit) continue;
+                    int v = a == u ? b : (b == u ? a : -1);
+                    if (v >= 0 && !seen[v]) seen[v] = true, stack.push_back(v);
+                }
+            }
+            if (seen[t]) { expected = limit; break; }
+        }
+        if (smallestLargestEdge(n, es, s, t) != expected) return 1;
     }
 }

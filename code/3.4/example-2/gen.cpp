@@ -10,8 +10,5 @@ int main(int argc, char** argv) {
     auto randInt = [&](int lo, int hi) {
         return (int)(rng() % (unsigned)(hi - lo + 1)) + lo;
     };
-    int n = randInt(1, 7), m = randInt(1, 7), hi = randInt(1, 4);
-    cout << n << " " << m << "\n";
-    for (int i = 0; i < n; i++) cout << randInt(1, hi) << (i + 1 < n ? ' ' : '\n');
-    for (int j = 0; j < m; j++) cout << randInt(1, hi) << (j + 1 < m ? ' ' : '\n');
+    cout << randInt(1, 20) << "\n";
 }

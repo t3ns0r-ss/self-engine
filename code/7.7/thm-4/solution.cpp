@@ -2,72 +2,64 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 7.7.4. A permutation p of 1 ... n is sorted by n - c swaps, where c is its number of cycles, and no sequence of swaps is shorter.
-// For i = 1, 2, ...: if the value i is not at the position i, swap it into place. The positions below i are never touched again.
-vector<pair<int, int>> sortBySwaps(vector<int> p) {  // p[0] is the position 1; returns the swapped positions (from 1)
-    int n = p.size();
-    vector<int> where(n + 1);
-    for (int i = 0; i < n; i++) where[p[i]] = i;
-    vector<pair<int, int>> swaps;
-    for (int i = 0; i < n; i++) {
-        if (p[i] == i + 1) continue;
-        int j = where[i + 1];
-        swap(p[i], p[j]);
-        where[p[j]] = j;
-        where[p[i]] = i;
-        swaps.push_back({i + 1, j + 1});
-    }
-    return swaps;
+// Theorem 7.7.4. The same power trick works over the semiring (min, +): "sum" is min, "product" is +, the identity has 0 on the diagonal
+// and INF elsewhere. Then entry (i, j) of weights^L is the least total weight of a walk with exactly L edges from i to j (INF if none).
+using Matrix = vector<vector<long long>>;
+const long long INF = (long long)2e18;
+Matrix minPlusMultiply(const Matrix& a, const Matrix& b) {
+    int n = a.size();
+    Matrix c(n, vector<long long>(n, INF));
+    for (int i = 0; i < n; i++)
+        for (int k = 0; k < n; k++)
+            for (int j = 0; j < n; j++)
+                if (a[i][k] < INF && b[k][j] < INF) c[i][j] = min(c[i][j], a[i][k] + b[k][j]);
+    return c;
+}
+Matrix minPlusPower(Matrix base, long long e) {
+    int n = base.size();
+    Matrix result(n, vector<long long>(n, INF));
+    for (int i = 0; i < n; i++) result[i][i] = 0;
+    for (; e > 0; e >>= 1, base = minPlusMultiply(base, base))
+        if (e & 1) result = minPlusMultiply(result, base);
+    return result;
 }
 // snippet:end
 
-int cycles(const vector<int>& p) {
-    int n = p.size(), c = 0;
-    vector<bool> seen(n, false);
-    for (int i = 0; i < n; i++)
-        if (!seen[i]) {
-            c++;
-            for (int j = i; !seen[j]; j = p[j] - 1) seen[j] = true;
+Matrix bruteLayers(const Matrix& w, int length) {  // the best walk with exactly `length` edges, one layer at a time
+    int n = w.size();
+    Matrix best(n, vector<long long>(n, INF));
+    for (int s = 0; s < n; s++) {
+        vector<long long> cur(n, INF);
+        cur[s] = 0;
+        for (int step = 0; step < length; step++) {
+            vector<long long> next(n, INF);
+            for (int u = 0; u < n; u++)
+                for (int v = 0; v < n; v++)
+                    if (cur[u] < INF && w[u][v] < INF) next[v] = min(next[v], cur[u] + w[u][v]);
+            cur = next;
         }
-    return c;
+        best[s] = cur;
+    }
+    return best;
 }
 
 int main() {
-    for (vector<int> p : {vector<int>{2, 3, 1}, vector<int>{2, 1, 4, 3}, vector<int>{1, 2, 3}}) {
-        cout << "p =";
-        for (int x : p) cout << " " << x;
-        cout << ":";
-        auto swaps = sortBySwaps(p);
-        if (swaps.empty()) cout << " no swaps";
-        for (auto [a, b] : swaps) cout << " (" << a << "," << b << ")";
-        cout << "\n";
+    Matrix w(4, vector<long long>(4, INF));
+    w[0][1] = 4, w[0][2] = 1, w[2][1] = 1, w[1][3] = 2, w[2][3] = 6;
+    for (int len : {2, 3, 1}) {
+        long long d = minPlusPower(w, len)[0][3];
+        cout << "least weight of a walk of length " << len << " from 0 to 3: ";
+        if (d < INF) cout << d << "\n";
+        else cout << "none\n";
     }
-    // Check (not printed): all permutations of up to 7 elements: the swaps sort the array, their number is n - c, and a search by swaps finds
-    // no shorter way.
-    for (int n = 1; n <= 7; n++) {
-        vector<int> p(n);
-        iota(p.begin(), p.end(), 1);
-        map<vector<int>, int> dist;  // distance to the sorted permutation (swaps are reversible)
-        vector<int> target = p;
-        queue<vector<int>> q;
-        dist[target] = 0;
-        q.push(target);
-        while (!q.empty()) {
-            auto cur = q.front();
-            q.pop();
-            for (int i = 0; i < n; i++)
-                for (int j = i + 1; j < n; j++) {
-                    auto next = cur;
-                    swap(next[i], next[j]);
-                    if (!dist.count(next)) dist[next] = dist[cur] + 1, q.push(next);
-                }
-        }
-        do {
-            auto swaps = sortBySwaps(p);
-            auto sorted = p;
-            for (auto [a, b] : swaps) swap(sorted[a - 1], sorted[b - 1]);
-            if (!is_sorted(sorted.begin(), sorted.end())) return 1;
-            if ((int)swaps.size() != n - cycles(p) || (int)swaps.size() != dist[p]) return 1;
-        } while (next_permutation(p.begin(), p.end()));
+    // Check (not printed): 500 random graphs of 5 vertices (weights 1 to 9 or no edge), lengths 0 to 7, all pairs.
+    mt19937 rng(11);
+    for (int round = 0; round < 500; round++) {
+        Matrix a(5, vector<long long>(5, INF));
+        for (auto& row : a)
+            for (auto& x : row)
+                if (rng() % 3) x = 1 + rng() % 9;
+        for (int len = 0; len <= 7; len++)
+            if (minPlusPower(a, len) != bruteLayers(a, len)) return 1;
     }
 }

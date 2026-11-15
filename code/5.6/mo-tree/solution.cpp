@@ -9,7 +9,7 @@ Output: one line per question, in the order of the input.
 
 struct Tree {
     int n, LOG = 1;
-    vector<vector<int>> adj, up;  // up[j][v] is the 2^j-th ancestor of v (topic 4.6)
+    vector<vector<int>> adj, up;  // up[j][v] is the 2^j-th ancestor of v (topic 4.7)
     vector<int> depth, tin, tout, euler;  // euler lists every vertex twice: when it is entered and when it is left
     Tree(int vertices) : n(vertices), adj(vertices), depth(vertices, 0), tin(vertices), tout(vertices) {
         while ((1 << LOG) < n) LOG++;

@@ -1,83 +1,69 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// Distances from s to every vertex of a weighted tree; returns a vertex at the largest distance.
-int farthestFrom(const vector<vector<pair<int, long long>>>& adj, int s, vector<long long>& dist) {
-    dist.assign(adj.size(), -1);
-    dist[s] = 0;
-    vector<int> stack = {s};
-    int far = s;
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        if (dist[u] > dist[far]) far = u;
-        for (auto [v, w] : adj[u])
-            if (dist[v] < 0) dist[v] = dist[u] + w, stack.push_back(v);
-    }
-    return far;
-}
-
 // snippet:begin
-// Theorem 4.5.5. For every vertex, the distance to the vertex farthest from it: the larger of its distances to the two ends a and b of
-// a diameter. adj[u] holds {neighbour, weight} (weights >= 0); vertices are 1..n.
-vector<long long> farthestDistances(const vector<vector<pair<int, long long>>>& adj) {
-    vector<long long> fromFirst, fromA, fromB;
-    int a = farthestFrom(adj, 1, fromFirst);   // an end of a diameter
-    int b = farthestFrom(adj, a, fromA);       // the other end
-    farthestFrom(adj, b, fromB);
-    vector<long long> best(adj.size(), 0);
-    for (int v = 1; v < (int)adj.size(); v++) best[v] = max(fromA[v], fromB[v]);
-    return best;
+// Theorem 4.5.5. Prim's algorithm from vertex 0. adj[u] holds {neighbour, weight}. Returns the weight of a minimum spanning tree,
+// or -1 if the graph is not connected.
+long long prim(const vector<vector<pair<int, long long>>>& adj) {
+    int n = adj.size();
+    vector<bool> inTree(n, false);
+    priority_queue<pair<long long, int>, vector<pair<long long, int>>, greater<>> heap;  // (weight of the edge, vertex it leads to)
+    heap.push({0, 0});
+    long long total = 0;
+    int taken = 0;
+    while (!heap.empty()) {
+        auto [w, u] = heap.top();
+        heap.pop();
+        if (inTree[u]) continue;  // the edge leads into the tree: skip it
+        inTree[u] = true;
+        total += w, taken++;
+        for (auto [v, c] : adj[u])
+            if (!inTree[v]) heap.push({c, v});  // the key is the edge weight itself, not a distance
+    }
+    return taken == n ? total : -1;
 }
 // snippet:end
 
+// Weight of a minimum spanning tree by trying every set of n - 1 edges (-1 if the graph is not connected); n <= 7.
+long long bruteMst(int n, const vector<array<long long, 3>>& edges) {
+    int m = edges.size();
+    long long best = -1;
+    for (int mask = 0; mask < (1 << m); mask++) {
+        if (__builtin_popcount(mask) != n - 1) continue;
+        vector<int> label(n);
+        iota(label.begin(), label.end(), 0);
+        long long total = 0;
+        for (int i = 0; i < m; i++)
+            if (mask >> i & 1) {
+                int a = label[edges[i][0]], b = label[edges[i][1]];
+                for (int& x : label) if (x == b) x = a;
+                total += edges[i][2];
+            }
+        if (set<int>(label.begin(), label.end()).size() == 1 && (best == -1 || total < best)) best = total;
+    }
+    return best;
+}
+
 int main() {
-    auto build = [](int n, vector<array<long long, 3>> es) {
-        vector<vector<pair<int, long long>>> adj(n + 1);
+    auto build = [](int n, const vector<array<long long, 3>>& es) {
+        vector<vector<pair<int, long long>>> adj(n);
         for (auto [a, b, w] : es) adj[a].push_back({(int)b, w}), adj[b].push_back({(int)a, w});
         return adj;
     };
-    auto show = [](const vector<long long>& d) {
-        string s;
-        for (size_t v = 1; v < d.size(); v++) s += " " + to_string(d[v]);
-        return s;
-    };
-    cout << "path 1-2-3-4 (weights 1): farthest distances" << show(farthestDistances(build(4, {{1, 2, 1}, {2, 3, 1}, {3, 4, 1}}))) << "\n";
-    cout << "star with centre 1 and leaves 2, 3, 4 (weights 5, 2, 3):" << show(farthestDistances(build(4, {{1, 2, 5}, {1, 3, 2}, {1, 4, 3}}))) << "\n";
-    cout << "one vertex:" << show(farthestDistances(build(1, {}))) << "\n";
-    // Check against: Floyd-Warshall, the largest entry in each row.
-    mt19937 rng(4505);
-    auto randomTree = [](mt19937& rng, int n, int maxW) {
-        vector<int> label(n);
-        iota(label.begin(), label.end(), 1);
-        shuffle(label.begin(), label.end(), rng);
-        vector<vector<pair<int, long long>>> adj(n + 1);
-        for (int i = 1; i < n; i++) {
-            int a = label[i], b = label[rng() % i];
-            long long w = rng() % (maxW + 1);
-            adj[a].push_back({b, w});
-            adj[b].push_back({a, w});
-        }
-        return adj;
-    };
-    auto floyd = [](const vector<vector<pair<int, long long>>>& adj) {
-        int n = adj.size() - 1;
-        const long long INF = LLONG_MAX / 4;
-        vector<vector<long long>> d(n + 1, vector<long long>(n + 1, INF));
-        for (int v = 1; v <= n; v++) d[v][v] = 0;
-        for (int u = 1; u <= n; u++) for (auto [v, w] : adj[u]) d[u][v] = min(d[u][v], w);
-        for (int k = 1; k <= n; k++) for (int i = 1; i <= n; i++) for (int j = 1; j <= n; j++) d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
-        return d;
-    };
+    auto run = [&](int n, const vector<array<long long, 3>>& es) { return prim(build(n, es)); };
+    cout << "triangle 0-1 (1), 1-2 (2), 0-2 (3): " << run(3, {{0, 1, 1}, {1, 2, 2}, {0, 2, 3}}) << "\n";
+    cout << "square with a diagonal: " << run(4, {{0, 1, 4}, {1, 2, 2}, {2, 3, 4}, {3, 0, 3}, {0, 2, 5}}) << "\n";
+    cout << "two separate edges on 4 vertices: " << run(4, {{0, 1, 1}, {2, 3, 1}}) << "\n";
+    cout << "one vertex: " << run(1, {}) << "\n";
+    mt19937 rng(4405);
     for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 9 + 1;
-        auto adj = randomTree(rng, n, rng() % 2 ? 1 : 9);
-        auto d = floyd(adj);
-        auto got = farthestDistances(adj);
-        for (int i = 1; i <= n; i++) {
-            long long best = 0;
-            for (int j = 1; j <= n; j++) best = max(best, d[i][j]);
-            if (got[i] != best) return 1;
+        int n = rng() % 6 + 1;
+        int m = n > 1 ? rng() % 10 : 0;
+        vector<array<long long, 3>> es;
+        for (int i = 0; i < m; i++) {
+            long long a = rng() % n, b = rng() % n;
+            if (a != b) es.push_back({a, b, (long long)(rng() % 7 + 1)});
         }
+        if (run(n, es) != bruteMst(n, es)) return 1;
     }
 }

@@ -1,18 +1,27 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    int n, m;
-    long long k;
-    cin >> n >> m >> k;
-    vector<pair<int, int>> edges(m);
-    for (auto& [a, b] : edges) cin >> a >> b;
-    vector<long long> ways(n + 1, 0);  // ways[v] = walks of the current length from the node 1 to v
-    ways[1] = 1;
-    for (long long step = 0; step < k; step++) {
-        vector<long long> next(n + 1, 0);
-        for (auto [a, b] : edges) next[b] = (next[b] + ways[a]) % 1000000007;
-        ways = next;
+int n;
+vector<int> nums;
+map<int, bool> memo;
+bool win(int removed) {  // the player to move wins? removed = the set of erased positions
+    auto it = memo.find(removed);
+    if (it != memo.end()) return it->second;
+    int x = 0, left = 0;
+    for (int i = 0; i < n; i++)
+        if (!(removed >> i & 1)) x ^= nums[i], left++;
+    bool result;
+    if (x == 0) result = true;  // the xor is 0 at the start of the turn
+    else {
+        result = false;
+        for (int i = 0; i < n && !result; i++)
+            if (!(removed >> i & 1) && (x ^ nums[i]) != 0 && !win(removed | 1 << i)) result = true;  // erasing must not make the xor 0
     }
-    cout << ways[n] << "\n";
+    return memo[removed] = result;
+}
+int main() {
+    cin >> n;
+    nums.resize(n);
+    for (int& v : nums) cin >> v;
+    cout << (win(0) ? "true" : "false") << "\n";
 }

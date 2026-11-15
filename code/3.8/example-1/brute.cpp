@@ -1,16 +1,20 @@
-// Brute force: check every x from 1 to K (the generator keeps K small).
+// Brute force: try every permutation of the women and count those where every pair is compatible.
 #include <bits/stdc++.h>
 using namespace std;
 
 int main() {
-    long long k;
-    int d;
-    cin >> k >> d;
+    int n;
+    cin >> n;
+    vector<vector<int>> a(n, vector<int>(n));
+    for (auto& row : a)
+        for (auto& x : row) cin >> x;
+    vector<int> p(n);
+    iota(p.begin(), p.end(), 0);
     long long count = 0;
-    for (long long x = 1; x <= k; x++) {
-        int s = 0;
-        for (char c : to_string(x)) s += c - '0';
-        count += s % d == 0;
-    }
+    do {
+        bool ok = true;
+        for (int i = 0; i < n; i++) ok = ok && a[i][p[i]];
+        count += ok;
+    } while (next_permutation(p.begin(), p.end()));
     cout << count % 1'000'000'007 << "\n";
 }

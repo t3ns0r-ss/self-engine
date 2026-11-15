@@ -2,40 +2,41 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.9.1. Meet in the middle: the subsets with sum exactly T. List the subset sums of each half, sort one list, and
-// for each left sum x count the right sums equal to T - x (a block of the sorted list).
-vector<long long> subsetSums(const vector<long long>& v, int from, int to) {
-    vector<long long> sums = {0};
-    for (int i = from; i < to; i++) {
-        int size = sums.size();
-        for (int j = 0; j < size; j++) sums.push_back(sums[j] + v[i]);
-    }
-    return sums;
-}
-long long countSubsetsWithSum(const vector<long long>& a, long long T) {
-    int n = a.size();
-    vector<long long> left = subsetSums(a, 0, n / 2), right = subsetSums(a, n / 2, n);
-    sort(right.begin(), right.end());
-    long long count = 0;
-    for (long long x : left)
-        count += upper_bound(right.begin(), right.end(), T - x) - lower_bound(right.begin(), right.end(), T - x);
-    return count;
+// Theorem 3.9.1. The tight walk: F(N) = how many x in [0, N] have a digit sum that is a multiple of 4. The state is the digit sum
+// mod 4 and the tight flag (is the prefix still equal to N's prefix).
+long long countUpTo(long long N) {
+    if (N < 0) return 0;
+    string digits = to_string(N);
+    int L = digits.size();
+    vector<array<long long, 4>> memo(L + 1, {-1, -1, -1, -1});  // only states with tight == false
+    function<long long(int, int, bool)> go = [&](int pos, int s, bool tight) -> long long {
+        if (pos == L) return s == 0;
+        if (!tight && memo[pos][s] != -1) return memo[pos][s];
+        int hi = tight ? digits[pos] - '0' : 9;
+        long long total = 0;
+        for (int c = 0; c <= hi; c++) total += go(pos + 1, (s + c) % 4, tight && c == hi);
+        if (!tight) memo[pos][s] = total;
+        return total;
+    };
+    return go(0, 0, true);
 }
 // snippet:end
 
 int main() {
-    cout << "subsets of 3 5 2 6 with sum 8: " << countSubsetsWithSum({3, 5, 2, 6}, 8) << '\n';
-    mt19937 rng(4);
-    for (int round = 0; round < 300; round++) {
-        int n = 1 + rng() % 12;
-        vector<long long> a(n);
-        for (auto& x : a) x = 1 + rng() % 9;
-        long long T = rng() % 40, brute = 0;
-        for (int mask = 0; mask < (1 << n); mask++) {
-            long long s = 0;
-            for (int i = 0; i < n; i++) if (mask >> i & 1) s += a[i];
-            brute += s == T;
+    cout << "F(25) = " << countUpTo(25) << ": the numbers";
+    for (int x = 0; x <= 25; x++) {
+        int s = 0;
+        for (int y = x; y > 0; y /= 10) s += y % 10;
+        if (s % 4 == 0) cout << ' ' << x;
+    }
+    cout << '\n';
+    for (long long n = 0; n <= 3000; n++) {
+        long long brute = 0;
+        for (long long x = 0; x <= n; x++) {
+            int s = 0;
+            for (long long y = x; y > 0; y /= 10) s += y % 10;
+            brute += s % 4 == 0;
         }
-        if (brute != countSubsetsWithSum(a, T)) return 1;
+        if (n % 37 == 0 && brute != countUpTo(n)) return 1;
     }
 }

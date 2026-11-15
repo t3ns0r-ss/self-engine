@@ -1,20 +1,27 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+map<vector<int>, bool> memo;
+bool win(vector<int> heaps) {  // the player to move wins? a search over all multisets of heaps
+    sort(heaps.begin(), heaps.end());
+    auto it = memo.find(heaps);
+    if (it != memo.end()) return it->second;
+    bool result = false;
+    for (size_t i = 0; i < heaps.size() && !result; i++)
+        for (int a = 1; a < heaps[i] - a && !result; a++) {
+            vector<int> next = heaps;
+            next[i] = a;
+            next.push_back(heaps[i] - a);
+            result = !win(next);
+        }
+    return memo[heaps] = result;
+}
 int main() {
-    int n, m;
-    long long k;
-    cin >> n >> m >> k;
-    vector<array<long long, 3>> edges(m);
-    for (auto& e : edges) cin >> e[0] >> e[1] >> e[2];
-    const long long INF = 4e18;
-    vector<long long> best(n + 1, INF);  // best[v] = the least weight of a walk of the current length from the node 1 to v
-    best[1] = 0;
-    for (long long step = 0; step < k; step++) {
-        vector<long long> next(n + 1, INF);
-        for (auto& e : edges)
-            if (best[e[0]] < INF) next[e[1]] = min(next[e[1]], best[e[0]] + e[2]);
-        best = next;
+    int t;
+    cin >> t;
+    while (t--) {
+        int n;
+        cin >> n;
+        cout << (win({n}) ? "first" : "second") << "\n";
     }
-    cout << (best[n] < INF ? best[n] : -1) << "\n";
 }

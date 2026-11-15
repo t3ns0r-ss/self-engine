@@ -1,14 +1,22 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// Do the K operations one by one (the generator keeps K small).
+// For every question, test every vertex: is it at depth d, and is u among its ancestors?
 int main() {
-    int N;
-    long long K;
-    cin >> N >> K;
-    vector<long long> A(N);
-    for (auto& a : A) cin >> a;
-    long long X = 0;
-    for (long long i = 0; i < K; i++) X += A[X % N];
-    cout << X << "\n";
+    int n;
+    cin >> n;
+    vector<int> parent(n + 1, 0), depth(n + 1, 0);
+    for (int i = 2; i <= n; i++) cin >> parent[i], depth[i] = depth[parent[i]] + 1;
+    int q;
+    cin >> q;
+    while (q--) {
+        int u, d;
+        cin >> u >> d;
+        int count = 0;
+        for (int v = 1; v <= n; v++) {
+            if (depth[v] != d) continue;
+            for (int x = v; x != 0; x = parent[x]) if (x == u) { count++; break; }
+        }
+        cout << count << "\n";
+    }
 }

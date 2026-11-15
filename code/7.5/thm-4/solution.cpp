@@ -3,54 +3,53 @@ using namespace std;
 
 
 // snippet:begin
-// Theorem 7.5.4. g(i) depends only on the previous m = max(removals) values, so once the same window of m values appears twice,
-// the sequence repeats from there on. Returns g(n) for a huge n by finding the first repeated window.
-int grundyBig(const vector<int>& removals, long long n) {
-    int m = *max_element(removals.begin(), removals.end());
-    vector<int> g;
-    map<vector<int>, int> firstSeen;  // the window of the last m values -> the position after it
-    for (int i = 0;; i++) {
-        if (n < i) return g[n];
-        if (i >= m) {
-            auto [it, fresh] = firstSeen.emplace(vector<int>(g.end() - m, g.end()), i);
-            if (!fresh) {
-                int start = it->second, period = i - start;
-                return g[start + (n - start) % period];
-            }
-        }
-        set<int> reach;
-        for (int r : removals)
-            if (r <= i) reach.insert(g[i - r]);
-        int mex = 0;
-        while (reach.count(mex)) mex++;
-        g.push_back(mex);
+// Theorem 7.5.4. Events (first day, last day), one event a day. Sweep the days; the heap holds the last days of the events that have
+// started and have not been attended; each day attend the event with the earliest last day (events whose last day has passed are dropped).
+int mostEvents(vector<pair<int, int>> events) {
+    sort(events.begin(), events.end());
+    priority_queue<int, vector<int>, greater<int>> open;
+    int attended = 0;
+    size_t next = 0;
+    for (int day = 1; next < events.size() || !open.empty(); day++) {
+        if (open.empty()) day = max(day, events[next].first);  // nothing to do before the next event starts
+        while (next < events.size() && events[next].first <= day) open.push(events[next++].second);
+        while (!open.empty() && open.top() < day) open.pop();
+        if (!open.empty()) open.pop(), attended++;
     }
+    return attended;
 }
 // snippet:end
 
-int bruteGrundy(const vector<int>& removals, int n) {
-    vector<int> g(n + 1, 0);
-    for (int x = 1; x <= n; x++) {
-        set<int> reach;
-        for (int r : removals)
-            if (r <= x) reach.insert(g[x - r]);
-        while (reach.count(g[x])) g[x]++;
+int bruteEvents(const vector<pair<int, int>>& events) {  // the largest matching of events to days (augmenting paths)
+    int days = 0;
+    for (auto& e : events) days = max(days, e.second);
+    vector<int> owner(days + 1, -1);
+    function<bool(int, vector<char>&)> assign = [&](int e, vector<char>& seen) {
+        for (int d = events[e].first; d <= events[e].second; d++) {
+            if (seen[d]) continue;
+            seen[d] = 1;
+            if (owner[d] < 0 || assign(owner[d], seen)) return owner[d] = e, true;
+        }
+        return false;
+    };
+    int count = 0;
+    for (size_t e = 0; e < events.size(); e++) {
+        vector<char> seen(days + 1, 0);
+        count += assign(e, seen);
     }
-    return g[n];
+    return count;
 }
 
 int main() {
-    cout << "g(100) for 1 3 4: " << grundyBig({1, 3, 4}, 100) << "\n";
-    cout << "g(10^18) for 1 3 4: " << grundyBig({1, 3, 4}, 1000000000000000000LL) << "\n";
-    cout << "g(10^18) for 1 2: " << grundyBig({1, 2}, 1000000000000000000LL) << "\n";
-    // Check (not printed): 300 random removal sets of up to 4 numbers from 1 to 7 and every n up to 300, against the plain table.
-    mt19937 rng(32);
-    for (int it = 0; it < 300; it++) {
-        set<int> s;
-        int k = rng() % 4 + 1;
-        while ((int)s.size() < k) s.insert(rng() % 7 + 1);
-        vector<int> rem(s.begin(), s.end());
-        for (int n = 0; n <= 300; n++)
-            if (grundyBig(rem, n) != bruteGrundy(rem, n)) return 1;
+    cout << "events 1: " << mostEvents({{1, 2}, {2, 3}, {3, 4}}) << "\n";
+    cout << "events 2: " << mostEvents({{1, 2}, {2, 3}, {3, 4}, {1, 2}}) << "\n";
+    cout << "events 3: " << mostEvents({{1, 2}, {1, 2}, {1, 2}, {1, 2}}) << "\n";
+    // Check (not printed): 3000 random sets of up to 8 events on up to 9 days, against the largest matching.
+    mt19937 rng(24);
+    for (int it = 0; it < 3000; it++) {
+        int n = rng() % 8 + 1;
+        vector<pair<int, int>> e(n);
+        for (auto& [a, b] : e) a = rng() % 9 + 1, b = a + rng() % 4;
+        if (mostEvents(e) != bruteEvents(e)) return 1;
     }
 }

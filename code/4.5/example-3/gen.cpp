@@ -8,9 +8,8 @@ int main(int argc, char** argv) {
     }
     mt19937 rng(atoi(argv[1]));
     auto randInt = [&](long long lo, long long hi) { return (long long)(rng() % (unsigned long long)(hi - lo + 1)) + lo; };
-    int n = randInt(2, 9), q = randInt(1, 8);
+    int n = randInt(1, 6);
+    long long range = randInt(0, 3) == 0 ? 1000000 : 6;
     cout << n << "\n";
-    for (int i = 2; i <= n; i++) cout << randInt(1, i - 1) << (i < n ? " " : "\n");
-    cout << q << "\n";
-    for (int i = 0; i < q; i++) cout << randInt(1, n) << " " << randInt(0, n - 1) << "\n";
+    for (int i = 0; i < n; i++) cout << randInt(-range, range) << " " << randInt(-range, range) << "\n";
 }

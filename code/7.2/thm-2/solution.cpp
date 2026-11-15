@@ -1,83 +1,63 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-vector<pair<int, int>> randomDag(int n, mt19937& rng, int percent) {
-    vector<int> label(n);
-    iota(label.begin(), label.end(), 0);
-    shuffle(label.begin(), label.end(), rng);
-    vector<pair<int, int>> edges;
-    for (int i = 0; i < n; i++)
-        for (int j = i + 1; j < n; j++)
-            if ((int)(rng() % 100) < percent) edges.push_back({label[i], label[j]});
-    return edges;
+const long long NONE = LLONG_MIN;  // "there is no other number"
+
+// snippet:begin
+// Theorem 7.2.2. For every position i, the largest of all the other numbers (NONE if there is no other).
+// Two best values: b1 is the largest at position where, b2 is the second largest (a tie counts as a second value).
+vector<long long> maxWithout(const vector<long long>& a) {
+    long long b1 = NONE, b2 = NONE;
+    int where = -1;
+    for (int i = 0; i < (int)a.size(); i++) {
+        if (a[i] > b1) b2 = b1, b1 = a[i], where = i;
+        else b2 = max(b2, a[i]);
+    }
+    vector<long long> out(a.size());
+    for (int i = 0; i < (int)a.size(); i++) out[i] = (i == where ? b2 : b1);
+    return out;
 }
 
-const long long MOD = 1000000007;
-// snippet:begin
-// Theorem 7.2.2. paths[v] = the number of paths from the vertex 0 to v (mod 1e9+7): the paths into v end with an edge u -> v.
-// cheapest[v] and ways[v] = the least total weight of a path from 0 to v, and the number of paths with that weight.
-struct PathCounts {
-    vector<long long> paths, cheapest, ways;
-    PathCounts(const vector<vector<pair<int, int>>>& out, const vector<int>& order) {  // out[v] = {(u, weight)}
-        int n = out.size();
-        paths.assign(n, 0), cheapest.assign(n, LLONG_MAX), ways.assign(n, 0);
-        paths[0] = ways[0] = 1, cheapest[0] = 0;
-        for (int v : order) {
-            if (cheapest[v] == LLONG_MAX) continue;  // not reachable from 0
-            for (auto [u, w] : out[v]) {
-                paths[u] = (paths[u] + paths[v]) % MOD;
-                if (cheapest[v] + w < cheapest[u]) cheapest[u] = cheapest[v] + w, ways[u] = ways[v];
-                else if (cheapest[v] + w == cheapest[u]) ways[u] = (ways[u] + ways[v]) % MOD;
-            }
-        }
-    }
-};
+// The same with prefix and suffix maxima: it works for any combination, not only a maximum.
+vector<long long> maxWithoutPrefix(const vector<long long>& a) {
+    int k = a.size();
+    vector<long long> suffix(k + 1, NONE), out(k);
+    for (int i = k - 1; i >= 0; i--) suffix[i] = max(suffix[i + 1], a[i]);
+    long long prefix = NONE;
+    for (int i = 0; i < k; i++) out[i] = max(prefix, suffix[i + 1]), prefix = max(prefix, a[i]);
+    return out;
+}
 // snippet:end
 
-vector<int> kahn(const vector<vector<pair<int, int>>>& out) {
-    int n = out.size();
-    vector<int> indeg(n, 0), order;
-    for (int v = 0; v < n; v++)
-        for (auto [u, w] : out[v]) indeg[u]++;
-    for (int v = 0; v < n; v++)
-        if (indeg[v] == 0) order.push_back(v);
-    for (size_t i = 0; i < order.size(); i++)
-        for (auto [u, w] : out[order[i]])
-            if (--indeg[u] == 0) order.push_back(u);
-    return order;
+void show(const vector<long long>& a) {
+    cout << "[";
+    for (size_t i = 0; i < a.size(); i++) cout << (i ? ", " : "") << a[i];
+    cout << "] ->";
+    for (long long x : maxWithout(a)) {
+        if (x == NONE) cout << " none";
+        else cout << " " << x;
+    }
+    cout << "\n";
 }
 
 int main() {
-    vector<vector<pair<int, int>>> out(6);
-    for (auto [a, b, w] : vector<array<int, 3>>{{0, 1, 2}, {0, 2, 1}, {1, 3, 1}, {2, 3, 2}, {3, 4, 1}, {2, 5, 5}}) out[a].push_back({b, w});
-    PathCounts pc(out, kahn(out));
-    cout << "number of paths from 0:";
-    for (long long x : pc.paths) cout << " " << x;
-    cout << "\ncheapest weight:";
-    for (long long x : pc.cheapest) cout << " " << x;
-    cout << "\nnumber of cheapest paths:";
-    for (long long x : pc.ways) cout << " " << x;
-    cout << "\n";
-    // Check (not printed): the same as listing all paths from the vertex 0, for 3000 random DAGs of up to 8 vertices with weights 1 to 4.
-    mt19937 rng(9);
-    for (int it = 0; it < 3000; it++) {
-        int n = 1 + rng() % 8;
-        auto edges = randomDag(n, rng, 40);
-        vector<vector<pair<int, int>>> g(n);
-        for (auto [a, b] : edges) g[a].push_back({b, 1 + (int)(rng() % 4)});
-        PathCounts p(g, kahn(g));
-        vector<long long> count(n, 0), best(n, LLONG_MAX), number(n, 0);
-        function<void(int, long long)> go = [&](int v, long long cost) {
-            count[v]++;
-            if (cost < best[v]) best[v] = cost, number[v] = 1;
-            else if (cost == best[v]) number[v]++;
-            for (auto [u, w] : g[v]) go(u, cost + w);
-        };
-        go(0, 0);
-        for (int v = 0; v < n; v++) {
-            if (count[v] != p.paths[v]) return 1;
-            if (count[v] > 0 && (best[v] != p.cheapest[v] || number[v] != p.ways[v])) return 1;
-            if (count[v] == 0 && p.cheapest[v] != LLONG_MAX) return 1;
+    show({3, 7, 7, 2});
+    show({5, 1, 4});
+    show({6});
+    // Check (not printed): both functions equal the direct answer for every list of length 1 to 5 over the values 0..3.
+    for (int k = 1; k <= 5; k++) {
+        int total = 1;
+        for (int i = 0; i < k; i++) total *= 4;
+        for (int code = 0; code < total; code++) {
+            vector<long long> a(k);
+            for (int i = 0, c = code; i < k; i++, c /= 4) a[i] = c % 4;
+            vector<long long> one = maxWithout(a), two = maxWithoutPrefix(a);
+            for (int i = 0; i < k; i++) {
+                long long want = NONE;
+                for (int j = 0; j < k; j++)
+                    if (j != i) want = max(want, a[j]);
+                if (one[i] != want || two[i] != want) return 1;
+            }
         }
     }
 }

@@ -1,85 +1,77 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+// Ranks 1..m of the values: equal values get equal ranks. Outside the snippet (sorting and unique, topic 1.1).
+int compress(const vector<int>& a, vector<int>& rank) {
+    vector<int> sorted = a;
+    sort(sorted.begin(), sorted.end());
+    sorted.erase(unique(sorted.begin(), sorted.end()), sorted.end());
+    rank.resize(a.size());
+    for (size_t i = 0; i < a.size(); i++) rank[i] = lower_bound(sorted.begin(), sorted.end(), a[i]) - sorted.begin() + 1;
+    return sorted.size();
+}
 
 // snippet:begin
-// Theorem 7.4.3 (a). One operation halves one number; the gains x/2, x/4, ... of a number fall, so the best operation is always on the
-// current largest. The fewest operations that remove at least half of the sum.
-int halvingsToHalveSum(const vector<int>& nums) {
-    priority_queue<double> heap(nums.begin(), nums.end());
-    double need = accumulate(nums.begin(), nums.end(), 0.0) / 2, removed = 0;
-    int operations = 0;
-    while (removed < need) {
-        double largest = heap.top();
-        heap.pop();
-        removed += largest / 2, heap.push(largest / 2), operations++;
+// Theorem 7.4.3. cnt[i] = 1 + sum of cnt[j] over j < i with a[j] < a[i], modulo MOD: a Fenwick tree of sums over the ranks.
+const long long MOD = 1'000'000'007;
+struct FenwickSum {
+    vector<long long> t;
+    FenwickSum(int n) : t(n + 1, 0) {}
+    void add(int r, long long v) {  // v may be negative (|v| < MOD)
+        for (; r < (int)t.size(); r += r & -r) t[r] = (t[r] + v + MOD) % MOD;
     }
-    return operations;
-}
-// Theorem 7.4.3 (b). Merging two items costs their sum; the cheapest way to merge all of them merges the two smallest again and again.
-long long mergeCost(const vector<long long>& weights) {
-    priority_queue<long long, vector<long long>, greater<long long>> heap(weights.begin(), weights.end());
-    long long cost = 0;
-    while (heap.size() > 1) {
-        long long a = heap.top();
-        heap.pop();
-        long long b = heap.top();
-        heap.pop();
-        cost += a + b, heap.push(a + b);
+    long long prefix(int r) {
+        long long s = 0;
+        for (; r > 0; r -= r & -r) s += t[r];
+        return s % MOD;
     }
-    return cost;
+};
+// The number of non-empty strictly increasing subsequences. With distinct = true a sequence of values is counted once: the
+// value stored for a rank is replaced by the new count (it contains the old one), not added to.
+long long countIncreasing(const vector<int>& rank, int m, bool distinct) {
+    FenwickSum tree(m);
+    vector<long long> stored(m + 1, 0);
+    for (int r : rank) {
+        long long cnt = (1 + tree.prefix(r - 1)) % MOD;
+        tree.add(r, distinct ? cnt - stored[r] : cnt);
+        stored[r] = cnt;
+    }
+    return tree.prefix(m);
 }
 // snippet:end
 
-int bruteHalvings(const vector<int>& nums) {  // iterative deepening over every sequence of choices
-    int n = nums.size();
-    double need = accumulate(nums.begin(), nums.end(), 0.0) / 2;
-    for (int len = 0;; len++) {
-        function<bool(vector<double>, int, double)> go = [&](vector<double> v, int left, double removed) {
-            if (removed >= need) return true;
-            if (left == 0) return false;
-            for (int i = 0; i < n; i++) {
-                double half = v[i] / 2;
-                vector<double> w = v;
-                w[i] = half;
-                if (go(w, left - 1, removed + half)) return true;
-            }
-            return false;
-        };
-        if (go(vector<double>(nums.begin(), nums.end()), len, 0)) return len;
+long long bruteCount(const vector<int>& a, bool distinct) {
+    int n = a.size();
+    set<vector<int>> seen;
+    long long count = 0;
+    for (int mask = 1; mask < (1 << n); mask++) {
+        vector<int> seq;
+        for (int i = 0; i < n; i++)
+            if (mask >> i & 1) seq.push_back(a[i]);
+        bool ok = true;
+        for (size_t i = 1; i < seq.size(); i++) ok &= seq[i - 1] < seq[i];
+        if (!ok) continue;
+        if (distinct) count += seen.insert(seq).second;
+        else count++;
     }
-}
-long long bruteMerge(vector<long long> w) {  // every pair, recursively
-    if (w.size() == 1) return 0;
-    long long best = LLONG_MAX;
-    for (size_t i = 0; i < w.size(); i++)
-        for (size_t j = i + 1; j < w.size(); j++) {
-            vector<long long> next;
-            for (size_t k = 0; k < w.size(); k++)
-                if (k != i && k != j) next.push_back(w[k]);
-            next.push_back(w[i] + w[j]);
-            best = min(best, w[i] + w[j] + bruteMerge(next));
-        }
-    return best;
+    return count;
 }
 
 int main() {
-    cout << "halvings 1: " << halvingsToHalveSum({5, 19, 8, 1}) << "\n";
-    cout << "halvings 2: " << halvingsToHalveSum({3, 8, 20}) << "\n";
-    cout << "merge cost 1: " << mergeCost({4, 3, 2, 6}) << "\n";
-    cout << "merge cost 2: " << mergeCost({5}) << "\n";
-    // Check (not printed): 1500 random cases of up to 4 numbers for the halvings and 3000 of up to 6 weights for the merges.
-    mt19937 rng(23);
-    for (int it = 0; it < 1500; it++) {
-        int n = rng() % 4 + 1;
-        vector<int> v(n);
-        for (int& x : v) x = rng() % 12 + 1;
-        if (halvingsToHalveSum(v) != bruteHalvings(v)) return 1;
-    }
+    auto run = [](vector<int> a, bool distinct) {
+        vector<int> rank;
+        int m = compress(a, rank);
+        return countIncreasing(rank, m, distinct);
+    };
+    cout << "by positions, 3 1 2 4: " << run({3, 1, 2, 4}, false) << "\n";
+    cout << "by positions, 1 1 2: " << run({1, 1, 2}, false) << "\n";
+    cout << "distinct, 1 1 2: " << run({1, 1, 2}, true) << "\n";
+    // Check (not printed): 3000 random arrays of up to 10 numbers, both modes, against the enumeration of all subsequences.
+    mt19937 rng(13);
     for (int it = 0; it < 3000; it++) {
-        int n = rng() % 6 + 1;
-        vector<long long> w(n);
-        for (auto& x : w) x = rng() % 9 + 1;
-        if (mergeCost(w) != bruteMerge(w)) return 1;
+        int n = rng() % 10 + 1;
+        vector<int> a(n);
+        for (auto& x : a) x = rng() % 5 + 1;
+        if (run(a, false) != bruteCount(a, false) || run(a, true) != bruteCount(a, true)) return 1;
     }
 }

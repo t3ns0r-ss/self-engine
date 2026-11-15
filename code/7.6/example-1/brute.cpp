@@ -1,12 +1,21 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+map<int, bool> memo;
+vector<int> moves;
+bool wins(int x) {  // the player to move wins? a search from the top
+    auto it = memo.find(x);
+    if (it != memo.end()) return it->second;
+    bool w = false;
+    for (int p : moves)
+        if (p <= x && !wins(x - p)) w = true;
+    return memo[x] = w;
+}
 int main() {
-    int n;
-    cin >> n;
-    vector<long long> f(n + 1, 0);
-    f[0] = 1;
-    for (int i = 1; i <= n; i++)
-        for (int d = 1; d <= 6 && d <= i; d++) f[i] = (f[i] + f[i - d]) % 1000000007;
-    cout << f[n] << "\n";
+    int n, k;
+    cin >> n >> k;
+    moves.resize(k);
+    for (int& p : moves) cin >> p;
+    for (int x = 1; x <= n; x++) cout << (wins(x) ? 'W' : 'L');
+    cout << "\n";
 }

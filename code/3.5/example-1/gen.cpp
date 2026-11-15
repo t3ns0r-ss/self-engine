@@ -10,11 +10,7 @@ int main(int argc, char** argv) {
     auto randInt = [&](int lo, int hi) {
         return (int)(rng() % (unsigned)(hi - lo + 1)) + lo;
     };
-    int n = randInt(1, 8), percent = randInt(0, 40);
+    int n = randInt(1, 200), hi = randInt(1, 3) == 1 ? 5 : 1000000000;
     cout << n << "\n";
-    for (int r = 0; r < n; r++) {
-        string row;
-        for (int c = 0; c < n; c++) row += (randInt(1, 100) <= percent) ? '*' : '.';
-        cout << row << "\n";
-    }
+    for (int i = 0; i < n; i++) cout << randInt(1, hi) << (i + 1 < n ? ' ' : '\n');
 }

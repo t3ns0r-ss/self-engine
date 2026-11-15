@@ -1,108 +1,72 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-int stronglyConnected(const vector<vector<int>>& out, vector<int>& comp) {
-    int n = out.size(), comps = 0;
-    vector<vector<int>> in(n);
-    for (int v = 0; v < n; v++)
-        for (int u : out[v]) in[u].push_back(v);
-    vector<int> finish, next(n, 0), stack;
-    vector<char> seen(n, 0);
-    for (int s = 0; s < n; s++) {  // first pass: the order of finishing on the graph
-        if (seen[s]) continue;
-        seen[s] = 1, stack = {s};
-        while (!stack.empty()) {
-            int v = stack.back();
-            if (next[v] < (int)out[v].size()) {
-                int u = out[v][next[v]++];
-                if (!seen[u]) seen[u] = 1, stack.push_back(u);
-            } else finish.push_back(v), stack.pop_back();
-        }
-    }
-    comp.assign(n, -1);
-    for (int i = n - 1; i >= 0; i--) {  // second pass on the reversed graph, last finished first
-        int s = finish[i];
-        if (comp[s] >= 0) continue;
-        comp[s] = comps, stack = {s};
-        while (!stack.empty()) {
-            int v = stack.back();
-            stack.pop_back();
-            for (int u : in[v])
-                if (comp[u] < 0) comp[u] = comps, stack.push_back(u);
-        }
-        comps++;
-    }
-    return comps;
-}
-
 // snippet:begin
-// Theorem 7.2.3. The most coins collected on a walk that may visit rooms again (coins are taken once). comp[v] is the component of the
-// room v, numbered in a topological order of the condensation, comps is their number.
-long long mostCoins(const vector<vector<int>>& out, const vector<int>& comp, int comps, const vector<long long>& coins) {
-    int n = out.size();
-    vector<long long> total(comps, 0), best(comps, 0);
-    vector<vector<int>> from(comps);  // from[c] = the components with an edge into c
-    for (int v = 0; v < n; v++) {
-        total[comp[v]] += coins[v];
-        for (int u : out[v])
-            if (comp[u] != comp[v]) from[comp[u]].push_back(comp[v]);
+// Theorem 7.2.3. edges[i] = {u, v} is the directed edge u -> v of a tree. r[v] = the fewest edges to reverse so that every
+// vertex can be reached from v: the number of edges that point toward v.
+vector<int> reversalsFromEach(int n, const vector<pair<int, int>>& edges) {
+    vector<vector<pair<int, int>>> adj(n);  // (neighbour, +1 if the edge leaves this vertex, -1 if it enters it)
+    for (auto [u, v] : edges) adj[u].push_back({v, 1}), adj[v].push_back({u, -1});
+    vector<int> r(n, 0), parent(n, -1), step(n, 0), order = {0};
+    for (size_t i = 0; i < order.size(); i++) {
+        int p = order[i];
+        for (auto [c, dir] : adj[p]) {
+            if (c == parent[p]) continue;
+            parent[c] = p, step[c] = dir, order.push_back(c);
+            if (dir < 0) r[0]++;  // the edge c -> p points toward the root 0
+        }
     }
-    for (int c = 0; c < comps; c++) {  // all components before c are finished
-        best[c] = 0;
-        for (int p : from[c]) best[c] = max(best[c], best[p]);
-        best[c] += total[c];
-    }
-    return *max_element(best.begin(), best.end());
+    for (int i = 1; i < n; i++) r[order[i]] = r[parent[order[i]]] + step[order[i]];  // one edge changes its meaning
+    return r;
 }
 // snippet:end
 
-// Walks that may visit rooms again: a search over (room, set of rooms visited) states.
-long long bruteCoins(const vector<vector<int>>& out, const vector<long long>& coins) {
-    int n = out.size();
-    vector<char> seen(n << n, 0);  // index = room * 2^n + mask
-    long long best = 0;
-    vector<pair<int, int>> stack;
-    for (int s = 0; s < n; s++) stack.push_back({s, 1 << s}), seen[s << n | 1 << s] = 1;
-    while (!stack.empty()) {
-        auto [v, mask] = stack.back();
-        stack.pop_back();
-        long long sum = 0;
-        for (int u = 0; u < n; u++)
-            if (mask >> u & 1) sum += coins[u];
-        best = max(best, sum);
-        for (int u : out[v]) {
-            int m2 = mask | 1 << u;
-            if (!seen[u << n | m2]) seen[u << n | m2] = 1, stack.push_back({u, m2});
-        }
-    }
-    return best;
-}
-
 int main() {
-    vector<vector<int>> out(6);
-    for (auto [a, b] : vector<pair<int, int>>{{0, 1}, {1, 2}, {2, 0}, {2, 3}, {3, 4}, {4, 3}, {2, 5}}) out[a].push_back(b);
-    vector<long long> coins = {2, 3, 1, 4, 1, 7};
-    vector<int> comp;
-    int comps = stronglyConnected(out, comp);
-    cout << "components " << comps << ", of the rooms 0 to 5:";
-    for (int c : comp) cout << " " << c;
-    cout << "\nmost coins " << mostCoins(out, comp, comps, coins) << "\n";
-    // Check (not printed): the same as the search over (room, visited set) states, for 3000 random graphs of up to 7 rooms with
-    // cycles, coins 0 to 9, and every edge going forward in the numbering of the components.
-    mt19937 rng(21);
-    for (int it = 0; it < 3000; it++) {
-        int n = 1 + rng() % 7;
-        vector<vector<int>> g(n);
-        for (int a = 0; a < n; a++)
-            for (int b = 0; b < n; b++)
-                if (a != b && rng() % 100 < 25) g[a].push_back(b);
-        vector<long long> c(n);
-        for (auto& x : c) x = rng() % 10;
-        vector<int> cmp;
-        int k = stronglyConnected(g, cmp);
-        for (int a = 0; a < n; a++)
-            for (int b : g[a])
-                if (cmp[a] > cmp[b]) return 1;
-        if (mostCoins(g, cmp, k, c) != bruteCoins(g, c)) return 1;
+    auto show = [](int n, vector<pair<int, int>> edges, const char* name) {
+        cout << name << ":";
+        for (int x : reversalsFromEach(n, edges)) cout << " " << x;
+        cout << "\n";
+    };
+    show(3, {{0, 1}, {1, 2}}, "0->1, 1->2");
+    show(4, {{1, 0}, {2, 0}, {0, 3}}, "1->0, 2->0, 0->3");
+    show(4, {{0, 1}, {2, 1}, {2, 3}}, "0->1, 2->1, 2->3");
+    // Check (not printed): for every labelled tree with 2 to 6 vertices (all Prüfer sequences) and every choice of directions,
+    // the result equals the number of edges that point toward v, counted by a search from v.
+    for (int n = 2; n <= 6; n++) {
+        int seqs = 1;
+        for (int i = 0; i < n - 2; i++) seqs *= n;
+        for (int code = 0; code < seqs; code++) {
+            vector<int> prufer(n - 2), degree(n, 1);
+            for (int i = 0, c = code; i < n - 2; i++, c /= n) prufer[i] = c % n, degree[prufer[i]]++;
+            vector<pair<int, int>> tree;
+            for (int x : prufer) {
+                for (int leaf = 0; leaf < n; leaf++)
+                    if (degree[leaf] == 1) {
+                        tree.push_back({leaf, x}), degree[leaf]--, degree[x]--;
+                        break;
+                    }
+            }
+            vector<int> last;
+            for (int v = 0; v < n; v++)
+                if (degree[v] == 1) last.push_back(v);
+            tree.push_back({last[0], last[1]});
+            for (int dirs = 0; dirs < (1 << (n - 1)); dirs++) {
+                vector<pair<int, int>> edges = tree;
+                for (int i = 0; i < n - 1; i++)
+                    if (dirs >> i & 1) swap(edges[i].first, edges[i].second);
+                vector<int> got = reversalsFromEach(n, edges);
+                for (int v = 0; v < n; v++) {
+                    int count = 0;
+                    function<void(int, int)> go = [&](int x, int p) {
+                        for (auto [a, b] : edges) {
+                            if (a == x && b != p) go(b, x);                // the edge x -> b points away from v
+                            else if (b == x && a != p) count++, go(a, x);  // the edge a -> x points toward v
+                        }
+                    };
+                    go(v, -1);
+                    if (got[v] != count) return 1;
+                }
+            }
+        }
     }
 }

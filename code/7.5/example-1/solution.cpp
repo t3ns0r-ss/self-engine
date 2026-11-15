@@ -2,30 +2,31 @@
 using namespace std;
 
 /*
-Problem: CSES 1729, Stick Game. A heap of n sticks (up to 10^6) and a set of k allowed moves p_1..p_k (k up to 100): a move removes p_i sticks, if
-the heap has at least p_i. The player who cannot move loses. For every heap size 1..n print W if the player to move wins and L otherwise.
-Input: n and k, then the k moves.
-Output: a string of n characters.
+Problem: LeetCode 630, Course Schedule III. n courses (up to 10^4); course i takes duration_i days and must be finished by day lastDay_i.
+One course at a time, no breaks. Print the largest number of courses that can be taken.
+Input: n, then n lines "duration lastDay".
 */
 
 
 // snippet:begin
-// Theorem 7.5.1: win[x] is true exactly when some move leads to a heap that is lost for the player to move there (win[0] is false).
-string winLose(int n, const vector<int>& moves) {
-    vector<char> win(n + 1, 0);
-    for (int x = 1; x <= n; x++)
-        for (int p : moves)
-            if (p <= x && !win[x - p]) win[x] = 1;
-    string out;
-    for (int x = 1; x <= n; x++) out += win[x] ? 'W' : 'L';
-    return out;
+// Theorem 7.5.1: courses in the order of the last days; take each; when the total time passes the last day of the course just
+// added, drop the longest course taken so far (it may be the one just added).
+int scheduleCourses(vector<pair<int, int>> courses) {
+    sort(courses.begin(), courses.end(), [](auto& a, auto& b) { return a.second < b.second; });
+    priority_queue<int> taken;
+    long long total = 0;
+    for (auto [duration, lastDay] : courses) {
+        taken.push(duration), total += duration;
+        if (total > lastDay) total -= taken.top(), taken.pop();
+    }
+    return taken.size();
 }
 // snippet:end
 
 int main() {
-    int n, k;
-    cin >> n >> k;
-    vector<int> moves(k);
-    for (int& p : moves) cin >> p;
-    cout << winLose(n, moves) << "\n";
+    int n;
+    cin >> n;
+    vector<pair<int, int>> courses(n);
+    for (auto& [d, l] : courses) cin >> d >> l;
+    cout << scheduleCourses(courses) << "\n";
 }

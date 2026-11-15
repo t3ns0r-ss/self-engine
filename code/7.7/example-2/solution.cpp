@@ -2,53 +2,45 @@
 using namespace std;
 
 /*
-Problem: AtCoder ARC 103 C Tr/ee. A string s of length n (2 <= n <= 10^5) over 0 and 1. Is there a tree with n vertices in which, for every i, removing
-some edge leaves a component of size i exactly when s_i = 1? If so, print one.
-Input: s.
-Output: -1 if there is no such tree; otherwise YES if the program's tree passes its own check (BAD if not).
+Problem: CSES 1723 Graph Paths I. A directed graph of n <= 100 nodes; count the walks with exactly k edges (k up to 10^9) from the node 1 to the node n,
+modulo 10^9 + 7.
+Input: n, m and k, then m lines "a b" (an edge from a to b).
+Output: the number of walks modulo 10^9 + 7.
 */
 
+const long long MOD = 1000000007;
+using Matrix = vector<vector<long long>>;
+Matrix multiply(const Matrix& a, const Matrix& b, long long mod) {
+    int n = a.size();
+    Matrix c(n, vector<long long>(n, 0));
+    for (int i = 0; i < n; i++)
+        for (int k = 0; k < n; k++)
+            for (int j = 0; j < n; j++) c[i][j] = (c[i][j] + a[i][k] * b[k][j]) % mod;
+    return c;
+}
+Matrix power(Matrix base, long long e, long long mod) {  // base^e: start from the identity, then repeated squaring
+    int n = base.size();
+    Matrix result(n, vector<long long>(n, 0));
+    for (int i = 0; i < n; i++) result[i][i] = 1 % mod;
+    for (; e > 0; e >>= 1, base = multiply(base, base, mod))
+        if (e & 1) result = multiply(result, base, mod);
+    return result;
+}
+
 // snippet:begin
-// Necessary: s_1 = 1 (a tree has a leaf), s_n = 0 (no edge removal leaves a component of size n), s_i = s_(n-i) (the two components of an edge
-// have sizes i and n - i). These suffice: join the vertex i + 1 to `hold`, and let `hold` become i + 1 whenever s_i = 1.
-vector<pair<int, int>> buildTree(const string& s) {  // empty if there is no tree
-    int n = s.size();
-    bool ok = s[0] == '1' && s[n - 1] == '0';
-    for (int i = 1; i < n; i++) ok = ok && s[i - 1] == s[n - i - 1];
-    if (!ok) return {};
-    vector<pair<int, int>> edges;
-    int hold = 1;
-    for (int i = 1; i < n; i++) {
-        edges.push_back({hold, i + 1});
-        if (s[i - 1] == '1') hold = i + 1;
-    }
-    return edges;
+// Theorem 7.7.2: the entry (1, n) of the k-th power of the adjacency matrix (parallel edges count separately).
+long long countWalksOfLength(int n, const vector<pair<int, int>>& edges, long long k) {
+    Matrix adjacency(n, vector<long long>(n, 0));
+    for (auto [a, b] : edges) adjacency[a - 1][b - 1]++;
+    return power(adjacency, k, MOD)[0][n - 1];
 }
 // snippet:end
 
 int main() {
-    string s;
-    cin >> s;
-    int n = s.size();
-    auto edges = buildTree(s);
-    if (edges.empty()) {
-        cout << "-1\n";
-        return 0;
-    }
-    // check: the sizes of the components of every edge removal
-    vector<vector<int>> g(n + 1);
-    for (auto [a, b] : edges) g[a].push_back(b), g[b].push_back(a);
-    vector<int> parent(n + 1, 0), order, size(n + 1, 1);
-    order.push_back(1);
-    for (size_t i = 0; i < order.size(); i++)
-        for (int v : g[order[i]])
-            if (v != parent[order[i]]) parent[v] = order[i], order.push_back(v);
-    string seen(n, '0');
-    for (int i = n - 1; i >= 1; i--) {
-        int v = order[i];
-        size[parent[v]] += size[v];
-        seen[size[v] - 1] = '1';
-        seen[n - size[v] - 1] = '1';
-    }
-    cout << ((int)order.size() == n && seen == s ? "YES" : "BAD") << "\n";
+    int n, m;
+    long long k;
+    cin >> n >> m >> k;
+    vector<pair<int, int>> edges(m);
+    for (auto& [a, b] : edges) cin >> a >> b;
+    cout << countWalksOfLength(n, edges, k) << "\n";
 }

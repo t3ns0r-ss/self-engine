@@ -2,26 +2,20 @@
 using namespace std;
 
 int main() {
-    int n;
-    cin >> n;
-    vector<vector<int>> adj(n);
-    for (int i = 0; i + 1 < n; i++) {
-        int a, b;
-        cin >> a >> b;
-        adj[a - 1].push_back(b - 1), adj[b - 1].push_back(a - 1);
+    int H, W, M;
+    cin >> H >> W >> M;
+    set<pair<int, int>> has;
+    for (int i = 0; i < M; i++) {
+        int r, c;
+        cin >> r >> c;
+        has.insert({r, c});
     }
-    for (int s = 0; s < n; s++) {
-        vector<int> dist(n, -1);
-        queue<int> q;
-        dist[s] = 0, q.push(s);
-        long long sum = 0;
-        while (!q.empty()) {
-            int v = q.front();
-            q.pop();
-            sum += dist[v];
-            for (int u : adj[v])
-                if (dist[u] < 0) dist[u] = dist[v] + 1, q.push(u);
+    int best = 0;
+    for (int r = 1; r <= H; r++)
+        for (int c = 1; c <= W; c++) {
+            int cnt = 0;
+            for (auto [a, b] : has) cnt += (a == r || b == c);
+            best = max(best, cnt);
         }
-        cout << sum << (s + 1 < n ? " " : "\n");
-    }
+    cout << best << "\n";
 }

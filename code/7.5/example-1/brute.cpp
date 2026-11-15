@@ -1,21 +1,21 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-map<int, bool> memo;
-vector<int> moves;
-bool wins(int x) {  // the player to move wins? a search from the top
-    auto it = memo.find(x);
-    if (it != memo.end()) return it->second;
-    bool w = false;
-    for (int p : moves)
-        if (p <= x && !wins(x - p)) w = true;
-    return memo[x] = w;
-}
 int main() {
-    int n, k;
-    cin >> n >> k;
-    moves.resize(k);
-    for (int& p : moves) cin >> p;
-    for (int x = 1; x <= n; x++) cout << (wins(x) ? 'W' : 'L');
-    cout << "\n";
+    int n;
+    cin >> n;
+    vector<pair<int, int>> c(n);
+    for (auto& [d, l] : c) cin >> d >> l;
+    vector<int> order(n);
+    iota(order.begin(), order.end(), 0);
+    sort(order.begin(), order.end(), [&](int a, int b) { return c[a].second < c[b].second; });
+    int best = 0;
+    for (int mask = 0; mask < (1 << n); mask++) {
+        long long time = 0;
+        bool ok = true;
+        for (int i : order)
+            if (mask >> i & 1) time += c[i].first, ok &= time <= c[i].second;
+        if (ok) best = max(best, __builtin_popcount(mask));
+    }
+    cout << best << "\n";
 }

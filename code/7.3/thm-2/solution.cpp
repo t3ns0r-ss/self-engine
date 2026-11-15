@@ -1,50 +1,83 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-
-// snippet:begin
-// Theorem 7.3.2. dp[i] = a[i] + max(0, max dp[j] over the window i-k <= j <= i-1). The deque holds indices of the window with
-// decreasing dp from front to back, so the front is the maximum; an index behind a later, not smaller one is never the maximum.
-vector<long long> windowBest(const vector<long long>& a, int k) {
-    int n = a.size();
-    vector<long long> dp(n);
-    deque<int> window;
-    for (int i = 0; i < n; i++) {
-        while (!window.empty() && window.front() < i - k) window.pop_front();  // left the window
-        dp[i] = a[i] + (window.empty() ? 0 : max(0LL, dp[window.front()]));
-        while (!window.empty() && dp[window.back()] <= dp[i]) window.pop_back();
-        window.push_back(i);
-    }
-    return dp;
+vector<pair<int, int>> randomDag(int n, mt19937& rng, int percent) {
+    vector<int> label(n);
+    iota(label.begin(), label.end(), 0);
+    shuffle(label.begin(), label.end(), rng);
+    vector<pair<int, int>> edges;
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if ((int)(rng() % 100) < percent) edges.push_back({label[i], label[j]});
+    return edges;
 }
+
+const long long MOD = 1000000007;
+// snippet:begin
+// Theorem 7.3.2. paths[v] = the number of paths from the vertex 0 to v (mod 1e9+7): the paths into v end with an edge u -> v.
+// cheapest[v] and ways[v] = the least total weight of a path from 0 to v, and the number of paths with that weight.
+struct PathCounts {
+    vector<long long> paths, cheapest, ways;
+    PathCounts(const vector<vector<pair<int, int>>>& out, const vector<int>& order) {  // out[v] = {(u, weight)}
+        int n = out.size();
+        paths.assign(n, 0), cheapest.assign(n, LLONG_MAX), ways.assign(n, 0);
+        paths[0] = ways[0] = 1, cheapest[0] = 0;
+        for (int v : order) {
+            if (cheapest[v] == LLONG_MAX) continue;  // not reachable from 0
+            for (auto [u, w] : out[v]) {
+                paths[u] = (paths[u] + paths[v]) % MOD;
+                if (cheapest[v] + w < cheapest[u]) cheapest[u] = cheapest[v] + w, ways[u] = ways[v];
+                else if (cheapest[v] + w == cheapest[u]) ways[u] = (ways[u] + ways[v]) % MOD;
+            }
+        }
+    }
+};
 // snippet:end
 
-vector<long long> bruteWindow(const vector<long long>& a, int k) {
-    int n = a.size();
-    vector<long long> dp(n);
-    for (int i = 0; i < n; i++) {
-        long long best = 0;
-        for (int j = max(0, i - k); j < i; j++) best = max(best, dp[j]);
-        dp[i] = a[i] + best;
-    }
-    return dp;
+vector<int> kahn(const vector<vector<pair<int, int>>>& out) {
+    int n = out.size();
+    vector<int> indeg(n, 0), order;
+    for (int v = 0; v < n; v++)
+        for (auto [u, w] : out[v]) indeg[u]++;
+    for (int v = 0; v < n; v++)
+        if (indeg[v] == 0) order.push_back(v);
+    for (size_t i = 0; i < order.size(); i++)
+        for (auto [u, w] : out[order[i]])
+            if (--indeg[u] == 0) order.push_back(u);
+    return order;
 }
 
 int main() {
-    auto show = [](const vector<long long>& a, int k) {
-        auto dp = windowBest(a, k);
-        cout << "dp:";
-        for (long long x : dp) cout << " " << x;
-        cout << "\nmost: " << *max_element(dp.begin(), dp.end()) << "\n";
-    };
-    show({10, 2, -10, 5, 20}, 2);
-    show({-1, -2, -3}, 1);
-    // Check (not printed): 3000 random arrays of up to 10 numbers and every window size, against the O(nk) definition.
-    mt19937 rng(12);
+    vector<vector<pair<int, int>>> out(6);
+    for (auto [a, b, w] : vector<array<int, 3>>{{0, 1, 2}, {0, 2, 1}, {1, 3, 1}, {2, 3, 2}, {3, 4, 1}, {2, 5, 5}}) out[a].push_back({b, w});
+    PathCounts pc(out, kahn(out));
+    cout << "number of paths from 0:";
+    for (long long x : pc.paths) cout << " " << x;
+    cout << "\ncheapest weight:";
+    for (long long x : pc.cheapest) cout << " " << x;
+    cout << "\nnumber of cheapest paths:";
+    for (long long x : pc.ways) cout << " " << x;
+    cout << "\n";
+    // Check (not printed): the same as listing all paths from the vertex 0, for 3000 random DAGs of up to 8 vertices with weights 1 to 4.
+    mt19937 rng(9);
     for (int it = 0; it < 3000; it++) {
-        int n = rng() % 10 + 1, k = rng() % n + 1;
-        vector<long long> a(n);
-        for (auto& x : a) x = (long long)(rng() % 21) - 10;
-        if (windowBest(a, k) != bruteWindow(a, k)) return 1;
+        int n = 1 + rng() % 8;
+        auto edges = randomDag(n, rng, 40);
+        vector<vector<pair<int, int>>> g(n);
+        for (auto [a, b] : edges) g[a].push_back({b, 1 + (int)(rng() % 4)});
+        PathCounts p(g, kahn(g));
+        vector<long long> count(n, 0), best(n, LLONG_MAX), number(n, 0);
+        function<void(int, long long)> go = [&](int v, long long cost) {
+            count[v]++;
+            if (cost < best[v]) best[v] = cost, number[v] = 1;
+            else if (cost == best[v]) number[v]++;
+            for (auto [u, w] : g[v]) go(u, cost + w);
+        };
+        go(0, 0);
+        for (int v = 0; v < n; v++) {
+            if (count[v] != p.paths[v]) return 1;
+            if (count[v] > 0 && (best[v] != p.cheapest[v] || number[v] != p.ways[v])) return 1;
+            if (count[v] == 0 && p.cheapest[v] != LLONG_MAX) return 1;
+        }
     }
 }

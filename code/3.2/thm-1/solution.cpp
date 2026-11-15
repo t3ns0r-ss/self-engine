@@ -2,35 +2,40 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.2.1. Optimal substructure for the frog: the state is the stone, best(i) = min over the jumps into i of
-// best(from) + cost, and the answer is best(n - 1).
-vector<long long> frogBest(const vector<int>& h, int k) {
-    int n = h.size();
-    vector<long long> best(n, LLONG_MAX);
-    best[0] = 0;
-    for (int i = 1; i < n; i++)
-        for (int j = max(0, i - k); j < i; j++) best[i] = min(best[i], best[j] + abs(h[i] - h[j]));
-    return best;
+// Theorem 3.2.1. Meet in the middle: the subsets with sum exactly T. List the subset sums of each half, sort one list, and
+// for each left sum x count the right sums equal to T - x (a block of the sorted list).
+vector<long long> subsetSums(const vector<long long>& v, int from, int to) {
+    vector<long long> sums = {0};
+    for (int i = from; i < to; i++) {
+        int size = sums.size();
+        for (int j = 0; j < size; j++) sums.push_back(sums[j] + v[i]);
+    }
+    return sums;
+}
+long long countSubsetsWithSum(const vector<long long>& a, long long T) {
+    int n = a.size();
+    vector<long long> left = subsetSums(a, 0, n / 2), right = subsetSums(a, n / 2, n);
+    sort(right.begin(), right.end());
+    long long count = 0;
+    for (long long x : left)
+        count += upper_bound(right.begin(), right.end(), T - x) - lower_bound(right.begin(), right.end(), T - x);
+    return count;
 }
 // snippet:end
 
-long long brute(const vector<int>& h, int k, int i = 0) {  // every jump sequence
-    if (i == (int)h.size() - 1) return 0;
-    long long r = LLONG_MAX;
-    for (int j = i + 1; j <= min((int)h.size() - 1, i + k); j++) r = min(r, abs(h[j] - h[i]) + brute(h, k, j));
-    return r;
-}
 int main() {
-    vector<int> h = {10, 30, 40, 20};
-    auto best = frogBest(h, 2);
-    cout << "best for the heights 10 30 40 20:";
-    for (long long b : best) cout << ' ' << b;
-    cout << " (the answer is " << best.back() << ")\n";
-    mt19937 rng(8);
+    cout << "subsets of 3 5 2 6 with sum 8: " << countSubsetsWithSum({3, 5, 2, 6}, 8) << '\n';
+    mt19937 rng(4);
     for (int round = 0; round < 300; round++) {
-        int n = 1 + rng() % 9, k = 1 + rng() % 3;
-        vector<int> g(n);
-        for (int& x : g) x = 1 + rng() % 20;
-        if (frogBest(g, k).back() != brute(g, k)) return 1;
+        int n = 1 + rng() % 12;
+        vector<long long> a(n);
+        for (auto& x : a) x = 1 + rng() % 9;
+        long long T = rng() % 40, brute = 0;
+        for (int mask = 0; mask < (1 << n); mask++) {
+            long long s = 0;
+            for (int i = 0; i < n; i++) if (mask >> i & 1) s += a[i];
+            brute += s == T;
+        }
+        if (brute != countSubsetsWithSum(a, T)) return 1;
     }
 }

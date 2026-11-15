@@ -2,36 +2,35 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.3.1. 0/1 knapsack in one row: the capacity loop runs downwards, so best[c - w] is still the row without the item.
-vector<long long> knapsackRow(const vector<pair<int, long long>>& items, int W) {
-    vector<long long> best(W + 1, 0);
-    for (auto [w, v] : items)
-        for (int c = W; c >= w; c--) best[c] = max(best[c], best[c - w] + v);
+// Theorem 3.3.1. Optimal substructure for the frog: the state is the stone, best(i) = min over the jumps into i of
+// best(from) + cost, and the answer is best(n - 1).
+vector<long long> frogBest(const vector<int>& h, int k) {
+    int n = h.size();
+    vector<long long> best(n, LLONG_MAX);
+    best[0] = 0;
+    for (int i = 1; i < n; i++)
+        for (int j = max(0, i - k); j < i; j++) best[i] = min(best[i], best[j] + abs(h[i] - h[j]));
     return best;
 }
 // snippet:end
 
-long long brute(const vector<pair<int, long long>>& items, int W) {
-    long long best = 0;
-    for (int mask = 0; mask < (1 << items.size()); mask++) {
-        int w = 0;
-        long long v = 0;
-        for (size_t i = 0; i < items.size(); i++) if (mask >> i & 1) w += items[i].first, v += items[i].second;
-        if (w <= W) best = max(best, v);
-    }
-    return best;
+long long brute(const vector<int>& h, int k, int i = 0) {  // every jump sequence
+    if (i == (int)h.size() - 1) return 0;
+    long long r = LLONG_MAX;
+    for (int j = i + 1; j <= min((int)h.size() - 1, i + k); j++) r = min(r, abs(h[j] - h[i]) + brute(h, k, j));
+    return r;
 }
 int main() {
-    vector<pair<int, long long>> items = {{3, 30}, {4, 50}, {5, 60}};
-    auto row = knapsackRow(items, 8);
-    cout << "best value for the capacities 0..8:";
-    for (long long x : row) cout << ' ' << x;
-    cout << '\n';
-    mt19937 rng(21);
+    vector<int> h = {10, 30, 40, 20};
+    auto best = frogBest(h, 2);
+    cout << "best for the heights 10 30 40 20:";
+    for (long long b : best) cout << ' ' << b;
+    cout << " (the answer is " << best.back() << ")\n";
+    mt19937 rng(8);
     for (int round = 0; round < 300; round++) {
-        int n = 1 + rng() % 8, W = rng() % 20;
-        vector<pair<int, long long>> it(n);
-        for (auto& [w, v] : it) w = 1 + rng() % 8, v = 1 + rng() % 30;
-        if (knapsackRow(it, W)[W] != brute(it, W)) return 1;
+        int n = 1 + rng() % 9, k = 1 + rng() % 3;
+        vector<int> g(n);
+        for (int& x : g) x = 1 + rng() % 20;
+        if (frogBest(g, k).back() != brute(g, k)) return 1;
     }
 }

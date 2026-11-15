@@ -2,50 +2,80 @@
 using namespace std;
 
 /*
-Problem: AtCoder Educational DP Contest, task W, Intervals. A string of N bits (each 0 or 1) is chosen. There are M intervals
-(l_i, r_i, a_i): if the string has at least one 1 among the positions l_i..r_i, the reward a_i (possibly negative) is added. Print the
-largest total reward over all strings. (N, M up to 2·10^5, |a_i| up to 10^9.)
-Input: N and M, then M lines "l r a".
+Problem: CSES 1686, Coin Collector. A game has n rooms and m one-way tunnels (n up to 10^5, m up to 2·10^5), and every room has some
+coins (up to 10^9). Moving through the tunnels, starting and ending in any rooms, what is the largest number of coins you can collect?
+(A room's coins are taken the first time you are in it; rooms may be visited again.)
+Input: n, m, the n coin numbers, then the tunnels "a b".
+Output: the number (it needs 64 bits).
 */
 
-// Theorem 7.3.4: range add, range maximum (the add at a node is not pushed down).
-struct AddMax {
-    vector<long long> mx, add;
-    AddMax(int n) : mx(4 * n, 0), add(4 * n, 0) {}
-    void update(int v, int lo, int hi, int l, int r, long long x) {
-        if (r < lo || hi < l) return;
-        if (l <= lo && hi <= r) { mx[v] += x, add[v] += x; return; }
-        int mid = (lo + hi) / 2;
-        update(2 * v, lo, mid, l, r, x), update(2 * v + 1, mid + 1, hi, l, r, x);
-        mx[v] = max(mx[2 * v], mx[2 * v + 1]) + add[v];
+int stronglyConnected(const vector<vector<int>>& out, vector<int>& comp) {
+    int n = out.size(), comps = 0;
+    vector<vector<int>> in(n);
+    for (int v = 0; v < n; v++)
+        for (int u : out[v]) in[u].push_back(v);
+    vector<int> finish, next(n, 0), stack;
+    vector<char> seen(n, 0);
+    for (int s = 0; s < n; s++) {  // first pass: the order of finishing on the graph
+        if (seen[s]) continue;
+        seen[s] = 1, stack = {s};
+        while (!stack.empty()) {
+            int v = stack.back();
+            if (next[v] < (int)out[v].size()) {
+                int u = out[v][next[v]++];
+                if (!seen[u]) seen[u] = 1, stack.push_back(u);
+            } else finish.push_back(v), stack.pop_back();
+        }
     }
-    long long query(int v, int lo, int hi, int l, int r) {
-        if (r < lo || hi < l) return LLONG_MIN / 2;
-        if (l <= lo && hi <= r) return mx[v];
-        int mid = (lo + hi) / 2;
-        return max(query(2 * v, lo, mid, l, r), query(2 * v + 1, mid + 1, hi, l, r)) + add[v];
+    comp.assign(n, -1);
+    for (int i = n - 1; i >= 0; i--) {  // second pass on the reversed graph, last finished first
+        int s = finish[i];
+        if (comp[s] >= 0) continue;
+        comp[s] = comps, stack = {s};
+        while (!stack.empty()) {
+            int v = stack.back();
+            stack.pop_back();
+            for (int u : in[v])
+                if (comp[u] < 0) comp[u] = comps, stack.push_back(u);
+        }
+        comps++;
     }
-};
+    return comps;
+}
 
 // snippet:begin
-// Theorem 7.3.4: f[j] = the best total when the last 1 so far is at position j (0: none). A 1 at position i starts the state i from the
-// best state before it; an interval (l, r, a) with r = i adds a to the states l..i (their last 1 lies inside the interval).
-long long bestString(int n, vector<array<long long, 3>> intervals) {
-    sort(intervals.begin(), intervals.end(), [](auto& x, auto& y) { return x[1] < y[1]; });
-    AddMax f(n + 1);
-    size_t p = 0;
-    for (int i = 1; i <= n; i++) {
-        f.update(1, 0, n, i, i, f.query(1, 0, n, 0, i - 1));
-        for (; p < intervals.size() && intervals[p][1] == i; p++) f.update(1, 0, n, intervals[p][0], i, intervals[p][2]);
+// Theorem 7.3.3: the rooms of one strongly connected component can all be visited, so a component counts as one room with the sum of
+// its coins; the components form a DAG, numbered here in topological order. best[c] = total[c] + the best of the components before c
+// that have a tunnel into c.
+long long collectCoins(const vector<vector<int>>& out, const vector<long long>& coins) {
+    int n = out.size();
+    vector<int> comp;
+    int comps = stronglyConnected(out, comp);
+    vector<long long> total(comps, 0), best(comps, 0);
+    vector<vector<int>> from(comps);
+    for (int v = 0; v < n; v++) {
+        total[comp[v]] += coins[v];
+        for (int u : out[v])
+            if (comp[u] != comp[v]) from[comp[u]].push_back(comp[v]);
     }
-    return f.query(1, 0, n, 0, n);
+    for (int c = 0; c < comps; c++) {
+        for (int p : from[c]) best[c] = max(best[c], best[p]);
+        best[c] += total[c];
+    }
+    return *max_element(best.begin(), best.end());
 }
 // snippet:end
 
 int main() {
     int n, m;
     cin >> n >> m;
-    vector<array<long long, 3>> intervals(m);
-    for (auto& iv : intervals) cin >> iv[0] >> iv[1] >> iv[2];
-    cout << bestString(n, intervals) << "\n";
+    vector<long long> coins(n);
+    for (auto& x : coins) cin >> x;
+    vector<vector<int>> out(n);
+    for (int i = 0; i < m; i++) {
+        int a, b;
+        cin >> a >> b;
+        out[a - 1].push_back(b - 1);
+    }
+    cout << collectCoins(out, coins) << "\n";
 }

@@ -8,11 +8,11 @@ int main(int argc, char** argv) {
     }
     mt19937 rng(atoi(argv[1]));
     auto randInt = [&](long long lo, long long hi) { return (long long)(rng() % (unsigned long long)(hi - lo + 1)) + lo; };
-    int n = randInt(2, 7);
-    bool big = randInt(0, 3) == 0;
-    vector<int> p(n);
-    iota(p.begin(), p.end(), 1);
-    shuffle(p.begin(), p.end(), rng);
-    cout << n << "\n";
-    for (int i = 1; i < n; i++) cout << p[i] << " " << p[randInt(0, i - 1)] << " " << (big ? randInt(900000000, 1000000000) : randInt(1, 9)) << "\n";
+    int n = randInt(2, 7), possible = n * (n - 1) / 2;
+    int m = randInt(0, min(possible, 10));
+    vector<pair<int, int>> all;
+    for (int a = 1; a <= n; a++) for (int b = a + 1; b <= n; b++) all.push_back({a, b});
+    shuffle(all.begin(), all.end(), rng);
+    cout << n << " " << m << "\n";
+    for (int i = 0; i < m; i++) cout << all[i].first << " " << all[i].second << "\n";
 }

@@ -2,20 +2,17 @@
 using namespace std;
 
 int main() {
-    int H, W, M;
-    cin >> H >> W >> M;
-    set<pair<int, int>> has;
-    for (int i = 0; i < M; i++) {
-        int r, c;
-        cin >> r >> c;
-        has.insert({r, c});
-    }
-    int best = 0;
-    for (int r = 1; r <= H; r++)
-        for (int c = 1; c <= W; c++) {
-            int cnt = 0;
-            for (auto [a, b] : has) cnt += (a == r || b == c);
-            best = max(best, cnt);
+    int n, k;
+    cin >> n >> k;
+    vector<int> p(n);
+    iota(p.begin(), p.end(), 1);
+    do {
+        set<int> differences;
+        for (int i = 0; i + 1 < n; i++) differences.insert(abs(p[i] - p[i + 1]));
+        if ((int)differences.size() == k) {
+            cout << "OK\n";
+            return 0;
         }
-    cout << best << "\n";
+    } while (next_permutation(p.begin(), p.end()));
+    cout << "NONE\n";
 }

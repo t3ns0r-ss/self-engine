@@ -2,66 +2,68 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 5.4.2. Blocks of B positions, each with a sorted copy of its values.
-struct SortedBlocks {
-    int n, B;
-    vector<int> a;
-    vector<vector<int>> sorted;
-    SortedBlocks(const vector<int>& v, int block) : n(v.size()), B(block), a(v), sorted((v.size() + block - 1) / block) {
-        for (int i = 0; i < n; i++) sorted[i / B].push_back(a[i]);
-        for (auto& s : sorted) sort(s.begin(), s.end());
+// Theorem 5.4.2. A counted-cover tree over the gaps 0 .. m-1; gap g has length width[g].
+// add(l, r, d) adds d (+1 or -1) to the gaps l .. r-1; covered() is the total length of the gaps with a positive count.
+struct CoverTree {
+    int m;
+    vector<int> count;               // intervals placed exactly at this node (never pushed down)
+    vector<long long> whole, inside;  // whole length of the node; covered length by intervals at or below the node
+    CoverTree(const vector<long long>& width) : m(width.size()), count(4 * m), whole(4 * m), inside(4 * m) { build(1, 0, m, width); }
+    void build(int v, int lo, int hi, const vector<long long>& width) {  // the node covers gaps lo .. hi-1
+        if (hi - lo == 1) { whole[v] = width[lo]; return; }
+        int mid = (lo + hi) / 2;
+        build(2 * v, lo, mid, width), build(2 * v + 1, mid, hi, width);
+        whole[v] = whole[2 * v] + whole[2 * v + 1];
     }
-    int countLess(int l, int r, int x) const {  // positions l..r with a[i] < x
-        int cnt = 0;
-        for (int i = l; i <= r;) {
-            int b = i / B, last = min(n, (b + 1) * B) - 1;
-            if (i == b * B && last <= r) cnt += lower_bound(sorted[b].begin(), sorted[b].end(), x) - sorted[b].begin(), i = last + 1;
-            else cnt += a[i] < x, i++;
-        }
-        return cnt;
+    void add(int v, int lo, int hi, int l, int r, int d) {
+        if (r <= lo || hi <= l) return;
+        if (l <= lo && hi <= r) count[v] += d;  // the interval is placed here
+        else add(2 * v, lo, (lo + hi) / 2, l, r, d), add(2 * v + 1, (lo + hi) / 2, hi, l, r, d);
+        inside[v] = count[v] > 0 ? whole[v] : (hi - lo == 1 ? 0 : inside[2 * v] + inside[2 * v + 1]);
     }
-    void set(int i, int x) {  // replace one value: fix the sorted copy of its block
-        auto& s = sorted[i / B];
-        s.erase(lower_bound(s.begin(), s.end(), a[i]));
-        s.insert(upper_bound(s.begin(), s.end(), x), x);
-        a[i] = x;
-    }
+    void add(int l, int r, int d) { add(1, 0, m, l, r, d); }
+    long long covered() const { return inside[1]; }
 };
 // snippet:end
 
 int main() {
-    vector<int> v = {5, 2, 8, 1, 9, 3, 7, 4, 6};
-    SortedBlocks s(v, 3);
-    cout << "block copies:";
-    for (auto& b : s.sorted) {
-        cout << " [";
-        for (size_t i = 0; i < b.size(); i++) cout << (i ? " " : "") << b[i];
-        cout << "]";
-    }
-    cout << "\n";
-    cout << "less than 5 in [1..7] = " << s.countLess(1, 7, 5) << "\n";
-    s.set(4, 0);
-    cout << "after a[4] = 0: less than 5 in [1..7] = " << s.countLess(1, 7, 5) << ", less than 5 in [3..5] = " << s.countLess(3, 5, 5) << "\n";
-    // Check against: counting by a loop, on random operations, for several block sizes and every n up to 30.
-    mt19937 rng(4);
-    for (int n = 1; n <= 30; n++)
-        for (int block : {1, 2, 3, 5, 7})
-            for (int round = 0; round < 40; round++) {
-                vector<int> w(n);
-                for (auto& x : w) x = rng() % 10;
-                SortedBlocks t(w, block);
-                for (int op = 0; op < 20; op++) {
-                    if (rng() % 2) {
-                        int i = rng() % n, x = rng() % 10;
-                        t.set(i, x);
-                        w[i] = x;
-                    } else {
-                        int l = rng() % n, r = rng() % n, x = rng() % 11;
-                        if (l > r) swap(l, r);
-                        int want = 0;
-                        for (int i = l; i <= r; i++) want += w[i] < x;
-                        if (t.countLess(l, r, x) != want) return 1;
-                    }
-                }
+    // Gap widths 1, 2, 3, 4 (total 10).
+    CoverTree t({1, 2, 3, 4});
+    cout << "gap widths 1, 2, 3, 4 (covered length after each change)\n";
+    t.add(0, 2, +1);
+    cout << "add gaps 0-1: " << t.covered() << "\n";
+    t.add(1, 3, +1);
+    cout << "then add gaps 1-2: " << t.covered() << "\n";
+    t.add(0, 2, -1);
+    cout << "then remove gaps 0-1: " << t.covered() << "\n";
+    t.add(1, 3, -1);
+    cout << "then remove gaps 1-2: " << t.covered() << "\n";
+    // Check against a plain count per gap on random sequences; a removal repeats an earlier interval.
+    mt19937 rng(12345);
+    for (int round = 0; round < 3000; round++) {
+        int m = rng() % 7 + 1;
+        vector<long long> width(m);
+        for (auto& w : width) w = rng() % 5 + 1;
+        CoverTree tree(width);
+        vector<int> plain(m, 0);
+        vector<pair<int, int>> active;
+        for (int step = 0; step < 30; step++) {
+            if (!active.empty() && rng() % 3 == 0) {
+                int k = rng() % active.size();
+                auto [l, r] = active[k];
+                active.erase(active.begin() + k);
+                tree.add(l, r, -1);
+                for (int g = l; g < r; g++) plain[g]--;
+            } else {
+                int l = rng() % m, r = l + 1 + rng() % (m - l);
+                active.push_back({l, r});
+                tree.add(l, r, +1);
+                for (int g = l; g < r; g++) plain[g]++;
             }
+            long long want = 0;
+            for (int g = 0; g < m; g++)
+                if (plain[g] > 0) want += width[g];
+            if (tree.covered() != want) return 1;
+        }
+    }
 }

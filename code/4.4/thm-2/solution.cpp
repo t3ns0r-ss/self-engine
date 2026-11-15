@@ -1,73 +1,66 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// The structure of Theorem 4.4.1.
-struct Dsu {
-    vector<int> parent, size;
-    Dsu(int n) : parent(n), size(n, 1) { iota(parent.begin(), parent.end(), 0); }
-    int find(int x) {
-        while (parent[x] != x) parent[x] = parent[parent[x]], x = parent[x];
-        return x;
-    }
-    bool unite(int a, int b) {
-        a = find(a), b = find(b);
-        if (a == b) return false;
-        if (size[a] < size[b]) swap(a, b);
-        parent[b] = a;
-        size[a] += size[b];
-        return true;
-    }
-};
-
 // snippet:begin
-// Theorem 4.4.2. Edges 0..m-1 (pairs of vertices 0..n-1) are removed in this order. Returns the number of groups of vertices
-// after 0, 1, ..., m removals, by adding the edges back in reverse order.
-vector<int> groupsAfterRemovals(int n, const vector<pair<int, int>>& edges) {
-    int m = edges.size();
-    vector<int> groups(m + 1);
-    Dsu dsu(n);
-    int count = n;  // nothing is left after all m removals: n groups
-    for (int i = m; i >= 1; i--) {
-        groups[i] = count;  // the state after i removals: edges i..m-1 are present, and they have all been added
-        if (dsu.unite(edges[i - 1].first, edges[i - 1].second)) count--;  // add edge i-1 back: the state after i-1 removals
+// Theorem 4.4.2. Cheapest route from 1 to n when ONE edge may be used for free. The state is (vertex, free edge already used),
+// and Dijkstra runs on these pairs; edges are {to, weight}.
+long long cheapestWithOneFreeEdge(const vector<vector<pair<int, long long>>>& adj) {
+    int n = adj.size() - 1;
+    const long long INF = LLONG_MAX / 4;
+    vector<array<long long, 2>> dist(n + 1, {INF, INF});
+    priority_queue<tuple<long long, int, int>, vector<tuple<long long, int, int>>, greater<>> heap;  // (distance, vertex, used)
+    dist[1][0] = 0;
+    heap.push({0, 1, 0});
+    while (!heap.empty()) {
+        auto [d, u, used] = heap.top();
+        heap.pop();
+        if (d > dist[u][used]) continue;
+        for (auto [v, w] : adj[u]) {
+            if (d + w < dist[v][used]) dist[v][used] = d + w, heap.push({d + w, v, used});  // pay for the edge
+            if (!used && d < dist[v][1]) dist[v][1] = d, heap.push({d, v, 1});              // or use the free edge now
+        }
     }
-    groups[0] = count;
-    return groups;
+    return min(dist[n][0], dist[n][1]);
 }
 // snippet:end
 
 int main() {
-    auto show = [](const vector<int>& g) {
-        string s;
-        for (int x : g) s += to_string(x) + " ";
-        return s;
-    };
-    cout << "path 0-1-2, edges 0-1 then 1-2: " << show(groupsAfterRemovals(3, {{0, 1}, {1, 2}})) << "\n";
-    cout << "triangle, edges 0-1, 1-2, 0-2: " << show(groupsAfterRemovals(3, {{0, 1}, {1, 2}, {0, 2}})) << "\n";
-    cout << "no edges on 2 vertices: " << show(groupsAfterRemovals(2, {})) << "\n";
-    // Check against: after each removal, count the groups again by a walk over the edges that are left.
-    mt19937 rng(4402);
-    for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 7 + 1, m = n > 1 ? rng() % 9 : 0;
-        vector<pair<int, int>> edges;
-        for (int i = 0; i < m; i++) edges.push_back({(int)(rng() % n), (int)(rng() % n)});
-        auto got = groupsAfterRemovals(n, edges);
-        for (int removed = 0; removed <= m; removed++) {
-            vector<int> label(n);
-            iota(label.begin(), label.end(), 0);
-            for (bool changed = true; changed;) {
-                changed = false;
-                for (int i = removed; i < m; i++) {
-                    int a = label[edges[i].first], b = label[edges[i].second];
-                    if (a != b) {
-                        int lo = min(a, b);
-                        for (int& x : label) if (x == a || x == b) x = lo;
-                        changed = true;
-                    }
-                }
-            }
-            set<int> distinct(label.begin(), label.end());
-            if ((int)distinct.size() != got[removed]) return 1;
+    auto run = [&](int n, vector<array<long long, 3>> edges) {
+        vector<vector<pair<int, long long>>> adj(n + 1);
+        for (auto [a, b, w] : edges) {
+            adj[a].push_back({(int)b, w});
+            adj[b].push_back({(int)a, w});
         }
+        return cheapestWithOneFreeEdge(adj);
+    };
+    cout << "path 1-2 (4), 2-3 (6): " << run(3, {{1, 2, 4}, {2, 3, 6}}) << "\n";
+    cout << "edges 1-2 (5), 2-4 (5), 1-3 (2), 3-4 (9): " << run(4, {{1, 2, 5}, {2, 4, 5}, {1, 3, 2}, {3, 4, 9}}) << "\n";
+    cout << "one vertex: " << run(1, {}) << "\n";
+    // Check against: free each edge in turn, run a plain shortest-path search, take the best (also without any free edge).
+    mt19937 rng(31337);
+    const long long INF = LLONG_MAX / 4;
+    for (int trial = 0; trial < 20000; trial++) {
+        int n = rng() % 6 + 1;
+        vector<array<long long, 3>> edges;
+        int count = rng() % 10;
+        for (int i = 0; i < count && n > 1; i++) {
+            int a = rng() % n + 1, b = rng() % n + 1;
+            if (a != b) edges.push_back({a, b, (long long)(rng() % 10)});
+        }
+        auto plain = [&](int freeEdge) {
+            vector<long long> best(n + 1, INF);
+            best[1] = 0;
+            for (int round = 0; round < n; round++)
+                for (size_t i = 0; i < edges.size(); i++) {
+                    auto [a, b, w] = edges[i];
+                    if ((int)i == freeEdge) w = 0;
+                    if (best[a] < INF && best[a] + w < best[b]) best[b] = best[a] + w;
+                    if (best[b] < INF && best[b] + w < best[a]) best[a] = best[b] + w;
+                }
+            return best[n];
+        };
+        long long expected = plain(-1);
+        for (size_t i = 0; i < edges.size(); i++) expected = min(expected, plain(i));
+        if (run(n, edges) != expected) return 1;
     }
 }

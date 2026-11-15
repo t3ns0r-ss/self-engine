@@ -2,28 +2,35 @@
 using namespace std;
 
 /*
-Problem: LeetCode 810, Chalkboard XOR Game. The numbers nums[i] (up to 1000 of them) are on a board. Alice and Bob take turns, Alice first;
-a move erases one number. A player loses if erasing a number makes the xor of the remaining numbers 0. If the xor of all numbers is 0 at the
-start of a player's turn, that player wins. Print true if Alice wins with optimal play, and false otherwise.
-Input: n, then the n numbers.
+Problem: LeetCode 871, Minimum Number of Refueling Stops. A car starts with startFuel units of fuel and drives to a target at distance
+`target`; one unit of fuel is used for one unit of distance. Station i is at distance position_i and has fuel_i units (all taken at a
+stop). Print the fewest stops needed to reach the target, or -1. (Up to 500 stations in the original; here any number.)
+Input: target, startFuel and n, then n lines "position fuel".
 */
 
 
 // snippet:begin
-// Theorem 7.5.2 (a game like Nim, decided by a parity): Alice wins if the xor is 0 at the start. Otherwise, with an even number of numbers
-// she wins: she can always erase a number that keeps the xor non-zero (the numbers cannot all be equal to the xor, since their count is
-// even), and the last move then falls on Bob. With an odd number of numbers she loses.
-bool aliceWins(const vector<int>& nums) {
-    int x = 0;
-    for (int v : nums) x ^= v;
-    return x == 0 || nums.size() % 2 == 0;
+// Theorem 7.5.2: drive as far as the fuel reaches; the stations passed go into a heap of fuels. When the target is not reached, take the
+// largest fuel in the heap (as if the car had stopped there), until the target is reached or the heap is empty.
+int minRefuelStops(int target, int startFuel, vector<pair<int, int>> stations) {
+    sort(stations.begin(), stations.end());
+    priority_queue<int> passed;
+    long long reach = startFuel;
+    int stops = 0;
+    size_t next = 0;
+    while (reach < target) {
+        while (next < stations.size() && stations[next].first <= reach) passed.push(stations[next++].second);
+        if (passed.empty()) return -1;
+        reach += passed.top(), passed.pop(), stops++;
+    }
+    return stops;
 }
 // snippet:end
 
 int main() {
-    int n;
-    cin >> n;
-    vector<int> nums(n);
-    for (int& v : nums) cin >> v;
-    cout << (aliceWins(nums) ? "true" : "false") << "\n";
+    int target, startFuel, n;
+    cin >> target >> startFuel >> n;
+    vector<pair<int, int>> stations(n);
+    for (auto& [p, f] : stations) cin >> p >> f;
+    cout << minRefuelStops(target, startFuel, stations) << "\n";
 }

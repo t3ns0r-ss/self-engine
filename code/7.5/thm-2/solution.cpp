@@ -3,50 +3,50 @@ using namespace std;
 
 
 // snippet:begin
-// Theorem 7.5.2. Nim: remove any positive number of stones from one pile; the player who cannot move loses. The position is lost for the
-// player to move exactly when the xor of the pile sizes is 0. From a non-zero xor s, take the pile that has the highest bit of s and cut
-// it to (size xor s): the new xor is 0. Returns the (pile, new size) of such a move, or (-1, -1) if the xor is 0.
-pair<int, int> winningMove(const vector<int>& piles) {
-    int s = 0;
-    for (int x : piles) s ^= x;
-    if (s == 0) return {-1, -1};
-    int bit = 1 << (31 - __builtin_clz(s));  // the highest bit of s
-    for (size_t i = 0; i < piles.size(); i++)
-        if (piles[i] & bit) return {(int)i, piles[i] ^ s};
-    return {-1, -1};  // not reached
+// Theorem 7.5.2. Stations (position, fuel); the tank holds startFuel at the start and the target is at `target`. Drive as far as the fuel
+// reaches; the stations passed go into a heap of fuels, and when the target is not reached, the largest fuel in the heap is taken,
+// as if the car had stopped at that station on the way. Returns the fewest stops, or -1.
+int fewestStops(int target, int startFuel, vector<pair<int, int>> stations) {
+    sort(stations.begin(), stations.end());
+    priority_queue<int> passed;
+    long long reach = startFuel;
+    int stops = 0;
+    size_t next = 0;
+    while (reach < target) {
+        while (next < stations.size() && stations[next].first <= reach) passed.push(stations[next++].second);
+        if (passed.empty()) return -1;
+        reach += passed.top(), passed.pop(), stops++;
+    }
+    return stops;
 }
 // snippet:end
 
-map<vector<int>, bool> memo;
-bool bruteWin(vector<int> piles) {  // the player to move wins? a search over all positions
-    sort(piles.begin(), piles.end());
-    auto it = memo.find(piles);
-    if (it != memo.end()) return it->second;
-    bool win = false;
-    for (size_t i = 0; i < piles.size() && !win; i++)
-        for (int take = 1; take <= piles[i] && !win; take++) {
-            vector<int> next = piles;
-            next[i] -= take;
-            win = !bruteWin(next);
-        }
-    return memo[piles] = win;
+int bruteStops(int target, int startFuel, vector<pair<int, int>> stations) {  // every subset, used in the order of the positions
+    sort(stations.begin(), stations.end());
+    int n = stations.size(), best = -1;
+    for (int mask = 0; mask < (1 << n); mask++) {
+        long long reach = startFuel;
+        bool ok = true;
+        for (int i = 0; i < n; i++)
+            if (mask >> i & 1) {
+                ok &= stations[i].first <= reach;
+                reach += stations[i].second;
+            }
+        if (ok && reach >= target && (best < 0 || __builtin_popcount(mask) < best)) best = __builtin_popcount(mask);
+    }
+    return best;
 }
 
 int main() {
-    for (auto piles : vector<vector<int>>{{3, 4, 5}, {1, 2, 3}}) {
-        auto [i, to] = winningMove(piles);
-        if (i < 0) cout << "piles 1 2 3: the player to move loses\n";
-        else cout << "piles 3 4 5: take from the pile " << i << ", leave " << to << "\n";
-    }
-    // Check (not printed): all positions of up to 4 piles with sizes up to 5: the winner is decided by the xor, and the move leads to xor 0.
-    for (int mask = 0; mask < 6 * 6 * 6 * 6; mask++) {
-        vector<int> p = {mask % 6, mask / 6 % 6, mask / 36 % 6, mask / 216};
-        auto [i, to] = winningMove(p);
-        if ((i >= 0) != bruteWin(p)) return 1;
-        if (i >= 0) {
-            if (to >= p[i]) return 1;
-            p[i] = to;
-            if (bruteWin(p)) return 1;
-        }
+    cout << "stops 1: " << fewestStops(100, 10, {{10, 60}, {20, 30}, {30, 30}, {60, 40}}) << "\n";
+    cout << "stops 2: " << fewestStops(100, 1, {{10, 100}}) << "\n";
+    cout << "stops 3: " << fewestStops(1, 1, {}) << "\n";
+    // Check (not printed): 3000 random cases of up to 8 stations, against all subsets.
+    mt19937 rng(22);
+    for (int it = 0; it < 3000; it++) {
+        int n = rng() % 8, target = rng() % 30 + 1, start = rng() % 6 + 1;
+        vector<pair<int, int>> s(n);
+        for (auto& [p, f] : s) p = rng() % 20 + 1, f = rng() % 9 + 1;
+        if (fewestStops(target, start, s) != bruteStops(target, start, s)) return 1;
     }
 }

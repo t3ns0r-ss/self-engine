@@ -10,11 +10,8 @@ int main(int argc, char** argv) {
     auto randInt = [&](int lo, int hi) {
         return (int)(rng() % (unsigned)(hi - lo + 1)) + lo;
     };
-    int n = randInt(2, 8), hi = (randInt(0, 1) == 0) ? 24 : 1000000000;
-    set<int> s;
-    while ((int)s.size() < n) s.insert(randInt(1, hi));
-    vector<int> v(s.begin(), s.end());
-    shuffle(v.begin(), v.end(), rng);
-    cout << n << "\n";
-    for (int i = 0; i < n; i++) cout << v[i] << (i + 1 < n ? " " : "\n");
+    int n = randInt(1, 14), letters = randInt(1, 3);
+    string s;
+    for (int i = 0; i < n; i++) s += char('a' + randInt(0, letters - 1));
+    cout << s << "\n";
 }

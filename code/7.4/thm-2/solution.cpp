@@ -3,50 +3,48 @@ using namespace std;
 
 
 // snippet:begin
-// Theorem 7.4.2. Stations (position, fuel); the tank holds startFuel at the start and the target is at `target`. Drive as far as the fuel
-// reaches; the stations passed go into a heap of fuels, and when the target is not reached, the largest fuel in the heap is taken,
-// as if the car had stopped at that station on the way. Returns the fewest stops, or -1.
-int fewestStops(int target, int startFuel, vector<pair<int, int>> stations) {
-    sort(stations.begin(), stations.end());
-    priority_queue<int> passed;
-    long long reach = startFuel;
-    int stops = 0;
-    size_t next = 0;
-    while (reach < target) {
-        while (next < stations.size() && stations[next].first <= reach) passed.push(stations[next++].second);
-        if (passed.empty()) return -1;
-        reach += passed.top(), passed.pop(), stops++;
+// Theorem 7.4.2. dp[i] = a[i] + max(0, max dp[j] over the window i-k <= j <= i-1). The deque holds indices of the window with
+// decreasing dp from front to back, so the front is the maximum; an index behind a later, not smaller one is never the maximum.
+vector<long long> windowBest(const vector<long long>& a, int k) {
+    int n = a.size();
+    vector<long long> dp(n);
+    deque<int> window;
+    for (int i = 0; i < n; i++) {
+        while (!window.empty() && window.front() < i - k) window.pop_front();  // left the window
+        dp[i] = a[i] + (window.empty() ? 0 : max(0LL, dp[window.front()]));
+        while (!window.empty() && dp[window.back()] <= dp[i]) window.pop_back();
+        window.push_back(i);
     }
-    return stops;
+    return dp;
 }
 // snippet:end
 
-int bruteStops(int target, int startFuel, vector<pair<int, int>> stations) {  // every subset, used in the order of the positions
-    sort(stations.begin(), stations.end());
-    int n = stations.size(), best = -1;
-    for (int mask = 0; mask < (1 << n); mask++) {
-        long long reach = startFuel;
-        bool ok = true;
-        for (int i = 0; i < n; i++)
-            if (mask >> i & 1) {
-                ok &= stations[i].first <= reach;
-                reach += stations[i].second;
-            }
-        if (ok && reach >= target && (best < 0 || __builtin_popcount(mask) < best)) best = __builtin_popcount(mask);
+vector<long long> bruteWindow(const vector<long long>& a, int k) {
+    int n = a.size();
+    vector<long long> dp(n);
+    for (int i = 0; i < n; i++) {
+        long long best = 0;
+        for (int j = max(0, i - k); j < i; j++) best = max(best, dp[j]);
+        dp[i] = a[i] + best;
     }
-    return best;
+    return dp;
 }
 
 int main() {
-    cout << "stops 1: " << fewestStops(100, 10, {{10, 60}, {20, 30}, {30, 30}, {60, 40}}) << "\n";
-    cout << "stops 2: " << fewestStops(100, 1, {{10, 100}}) << "\n";
-    cout << "stops 3: " << fewestStops(1, 1, {}) << "\n";
-    // Check (not printed): 3000 random cases of up to 8 stations, against all subsets.
-    mt19937 rng(22);
+    auto show = [](const vector<long long>& a, int k) {
+        auto dp = windowBest(a, k);
+        cout << "dp:";
+        for (long long x : dp) cout << " " << x;
+        cout << "\nmost: " << *max_element(dp.begin(), dp.end()) << "\n";
+    };
+    show({10, 2, -10, 5, 20}, 2);
+    show({-1, -2, -3}, 1);
+    // Check (not printed): 3000 random arrays of up to 10 numbers and every window size, against the O(nk) definition.
+    mt19937 rng(12);
     for (int it = 0; it < 3000; it++) {
-        int n = rng() % 8, target = rng() % 30 + 1, start = rng() % 6 + 1;
-        vector<pair<int, int>> s(n);
-        for (auto& [p, f] : s) p = rng() % 20 + 1, f = rng() % 9 + 1;
-        if (fewestStops(target, start, s) != bruteStops(target, start, s)) return 1;
+        int n = rng() % 10 + 1, k = rng() % n + 1;
+        vector<long long> a(n);
+        for (auto& x : a) x = (long long)(rng() % 21) - 10;
+        if (windowBest(a, k) != bruteWindow(a, k)) return 1;
     }
 }

@@ -2,80 +2,70 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.5.1. Walk a tree from the root: the visit order (every vertex after its parent), parent[root] = 0, and the depths.
-struct Rooted {
-    vector<int> order, parent, depth;
-};
-Rooted rootAt(const vector<vector<int>>& adj, int root) {
-    int n = adj.size() - 1;
-    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
-    vector<int> stack = {root};
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        t.order.push_back(u);
-        for (int v : adj[u])
-            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
-                t.parent[v] = u;
-                t.depth[v] = t.depth[u] + 1;
-                stack.push_back(v);
-            }
+// Theorem 4.5.1. Disjoint set union with union by size and path halving. Vertices are 0..n-1.
+struct Dsu {
+    vector<int> parent, size;
+    Dsu(int n) : parent(n), size(n, 1) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) {  // the leader of x's group
+        while (parent[x] != x) {
+            parent[x] = parent[parent[x]];  // jump over the parent: the path gets shorter
+            x = parent[x];
+        }
+        return x;
     }
-    return t;
-}
+    bool unite(int a, int b) {  // true if a and b were in different groups
+        a = find(a), b = find(b);
+        if (a == b) return false;
+        if (size[a] < size[b]) swap(a, b);
+        parent[b] = a;  // the smaller group goes under the larger one
+        size[a] += size[b];
+        return true;
+    }
+};
 // snippet:end
 
 int main() {
     {
-        vector<vector<int>> adj(6);
-        auto edge = [&](int a, int b) { adj[a].push_back(b), adj[b].push_back(a); };
-        edge(1, 2), edge(1, 3), edge(3, 4), edge(3, 5);
-        auto t = rootAt(adj, 1);
-        cout << "tree 1-2, 1-3, 3-4, 3-5 from 1: order";
-        for (int v : t.order) cout << ' ' << v;
-        cout << "; parent";
-        for (int v = 1; v <= 5; v++) cout << ' ' << t.parent[v];
-        cout << "; depth";
-        for (int v = 1; v <= 5; v++) cout << ' ' << t.depth[v];
-        cout << "\n";
-        auto u = rootAt(adj, 4);
-        cout << "same tree from 4: depth";
-        for (int v = 1; v <= 5; v++) cout << ' ' << u.depth[v];
-        cout << "\n";
+        Dsu d(5);
+        cout << "unite 0-1: " << d.unite(0, 1) << ", unite 2-3: " << d.unite(2, 3) << ", unite 1-0 again: " << d.unite(1, 0) << "\n";
+        cout << "same group 0 and 3: " << (d.find(0) == d.find(3)) << ", unite 1-2: " << d.unite(1, 2) << ", same group 0 and 3: " << (d.find(0) == d.find(3)) << "\n";
+        cout << "size of the group of 3: " << d.size[d.find(3)] << ", of 4: " << d.size[d.find(4)] << "\n";
     }
     {
-        vector<vector<int>> adj(2);
-        auto t = rootAt(adj, 1);
-        cout << "one vertex: order size " << t.order.size() << ", depth " << t.depth[1] << "\n";
+        Dsu d(1 << 10);
+        int successes = 0;
+        for (int step = 1; step < (1 << 10); step *= 2)
+            for (int i = 0; i + step < (1 << 10); i += 2 * step) successes += d.unite(i, i + step);
+        int depth = 0;  // longest chain of parents after merging equal groups: the worst case for the depth
+        for (int v = 0; v < (1 << 10); v++) {
+            int x = v, steps = 0;
+            while (d.parent[x] != x) x = d.parent[x], steps++;
+            depth = max(depth, steps);
+        }
+        cout << "1024 vertices merged pairwise: " << successes << " successful unite calls, longest chain " << depth << " (log2 1024 = 10)\n";
     }
-    // Check against: distances found by relaxing all edges again and again (no walk), on random trees.
-    mt19937 rng(4501);
-    auto randomTree = [](mt19937& rng, int n) {  // vertices 1..n, vertex i hangs under a random earlier one, labels shuffled
-        vector<int> label(n);
-        iota(label.begin(), label.end(), 1);
-        shuffle(label.begin(), label.end(), rng);
-        vector<vector<int>> adj(n + 1);
-        for (int i = 1; i < n; i++) {
-            int a = label[i], b = label[rng() % i];
-            adj[a].push_back(b);
-            adj[b].push_back(a);
-        }
-        return adj;
-    };
+    // Check against a plain labelling: relabel a whole group on each edge.
+    mt19937 rng(4401);
     for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 9 + 1, root = rng() % n + 1;
-        auto adj = randomTree(rng, n);
-        auto t = rootAt(adj, root);
-        if ((int)t.order.size() != n) return 1;
-        vector<int> dist(n + 1, 1000000), seenAt(n + 1, -1);
-        dist[root] = 0;
-        for (int round = 0; round < n; round++)
-            for (int u = 1; u <= n; u++)
-                for (int v : adj[u]) dist[v] = min(dist[v], dist[u] + 1);
-        for (int i = 0; i < n; i++) seenAt[t.order[i]] = i;
-        for (int v = 1; v <= n; v++) {
-            if (t.depth[v] != dist[v]) return 1;
-            if (v != root && (seenAt[t.parent[v]] >= seenAt[v] || t.depth[t.parent[v]] + 1 != t.depth[v])) return 1;
+        int n = rng() % 10 + 1, q = rng() % 20;
+        Dsu d(n);
+        vector<int> label(n);
+        iota(label.begin(), label.end(), 0);
+        int comps = n;
+        for (int i = 0; i < q; i++) {
+            int a = rng() % n, b = rng() % n;
+            bool merged = label[a] != label[b];
+            int from = label[b], to = label[a];
+            for (int v = 0; v < n; v++) if (label[v] == from) label[v] = to;
+            if (merged) comps--;
+            if (d.unite(a, b) != merged) return 1;
         }
+        int groups = 0;
+        for (int v = 0; v < n; v++) {
+            groups += d.find(v) == v;
+            for (int u = 0; u < n; u++) if ((d.find(u) == d.find(v)) != (label[u] == label[v])) return 1;
+            if (d.size[d.find(v)] != (int)count(label.begin(), label.end(), label[v])) return 1;
+        }
+        if (groups != comps) return 1;
     }
 }

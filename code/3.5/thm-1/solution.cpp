@@ -2,39 +2,39 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.5.1. Counting by the last step: the paths to a cell come from the cell above or the cell to the left, and the two
-// groups do not overlap. A blocked cell keeps 0. Returns the whole table.
-vector<vector<long long>> pathTable(const vector<string>& g) {
-    int h = g.size(), w = g[0].size();
-    vector<vector<long long>> cnt(h, vector<long long>(w, 0));
-    for (int r = 0; r < h; r++)
-        for (int c = 0; c < w; c++) {
-            if (g[r][c] == '#') continue;
-            if (r == 0 && c == 0) cnt[r][c] = 1;
-            else cnt[r][c] = (r > 0 ? cnt[r - 1][c] : 0) + (c > 0 ? cnt[r][c - 1] : 0);
-        }
-    return cnt;
+// Theorem 3.5.1. L[i] = 1 + the largest L[j] over earlier positions j with a[j] < a[i]; the LIS length is the maximum.
+vector<int> endingAt(const vector<int>& a) {
+    int n = a.size();
+    vector<int> L(n, 1);
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < i; j++)
+            if (a[j] < a[i]) L[i] = max(L[i], L[j] + 1);
+    return L;
 }
 // snippet:end
 
-long long brute(const vector<string>& g, int r, int c) {
-    if (r < 0 || c < 0 || g[r][c] == '#') return 0;
-    if (r == 0 && c == 0) return 1;
-    return brute(g, r - 1, c) + brute(g, r, c - 1);
+int brute(const vector<int>& a) {
+    int best = 0, n = a.size();
+    for (int mask = 0; mask < (1 << n); mask++) {
+        int last = INT_MIN, len = 0;
+        bool ok = true;
+        for (int i = 0; i < n && ok; i++) if (mask >> i & 1) { if (a[i] <= last) ok = false; last = a[i], len++; }
+        if (ok) best = max(best, len);
+    }
+    return best;
 }
 int main() {
-    vector<string> g = {"....", ".#..", "...."};
-    auto t = pathTable(g);
-    for (auto& row : t) {
-        for (size_t c = 0; c < row.size(); c++) cout << row[c] << (c + 1 < row.size() ? ' ' : '\n');
-    }
-    cout << "paths to the lower-right cell: " << t[2][3] << '\n';
-    mt19937 rng(41);
+    vector<int> a = {3, 1, 4, 1, 5, 9, 2, 6};
+    auto L = endingAt(a);
+    cout << "L for 3 1 4 1 5 9 2 6:";
+    for (int x : L) cout << ' ' << x;
+    cout << ", the LIS length is " << *max_element(L.begin(), L.end()) << '\n';
+    mt19937 rng(31);
     for (int round = 0; round < 300; round++) {
-        int h = 1 + rng() % 5, w = 1 + rng() % 5;
-        vector<string> b(h, string(w, '.'));
-        for (auto& row : b) for (char& ch : row) if (rng() % 4 == 0) ch = '#';
-        b[0][0] = '.';
-        if (pathTable(b)[h - 1][w - 1] != brute(b, h - 1, w - 1)) return 1;
+        int n = 1 + rng() % 11;
+        vector<int> b(n);
+        for (int& x : b) x = rng() % 8;
+        auto l = endingAt(b);
+        if (*max_element(l.begin(), l.end()) != brute(b)) return 1;
     }
 }

@@ -7,11 +7,14 @@ int main(int argc, char** argv) {
         return 1;
     }
     mt19937 rng(atoi(argv[1]));
-    auto randInt = [&](long long lo, long long hi) {
-        return (long long)(rng() % (unsigned long long)(hi - lo + 1)) + lo;
+    auto randInt = [&](int lo, int hi) {
+        return (int)(rng() % (unsigned)(hi - lo + 1)) + lo;
     };
-    int n = randInt(2, 7);
-    long long hi = (randInt(0, 1) == 0) ? 9 : 1000000000;
+    int n = randInt(1, 8), percent = randInt(0, 40);
     cout << n << "\n";
-    for (int i = 0; i < n; i++) cout << randInt(1, hi) << (i + 1 < n ? " " : "\n");
+    for (int r = 0; r < n; r++) {
+        string row;
+        for (int c = 0; c < n; c++) row += (randInt(1, 100) <= percent) ? '*' : '.';
+        cout << row << "\n";
+    }
 }

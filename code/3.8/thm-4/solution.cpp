@@ -2,32 +2,30 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.8.4. Count and total together: each state returns (number of completions, sum of the digit sums over them); putting digit c
-// in front adds c to each of the n completions.
-pair<long long, long long> countAndTotal(long long N) {
-    string digits = to_string(N);
-    int L = digits.size();
-    function<pair<long long, long long>(int, bool)> go = [&](int pos, bool tight) -> pair<long long, long long> {
-        if (pos == L) return {1, 0};
-        int hi = tight ? digits[pos] - '0' : 9;
-        long long count = 0, total = 0;
-        for (int c = 0; c <= hi; c++) {
-            auto [n, t] = go(pos + 1, tight && c == hi);
-            count += n;
-            total += t + c * n;
-        }
-        return {count, total};
-    };
-    return go(0, true);
+// Theorem 3.8.4. The loop visits every non-empty submask of m exactly once, in decreasing order.
+vector<int> submasks(int m) {
+    vector<int> out;
+    for (int s = m; s > 0; s = (s - 1) & m) out.push_back(s);
+    return out;
 }
 // snippet:end
 
 int main() {
-    auto [count, total] = countAndTotal(25);
-    cout << "numbers 0..25: " << count << ", sum of their digit sums " << total << '\n';
-    for (long long n = 0; n <= 2000; n += 17) {
-        long long brute = 0;
-        for (long long x = 0; x <= n; x++) for (long long y = x; y > 0; y /= 10) brute += y % 10;
-        if (countAndTotal(n).second != brute || countAndTotal(n).first != n + 1) return 1;
+    cout << "non-empty submasks of 11:";
+    for (int s : submasks(11)) cout << ' ' << s;
+    cout << '\n';
+    for (int n = 1; n <= 8; n++) {
+        long long pairs = 0;
+        for (int m = 0; m < (1 << n); m++) {
+            auto v = submasks(m);
+            pairs += v.size() + 1;  // plus the empty submask
+            set<int> seen(v.begin(), v.end());
+            if (seen.size() != v.size() || !is_sorted(v.rbegin(), v.rend())) return 1;
+            for (int s : v) if ((s & m) != s) return 1;
+            if ((int)v.size() != (1 << __builtin_popcount(m)) - 1) return 1;
+        }
+        long long three = 1;
+        for (int i = 0; i < n; i++) three *= 3;
+        if (pairs != three) return 1;
     }
 }

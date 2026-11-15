@@ -1,66 +1,37 @@
 /*
-Problem: LeetCode, Critical Connections in a Network.
-Input: n m, then m lines "a b" (servers numbered from 0): the connections. Every server can reach every other.
-Output: the critical connections, one per line "a b", in the order of the input.
+Problem: AtCoder ABC 241 E, Putting Candies.
+Input: N K, then A_0..A_{N-1} (1 <= A_i <= 10^6). A dish starts empty; K times, put A[X mod N] more candies on it, X being the number there.
+Output: the number of candies after K operations (K up to 10^12).
 */
 #include <bits/stdc++.h>
 using namespace std;
 
-using Graph = vector<vector<pair<int, int>>>;
-
-// Theorem 4.7.1. adj[v] holds (neighbour, edge number) pairs, vertices are 1..n, edges 0..m-1 (parallel edges differ); parentEdge is -1 at a root.
-struct LowLink {
-    vector<int> tin, low, parent, parentEdge, order;
-    LowLink(const vector<vector<pair<int, int>>>& adj) {
-        int n = adj.size() - 1, timer = 0;
-        tin.assign(n + 1, -1), low.assign(n + 1, 0), parent.assign(n + 1, 0), parentEdge.assign(n + 1, -1);
-        vector<int> next(n + 1, 0);  // next[v]: how many neighbours of v were looked at
-        for (int root = 1; root <= n; root++) {
-            if (tin[root] != -1) continue;
-            vector<int> stack = {root};
-            tin[root] = low[root] = timer++, order.push_back(root);
-            while (!stack.empty()) {
-                int v = stack.back();
-                if (next[v] < (int)adj[v].size()) {
-                    auto [to, id] = adj[v][next[v]++];
-                    if (id == parentEdge[v]) continue;  // the edge we came by, not a second one to the parent
-                    if (tin[to] != -1) low[v] = min(low[v], tin[to]);  // a back edge
-                    else {
-                        parent[to] = v, parentEdge[to] = id;
-                        tin[to] = low[to] = timer++, order.push_back(to);
-                        stack.push_back(to);
-                    }
-                } else {
-                    stack.pop_back();
-                    if (parent[v]) low[parent[v]] = min(low[parent[v]], low[v]);  // the subtree of v is done
-                }
-            }
-        }
-    }
-};
-
 // snippet:begin
-// Theorem 4.7.2. The edge from a vertex to its parent is a bridge exactly when low[v] > tin[parent]; non-tree edges are never bridges.
-vector<int> findBridges(const Graph& adj) {
-    LowLink L(adj);
-    vector<int> bridges;
-    for (int v = 1; v < (int)adj.size(); v++)
-        if (L.parent[v] && L.low[v] > L.tin[L.parent[v]]) bridges.push_back(L.parentEdge[v]);
-    sort(bridges.begin(), bridges.end());
-    return bridges;
+// Theorem 4.7.4 on pointers. The vertex is X mod N, the next vertex is (X + A) mod N, and the jump of 2^j steps also stores the candies it adds.
+long long candiesAfter(const vector<long long>& A, long long K) {
+    int N = A.size(), levels = 41;  // 2^41 > 10^12
+    vector<vector<int>> next(levels, vector<int>(N));
+    vector<vector<long long>> gain(levels, vector<long long>(N));
+    for (int v = 0; v < N; v++) next[0][v] = (v + A[v]) % N, gain[0][v] = A[v];
+    for (int j = 1; j < levels; j++)
+        for (int v = 0; v < N; v++) {
+            int mid = next[j - 1][v];
+            next[j][v] = next[j - 1][mid];
+            gain[j][v] = gain[j - 1][v] + gain[j - 1][mid];  // the candies of the first half, then of the second half
+        }
+    long long total = 0;
+    int v = 0;
+    for (int j = 0; j < levels; j++)
+        if (K >> j & 1) total += gain[j][v], v = next[j][v];
+    return total;
 }
 // snippet:end
 
 int main() {
-    int n, m;
-    cin >> n >> m;
-    vector<pair<int, int>> edges(m);
-    Graph adj(n + 1);
-    for (int i = 0; i < m; i++) {
-        cin >> edges[i].first >> edges[i].second;
-        edges[i].first++, edges[i].second++;
-        adj[edges[i].first].push_back({edges[i].second, i});
-        adj[edges[i].second].push_back({edges[i].first, i});
-    }
-    for (int e : findBridges(adj)) cout << edges[e].first - 1 << " " << edges[e].second - 1 << "\n";
+    int N;
+    long long K;
+    cin >> N >> K;
+    vector<long long> A(N);
+    for (auto& a : A) cin >> a;
+    cout << candiesAfter(A, K) << "\n";
 }

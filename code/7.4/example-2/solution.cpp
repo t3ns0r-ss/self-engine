@@ -2,35 +2,35 @@
 using namespace std;
 
 /*
-Problem: LeetCode 871, Minimum Number of Refueling Stops. A car starts with startFuel units of fuel and drives to a target at distance
-`target`; one unit of fuel is used for one unit of distance. Station i is at distance position_i and has fuel_i units (all taken at a
-stop). Print the fewest stops needed to reach the target, or -1. (Up to 500 stations in the original; here any number.)
-Input: target, startFuel and n, then n lines "position fuel".
+Problem: LeetCode 1425, Constrained Subsequence Sum. An integer array nums (up to 10^5 numbers, possibly negative) and an integer k.
+Print the largest sum of a non-empty subsequence in which any two consecutive chosen elements nums[i], nums[j] with i < j satisfy
+j - i <= k.
+Input: n and k, then the n numbers.
 */
 
 
 // snippet:begin
-// Theorem 7.4.2: drive as far as the fuel reaches; the stations passed go into a heap of fuels. When the target is not reached, take the
-// largest fuel in the heap (as if the car had stopped there), until the target is reached or the heap is empty.
-int minRefuelStops(int target, int startFuel, vector<pair<int, int>> stations) {
-    sort(stations.begin(), stations.end());
-    priority_queue<int> passed;
-    long long reach = startFuel;
-    int stops = 0;
-    size_t next = 0;
-    while (reach < target) {
-        while (next < stations.size() && stations[next].first <= reach) passed.push(stations[next++].second);
-        if (passed.empty()) return -1;
-        reach += passed.top(), passed.pop(), stops++;
+// Theorem 7.4.2: dp[i] = nums[i] + max(0, max dp[j] over i - k <= j < i); the answer is the largest dp. The deque keeps the window's
+// indices with decreasing dp.
+long long constrainedSum(const vector<long long>& nums, int k) {
+    vector<long long> dp(nums.size());
+    deque<int> window;
+    long long best = LLONG_MIN;
+    for (int i = 0; i < (int)nums.size(); i++) {
+        while (!window.empty() && window.front() < i - k) window.pop_front();
+        dp[i] = nums[i] + (window.empty() ? 0 : max(0LL, dp[window.front()]));
+        while (!window.empty() && dp[window.back()] <= dp[i]) window.pop_back();
+        window.push_back(i);
+        best = max(best, dp[i]);
     }
-    return stops;
+    return best;
 }
 // snippet:end
 
 int main() {
-    int target, startFuel, n;
-    cin >> target >> startFuel >> n;
-    vector<pair<int, int>> stations(n);
-    for (auto& [p, f] : stations) cin >> p >> f;
-    cout << minRefuelStops(target, startFuel, stations) << "\n";
+    int n, k;
+    cin >> n >> k;
+    vector<long long> nums(n);
+    for (long long& x : nums) cin >> x;
+    cout << constrainedSum(nums, k) << "\n";
 }

@@ -1,77 +1,108 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// Ranks 1..m of the values: equal values get equal ranks. Outside the snippet (sorting and unique, topic 1.1).
-int compress(const vector<int>& a, vector<int>& rank) {
-    vector<int> sorted = a;
-    sort(sorted.begin(), sorted.end());
-    sorted.erase(unique(sorted.begin(), sorted.end()), sorted.end());
-    rank.resize(a.size());
-    for (size_t i = 0; i < a.size(); i++) rank[i] = lower_bound(sorted.begin(), sorted.end(), a[i]) - sorted.begin() + 1;
-    return sorted.size();
+int stronglyConnected(const vector<vector<int>>& out, vector<int>& comp) {
+    int n = out.size(), comps = 0;
+    vector<vector<int>> in(n);
+    for (int v = 0; v < n; v++)
+        for (int u : out[v]) in[u].push_back(v);
+    vector<int> finish, next(n, 0), stack;
+    vector<char> seen(n, 0);
+    for (int s = 0; s < n; s++) {  // first pass: the order of finishing on the graph
+        if (seen[s]) continue;
+        seen[s] = 1, stack = {s};
+        while (!stack.empty()) {
+            int v = stack.back();
+            if (next[v] < (int)out[v].size()) {
+                int u = out[v][next[v]++];
+                if (!seen[u]) seen[u] = 1, stack.push_back(u);
+            } else finish.push_back(v), stack.pop_back();
+        }
+    }
+    comp.assign(n, -1);
+    for (int i = n - 1; i >= 0; i--) {  // second pass on the reversed graph, last finished first
+        int s = finish[i];
+        if (comp[s] >= 0) continue;
+        comp[s] = comps, stack = {s};
+        while (!stack.empty()) {
+            int v = stack.back();
+            stack.pop_back();
+            for (int u : in[v])
+                if (comp[u] < 0) comp[u] = comps, stack.push_back(u);
+        }
+        comps++;
+    }
+    return comps;
 }
 
 // snippet:begin
-// Theorem 7.3.3. cnt[i] = 1 + sum of cnt[j] over j < i with a[j] < a[i], modulo MOD: a Fenwick tree of sums over the ranks.
-const long long MOD = 1'000'000'007;
-struct FenwickSum {
-    vector<long long> t;
-    FenwickSum(int n) : t(n + 1, 0) {}
-    void add(int r, long long v) {  // v may be negative (|v| < MOD)
-        for (; r < (int)t.size(); r += r & -r) t[r] = (t[r] + v + MOD) % MOD;
+// Theorem 7.3.3. The most coins collected on a walk that may visit rooms again (coins are taken once). comp[v] is the component of the
+// room v, numbered in a topological order of the condensation, comps is their number.
+long long mostCoins(const vector<vector<int>>& out, const vector<int>& comp, int comps, const vector<long long>& coins) {
+    int n = out.size();
+    vector<long long> total(comps, 0), best(comps, 0);
+    vector<vector<int>> from(comps);  // from[c] = the components with an edge into c
+    for (int v = 0; v < n; v++) {
+        total[comp[v]] += coins[v];
+        for (int u : out[v])
+            if (comp[u] != comp[v]) from[comp[u]].push_back(comp[v]);
     }
-    long long prefix(int r) {
-        long long s = 0;
-        for (; r > 0; r -= r & -r) s += t[r];
-        return s % MOD;
+    for (int c = 0; c < comps; c++) {  // all components before c are finished
+        best[c] = 0;
+        for (int p : from[c]) best[c] = max(best[c], best[p]);
+        best[c] += total[c];
     }
-};
-// The number of non-empty strictly increasing subsequences. With distinct = true a sequence of values is counted once: the
-// value stored for a rank is replaced by the new count (it contains the old one), not added to.
-long long countIncreasing(const vector<int>& rank, int m, bool distinct) {
-    FenwickSum tree(m);
-    vector<long long> stored(m + 1, 0);
-    for (int r : rank) {
-        long long cnt = (1 + tree.prefix(r - 1)) % MOD;
-        tree.add(r, distinct ? cnt - stored[r] : cnt);
-        stored[r] = cnt;
-    }
-    return tree.prefix(m);
+    return *max_element(best.begin(), best.end());
 }
 // snippet:end
 
-long long bruteCount(const vector<int>& a, bool distinct) {
-    int n = a.size();
-    set<vector<int>> seen;
-    long long count = 0;
-    for (int mask = 1; mask < (1 << n); mask++) {
-        vector<int> seq;
-        for (int i = 0; i < n; i++)
-            if (mask >> i & 1) seq.push_back(a[i]);
-        bool ok = true;
-        for (size_t i = 1; i < seq.size(); i++) ok &= seq[i - 1] < seq[i];
-        if (!ok) continue;
-        if (distinct) count += seen.insert(seq).second;
-        else count++;
+// Walks that may visit rooms again: a search over (room, set of rooms visited) states.
+long long bruteCoins(const vector<vector<int>>& out, const vector<long long>& coins) {
+    int n = out.size();
+    vector<char> seen(n << n, 0);  // index = room * 2^n + mask
+    long long best = 0;
+    vector<pair<int, int>> stack;
+    for (int s = 0; s < n; s++) stack.push_back({s, 1 << s}), seen[s << n | 1 << s] = 1;
+    while (!stack.empty()) {
+        auto [v, mask] = stack.back();
+        stack.pop_back();
+        long long sum = 0;
+        for (int u = 0; u < n; u++)
+            if (mask >> u & 1) sum += coins[u];
+        best = max(best, sum);
+        for (int u : out[v]) {
+            int m2 = mask | 1 << u;
+            if (!seen[u << n | m2]) seen[u << n | m2] = 1, stack.push_back({u, m2});
+        }
     }
-    return count;
+    return best;
 }
 
 int main() {
-    auto run = [](vector<int> a, bool distinct) {
-        vector<int> rank;
-        int m = compress(a, rank);
-        return countIncreasing(rank, m, distinct);
-    };
-    cout << "by positions, 3 1 2 4: " << run({3, 1, 2, 4}, false) << "\n";
-    cout << "by positions, 1 1 2: " << run({1, 1, 2}, false) << "\n";
-    cout << "distinct, 1 1 2: " << run({1, 1, 2}, true) << "\n";
-    // Check (not printed): 3000 random arrays of up to 10 numbers, both modes, against the enumeration of all subsequences.
-    mt19937 rng(13);
+    vector<vector<int>> out(6);
+    for (auto [a, b] : vector<pair<int, int>>{{0, 1}, {1, 2}, {2, 0}, {2, 3}, {3, 4}, {4, 3}, {2, 5}}) out[a].push_back(b);
+    vector<long long> coins = {2, 3, 1, 4, 1, 7};
+    vector<int> comp;
+    int comps = stronglyConnected(out, comp);
+    cout << "components " << comps << ", of the rooms 0 to 5:";
+    for (int c : comp) cout << " " << c;
+    cout << "\nmost coins " << mostCoins(out, comp, comps, coins) << "\n";
+    // Check (not printed): the same as the search over (room, visited set) states, for 3000 random graphs of up to 7 rooms with
+    // cycles, coins 0 to 9, and every edge going forward in the numbering of the components.
+    mt19937 rng(21);
     for (int it = 0; it < 3000; it++) {
-        int n = rng() % 10 + 1;
-        vector<int> a(n);
-        for (auto& x : a) x = rng() % 5 + 1;
-        if (run(a, false) != bruteCount(a, false) || run(a, true) != bruteCount(a, true)) return 1;
+        int n = 1 + rng() % 7;
+        vector<vector<int>> g(n);
+        for (int a = 0; a < n; a++)
+            for (int b = 0; b < n; b++)
+                if (a != b && rng() % 100 < 25) g[a].push_back(b);
+        vector<long long> c(n);
+        for (auto& x : c) x = rng() % 10;
+        vector<int> cmp;
+        int k = stronglyConnected(g, cmp);
+        for (int a = 0; a < n; a++)
+            for (int b : g[a])
+                if (cmp[a] > cmp[b]) return 1;
+        if (mostCoins(g, cmp, k, c) != bruteCoins(g, c)) return 1;
     }
 }

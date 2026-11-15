@@ -1,83 +1,72 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// snippet:begin
-// Theorem 4.5.4. The diameter of a tree with non-negative weights: walk from any vertex to its farthest vertex a, then from a to
-// its farthest vertex b; d(a, b) is the length of the longest path. adj[u] holds {neighbour, weight}; vertices are 1..n.
-// Distances from s to every vertex of a weighted tree; returns a vertex at the largest distance.
-int farthestFrom(const vector<vector<pair<int, long long>>>& adj, int s, vector<long long>& dist) {
-    dist.assign(adj.size(), -1);
-    dist[s] = 0;
-    vector<int> stack = {s};
-    int far = s;
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        if (dist[u] > dist[far]) far = u;
-        for (auto [v, w] : adj[u])
-            if (dist[v] < 0) dist[v] = dist[u] + w, stack.push_back(v);
+// The structure of Theorem 4.5.1.
+struct Dsu {
+    vector<int> parent, size;
+    Dsu(int n) : parent(n), size(n, 1) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) {
+        while (parent[x] != x) parent[x] = parent[parent[x]], x = parent[x];
+        return x;
     }
-    return far;
-}
-long long diameter(const vector<vector<pair<int, long long>>>& adj, int& a, int& b) {
-    vector<long long> dist;
-    a = farthestFrom(adj, 1, dist);
-    b = farthestFrom(adj, a, dist);
-    return dist[b];
+    bool unite(int a, int b) {
+        a = find(a), b = find(b);
+        if (a == b) return false;
+        if (size[a] < size[b]) swap(a, b);
+        parent[b] = a;
+        size[a] += size[b];
+        return true;
+    }
+};
+
+// snippet:begin
+// Theorem 4.5.4. Kruskal's algorithm. Edges are {a, b, weight} on vertices 0..n-1. Returns the weight of a minimum spanning tree,
+// or -1 if the graph is not connected.
+long long kruskal(int n, vector<array<long long, 3>> edges) {
+    sort(edges.begin(), edges.end(), [](const auto& x, const auto& y) { return x[2] < y[2]; });  // lightest first
+    Dsu dsu(n);
+    long long total = 0;
+    int taken = 0;
+    for (auto [a, b, w] : edges)
+        if (dsu.unite(a, b)) total += w, taken++;  // joins two groups: it is in the tree
+    return taken == n - 1 ? total : -1;
 }
 // snippet:end
 
-int main() {
-    auto build = [](int n, vector<array<long long, 3>> es) {
-        vector<vector<pair<int, long long>>> adj(n + 1);
-        for (auto [a, b, w] : es) adj[a].push_back({(int)b, w}), adj[b].push_back({(int)a, w});
-        return adj;
-    };
-    int a, b;
-    {
-        auto adj = build(6, {{1, 2, 3}, {2, 3, 4}, {2, 4, 1}, {4, 5, 6}, {1, 6, 2}});
-        long long d = diameter(adj, a, b);
-        cout << "tree 1-2 (3), 2-3 (4), 2-4 (1), 4-5 (6), 1-6 (2): diameter " << d << " between " << min(a, b) << " and " << max(a, b) << "\n";
-    }
-    {
-        auto adj = build(1, {});
-        cout << "one vertex: diameter " << diameter(adj, a, b) << "\n";
-    }
-    {
-        auto adj = build(4, {{1, 2, 0}, {2, 3, 0}, {3, 4, 0}});
-        cout << "all weights 0: diameter " << diameter(adj, a, b) << "\n";
-    }
-    // Check against: Floyd-Warshall, the largest entry of the table of all distances.
-    mt19937 rng(4504);
-    auto randomTree = [](mt19937& rng, int n, int maxW) {
+// Weight of a minimum spanning tree by trying every set of n - 1 edges (-1 if the graph is not connected); n <= 7.
+long long bruteMst(int n, const vector<array<long long, 3>>& edges) {
+    int m = edges.size();
+    long long best = -1;
+    for (int mask = 0; mask < (1 << m); mask++) {
+        if (__builtin_popcount(mask) != n - 1) continue;
         vector<int> label(n);
-        iota(label.begin(), label.end(), 1);
-        shuffle(label.begin(), label.end(), rng);
-        vector<vector<pair<int, long long>>> adj(n + 1);
-        for (int i = 1; i < n; i++) {
-            int a = label[i], b = label[rng() % i];
-            long long w = rng() % (maxW + 1);
-            adj[a].push_back({b, w});
-            adj[b].push_back({a, w});
-        }
-        return adj;
-    };
-    auto floyd = [](const vector<vector<pair<int, long long>>>& adj) {
-        int n = adj.size() - 1;
-        const long long INF = LLONG_MAX / 4;
-        vector<vector<long long>> d(n + 1, vector<long long>(n + 1, INF));
-        for (int v = 1; v <= n; v++) d[v][v] = 0;
-        for (int u = 1; u <= n; u++) for (auto [v, w] : adj[u]) d[u][v] = min(d[u][v], w);
-        for (int k = 1; k <= n; k++) for (int i = 1; i <= n; i++) for (int j = 1; j <= n; j++) d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
-        return d;
-    };
+        iota(label.begin(), label.end(), 0);
+        long long total = 0;
+        for (int i = 0; i < m; i++)
+            if (mask >> i & 1) {
+                int a = label[edges[i][0]], b = label[edges[i][1]];
+                for (int& x : label) if (x == b) x = a;
+                total += edges[i][2];
+            }
+        if (set<int>(label.begin(), label.end()).size() == 1 && (best == -1 || total < best)) best = total;
+    }
+    return best;
+}
+
+int main() {
+    cout << "triangle 0-1 (1), 1-2 (2), 0-2 (3): " << kruskal(3, {{0, 1, 1}, {1, 2, 2}, {0, 2, 3}}) << "\n";
+    cout << "square with a diagonal: " << kruskal(4, {{0, 1, 4}, {1, 2, 2}, {2, 3, 4}, {3, 0, 3}, {0, 2, 5}}) << "\n";
+    cout << "two separate edges on 4 vertices: " << kruskal(4, {{0, 1, 1}, {2, 3, 1}}) << "\n";
+    cout << "one vertex: " << kruskal(1, {}) << "\n";
+    mt19937 rng(4404);
     for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 9 + 1;
-        auto adj = randomTree(rng, n, rng() % 2 ? 1 : 9);
-        auto d = floyd(adj);
-        long long best = 0;
-        for (int i = 1; i <= n; i++) for (int j = 1; j <= n; j++) best = max(best, d[i][j]);
-        long long got = diameter(adj, a, b);
-        if (got != best || d[a][b] != best) return 1;
+        int n = rng() % 6 + 1;
+        int m = n > 1 ? rng() % 10 : 0;
+        vector<array<long long, 3>> es;
+        for (int i = 0; i < m; i++) {
+            long long a = rng() % n, b = rng() % n;
+            if (a != b) es.push_back({a, b, (long long)(rng() % 7 + 1)});
+        }
+        if (kruskal(n, es) != bruteMst(n, es)) return 1;
     }
 }

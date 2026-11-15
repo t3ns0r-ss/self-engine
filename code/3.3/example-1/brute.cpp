@@ -1,22 +1,21 @@
-// Brute force: every subset of books as a bitmask.
+// Brute force: every one of the 2^N choices as a bitmask (Theorem 0.5.2), checked pair by pair.
 #include <bits/stdc++.h>
 using namespace std;
 
 int main() {
-    int n, x;
-    cin >> n >> x;
-    vector<int> h(n), s(n);
-    for (int& p : h) cin >> p;
-    for (int& p : s) cin >> p;
-    int best = 0;
+    int n;
+    cin >> n;
+    vector<long long> a(n), b(n);
+    for (int i = 0; i < n; i++) cin >> a[i] >> b[i];
+    long long count = 0;
     for (int mask = 0; mask < (1 << n); mask++) {
-        int price = 0, pages = 0;
-        for (int i = 0; i < n; i++)
-            if ((mask >> i) & 1) {
-                price += h[i];
-                pages += s[i];
-            }
-        if (price <= x) best = max(best, pages);
+        bool ok = true;
+        for (int i = 0; i + 1 < n; i++) {
+            long long x = ((mask >> i) & 1) ? b[i] : a[i];
+            long long y = ((mask >> (i + 1)) & 1) ? b[i + 1] : a[i + 1];
+            if (x == y) ok = false;
+        }
+        if (ok) count++;
     }
-    cout << best << "\n";
+    cout << count % 998244353 << "\n";
 }

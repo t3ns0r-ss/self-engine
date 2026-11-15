@@ -2,35 +2,41 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.5.2. Counting with a state: strings over {a, b, c} with no "ab" inside. The rule only looks at whether the previous
-// letter is a, so two states are enough: ends with a, and other.
-vector<array<long long, 3>> countStrings(int maxLen) {
-    vector<array<long long, 3>> table;  // {ends with a, other, total}
-    long long a = 1, other = 2;  // length 1
-    table.push_back({a, other, a + other});
-    for (int len = 2; len <= maxLen; len++) {
-        long long newA = a + other;      // append a to anything
-        long long newOther = a + 2 * other;  // after a only c; after other, b or c
-        a = newA, other = newOther;
-        table.push_back({a, other, a + other});
+// Theorem 3.5.2. The tails array: tails[k] = the smallest last value of an increasing subsequence of length k + 1. A new
+// element replaces the first tail >= x, or extends the array.
+vector<int> tailsAfter(const vector<int>& a, vector<vector<int>>* trace = nullptr) {
+    vector<int> tails;
+    for (int x : a) {
+        auto it = lower_bound(tails.begin(), tails.end(), x);
+        if (it == tails.end()) tails.push_back(x);
+        else *it = x;
+        if (trace) trace->push_back(tails);
     }
-    return table;
+    return tails;
 }
 // snippet:end
 
 int main() {
-    auto t = countStrings(4);
-    cout << "length: ends with a, other, total\n";
-    for (int i = 0; i < 4; i++) cout << i + 1 << ": " << t[i][0] << ", " << t[i][1] << ", " << t[i][2] << '\n';
-    for (int len = 1; len <= 8; len++) {
-        long long brute = 0, total = 1;
-        for (int i = 0; i < len; i++) total *= 3;
-        for (long long code = 0; code < total; code++) {
-            string s;
-            long long x = code;
-            for (int i = 0; i < len; i++) s += 'a' + x % 3, x /= 3;
-            brute += s.find("ab") == string::npos;
+    vector<vector<int>> trace;
+    auto tails = tailsAfter({3, 1, 4, 1, 5, 9, 2, 6}, &trace);
+    for (auto& t : trace) {
+        cout << "tails:";
+        for (int x : t) cout << ' ' << x;
+        cout << '\n';
+    }
+    cout << "LIS length " << tails.size() << '\n';
+    mt19937 rng(32);
+    for (int round = 0; round < 300; round++) {
+        int n = 1 + rng() % 11;
+        vector<int> b(n);
+        for (int& x : b) x = rng() % 8;
+        int best = 0;
+        for (int mask = 0; mask < (1 << n); mask++) {
+            int last = INT_MIN, len = 0;
+            bool ok = true;
+            for (int i = 0; i < n && ok; i++) if (mask >> i & 1) { if (b[i] <= last) ok = false; last = b[i], len++; }
+            if (ok) best = max(best, len);
         }
-        if (brute != countStrings(8)[len - 1][2]) return 1;
+        if ((int)tailsAfter(b).size() != best) return 1;
     }
 }

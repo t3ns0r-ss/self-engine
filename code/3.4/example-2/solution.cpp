@@ -1,33 +1,30 @@
 /*
-Problem: AtCoder ABC 185 E, Sequence Matching. Remove elements from A (length N) and from B (length M) so that the
-rest have equal length; the cost is the number of removed elements plus the number of positions where the rests
-differ. Print the minimum cost.
-Input: N M (N, M <= 1000), then A, then B (values <= 10^9).
-Output: the minimum cost.
+Problem: CSES 1093, Two Sets II. Count the ways to divide 1, 2, ..., n into two sets with equal sums (a division
+and the same division with the two sets swapped count once), modulo 10^9 + 7.
+Input: n (1 <= n <= 500).
+Output: the number of divisions modulo 10^9 + 7.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
 // snippet:begin
-// ABC 185 E. E[i][j] = the minimum cost for the prefixes a_1..a_i and b_1..b_j: remove a_i, remove b_j, or keep both
-// (cost 1 when they differ).
-int sequenceMatching(const vector<long long>& a, const vector<long long>& b) {
-    int n = a.size(), m = b.size();
-    vector<vector<int>> E(n + 1, vector<int>(m + 1));
-    for (int i = 0; i <= n; i++) E[i][0] = i;  // remove all i elements of a
-    for (int j = 0; j <= m; j++) E[0][j] = j;  // remove all j elements of b
-    for (int i = 1; i <= n; i++)
-        for (int j = 1; j <= m; j++)
-            E[i][j] = min({E[i - 1][j] + 1, E[i][j - 1] + 1, E[i - 1][j - 1] + (a[i - 1] != b[j - 1])});
-    return E[n][m];
+// CSES 1093. The divisions of 1..n into two sets with equal sums: ways[s] = the subsets with sum exactly s (downwards, each
+// number once); each division is counted twice, so multiply by the inverse of 2.
+long long twoSets(int n) {
+    const long long MOD = 1000000007;
+    int total = n * (n + 1) / 2;
+    if (total % 2 != 0) return 0;  // odd total: no equal split
+    int half = total / 2;
+    vector<long long> ways(half + 1, 0);
+    ways[0] = 1;
+    for (int k = 1; k <= n; k++)
+        for (int s = half; s >= k; s--) ways[s] = (ways[s] + ways[s - k]) % MOD;
+    return ways[half] * ((MOD + 1) / 2) % MOD;
 }
 // snippet:end
 
 int main() {
-    int n, m;
-    cin >> n >> m;
-    vector<long long> a(n), b(m);
-    for (auto& x : a) cin >> x;
-    for (auto& x : b) cin >> x;
-    cout << sequenceMatching(a, b) << "\n";
+    int n;
+    cin >> n;
+    cout << twoSets(n) << "\n";
 }

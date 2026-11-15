@@ -1,22 +1,22 @@
-// Brute force: try every permutation of the indices.
+// Brute force: try every set of cut positions (a bitmask over the n - 1 gaps).
 #include <bits/stdc++.h>
 using namespace std;
 
 int main() {
-    int n;
-    cin >> n;
-    vector<long long> a(n);
-    for (auto& x : a) cin >> x;
-    vector<int> p(n);
-    iota(p.begin(), p.end(), 0);
-    long long count = 0;
-    do {
+    string s;
+    cin >> s;
+    int n = s.size(), best = n;
+    for (int mask = 0; mask < (1 << (n - 1)); mask++) {
         bool ok = true;
-        for (int i = 0; i + 1 < n; i++) {
-            long long x = a[p[i]], y = a[p[i + 1]];
-            ok = ok && (x % y == 0 || y % x == 0);
+        int start = 0;
+        for (int i = 0; i < n && ok; i++) {
+            if (i == n - 1 || ((mask >> i) & 1)) {  // a piece ends after position i
+                string piece = s.substr(start, i - start + 1);
+                ok = equal(piece.begin(), piece.end(), piece.rbegin());
+                start = i + 1;
+            }
         }
-        count += ok;
-    } while (next_permutation(p.begin(), p.end()));
-    cout << count % 1'000'000'007 << "\n";
+        if (ok) best = min(best, __builtin_popcount(mask));
+    }
+    cout << best << "\n";
 }

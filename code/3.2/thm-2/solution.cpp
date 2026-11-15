@@ -2,28 +2,40 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.2.2. Counting by the last choice: ways[i] = the sum of ways[i - step] over the allowed steps.
-vector<long long> climbs(int n, const vector<int>& steps) {
-    vector<long long> ways(n + 1, 0);
-    ways[0] = 1;  // the empty climb
-    for (int i = 1; i <= n; i++)
-        for (int s : steps)
-            if (s <= i) ways[i] += ways[i - s];
-    return ways;
+// Theorem 3.2.2. The 2^k subset sums of k numbers, built from the sums of the first i - 1 numbers: each step adds one
+// number to every sum already listed, so the whole list costs 2^k - 1 additions (not k * 2^(k-1)).
+vector<long long> subsetSums(const vector<long long>& v, long long& additions) {
+    vector<long long> sums = {0};
+    for (long long x : v) {
+        int size = sums.size();
+        for (int j = 0; j < size; j++) { sums.push_back(sums[j] + x); additions++; }
+    }
+    return sums;
 }
 // snippet:end
 
-long long brute(int n, const vector<int>& steps) {  // list every sequence of steps
-    if (n == 0) return 1;
-    long long r = 0;
-    for (int s : steps) if (s <= n) r += brute(n - s, steps);
-    return r;
+// the same list, recomputing every mask from its bits: one addition per set bit
+vector<long long> subsetSumsByMask(const vector<long long>& v, long long& additions) {
+    int k = v.size();
+    vector<long long> sums(1 << k, 0);
+    for (int mask = 1; mask < (1 << k); mask++)
+        for (int i = 0; i < k; i++)
+            if (mask >> i & 1) { sums[mask] += v[i]; additions++; }
+    return sums;
 }
+
 int main() {
-    auto w = climbs(5, {1, 2});
-    cout << "ways to climb 0..5 stairs with steps 1 or 2:";
-    for (long long x : w) cout << ' ' << x;
-    cout << '\n';
-    for (int n = 0; n <= 12; n++) for (auto steps : vector<vector<int>>{{1, 2}, {1, 3, 4}, {2, 5}})
-        if (climbs(n, steps)[n] != brute(n, steps)) return 1;
+    vector<long long> v = {3, 5, 2, 6};
+    long long fast = 0, slow = 0;
+    vector<long long> a = subsetSums(v, fast), b = subsetSumsByMask(v, slow);
+    sort(a.begin(), a.end());
+    sort(b.begin(), b.end());
+    cout << "4 numbers, additions: building on the previous list " << fast << ", from the bits of every mask " << slow << '\n';
+    cout << "same sums: " << (a == b ? "yes" : "no") << '\n';
+    fast = slow = 0;
+    vector<long long> w(20, 1);
+    subsetSums(w, fast);
+    subsetSumsByMask(w, slow);
+    cout << "20 numbers, additions: " << fast << " against " << slow << '\n';
+    if (fast != (1 << 20) - 1) return 1;
 }

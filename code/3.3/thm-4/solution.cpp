@@ -2,31 +2,27 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.3.4. Subset sums: bit s of reach is 1 when some subset sums to s; reach |= reach << a adds a number, used once.
-bitset<64> reachable(const vector<int>& a) {
-    bitset<64> reach;
-    reach[0] = 1;
-    for (int x : a) reach |= reach << x;
-    return reach;
+// Theorem 3.3.4. Memoisation: the plain recursion makes C(i) = 1 + C(i-1) + C(i-2) calls; with a cache each state is computed once.
+long long ways(int i, vector<long long>& cache) {
+    if (i <= 1) return 1;
+    if (cache[i] != 0) return cache[i];  // computed before: return at once
+    return cache[i] = ways(i - 1, cache) + ways(i - 2, cache);
 }
 // snippet:end
 
 int main() {
-    auto r = reachable({2, 3, 7});
-    cout << "reachable sums of 2 3 7:";
-    for (int s = 0; s < 64; s++) if (r[s]) cout << ' ' << s;
-    cout << '\n';
-    mt19937 rng(23);
-    for (int round = 0; round < 300; round++) {
-        int n = 1 + rng() % 8;
-        vector<int> a(n);
-        for (int& x : a) x = 1 + rng() % 8;
-        bitset<64> want;
-        for (int mask = 0; mask < (1 << n); mask++) {
-            int s = 0;
-            for (int i = 0; i < n; i++) if (mask >> i & 1) s += a[i];
-            if (s < 64) want[s] = 1;
-        }
-        if (reachable(a) != want) return 1;
+    vector<long long> calls(41);
+    calls[0] = calls[1] = 1;
+    for (int i = 2; i <= 40; i++) calls[i] = 1 + calls[i - 1] + calls[i - 2];
+    vector<long long> cache(41, 0);
+    long long result = ways(40, cache);
+    long long states = 0;
+    for (long long c : cache) states += c != 0;
+    cout << "40 stairs: " << result << " ways; the plain recursion makes " << calls[40] << " calls, the cache holds " << states << " values\n";
+    for (int i = 0; i <= 20; i++) {
+        vector<long long> c(i + 2, 0);
+        long long a = 1, b = 1;
+        for (int j = 2; j <= i; j++) { long long t = a + b; a = b; b = t; }
+        if (ways(i, c) != (i == 0 ? 1 : b)) return 1;
     }
 }

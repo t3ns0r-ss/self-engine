@@ -1,106 +1,99 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-using Graph = vector<vector<pair<int, int>>>;
-
-// Theorem 4.7.1. adj[v] holds (neighbour, edge number) pairs, vertices are 1..n, edges 0..m-1 (parallel edges differ); parentEdge is -1 at a root.
-struct LowLink {
-    vector<int> tin, low, parent, parentEdge, order;
-    LowLink(const vector<vector<pair<int, int>>>& adj) {
-        int n = adj.size() - 1, timer = 0;
-        tin.assign(n + 1, -1), low.assign(n + 1, 0), parent.assign(n + 1, 0), parentEdge.assign(n + 1, -1);
-        vector<int> next(n + 1, 0);  // next[v]: how many neighbours of v were looked at
-        for (int root = 1; root <= n; root++) {
-            if (tin[root] != -1) continue;
-            vector<int> stack = {root};
-            tin[root] = low[root] = timer++, order.push_back(root);
-            while (!stack.empty()) {
-                int v = stack.back();
-                if (next[v] < (int)adj[v].size()) {
-                    auto [to, id] = adj[v][next[v]++];
-                    if (id == parentEdge[v]) continue;  // the edge we came by, not a second one to the parent
-                    if (tin[to] != -1) low[v] = min(low[v], tin[to]);  // a back edge
-                    else {
-                        parent[to] = v, parentEdge[to] = id;
-                        tin[to] = low[to] = timer++, order.push_back(to);
-                        stack.push_back(to);
-                    }
-                } else {
-                    stack.pop_back();
-                    if (parent[v]) low[parent[v]] = min(low[parent[v]], low[v]);  // the subtree of v is done
-                }
+struct Rooted {
+    vector<int> order, parent, depth;
+};
+Rooted rootAt(const vector<vector<int>>& adj, int root) {
+    int n = adj.size() - 1;
+    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
+    vector<int> stack = {root};
+    while (!stack.empty()) {
+        int u = stack.back();
+        stack.pop_back();
+        t.order.push_back(u);
+        for (int v : adj[u])
+            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
+                t.parent[v] = u;
+                t.depth[v] = t.depth[u] + 1;
+                stack.push_back(v);
             }
-        }
+    }
+    return t;
+}
+
+struct Lifting {
+    vector<vector<int>> up;  // up[j][v]: the 2^j-th ancestor of v, or 0 if there is none (up[j][0] = 0)
+    vector<int> depth;
+    Lifting(const vector<vector<int>>& adj, int root) {
+        int n = adj.size() - 1, levels = 1;
+        while ((1 << levels) <= n) levels++;
+        Rooted t = rootAt(adj, root);
+        depth = t.depth;
+        up.assign(levels, t.parent);  // up[0] is the parent
+        for (int j = 1; j < levels; j++)
+            for (int v = 1; v <= n; v++) up[j][v] = up[j - 1][up[j - 1][v]];  // two jumps of 2^(j-1)
+    }
+    int kthAncestor(int v, int k) const {  // 0 if v has fewer than k ancestors
+        if (k > depth[v]) return 0;
+        for (int j = 0; j < (int)up.size(); j++)
+            if (k >> j & 1) v = up[j][v];
+        return v;
     }
 };
 
 // snippet:begin
-// Theorem 4.7.2. The edge from a vertex to its parent is a bridge exactly when low[v] > tin[parent]; non-tree edges are never bridges.
-vector<int> findBridges(const Graph& adj) {
-    LowLink L(adj);
-    vector<int> bridges;
-    for (int v = 1; v < (int)adj.size(); v++)
-        if (L.parent[v] && L.low[v] > L.tin[L.parent[v]]) bridges.push_back(L.parentEdge[v]);
-    sort(bridges.begin(), bridges.end());
-    return bridges;
+// Theorem 4.7.2. The lowest common ancestor of u and v: lift the deeper vertex to the depth of the other, then jump from the largest
+// jump to the smallest whenever the two ancestors reached are different; the parent of the stopping point is the answer.
+int lca(const Lifting& L, int u, int v) {
+    if (L.depth[u] < L.depth[v]) swap(u, v);
+    u = L.kthAncestor(u, L.depth[u] - L.depth[v]);
+    if (u == v) return u;
+    for (int j = (int)L.up.size() - 1; j >= 0; j--)
+        if (L.up[j][u] != L.up[j][v]) u = L.up[j][u], v = L.up[j][v];  // still below the meeting point: take the jump
+    return L.up[0][u];
 }
 // snippet:end
 
-// Test helpers: build a graph from an edge list, random multigraphs, and the number of components with some edge or vertex left out.
-Graph build(int n, const vector<pair<int, int>>& edges) {
-    Graph adj(n + 1);
-    for (int i = 0; i < (int)edges.size(); i++) {
-        adj[edges[i].first].push_back({edges[i].second, i});
-        adj[edges[i].second].push_back({edges[i].first, i});
-    }
-    return adj;
-}
-vector<pair<int, int>> randomEdges(mt19937& rng, int n, int m) {
-    vector<pair<int, int>> edges;
-    for (int i = 0; i < m; i++) {
-        int a = rng() % n + 1, b = rng() % n + 1;
-        if (a != b) edges.push_back({a, b});  // parallel edges are possible, self-loops are not used
-    }
-    return edges;
-}
-int countComponents(int n, const vector<pair<int, int>>& edges, int skipEdge, int skipVertex) {
-    vector<int> leader(n + 1);
-    iota(leader.begin(), leader.end(), 0);
-    function<int(int)> find = [&](int x) { return leader[x] == x ? x : leader[x] = find(leader[x]); };
-    for (int i = 0; i < (int)edges.size(); i++)
-        if (i != skipEdge && edges[i].first != skipVertex && edges[i].second != skipVertex) leader[find(edges[i].first)] = find(edges[i].second);
-    int count = 0;
-    for (int v = 1; v <= n; v++)
-        if (v != skipVertex && find(v) == v) count++;
-    return count;
-}
-
 int main() {
     {
-        auto edges = vector<pair<int, int>>{{1, 2}, {2, 3}, {3, 1}, {3, 4}, {4, 5}, {4, 5}};
-        cout << "triangle 1-2-3, edge 3-4, double edge 4-5: bridges (edge numbers):";
-        for (int e : findBridges(build(5, edges))) cout << ' ' << e;
-        cout << "\n";
+        vector<vector<int>> adj(9);
+        auto edge = [&](int a, int b) { adj[a].push_back(b), adj[b].push_back(a); };
+        edge(1, 2), edge(2, 3), edge(3, 4), edge(4, 5), edge(5, 6), edge(2, 7), edge(7, 8);
+        Lifting L(adj, 1);
+        cout << "same tree: lca(6, 8) = " << lca(L, 6, 8) << ", lca(6, 4) = " << lca(L, 6, 4) << ", lca(8, 7) = " << lca(L, 8, 7) << ", lca(5, 5) = " << lca(L, 5, 5) << "\n";
     }
     {
-        auto edges = vector<pair<int, int>>{{1, 2}, {2, 3}, {3, 4}, {4, 1}, {2, 4}};
-        cout << "a square with a diagonal: " << findBridges(build(4, edges)).size() << " bridges\n";
+        vector<vector<int>> adj(2);
+        Lifting L(adj, 1);
+        cout << "one vertex: lca(1, 1) = " << lca(L, 1, 1) << "\n";
     }
-    {
-        auto edges = vector<pair<int, int>>{{1, 2}, {1, 3}, {1, 4}, {4, 5}};
-        cout << "a tree with 4 edges:";
-        for (int e : findBridges(build(5, edges))) cout << ' ' << e;
-        cout << "\n";
-    }
-    // Check against the definition: remove each edge and count the components.
-    mt19937 rng(4702);
+    // Check against: marking the ancestors of u by climbing, then climbing from v to the first marked vertex.
+    mt19937 rng(4602);
+    auto randomTree = [](mt19937& rng, int n) {
+        vector<int> label(n);
+        iota(label.begin(), label.end(), 1);
+        shuffle(label.begin(), label.end(), rng);
+        vector<vector<int>> adj(n + 1);
+        for (int i = 1; i < n; i++) {
+            int a = label[i], b = label[rng() % i];
+            adj[a].push_back(b);
+            adj[b].push_back(a);
+        }
+        return adj;
+    };
     for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 9 + 1, m = rng() % 14;
-        auto edges = randomEdges(rng, n, m);
-        vector<int> expected;
-        int base = countComponents(n, edges, -1, -1);
-        for (int i = 0; i < (int)edges.size(); i++)
-            if (countComponents(n, edges, i, -1) > base) expected.push_back(i);
-        if (findBridges(build(n, edges)) != expected) return 1;
+        int n = rng() % 12 + 1, root = rng() % n + 1;
+        auto adj = randomTree(rng, n);
+        Lifting L(adj, root);
+        auto t = rootAt(adj, root);
+        for (int u = 1; u <= n; u++)
+            for (int v = 1; v <= n; v++) {
+                vector<bool> mark(n + 1, false);
+                for (int x = u; x != 0; x = t.parent[x]) mark[x] = true;
+                int x = v;
+                while (!mark[x]) x = t.parent[x];
+                if (lca(L, u, v) != x) return 1;
+            }
     }
 }

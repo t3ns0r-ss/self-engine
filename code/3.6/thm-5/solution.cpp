@@ -2,50 +2,53 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.6.5. C[l][r] = the fewest operations that delete all of s[l..r], an operation deleting a block of equal letters:
-// the first letter goes alone, or together with a later equal letter s[k] after the part between them is gone.
-int fewestOperations(const string& s) {
-    int n = s.size();
-    vector<vector<int>> C(n + 2, vector<int>(n + 2, 0));  // C[l][r] with 1-based l, r; an empty segment is 0
-    auto get = [&](int l, int r) { return l > r ? 0 : C[l][r]; };
-    for (int len = 1; len <= n; len++)
-        for (int l = 1; l + len - 1 <= n; l++) {
-            int r = l + len - 1;
-            int value = 1 + get(l + 1, r);
-            for (int k = l + 1; k <= r; k++)
-                if (s[k - 1] == s[l - 1]) value = min(value, get(l + 1, k - 1) + get(k, r));
-            C[l][r] = value;
+// Theorem 3.6.5. Forward: after coin i, prob[h] = the probability of h heads, prob'[h] = prob[h] (1 - p) + prob[h - 1] p.
+// Backward: with k rolls left, E[k] = 1 + (5/6) E[k - 1] and E[0] = 0, the expected rolls until a 6 (at most k rolls).
+vector<double> headsDistribution(const vector<double>& p) {
+    vector<double> prob = {1.0};
+    for (double q : p) {
+        vector<double> next(prob.size() + 1, 0.0);
+        for (size_t h = 0; h < prob.size(); h++) {
+            next[h] += prob[h] * (1 - q);  // this coin shows tails
+            next[h + 1] += prob[h] * q;    // this coin shows heads
         }
-    return get(1, n);
+        prob = next;
+    }
+    return prob;
+}
+vector<double> expectedRolls(int maxRolls) {
+    vector<double> E(maxRolls + 1, 0.0);
+    for (int k = 1; k <= maxRolls; k++) E[k] = 1 + 5.0 / 6.0 * E[k - 1];
+    return E;
 }
 // snippet:end
 
-int bruteOps(const string& s) {  // breadth-first search over strings, deleting one block of equal letters per step
-    map<string, int> dist;
-    queue<string> q;
-    dist[s] = 0, q.push(s);
-    while (!q.empty()) {
-        string u = q.front();
-        q.pop();
-        if (u.empty()) return dist[u];
-        for (size_t i = 0; i < u.size();) {
-            size_t j = i;
-            while (j < u.size() && u[j] == u[i]) j++;
-            for (size_t a = i; a < j; a++) for (size_t b = a + 1; b <= j; b++) {
-                string v = u.substr(0, a) + u.substr(b);
-                if (!dist.count(v)) dist[v] = dist[u] + 1, q.push(v);
-            }
-            i = j;
-        }
-    }
-    return -1;
-}
 int main() {
-    cout << "fewest operations for abaca: " << fewestOperations("abaca") << '\n';
-    mt19937 rng(55);
-    for (int round = 0; round < 200; round++) {
-        string t;
-        for (int i = 1 + rng() % 7; i > 0; i--) t += 'a' + rng() % 3;
-        if (fewestOperations(t) != bruteOps(t)) return 1;
+    cout << fixed << setprecision(4);
+    auto d = headsDistribution({0.5, 1.0 / 3.0});
+    cout << "heads 0 1 2:";
+    for (double x : d) cout << ' ' << x;
+    cout << '\n';
+    auto E = expectedRolls(2);
+    cout << "rolls with 1 left: " << E[1] << ", with 2 left: " << E[2] << '\n';
+    mt19937 rng(35);
+    for (int round = 0; round < 300; round++) {
+        int n = 1 + rng() % 8;
+        vector<double> p(n);
+        for (double& x : p) x = (rng() % 11) / 10.0;
+        auto got = headsDistribution(p);
+        vector<double> brute(n + 1, 0.0);
+        for (int mask = 0; mask < (1 << n); mask++) {
+            double w = 1;
+            for (int i = 0; i < n; i++) w *= (mask >> i & 1) ? p[i] : 1 - p[i];
+            brute[__builtin_popcount(mask)] += w;
+        }
+        for (int h = 0; h <= n; h++)
+            if (fabs(got[h] - brute[h]) > 1e-9) return 1;
+    }
+    for (int k = 1; k <= 8; k++) {
+        double sum = 0, miss = 1;  // expected rolls = sum over j of P(still rolling before roll j)
+        for (int j = 1; j <= k; j++) { sum += miss; miss *= 5.0 / 6.0; }
+        if (fabs(sum - expectedRolls(k)[k]) > 1e-9) return 1;
     }
 }

@@ -1,20 +1,23 @@
-// Brute force: try every permutation of the women and count those where every pair is compatible.
+// Brute force: try every order of combinations by recursion on the current row of slimes.
 #include <bits/stdc++.h>
 using namespace std;
+
+long long solve(vector<long long> row) {
+    if (row.size() == 1) return 0;
+    long long best = LLONG_MAX;
+    for (size_t i = 0; i + 1 < row.size(); i++) {
+        vector<long long> next(row.begin(), row.begin() + i);
+        next.push_back(row[i] + row[i + 1]);
+        next.insert(next.end(), row.begin() + i + 2, row.end());
+        best = min(best, row[i] + row[i + 1] + solve(next));
+    }
+    return best;
+}
 
 int main() {
     int n;
     cin >> n;
-    vector<vector<int>> a(n, vector<int>(n));
-    for (auto& row : a)
-        for (auto& x : row) cin >> x;
-    vector<int> p(n);
-    iota(p.begin(), p.end(), 0);
-    long long count = 0;
-    do {
-        bool ok = true;
-        for (int i = 0; i < n; i++) ok = ok && a[i][p[i]];
-        count += ok;
-    } while (next_permutation(p.begin(), p.end()));
-    cout << count % 1'000'000'007 << "\n";
+    vector<long long> a(n);
+    for (auto& x : a) cin >> x;
+    cout << solve(a) << "\n";
 }

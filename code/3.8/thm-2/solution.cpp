@@ -2,29 +2,44 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.8.2. Ranges: the count in [A, B] is F(B) - F(A - 1), with F(-1) = 0. F here counts the digit sums that are multiples of 4.
-long long countUpTo(long long N) {
-    if (N < 0) return 0;
-    long long total = 0;
-    for (long long x = 0; x <= N; x++) {
-        int s = 0;
-        for (long long y = x; y > 0; y /= 10) s += y % 10;
-        total += s % 4 == 0;
-    }
-    return total;
+// Theorem 3.8.2. Paths through every vertex: dp[mask][v] = the shortest path from city 0 visiting exactly mask and ending at v;
+// close the tour with the edge back to 0.
+long long tour(const vector<vector<long long>>& d) {
+    int n = d.size();
+    const long long INF = LLONG_MAX / 4;
+    vector<vector<long long>> dp(1 << n, vector<long long>(n, INF));
+    dp[1][0] = 0;
+    for (int mask = 1; mask < (1 << n); mask += 2)
+        for (int v = 0; v < n; v++) {
+            if (dp[mask][v] >= INF) continue;
+            for (int u = 0; u < n; u++)
+                if (!(mask >> u & 1)) dp[mask | 1 << u][u] = min(dp[mask | 1 << u][u], dp[mask][v] + d[v][u]);
+        }
+    long long best = (n == 1) ? 0 : INF;
+    for (int v = 1; v < n; v++) best = min(best, dp[(1 << n) - 1][v] + d[v][0]);
+    return best;
 }
-long long countRange(long long A, long long B) { return countUpTo(B) - countUpTo(A - 1); }
 // snippet:end
 
 int main() {
-    cout << "[10, 25]: F(25) - F(9) = " << countUpTo(25) << " - " << countUpTo(9) << " = " << countRange(10, 25) << '\n';
-    for (long long a = 0; a <= 60; a += 7) for (long long b = a; b <= 120; b += 11) {
-        long long brute = 0;
-        for (long long x = a; x <= b; x++) {
-            int s = 0;
-            for (long long y = x; y > 0; y /= 10) s += y % 10;
-            brute += s % 4 == 0;
-        }
-        if (brute != countRange(a, b)) return 1;
+    vector<vector<long long>> d = {{0, 2, 9, 10}, {1, 0, 6, 4}, {15, 7, 0, 8}, {6, 3, 12, 0}};
+    cout << "shortest tour of the four cities: " << tour(d) << '\n';
+    mt19937 rng(62);
+    for (int round = 0; round < 200; round++) {
+        int n = 1 + rng() % 7;
+        vector<vector<long long>> m(n, vector<long long>(n, 0));
+        for (int i = 0; i < n; i++) for (int j = 0; j < n; j++) if (i != j) m[i][j] = 1 + rng() % 20;
+        vector<int> p(n - 1);
+        iota(p.begin(), p.end(), 1);
+        long long best = LLONG_MAX;
+        do {
+            long long s = 0;
+            int at = 0;
+            for (int v : p) s += m[at][v], at = v;
+            s += m[at][0];
+            best = min(best, s);
+        } while (next_permutation(p.begin(), p.end()));
+        if (n == 1) best = 0;
+        if (tour(m) != best) return 1;
     }
 }

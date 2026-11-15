@@ -1,86 +1,73 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Rooted {
-    vector<int> order, parent, depth;
-};
-Rooted rootAt(const vector<vector<int>>& adj, int root) {
-    int n = adj.size() - 1;
-    Rooted t{{}, vector<int>(n + 1, 0), vector<int>(n + 1, 0)};
-    vector<int> stack = {root};
-    while (!stack.empty()) {
-        int u = stack.back();
-        stack.pop_back();
-        t.order.push_back(u);
-        for (int v : adj[u])
-            if (v != t.parent[u]) {  // in a tree the only visited neighbour of u is its parent
-                t.parent[v] = u;
-                t.depth[v] = t.depth[u] + 1;
-                stack.push_back(v);
-            }
+// The structure of Theorem 4.5.1.
+struct Dsu {
+    vector<int> parent, size;
+    Dsu(int n) : parent(n), size(n, 1) { iota(parent.begin(), parent.end(), 0); }
+    int find(int x) {
+        while (parent[x] != x) parent[x] = parent[parent[x]], x = parent[x];
+        return x;
     }
-    return t;
-}
+    bool unite(int a, int b) {
+        a = find(a), b = find(b);
+        if (a == b) return false;
+        if (size[a] < size[b]) swap(a, b);
+        parent[b] = a;
+        size[a] += size[b];
+        return true;
+    }
+};
 
 // snippet:begin
-// Theorem 4.5.2. For every vertex, the sum of value[] over its subtree (with value = 1 everywhere: the subtree size).
-vector<long long> subtreeSums(const Rooted& t, const vector<long long>& value) {
-    vector<long long> sum = value;  // sum[v] starts as the value of v alone
-    for (int i = t.order.size() - 1; i > 0; i--) {  // backwards: all children of v come after v in the order, so they are added already
-        int v = t.order[i];
-        sum[t.parent[v]] += sum[v];
+// Theorem 4.5.2. Edges 0..m-1 (pairs of vertices 0..n-1) are removed in this order. Returns the number of groups of vertices
+// after 0, 1, ..., m removals, by adding the edges back in reverse order.
+vector<int> groupsAfterRemovals(int n, const vector<pair<int, int>>& edges) {
+    int m = edges.size();
+    vector<int> groups(m + 1);
+    Dsu dsu(n);
+    int count = n;  // nothing is left after all m removals: n groups
+    for (int i = m; i >= 1; i--) {
+        groups[i] = count;  // the state after i removals: edges i..m-1 are present, and they have all been added
+        if (dsu.unite(edges[i - 1].first, edges[i - 1].second)) count--;  // add edge i-1 back: the state after i-1 removals
     }
-    return sum;
+    groups[0] = count;
+    return groups;
 }
 // snippet:end
 
 int main() {
-    {
-        vector<vector<int>> adj(6);
-        auto edge = [&](int a, int b) { adj[a].push_back(b), adj[b].push_back(a); };
-        edge(1, 2), edge(1, 3), edge(3, 4), edge(3, 5);
-        auto t = rootAt(adj, 1);
-        auto size = subtreeSums(t, vector<long long>(6, 1));
-        cout << "tree 1-2, 1-3, 3-4, 3-5 from 1, sizes:";
-        for (int v = 1; v <= 5; v++) cout << ' ' << size[v];
-        cout << "\n";
-        auto sum = subtreeSums(t, {0, 10, 20, 30, 40, 50});
-        cout << "values 10 20 30 40 50, subtree sums:";
-        for (int v = 1; v <= 5; v++) cout << ' ' << sum[v];
-        cout << "\n";
-    }
-    {
-        vector<vector<int>> adj(2);
-        auto t = rootAt(adj, 1);
-        cout << "one vertex: size " << subtreeSums(t, {0, 1})[1] << "\n";
-    }
-    // Check against: for each vertex, a separate walk that counts the vertices whose path to the root passes through it.
-    mt19937 rng(4502);
-    auto randomTree = [](mt19937& rng, int n) {
-        vector<int> label(n);
-        iota(label.begin(), label.end(), 1);
-        shuffle(label.begin(), label.end(), rng);
-        vector<vector<int>> adj(n + 1);
-        for (int i = 1; i < n; i++) {
-            int a = label[i], b = label[rng() % i];
-            adj[a].push_back(b);
-            adj[b].push_back(a);
-        }
-        return adj;
+    auto show = [](const vector<int>& g) {
+        string s;
+        for (int x : g) s += to_string(x) + " ";
+        return s;
     };
+    cout << "path 0-1-2, edges 0-1 then 1-2: " << show(groupsAfterRemovals(3, {{0, 1}, {1, 2}})) << "\n";
+    cout << "triangle, edges 0-1, 1-2, 0-2: " << show(groupsAfterRemovals(3, {{0, 1}, {1, 2}, {0, 2}})) << "\n";
+    cout << "no edges on 2 vertices: " << show(groupsAfterRemovals(2, {})) << "\n";
+    // Check against: after each removal, count the groups again by a walk over the edges that are left.
+    mt19937 rng(4402);
     for (int trial = 0; trial < 20000; trial++) {
-        int n = rng() % 9 + 1, root = rng() % n + 1;
-        auto adj = randomTree(rng, n);
-        auto t = rootAt(adj, root);
-        vector<long long> value(n + 1);
-        for (int v = 1; v <= n; v++) value[v] = (long long)(rng() % 100) - 20;
-        auto sum = subtreeSums(t, value);
-        for (int v = 1; v <= n; v++) {
-            long long expected = 0;
-            for (int u = 1; u <= n; u++)
-                for (int x = u; x != 0; x = t.parent[x])
-                    if (x == v) { expected += value[u]; break; }
-            if (sum[v] != expected) return 1;
+        int n = rng() % 7 + 1, m = n > 1 ? rng() % 9 : 0;
+        vector<pair<int, int>> edges;
+        for (int i = 0; i < m; i++) edges.push_back({(int)(rng() % n), (int)(rng() % n)});
+        auto got = groupsAfterRemovals(n, edges);
+        for (int removed = 0; removed <= m; removed++) {
+            vector<int> label(n);
+            iota(label.begin(), label.end(), 0);
+            for (bool changed = true; changed;) {
+                changed = false;
+                for (int i = removed; i < m; i++) {
+                    int a = label[edges[i].first], b = label[edges[i].second];
+                    if (a != b) {
+                        int lo = min(a, b);
+                        for (int& x : label) if (x == a || x == b) x = lo;
+                        changed = true;
+                    }
+                }
+            }
+            set<int> distinct(label.begin(), label.end());
+            if ((int)distinct.size() != got[removed]) return 1;
         }
     }
 }

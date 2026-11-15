@@ -1,36 +1,33 @@
 /*
-Problem: AtCoder ABC 179 D, Leaping Tak. Cells 1..N; from cell i, jump to i + d for any d in the union S of K
-disjoint segments [L, R], never past cell N. Count the ways to go from cell 1 to cell N, modulo 998244353.
-Input: N K (N <= 2 * 10^5, K <= 10), then K lines L R.
-Output: the count modulo 998244353.
+Problem: AtCoder ABC 185 E, Sequence Matching. Remove elements from A (length N) and from B (length M) so that the
+rest have equal length; the cost is the number of removed elements plus the number of positions where the rests
+differ. Print the minimum cost.
+Input: N M (N, M <= 1000), then A, then B (values <= 10^9).
+Output: the minimum cost.
 */
 #include <bits/stdc++.h>
 using namespace std;
 
 // snippet:begin
-// ABC 179 D. ways[i] = the ways to reach cell i; the previous cell is i - d for d in a segment [lo, hi], a range of ways,
-// summed with prefix sums.
-long long leapingTak(int n, const vector<pair<int, int>>& seg) {
-    const long long MOD = 998244353;
-    vector<long long> ways(n + 1, 0), prefix(n + 2, 0);
-    ways[1] = 1;
-    prefix[2] = 1;
-    for (int i = 2; i <= n; i++) {
-        for (auto [lo, hi] : seg) {
-            int from = max(1, i - hi), to = i - lo;
-            if (to < 1) continue;
-            ways[i] = (ways[i] + prefix[to + 1] - prefix[from] + MOD) % MOD;
-        }
-        prefix[i + 1] = (prefix[i] + ways[i]) % MOD;
-    }
-    return ways[n];
+// ABC 185 E. E[i][j] = the minimum cost for the prefixes a_1..a_i and b_1..b_j: remove a_i, remove b_j, or keep both
+// (cost 1 when they differ).
+int sequenceMatching(const vector<long long>& a, const vector<long long>& b) {
+    int n = a.size(), m = b.size();
+    vector<vector<int>> E(n + 1, vector<int>(m + 1));
+    for (int i = 0; i <= n; i++) E[i][0] = i;  // remove all i elements of a
+    for (int j = 0; j <= m; j++) E[0][j] = j;  // remove all j elements of b
+    for (int i = 1; i <= n; i++)
+        for (int j = 1; j <= m; j++)
+            E[i][j] = min({E[i - 1][j] + 1, E[i][j - 1] + 1, E[i - 1][j - 1] + (a[i - 1] != b[j - 1])});
+    return E[n][m];
 }
 // snippet:end
 
 int main() {
-    int n, k;
-    cin >> n >> k;
-    vector<pair<int, int>> seg(k);
-    for (auto& [lo, hi] : seg) cin >> lo >> hi;
-    cout << leapingTak(n, seg) << "\n";
+    int n, m;
+    cin >> n >> m;
+    vector<long long> a(n), b(m);
+    for (auto& x : a) cin >> x;
+    for (auto& x : b) cin >> x;
+    cout << sequenceMatching(a, b) << "\n";
 }

@@ -1,6 +1,8 @@
 // Learner data in localStorage with versioned keys (PLAN.md Section 10). Every read and write is
 // wrapped in try/catch: storage can be missing, full, or blocked, and the site must still render.
 
+import { ID_SCHEME, migrateProgress } from './topicIds.ts';
+
 export const KEYS = {
   problems: 'cp:v1:problems',
   topics: 'cp:v1:topics',
@@ -131,13 +133,54 @@ export interface ContestEntry {
 export type Track = 'cp' | 'lld' | 'hld';
 export type CurrentTopics = { cp?: string; lld?: string; hld?: string };
 export interface Settings {
+  /** Version of the topic id scheme the data uses (topicIds.ts). Missing means the ids before the 2026-11-15 renumbering. */
+  idScheme?: number;
   /** A topic id string before the design tracks existed; `{ cp, lld, hld }` afterwards (read both, write the new shape). */
   currentTopic?: string | CurrentTopics;
 }
 
+const isPlainObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+
+let idSchemeChecked = false;
+/** Forget that the id scheme was checked (after a reset or an import, which replace all data). */
+export const forgetIdSchemeCheck = () => { idSchemeChecked = false; };
+/**
+ * One-time move of data saved under the old topic ids (topicIds.ts). Runs before the first read of topic-keyed data in a page
+ * session and marks the data with `settings.idScheme`, so it never runs twice on the same data. With no stored data it only
+ * writes the mark. All keys are written together and rolled back when one write fails (storage can be full or blocked); the
+ * next page load then tries again.
+ */
+export function ensureIdScheme(): void {
+  if (idSchemeChecked) return;
+  idSchemeChecked = true;
+  const ls = globalThis.localStorage;
+  if (!ls) return;
+  const done: [string, string | null][] = [];
+  try {
+    const settings = read<unknown>(KEYS.settings, {});
+    if (isPlainObject(settings) && settings.idScheme === ID_SCHEME) return;
+    const m = migrateProgress({ topics: read<unknown>(KEYS.topics, null), drills: read<unknown>(KEYS.drills, null), settings });
+    const puts: [string, unknown][] = [[KEYS.settings, m.settings]];
+    if (ls.getItem(KEYS.topics) !== null) puts.push([KEYS.topics, m.topics]);
+    if (ls.getItem(KEYS.drills) !== null) puts.push([KEYS.drills, m.drills]);
+    for (const [k, v] of puts) {
+      done.push([k, ls.getItem(k)]);
+      ls.setItem(k, JSON.stringify(v));
+    }
+    globalThis.dispatchEvent?.(new CustomEvent(CHANGE_EVENT, { detail: { key: '*' } }));
+  } catch {
+    for (const [k, old] of done) {
+      try { if (old === null) ls.removeItem(k); else ls.setItem(k, old); } catch { /* nothing more to do */ }
+    }
+  }
+}
+
 const asRecord = <T>(v: unknown): Record<string, T> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, T>) : {});
 
-export const getTopics = () => asRecord<TopicState>(read(KEYS.topics, {}));
+export const getTopics = () => {
+  ensureIdScheme();
+  return asRecord<TopicState>(read(KEYS.topics, {}));
+};
 export function saveTopic(id: string, patch: Partial<TopicState>): boolean {
   const all = getTopics();
   all[id] = { ...all[id], ...patch };
@@ -150,7 +193,10 @@ export function saveExam(phase: string, patch: Partial<ExamState>): boolean {
   all[phase] = { ...all[phase], ...patch };
   return write(KEYS.exams, all);
 }
-export const getDrills = () => asRecord<DrillState>(read(KEYS.drills, {}));
+export const getDrills = () => {
+  ensureIdScheme();
+  return asRecord<DrillState>(read(KEYS.drills, {}));
+};
 export function saveDrill(id: string, patch: Partial<DrillState>): boolean {
   const all = getDrills();
   all[id] = { ...all[id], ...patch };
@@ -163,7 +209,10 @@ export function getContests(): ContestEntry[] {
 }
 export const saveContests = (list: ContestEntry[]) => write(KEYS.contests, list);
 
-export const getSettings = (): Settings => asRecord<unknown>(read(KEYS.settings, {})) as Settings;
+export const getSettings = (): Settings => {
+  ensureIdScheme();
+  return asRecord<unknown>(read(KEYS.settings, {})) as Settings;
+};
 export const saveSettings = (patch: Partial<Settings>) => write(KEYS.settings, { ...getSettings(), ...patch });
 
 /** The current topic of a track; migrates the old single-string shape (a CP topic id) when reading. */
@@ -211,6 +260,7 @@ export const NUMBER_INTERVALS = [1, 3, 7, 21] as const;
 // ---- Export, import, reset (PLAN.md Section 10.6) ----
 
 export function exportAll(): Record<string, unknown> {
+  ensureIdScheme();
   const out: Record<string, unknown> = { format: 'cp-training-progress', version: 1, exportedOn: today() };
   for (const k of Object.values(KEYS)) out[k] = read<unknown>(k, null);
   return out;
@@ -220,13 +270,19 @@ export function exportAll(): Record<string, unknown> {
 export function importAll(data: unknown): string | null {
   if (!data || typeof data !== 'object' || (data as { format?: string }).format !== 'cp-training-progress')
     return 'This file is not a CP Training progress export.';
-  const d = data as Record<string, unknown>;
+  let d = data as Record<string, unknown>;
   const isObj = (v: unknown) => v === null || (typeof v === 'object' && !Array.isArray(v));
   for (const k of [KEYS.problems, KEYS.topics, KEYS.drills, KEYS.settings]) if (!isObj(d[k])) return `Field ${k} has the wrong shape.`;
   // Exports made before the phase exams existed have no exams field.
   if (d[KEYS.exams] !== undefined && !isObj(d[KEYS.exams])) return `Field ${KEYS.exams} has the wrong shape.`;
   for (const k of [KEYS.profiles, KEYS.shown, KEYS.syncLc, KEYS.designAttempts, KEYS.numbers]) if (d[k] !== undefined && !isObj(d[k])) return `Field ${k} has the wrong shape.`;
   if (!(d[KEYS.contests] === null || Array.isArray(d[KEYS.contests]))) return `Field ${KEYS.contests} has the wrong shape.`;
+  // An export made before the topic ids were renumbered (no `settings.idScheme`) is moved to the new ids first.
+  const importedSettings = d[KEYS.settings];
+  if (!(isPlainObject(importedSettings) && importedSettings.idScheme === ID_SCHEME)) {
+    const m = migrateProgress({ topics: d[KEYS.topics], drills: d[KEYS.drills], settings: importedSettings });
+    d = { ...d, [KEYS.topics]: m.topics, [KEYS.drills]: m.drills, [KEYS.settings]: m.settings };
+  }
   try {
     for (const k of Object.values(KEYS)) {
       if (d[k] === null || d[k] === undefined) globalThis.localStorage?.removeItem(k);
@@ -234,6 +290,7 @@ export function importAll(data: unknown): string | null {
     }
     // The submission caches are rebuilt by a full sync (PROFILE_SYNC_PLAN.md Section 4).
     for (const k of [SYNC_KEYS.cf, SYNC_KEYS.ac, SYNC_KEYS.log]) globalThis.localStorage?.removeItem(k);
+    forgetIdSchemeCheck();
     globalThis.dispatchEvent?.(new CustomEvent(CHANGE_EVENT, { detail: { key: '*' } }));
     return null;
   } catch {
@@ -244,6 +301,7 @@ export function importAll(data: unknown): string | null {
 export function resetAll(): boolean {
   try {
     for (const k of [...Object.values(KEYS), ...Object.values(SYNC_KEYS)]) globalThis.localStorage?.removeItem(k);
+    forgetIdSchemeCheck();
     globalThis.dispatchEvent?.(new CustomEvent(CHANGE_EVENT, { detail: { key: '*' } }));
     return true;
   } catch {

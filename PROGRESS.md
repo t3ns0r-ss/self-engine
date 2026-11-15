@@ -7,6 +7,22 @@
 Last completed step: profile sync (PROFILE_SYNC_PLAN.md) milestones S0 to S6 except the LeetCode snippet, on `main` at Saurabh's request (details under "Profile sync" below).
 Next action: Saurabh runs the LeetCode snippet from the Profiles page (gate S4), then the final review.
 
+## Renumbering 2026-11-15
+Saurabh decided that CP topic ids must match the reading order (`order` in `curriculum.yaml`). The reading order did not change; only the ids and everything derived from them (file and directory names, `requires`, `uses`, `topic:`, `code:`, theorem ids `X.Y.Z`, `from_theorem`, pattern ids such as `7.10:exclude-one`, glossary `topic`, links, bank notes, `problem-bank/`, code-unit comments, `docs/restore/` inventories). Applied once and simultaneously by a script that replaces ids only in structured places; every other occurrence was reviewed by hand (section numbers like `### 4.4 ...`, `Section 4.4`, decimals like 2.5 or 3.5, versions and `Section 7.4` of the bank plan were left).
+
+| Phase | old -> new |
+|---|---|
+| 2 | 2.5->2.3, 2.6->2.4, 2.3->2.5, 2.4->2.6 |
+| 3 | 3.9->3.2, 3.2->3.3, 3.3->3.4, 3.4->3.5, 3.5->3.6, 3.6->3.7, 3.7->3.8, 3.8->3.9 |
+| 4 | 4.9->4.4, 4.4->4.5, 4.5->4.6, 4.6->4.7, 4.7->4.8 |
+| 5 | 5.5->5.4, 5.4->5.5 |
+| 7 | 7.10->7.2, 7.2->7.3, 7.3->7.4, 7.4->7.5, 7.5->7.6, 7.6->7.7, 7.7->7.8, 7.8->7.10 (7.9 draft and 7.1 stay) |
+
+All other ids are unchanged. The rows, notes and tables elsewhere in this file, and the other plan documents (PROBLEM_BANK_PLAN, FILL_SHORT_TOPICS_PLAN, LESSON_RESTORE_PLAN, DESIGN_TRACKS_PLAN, `bank-fill/SHORTFALL.md`, `docs/LESSON_*`), describe the past and keep the ids as they were written then; read them through the table above. PLAN.md (Revision 2.2 note, numbering note) and DEVELOPER_GUIDE.md (current facts, reduced-bank list) were updated.
+- Phase exams: each phase's exam problems stay with the same topic, which is still the last of its phase by `order` (the validator rule) (2.6, 3.9, 4.8, 5.7, 7.10), so no problem moved. Exam intros now name the new ids.
+- Learner data: `cp:v1:topics` keys, `cp:v1:settings.currentTopic` and `cp:v1:drills.*.chosenCard` (`"{topic}:{card}"`) hold topic ids. `src/lib/topicIds.ts` and `ensureIdScheme()` in `storage.ts` move them once (mark `settings.idScheme = 2`), and `importAll` moves old exports. Tests: `tests/topic-ids.test.mjs`. Problems, exams (by phase), shown, profiles and sync caches are keyed by problem id or phase and need nothing.
+- `scripts/check_code_unchanged.mjs` now follows renamed lessons. `scripts/check_composition.mjs` and `scripts/lesson_targets.json` keys were renamed. Old lesson URLs (`/phase-3/3-2-dp-foundations/`) no longer exist; there are no redirects.
+
 ## Curriculum gaps (CURRICULUM_GAPS_PLAN.md)
 Branch `claude/tender-bohr-ktypz5`. Start conditions checked 2026-11-13: lesson restore Phase 5 is on `main`, no open PRs.
 

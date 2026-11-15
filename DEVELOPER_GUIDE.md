@@ -6,13 +6,15 @@ Read this first, then skim `PLAN.md` (the spec; `CLAUDE.md` and `AGENTS.md` say 
 
 A self-study competitive programming course published as a static site: **Astro + Starlight + React islands**, KaTeX for maths, all learner data in browser `localStorage` (no server). Live at https://t3ns0r-ss.github.io/self-engine/ (GitHub Pages, `.github/workflows/pages.yml`).
 
-Content: **57 topics in 8 phases** (the original 48 plus 1.8, 2.5, 2.6, 3.9, 4.9, 5.5, 5.6, 5.7 and 7.10; CURRICULUM_GAPS_PLAN.md adds more, each a `draft` row until it goes live) (0 Foundations, 1 Core algorithms, 2 Number theory and counting, 3 DP, 4 Graphs and trees, 5 Range data structures, 6 Strings, 7 Combinations and recognition). Every topic has a lesson, a data file, tested code units and a problem bank. Spec revision: **2.1** (each lesson follows a 14-section template; Phase 7 lessons open with "This topic combines X and Y.").
+Content: **57 topics in 8 phases** (the original 48 plus 1.8, 2.3, 2.4, 3.2, 4.4, 5.4, 5.6, 5.7 and 7.2; CURRICULUM_GAPS_PLAN.md adds more, each a `draft` row until it goes live) (0 Foundations, 1 Core algorithms, 2 Number theory and counting, 3 DP, 4 Graphs and trees, 5 Range data structures, 6 Strings, 7 Combinations and recognition). Every topic has a lesson, a data file, tested code units and a problem bank. Spec revision: **2.1** (each lesson follows a 14-section template; Phase 7 lessons open with "This topic combines X and Y.").
 
 ## 2. Status
 
 All 48 topics, all phase intros and exams, and the e2e suite are done. All review gates are approved by the owner (Saurabh). New work is feature work or content fixes, not the original milestones. `PROGRESS.md` is the running log (gates, per-topic status, bank table, and a long "Questions for Saurabh" list of weak points per topic). `FEEDBACK.md` is where the owner writes feedback: read it at the start of every session and act on it.
 
-**Reduced banks.** A curriculum row may carry `reduced_bank: true` (1.8, 2.5, 2.6, 3.9, 4.9, 5.5, 5.6, 5.7 and 7.10 do, 5.4 since the split of 5.6 took five reserved problems from it, and 6.3 after the move of its binary trie; decided by Saurabh on 2026-11-13 for 2.5 and extended on 2026-11-14 to every new topic, because too few real problems exist): 2 cards, a ladder of 8, one review set, no worked examples needed, and no problem in the phase exam or the 7.8 bank. Every other rule still applies.
+**Reduced banks.** A curriculum row may carry `reduced_bank: true` (1.8, 2.3, 2.4, 3.2, 4.4, 5.4, 5.6, 5.7 and 7.2 do, 5.5 since the split of 5.6 took five reserved problems from it, and 6.3 after the move of its binary trie; decided by Saurabh on 2026-11-13 for 2.3 and extended on 2026-11-14 to every new topic, because too few real problems exist): 2 cards, a ladder of 8, one review set, no worked examples needed, and no problem in the phase exam or the 7.10 bank. Every other rule still applies.
+
+**Topic ids follow the reading order** (renumbered on 2026-11-15; the full old-to-new mapping is in `PROGRESS.md`, section "Renumbering 2026-11-15"). Inside a phase the ids ascend with `order` in `curriculum.yaml`, so topic 3.2 is read before 3.3, and the recognition topic is 7.10, the last of Phase 7. `tests/topic-ids.test.mjs` fails when an id is out of order. A new topic that goes into the middle of a phase takes the next free number only if it is read last; otherwise renumber the later ones (file and directory names, `requires`, `uses`, `topic:`/`code:` fields, theorem ids, patterns such as `7.10:pattern`, links, bank notes, `problem-bank/`) with one scripted pass that replaces ids only in structured places, and list every remaining occurrence for review, because section numbers (`### 4.4 ...`), decimals and versions look like ids. Learner data saved under the old ids is moved once by `src/lib/topicIds.ts` (`settings.idScheme`, see "Gotchas"); a new renumbering needs a new scheme number and a new map there.
 
 **Planned topics (CURRICULUM_GAPS_PLAN.md).** `curriculum.yaml` also lists topics with `draft: true`: they hold their place in `order`, but validators skip them and pages hide them, so the live count stays at the topics already live until each one passes its review gate and loses the flag. Topic ids can have two digits (`7.10`); never sort ids as strings, use `order`.
 
@@ -24,7 +26,7 @@ npm run dev                     # http://localhost:4321, live reload
 npm run build                   # validate + check problem-bank/ is current + astro build + check built pages
 npm run preview
 npm test                        # node --test tests/*.test.mjs (71 validator tests)
-bash scripts/test_units.sh code/7.7     # compile + fixed tests + 5000 random cases vs brute, for one topic
+bash scripts/test_units.sh code/7.8     # compile + fixed tests + 5000 random cases vs brute, for one topic
 bash tests/e2e.sh               # Playwright, ~10 min; builds twice (real site, then placeholder topic)
 npm run bank:md                 # regenerate problem-bank/*.md from src/data/bank (never hand-edit them)
 node scripts/fetch_problem.mjs <id>     # read a problem statement (ids like lc-slug, ac-abc123_a, cses-1234)
@@ -41,7 +43,7 @@ node scripts/fetch_problem.mjs <id>     # read a problem statement (ids like lc-
 |---|---|
 | `PLAN.md`, `PROBLEM_BANK_PLAN.md` | the specs (lesson template, data schema, validator rules, bank rules) |
 | `src/data/curriculum.yaml` | the live topics and the draft rows (`order`, `id`, `phase`, `slug`, `title`, `requires`, `target_rating`). Edit `requires` here, not in PLAN.md |
-| `src/data/bank/{id}.yaml`, `src/data/bank/patterns/{id}.yaml` | the problem bank and its patterns, per topic (`7.8` patterns are `topic:pattern`) |
+| `src/data/bank/{id}.yaml`, `src/data/bank/patterns/{id}.yaml` | the problem bank and its patterns, per topic (`7.10` patterns are `topic:pattern`) |
 | `notes/bank/{id}.md` | private solution note for every bank problem (not on the site) |
 | `problem-bank/` | generated readable lists |
 | `src/data/topics/{id-with-dash}.yaml` | everything structured in a lesson: `uses`, `theorems`, `cards`, `problems` (by role), `drill`, `lookalike_pairs`, `self_test`, `checkpoint`, `decision_map`, `glossary_added` |
@@ -66,7 +68,7 @@ Naming: topic `1.3` -> `1-3.yaml`, `phase-1/1-3-two-pointers.mdx`, `code/1.3/`, 
 - `uses` must contain every `requires` id plus every topic named by a card's `correct_tool`/look-alike, a drill answer, a decision-map `over`, a linked lesson, or a cited `Theorem x.y.z`.
 - A card needs >= 2 positive and >= 2 negative examples, at least one inline of each. Inline numbers must match the card example unit's printed `P1 brute=.. method=..` lines in `code/{topic}/card-{id}/tests/1.out` (the validator checks them).
 - Negative `correct_tool` and drill answers must be a card of this or an earlier topic. A lesson may link and cite only earlier topics (outside "What this topic does not cover"); a keyword scan rejects later-topic terms.
-- **Topic 7.8 is special**: no cards, theorems, templates or ladder; its checkpoint/review/exam problems name a card of the earlier topic they test. The page code and validator have 7.8 exceptions for this.
+- **Topic 7.10 is special**: no cards, theorems, templates or ladder; its checkpoint/review/exam problems name a card of the earlier topic they test. The page code and validator have 7.10 exceptions for this.
 
 **Lesson** headings (exact, in order): `## 1. Why this topic exists`, `## 2. Prerequisites and scope` (with `### What you need` rendered by `<WhatYouNeed />` and `### What this topic does not cover`), `## 3. Definitions`, `## 4. Theory and proofs`, `## 5. Recognition Cards`, `## 6. Templates`, `## 7. Bug catalogue`, `## 8. Worked examples` (each `### Example n` has the six `#### Step` headings), `## 9. Problem ladder` ... `## 14. Decision map update`. Theorems: `**Theorem N.M.k ...**` followed by a `:::tip[In plain words]` block (must repeat `plain_words` from the data file), numbered proof (<= 8 steps) and a `:::note[This proof needs]` box, then `<TheoremCode unit="..." />`; theorem code snippets are <= 30 lines between `// snippet:begin` / `// snippet:end`.
 
@@ -93,22 +95,23 @@ Naming: topic `1.3` -> `1-3.yaml`, `phase-1/1-3-two-pointers.mdx`, `code/1.3/`, 
 ## 7. Gotchas learned the hard way
 
 - `tests/e2e.sh` part 2 swaps topic 1.3's files for a placeholder. Any later topic that cites a **1.3 practice problem** (by id) breaks that run; cite problems from other topics.
-- The e2e lesson script expects `.ladder` unless the topic has no ladder role (7.8 is skipped by design).
-- A topic's header links to `/bank/<topic>/`; 7.8 has no practice problems, so the link is hidden for it.
+- The e2e lesson script expects `.ladder` unless the topic has no ladder role (7.10 is skipped by design).
+- A topic's header links to `/bank/<topic>/`; 7.10 has no practice problems, so the link is hidden for it.
 - `npm run build` fails if `problem-bank/` is stale: run `npm run bank:md` after any bank edit and commit the result.
 - Bug "mutations" that do not change behaviour (redundant guards) are not bugs; check with `stress.sh` before writing one up.
 - Random tests with small `n` cannot reveal overflow/modulus bugs; show such bugs with a hand-checked input instead and say so.
 - Do not use unrated Codeforces problems, and do not copy statements or editorials (one-line own-words summaries only).
 - Pronouns: use they/them for anyone whose pronouns are not stated.
+- **Stored progress is keyed by topic id.** `cp:v1:topics` has one entry per topic id, `cp:v1:settings.currentTopic` holds a topic id, and a drill answer in `cp:v1:drills` is `"{topic}:{card}"`. `ensureIdScheme()` in `src/lib/storage.ts` moves data saved under the pre-renumbering ids once (marked by `settings.idScheme`), and `importAll` moves an old export. The map is a permutation, so it must never run twice on the same data; keep the mark. Lesson URLs contain the id (`/phase-3/3-3-dp-foundations/`), so links saved before the renumbering no longer match.
 - `sleep` may be blocked in the shell: run long jobs in the background and poll a log.
 
 ## 8. Known weak points (candidates for future work)
 
-See "Questions for Saurabh" in `PROGRESS.md`. In short: many Codeforces hints/notes are from recalled statements (†) and deserve a spot-check; several short banks (for example 5.4, 6.4, 7.7) and thin tiers; a few review problems have a simpler natural solution; 7.8 uses 27 of its 40 bank problems; 7.7 skews to easier tiers; the glossary got no new terms in 7.5-7.8.
+See "Questions for Saurabh" in `PROGRESS.md`. In short: many Codeforces hints/notes are from recalled statements (†) and deserve a spot-check; several short banks (for example 5.5, 6.4, 7.8) and thin tiers; a few review problems have a simpler natural solution; 7.10 uses 27 of its 40 bank problems; 7.8 skews to easier tiers; the glossary got no new terms in 7.6-7.8.
 
 ## 9. Git conventions
 
 - Develop on the branch the session names (this work: `claude/problemset-implementation-yja039`); push with `git push -u origin <branch>`. **Do not open a pull request unless asked.**
-- Commit messages: `topic(7.7): ...`, `bank(7.7): ...`, `fix(...)`, ending with the attribution lines the session specifies. One logical step per commit; never force-push shared history.
+- Commit messages: `topic(7.8): ...`, `bank(7.8): ...`, `fix(...)`, ending with the attribution lines the session specifies. One logical step per commit; never force-push shared history.
 - Before every push: `node scripts/validate.mjs`, `npm test`, `npm run build`, and `bash scripts/test_units.sh code/<changed topic>`. Run `bash tests/e2e.sh` for any component, page or validator change.
 - Update `PROGRESS.md` (Now, topic rows, bank table, Questions) with every content change.

@@ -2,73 +2,69 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 6.3.4. A binary trie of numbers below 2^BITS, written with BITS binary digits from the highest. Node 0 is the root;
-// child[v][d] is the node reached by the digit d (0 = none); cnt[v] = how many stored numbers go through v.
-const int BITS = 30;
-struct BinaryTrie {
-    vector<array<int, 2>> child = {{0, 0}};
-    vector<int> cnt = {0};
-    void add(int x, int delta) {  // delta = +1 stores x; delta = -1 removes one copy of x (it must be stored)
+// Theorem 6.3.4. A trie whose counts change. pass[v] = how many stored words go through v. Storing or removing one word
+// changes the counts of the nodes of its own path by +1 or -1, so the cost is the length of the word.
+struct CountTrie {
+    vector<array<int, 26>> child = {array<int, 26>{}};
+    vector<int> pass = {0};
+    int step(int v, char ch) {  // the child of v for the letter ch, made if it is missing
+        int c = ch - 'a';
+        if (!child[v][c]) {
+            child[v][c] = child.size();
+            child.push_back(array<int, 26>{});
+            pass.push_back(0);
+        }
+        return child[v][c];
+    }
+    void add(const string& w, int delta) {  // delta = +1 stores w, -1 removes one stored copy of w
         int v = 0;
-        for (int b = BITS - 1; b >= 0; b--) {
-            int d = x >> b & 1;
-            if (!child[v][d]) {
-                child[v][d] = child.size();
-                child.push_back({0, 0});
-                cnt.push_back(0);
-            }
-            v = child[v][d];
-            cnt[v] += delta;
+        pass[0] += delta;
+        for (char ch : w) {
+            v = step(v, ch);
+            pass[v] += delta;
         }
     }
-    int maxXor(int x) const {  // the largest x ^ y over the stored y (the trie must hold at least one number)
-        int v = 0, best = 0;
-        for (int b = BITS - 1; b >= 0; b--) {
-            int d = x >> b & 1, opposite = child[v][d ^ 1];
-            if (opposite && cnt[opposite] > 0) best |= 1 << b, v = opposite;  // a digit that differs from x gives a 1 here
-            else v = child[v][d];
-        }
-        return best;
+    int count(const string& u) {  // how many stored words begin with u
+        int v = 0;
+        for (char ch : u) v = step(v, ch);
+        return pass[v];
     }
 };
 // snippet:end
 
 int main() {
-    BinaryTrie t;
-    for (int y : {3, 10, 5, 25, 2, 8}) t.add(y, +1);
-    cout << "set 3 10 5 25 2 8: maxXor(5) = " << t.maxXor(5) << ", maxXor(8) = " << t.maxXor(8) << "\n";
-    int best = 0;
-    for (int y : {3, 10, 5, 25, 2, 8}) best = max(best, t.maxXor(y));
-    cout << "largest XOR of two of them: " << best << "\n";
-    t.add(25, -1);
-    cout << "after removing 25: maxXor(5) = " << t.maxXor(5) << "\n";
-    BinaryTrie one;
-    one.add(7, +1);
-    cout << "set 7: maxXor(7) = " << one.maxXor(7) << "\n";
-    // Check (not printed): maxXor(x) equals the maximum of x ^ y over the stored y, for every set of up to 4 numbers
-    // below 16 (with repeats and after removals), and every x below 16.
-    for (int a = 0; a < 16; a++)
-        for (int b = -1; b < 16; b++)
-            for (int c = -1; c < 16; c++)
-                for (int d = -1; d < 16; d++) {
-                    vector<int> values = {a};
-                    for (int x : {b, c, d})
-                        if (x >= 0) values.push_back(x);
-                    BinaryTrie tr;
-                    for (int y : values) tr.add(y, +1);
-                    for (int x = 0; x < 16; x++) {
-                        int want = 0;
-                        for (int y : values) want = max(want, x ^ y);
-                        if (tr.maxXor(x) != want) return 1;
-                    }
-                    if (values.size() >= 2) {  // remove the last number and check again
-                        tr.add(values.back(), -1);
-                        values.pop_back();
-                        for (int x = 0; x < 16; x++) {
-                            int want = 0;
-                            for (int y : values) want = max(want, x ^ y);
-                            if (tr.maxXor(x) != want) return 1;
-                        }
-                    }
+    CountTrie t;
+    for (string w : {"ab", "abc", "b"}) t.add(w, +1);
+    cout << "stored ab abc b: count(a) = " << t.count("a") << ", count(ab) = " << t.count("ab") << ", count(c) = " << t.count("c") << "\n";
+    t.add("ab", -1);
+    cout << "after removing ab: count(a) = " << t.count("a") << ", count(ab) = " << t.count("ab") << "\n";
+    t.add("ab", +1);
+    t.add("ab", +1);
+    t.add("ab", -1);
+    cout << "ab stored twice, one removed: count(ab) = " << t.count("ab") << ", count() = " << t.count("") << "\n";
+    // Check (not printed): random sequences of stores and removals of words of length 1 to 3 over {a, b} give the same
+    // counts as a multiset of the stored words that is searched by hand.
+    mt19937 rng(7);
+    for (int round = 0; round < 3000; round++) {
+        CountTrie tr;
+        multiset<string> stored;
+        for (int op = 0; op < 12; op++) {
+            string w(1 + rng() % 3, 'a');
+            for (char& c : w) c = 'a' + rng() % 2;
+            if (rng() % 3 && !(stored.count(w) == 0 && rng() % 2)) {
+                if (rng() % 3 == 0 && stored.count(w)) {
+                    tr.add(w, -1);
+                    stored.erase(stored.find(w));
+                } else {
+                    tr.add(w, +1);
+                    stored.insert(w);
                 }
+            }
+            for (string u : {"a", "b", "aa", "ab", "ba", "bb", "aab", "abb"}) {
+                int want = 0;
+                for (const string& s : stored) want += s.compare(0, u.size(), u) == 0;
+                if (tr.count(u) != want) return 1;
+            }
+        }
+    }
 }

@@ -1,5 +1,5 @@
 ---
-title: "6.3 Trie and binary trie"
+title: "6.3 Trie: words that share beginnings"
 sidebar:
   order: 39
 topic: "6.3"
@@ -23,9 +23,9 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 Here is a small problem. A dictionary has $n = 2 \cdot 10^5$ words with $10^6$ letters in total. You get $q = 2 \cdot 10^5$ questions, and each gives a string $u$ and asks: "how many words of the dictionary begin with $u$?" The dictionary does not change.
 
-Scanning the dictionary for every question costs up to $10^6$ letter comparisons, and $q$ such questions cost $2 \cdot 10^{11}$ comparisons, about 2000 seconds. Sorting the words ([topic 1.1](../../phase-1/1-1-sorting/)) and finding the first and the last word that begin with $u$ by binary search ([topic 1.4](../../phase-1/1-4-binary-search/)) does answer this question, in about $|u| \log n$ steps per question. But the questions that come next in this topic have no such shortcut: "what is the longest common prefix of a word with all the other words?", "which dictionary words begin at this place of the text?", "which number in a set gives the largest XOR with $x$?" For these, the words (or the numbers written in binary) are put into a tree in which **words with the same beginning share the same path**. A word is read from the root one letter at a time, so a question about a prefix is a walk of $|u|$ steps; a count, a best value or a flag can be kept on every node of the walk.
+Scanning the dictionary for every question costs up to $10^6$ letter comparisons, and $q$ such questions cost $2 \cdot 10^{11}$ comparisons, about 2000 seconds. Sorting the words ([topic 1.1](../../phase-1/1-1-sorting/)) and finding the first and the last word that begin with $u$ by binary search ([topic 1.4](../../phase-1/1-4-binary-search/)) does answer this question, in about $|u| \log n$ steps per question. But the questions that come next in this topic have no such shortcut: "what is the longest common prefix of a word with all the other words?", "which dictionary words begin at this place of the text?", "how many allowed words are left after this string is forbidden?" For these, the words are put into a tree in which **words with the same beginning share the same path**. A word is read from the root one letter at a time, so a question about a prefix is a walk of $|u|$ steps; a count, a best value or a flag can be kept on every node of the walk, and it can change when a word is stored, removed or blocked.
 
-That tree is the **trie** (the name comes from the word "retrieval"). For numbers written in binary, with the highest digit first, it is the **binary trie**, and the walk "take the opposite digit if possible" finds the number that gives the largest XOR.
+That tree is the **trie** (the name comes from the word "retrieval"). The same tree built on the binary digits of numbers is the binary trie of topic 5.7.
 
 ## 2. Prerequisites and scope
 
@@ -37,6 +37,7 @@ That tree is the **trie** (the name comes from the word "retrieval"). For number
 
 - Sorting all suffixes of a string, so that any two substrings can be compared exactly and the longest common prefix of neighbours is known: the suffix array and LCP array of topic 6.4. Here a trie holds a given set of strings, not all the suffixes of one string.
 - Matching many patterns in one pass over a text with failure links (the Aho–Corasick automaton): not part of this course. The matching of one pattern was topic 6.2.
+- The trie of numbers written in binary, with the largest XOR and the counts of XORs below a bound: covered in topic 5.7.
 - Compressed tries, persistent tries and tries with the sets of numbers stored in the leaves: not part of this course.
 
 ## 3. Definitions
@@ -44,9 +45,8 @@ That tree is the **trie** (the name comes from the word "retrieval"). For number
 - A **trie** stores a set of strings $W$ (a word may be stored several times). It is a rooted tree whose edges carry letters. The **root** stands for the empty string, and a node stands for the string of letters on the path from the root to it. Two edges leaving one node never carry the same letter. For every stored word there is a node that stands for it, and strings that begin the same way share their nodes. Example: the words ab, abc, abd, b are stored in a trie with 6 nodes: the root, a, ab, abc, abd and b.
 - For a node $v$, $\text{pass}[v]$ is the number of stored words (with repeats) that begin with the string of $v$, and $\text{end}[v]$ is the number of stored words equal to the string of $v$. Example: in the trie above $\text{pass}[\text{a}] = 3$, $\text{pass}[\text{ab}] = 3$, $\text{end}[\text{ab}] = 1$, $\text{end}[\text{a}] = 0$. The root has $\text{pass} = |W|$. The **depth** of a node is the length of its string.
 - The **longest common prefix** of two strings $a$ and $b$ is the longest string that begins both; $\text{lcp}(a, b)$ is its length. Example: $\text{lcp}(\text{abc}, \text{abd}) = 2$.
-- A **binary trie** stores numbers below $2^B$ written with exactly $B$ binary digits (leading zeros included), highest digit first. Every edge carries the digit 0 or 1 and every stored number is a path of exactly $B$ edges. Example with $B = 3$: the numbers 1, 5, 6 are 001, 101, 110.
-- The **XOR** of two numbers is taken digit by digit: 1 if the digits differ, 0 if they are equal ([topic 1.7](../../phase-1/1-7-bits/)). Example: $5 \oplus 6 = 101 \oplus 110 = 011 = 3$.
-- In the code a node is a number (its place in a vector), the children of a node are an array with one entry per letter, and the entry 0 means "no such child" (the root, node 0, is never a child). `array<int, 26>` is a fixed-size array of 26 integers; `array<int, 26>{}` is such an array with all entries 0. `vector<array<int, 2>> child = {{0, 0}};` starts the vector with one element, the root with no children. These declarations, written with `= value` inside a `struct`, give the members their starting values when an object is made.
+- A node of the trie is **blocked** when no word may be stored below it any more: every word that began with its string was removed and later words with that beginning are refused. Example: after blocking ab, the words ab and abc are gone and abd is refused.
+- In the code a node is a number (its place in a vector), the children of a node are an array with one entry per letter, and the entry 0 means "no such child" (the root, node 0, is never a child). `array<int, 26>` is a fixed-size array of 26 integers; `array<int, 26>{}` is such an array with all entries 0. A member written with `= value` inside a `struct` gets that starting value when an object is made.
 
 ## 4. Theory and proofs
 
@@ -131,58 +131,32 @@ Reading the text from a place, you walk along the one path that the text spells 
 
 The first line is the tiny instance: the lengths 1 and 2 at place 0, and 4 cuttings of abab. The second, with the dictionary aa and a, counts 5 cuttings of aaaa (the cuttings are 1+1+1+1, 1+1+2, 1+2+1, 2+1+1, 2+2). The third has no cutting of abac with the words ab and c. The check compares the walk with a test of all substrings and the cuttings with a plain recursion, on every string of length 1 to 8 over $\{a, b\}$ and three dictionaries.
 
-### 4.4 The binary trie and the largest XOR
+### 4.4 Counts that change
 
-**Theorem 6.3.4 (the largest XOR).** Store the numbers of a set $Y$ below $2^B$ in a binary trie, with $\text{cnt}[v]$ the number of stored numbers that go through $v$. For a number $x$ below $2^B$, walk down from the root: at each level, with $d$ the digit of $x$ at this level, go to the child with the digit $1 - d$ if that child exists and its count is positive; otherwise go to the child with the digit $d$. The number $y$ found at the bottom gives the largest value of $x \oplus y$ over $y \in Y$, in $B$ steps.
+**Theorem 6.3.4 (counts that change).** Let the trie hold the multiset of words $W$ with the counts $\text{pass}$ of Theorem 6.3.1. (a) Storing one more copy of a word $w$ adds 1 to $\text{pass}$ of the root and of every node on the path of $w$, and removing a stored copy of $w$ subtracts 1 from the same nodes; no other count changes. After each such change, $\text{pass}[v]$ is again the number of words of the current multiset that begin with the string of $v$. (b) Each change costs $O(|w|)$. (c) To forbid a beginning $u$ (remove every stored word that begins with $u$ and refuse later ones), let $v$ be the node of $u$ and $k = \text{pass}[v]$; subtract $k$ from $\text{pass}$ of the root and of every node on the path of $u$ and mark $v$ blocked; a later word whose path meets a blocked node is not stored. After this, $\text{pass}$ is again the number of live words that begin with each string that a walk can reach, in $O(|u|)$ time.
 
 :::tip[In plain words]
-The XOR of two numbers is decided by the highest digit where they differ: if it is 1 there, the XOR is bigger than any XOR that has 0 there, whatever the lower digits are. So from the top, always try to find a stored number with the opposite digit. If there is one, taking it is never worse; if there is none, no stored number in this branch can do better.
+Storing a word adds 1 to the counts of the nodes of its own path and removing it subtracts 1; nothing else moves. So the count for any beginning is up to date after every change, and a question about a beginning still reads one number. Forbidding a beginning is one subtraction along a path: the whole branch below it dies at once.
 :::
 
-**A tiny instance.** $B = 5$, $Y = \{3, 10, 5, 25, 2, 8\}$, that is 00011, 01010, 00101, 11001, 00010, 01000, and $x = 5 = 00101$. The top digit of $x$ is 0, so the walk wants a stored number with top digit 1. Only 25 has it, so the walk goes there, and $5 \oplus 25 = 00101 \oplus 11001 = 11100 = 28$. For $x = 8 = 01000$ the walk again goes to 25, with $8 \oplus 25 = 10001 = 17$.
+**A tiny instance.** Store ab, abc, b: $\text{pass}[\text{a}] = 2$, $\text{pass}[\text{ab}] = 2$, $\text{pass}[\text{b}] = 1$. Remove ab: the root, a and ab lose 1, so $\text{pass}[\text{a}] = \text{pass}[\text{ab}] = 1$ (only abc is left). Forbid ab: $k = \text{pass}[\text{ab}] = 1$, subtract 1 from the root, a and ab, and mark ab blocked; now no stored word begins with a, and a later abd is refused.
 
 **Proof.**
-1. For numbers with the same number of digits, comparing by value is the same as comparing the digit strings from the left: the first place where they differ decides. The same holds for the values $x \oplus y$.
-2. Let $g$ be the number found by the walk, and suppose $y' \in Y$ is any stored number with $y' \ne g$. Let $b$ be the highest digit place where the paths of $g$ and $y'$ differ; above it they go through the same nodes, so $x \oplus g$ and $x \oplus y'$ agree above $b$.
-3. At the node where the paths split, the walk took the child with the digit $1 - d$ or the child with the digit $d$. If it took the child with $d$, then the child with $1 - d$ did not exist or had count 0, so no stored number has $1 - d$ at this place below this node, and $y'$ (which is stored and goes through this node) has the digit $d$ as well, contradicting that the paths split here. So the walk took the child with $1 - d$.
-4. Then $g$ has the digit $1 - d$ at the place $b$, so $x \oplus g$ has the digit 1 there. And $y'$ went the other way, so it has the digit $d$, and $x \oplus y'$ has the digit 0 there. By step 1, $x \oplus g > x \oplus y'$. So $g$ gives the largest XOR (and for the numbers on the same path it is equal). $\square$
+1. *Part (a).* By Theorem 6.3.1 (b), $\text{pass}[v]$ counts the words of the multiset that begin with the string of $v$. A word $w$ begins with the string of $v$ exactly when $v$ is on the path of $w$ (or $v$ is the root). So adding a copy of $w$ changes the number for exactly the nodes of its path, each by 1, and removing a copy changes the same nodes by $-1$.
+2. *Part (b).* The path has $|w|$ nodes besides the root, and each is changed in constant time.
+3. *Part (c).* The $k$ live words that begin with $u$ are exactly the words counted at $v$. Removing them from the multiset lowers the count of every ancestor of $v$ (and of the root) by $k$, because each of those words passes through all of them, and lowers the count of $v$ to 0. The counts below $v$ are not touched in the code, because a walk that meets a blocked node stops there and never reads them.
+4. A later word that begins with $u$ would pass through $v$; it is refused, so no count that a walk can read changes. A later word that does not begin with $u$ does not meet $v$ and is stored as in (a).
+5. A question for a beginning that passes through $v$ answers 0 (the walk stops at the blocked node), and a question for a beginning that is a proper beginning of $u$ reads an ancestor of $v$, whose count was lowered by $k$ in step 3. $\square$
 
 :::note[This proof needs]
-1. All numbers have the same number of digits $B$ (leading zeros), so that "highest digit first" means the same place for all.
-2. The counts are needed only when numbers are removed: a node whose count dropped to 0 still exists, and the walk must not enter it. Without removals "the child exists" is enough.
-3. The set must not be empty, otherwise the walk has no number to find.
+1. A removal must remove a copy that is stored: removing a word that is not in the multiset makes counts negative.
+2. A blocked node hides everything below it; if the words below must come back later, the blocking has to be undone on the path, which this theorem does not do.
+3. Counts are numbers of words with repeats; a count of different words needs another kept value.
 :::
 
 <TheoremCode unit="6.3/thm-4" />
 
-The first line gives the best partners of 5 and 8 in the set (steps 2 to 4): 28 and 17. The second line is the largest XOR of two numbers of the set, 28. Removing 25 changes the answer for 5 to 15 (with 10: $00101 \oplus 01010 = 01111$). The last line is a set with one number, 7, whose best partner is itself, XOR 0. The check compares the walk with the maximum over the set, with repeats and after a removal, on every set of up to four numbers below 16.
-
-### 4.5 Counting the numbers whose XOR is below a bound
-
-**Theorem 6.3.5 (counting by a bound).** With the binary trie of Theorem 6.3.4 and numbers $x$ and $k$ below $2^B$, the number of stored numbers $y$ with $x \oplus y < k$ is found in $B$ steps: start at the root with the total 0; at each level, with $d$ the digit of $x$ and $e$ the digit of $k$ at this level: if $e = 1$, add $\text{cnt}$ of the child with the digit $d$ (it exists or the add is 0) to the total and continue in the child with the digit $1 - d$; if $e = 0$, continue in the child with the digit $d$; stop when the child does not exist.
-
-:::tip[In plain words]
-Compare $x \oplus y$ with $k$ from the top digit. At a place where $k$ has a 1, a number $y$ that makes the XOR digit 0 is already smaller than $k$, whatever follows, so the whole branch counts at once. The numbers that make the XOR digit 1 stay equal to $k$ so far, and the walk goes on with them. Where $k$ has a 0, the XOR digit must be 0 to stay equal.
-:::
-
-**A tiny instance.** $B = 3$, $Y = \{1, 2, 3, 4\}$ (001, 010, 011, 100), $x = 1$ (001), $k = 3$ (011). Top digit: $k$ has 0, so go to the child with the digit of $x$, which is 0: this branch holds 001, 010, 011. Second digit: $k$ has 1, $x$ has 0: add the child with digit 0 (it holds only 001: count 1); continue in the child with digit 1 (010 and 011). Third digit: $k$ has 1, $x$ has 1: add the child with digit 1 (011: count 1); continue in the child with digit 0 (010). The total is 2: $1 \oplus 1 = 0$ and $1 \oplus 3 = 2$ are below 3, while $1 \oplus 2 = 3$ and $1 \oplus 4 = 5$ are not.
-
-**Proof.**
-1. Compare $x \oplus y$ with $k$ as digit strings of length $B$ from the left (as in the proof of Theorem 6.3.4): $x \oplus y < k$ exactly when, at the first place where they differ, the digit of $x \oplus y$ is 0 and the digit of $k$ is 1.
-2. Fix a level, and consider the stored numbers $y$ whose digits above this level make $x \oplus y$ agree with $k$ above this level (the walk's current node holds exactly these, by induction on the level: it starts with all numbers at the root).
-3. At this level, $x \oplus y$ has the digit $d \oplus (\text{digit of } y)$. If $e = 1$: the numbers $y$ with the digit $d$ have the XOR digit 0 here, which is smaller than $e = 1$, so by step 1 they are below $k$; all of them are counted at once, as $\text{cnt}$ of the child with the digit $d$. The numbers with the digit $1 - d$ have the XOR digit 1, equal to $e$, so they stay equal to $k$ so far: the walk continues with them.
-4. If $e = 0$: numbers with the digit $d$ have the XOR digit 0, equal to $e$, and continue; numbers with the digit $1 - d$ have the XOR digit 1, which is larger than $e = 0$, so they are above $k$ and are dropped.
-5. After the last level, the numbers that remain have $x \oplus y = k$, which is not below $k$ and is not counted. Every number below $k$ was counted exactly once, at the first level where it separated from $k$. $\square$
-
-:::note[This proof needs]
-1. The counts $\text{cnt}[v]$ must be correct for every node, including after removals; the sum uses the counts of whole branches.
-2. A bound $k$ equal to $2^B$ or more counts every stored number; the code is used with $k < 2^B$, and larger bounds are cut to $2^B - 1$ plus a separate test, or $B$ is increased by one.
-3. For a count of pairs, each number is inserted after it is counted against the earlier ones; inserting first counts the number with itself (XOR 0).
-:::
-
-<TheoremCode unit="6.3/thm-5" />
-
-The four examples use the set 1, 2, 3, 4 (the tiny instance and three more): with $x = 0$ and $k = 3$ the numbers 1 and 2 count; with $x = 5$ and $k = 5$ the XORs are 4, 7, 6, 1 and two are below 5; with $k = 0$ nothing is below 0. The check compares the walk with a count over the set, with repeats, for every set of up to four numbers below 8, every $x$ below 8 and every $k$ up to 8.
+The first line is the tiny instance with the counts of the beginnings a, ab and c: 2, 2 and 0 (part (a)). The second line is the instance after the removal of ab (1 and 1). The third stores ab twice more and removes one copy: the count of ab is 2 and the count of the empty beginning, the root, is 3. The check, which does not use blocking, compares the counts with a search of a multiset by hand, on random sequences of storing and removing words of length 1 to 3 over $\{a, b\}$ and eight beginnings. Part (c) is tested through the template below.
 
 ## 5. Recognition Cards
 
@@ -190,7 +164,7 @@ The four examples use the set 1, 2, 3, 4 (the tiny instance and three more): wit
 
 ## 6. Templates
 
-Six templates. Each shows only the function that matters; the program around it reads the input. The first three use the `Trie` of Theorem 6.3.1, the last three the `BinaryTrie` of Theorem 6.3.4 (they stay in the file outside the shown code and are said to be used). Each template is checked against a brute force that compares strings or numbers directly, on thousands of random small inputs (words over one to three letters, numbers below 41, so that equal beginnings are common) and on fixed tests with one element, all elements equal and large sizes.
+Four templates. Each shows only the function that matters; the program around it reads the input. The first three use the `Trie` of Theorem 6.3.1 and the last one the `CountTrie` of Theorem 6.3.4 (they stay in the file outside the shown code and are said to be used). Each template is checked against a brute force that compares strings directly, on thousands of random small inputs (words over one to three letters, so that equal beginnings are common) and on fixed tests with one element, all elements equal and large sizes.
 
 ### The first word with a given prefix (Theorem 6.3.1, data kept on the nodes)
 
@@ -216,29 +190,13 @@ Six templates. Each shows only the function that matters; the program around it 
 
 **Alternative formulation.** Put all words in a set of strings and test the substrings of each place up to the length of the longest word: simpler, and fine when the words are short (up to about 20 letters).
 
-### The largest XOR of two numbers of an array (Theorem 6.3.4)
+### Strings forbidden as beginnings (Theorem 6.3.4)
 
-<CodeSnippet unit="6.3/max-xor-pair" />
+<CodeSnippet unit="6.3/forbidden-prefix" />
 
-**How it works.** The numbers are taken from left to right. Before a number is inserted, `maxXor` asks the trie of the numbers before it for its best partner, so each pair is considered once and a number is never paired with itself. The `BinaryTrie` has 30 levels, enough for numbers below $2^{30}$; the walk takes $B = 30$ steps for a number, so the cost is $30 n$.
+**How it works.** Two sets of strings start empty: the strings of the first kind are forbidden beginnings and the strings of the second kind are the ones to count. The `CountTrie` of Theorem 6.3.4 also gets a `blocked` flag per node (kept in the file outside the shown code). For each query the string is walked and its path is recorded; `covered` becomes true if the walk meets a blocked node, which means that a forbidden beginning already covers the string, so nothing changes. Otherwise a string to count adds 1 along its path, and a forbidden string subtracts the count `k` of its node along the path and blocks the node. The answer after each query is the count at the root. `const auto& [type, s]` unpacks a pair into two names.
 
-**Alternative formulation.** The method of [topic 1.7](../../phase-1/1-7-bits/): build the answer digit from the top, with a set of the prefixes of the numbers at each level; it uses a hash set instead of the tree and also takes $O(30 n)$ for a fixed array.
-
-### Pairs whose XOR is below a bound (Theorem 6.3.5)
-
-<CodeSnippet unit="6.3/xor-pairs-below" />
-
-**How it works.** For each number `x` in order, `countXorBelow(x, k)` counts the numbers inserted before it with `x ^ y < k`, and then `x` is inserted. Inserting `x` first would count the pair of `x` with itself (XOR 0), which is below every positive `k`. The bound `k` must be below $2^{30}$: the walk reads only the 30 low digits of `k`, so $k = 2^{30}$ would be read as 0 (use a 31st level, or cap `k` at $2^{30} - 1$ and add the equal case separately). The total can reach $n(n-1)/2$, which needs a `long long`.
-
-**Alternative formulation.** For a count of pairs in a range [low, high], use `countPairsBelow(high + 1) - countPairsBelow(low)`; for a fixed array and one bound, sort the numbers by their top digits and divide the problem recursively, which is longer to write.
-
-### A multiset with additions, removals and largest-XOR questions (Theorem 6.3.4)
-
-<CodeSnippet unit="6.3/xor-multiset" />
-
-**How it works.** The `BinaryTrie` is created with the number 0 in it, so a question always has an answer (the problem promises that 0 is in the multiset). `add(x, +1)` and `add(x, -1)` change the counts along the path of `x`; a removal does not delete nodes, and the walk of `maxXor` enters a child only when its count is positive (the `cnt[opposite] > 0` test). `auto [sign, x]` unpacks a pair into two names. Each operation is one walk of 30 steps.
-
-**Alternative formulation.** Offline, if all operations are known: no simpler method; a balanced set of the numbers ([topic 0.6](../../phase-0/0-6-stl-toolbox/)) cannot answer the XOR question, because XOR does not follow the order of the numbers.
+**Alternative formulation.** Offline, if all queries are known: sort the forbidden strings and keep only those that are not covered by a shorter one, then count the strings to count against them; it is longer than the trie and does not give the answer after every query.
 
 ## 7. Bug catalogue
 
@@ -300,61 +258,33 @@ Wrong output `0`, correct output `1`. The value `ways[i]` needs `ways[j + 1]` of
 
 **Fix:** loop from the last place to the first.
 
-### Bug: the digits are read from the lowest
+### Bug: the ancestors keep the count of a forbidden branch
 
-Template: the largest XOR of two numbers of an array.
-
-```cpp
-for (int b = 0; b < BITS; b++) {                   // in maxXor, instead of b = BITS - 1 down to 0
-```
-
-Input: `2`, then `2 1`.
-
-Wrong output `268435457`, correct output `3`. The walk takes the opposite digit at the lowest place first, but the trie is built from the highest digit down, so the digit it looks at is not the one it thinks (and the shifts build a wrong number). The greedy choice is valid only from the highest digit (Theorem 6.3.4, step 1).
-
-**Fix:** go from the highest digit to the lowest, in the same order as the insertion.
-
-### Bug: a number is counted against itself
-
-Template: pairs whose XOR is below a bound.
+Template: strings forbidden as beginnings.
 
 ```cpp
-t.add(x, +1);                                       // before pairs += t.countXorBelow(x, k), instead of after it
+t.pass[v] -= k;                                    // instead of  for (int u : path) t.pass[u] -= k;
 ```
 
-Input: `1 4`, then the number `1`.
+Input: `2`, then `2 ab` and `1 ab`.
 
-Wrong output `1`, correct output `0`. With one number there is no pair. Inserted first, the number is counted against itself, and $1 \oplus 1 = 0 < 4$ (Theorem 6.3.5, note 3).
+Wrong output `1` for the second query, correct output `0`. The forbidden beginning ab kills the string ab, but only the count of the node ab is lowered; the root still says 1 live string, because the string passed through the root and through a too (Theorem 6.3.4 (c), step 3).
 
-**Fix:** count against the earlier numbers first, insert afterwards.
+**Fix:** subtract `k` from every node of the path.
 
-### Bug: following the wrong child where the bound has a 1
+### Bug: a string under a blocked node is still counted
 
-Template: pairs whose XOR is below a bound.
+Template: strings forbidden as beginnings.
 
 ```cpp
-v = child[v][d];                                    // in countXorBelow, where k has a 1, instead of child[v][d ^ 1]
+if (true) {                                        // instead of  if (!covered) {
 ```
 
-Input: `2 7`, then `1 1`.
+Input: `3`, then `1 a`, `2 ab` and `2 b`.
 
-Wrong output `3`, correct output `1`. Where $k$ has a digit 1, the numbers with the digit equal to $x$'s give the XOR digit 0 and are counted at once; the walk must then continue with the others, whose XOR digit is 1, equal to $k$'s. The wrong line continues with the ones already counted, and counts them again at every level (Theorem 6.3.5, step 3).
+Wrong output `0`, `1`, `2`, correct output `0`, `0`, `1`. The string ab begins with the forbidden a, so it must be refused. Without the test it is added along its path and the root count rises (Theorem 6.3.4 (c), step 4).
 
-**Fix:** continue in the other child.
-
-### Bug: a removed number is still reachable
-
-Template: a multiset with additions, removals and largest-XOR questions.
-
-```cpp
-if (opposite) best |= 1 << b, v = opposite;         // in maxXor, instead of if (opposite && cnt[opposite] > 0)
-```
-
-Input: `3`, then the operations `+ 2`, `- 2`, `? 0`.
-
-Wrong output `2`, correct output `0`. After the removal the multiset holds only 0, but the nodes of 2 stay in the trie with the count 0, and the walk enters them and reports $0 \oplus 2 = 2$. A removal lowers counts, it does not delete nodes, so the walk must look at the count (Theorem 6.3.4, note 2).
-
-**Fix:** enter a child only if its count is positive.
+**Fix:** store a string only when its walk meets no blocked node.
 
 ## 8. Worked examples
 
@@ -388,37 +318,7 @@ By Theorem 6.3.2 (b) the sum of $f(S_i, S_j)$ over all pairs is the sum over non
 
 Sort the strings. The common prefix of two strings in sorted order is the minimum of the common prefixes of the neighbours between them, so the sum over all pairs is the sum of range minimums of the neighbour values, found with a monotonic stack ([topic 1.6](../../phase-1/1-6-monotonic-stack/)) in $O(S)$ after the sort. The trie avoids the sort and the stack.
 
-### Example 2: Maximum Xor Subarray
-
-[CSES 1655: Maximum Xor Subarray](https://cses.fi/problemset/task/1655). In short: given an array of $n \le 2 \cdot 10^5$ numbers up to $10^9$, print the largest XOR of a subarray.
-
-#### Step 1: Constraints → budget
-
-$n = 2 \cdot 10^5$ gives $n^2 / 2 = 2 \cdot 10^{10}$ subarrays, too many even with a running XOR. A solution in about $30 n = 6 \cdot 10^6$ steps is needed.
-
-#### Step 2: Question form → candidate tools
-
-- All subarrays with a running XOR ([topic 0.5](../../phase-0/0-5-brute-force/)): $2 \cdot 10^{10}$ steps.
-- Prefix XORs ([topic 1.7](../../phase-1/1-7-bits/)) turn a subarray into a pair of prefix values; the largest XOR of a pair of numbers by building the answer digit by digit from the top ([topic 1.7](../../phase-1/1-7-bits/)).
-- A binary trie of the prefix values: the card "XOR against a set of numbers: the largest XOR and counts below a bound (binary trie)".
-
-#### Step 3: Property check → decision
-
-The XOR of a subarray $a[l..r]$ is $P[r+1] \oplus P[l]$ for the prefix XORs $P$ with $P[0] = 0$ ([topic 1.7](../../phase-1/1-7-bits/)). So the answer is the largest XOR of two prefix values $P[i]$, $P[j]$ with $i < j$: a question about the largest XOR of a pair. All values are below $2^{30}$ ($10^9 < 2^{30}$), so a binary trie with 30 levels. Decision: insert the prefix values one by one and ask for each new value its best partner among the earlier ones.
-
-#### Step 4: Proof for this problem
-
-Every non-empty subarray $a[l..r]$ corresponds to the pair of prefix values $P[l]$ and $P[r+1]$ with $l < r + 1$, and every such pair corresponds to a subarray, so the answer is the largest $P[i] \oplus P[j]$ over $i < j$. For each $j$, Theorem 6.3.4 gives the largest $P[j] \oplus P[i]$ over the earlier prefix values $P[i]$ in the trie. The maximum over $j$ is the answer. The set starts with $P[0] = 0$, so it is never empty.
-
-#### Step 5: Code
-
-<CodeSnippet unit="6.3/example-2" />
-
-#### Step 6: Alternative approach
-
-The method of [topic 1.7](../../phase-1/1-7-bits/) applies to the array of prefix values too: ask, from the top digit down, whether the answer can have this digit 1, with a set of the prefixes of the values at that level. It takes about $30 n$ steps and a hash set, and needs no tree.
-
-### Example 3: Find the Length of the Longest Common Prefix
+### Example 2: Find the Length of the Longest Common Prefix
 
 [LeetCode 3043: Find the Length of the Longest Common Prefix](https://leetcode.com/problems/find-the-length-of-the-longest-common-prefix/). In short: two arrays of positive integers up to $10^8$, up to $5 \cdot 10^4$ numbers each; a prefix of a number is formed by some of its digits from the left; find the length of the longest common prefix over all pairs $(x, y)$ with $x$ from the first array and $y$ from the second, or 0.
 
@@ -442,7 +342,7 @@ Write each number as a string of digits. By Theorem 6.3.1 (b), the walk of a str
 
 #### Step 5: Code
 
-<CodeSnippet unit="6.3/example-3" />
+<CodeSnippet unit="6.3/example-2" />
 
 #### Step 6: Alternative approach
 

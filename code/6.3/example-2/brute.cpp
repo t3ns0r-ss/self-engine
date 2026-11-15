@@ -2,17 +2,25 @@
 using namespace std;
 
 int main() {
-    int n;
-    cin >> n;
-    vector<int> a(n);
-    for (int& x : a) cin >> x;
-    int best = 0;
-    for (int l = 0; l < n; l++) {
-        int x = 0;
-        for (int r = l; r < n; r++) {
-            x ^= a[r];
-            best = max(best, x);
-        }
+    int n, m;
+    cin >> n >> m;
+    vector<string> a(n), b(m);
+    for (string& s : a) {
+        int x;
+        cin >> x;
+        s = to_string(x);
     }
+    for (string& s : b) {
+        int x;
+        cin >> x;
+        s = to_string(x);
+    }
+    size_t best = 0;
+    for (const string& x : a)
+        for (const string& y : b) {
+            size_t k = 0;
+            while (k < x.size() && k < y.size() && x[k] == y[k]) k++;
+            best = max(best, k);
+        }
     cout << best << "\n";
 }

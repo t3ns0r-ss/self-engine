@@ -2,75 +2,73 @@
 using namespace std;
 
 /*
-Problem: CSES 1655 Maximum Xor Subarray. Given an array of n integers, print the largest XOR of a subarray.
-Input: n, then the n numbers (n up to 2·10^5, values up to 10^9).
-Output: the largest XOR of a (non-empty) subarray.
+Problem: LeetCode 3043 Find the Length of the Longest Common Prefix. A prefix of a positive integer is formed by one or more of
+its digits from the left. Given arrays arr1 and arr2, find the length of the longest common prefix over all pairs (x, y) with
+x in arr1 and y in arr2; 0 if there is none.
+Input: n, m, then the n numbers of arr1, then the m numbers of arr2 (n, m up to 5·10^4, values up to 10^8).
+Output: the length.
 */
 
-const int BITS = 30;
-struct BinaryTrie {
-    vector<array<int, 2>> child = {{0, 0}};
-    vector<int> cnt = {0};
-    void add(int x, int delta) {
+struct Trie {
+    vector<array<int, 26>> child = {array<int, 26>{}};
+    vector<int> pass = {0}, end = {0};
+    void insert(const string& w) {
         int v = 0;
-        for (int b = BITS - 1; b >= 0; b--) {
-            int d = x >> b & 1;
-            if (!child[v][d]) {
-                child[v][d] = child.size();
-                child.push_back({0, 0});
-                cnt.push_back(0);
+        pass[0]++;
+        for (char ch : w) {
+            int c = ch - 'a';
+            if (!child[v][c]) {
+                child[v][c] = child.size();
+                child.push_back(array<int, 26>{});
+                pass.push_back(0);
+                end.push_back(0);
             }
-            v = child[v][d];
-            cnt[v] += delta;
+            v = child[v][c];
+            pass[v]++;
         }
+        end[v]++;
     }
-    int maxXor(int x) const {
-        int v = 0, best = 0;
-        for (int b = BITS - 1; b >= 0; b--) {
-            int d = x >> b & 1, opposite = child[v][d ^ 1];
-            if (opposite && cnt[opposite] > 0) best |= 1 << b, v = opposite;
-            else v = child[v][d];
-        }
-        return best;
-    }
-    long long countXorBelow(int x, int k) const {
-        long long total = 0;
+    int find(const string& u) const {
         int v = 0;
-        for (int b = BITS - 1; b >= 0; b--) {
-            int d = x >> b & 1;
-            if (k >> b & 1) {
-                if (child[v][d]) total += cnt[child[v][d]];
-                v = child[v][d ^ 1];
-            } else {
-                v = child[v][d];
-            }
-            if (!v) break;
+        for (char ch : u) {
+            v = child[v][ch - 'a'];
+            if (!v) return -1;
         }
-        return total;
+        return v;
     }
 };
 
 // snippet:begin
-// The XOR of the subarray a[l..r] is P[r + 1] ^ P[l] for the prefix XORs P (P[0] = 0). Walk the prefixes from the left: the
-// best subarray ending at r uses the best earlier prefix, found in the binary trie of the earlier prefixes (Theorem 6.3.4).
-// Uses the BinaryTrie of Theorem 6.3.4.
-int maxSubarrayXor(const vector<int>& a) {
-    BinaryTrie t;
-    t.add(0, +1);  // the empty prefix P[0]
-    int prefix = 0, best = 0;
-    for (int x : a) {
-        prefix ^= x;
-        best = max(best, t.maxXor(prefix));  // the best partner among the earlier prefixes
-        t.add(prefix, +1);
+// Insert the decimal digits of every number of arr1 into a trie (digit d is stored as the letter 'a' + d), then walk each
+// number of arr2 as far as the trie follows it: the deepest walk is the answer (Theorem 6.3.1 (b)).
+// Uses the Trie of Theorem 6.3.1.
+int longestCommonPrefixLength(const vector<int>& arr1, const vector<int>& arr2) {
+    auto digits = [](int x) {
+        string s = to_string(x);
+        for (char& c : s) c = 'a' + (c - '0');
+        return s;
+    };
+    Trie t;
+    for (int x : arr1) t.insert(digits(x));
+    int best = 0;
+    for (int y : arr2) {
+        int v = 0, depth = 0;
+        for (char c : digits(y)) {
+            v = t.child[v][c - 'a'];
+            if (!v) break;
+            depth++;
+        }
+        best = max(best, depth);
     }
     return best;
 }
 // snippet:end
 
 int main() {
-    int n;
-    cin >> n;
-    vector<int> a(n);
-    for (int& x : a) cin >> x;
-    cout << maxSubarrayXor(a) << "\n";
+    int n, m;
+    cin >> n >> m;
+    vector<int> arr1(n), arr2(m);
+    for (int& x : arr1) cin >> x;
+    for (int& x : arr2) cin >> x;
+    cout << longestCommonPrefixLength(arr1, arr2) << "\n";
 }

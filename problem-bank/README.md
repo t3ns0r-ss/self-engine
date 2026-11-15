@@ -22,32 +22,32 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 1 | [1.8 Interactive problems: flushing, query budgets, adaptive judges](phase-1/1.8-interactive.md) | 0 | 2 | 2 | 3 | 9 | 16 | short |
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 9 | 3 | 2 | 21 | short |
 | 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 3 | 3 | 4 | 5 | 3 | 18 | short |
-| 2 | [2.5 Linear Diophantine equations and the Chinese remainder theorem](phase-2/2.5-diophantine-crt.md) | 1 | 0 | 1 | 1 | 5 | 8 | short |
-| 2 | [2.6 Basic geometry: cross product, orientation, segments, polygons](phase-2/2.6-geometry.md) | 2 | 4 | 6 | 3 | 1 | 16 | short |
-| 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 5 | 13 | 9 | 6 | 8 | 41 | short |
-| 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 9 | 19 | short |
+| 2 | [2.3 Linear Diophantine equations and the Chinese remainder theorem](phase-2/2.3-diophantine-crt.md) | 1 | 0 | 1 | 1 | 5 | 8 | short |
+| 2 | [2.4 Basic geometry: cross product, orientation, segments, polygons](phase-2/2.4-geometry.md) | 2 | 4 | 6 | 3 | 1 | 16 | short |
+| 2 | [2.5 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.5-combinatorics.md) | 5 | 13 | 9 | 6 | 8 | 41 | short |
+| 2 | [2.6 Linearity of expectation, contribution technique](phase-2/2.6-expected-value.md) | 1 | 1 | 5 | 3 | 9 | 19 | short |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 3 | 12 | 5 | 2 | 0 | 22 | short |
-| 3 | [3.9 Meet in the middle](phase-3/3.9-meet-in-the-middle.md) | 0 | 0 | 0 | 1 | 9 | 10 | short |
-| 3 | [3.2 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.2-dp-foundations.md) | 4 | 14 | 11 | 5 | 1 | 35 | short |
-| 3 | [3.3 Knapsack family: 0/1, unbounded, bounded](phase-3/3.3-knapsack.md) | 0 | 7 | 8 | 4 | 2 | 21 | short |
-| 3 | [3.4 LIS in O(n log n), LCS, edit distance](phase-3/3.4-sequence-dp.md) | 1 | 7 | 7 | 2 | 4 | 21 | short |
-| 3 | [3.5 Grid and counting DP modulo a prime](phase-3/3.5-counting-dp.md) | 0 | 8 | 12 | 6 | 1 | 27 | short |
-| 3 | [3.6 Interval DP](phase-3/3.6-interval-dp.md) | 0 | 3 | 10 | 4 | 5 | 22 | short |
-| 3 | [3.7 Bitmask DP](phase-3/3.7-bitmask-dp.md) | 0 | 0 | 8 | 9 | 5 | 22 | short |
-| 3 | [3.8 Digit DP](phase-3/3.8-digit-dp.md) | 1 | 1 | 5 | 4 | 8 | 19 | short |
+| 3 | [3.2 Meet in the middle](phase-3/3.2-meet-in-the-middle.md) | 0 | 0 | 0 | 1 | 9 | 10 | short |
+| 3 | [3.3 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.3-dp-foundations.md) | 4 | 14 | 11 | 5 | 1 | 35 | short |
+| 3 | [3.4 Knapsack family: 0/1, unbounded, bounded](phase-3/3.4-knapsack.md) | 0 | 7 | 8 | 4 | 2 | 21 | short |
+| 3 | [3.5 LIS in O(n log n), LCS, edit distance](phase-3/3.5-sequence-dp.md) | 1 | 7 | 7 | 2 | 4 | 21 | short |
+| 3 | [3.6 Grid and counting DP modulo a prime](phase-3/3.6-counting-dp.md) | 0 | 8 | 12 | 6 | 1 | 27 | short |
+| 3 | [3.7 Interval DP](phase-3/3.7-interval-dp.md) | 0 | 3 | 10 | 4 | 5 | 22 | short |
+| 3 | [3.8 Bitmask DP](phase-3/3.8-bitmask-dp.md) | 0 | 0 | 8 | 9 | 5 | 22 | short |
+| 3 | [3.9 Digit DP](phase-3/3.9-digit-dp.md) | 1 | 1 | 5 | 4 | 8 | 19 | short |
 | 4 | [4.1 Representation, BFS, DFS, components, grids as graphs](phase-4/4.1-graph-traversal.md) | 6 | 13 | 21 | 1 | 1 | 42 | complete |
 | 4 | [4.2 Bipartiteness, cycle detection, topological sort](phase-4/4.2-graph-structure.md) | 2 | 8 | 8 | 7 | 6 | 31 | complete |
 | 4 | [4.3 Dijkstra, 0-1 BFS, Bellman–Ford, Floyd–Warshall](phase-4/4.3-shortest-paths.md) | 0 | 1 | 14 | 15 | 4 | 34 | short |
-| 4 | [4.9 State-space search](phase-4/4.9-state-space-search.md) | 0 | 1 | 10 | 10 | 4 | 25 | short |
-| 4 | [4.4 DSU and MST: Kruskal, Prim, cut property](phase-4/4.4-dsu-mst.md) | 0 | 2 | 13 | 14 | 7 | 36 | complete |
-| 4 | [4.5 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.5-trees.md) | 2 | 1 | 15 | 7 | 8 | 33 | short |
-| 4 | [4.6 LCA via binary lifting](phase-4/4.6-lca.md) | 0 | 1 | 9 | 5 | 8 | 23 | short |
-| 4 | [4.7 SCC, bridges, articulation points, 2-SAT](phase-4/4.7-connectivity.md) | 0 | 3 | 6 | 7 | 7 | 23 | short |
+| 4 | [4.4 State-space search](phase-4/4.4-state-space-search.md) | 0 | 1 | 10 | 10 | 4 | 25 | short |
+| 4 | [4.5 DSU and MST: Kruskal, Prim, cut property](phase-4/4.5-dsu-mst.md) | 0 | 2 | 13 | 14 | 7 | 36 | complete |
+| 4 | [4.6 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.6-trees.md) | 2 | 1 | 15 | 7 | 8 | 33 | short |
+| 4 | [4.7 LCA via binary lifting](phase-4/4.7-lca.md) | 0 | 1 | 9 | 5 | 8 | 23 | short |
+| 4 | [4.8 SCC, bridges, articulation points, 2-SAT](phase-4/4.8-connectivity.md) | 0 | 3 | 6 | 7 | 7 | 23 | short |
 | 5 | [5.1 Sparse table and RMQ](phase-5/5.1-sparse-table.md) | 1 | 3 | 8 | 4 | 0 | 16 | short |
 | 5 | [5.2 Fenwick tree (BIT), inversion counting](phase-5/5.2-fenwick.md) | 3 | 1 | 7 | 3 | 8 | 22 | short |
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 1 | 4 | 7 | 17 | 29 | complete |
-| 5 | [5.5 Sweep line with a segment tree](phase-5/5.5-sweep-segment-tree.md) | 0 | 0 | 2 | 2 | 4 | 8 | short |
-| 5 | [5.4 Square-root decomposition](phase-5/5.4-sqrt-decomposition.md) | 0 | 1 | 3 | 3 | 8 | 15 | short |
+| 5 | [5.4 Sweep line with a segment tree](phase-5/5.4-sweep-segment-tree.md) | 0 | 0 | 2 | 2 | 4 | 8 | short |
+| 5 | [5.5 Square-root decomposition](phase-5/5.5-sqrt-decomposition.md) | 0 | 1 | 3 | 3 | 8 | 15 | short |
 | 5 | [5.6 Mo's algorithm](phase-5/5.6-mo-algorithm.md) | 0 | 0 | 0 | 1 | 7 | 8 | short |
 | 5 | [5.7 Binary trie and XOR](phase-5/5.7-binary-trie.md) | 0 | 2 | 4 | 3 | 1 | 10 | short |
 | 6 | [6.1 Polynomial hashing](phase-6/6.1-string-hashing.md) | 0 | 2 | 8 | 6 | 3 | 19 | short |
@@ -55,11 +55,11 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 6 | [6.3 Trie: words that share beginnings](phase-6/6.3-trie.md) | 0 | 2 | 5 | 6 | 1 | 14 | short |
 | 6 | [6.4 Suffix array and LCP array](phase-6/6.4-suffix-array.md) | 0 | 0 | 2 | 5 | 8 | 15 | short |
 | 7 | [7.1 DP on trees](phase-7/7.1-tree-dp.md) | 2 | 4 | 2 | 4 | 4 | 16 | short |
-| 7 | [7.10 Rerooting: an answer for every root](phase-7/7.10-rerooting.md) | 1 | 1 | 2 | 2 | 3 | 9 | short |
-| 7 | [7.2 DP on DAGs](phase-7/7.2-dag-dp.md) | 1 | 7 | 5 | 7 | 0 | 20 | short |
-| 7 | [7.3 DP speed-ups: Fenwick and segment trees, convex hull trick, divide and conquer](phase-7/7.3-dp-with-ds.md) | 0 | 4 | 11 | 8 | 2 | 25 | short |
-| 7 | [7.4 Greedy II: priority-queue greedy, regret greedy](phase-7/7.4-greedy-2.md) | 1 | 1 | 10 | 6 | 1 | 19 | short |
-| 7 | [7.5 Sprague–Grundy theorem](phase-7/7.5-game-theory.md) | 7 | 6 | 0 | 2 | 4 | 19 | short |
-| 7 | [7.6 Matrix exponentiation for linear recurrences](phase-7/7.6-matrix-exponentiation.md) | 1 | 3 | 9 | 2 | 2 | 17 | short |
-| 7 | [7.7 Constructive algorithms](phase-7/7.7-constructive.md) | 15 | 8 | 2 | 0 | 0 | 25 | short |
-| 7 | [7.8 Technique recognition: mixed sets, topic not given](phase-7/7.8-recognition.md) | 0 | 0 | 0 | 0 | 0 | 0 | complete |
+| 7 | [7.2 Rerooting: an answer for every root](phase-7/7.2-rerooting.md) | 1 | 1 | 2 | 2 | 3 | 9 | short |
+| 7 | [7.3 DP on DAGs](phase-7/7.3-dag-dp.md) | 1 | 7 | 5 | 7 | 0 | 20 | short |
+| 7 | [7.4 DP speed-ups: Fenwick and segment trees, convex hull trick, divide and conquer](phase-7/7.4-dp-with-ds.md) | 0 | 4 | 11 | 8 | 2 | 25 | short |
+| 7 | [7.5 Greedy II: priority-queue greedy, regret greedy](phase-7/7.5-greedy-2.md) | 1 | 1 | 10 | 6 | 1 | 19 | short |
+| 7 | [7.6 Sprague–Grundy theorem](phase-7/7.6-game-theory.md) | 7 | 6 | 0 | 2 | 4 | 19 | short |
+| 7 | [7.7 Matrix exponentiation for linear recurrences](phase-7/7.7-matrix-exponentiation.md) | 1 | 3 | 9 | 2 | 2 | 17 | short |
+| 7 | [7.8 Constructive algorithms](phase-7/7.8-constructive.md) | 15 | 8 | 2 | 0 | 0 | 25 | short |
+| 7 | [7.10 Technique recognition: mixed sets, topic not given](phase-7/7.10-recognition.md) | 0 | 0 | 0 | 0 | 0 | 0 | complete |

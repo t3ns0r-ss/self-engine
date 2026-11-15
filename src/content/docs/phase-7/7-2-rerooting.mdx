@@ -1,0 +1,342 @@
+---
+title: "7.2 Rerooting: an answer for every root"
+sidebar:
+  order: 41.5
+topic: "7.2"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.2" />
+
+This topic combines [DP on trees](../7-1-tree-dp/) (the value of a subtree built from the values of its children) and [trees](../../phase-4/4-6-trees/) (a rooted tree, the sizes of its subtrees and the farthest vertex). The first gives the part of the tree below a vertex; this topic adds the part above it.
+
+## 1. Why this topic exists
+
+Here is a small problem. A tree has $n = 2 \cdot 10^5$ vertices. For every vertex, print the sum of the distances from it to all the other vertices. A search from one vertex costs $n$ steps, and there are $n$ vertices, so all the searches cost $n^2 = 4 \cdot 10^{10}$ steps: at $10^8$ simple steps per second that is about 400 seconds. The budget allows about $n$ steps.
+
+The way out is to look at two neighbouring vertices. Root the tree at a vertex $p$ and let $c$ be one of its children. When we move from $p$ to $c$, the vertices of the subtree of $c$ become one step closer and all the other vertices become one step farther. Only one number changed, the count of vertices on each side of one edge. So the answer for $c$ is the answer for $p$ plus a small correction, and one pass over the tree, parents first, gives the answers for all vertices once the answer for one root is known.
+
+That is **rerooting**. Two questions decide how it is done. Can the part of the tree that lies below $c$ be *taken out* of the total of $p$ (a sum can: subtract; a count can: subtract; a direction flip changes by one)? Then the correction is one line. If not (a maximum, a minimum, a product modulo a number that may have no inverse, a pair of numbers), the part above $c$ must be built from the other children of $p$ without $c$, and the two best values or prefix and suffix values make that possible in time proportional to the number of children.
+
+As in topic 7.1, the code never recurses: a tree can be a path of $2 \cdot 10^5$ vertices, and a recursion that deep overflows the stack. The code works on a list of the vertices with every parent before its children and goes through it forwards or backwards.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.2" />
+
+### What this topic does not cover
+
+- A value for one fixed root only, the best path through a top vertex, and tables merged with the size bound: [topic 7.1](../7-1-tree-dp/). Here the question is asked for every vertex taken as the root.
+- Trees that change between the questions (edges added or removed), queries that move the root online, and decompositions of a tree by centroids or heavy paths: not part of this course.
+- DP on graphs that contain cycles: the part beyond a neighbour is defined only when removing the edge cuts the graph in two, which is true in a tree and false on a cycle.
+
+## 3. Definitions
+
+- The **answer for a root** $r$ is the value that the question asks for when the tree is taken as hanging from $r$ (the sum of the distances from $r$, the number of connected sets that contain $r$, the number of edges to reverse). A question that asks for it for every vertex is a question about all roots.
+- The **part beyond a neighbour** $u$ of a vertex $r$ is the set of vertices that stay connected to $u$ after the edge $(r, u)$ is removed. For a child $c$ of $p$ in the tree rooted at 0, the part beyond $c$ seen from $p$ is the subtree of $c$, and the part beyond $p$ seen from $c$ is the **part above $c$**. Example: in the tree 0–1, 0–2, 2–3, 2–4 the part above 3 is the vertices 0, 1, 2 and 4.
+- A **way out** of a vertex $v$ is a path that starts at $v$ and leaves it through one neighbour; every neighbour gives one way out (the longest, the best, or the count of them, depending on the question). A vertex with $k$ neighbours has $k$ ways out.
+- A combination of values **can be undone** when the value of one part can be taken out of the total: a sum and a count by subtraction, a product by a number that has an inverse by division. A maximum, a minimum, a gcd and a product modulo a number that may be composite **cannot be undone**: from the total alone we cannot tell what is left when one part is removed. Example: the largest of 3, 9, 4 is 9, and the largest after taking out the part 9 is 4, which the number 9 does not tell.
+- In the code, `auto [c, dir] : adj[p]` takes a pair apart into two names; `LLONG_MIN` is the smallest 64-bit number and stands for "none" (a maximum over an empty list); `vector<pair<int, int>>` is a list of pairs of numbers.
+
+## 4. Theory and proofs
+
+### 4.1 Rerooting
+
+**Theorem 7.2.1 (rerooting).** For a vertex $r$ let $F(r)$ be the number of connected sets of vertices that contain $r$, modulo any number $M$. Root the tree at the vertex 0 and let $\text{down}(v) = \prod_{c} (\text{down}(c) + 1)$ over the children of $v$ (so $\text{down}(v)$ is $F(v)$ computed inside the subtree of $v$). For a vertex $c$ with the parent $p$ let $\text{up}(c) = (\text{up}(p) + 1) \cdot \prod_{s \ne c} (\text{down}(s) + 1)$ over the other children $s$ of $p$, with $\text{up}(0) = 0$. Then $F(v) = \text{down}(v) \cdot (\text{up}(v) + 1)$ for every $v$. All the values are found in $O(n)$ time without any division, with prefix and suffix products over the children of each vertex.
+
+:::tip[In plain words]
+The answer for a root is made from the parts of the tree that hang from its neighbours. Rooting the tree once gives the part below every vertex. The part above a vertex $c$ is the tree seen from its parent $p$ without the subtree of $c$, and it is made from the part above $p$ and the other children of $p$. To leave one child out of a product, keep the product of the children in front of it and the product of those behind it. Each vertex does work proportional to its number of children.
+:::
+
+**A tiny instance.** The tree 0–1, 0–2, 2–3, 2–4, $M$ large. Going up from the leaves: $\text{down}(1) = \text{down}(3) = \text{down}(4) = 1$, $\text{down}(2) = 2 \cdot 2 = 4$, $\text{down}(0) = 2 \cdot 5 = 10$. Going down from the root: $\text{up}(1) = (0 + 1) \cdot (\text{down}(2) + 1) = 5$, $\text{up}(2) = 1 \cdot (\text{down}(1) + 1) = 2$, $\text{up}(3) = (\text{up}(2) + 1)(\text{down}(4) + 1) = 6$. Then $F(1) = 1 \cdot 6 = 6$, $F(2) = 4 \cdot 3 = 12$, $F(3) = 1 \cdot 7 = 7$, and $F(0) = 10 \cdot 1 = 10$. For example, the connected sets that contain the vertex 1 are $\{1\}$ alone (1 way), or the vertex 1 with the vertex 0 and then, on the side of 2, nothing or one of the 4 connected sets that contain 2 (5 ways): $1 + 5 = 6$.
+
+**Proof.**
+1. For a root $r$, a connected set that contains $r$ is $r$ together with, for each neighbour $u$, either nothing or a connected set that contains $u$ and lies in the part of the tree beyond $u$ (the component of $u$ after removing the edge $(r, u)$). The parts beyond different neighbours are disjoint and joined only through $r$, so as in Theorem 7.1.1 the numbers multiply: $F(r) = \prod_u (G_u + 1)$, where $G_u$ is the number of connected sets that contain $u$ inside its part.
+2. For a child $c$ of $p$ in the tree rooted at 0, the part beyond $c$ seen from $p$ is the subtree of $c$, so $G_c = \text{down}(c)$, and by step 1 applied inside the subtree $\text{down}(v) = \prod_c (\text{down}(c) + 1)$.
+3. The part beyond $p$ seen from its child $c$ is made of $p$, the part above $p$ and the subtrees of the other children of $p$. By step 1 its number of connected sets that contain $p$ is $\text{up}(c) = (\text{up}(p) + 1) \prod_{s \ne c} (\text{down}(s) + 1)$ for $p \ne 0$. For $p = 0$ there is no part above, which is the factor 1, written as $\text{up}(0) + 1$ with $\text{up}(0) = 0$.
+4. A vertex $v$ has the neighbours $c$ (its children, with $G = \text{down}(c)$) and its parent (with $G = \text{up}(v)$); step 1 gives $F(v) = \text{down}(v) \cdot (\text{up}(v) + 1)$.
+5. The product over the children of $p$ without the child $c$ is (the product of the children in front of $c$) times (the product of those behind $c$). The prefix products are made in one pass over the children, the suffix products in another, so nothing is divided and the method works for any $M$, also when a factor is 0 modulo $M$.
+6. The work at a vertex is proportional to its number of children, and the sum of these is $n - 1$: $O(n)$ in all; the values $\text{up}$ are made going from the root down, so a parent is finished before its children. $\square$
+
+:::note[This proof needs]
+1. The combining operation (here the product) must be associative with a neutral element, so that prefix and suffix values exist; the same method works for sums, maxima, minima and gcd. When the operation has an inverse (a sum, a product by a number with an inverse) one may instead take the parent's value and take the child's part out; the answer for the sum of distances is $\text{answer}(c) = \text{answer}(p) + n - 2 \cdot \text{size}(c)$ in this way.
+2. A maximum has no inverse: the value of the part above $c$ must not be the parent's best value if that best value goes through $c$. Keep the two best values of each vertex, or use prefix and suffix maxima.
+3. The vertices must be handled in an order with parents first for the downward pass, and in the reverse order for the upward pass; no recursion.
+:::
+
+<TheoremCode unit="7.2/thm-1" />
+
+The first line is the tiny instance. The second line takes the same values modulo 6: 10, 6, 12, 7, 7 become 4, 0, 0, 1, 1. The factor $\text{up}(1) + 1 = 6$ is then 0 modulo 6, and a method that divides by a factor would fail there; the prefix and suffix products do not. The third line is the path of three vertices, 3, 4, 3. The check compares the result with the plain subtree DP started from every vertex as the root, for 2000 random trees of up to 12 vertices and random moduli.
+
+
+### 4.2 The best way that avoids a child
+
+**Theorem 7.2.2 (the best way that avoids a child).** Let $a_1, \dots, a_k$ be numbers. Let $b_1$ be the largest of them, at the position $w$ (the first position that holds it), and let $b_2$ be the second largest, counted with ties (so $b_2 = b_1$ when the largest value occurs twice); a missing number counts as $-\infty$. Then the largest of all the numbers except $a_i$ is $b_2$ when $i = w$ and $b_1$ otherwise. The same results are given by prefix and suffix values: it is $\max(\text{prefix}_{i-1}, \text{suffix}_{i+1})$, and this works for every associative combination with a neutral element.
+
+For a rooted tree whose edges all have length 1, let $\text{down}(v)$ be the number of edges of the longest path that starts at $v$ and goes down, and, for a child $c$ of $p$, let $\text{up}(c)$ be the number of edges of the longest path that starts at $c$ and leaves $c$ through $p$ (it never enters the subtree of $c$). The ways out of $p$ have the lengths $\text{down}(s) + 1$ for the children $s$ and $\text{up}(p)$ (the root has none). With $b_1$, $w$ and $b_2$ taken from this list, $\text{up}(c) = 1 + b_2$ if the way through $c$ is the one at $w$, and $1 + b_1$ otherwise. The largest distance from $v$ to any vertex is $\max(\text{down}(v), \text{up}(v))$, and all these values take $O(n)$ time.
+
+:::tip[In plain words]
+A vertex has several ways out, one through each neighbour. To know the best way out of a child $c$ that goes up through its parent $p$, we need the best way out of $p$ that does not go back into $c$. If the best way out of $p$ is the one through $c$, the answer is the second best; otherwise it is the best. So two numbers per vertex are enough, and no division is needed. The same idea with prefix and suffix values works for every combination of children, not only for a maximum.
+:::
+
+**A tiny instance.** The tree 0–1, 0–2, 2–3, 2–4 rooted at 0. Then $\text{down}(1) = \text{down}(3) = \text{down}(4) = 0$, $\text{down}(2) = 1$, $\text{down}(0) = 2$. The ways out of 0 are 1 (to the child 1) and 2 (to the child 2), so $b_1 = 2$ at the child 2 and $b_2 = 1$. Then $\text{up}(1) = 1 + b_1 = 3$ (the way through 1 is not the best, so leaving it out keeps $b_1$) and $\text{up}(2) = 1 + b_2 = 2$ (the best way is the one through 2, so the second best is used). The ways out of 2 are 1, 1 (the children 3 and 4) and $\text{up}(2) = 2$: $b_1 = 2$ at the way up, so $\text{up}(3) = \text{up}(4) = 1 + 2 = 3$. The largest distances are $\max(\text{down}, \text{up})$: 2, 3, 2, 3, 3 for the vertices 0 to 4.
+
+**Proof.**
+1. Let $S_i$ be the list without $a_i$. Its largest number is $\max_{j \ne i} a_j$, and the claim is about this number.
+2. If $i \ne w$, the number $a_w = b_1$ is in $S_i$ and is the largest number of the whole list, so the largest of $S_i$ is $b_1$.
+3. If $i = w$, the list $S_i$ is the whole list without one copy of $b_1$. Its largest number is the second largest of the whole list counted with ties, which is $b_2$: if $b_1$ occurs twice, the other copy stays in $S_i$ and $b_2 = b_1$.
+4. The list $S_i$ is the first $i - 1$ numbers together with the last $k - i$ numbers, so its largest is the larger of the two parts. Prefix maxima and suffix maxima are made in one pass each, $O(k)$ in all. Only associativity and the neutral element $-\infty$ were used, so a sum, a product or a gcd works in the same way.
+5. A path that starts at $c$ and leaves it through $p$ has its first edge $(c, p)$ and then continues from $p$ without entering the subtree of $c$: up to the parent of $p$ (length $\text{up}(p)$), or down into a child $s \ne c$ of $p$ (length $\text{down}(s) + 1$). These are the ways out of $p$ except the one through $c$.
+6. So $\text{up}(c) = 1 + $ (the largest way out of $p$ except the one through $c$), and by steps 2 and 3 this is $1 + b_2$ or $1 + b_1$.
+7. A path from $v$ either goes down, with the best length $\text{down}(v)$, or leaves through the parent, with the best length $\text{up}(v)$.
+8. A vertex looks at its ways out twice (to find $b_1$ and $b_2$, then to set $\text{up}$ of its children), so the work at $v$ is its number of neighbours and the total is $O(n)$; $\text{down}$ is made children first and $\text{up}$ parents first. $\square$
+
+:::note[This proof needs]
+1. The combination is associative and has a neutral element (the maximum with $-\infty$, a sum with 0, a product with 1, a gcd with 0). Without it there are no prefix and suffix values.
+2. The two best values are enough only for a combination that picks one of its arguments (a maximum or a minimum). For a sum, a product, a gcd or a list of states, use prefix and suffix values.
+3. The way out through the parent is one of the entries of the list, also when it is the best one. The root has no such entry.
+4. The vertices are handled in an order with parents first for $\text{up}$ and in the reverse order for $\text{down}$; no recursion.
+:::
+
+<TheoremCode unit="7.2/thm-2" />
+
+The first line has the largest value twice: the result is 7 for every position, since leaving out one 7 leaves the other (step 3). The second line has no tie: leaving out the 5 gives the second best, 4, and leaving out any other number gives 5. The third line is a list of one number: nothing is left, so the result is "none". The check compares both functions with the direct answer for every list of length 1 to 5 over the values 0 to 3.
+
+### 4.3 Reversing edges for every root
+
+**Theorem 7.2.3 (reversing edges for every root).** Let the edges of a tree be directed. For a vertex $v$ let $r(v)$ be the number of edges that point toward $v$ (an edge points toward $v$ when, of its two ends, its head is the one nearer to $v$). Then $r(v)$ is the fewest edges that must be reversed so that every vertex can be reached from $v$ by following directions. Root the tree at 0. If $p$ is the parent of $c$, then $r(c) = r(p) + 1$ when the edge is directed from $p$ to $c$, and $r(c) = r(p) - 1$ when it is directed from $c$ to $p$. All values are found in $O(n)$ time.
+
+:::tip[In plain words]
+When the root moves along one edge, every other edge keeps its meaning (it points toward the new root exactly when it pointed toward the old one), and only the edge we crossed changes its meaning. So the number of edges that point toward the root changes by exactly one: up by one if that edge pointed from the old root to the new, down by one if it pointed the other way.
+:::
+
+**A tiny instance.** The path 0–1–2–3 with the edges $0 \to 1$, $2 \to 1$ and $2 \to 3$. For the root 0, only $2 \to 1$ points toward it, so $r(0) = 1$. Moving to 1: the edge $0 \to 1$ goes from the old root to the new one, $r(1) = 2$. Moving to 2: the edge $2 \to 1$ goes from the new root to the old one, $r(2) = 1$. Moving to 3: the edge $2 \to 3$ goes from the old root to the new one, $r(3) = 2$. The answers are 1, 2, 1, 2.
+
+**Proof.**
+1. For a vertex $u \ne v$ the only path from $v$ to $u$ is the path in the tree, so, to reach $u$ by following directions, every edge on it must point away from $v$. Every edge lies on the path from $v$ to its own end that is farther from $v$.
+2. So every edge must point away from $v$. An edge that points toward $v$ has to be reversed, and reversing exactly those makes every edge point away, so every vertex is reached. Hence $r(v)$ is the fewest reversals.
+3. Take a vertex $p$, its child $c$ and the edge $e$ between them. Let $f \ne e$ be an edge in the subtree of $c$. The path from $f$ to $p$ passes through $c$, so the end of $f$ nearer to $p$ is the end nearer to $c$: $f$ points toward $p$ exactly when it points toward $c$.
+4. Let $f \ne e$ be an edge outside the subtree of $c$. The path from $f$ to $c$ passes through $p$, so again $f$ points toward $c$ exactly when it points toward $p$.
+5. So $r(c) - r(p)$ depends on $e$ alone. If $e$ is directed from $p$ to $c$, it points toward $c$ and not toward $p$: $+1$. If it is directed from $c$ to $p$, it points toward $p$ and not toward $c$: $-1$.
+6. $r(0)$ is counted by one traversal (the edges whose head is the end nearer to 0), and then every $r(c)$ follows from $r(p)$ in an order with parents first, in $O(n)$ in all. $\square$
+
+:::note[This proof needs]
+1. The undirected graph is a tree: the path between two vertices is unique. With a cycle an edge could be left as it is and the vertex still reached the other way round, and steps 1 and 3 fail.
+2. Every reversal costs the same (1). If the two directions of an edge have different costs, the same argument holds with $+1$ and $-1$ replaced by the difference of the two costs of the edge.
+3. The vertices must be handled with parents first; no recursion.
+:::
+
+<TheoremCode unit="7.2/thm-3" />
+
+The first line is a path in which every edge points away from the vertex 0: the answers 0, 1, 2 grow by one at each step (step 5, first case). The second line is a star whose centre 0 receives two edges and sends one: the centre needs 2 reversals, the two sources need 1 each and the sink needs 3. The third line is the tiny instance. The check compares the result with a direct count of the edges that point toward $v$, for every labelled tree with 2 to 6 vertices and every choice of directions.
+
+## 5. Recognition Cards
+
+<Cards topic="7.2" />
+
+## 6. Templates
+
+Five templates. Each shows only the function that matters; the program around it reads the input. The first three use the struct `Rooted` of the first template of [topic 7.1](../7-1-tree-dp/) (it stays in the file outside the shown code): it numbers the vertices from 0, roots the tree at 0, and keeps `parent`, `children` and `order` (parents before children). Each template is checked against a brute force that tries all subsets or runs a search from every vertex, on thousands of random trees of up to 9 to 12 vertices (with random labels, so that the parent of a vertex is not always a smaller number) and on fixed tests with one vertex, a path and a star.
+
+### The number of connected sets containing each vertex, for any modulus (Theorem 7.2.1)
+
+<CodeSnippet unit="7.2/count-connected-sets" />
+
+**How it works.** `down[v]` is the product over the children of `down[c] + 1` (each child contributes nothing, or a connected set that contains it). `up[c]` is the same for the part above `c`, seen from its parent: the part above the parent (`up[v] + 1`) times the factors of the other children. For each vertex `v` the code makes `suffix[i]`, the product of the factors of the children from `i` to the end, and runs `prefix` from the left, holding the part above `v` and the children before the current one. So `up[c] = prefix * suffix[i + 1]` leaves out exactly the child `c`. No division is used, so a modulus such as 6 is fine.
+
+**Alternative formulation.** Multiply all factors and divide by the factor of `c`: simpler, but wrong when a factor is 0 modulo $M$ or $M$ is not a prime.
+
+
+### The best connected set containing each vertex (Theorem 7.2.1, with the child taken out)
+
+<CodeSnippet unit="7.2/best-subtree-for-each" />
+
+**How it works.** `down[v]` starts as `w[v]` and receives `max(0, down[child])` from each child: the best connected set that contains `v` and lies in its subtree. The vertex `c` then asks for the best set that contains `c` and also reaches upwards: `answer[p]` is the best set that contains `p`, and it may contain `c` and its subtree; those are exactly `max(0, down[c])`, so the part of `p` without `c` is `answer[p] - max(0, down[c])`, and it is used only if it is positive. The sum takes the child out by subtraction because a sum has an inverse.
+
+**Alternative formulation.** Run the subtree DP from every vertex as the root: $O(n^2)$, enough for $n$ up to about 3000.
+
+
+### The farthest vertex from each vertex (Theorem 7.2.2)
+
+<CodeSnippet unit="7.2/farthest-for-each" />
+
+**How it works.** `down[v]` is the height of the subtree of `v`. For a vertex `v` the code finds `best1` and `best2`, the two longest ways out of `v`: the way up (`up[v]`) and the ways down (`down[c] + 1` for each child). The answer for `v` is `best1`. For a child `c`, the longest way out of `v` that does not go into `c` is `best2` if the best way is the one through `c` (`down[c] + 1 == best1`) and `best1` otherwise, and `up[c]` is that plus the edge to `v`. A maximum has no inverse, so "the best without `c`" needs the second best value.
+
+**Alternative formulation.** Two searches find the ends of a longest path; the farthest vertex from any vertex is one of the two ends ([topic 4.6](../../phase-4/4-6-trees/)): simpler for this particular question, but the two-best method works for any rule with a maximum.
+
+
+### Reversing edges for every root (Theorem 7.2.3)
+
+<CodeSnippet unit="7.2/reversals" />
+
+**How it works.** `adj[v]` holds each neighbour together with +1 when the edge leaves `v` and −1 when it enters `v`. The first loop is a breadth-first search from the vertex 0: it records the parent and `step[c]`, the +1 or −1 of the edge between `c` and its parent as seen from the parent, and each edge that enters the parent (`dir < 0`) points toward the root, so `r[0]` counts them. The second loop goes through `order` (parents first) and sets `r[c] = r[p] + step[c]`: one more when the edge leaves `p`, one fewer when it enters `p`. No recursion is used.
+
+**Alternative formulation.** A search from every vertex that counts the edges met against their direction: $O(n^2)$, the brute force of the unit.
+
+### Counting the vertices whose deletion keeps the maximum matching (Theorem 7.2.2 with a pair per part)
+
+<CodeSnippet unit="7.2/vertex-deletion" />
+
+**How it works.** A greedy matching from the leaves up is a maximum matching of a tree: a vertex is matched to a child when some child is still free. So a part is described by two numbers, `match`, the size of its maximum matching, and `freeRoot`, whether its root is free (no child of it was free). For a vertex, `sum[v]` adds the `match` of its children and `freeKids[v]` counts the children with a free root, so `match[v] = sum[v] + (freeKids[v] > 0)` and `freeRoot[v] = freeKids[v] == 0`. In the second loop, `upMatch[v]` and `upFree[v]` describe the part above `v`, and `totalSum` and `totalFree` add the children and that part: deleting `v` leaves exactly these parts, so the matching without `v` is `totalSum`. The part above a child `c` is the part of `v` with the other parts around it; both numbers are sums and counts, so the part of `c` is taken out by subtracting `match[c]` and `freeRoot[c]`, and no prefix or suffix is needed.
+
+**Alternative formulation.** For each vertex, delete it and compute the maximum matching of the rest: $O(n^2)$. A sum and a count have an inverse, but the pair is a "matching of the part plus one when a free root exists", which is why it is a case of this card and not of the first one.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the random stress test against the brute force; the input shown is the smallest one found among thousands of random cases.
+
+### Bug: the child is counted twice in its own answer
+
+Template: the best connected set containing each vertex.
+
+```cpp
+answer[c] = down[c] + max(0LL, answer[p]);                   // instead of answer[p] - max(0LL, down[c])
+```
+
+Input: `2`, the values `1 3`, then the edge `1 2`.
+
+Wrong output `4 7`, correct output `4 4`. The value `answer[p]` already contains the whole set of `c`; if it is added to `down[c]` again, the set of `c` is counted twice: 7 instead of 4 (Theorem 7.2.1, step 3: the part above `c` must not contain `c`'s subtree).
+
+**Fix:** subtract what `c` gave to `p` before adding.
+
+
+### Bug: the part above forgets the +1
+
+Template: the number of connected sets containing each vertex, for any modulus.
+
+```cpp
+long long prefix = up[v] % M;                                // instead of (up[v] + 1) % M
+```
+
+Input: `2 6`, then the edge `1 2`.
+
+Wrong output `2` and `1` (one line each), correct output `2` and `2`. The factor of the part above is "nothing, or a connected set of `up[v]` ways", which is `up[v] + 1`. For the root `up[v] = 0`, so the bug makes the factor 0 and wipes out the part above for every child; the child gets 0 from the root and the answer 1 (Theorem 7.2.1, step 3). The root's own answer is computed separately and stays right.
+
+**Fix:** start the prefix product at `(up[v] + 1) % M`.
+
+
+### Bug: the best way out may go through the child itself
+
+Template: the farthest vertex from each vertex.
+
+```cpp
+up[c] = 1 + best1;                                           // instead of 1 + (down[c] + 1 == best1 ? best2 : best1)
+```
+
+Input: `2`, then the edge `2 1`.
+
+Wrong output `1 2`, correct output `1 1`. For the root 1 the best way out is down into 2, of length 1; for the vertex 2 the part above must not use the way back into its own subtree. The bug gives the vertex 2 the length $1 + 1 = 2$. Leave out the child's own way with the second best value (Theorem 7.2.2, step 6).
+
+**Fix:** use `best2` when the best way is the one through `c`.
+
+
+### Bug: the second best way is not kept
+
+Template: the farthest vertex from each vertex.
+
+```cpp
+// else best2 = max(best2, d);        the line is missing
+```
+
+Input: `3`, then the edges `2 1` and `3 1`.
+
+Wrong output `1 1 1`, correct output `1 2 2`. The root 1 has two children of the same height. The first sets `best1`; the second is not larger, so it does not change `best1`, and without the line it does not set `best2` either. `best2` stays 0, and the vertex 2 believes that the way out through 1 has length 1 only, while the true farthest vertex is 3, at distance 2.
+
+**Fix:** update `best2` also when the new value is not larger than `best1`.
+
+
+### Bug: the step is always one more edge
+
+Template: reversing edges for every root.
+
+```cpp
+for (int i = 1; i < n; i++) r[order[i]] = r[parent[order[i]]] + 1;   // instead of + step[order[i]]
+```
+
+Input: `2`, then the edge `2 1`.
+
+Wrong output `1 2`, correct output `1 0`. The edge goes from the vertex 2 to the vertex 1, so it points toward 1 and away from 2: moving the root from 1 to 2 removes one edge from the count (the step is −1). The bug treats every move as one more edge toward the root (Theorem 7.2.3, step 5).
+
+**Fix:** add the step of the edge: +1 when it leaves the parent, −1 when it enters it.
+
+### Bug: the child's own free root stays in the count
+
+Template: counting the vertices whose deletion keeps the maximum matching.
+
+```cpp
+int otherFree = totalFree;                                   // instead of totalFree - freeRoot[c]
+```
+
+Input: `2`, then the edge `2 1`.
+
+Wrong output `1`, correct output `0`. With the root 1 and the child 2, the leaf 2 is free, so the root is matched to it and the whole tree has the matching 1. The part above 2 is the part of the root without 2, which is a single vertex with the matching 0. The bug still counts the free root of 2 among the parts around the root, concludes that the root can be matched, and gives the part above 2 the matching 1; deleting 2 then seems to keep the matching 1, and the bug counts it (Theorem 7.2.2, step 5: the way through the child itself must be left out).
+
+**Fix:** subtract the child's own `freeRoot` from the count of free parts.
+
+## 8. Worked examples
+
+### Example 1: Tree Distances II
+
+[CSES 1133: Tree Distances II](https://cses.fi/problemset/task/1133). In short: given a tree of $n \le 2 \cdot 10^5$ vertices, print for every vertex the sum of the distances from it to all other vertices.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$: a search from every vertex costs $n^2 = 4 \cdot 10^{10}$ steps. The sums reach about $n^2 / 2 = 2 \cdot 10^{10}$, so 64 bits are needed. We need about $n$ steps.
+
+#### Step 2: Question form → candidate tools
+
+- A breadth-first search from every vertex ([topic 4.1](../../phase-4/4-1-graph-traversal/)): $4 \cdot 10^{10}$ steps.
+- The sum of depths for one root ([topic 4.6](../../phase-4/4-6-trees/)) and then the answer for every vertex: the card "An answer for every vertex taken as the root (moving the root across an edge)".
+
+#### Step 3: Property check → decision
+
+The question asks for the same quantity for every vertex taken as the root, and the answer for a vertex is a sum over the parts of the tree beyond its neighbours: it changes in a simple way along one edge. Decision: find the answer for the root 0 and move the root along the edges.
+
+#### Step 4: Proof for this problem
+
+The answer for the root is the sum of the depths. Move the root from $p$ to its child $c$: the $\text{size}(c)$ vertices in the subtree of $c$ get one step closer to the root, and the other $n - \text{size}(c)$ vertices get one step farther. So $\text{answer}(c) = \text{answer}(p) - \text{size}(c) + (n - \text{size}(c)) = \text{answer}(p) + n - 2\,\text{size}(c)$. This is the rule of Theorem 7.2.1 with the sum as the combining operation (the sum has an inverse, so no prefix or suffix is needed).
+
+#### Step 5: Code
+
+<CodeSnippet unit="7.2/example-1" />
+
+#### Step 6: Alternative approach
+
+Count each edge: the edge to the parent of $c$ lies on the path from every vertex in the subtree of $c$ to every vertex outside, which gives the *total* of all pairs ($\sum \text{size}(c)(n - \text{size}(c))$) but not the sum for each vertex; the per-vertex answer needs the rerooting.
+
+## 9. Problem ladder
+
+<Ladder topic="7.2" />
+
+## 10. Identification drill
+
+<Drill topic="7.2" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.2" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.2" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.2" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.2" />

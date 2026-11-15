@@ -1,0 +1,460 @@
+---
+title: "3.3 DP foundations: state, transition, base case; memoisation vs tabulation"
+sidebar:
+  order: 19
+topic: "3.3"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="3.3" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A frog stands on stone 1 of a row of $n = 100$ stones with heights $h_1, \dots, h_{100}$. From stone $i$ it may jump to stone $i + 1$ or $i + 2$, and a jump costs the difference of the two heights, $|h_i - h_j|$. What is the cheapest way to reach stone 100?
+
+Backtracking from [topic 3.1](../3-1-backtracking/) tries every sequence of jumps. There are as many of them as ways to write 99 as an ordered sum of 1s and 2s: about $3.5 \cdot 10^{20}$, so even at $10^8$ jumps per second the search would take more than $10^5$ years. No pruning helps much, because every sequence is valid.
+
+But look at what the search keeps redoing. Every sequence that passes through stone 50 finishes with some route from stone 50 to stone 100, and the cheapest such route is the same whichever way the frog came to stone 50. So it is enough to know, for each stone $i$, the cheapest cost to reach it: 100 numbers, each the better of two options. That is **dynamic programming** (DP): describe a partial solution by a small **state**, prove that the best (or the number of) partial solutions for a state can be computed from the states one choice earlier, and compute each state once. For the frog this is about 200 operations instead of $10^{20}$.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="3.3" />
+
+### What this topic does not cover
+
+- The knapsack family (choose items under a capacity, with the capacity in the state): covered in topic 3.4.
+- Longest increasing subsequence, longest common subsequence and edit distance: covered in topic 3.5.
+- Counting paths in grids and counting DP modulo a prime as a topic of its own: covered in topic 3.6 (grid dp, counting dp).
+- States that are intervals, subsets or digits: covered in topics 3.7 (interval dp), 3.7 (bitmask dp) and 3.8 (digit dp).
+- Processing the states of a general graph in a valid order (topological sort): covered in topic 4.2. Here every state is a position or a pair of positions, whose order is fixed in advance.
+
+## 3. Definitions
+
+- A **state** is a short description of a partial solution that keeps exactly what matters for its future. Example: for the frog, the stone it stands on.
+- A **transition** is one choice that leads from one state to another, with its cost or value. Example: from stone $i$, the jump to $i + 2$ costs $|h_i - h_{i+2}|$.
+- A **base case** is a state whose value is known without any transition. Example: reaching stone 1 costs 0.
+- A **dynamic programming** (DP) solution computes a value for every state from the values of the states one transition earlier, each state once. The values are kept in a **table**, often an array `dp`.
+- **Tabulation** fills the table in a fixed order, so that every state comes after the states it uses. **Memoisation** keeps the natural recursion and stores each result the first time it is computed, so a repeated call returns the stored value at once.
+- **Optimal substructure** means that an optimal solution, cut after any choice, starts with an optimal partial solution for its state. Example: if the cheapest route to stone 100 passes through stone 50, its part up to stone 50 is a cheapest route to stone 50.
+
+## 4. Theory and proofs
+
+### 4.1 Optimisation: the best value of a state
+
+Fix a way to build solutions as sequences of choices (as in topic 3.1), and a function that gives each partial solution its state. Write $\text{best}(s)$ for the smallest total cost of a partial solution whose state is $s$.
+
+**Theorem 3.3.1 (optimal substructure).** Suppose that:
+1. which choices may follow a partial solution, the state each choice leads to, and the cost of each choice depend only on the state of the partial solution (not on the earlier choices), and
+2. the cost of a solution is the sum of the costs of its choices.
+
+Then for every state $s$ that is not a base case,
+$$\text{best}(s) = \min_{s' \to s} \left( \text{best}(s') + c(s' \to s) \right),$$
+the minimum over all transitions into $s$, and the answer is the minimum of $\text{best}$ over the final states. The same holds with maximum in place of minimum.
+
+:::tip[In plain words]
+If what you may do next, and what it costs, depends only on the current state and not on how you got there, then the best value at a state is the best over the last step of the best value at the previous state plus the step's cost. So each state needs to be solved only once.
+:::
+
+**A tiny instance.** The frog with heights $(10, 30, 40, 20)$: the state is the stone, $\text{best}(1) = 0$, and $\text{best}(i) = \min(\text{best}(i-1) + |h_i - h_{i-1}|, \ \text{best}(i-2) + |h_i - h_{i-2}|)$.
+
+| stone $i$ | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| $h_i$ | 10 | 30 | 40 | 20 |
+| from $i - 1$ | — | $0 + 20$ | $20 + 10$ | $30 + 20$ |
+| from $i - 2$ | — | — | $0 + 30$ | $20 + 10$ |
+| $\text{best}(i)$ | 0 | 20 | 30 | 30 |
+
+The answer is 30 (stones $1 \to 2 \to 4$). Of the 3 jump sequences, the table never lists any; it keeps one number per stone.
+
+
+**Proof.**
+1. ($\ge$) A partial solution $P$ with state $s$ has a last choice, from the partial solution $P'$ before it, with state $s'$.
+2. So $\text{cost}(P) = \text{cost}(P') + c(s' \to s) \ge \text{best}(s') + c(s' \to s)$.
+3. ($\le$) For any transition $s' \to s$, take a partial solution $Q'$ with state $s'$ and cost $\text{best}(s')$.
+4. By condition 1, the transition is allowed after $Q'$ too (it depends only on the state $s'$) and leads to state $s$ with cost $c(s' \to s)$.
+5. So some partial solution with state $s$ costs $\text{best}(s') + c(s' \to s)$. $\square$
+
+:::note[This proof needs]
+1. The state holds everything the future depends on: two partial solutions with the same state allow the same next choices, with the same costs and the same resulting states.
+2. Costs add up along the choices (a maximum or a product of non-negative values works the same way; a condition on the whole solution does not).
+3. Every partial solution reaches its state through a last choice, so the recurrence looks only at states one choice earlier.
+:::
+
+<TheoremCode unit="3.3/thm-1" />
+
+
+
+### 4.2 Counting: the number of ways to reach a state
+
+**Theorem 3.3.2 (counting by the last choice).** Suppose condition 1 of Theorem 3.3.1 holds, and different sequences of choices give different objects (each object is built in exactly one way). Let $\text{ways}(s)$ be the number of partial solutions with state $s$. Then for every state that is not a base case,
+$$\text{ways}(s) = \sum_{s' \to s} \text{ways}(s'),$$
+counting each transition into $s$ separately (two different choices from $s'$ to $s$ count twice).
+
+:::tip[In plain words]
+If each object is built by exactly one sequence of choices, the number of objects at a state is the sum, over the last choice, of the number at the state before it. Different last choices give different objects, so nothing is counted twice.
+:::
+
+**A tiny instance.** Climbing $n$ stairs with steps of 1 or 2. With the state "the stair reached", $\text{ways}(0) = 1$ (the empty climb), $\text{ways}(1) = 1$, and $\text{ways}(i) = \text{ways}(i-1) + \text{ways}(i-2)$: $1, 1, 2, 3, 5, 8$ for $i = 0, \dots, 5$. For $n = 3$ the three climbs are $1+1+1$, $1+2$ and $2+1$: the order of steps matters, and each climb is one sequence of choices.
+
+
+**Proof.**
+1. Split the partial solutions with state $s$ by their last choice. The classes are disjoint, because a partial solution has one last choice.
+2. The class of a transition $s' \to s$ is in one-to-one correspondence with the partial solutions of state $s'$: remove the last choice.
+3. Conversely, by condition 1 the choice may follow every partial solution of state $s'$.
+4. Add the class sizes (the sum rule, Theorem 2.5.1). $\square$
+
+:::note[This proof needs]
+1. As in Theorem 3.3.1: the allowed choices depend only on the state.
+2. Each object corresponds to exactly one sequence of choices. If two sequences can build the same object (for example the same set in two orders), the sum counts it twice; fix a canonical order of choices as in Theorem 3.1.2.
+3. Counts grow fast: use `long long`, or print modulo a prime with every addition reduced (topic 2.2).
+:::
+
+<TheoremCode unit="3.3/thm-2" />
+
+
+
+### 4.3 The order of evaluation and the cost
+
+**Theorem 3.3.3 (tabulation).** Number the states so that every transition goes from a smaller number to a larger one. If the base cases are set first and then the states are filled in increasing order, each with the recurrence of Theorem 3.3.1 or 3.3.2, every value in the table is correct. The time is $O(\text{number of states} + \text{number of transitions})$ times the cost of one transition, and the memory is one value per state.
+
+:::tip[In plain words]
+If the states can be numbered so that every step goes from a smaller to a larger number, fill the table in that order, and each state is computed from states that are already correct. The time is the number of states and steps, not the number of solutions.
+:::
+
+**A tiny instance.** The lattice paths to $(i, j)$: $\text{dp}[i][j] = \text{dp}[i-1][j] + \text{dp}[i][j-1]$ with $\text{dp}[0][0] = 1$, filled in increasing $i$ and, within a row, increasing $j$. The first rows are $1, 1, 1$ and $1, 2, 3$, and $\text{dp}[2][2] = 6$.
+
+**Proof.**
+1. By induction on the number of the state.
+2. When state $s$ is filled, every state $s'$ with a transition $s' \to s$ has a smaller number, so it has already been filled, correctly by the induction hypothesis.
+3. The recurrence then gives the correct value of $s$.
+4. Each state is filled once and each transition is used once, by the state it enters. $\square$
+
+:::note[This proof needs]
+1. An order in which every state comes after the states it depends on. For a single index $i$ that only looks back ($i - 1$, $i - 2$, …), increasing $i$ works; for two indices $(i, j)$ that look back in $i$, in $j$ or both, increasing $i$ and, for equal $i$, increasing $j$ works.
+2. The base cases cover every state that has no transition into it.
+3. The count of states × transitions per state fits the budget: $n = 10^5$ states with 100 transitions each is $10^7$; $n^2 = 10^{10}$ is not.
+:::
+
+<TheoremCode unit="3.3/thm-3" />
+
+**Saving memory.** If state $i$ only looks back to $i - 1$ and $i - 2$, two variables replace the array. The order of evaluation is the same; only the storage changes.
+
+
+### 4.4 Memoisation
+
+The plain recursion for the stairs count, `ways(i) = ways(i - 1) + ways(i - 2)` with `ways(0) = ways(1) = 1`, is correct but slow: `ways(i)` calls `ways(i - 1)` and `ways(i - 2)`, and `ways(i - 1)` calls `ways(i - 2)` again. The number of calls $C(i)$ satisfies $C(0) = C(1) = 1$ and $C(i) = 1 + C(i - 1) + C(i - 2)$, which grows like the Fibonacci numbers: for 40 stairs it makes 331 160 281 calls, for an answer that a table computes in 40 steps.
+
+**Theorem 3.3.4 (memoisation).** Add a cache to the recursion: on entry, if the value for the argument is stored, return it; otherwise compute it by the recurrence, store it, and return it. If no state depends on itself through a chain of transitions, the recursion returns the same values as the plain recursion, computes each state at most once, and takes time proportional to the number of transitions of the states it reaches.
+
+:::tip[In plain words]
+Keep the plain recursion but store each answer the first time it is computed. If no state depends on itself, every state is then computed once, and only the states that are really reached cost anything.
+:::
+
+**A tiny instance.** The ways to climb 40 stairs: the plain recursion makes 331 160 281 calls, the cache computes 39 values (the first two are base cases) and the answer 165 580 141.
+
+**Proof.**
+1. Correctness: by induction on the length of the longest chain of transitions below a state (finite, because no state depends on itself).
+2. The value returned for a state is its true value, whether it is computed or read from the cache, since the cache only holds values computed by the recurrence.
+3. Cost: the first call for a state does its transitions once.
+4. Every later call returns at its first line, and each such call is charged to the transition that made it. $\square$
+
+:::note[This proof needs]
+1. No cycles: a state never depends on itself, directly or through other states. Otherwise the recursion never ends.
+2. The value depends only on the arguments (the state), not on global variables that change during the search; otherwise a stored value can be wrong when it is reused.
+3. The recursion depth is the length of the longest chain of states. A chain of $10^5$ calls can overflow the call stack on some judges; tabulation has no such limit.
+:::
+
+<TheoremCode unit="3.3/thm-4" />
+
+Memoisation fills in only the states that are reached, in whatever order the recursion needs them, so it suits states with an awkward order or few reachable states among many possible ones (for example $f(n) = f(\lfloor n/2 \rfloor) + f(\lfloor n/3 \rfloor)$ for $n = 10^{18}$, which reaches only 1 012 different values of $n$). Tabulation avoids deep recursion and is usually faster by a constant factor.
+
+
+### 4.5 Enlarging the state
+
+**Theorem 3.3.5 (adding a small fact to the state).** If the allowed choices or their costs at position $i$ depend on the past only through $i$ and one more value $x$ from a small set $X$ (the last action, a count used so far up to $k$, a parity), then the pairs $(i, x)$ satisfy condition 1 of Theorem 3.3.1, and the table $\text{dp}[i][x]$ has $n \cdot |X|$ states.
+
+:::tip[In plain words]
+When the future depends on the position and one more small fact, such as the last activity or a parity, put that fact in the state. The table then has one row for each value of the fact, and the same recurrence applies.
+:::
+
+**A tiny instance.** Why the position alone fails: on each of two days, choose one of three activities with points $(10, 1, 1)$ on both days, never the same activity on consecutive days. With the state "day $i$", the best of day 1 (10, from activity A) would be extended by the best of day 2 (10, again A): total 20, which breaks the rule. The future depends on which activity was last, so the state is (day, last activity): $\text{dp}[2][A] = 10 + \max(\text{dp}[1][B], \text{dp}[1][C]) = 11$, $\text{dp}[2][B] = 1 + 10 = 11$, and the correct answer is 11.
+
+
+**Proof.**
+1. By assumption, two partial solutions with the same position and the same $x$ allow the same next choices with the same costs.
+2. Each choice determines the next position and the next $x$.
+3. That is condition 1 for the state $(i, x)$, so Theorems 3.3.1 to 3.3.3 apply. $\square$
+
+:::note[This proof needs]
+1. The extra value really determines the future together with $i$: list what the next choice is allowed to depend on, and put exactly that in the state.
+2. The extra value takes few values; the cost is $n \cdot |X|$ states times the transitions of each.
+:::
+
+<TheoremCode unit="3.3/thm-5" />
+
+The same reasoning gives states over two indices: for two strings, "the first $i$ characters of one and the first $j$ of the other have been used" is a state $(i, j)$, and transitions consume one character from either string or from both. Theorem 3.3.3 then fills the table row by row.
+
+
+### 4.6 Recovering the choices
+
+**Theorem 3.3.6 (reconstruction).** When filling the table by Theorem 3.3.1, record for each state $s$ one transition $\text{from}(s) = s'$ that attains the minimum. Starting from an optimal final state and following $\text{from}$ back to a base case lists the states of an optimal solution, in reverse order.
+
+:::tip[In plain words]
+While filling the table, remember for each state which step gave its best value. Starting at the best final state and following those steps backwards lists an optimal solution, not only its value.
+:::
+
+**A tiny instance.** For the frog table above, the recorded predecessors are $\text{from}(2) = 1$, $\text{from}(3) = 1$ and $\text{from}(4) = 2$; walking back from stone 4 gives $4, 2, 1$, so the path is $1 \to 2 \to 4$.
+
+**Proof.**
+1. By induction along the walk back: the chain from a base case to $s$ built from the recorded transitions has cost $\text{best}(s)$.
+2. For a base case this holds by definition.
+3. For $s$ with $\text{from}(s) = s'$, the chain to $s'$ costs $\text{best}(s')$ by induction.
+4. Adding the recorded transition costs $\text{best}(s') + c(s' \to s) = \text{best}(s)$ because that transition attained the minimum.
+5. By condition 1 the recorded transition is allowed after the chain to $s'$. $\square$
+
+:::note[This proof needs]
+1. The recorded transition is one that attains the optimum (store it when the minimum is updated, or recompute it afterwards by checking which transition gives $\text{best}(s)$).
+2. When the problem asks for the lexicographically smallest optimal solution, the tie between equal transitions must be broken the way the statement asks, which often means filling the table from the end so that the first choice can be made greedily.
+:::
+
+<TheoremCode unit="3.3/thm-6" />
+
+
+
+## 5. Recognition Cards
+
+<Cards topic="3.3" />
+
+## 6. Templates
+
+Six functions: a minimum and a count over one index, an extra fact in the state, two indices, a recursion with a cache, and a reconstruction. Each brute force solves the same problem without a table, by trying every sequence of choices (topic 3.1) or every bitmask (topic 0.5); the memoised recursion is checked against a full table instead.
+
+### Cheapest jumps (Theorem 3.3.1)
+
+<CodeSnippet unit="3.3/min-cost-jumps" />
+
+**How it works.** `best[i]` is the smallest cost of any jump sequence from stone 0 to stone `i`. Where the frog came from does not change which jumps it may make next or what they cost, so the stone alone is the state (Theorem 3.3.1). The last jump into `i` comes from one of the `k` stones before it, so `best[i]` is the minimum of `best[j] + |h_i − h_j|` over those `j`. Every `j` is smaller than `i`, so filling `i = 1, 2, …` uses only finished values (Theorem 3.3.3). Time $O(nk)$: $10^7$ steps for the largest input.
+
+**Alternative formulation.** Push instead of pull: for each `i` in increasing order, update `best[j]` for the `k` stones after it. Every transition is still used once, from a finished state, so the values are the same.
+
+### Counting step sequences (Theorem 3.3.2)
+
+<CodeSnippet unit="3.3/count-steps" />
+
+**How it works.** `ways[i]` counts the step sequences that end exactly at stair `i`. Split them by their last step: a sequence whose last step is `step` is a sequence for stair `i − step` followed by that step, and different last steps give different sequences. So `ways[i]` is the sum of `ways[i − step]` (Theorem 3.3.2), and `ways[0] = 1` counts the empty sequence. Each addition is reduced modulo $10^9 + 7$ (topic 2.2).
+
+**Alternative formulation.** Split by the *first* step instead: `ways[i]` = number of sequences that climb `i` stairs, which is the sum over the first step of the sequences for the remaining `i − step` stairs. It is the same recurrence read from the other end.
+
+### No activity twice in a row (Theorem 3.3.5)
+
+<CodeSnippet unit="3.3/no-repeat" />
+
+**How it works.** The rule "not the same activity as yesterday" makes the next choice depend on yesterday's activity, so the day alone is not a state (Section 4.5). The state is (day `i`, activity `j` on day `i`), and `dp[i][j]` is the best total of days `0..i` that ends with activity `j`. It comes from the best `dp[i − 1][q]` with `q ≠ j`, plus today's points. The answer is the best entry of the last row.
+
+**Alternative formulation.** Keep only the best and second-best entries of the previous row (with the activity of the best): for activity `j`, the best different activity is the best one unless it is `j` itself, in which case it is the second best. This makes each day $O(m)$ instead of $O(m^2)$.
+
+### Exactly k elements, no two adjacent (Theorem 3.3.3)
+
+<CodeSnippet unit="3.3/k-nonadjacent" />
+
+**How it works.** The state needs two numbers: how many elements have been considered (`i`) and how many have been chosen (`j`), because the count still allowed depends on `j`. `dp[i][j]` is the best sum choosing exactly `j` of the first `i` elements with no two adjacent. Element `i` is either skipped (from `dp[i − 1][j]`) or chosen; then element `i − 1` is not, so the rest comes from the first `i − 2` elements with `j − 1` chosen. Both transitions go to a smaller `i`, so rows in increasing `i` work (Theorem 3.3.3). `NONE` marks states that no valid choice reaches, such as choosing 2 of the first 2 elements.
+
+**Alternative formulation.** Add a second fact instead of skipping two positions: `dp[i][j][t]`, where `t` says whether element `i` was chosen. Then "chosen" may only follow "not chosen". It has twice the states but transitions only from `i − 1`.
+
+### A recursion with a cache (Theorem 3.3.4)
+
+<CodeSnippet unit="3.3/memo-coins" />
+
+**How it works.** The recursion $g(n) = \max(n, g(\lfloor n/2 \rfloor) + g(\lfloor n/3 \rfloor) + g(\lfloor n/4 \rfloor))$ reaches few different arguments, but reaches them many times: without a cache, $g(10^6)$ makes 9 650 404 calls. With the cache `g` stores each result the first time, and for $n = 10^{12}$ only 437 different arguments are ever computed (Theorem 3.3.4). A table indexed by $0..n$ would need $10^{12}$ entries; the cache stores only the reachable ones.
+
+**Alternative formulation.** Fill a table for all $n$ below a threshold such as $10^6$ and use the recursion with the cache only above it; small arguments, which are reached most often, then cost one array access.
+
+### The smallest optimal choice (Theorem 3.3.6)
+
+<CodeSnippet unit="3.3/lex-smallest" />
+
+**How it works.** The table is filled from the end: `best[i]` is the largest sum using only positions `i..n − 1`, either skipping `i` or taking it and jumping to `i + 2`. Then the walk goes forward from position 0: position `i` is taken whenever `a[i] + best[i + 2] == best[i]`, which means that some optimal choice for the rest starts with `i`. Taking the first position that still allows the optimum makes the first chosen position as small as possible, then the second, and so on, which is exactly the lexicographically smallest list (Theorem 3.3.6, note 2). A table filled from the front could only tell where an optimal solution *ends*, not where the smallest one *starts*.
+
+**Alternative formulation.** Record the decision while filling: `take[i] = (a[i] + best[i + 2] == best[i])`, then walk forward through the flags. It is the same walk with the comparison stored. A table filled from the front, walked back from the end, also prints an optimal choice, but its tie-break is decided at the end of the list, so it does not give the smallest list in general: for $(2, 2, 2, 2)$ the front table picks its last position first and can return positions 2 and 4 instead of 1 and 3.
+
+## 7. Bug catalogue
+
+DP bugs give wrong numbers with no crash, and the wrong numbers often look reasonable. Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: the step loop outside
+
+Template: counting step sequences.
+
+```cpp
+for (int step : s)
+    for (int i = step; i <= n; i++)
+        ways[i] = (ways[i] + ways[i - step]) % MOD;
+```
+
+Input: `6 2`, then `1 3`.
+
+Wrong output `3`, correct output `6`. With steps 1 and 3, the climbs of 6 are $1{+}1{+}1{+}1{+}1{+}1$, the four orders of $3{+}1{+}1{+}1$, and $3{+}3$. With the steps in the outer loop, all 1-steps are used before any 3-step is considered, so each *collection* of steps is counted once in one fixed order: 3 collections, not 6 sequences.
+
+**Fix:** for ordered sequences, split by the last step, which can be any step: the stair loop is outside and every step is tried for each stair (Theorem 3.3.2). The other loop order counts collections, where the order of the steps does not matter; decide which objects are counted before writing the loops.
+
+### Bug: the window misses the longest jump
+
+Template: cheapest jumps.
+
+```cpp
+for (int j = max(0, i - k + 1); j < i; j++)
+```
+
+Input: `2 1`, then `3 3`.
+
+Wrong output `9223372036854775807`, correct output `0`. With $k = 1$ the only jump has length exactly $k$, and the loop skips it, so stone 2 is never reached and keeps the marker value `LLONG_MAX`.
+
+**Fix:** list the transitions into state `i` exactly: jumps of length $1..k$ come from $i - 1$ down to $i - k$. Test $k = 1$, where an off-by-one removes every transition.
+
+### Bug: the day alone as the state
+
+Template: no activity twice in a row. The test `q != j` is removed.
+
+Input: `2 2`, then the days `0 2` and `2 3`.
+
+Wrong output `5`, correct output `4`. The program adds day 1's best (activity 2, worth 2) to day 2's activity 2 (worth 3), which repeats an activity. The best total *with a different activity* is $2 + 2 = 4$.
+
+**Fix:** if the rule for the next choice reads the previous choice, the previous choice must be in the state (Theorem 3.3.5), and each transition must check the rule.
+
+### Bug: forgetting the gap
+
+Template: exactly $k$ elements, no two adjacent.
+
+```cpp
+if (j > 0 && dp[i - 1][j - 1] != NONE)
+    dp[i][j] = max(dp[i][j], dp[i - 1][j - 1] + a[i]);
+```
+
+Input: `2 2`, then `0 1`.
+
+Wrong output `1`, correct output `impossible`. Coming from `dp[i − 1]` allows element `i − 1` to be chosen too, so the two neighbours are both taken.
+
+**Fix:** when element `i` is chosen, the previous state must exclude element `i − 1`: come from the first `i − 2` elements, or keep a flag "last element chosen" in the state.
+
+### Bug: unreachable states treated as 0
+
+Template: exactly $k$ elements, no two adjacent. The table is filled with 0 instead of `NONE`.
+
+Input: `1 1`, then `-5`.
+
+Wrong output `0`, correct output `-5`. `dp[0][1]` means "one element chosen among zero elements", which is impossible, but as 0 it looks like a valid choice with sum 0, and it beats the only real choice $-5$.
+
+**Fix:** give unreachable states a value that can never win (or a separate "reachable" flag), and check it before using a state. With only non-negative values the 0 can hide this bug, so test with negative values and with impossible inputs.
+
+### Bug: skipping when skipping is just as good
+
+Template: the smallest optimal choice.
+
+```cpp
+if (best[i + 1] != best[i]) {
+```
+
+Input: `2`, then `3 3`.
+
+Wrong output: position 2; correct: position 1. The walk now takes position `i` only when skipping it would lose value. With $(3, 3)$, skipping position 1 still allows the optimum 3, so the walk skips it and takes position 2, giving the larger list.
+
+**Fix:** for the lexicographically smallest list, prefer *taking* the current position whenever taking it still reaches the optimum (Theorem 3.3.6, note 2). Ties are where these bugs live: test with equal values.
+
+## 8. Worked examples
+
+### Example 1: Flip Cards
+
+[AtCoder Beginner Contest (ABC) 291, problem D: Flip Cards](https://atcoder.jp/contests/abc291/tasks/abc291_d). In short: $N \le 2 \cdot 10^5$ cards in a row each show the number on their front or on their back; count the choices of sides for which neighbouring cards always show different numbers, modulo 998 244 353.
+
+#### Step 1: Constraints → budget
+
+$2^N$ choices with $N = 2 \cdot 10^5$: listing them is impossible. $O(N)$ or $O(N \log N)$ is the budget.
+
+#### Step 2: Question form → candidate tools
+
+- Backtracking over cards (topic 3.1) with the check "differs from the previous card" never rejects a choice that could be completed, but there are still up to $2^N$ valid choices, and a count of that size cannot be reached one choice at a time.
+- A formula (topic 2.5) would need the rule to be the same everywhere; here it depends on the actual numbers of each pair of neighbours.
+- A count by the last choice (Theorem 3.3.2), with the right state.
+
+#### Step 3: Property check → decision
+
+Build the choice card by card. Whether card $i$ may show side $s$ depends only on which number card $i - 1$ shows, which is decided by the side of card $i - 1$. So the position alone is not a state (two partial choices ending on different sides allow different futures), but (position, side of the last card) is: two choices for cards $1..i$ that end on the same side allow exactly the same continuations. The extra fact has 2 values: the "Index plus a small extra fact" card (Theorem 3.3.5). Decision: $\text{ways}[i][s]$ for $s \in \{\text{front}, \text{back}\}$.
+
+#### Step 4: Proof for this problem
+
+Let $\text{ways}[i][s]$ count the valid choices for cards $1..i$ with card $i$ on side $s$. A choice for cards $1..i$ ($i \ge 2$) is valid exactly when the choice for cards $1..i-1$ is valid and card $i$'s number differs from card $i - 1$'s. Split the valid choices ending on side $s$ by the side $t$ of card $i - 1$: the class for $t$ is empty if the numbers $\text{side}_i(s)$ and $\text{side}_{i-1}(t)$ are equal, and otherwise is in one-to-one correspondence with the valid choices counted by $\text{ways}[i-1][t]$ (Theorem 3.3.2). So $\text{ways}[i][s] = \sum_t [\text{side}_i(s) \ne \text{side}_{i-1}(t)] \cdot \text{ways}[i-1][t]$, with $\text{ways}[1][s] = 1$, and the answer is $\text{ways}[N][\text{front}] + \text{ways}[N][\text{back}]$. Each choice of sides is one sequence of choices, so nothing is counted twice. Time $O(N)$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="3.3/example-1" />
+
+#### Step 6: Alternative approach
+
+Count the bad choices instead: inclusion–exclusion over the pairs of equal neighbours (topic 2.5) has $2^{N-1}$ terms, far too many. The table is the natural method here; the only real alternative is the same recurrence written with memoisation (Theorem 3.3.4), which would recurse $2 \cdot 10^5$ calls deep and is risky.
+
+### Example 2: Projects
+
+[CSES 1140: Projects](https://cses.fi/problemset/task/1140) (CSES is the Code Submission Evaluation System problem set). In short: $n \le 2 \cdot 10^5$ projects, each running from day $a_i$ to day $b_i$ (up to $10^9$) and paying $p_i$; attend projects that share no day, maximising the total pay.
+
+#### Step 1: Constraints → budget
+
+$2^n$ subsets: impossible. Days go up to $10^9$, so a table indexed by day is too large. $O(n \log n)$ fits: a sort and a binary search per project.
+
+#### Step 2: Question form → candidate tools
+
+- Greedy "earliest end first" (topic 1.5) maximises the *number* of projects, not the pay: one long project that pays $10^9$ can beat many short ones, so the interval-selection card fails.
+- Backtracking (topic 3.1) over projects: $2^n$ leaves in the worst case.
+- A table over a single index: process the projects in order of their end day and ask, for each prefix of that order, the best pay.
+
+#### Step 3: Property check → decision
+
+Sort by end day. For the first $i$ projects, the best choice either skips project $i$ (then it is a best choice of the first $i - 1$), or takes it; then every other chosen project must end before project $i$ starts. Those are exactly the first $j$ projects in the sorted order, where $j$ is the number of projects ending before $a_i$, because the order is by end day. So the best pay of a prefix depends only on the prefix length: one index per state (Theorem 3.3.1), with $j$ found by binary search (topic 1.4). Decision: sort, then $\text{best}[i] = \max(\text{best}[i-1], \ \text{best}[j] + p_i)$.
+
+#### Step 4: Proof for this problem
+
+Let $\text{best}[i]$ be the largest pay of a set of disjoint projects among the first $i$ in the sorted order. If an optimal set for the first $i$ does not use project $i$, it is a set among the first $i - 1$, so its pay is at most $\text{best}[i-1]$, which is reachable. If it uses project $i$, every other project in it ends before $a_i$: it comes earlier in the sorted order, so it ends no later than $b_i$, and if it ended on day $a_i$ or later, its last day would lie in $[a_i, b_i]$ and be shared with project $i$. So the rest is a disjoint set among the first $j$ projects, of pay at most $\text{best}[j]$; conversely any disjoint set among the first $j$ can be extended by project $i$, because all of them end before $a_i$. This is Theorem 3.3.1 with the state "prefix length". Time: $O(n \log n)$ for the sort and the $n$ binary searches.
+
+#### Step 5: Code
+
+<CodeSnippet unit="3.3/example-2" />
+
+#### Step 6: Alternative approach
+
+Index the table by day instead of by project: after coordinate compression of the start and end days (topic 1.1), $\text{best}[d]$ = the best pay using days before $d$, with $\text{best}[d] = \max(\text{best}[d - 1], \ \text{best}[a_i] + p_i)$ over projects ending at day $d - 1$. It has at most $2n$ states and the same transitions.
+
+## 9. Problem ladder
+
+<Ladder topic="3.3" />
+
+## 10. Identification drill
+
+<Drill topic="3.3" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="3.3" />
+
+## 12. Self-test questions
+
+<SelfTest topic="3.3" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="3.3" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="3.3" />

@@ -1,0 +1,379 @@
+---
+title: "3.9 Digit DP"
+sidebar:
+  order: 25
+topic: "3.9"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="3.9" />
+
+## 1. Why this topic exists
+
+Here is a small problem. How many integers $x$ with $1 \le x \le N$, where $N = 10^{18}$, have a digit sum that is a multiple of 4?
+
+Checking every $x$ ([topic 0.5](../../phase-0/0-5-brute-force/)) is $10^{18}$ steps. A formula ([topic 2.5](../../phase-2/2-5-combinatorics/)) works for "all numbers with exactly 18 digits", where every digit is free, but $N$ is an arbitrary number: below $N = 734\,519$ the allowed digits depend on the digits already chosen.
+
+The key idea: write $x$ with as many digits as $N$ (with leading zeros) and compare it with $N$ from the most significant digit. Either $x = N$, or there is a first position where $x$ has a smaller digit than $N$; before it, $x$ copies $N$, and after it, every digit is free. So a walk along the digits of $N$ needs to remember only two things: whether the prefix still equals $N$'s prefix (a **tight** flag), and whatever small summary the property needs (here, the digit sum modulo 4). That is $19 \cdot 2 \cdot 4$ states with 10 digits each: a few thousand steps instead of $10^{18}$. This is **digit DP**.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="3.9" />
+
+### What this topic does not cover
+
+- Counting numbers (or strings) up to $N$ that contain a given word, which needs an automaton of the word as the state: string algorithms come in Phase 6.
+- Finding the $k$-th number with a property by walking down the digits with counts: it uses the same tables, and appears here only in exercises.
+
+## 3. Definitions
+
+- The **decimal digits** of $N$ are $d_1 d_2 \dots d_L$, with $d_1$ the most significant. Every $x$ with $0 \le x \le N$ is written with exactly $L$ digits, using leading zeros. Example: for $N = 25$, $x = 7$ is written "07".
+- A prefix of $x$ is **tight** if it equals the prefix of $N$ of the same length; then the next digit of $x$ can be at most the next digit of $N$. Once a digit is smaller than $N$'s, the prefix is **free** for good.
+- A **leading zero** is a zero before the first non-zero digit; it is padding, not a digit of the number. The **started** flag says whether a non-zero digit has appeared.
+- $F(N)$ denotes the number of $x$ in $[0, N]$ with the property.
+
+## 4. Theory and proofs
+
+### 4.1 The tight walk
+
+**Theorem 3.9.1 (counting up to N).** Suppose whether $x$ has the property can be decided by reading its digits from left to right while keeping a state $s$ from a small set, updated as $s \leftarrow \delta(s, c)$ for each digit $c$. Let $\text{cnt}(i, t, s)$ be the number of ways to choose the digits at positions $i + 1..L$ so that the whole number has the property, given that the first $i$ digits led to state $s$ and the tight flag $t$. Then
+$$\text{cnt}(i, t, s) = \sum_{c = 0}^{u} \text{cnt}\left(i + 1, \ t \wedge (c = d_{i+1}), \ \delta(s, c)\right), \qquad u = \begin{cases} d_{i+1} & \text{if } t,\\ 9 & \text{otherwise,} \end{cases}$$
+with $\text{cnt}(L, t, s) = 1$ if $s$ is accepting and 0 otherwise. Then $F(N) = \text{cnt}(0, \text{true}, s_0)$. Time $O(L \cdot 2 \cdot |S| \cdot 10)$.
+
+:::tip[In plain words]
+Write every number with as many digits as N and compare it with N from the left. Up to the first digit where the number is smaller, it copies N, and after that every digit is free. So a walk along N's digits that remembers a tight flag and a small summary counts them all.
+:::
+
+**A tiny instance.** $N = 25$, property "digit sum is a multiple of 4", state = digit sum mod 4. The first digit is 0, 1 (free) or 2 (tight):
+
+| first digit | second digit allowed | numbers with the property | count |
+|---|---|---|---|
+| 0 (free) | 0–9 | 00, 04, 08 | 3 |
+| 1 (free) | 0–9 | 13, 17 | 2 |
+| 2 (tight) | 0–5 | 22 | 1 |
+
+$F(25) = 6$: the numbers $0, 4, 8, 13, 17, 22$.
+
+
+**Proof.**
+1. The numbers $0..N$ written with $L$ digits are exactly the digit strings that are not larger than $N$'s digit string.
+2. A string with a tight prefix can continue with a digit up to $d_{i+1}$ (a larger digit would make it larger than $N$), and the prefix stays tight only if the digit equals $d_{i+1}$; a free prefix can continue with any digit.
+3. So the recurrence lists every valid continuation once, split by the next digit (Theorem 3.6.1), and the state $s$ carries everything the property needs (Theorem 3.6.2).
+4. When the flag is false, the count does not depend on $N$ any more, so memoising $\text{cnt}(i, \text{false}, s)$ is safe; the tight states form a single path and need no memo. $\square$
+
+:::note[This proof needs]
+1. The property is decided by a left-to-right state with few values: a digit sum, a remainder, the previous digit, a count of non-zero digits, a mask of digits used.
+2. Positions are counted from the most significant digit, so "smaller than $N$" is decided at the first difference.
+3. $L$ is the number of digits of $N$ (18 for values below $10^{18}$; it can be $10^4$ if $N$ is given as a string).
+:::
+
+<TheoremCode unit="3.9/thm-1" />
+
+
+
+### 4.2 Ranges
+
+**Theorem 3.9.2 (ranges).** The number of $x$ in $[A, B]$ with the property is $F(B) - F(A - 1)$ (with $F(-1) = 0$). When $A$ is given as a digit string too long for an integer, use $F(B) - F(A) + [A \text{ has the property}]$ instead of computing $A - 1$.
+
+:::tip[In plain words]
+The count in a range [A, B] is the count up to B minus the count up to A − 1. If A is too long to subtract one from, subtract the count up to A and add back one when A itself has the property.
+:::
+
+**A tiny instance.** In $[10, 25]$, the digit sums divisible by 4 belong to $13, 17, 22$: $F(25) - F(9) = 6 - 3 = 3$.
+
+
+**Proof.**
+1. $[0, B]$ is the disjoint union of $[0, A - 1]$ and $[A, B]$, so the counts subtract.
+2. And $F(A - 1) = F(A) - [A \text{ has the property}]$.
+3. Modulo a prime, subtract as in Theorem 3.6.3. $\square$
+
+:::note[This proof needs]
+1. $F$ counts from 0 (or from 1, consistently in both terms).
+2. Modulo $p$, add $p$ before taking the remainder of the difference.
+:::
+
+<TheoremCode unit="3.9/thm-2" />
+
+
+
+### 4.3 Leading zeros and neighbouring digits
+
+Padding with leading zeros is harmless when the property ignores zeros (a digit sum, a remainder of the value). It is wrong when zeros matter: with the rule "no two equal neighbouring digits", the number 5 written as "005" would be rejected because of "00", although 5 has no neighbours at all.
+
+**Theorem 3.9.3 (the started flag).** Add a flag $z$ to the state: $z$ is false while only zeros have been read. A zero read while $z$ is false keeps $z$ false and does not update the rest of the state; the first non-zero digit sets $z$ true. Then the recurrence of Theorem 3.9.1 counts every number $0..N$ once, with the property applied to its digits without padding.
+
+:::tip[In plain words]
+Leading zeros are not digits of the number. Keep a flag that is false while only zeros have been read, and leave the rest of the state untouched until the first non-zero digit. Then rules about neighbouring digits see the number without padding.
+:::
+
+**A tiny instance.** Among $1..100$ there are 90 numbers whose neighbouring digits all differ (9 one-digit numbers and 81 two-digit numbers; 100 fails). Without the started flag, the padded strings "001", …, "009" contain "00" and are rejected, and the count drops to 81.
+
+
+**Proof.**
+1. Each number has one $L$-digit representation, so it is counted once.
+2. Its leading zeros leave the state as it was before any digit, so the property sees exactly the digits of the number from its first non-zero digit.
+3. The number 0 is the string of all zeros, with $z$ false at the end; count it or not as the problem requires. $\square$
+
+:::note[This proof needs]
+1. The rules (neighbours differ, digits non-decreasing, number of distinct digits) refer to the digits of the number itself, not its padding.
+2. Check 0 separately: many problems count positive integers only.
+:::
+
+<TheoremCode unit="3.9/thm-3" />
+
+
+
+### 4.4 Totals over a range
+
+**Theorem 3.9.4 (count and total together).** Let each state return a pair (count, total), where count is the number of valid completions and total is the sum of a quantity $g$ over them. If $g$ is additive over digits (the digit sum, the number of times a digit appears), then putting digit $c$ in front of completions with pair $(n, T)$ contributes $(n, \ T + g(c) \cdot n)$. For the sum of the values themselves, a digit $c$ at a position with weight $10^k$ contributes $(n, \ T + c \cdot 10^k \cdot n)$.
+
+:::tip[In plain words]
+To add up a digit-based quantity over a range, let each state return a pair, the number of completions and their total. Putting a digit in front adds its contribution once for every completion.
+:::
+
+**A tiny instance.** The digit sums of $0..25$ add up to 127. By first digit: 0 gives $(10, 45)$, 1 gives $(10, 10 + 45) = (10, 55)$, and 2 (tight, second digit 0–5) gives $(6, 2 \cdot 6 + 15) = (6, 27)$; $45 + 55 + 27 = 127$.
+
+
+**Proof.**
+1. Each of the $n$ completions gains $g(c)$ from the new digit, and the rest of its quantity is already in $T$.
+2. Summing over the digits allowed at the position adds up disjoint groups, as in Theorem 3.9.1. $\square$
+
+:::note[This proof needs]
+1. The quantity is a sum over digit positions (or a value built digit by digit), so it splits as "this digit" plus "the rest".
+2. Both parts of the pair are computed from the same states; modulo a prime, reduce both.
+:::
+
+<TheoremCode unit="3.9/thm-4" />
+
+
+
+## 5. Recognition Cards
+
+<Cards topic="3.9" />
+
+## 6. Templates
+
+Four functions, one per card, all with the same shape: a recursive `go(pos, state, tight, …)` that walks the digits of the bound, a memo used only for states that are no longer tight, and `countUpTo(N)` applied to $B$ and $A - 1$. The brute forces check every number of the range; the generators keep the ranges short (at most 1500 numbers) but place them anywhere up to $10^{18}$, so long bounds are tested too.
+
+### Numbers with few different digits (Theorem 3.9.1)
+
+<CodeSnippet unit="3.9/few-distinct" />
+
+**How it works.** The state is the set of digits used so far, a 10-bit mask (topic 3.8), plus the started flag: leading zeros are padding and do not add the digit 0 to the set (Theorem 3.9.3). The tight flag limits the next digit to $N$'s digit, and stays on only while the digits copy $N$. A completed string counts if its set has at most $K$ digits; the number 0 is the all-zero string and uses the digit 0. The answer for $[A, B]$ is $F(B) - F(A - 1)$ (Theorem 3.9.2).
+
+**Alternative formulation.** Count each length separately with a free walk and handle only the numbers with exactly as many digits as $N$ with the tight walk; then no started flag is needed. It is longer to write and easier to get wrong at the boundaries.
+
+### Two remainders (Theorem 3.9.1 with a pair as the state)
+
+<CodeSnippet unit="3.9/two-remainders" />
+
+**How it works.** Reading a digit $c$ changes the value's remainder from $r$ to $(10r + c) \bmod M$ (topic 2.2) and the digit sum's remainder from $s$ to $(s + c) \bmod D$. Both are small, so the state is the pair. Leading zeros change neither remainder, so they need no special care.
+
+**Alternative formulation.** Tabulate instead of recursing: for each position, a table over (remainder pair) for the free part, and walk the tight path once, adding at each position the free counts for the digits below $N$'s digit. It is the same sum as Theorem 3.9.1, written as loops.
+
+### Neighbouring digits (Theorem 3.9.3)
+
+<CodeSnippet unit="3.9/windy-numbers" />
+
+**How it works.** The state is the previous digit of the number, with 10 meaning "none yet". While only zeros have been read, a zero is padding: the previous digit stays "none" and nothing is checked. From the first non-zero digit on, every digit must differ from the previous one by at least 2. Strings that break the rule are never built, so every completed string counts.
+
+**Alternative formulation.** Instead of the started flag, count the numbers of each length shorter than $N$ separately (first digit 1–9, then free digits) and run the tight walk only for $N$'s own length, with a first digit from 1. Leading zeros then never appear.
+
+### Sum of digit sums (Theorem 3.9.4)
+
+<CodeSnippet unit="3.9/digit-sum-total" />
+
+**How it works.** `go` returns a pair: how many completions there are, and the total of their digit sums. Putting digit $c$ in front of $n$ completions with total $t$ adds $c$ to each of them: total $t + c \cdot n$. Summing over the allowed digits gives the pair for the state. The answer is the total for $B$ minus the total for $A - 1$, modulo $10^9 + 7$, with `+ MOD` before the remainder (Theorem 3.6.3).
+
+**Alternative formulation.** Count, for each position and digit $c$, how many numbers up to $N$ have $c$ there (a formula with the digits of $N$ to the left and right), and add $c$ times that count. It is the classic "count the 1s" trick, faster to run and harder to get right.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, found among the random seeds or by hand and checked against the brute force.
+
+### Bug: memoising tight states
+
+Template: numbers with few different digits.
+
+```cpp
+if (seen[pos][used][started]) return memo[pos][used][started];
+...
+seen[pos][used][started] = true, memo[pos][used][started] = total;
+```
+
+Input: `0 110 1` (numbers up to 110 with one distinct digit).
+
+Wrong output `20`, correct output `19`. The memo key leaves out the tight flag, so the tight state "prefix 1, digits {1}" (where the next digits are limited by 110) and the free state with the same key share one value. Here the tight state receives the free count, which includes 111 > 110.
+
+**Fix:** store and read only states that are not tight (Theorem 3.9.1); the tight states form a single path and are cheap anyway. Or put the flag into the key.
+
+### Bug: the memo is not reset for the second bound
+
+Template: two remainders.
+
+```cpp
+digits = to_string(n);
+return go(0, 0, 0, true);   // memset removed
+```
+
+Input: `55 100 8 3`.
+
+Wrong output `-2`, correct output `2` (72 and 96). The memo stores counts by position, but "position 1" means a different number of remaining digits for $N = 100$ (three digits) and for $A - 1 = 54$ (two digits). The second call reads counts computed for the first bound.
+
+**Fix:** reset the memo for every bound, or index the states by the number of digits **remaining** (then the memo can be shared, since a free state's count depends only on that).
+
+### Bug: the tight flag never turns off
+
+Template: two remainders.
+
+```cpp
+total += go(pos + 1, (rv * 10 + c) % M, (rs + c) % D, tight);
+```
+
+Input: `0 25 1 4` (the example of Section 4.1).
+
+Wrong output `4`, correct output `6`. Once a digit is smaller than $N$'s, the rest is free; keeping the flag limits every later digit to $N$'s digit, so 13 and 17 are never built (their second digit is above 5).
+
+**Fix:** `tight && c == hi`: the prefix stays tight only while it copies $N$.
+
+### Bug: leading zeros treated as digits
+
+Template: neighbouring digits.
+
+```cpp
+for (int c = 0; c <= hi; c++) {
+    if (prev != 10 && abs(c - prev) < 2) continue;   // the padding branch removed
+```
+
+Input: `0 12`.
+
+Wrong output `8`, correct output `10` (0, 1, …, 9). The one-digit numbers are walked as "00", "01", …; then 0 followed by 0 or 1 breaks the rule, and the numbers 0 and 1 are lost.
+
+**Fix:** a started flag (Theorem 3.9.3): before the first non-zero digit, a zero is padding and the rule is not checked.
+
+### Bug: the digit counted once instead of once per completion
+
+Template: sum of digit sums.
+
+```cpp
+total = (total + t + c) % MOD;
+```
+
+Input: `0 25`.
+
+Wrong output `108`, correct output `127`. The digit $c$ is part of every one of the $n$ numbers that continue from it, so it adds $c \cdot n$, not $c$.
+
+**Fix:** total $+ \ c \cdot n$ (Theorem 3.9.4). Check a pair by hand: for the prefix 2 of $N = 25$ the pair is $(6, 2 \cdot 6 + 15) = (6, 27)$.
+
+### Bug: subtracting F(A) instead of F(A − 1)
+
+Template: neighbouring digits.
+
+```cpp
+cout << countUpTo(b) - countUpTo(a) << "\n";
+```
+
+Input: `5 5`.
+
+Wrong output `0`, correct output `1`. $F(B) - F(A)$ counts $(A, B]$ and loses $A$ itself.
+
+**Fix:** $F(B) - F(A - 1)$ (Theorem 3.9.2); test with a one-number range $A = B$.
+
+## 8. Worked examples
+
+### Example 1: Digit Sum
+
+[AtCoder Educational DP Contest (EDPC), problem S: Digit Sum](https://atcoder.jp/contests/dp/tasks/dp_s). In short: count the integers from 1 to $K$ whose digit sum is a multiple of $D$, where $K$ has up to 10000 digits and $D \le 100$, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$K < 10^{10000}$ cannot even be stored as an integer; it is a string of $L \le 10^4$ digits. $L \cdot D \cdot 10 = 10^7$ steps are fine.
+
+#### Step 2: Question form → candidate tools
+
+- Checking every number (topic 0.5): up to $10^{10000}$ numbers.
+- A product formula (topic 2.5): the digit sum condition couples the digits, and $K$ is not a power of 10.
+- The tight walk with the digit sum modulo $D$ as the state (Theorem 3.9.1): the "Digit sums and remainders" card.
+
+#### Step 3: Property check → decision
+
+The card needs a state that follows from the old state and the next digit: the digit sum modulo $D$ becomes $(s + c) \bmod D$, with $D \le 100$ values. Leading zeros add 0 to the sum, so padding is harmless. Decision: walk $K$'s digits once, keeping counts of the free prefixes by remainder, and the remainder of the tight prefix.
+
+#### Step 4: Proof for this problem
+
+By Theorem 3.9.1, the numbers $0..K$ are the digit strings not above $K$. At each position, a free prefix continues with any digit, and the tight prefix either becomes free with a smaller digit or stays tight with $K$'s digit; each number is built once. A number qualifies when its final remainder is 0. The count includes 0 (digit sum 0) and $K$ itself if it qualifies; the range starts at 1, so 1 is subtracted, modulo $10^9 + 7$ (Theorem 3.6.3).
+
+#### Step 5: Code
+
+<CodeSnippet unit="3.9/example-1" />
+
+#### Step 6: Alternative approach
+
+The recursive form of Section 6 with a memo over (position, remainder) gives the same counts; with $L = 10^4$ the recursion depth is $10^4$, which is usually fine but closer to the stack limit, so the loop form is safer here.
+
+### Example 2: Number of Digit One
+
+[LeetCode 233: Number of Digit One](https://leetcode.com/problems/number-of-digit-one/). In short: count all the digits 1 written in the integers $0, 1, \dots, n$, with $n \le 10^9$.
+
+#### Step 1: Constraints → budget
+
+$n = 10^9$: writing every number is $10^9 \cdot 10$ steps, too slow. A digit walk has 10 positions.
+
+#### Step 2: Question form → candidate tools
+
+- Counting the 1s of every number (topic 0.5): too slow.
+- Counting the numbers with a property (Theorem 3.9.1): this asks for a total, not a count.
+- The (count, total) pairs of Theorem 3.9.4: the "Totals over a range" card.
+
+#### Step 3: Property check → decision
+
+The card needs a quantity that splits by digit positions: the number of 1s in $x$ is the sum over positions of [digit = 1]. So a digit $c$ in front of $n$ completions with $t$ ones gives $t + [c = 1] \cdot n$ ones. Decision: the tight walk returning (count, ones).
+
+#### Step 4: Proof for this problem
+
+Theorem 3.9.4 with $g(c) = [c = 1]$: every number $0..n$ is one completion of the walk (Theorem 3.9.1), and its 1s are the 1s at the current position plus the 1s further right, which the returned totals contain. Leading zeros are not 1s, so padding does not change the total.
+
+#### Step 5: Code
+
+<CodeSnippet unit="3.9/example-2" />
+
+#### Step 6: Alternative approach
+
+For each position with weight $p = 10^k$, split $n$ into the digits above it ($h$), the digit there ($c$) and the part below ($\ell$). The position holds a 1 in $h \cdot p$ numbers, plus $p$ more if $c > 1$, or $\ell + 1$ more if $c = 1$. Adding this over the positions gives the answer in $O(\log n)$; it is the same counting, done by hand for one digit.
+
+## 9. Problem ladder
+
+<Ladder topic="3.9" />
+
+## 10. Identification drill
+
+<Drill topic="3.9" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="3.9" />
+
+## 12. Self-test questions
+
+<SelfTest topic="3.9" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="3.9" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="3.9" />

@@ -1,0 +1,422 @@
+---
+title: "3.4 Knapsack family: 0/1, unbounded, bounded"
+sidebar:
+  order: 20
+topic: "3.4"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="3.4" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A shop has $n = 100$ books, book $i$ costing $w_i$ and having $v_i$ pages. With a budget of $W = 10^5$, buy books (each at most once) to get as many pages as possible.
+
+Backtracking ([topic 3.1](../3-1-backtracking/)) tries the $2^{100} \approx 1.3 \cdot 10^{30}$ subsets; branch and bound cuts some, but on bad inputs not nearly enough. Greedy by pages per unit of price ([topic 1.5](../../phase-1/1-5-greedy-1/)) fails: with budget 10 and books (price 6, 60 pages), (price 5, 45 pages), (price 5, 45 pages), the best ratio takes the first book and then nothing fits, 60 pages, while the two others give 90.
+
+The key idea: after deciding about the first $i$ books, the only thing that matters for the rest is how much money has been spent. So the state is (books decided, money spent), at most $101 \cdot (10^5 + 1) \approx 10^7$ states, each with two transitions (skip the book or buy it). This **knapsack** table is the model for a whole family of problems: items with a size and a value, a capacity, and a best total or a count.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="3.4" />
+
+### What this topic does not cover
+
+- Choosing a subset of items whose order matters, or covering positions of a sequence: sequence problems such as the longest increasing subsequence are in topic 3.5.
+- Counting paths in grids (grid dp, counting dp): topic 3.6.
+- Knapsack over subsets of a small set (bitmask dp): topic 3.8.
+- Speeding up bounded knapsack with a monotone queue per remainder, and other advanced optimisations: not part of this course; power-of-two splitting (Section 4.5) is enough at this level.
+
+## 3. Definitions
+
+- An **item** has a **weight** $w_i$ (its size, price or cost) and a **value** $v_i$. A **capacity** $W$ bounds the total weight of the chosen items.
+- In the **0/1 knapsack** each item is taken at most once; in the **unbounded knapsack** any number of copies may be taken; in the **bounded knapsack** item $i$ may be taken at most $c_i$ times.
+- A **subset sum** is the total of the numbers in some subset; a sum $s$ is **reachable** if some subset adds up to exactly $s$. Example: from $(2, 3, 7)$ the reachable sums are $0, 2, 3, 5, 7, 9, 10, 12$.
+- A **bitset** stores many true/false values as the bits of machine words, so that a shift or an or acts on 64 of them at once (topic 1.7).
+
+## 4. Theory and proofs
+
+### 4.1 Each item at most once
+
+Number the items $1..n$ and let $\text{best}[i][c]$ be the largest total value of a subset of the first $i$ items with total weight at most $c$.
+
+**Theorem 3.4.1 (0/1 knapsack).** $\text{best}[0][c] = 0$ for all $c \ge 0$, and for $i \ge 1$
+$$\text{best}[i][c] = \max\left(\text{best}[i-1][c], \ \text{best}[i-1][c - w_i] + v_i\right),$$
+where the second option exists only when $w_i \le c$. The answer is $\text{best}[n][W]$, computed in $O(nW)$ time. The same values are obtained with a single row `best[c]`, updated for each item with $c$ running **downwards** from $W$ to $w_i$.
+
+:::tip[In plain words]
+For each prefix of the items and each capacity, the best value either skips the new item or takes it and uses the best of the smaller capacity. One row of capacities, updated from the largest capacity down, does it while using each item at most once.
+:::
+
+**A tiny instance.** Items (weight, value) $(3, 30), (4, 50), (5, 60)$ and $W = 8$:
+
+| capacity $c$ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|---|
+| after $(3, 30)$ | 0 | 0 | 0 | 30 | 30 | 30 | 30 | 30 | 30 |
+| after $(4, 50)$ | 0 | 0 | 0 | 30 | 50 | 50 | 50 | 80 | 80 |
+| after $(5, 60)$ | 0 | 0 | 0 | 30 | 50 | 60 | 60 | 80 | 90 |
+
+The answer is 90 (weights $3 + 5$). If the single row were updated upwards, item $(3, 30)$ alone would already give `best[6] = 60` by taking it twice; Section 7 shows this bug.
+
+
+**Proof.**
+1. A subset of the first $i$ items with weight at most $c$ either avoids item $i$, and is then a subset of the first $i - 1$ items with weight at most $c$,
+2. or contains it, and then the rest is a subset of the first $i - 1$ items with weight at most $c - w_i$.
+3. Both cases are allowed for every such subset of the first $i - 1$ items, so the maximum over all subsets is the larger of the two maxima (Theorem 3.3.1, with the state (items decided, capacity left)).
+4. For the single row: when `best[c]` is updated, the entry `best[c − w_i]` has a smaller index, which a downward loop has not yet touched in this round, so it still holds $\text{best}[i-1][c - w_i]$. $\square$
+
+:::note[This proof needs]
+1. Each item is either in or out, independently of the others except through the total weight (no item excludes or requires another).
+2. The capacity is an integer small enough to index: $n \cdot W$ around $10^8$ at most.
+3. For the single row, the loop over $c$ runs downwards, so that each item is used at most once.
+:::
+
+<TheoremCode unit="3.4/thm-1" />
+
+
+
+### 4.2 Small values, huge weights
+
+When the weights go up to $10^9$ the table over capacities is impossible. But if the values are small, exchange the roles.
+
+**Theorem 3.4.2 (indexing by value).** Let $\text{minw}[i][v]$ be the smallest total weight of a subset of the first $i$ items whose total value is exactly $v$ ($+\infty$ if none). Then $\text{minw}[0][0] = 0$, $\text{minw}[0][v] = \infty$ for $v > 0$, and
+$$\text{minw}[i][v] = \min\left(\text{minw}[i-1][v], \ \text{minw}[i-1][v - v_i] + w_i\right).$$
+The answer is the largest $v$ with $\text{minw}[n][v] \le W$, in $O(n \cdot V)$ time where $V = \sum v_i$.
+
+:::tip[In plain words]
+If the weights are huge but the values are small, swap the roles. For each total value, keep the smallest weight that reaches it, and the answer is the largest value whose smallest weight fits in the capacity.
+:::
+
+**A tiny instance.** 100 items with weights up to $10^9$ and values up to 1000 give $V \le 10^5$ and $10^7$ states, while the capacity table would need $10^{11}$ columns.
+
+
+**Proof.**
+1. The same case split as Theorem 3.4.1, with "total value exactly $v$" as the second index and the smallest weight as the quantity.
+2. A total value $v$ is achievable within the capacity exactly when the lightest subset of value $v$ fits. $\square$
+
+:::note[This proof needs]
+1. As for Theorem 3.4.1: items are independent except through the totals.
+2. The sum of the values is small enough to index ($n \cdot V$ around $10^8$ at most), even if the weights are huge.
+3. "Exactly $v$" with $\infty$ for impossible values; reading the answer needs the largest feasible $v$, not the last entry.
+:::
+
+<TheoremCode unit="3.4/thm-2" />
+
+The second line of the output has weights up to $10^9$.
+
+
+### 4.3 Unlimited copies, and counting
+
+**Theorem 3.4.3 (unbounded knapsack).** If every item may be taken any number of times, then with a single row and $c$ running **upwards** from $w_i$ to $W$ for each item,
+`best[c] = max(best[c], best[c − w_i] + v_i)`
+gives the largest value of a multiset of items with total weight at most $c$. The same loops with `+` in place of `max` and `ways[0] = 1` count the multisets of items with total weight exactly $c$, each multiset once.
+
+:::tip[In plain words]
+When an item may be used any number of times, update one row with the capacity running upward, so the item can be used again within the same pass. With the coin loop outside each collection of coins is counted once.
+:::
+
+**A tiny instance.** With coins $1, 2$ and total 3: the item-outer loop counts the multisets $\{1, 1, 1\}$ and $\{1, 2\}$: 2. The capacity-outer loop counts the sequences $111, 12, 21$: 3.
+
+
+**Proof.**
+1. Process the items in order and let $R_i[c]$ be the row after item $i$: the best over multisets that use only items $1..i$.
+2. A multiset of items $1..i$ with weight at most $c$ either uses no copy of item $i$ (value at most $R_{i-1}[c]$) or uses at least one; removing one copy leaves a multiset of items $1..i$ with weight at most $c - w_i$.
+3. So $R_i[c] = \max(R_{i-1}[c], R_i[c - w_i] + v_i)$.
+4. An upward loop reads `best[c − w_i]` after it was updated in this round, so it reads $R_i[c - w_i]$, as required.
+5. For counting, the same split is a partition: multisets without item $i$, and multisets with at least one copy (in bijection with multisets of weight $c - w_i$ by removing one copy).
+6. Each multiset is counted once because the items are added in a fixed order, item 1 first. $\square$
+
+:::note[This proof needs]
+1. Copies are unlimited, so after taking one copy the same item is still available: the upward loop reads the current row.
+2. For counting, the order of the items in a solution does not matter (each multiset once), so the item loop is the outer loop. To count ordered sequences instead, put the capacity loop outside and the items inside (Theorem 3.3.2).
+3. For a minimum (fewest coins), use `min` and $+\infty$ for unreachable totals, with `best[0] = 0`.
+:::
+
+<TheoremCode unit="3.4/thm-3" />
+
+
+
+### 4.4 Reachable sums
+
+**Theorem 3.4.4 (subset sums).** Let $\text{reach}$ be a row of booleans with only $\text{reach}[0]$ true. For each number $a_i$, set $\text{reach}[s] \mathrel{|}= \text{reach}[s - a_i]$ for $s$ running downwards from $S$ to $a_i$. Afterwards $\text{reach}[s]$ is true exactly when some subset sums to $s$. With a bitset, one item is the single operation `reach |= reach << a_i`, so the total time is $O(n \cdot S / 64)$.
+
+:::tip[In plain words]
+To know which totals can be formed from numbers each used once, keep a row of true and false flags and update it for each number. A bitset does one number in a single shift-and-or.
+:::
+
+**A tiny instance.** Numbers $(2, 3, 7)$. After 2: $\{0, 2\}$; after 3: $\{0, 2, 3, 5\}$; after 7: $\{0, 2, 3, 5, 7, 9, 10, 12\}$, the list of Section 3.
+
+
+**Proof.**
+1. This is Theorem 3.4.1 with booleans: a sum $s$ is reachable with the first $i$ numbers exactly when it was reachable without $a_i$ or $s - a_i$ was reachable without it.
+2. In the bitset form, bit $s$ of `reach << a_i` is bit $s - a_i$ of `reach`, all computed from the old value at once, so each number is used at most once. $\square$
+
+:::note[This proof needs]
+1. Only reachability is asked (or a count, or the closest reachable sum); the numbers are taken at most once.
+2. The range of sums $S$ is small enough: $n \cdot S$ up to about $10^8$, or about $6 \cdot 10^9$ with a bitset, which does 64 sums per operation.
+3. With a bitset, the size must be a constant known when compiling (`bitset<100001>`).
+:::
+
+<TheoremCode unit="3.4/thm-4" />
+
+
+
+### 4.5 Limited copies
+
+**Theorem 3.4.5 (power-of-two splitting).** Let $c \ge 1$ and let $k$ be the largest integer with $2^k - 1 \le c$. Split $c$ copies of an item into bundles of $1, 2, 4, \dots, 2^{k-1}$ copies and one bundle of $r = c - (2^k - 1)$ copies (omitted if $r = 0$). Then the counts obtained by choosing some of the bundles are exactly $0, 1, \dots, c$. So the bounded knapsack becomes a 0/1 knapsack with about $\log_2 c$ items per original item, in $O(W \sum_i \log c_i)$ time.
+
+:::tip[In plain words]
+An item with c copies can be replaced by bundles of 1, 2, 4, … copies and a remainder. Choosing some of the bundles gives every count from 0 to c and nothing more, so the bounded knapsack becomes a 0/1 knapsack with about log c items per kind.
+:::
+
+**A tiny instance.** $c = 10$: bundles $1, 2, 4$ and $r = 3$. Then $6 = 2 + 4$, $8 = 1 + 4 + 3$, $10 = 1 + 2 + 4 + 3$.
+
+
+**Proof.**
+1. Every bundle choice uses at most all bundles, $1 + 2 + \dots + 2^{k-1} + r = c$ copies, so no count above $c$ appears.
+2. Conversely take $0 \le t \le c$. If $t < 2^k$, write $t$ in binary with the bundles $1, \dots, 2^{k-1}$.
+3. Otherwise $t \ge 2^k$, and $t - r$ satisfies $0 < 2^k - r \le t - r \le c - r = 2^k - 1$.
+4. The inequality $r < 2^k$ holds because $k$ is largest, so $2^{k+1} - 1 > c$, that is $r = c - 2^k + 1 < 2^k$.
+5. Write $t - r$ in binary and add the bundle $r$. $\square$
+
+:::note[This proof needs]
+1. Copies of one item are interchangeable, so only the number taken matters.
+2. The 0/1 version (downward loop) is run on the bundles, each bundle as one item of weight (size × $w_i$) and value (size × $v_i$).
+:::
+
+<TheoremCode unit="3.4/thm-5" />
+
+
+
+## 5. Recognition Cards
+
+<Cards topic="3.4" />
+
+## 6. Templates
+
+Five functions, one per theorem. Each brute force tries every subset as a bitmask (topic 0.5) or every number of copies by recursion, without a table.
+
+### 0/1 knapsack (Theorem 3.4.1)
+
+<CodeSnippet unit="3.4/zero-one" />
+
+**How it works.** `best[c]` holds the best value with weight at most `c` using the items read so far. For each new item the row is updated from the largest capacity down: `best[c − w]` then still belongs to the row before this item, so the item is added at most once. Starting with all zeros means "weight at most `c`" (an empty knapsack is allowed for every capacity); the answer is `best[W]`. Time $O(nW) = 10^7$ for the largest input.
+
+**Alternative formulation.** Keep the full table `best[i][c]` with two rows or $n + 1$ rows. Then the capacity loop may run in any direction, because the previous row is stored separately; the full table is also what Theorem 3.3.6 needs to print the chosen items.
+
+### Small values, huge weights (Theorem 3.4.2)
+
+<CodeSnippet unit="3.4/value-indexed" />
+
+**How it works.** With weights up to $10^9$ a row over capacities is impossible, but the values add up to at most $V = 10^5$. `minw[t]` is the least weight of a subset with total value exactly `t`, updated downwards like the 0/1 row. At the end, every value `t` whose lightest subset fits is achievable, and the largest such `t` is the answer.
+
+**Alternative formulation.** Keep `maxv[c]` only for the capacities that actually occur, in a `map` from total weight to best value, removing dominated entries (a heavier entry with no more value). It is the same idea indexed by the reachable weights, and it is fast when few distinct totals appear.
+
+### Coins: fewest and number of ways (Theorem 3.4.3)
+
+<CodeSnippet unit="3.4/coin-change" />
+
+**How it works.** Both rows are updated upwards, so `fewest[s − c]` and `ways[s − c]` already include the current coin: any number of copies is allowed. The coin loop is outside, so a multiset of coins is built in the order of the coin list, once (Theorem 3.4.3); swapping the loops would count sequences instead (Section 4.3).
+
+**Alternative formulation.** A recursion with a cache over the amount, $\text{fewest}(s) = 1 + \min_{c \le s} \text{fewest}(s - c)$ with $\text{fewest}(0) = 0$ (Theorem 3.3.4), computes the same values from the same states. Here the recursion can be $10^6$ calls deep, which may overflow the call stack, so the table is safer.
+
+### Balanced split with a bitset (Theorem 3.4.4)
+
+<CodeSnippet unit="3.4/balanced-split" />
+
+**How it works.** `reach` holds one bit per sum up to $10^6$. For each number `x`, `reach << x` moves every reachable sum `s` to `s + x`, and or-ing it in adds those sums while keeping the old ones: the number is used at most once because the shift is computed from the old bitset. A split into groups with sums `s` and `total − s` has difference `|total − 2s|`, which is smallest for the reachable `s ≤ total / 2` closest to `total / 2`. Time: $1000 \cdot 10^6 / 64 \approx 1.6 \cdot 10^7$ word operations.
+
+**Alternative formulation.** A boolean array updated downwards, `for s from S down to x: reach[s] = reach[s] or reach[s − x]`, is the same computation without the factor 64 (Theorem 3.4.4); it is enough when $n \cdot S$ is around $10^8$.
+
+### Limited copies by bundles (Theorem 3.4.5)
+
+<CodeSnippet unit="3.4/bounded-copies" />
+
+**How it works.** The `size` loop cuts the `c` copies into bundles of 1, 2, 4, … and finally whatever is left (`take = min(size, c)`); each bundle is a 0/1 item of weight `w · take` and value `v · take`, added with the downward loop. By Theorem 3.4.5 the bundles can make every count from 0 to $c_i$ and no more. With $c_i \le 1000$ there are at most 10 bundles per kind, so the time is about $100 \cdot 10 \cdot 10^5 = 10^8$ simple steps.
+
+**Alternative formulation.** Loop over the number of copies directly: for each kind and each capacity, try $k = 0..c_i$ copies. It is correct and simpler but costs $O(W \sum c_i)$, a factor $c_i / \log c_i$ more.
+
+## 7. Bug catalogue
+
+Knapsack bugs live in loop directions, loop orders and the meaning of "impossible". Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: the 0/1 loop running upwards
+
+Template: 0/1 knapsack.
+
+```cpp
+for (int c = w; c <= W; c++)
+```
+
+Input: `1 8`, then the item `4 3`.
+
+Wrong output `6`, correct output `3`. When `best[8]` is updated, `best[4]` has already been updated in this round to include the item, so the item is taken twice.
+
+**Fix:** with one row, each item at most once needs the capacity loop to run downwards (Theorem 3.4.1, note 3). Test with one item that fits twice.
+
+### Bug: impossible values treated as weight 0
+
+Template: small values, huge weights. The row starts with 0 everywhere instead of `INF`.
+
+Input: `2 20884830`, then the items `13571480 2` and `15075993 3`.
+
+Wrong output `5`, correct output `3`. With 0 meaning "value `t` costs nothing", every value looks reachable for free, and the answer becomes the sum of all values, although the two items together weigh 28 647 473, more than the capacity.
+
+**Fix:** "exactly `t`" tables start with only `minw[0] = 0` and every other entry impossible (Theorem 3.4.2, note 3). A table of "at most" values may start with 0; a table of "exactly" values may not.
+
+### Bug: the capacity loop outside when counting multisets
+
+Template: coins.
+
+```cpp
+for (int s = 1; s <= x; s++)
+    for (int c : coin) { … }
+```
+
+Input: `2 6`, then the coins `1 3`.
+
+Wrong number of ways `6`, correct `3`. With the amount loop outside, each amount is split by its *last* coin, so $3 + 1 + 1 + 1$ and $1 + 3 + 1 + 1$ count as different: the program counts sequences (6 of them) instead of multisets ($\{1 \times 6\}$, $\{3, 1, 1, 1\}$, $\{3, 3\}$). The fewest-coins answer, 2, is unaffected, which is why this bug hides.
+
+**Fix:** decide whether order matters. For multisets, coins outside and amounts inside (Theorem 3.4.3, note 2); for sequences, the other way round (Theorem 3.3.2).
+
+### Bug: the unbounded loop running downwards
+
+Template: coins.
+
+```cpp
+for (int s = x; s >= c; s--) {
+```
+
+Input: `1 7`, then the coin `1`.
+
+Wrong output `-1` and `0`, correct output `7` and `1`. A downward loop uses each coin value at most once, so 7 cannot be paid with a single coin 1.
+
+**Fix:** unlimited copies need the upward loop, which reads the current row (Theorem 3.4.3, note 1). The direction of the capacity loop is the whole difference between 0/1 and unbounded.
+
+### Bug: searching for the split from the wrong end
+
+Template: balanced split.
+
+```cpp
+for (int s = 0; s <= total / 2; s++)
+```
+
+Input: `2`, then `2 1`.
+
+Wrong output `3`, correct output `1`. Sum 0 (the empty group) is always reachable, so the search stops at once and reports the worst split. The best split needs the reachable sum *closest* to half the total.
+
+**Fix:** search from `total / 2` downwards and stop at the first reachable sum. Check the answer on a two-number input by hand.
+
+### Bug: dropping the remainder bundle
+
+Template: limited copies by bundles.
+
+```cpp
+int take = size;
+if (take > c) break;
+```
+
+Input: `1 8`, then the kind `1 5 2` (weight 1, value 5, 2 copies).
+
+Wrong output `5`, correct output `10`. With 2 copies the bundles should be 1 and the remainder 1; the program makes the bundle 1, then refuses the bundle 2 and stops, so only 1 copy can ever be taken.
+
+**Fix:** the last bundle is whatever is left, $r = c - (2^k - 1)$ (Theorem 3.4.5); `take = min(size, c)` creates it. Test counts that are not of the form $2^k - 1$.
+
+## 8. Worked examples
+
+### Example 1: Book Shop
+
+[CSES 1158: Book Shop](https://cses.fi/problemset/task/1158) (CSES is the Code Submission Evaluation System problem set). In short: $n \le 1000$ books with prices and page counts up to 1000; buy each book at most once with total price at most $x \le 10^5$, maximising the pages.
+
+#### Step 1: Constraints → budget
+
+$2^{1000}$ subsets: impossible. $n \cdot x = 10^8$ simple steps fits in about a second; $n \cdot x \cdot$ anything more does not.
+
+#### Step 2: Question form → candidate tools
+
+- Greedy by pages per unit of price (topic 1.5): fails for whole books, as Section 1 showed.
+- Meet in the middle (topic 3.2): only for $n$ around 40.
+- A table over (books decided, money spent): the "Each item at most once" card.
+
+#### Step 3: Property check → decision
+
+The card needs independent items and a small capacity. Buying one book never forbids or forces another; only the total price links them, and the budget $x \le 10^5$ can index an array. The sum of the pages, up to $10^6$, could index one too, but $n \cdot 10^6 = 10^9$ is larger than $n \cdot x$. Decision: the 0/1 table over the price, one row, updated downwards.
+
+#### Step 4: Proof for this problem
+
+Theorem 3.4.1 with weights = prices, values = pages and $W = x$: `best[c]` after the first $i$ books is the most pages within price $c$, and the downward loop uses each book at most once. The answer is `best[x]`. Time $O(n x) = 10^8$, memory $x + 1$ integers.
+
+#### Step 5: Code
+
+<CodeSnippet unit="3.4/example-1" />
+
+#### Step 6: Alternative approach
+
+Index by pages instead (Theorem 3.4.2): `minPrice[p]` = the cheapest set of books with exactly `p` pages, and the answer is the largest `p` with `minPrice[p] ≤ x`. It is correct, but with up to $10^6$ total pages it costs $10^9$ steps here; it wins only when the prices are huge and the page counts small.
+
+### Example 2: Two Sets II
+
+[CSES 1093: Two Sets II](https://cses.fi/problemset/task/1093). In short: count the ways to divide the numbers $1, 2, \dots, n$ ($n \le 500$) into two sets with equal sums, modulo $10^9 + 7$.
+
+#### Step 1: Constraints → budget
+
+$2^{500}$ subsets: impossible. The total is $\frac{n(n+1)}{2} \le 125\,250$, so one set must sum to at most $62\,625$; $n$ times that is about $3 \cdot 10^7$.
+
+#### Step 2: Question form → candidate tools
+
+- A formula (topic 2.5): no closed form is known for these counts.
+- Meet in the middle (topic 3.2): $2^{250}$ per half, still impossible.
+- Counting subsets by their sum, with the sums small: the "Which totals are reachable" card, as a count.
+
+#### Step 3: Property check → decision
+
+A division into two equal halves is fixed by the set $A$ that has sum $\frac{\text{total}}{2}$ (the other set is the rest). So it is enough to count the subsets of $\{1, \dots, n\}$ with sum exactly $\frac{\text{total}}{2}$: each number is used at most once and the sums are small. Each division is counted twice, once for $A$ and once for its complement, which also has sum $\frac{\text{total}}{2}$. Decision: the subset-sum count, then multiply by the inverse of 2 modulo the prime (Theorem 2.2.4); if the total is odd, the answer is 0.
+
+#### Step 4: Proof for this problem
+
+Let `ways[s]` count the subsets of $\{1, \dots, k\}$ with sum $s$. Splitting by whether $k$ is in the subset gives `ways[s] += ways[s − k]`, with the downward loop so that $k$ is used once (Theorems 3.4.1 and 3.4.4, with a count instead of a maximum). The subsets with sum $\frac{\text{total}}{2}$ come in pairs $\{A, \bar A\}$ with $A \ne \bar A$ (they differ, since $n \ge 1$ belongs to exactly one of them), and each pair is one division. So the number of divisions is `ways[half] / 2`, computed modulo the prime as `ways[half] · inv2`. Time $O(n \cdot \text{half}) \approx 3 \cdot 10^7$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="3.4/example-2" />
+
+#### Step 6: Alternative approach
+
+Avoid the division: put the number $n$ always in the first set, and count the subsets of $\{1, \dots, n - 1\}$ with sum $\frac{\text{total}}{2} - n$. Each division has exactly one set containing $n$, so this counts each division once, with no inverse needed.
+
+## 9. Problem ladder
+
+<Ladder topic="3.4" />
+
+## 10. Identification drill
+
+<Drill topic="3.4" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="3.4" />
+
+## 12. Self-test questions
+
+<SelfTest topic="3.4" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="3.4" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="3.4" />

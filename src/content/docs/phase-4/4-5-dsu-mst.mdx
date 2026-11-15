@@ -1,0 +1,536 @@
+---
+title: "4.5 DSU and MST"
+sidebar:
+  order: 29
+topic: "4.5"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="4.5" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A social site has $n = 10^5$ users, and $q = 2 \cdot 10^5$ events "user $a$ and user $b$ become friends" arrive one after another. After every event, print the size of the group of friends (direct or through others) that $a$ now belongs to.
+
+The walk of [topic 4.1](../4-1-graph-traversal/) finds a group in $O(n + m)$ steps, so repeating it after every event costs up to $q \cdot (n + q) \approx 6 \cdot 10^{10}$ steps. But the walk throws everything away between events, and the events only ever *join* groups; a group never splits.
+
+The key idea: give each group one **leader**, and let every user remember a user closer to the leader (the leader remembers itself). To ask which group a user is in, follow the pointers up to the leader. To join two groups, make the leader of the smaller group point to the leader of the larger one. If the smaller group always goes under the larger, then every user is at most $\log_2 n \approx 17$ pointers away from the leader, because each time a user's leader gets a new leader above it, the group at least doubles. This structure is the **disjoint set union** (also called **union–find**), and every event costs about 17 steps instead of $n + q$.
+
+The second half of the topic uses the same structure for a second question. A company has $n = 10^5$ offices and $m = 2 \cdot 10^5$ possible cables, each with a price. Which cables should it buy so that every office is connected to every other office and the total price is smallest? The answer is the **minimum spanning tree**. Go through the cables from the cheapest to the dearest and buy a cable exactly when it joins two groups that are still separate (the union–find structure answers that in a few steps): this is **Kruskal's algorithm**, and its correctness comes from one simple fact about the cheapest cable that leaves any group. A variant that grows one group with a heap (**Prim's algorithm**) is also shown.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="4.5" />
+
+### What this topic does not cover
+
+- Trees as a topic (rooted trees, depth, subtrees, diameter): topic 4.6. Finding the common ancestor of two vertices: topic 4.7.
+- Strongly connected components and bridges (cut edges): topic 4.8.
+- A structure that can also undo a merge (rollback), or that stores differences between users along the pointers (weighted union–find): not part of this course.
+- Deleting edges while the structure is in use is not possible; the topic shows how to avoid it when all operations are known in advance (processing them in reverse).
+- The second-best spanning tree, spanning trees of directed graphs, and algorithms that merge components in rounds (Borůvka): not part of this course.
+
+## 3. Definitions
+
+- A **spanning tree** of a connected graph is a set of edges that connects all $n$ vertices and contains no cycle; by Theorem 4.2.2 it has exactly $n - 1$ edges. In a graph with $c$ components, a **spanning forest** is the same for each component: $n - c$ edges.
+- With a weight on every edge (as in [topic 4.3](../4-3-shortest-paths/)), the **weight** of a set of edges is the sum of their weights. A **minimum spanning tree** is a spanning tree of the smallest weight. It need not be unique: three vertices joined by three edges of weight 1 have three of them.
+- A **cut** splits the vertices into two non-empty sets $S$ and $V \setminus S$. An edge **crosses** the cut if one end is in $S$ and the other is not. A cycle that crosses a cut crosses it an even number of times, because it must come back to the side it started from.
+- A **disjoint set union** (also **union–find**) keeps the vertices in disjoint **groups**. Every group has one **leader**; `find(v)` returns the leader of the group of $v$, and `unite(a, b)` merges the groups of $a$ and $b$. **Union by size** attaches the smaller group to the larger one.
+- **Kruskal's algorithm** takes the edges from the lightest to the heaviest and keeps an edge if it joins two different groups. **Prim's algorithm** grows one tree from a start vertex and always adds the lightest edge that leaves it.
+- A path has many edges; its **largest edge** is the heaviest one on it. The weights add up: $10^5$ edges of weight $10^9$ give $10^{14}$, so the totals need `long long`.
+- The code units number the vertices from 0 (`Dsu dsu(n)`); a program whose vertices are numbered from 1 builds `Dsu dsu(n + 1)`.
+
+
+## 4. Theory and proofs
+
+### 4.1 Disjoint set union
+
+**Theorem 4.5.1 (disjoint set union).** Keep an array `parent` (at the start `parent[v] = v` for every $v$) and an array `size` (at the start 1). `find(v)` follows `parent` from $v$ until a vertex is its own parent, and returns it. `unite(a, b)` finds the two leaders and, if they differ, hangs the leader of the smaller group under the leader of the larger one (adding the sizes) and returns true; if they are the same it returns false. Then, after any sequence of `unite` calls:
+
+(a) two vertices have the same leader exactly when they are connected by the edges $\{a, b\}$ of the calls made so far;
+
+(b) the `size` of a leader is the number of vertices of its group;
+
+(c) every vertex is at most $\log_2 n$ steps from its leader, so `find` and `unite` take $O(\log n)$ time;
+
+(d) exactly $n - c$ calls return true, where $c$ is the number of groups at the end, and the edges of these calls form a spanning forest.
+
+:::tip[In plain words]
+Each group is a tree of pointers with one leader at the top. Joining two groups hangs the smaller one under the larger one, so a vertex can only get deeper when its group at least doubles. That happens at most $\log_2 n$ times, so finding a leader is always quick.
+:::
+
+**A tiny instance.** Five vertices 0 to 4. `unite(0, 1)` joins the groups $\{0\}$ and $\{1\}$ (true); `unite(2, 3)` is true; `unite(1, 0)` finds the same leader and returns false. `unite(1, 2)` hangs the leader of one pair under the leader of the other (true), and now 0 and 3 have the same leader, while vertex 4 is still alone.
+
+**Proof.**
+1. *Groups are the components.* At the start every vertex is its own group, which is the component of the empty edge set. Suppose the groups are the components of the edges so far. A call `unite(a, b)` adds the edge $\{a, b\}$.
+2. If the leaders are the same, $a$ and $b$ are already connected, so the new edge changes no component, and the code changes no group.
+3. If the leaders differ, $a$ and $b$ are in different components, and the new edge merges exactly these two components into one. The code hangs one leader under the other, so the two groups become one group with a single leader, and no other group changes. By induction (a) holds; (b) holds because the sizes are added at the merge.
+4. *Claim (c).* The distance of a vertex $v$ from its leader grows by 1 only when the leader of its group is hung under another leader, and this only happens when the other group is at least as large. So the group of $v$ at least doubles in size each time its distance grows. A group has at most $n$ vertices, so its distance grows at most $\log_2 n$ times. (Path halving in `find` only moves a vertex closer to the leader, so it keeps the bound.)
+5. *Claim (d).* Each call that returns true merges two groups into one, so the number of groups drops by exactly 1; there are $n$ groups at the start and $c$ at the end, so there are $n - c$ such calls. A call that returns true joins two different components, so its edge closes no cycle with the earlier true edges. They form a graph without a cycle in which the vertices of every component are connected, which is a spanning forest. $\square$
+
+:::note[This proof needs]
+1. The smaller group goes under the larger one (step 4). If the larger group were hung under the smaller one, `unite(0, 1)`, `unite(1, 2)`, `unite(2, 3)`, ... would build a chain of $n$ vertices (each call hangs the whole chain so far under the new vertex), and `find(0)` would take $n$ steps.
+2. Groups only merge. A removed edge would need the group to split, and the structure cannot do that (see the next theorem).
+3. Vertices are numbered from 0 to $n - 1$ in the code; with numbers from 1, the arrays have $n + 1$ entries.
+:::
+
+<TheoremCode unit="4.5/thm-1" />
+
+The first example is the tiny instance. The second merges 1024 vertices in pairs, then pairs of pairs, and so on, which is the worst case for the depth: the longest chain has exactly $10 = \log_2 1024$ steps (step 4), and 1023 calls return true (step 5). The third example compares a thousand random sequences with a plain relabelling of whole groups.
+
+### 4.2 Deletions in reverse
+
+**Theorem 4.5.2 (deletions in reverse).** Let a graph on $n$ vertices have the edges $e_1, \dots, e_m$, and let the edges be removed in this order, so the graph after $i$ removals has the edges $e_{i+1}, \dots, e_m$. Start a disjoint set union with no edges and add $e_m, e_{m-1}, \dots, e_1$ in this order. Then the structure after adding $e_m, \dots, e_{i+1}$ has as groups exactly the components of the graph after $i$ removals, for every $i$ from $m$ down to 0; so the number of components and the sizes after every removal are known after $m$ calls of `unite`, in $O((n + m) \log n)$ time.
+
+:::tip[In plain words]
+A structure that only joins cannot undo a join. But if you know all the removals in advance, run the film backwards: the last removal becomes the first addition. Every state that the removals pass through appears on the way, and joining is all that is needed.
+:::
+
+**A tiny instance.** The path $0 - 1 - 2$ with the removals $e_1 = \{0,1\}$, $e_2 = \{1,2\}$. Backwards: nothing is added yet, 3 groups (the state after 2 removals). Add $e_2$: 2 groups (after 1 removal). Add $e_1$: 1 group (after 0 removals). Read forwards, the numbers of groups are 1, 2, 3.
+
+**Proof.**
+1. Let $G_i$ be the graph with the edges $e_{i+1}, \dots, e_m$, so $G_m$ has no edges and $G_0$ has all of them.
+2. $G_{i-1}$ is $G_i$ plus the single edge $e_i$. So the sequence $G_m, G_{m-1}, \dots, G_0$ is a sequence of single edge additions.
+3. By Theorem 4.5.1(a), the groups of the structure after the additions up to $e_{i+1}$ are exactly the components of $G_i$, and (b) gives their sizes.
+4. Reading the count of groups (or any size) just before adding $e_i$ gives the answer for $G_i$, the state after $i$ removals; the last reading is after adding $e_1$, the state before any removal.
+5. Each addition is one `unite`, so the whole run takes $m$ calls of $O(\log n)$ each, plus $O(n)$ to start. $\square$
+
+:::note[This proof needs]
+1. All removals are known before the first question is answered (offline). If the next removal depends on an earlier answer, the film cannot be run backwards.
+2. The questions asked between removals must be about groups (connected or not, sizes, counts); the structure knows nothing about distances.
+3. Removing a vertex is the same: in reverse it appears together with its edges to the vertices that are still present.
+:::
+
+<TheoremCode unit="4.5/thm-2" />
+
+The first example is the tiny instance. The second removes the three edges of a triangle one by one: the groups are 1, 1, 2, 3, because after the first removal the other two edges still connect everything (step 3). The third has no edges at all. The check recomputes the groups from scratch after every removal for twenty thousand random graphs.
+
+### 4.3 The cut property
+
+**Theorem 4.5.3 (cut property).** Let $G$ be a connected graph with edge weights, let $F$ be a set of edges that lies inside some minimum spanning tree, and let a cut be crossed by no edge of $F$. If $e$ is a lightest edge among those that cross the cut, then $F \cup \{e\}$ also lies inside some minimum spanning tree.
+
+:::tip[In plain words]
+If you split the vertices into two sides, the cheapest edge between the sides is always safe to buy. Whatever the best network looks like, it can use this edge in place of any other edge that crosses between the sides, and that can only make it cheaper or equal.
+:::
+
+**A tiny instance.** Vertices 0, 1, 2, 3 with the edges $0\!-\!1$ (4), $1\!-\!2$ (2), $0\!-\!2$ (3), $2\!-\!3$ (7), $1\!-\!3$ (5). Take the cut $\{0\}$ and $\{1, 2, 3\}$: the crossing edges are $0\!-\!1$ (4) and $0\!-\!2$ (3), and the lightest is $0\!-\!2$. The cheapest spanning tree is $1\!-\!2, 0\!-\!2, 1\!-\!3$ (weight 10), and it contains $0\!-\!2$.
+
+**Proof.**
+1. Let $T$ be a minimum spanning tree that contains $F$. If $e \in T$, we are done.
+2. Otherwise add $e$ to $T$. The ends of $e$ were already connected in $T$, so $T + e$ has a cycle through $e$.
+3. This cycle crosses the cut at $e$, so by the definition of a cut it crosses the cut an even number of times, and at least one more edge $f \ne e$ of the cycle crosses the cut. All edges of the cycle except $e$ belong to $T$, so $f \in T$.
+4. Since $f$ crosses the cut, $f \notin F$ (no edge of $F$ crosses), and $w(f) \ge w(e)$ because $e$ is a lightest crossing edge.
+5. Let $T' = T - f + e$. It still connects all vertices (anything that went through $f$ can go around the rest of the cycle) and has $n - 1$ edges, so it is a spanning tree (Theorem 4.2.2). Its weight is $w(T) - w(f) + w(e) \le w(T)$.
+6. $T$ is minimum, so $T'$ is minimum too. It contains $F$ (we only removed $f \notin F$) and $e$. $\square$
+
+:::note[This proof needs]
+1. No edge of $F$ crosses the cut (step 4). Take a triangle with all weights 1. $F = \{0\!-\!1, 1\!-\!2\}$ is a minimum spanning tree, and the cut $\{0\} | \{1, 2\}$ is crossed by $0\!-\!1 \in F$. The lightest crossing edges are $0\!-\!1$ and $0\!-\!2$, and adding $0\!-\!2$ to $F$ closes a cycle: with a crossing edge in $F$ there is no guarantee.
+2. $e$ is lightest among the edges crossing *this* cut. The lightest edge of the whole graph is a special case (take any cut that separates its ends).
+3. The graph is connected, so a spanning tree exists. With several equally light crossing edges, any one of them works.
+:::
+
+<TheoremCode unit="4.5/thm-3" />
+
+The three examples use the same graph as the tiny instance, with the cuts $\{0\}$, $\{0, 1, 2\}$ and $\{1\}$. The check tries all spanning trees of six thousand random graphs: it picks a random minimum spanning tree, a random part $F$ of it, a random cut that no edge of $F$ crosses, and verifies that some minimum spanning tree contains $F$ and the edge found.
+
+### 4.4 Kruskal's algorithm
+
+**Theorem 4.5.4 (Kruskal's algorithm).** Let $G$ be a connected graph with edge weights. Sort the edges by weight (ties in any order), start a disjoint set union with no edges, and go through the edges in this order: if `unite(a, b)` returns true, keep the edge. Then the kept edges form a minimum spanning tree. If $G$ is not connected, the kept edges form a minimum spanning forest, one minimum spanning tree per component. The time is $O(m \log m)$.
+
+:::tip[In plain words]
+Look at the edges from the cheapest to the dearest, and buy an edge only when its two ends are still in different groups. An edge that would close a loop is never needed, and each bought edge is the cheapest way to leave the group it starts from.
+:::
+
+**A tiny instance.** A square $0\!-\!1$ (4), $1\!-\!2$ (2), $2\!-\!3$ (4), $3\!-\!0$ (3) with the diagonal $0\!-\!2$ (5). In order: $1\!-\!2$ (2) joins two groups, kept; $3\!-\!0$ (3) kept; $0\!-\!1$ (4) joins $\{3, 0\}$ with $\{1, 2\}$, kept; $2\!-\!3$ (4) has both ends in the same group, skipped; the diagonal is skipped too. The weight is $2 + 3 + 4 = 9$.
+
+**Proof.**
+1. Let $F$ be the kept edges at some moment. We show by induction on the edges that $F$ lies inside some minimum spanning tree. At the start $F = \emptyset$, which lies inside every tree.
+2. If the next edge $e$ is skipped, $F$ does not change.
+3. If $e = \{a, b\}$ is kept, $a$ and $b$ are in different groups of $F$. Let $S$ be the group of $a$ (the component of $a$ in $F$, by Theorem 4.5.1(a)). No edge of $F$ crosses the cut $(S, V \setminus S)$, since $S$ is a whole component of $F$.
+4. $e$ crosses this cut. Suppose an edge $f$ also crosses it and comes earlier in the sorted order. Then $f$ was considered before $e$; if it had been kept it would be in $F$, but no edge of $F$ crosses the cut; if it had been skipped, its ends were already in one group, and groups only grow, so its ends would be in one group now, which contradicts that $f$ crosses the cut. So every crossing edge comes after $e$ in the order, and $e$ is a lightest crossing edge.
+5. By Theorem 4.5.3, $F \cup \{e\}$ lies inside some minimum spanning tree.
+6. At the end of a connected graph, the kept edges have $n - 1$ edges by Theorem 4.5.1(d) and lie inside a minimum spanning tree, which also has $n - 1$ edges, so they are that tree. For a graph that is not connected, apply this to each component. Sorting takes $O(m \log m)$ and the $m$ calls of `unite` take $O(m \log n)$. $\square$
+
+:::note[This proof needs]
+1. The edges are processed in order of weight (step 4). In the opposite order, the algorithm builds a *maximum* spanning tree (the proof is the same with "heaviest").
+2. The structure tells groups correctly (Theorem 4.5.1), so a kept edge never closes a cycle.
+3. The total weight is stored in 64 bits.
+:::
+
+<TheoremCode unit="4.5/thm-4" />
+
+The first example is a triangle: 1 + 2 = 3. The second is the square of the tiny instance (weight 9). The third has two separate edges on four vertices, so no spanning tree exists and the function returns $-1$ (fewer than $n - 1$ edges are kept, step 6). The fourth is a single vertex, with total weight 0. The check compares the weight with the best of all sets of $n - 1$ edges for twenty thousand random graphs.
+
+### 4.5 Prim's algorithm
+
+**Theorem 4.5.5 (Prim's algorithm).** Let $G$ be a connected graph with edge weights. Put vertex 0 into the tree, and put its edges into a heap that gives the lightest edge first. Repeat: take the lightest edge out of the heap; if its other end is already in the tree, skip it; otherwise add the other end and the edge to the tree, and push the edges from the new vertex to vertices outside the tree. Then the tree after $n - 1$ additions is a minimum spanning tree, and the time is $O(m \log m)$.
+
+:::tip[In plain words]
+Grow one group from a start vertex. At every step add the cheapest edge that leaves the group. This is the cut property again, with the group as one side of the cut. It looks like Dijkstra's algorithm, but the key is the edge weight alone, not the distance from the start.
+:::
+
+**A tiny instance.** The same square with a diagonal. From vertex 0 the heap has $0\!-\!1$ (4), $0\!-\!3$ (3), $0\!-\!2$ (5). Take $0\!-\!3$ (3). Add the edges of vertex 3: $3\!-\!2$ (4). Now the lightest is $0\!-\!1$ (4) (or $3\!-\!2$ (4)): take $0\!-\!1$; add $1\!-\!2$ (2). The lightest is $1\!-\!2$ (2): vertex 2 joins. Total $3 + 4 + 2 = 9$.
+
+**Proof.**
+1. Let $S$ be the set of vertices in the tree and $F$ the tree edges. Every edge of $F$ has both ends in $S$, so no edge of $F$ crosses the cut $(S, V \setminus S)$. At the start $F = \emptyset$ lies inside every minimum spanning tree.
+2. The heap holds every edge from a vertex of $S$ to a vertex outside, because such an edge was pushed when its end in $S$ joined (edges that lead to vertices inside the tree are skipped when taken).
+3. The edge taken, when its other end is outside $S$, is therefore a lightest edge crossing the cut. By Theorem 4.5.3 the tree plus this edge lies inside some minimum spanning tree.
+4. A graph that is connected always has an edge leaving $S$ while $S \ne V$, so the heap does not run dry before $n$ vertices are in the tree. After $n - 1$ additions the tree is inside a minimum spanning tree and has as many edges, so it is one.
+5. Each edge is pushed at most twice (once from each end) and each push and removal costs $O(\log m)$. $\square$
+
+:::note[This proof needs]
+1. The heap key is the weight of one edge. Using the distance from the start (as in Theorem 4.3.1) builds the tree of shortest paths instead, which can be heavier.
+2. An edge whose far end is already in the tree is skipped when it is taken.
+3. The graph is connected; otherwise the heap runs dry early and the function reports $-1$.
+:::
+
+<TheoremCode unit="4.5/thm-5" />
+
+The examples are those of Theorem 4.5.4 (triangle 3, the square 9, two separate edges $-1$, one vertex 0), and the twenty thousand random graphs are checked against the best of all sets of $n - 1$ edges.
+
+### 4.6 The largest edge on a path
+
+**Theorem 4.5.6 (smallest largest edge).** Let $G$ be a graph with edge weights and let $s$, $t$ be two vertices. Among all paths from $s$ to $t$, let $b(s, t)$ be the smallest possible value of the largest edge on the path. Go through the edges in the order of Kruskal's algorithm (Theorem 4.5.4) and let $e^*$ be the first edge after whose `unite` the vertices $s$ and $t$ are in one group. Then $b(s, t) = w(e^*)$; if no such edge exists, there is no path. The path from $s$ to $t$ in the tree built by Kruskal's algorithm contains $e^*$, and no edge on it is heavier.
+
+:::tip[In plain words]
+To go from $s$ to $t$ using only light edges, raise the limit step by step and add every edge up to the limit. The first moment $s$ and $t$ are in one group is exactly the smallest limit that allows a path, and it is the weight of the edge that closed the gap.
+:::
+
+**A tiny instance.** Edges $0\!-\!2$ (9), $0\!-\!1$ (4), $1\!-\!2$ (6). To go from 0 to 2: the direct edge has largest edge 9, the route through 1 has largest edge $\max(4, 6) = 6$. In sorted order $0\!-\!1$ (4) joins 0 and 1; $1\!-\!2$ (6) puts 0 and 2 in one group: $b(0, 2) = 6$.
+
+**Proof.**
+1. Let $e^*$ be as in the statement, with weight $w^*$. All edges before $e^*$ in the order have weight at most $w^*$.
+2. After `unite` for $e^*$, $s$ and $t$ are connected by kept edges, all of which are $e^*$ or come before it. So a path exists whose edges all have weight at most $w^*$, and $b(s, t) \le w^*$.
+3. Before $e^*$, the vertices $s$ and $t$ were in different groups, i.e. not connected by the edges before $e^*$ (Theorem 4.5.1(a)). So every path from $s$ to $t$ uses an edge that is $e^*$ or comes after $e^*$ in the order, and that edge has weight at least $w^*$. So $b(s, t) \ge w^*$.
+4. In the tree built by Kruskal's algorithm, the path from $s$ to $t$ is unique and lies inside the kept edges up to $e^*$, so its edges have weight at most $w^*$, and it contains $e^*$ (otherwise $s$ and $t$ would have been connected earlier). So $e^*$ is on it and no edge on it is heavier. $\square$
+
+:::note[This proof needs]
+1. The edges are taken in non-decreasing order of weight (steps 1 to 3).
+2. The question is about the largest edge. For the sum of a path, shortest paths are needed (topic 4.3), and the spanning tree gives no help.
+3. For many pairs, the pairs can be answered offline while the edges are added in order; reading the answer off the tree is a method of a later topic.
+:::
+
+<TheoremCode unit="4.5/thm-6" />
+
+The first example is a path of two edges, where the largest edge is the only choice (5). The second is the tiny instance (6, not 9). The third has no road between 0 and 3 ($-1$). The check tries every limit from 1 to 7 with a plain walk for twenty thousand random graphs and pairs.
+
+## 5. Recognition Cards
+
+<Cards topic="4.5" />
+
+## 6. Templates
+
+Seven templates. Each shows only the function that matters; the program around it reads the input. The structure `Dsu` of Theorem 4.5.1 is assumed in all of them (`Dsu dsu(n + 1)` when the vertices are numbered from 1; `size` and `find` are used as shown there). Each template is checked against a brute force with a different method (a fresh walk, every set of edges, every set of stations) on thousands of random small inputs, and on fixed tests with repeated edges, self-loops, a single vertex, and weights near $10^9$.
+
+### Sizes of the groups after each event (Theorem 4.5.1)
+
+<CodeSnippet unit="4.5/group-sizes" />
+
+**How it works.** `unite` hangs one group under the other when the two users are in different groups, and does nothing otherwise, so a repeated friendship or an event `a a` changes nothing. After the call, `find(a)` is the leader of the group of `a`, and the size of the group is stored at the leader: `dsu.size[dsu.find(a)]`. Each event costs about $\log_2 n$ steps.
+
+**Alternative formulation.** To print the number of groups instead, keep a counter that starts at $n$ and drops by 1 whenever `unite` returns true. To keep another value per group (the sum of the values, the largest number), store it at the leader and combine the two values inside the call that merges.
+
+### Pairs cut off after each removal (Theorem 4.5.2)
+
+<CodeSnippet unit="4.5/reverse-removals" />
+
+**How it works.** The loop goes from the last removed edge to the first. `linked` counts the pairs that can reach each other in the graph built so far, so the pairs that cannot are `total - linked`, and that value is the answer for the state before the edge `i` is added, which is the state after `i` removals. Adding an edge between two different groups of sizes $a$ and $b$ links $a \cdot b$ new pairs. The sizes are multiplied as `long long`: $5 \cdot 10^9$ pairs do not fit in 32 bits.
+
+**Alternative formulation.** For vertices that are destroyed one by one, add the vertices in reverse order, and unite each new vertex with its neighbours that are already present (keep a flag per vertex). For the largest group instead of the pairs, keep the maximum of the sizes.
+
+### The cheapest network of cables (Theorem 4.5.4)
+
+<CodeSnippet unit="4.5/cables" />
+
+**How it works.** The cables are sorted by price. A cable is bought if `unite` returns true, that is, if its ends are in different groups; an edge that would close a loop returns false and is skipped. A connected network of $n$ computers needs $n - 1$ cables, so if fewer were bought, the computers cannot all be connected and the function returns $-1$.
+
+**Alternative formulation.** For a maximum spanning tree (the most expensive network), sort in the opposite order. To list the cables bought, store the index of each edge before sorting. Prim's algorithm of Theorem 4.5.5 with a heap gives the same total.
+
+### The cheapest network of points (Theorem 4.5.5)
+
+<CodeSnippet unit="4.5/dense-prim" />
+
+**How it works.** In a complete graph with $n$ points there is a link between every two points, and $n^2/2$ links are too many to sort for large $n$ but fine for $n \le 5000$. This is Prim's algorithm with the heap replaced by an array: `best[v]` is the cheapest link from the tree to the point `v`. Each step picks the point outside the tree with the smallest `best` (a scan of $n$ entries), adds its cost to the total, and lowers the `best` of every other point outside the tree. The time is $O(n^2)$ and no link is stored.
+
+**Alternative formulation.** List the $n(n-1)/2$ links with their distances and run the function of the previous template; it gives the same total in $O(n^2 \log n)$.
+
+### Is there a trip under the limit? (Theorem 4.5.6)
+
+<CodeSnippet unit="4.5/limit-queries" />
+
+**How it works.** Both the roads and the questions are sorted by the limit. For a question with limit `L`, the loop first adds every road with weight at most `L` that has not been added yet (`next` points at the first road not yet added), and then asks whether `s` and `t` are in one group. As the limits grow, only more roads are added, never removed, so one pass over the roads answers all questions. The answers are stored by the original index of the question, so they are printed in the order of the input.
+
+**Alternative formulation.** For one pair without a limit, add the roads in order and stop when `s` and `t` meet; the weight of that road is the smallest possible largest road (Theorem 4.5.6).
+
+### Sum of the largest road over all pairs (Theorem 4.5.6)
+
+<CodeSnippet unit="4.5/sum-of-maximums" />
+
+**How it works.** The roads are taken from the lightest. When a road joins two groups of sizes $a$ and $b$, the $a \cdot b$ pairs with one city in each group are linked for the first time, and for each of them the road is the heaviest on the trip (all lighter roads have been added before, and none of them linked the two cities). So the road adds `w * a * b` to the answer. The product of three numbers can reach $10^7 \cdot 5 \cdot 10^9$, which is why `w` is a `long long`.
+
+**Alternative formulation.** For the sum of the smallest road instead, sort in the opposite order. For the number of pairs whose largest road is at most $L$, add only the roads with weight at most $L$ and count `a * b` for each merge.
+
+### Stations or links (Theorem 4.5.4)
+
+<CodeSnippet unit="4.5/hub-or-link" />
+
+**How it works.** A power station in town `i` supplies the town without any link, so it behaves like a link to a place that is "the power": the virtual town 0. With the links `{0, i}` of price `c[i]` added, every town is supplied exactly when every town is connected to the virtual town through the links bought, because a path from town `i` to town 0 ends with a station. The cheapest set that connects the $n + 1$ towns is a minimum spanning tree of the enlarged graph, found by the same loop as before. The graph is always connected through the links to town 0, so the function never returns $-1$.
+
+**Alternative formulation.** If a station and a link must not both serve the same town, or if only some towns may have a station, add only the links `{0, i}` that are allowed. The virtual town works for any "or build here" choice.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing a template from Section 6 and caught by `scripts/stress.sh`. The inputs shown are small failing inputs, checked against the brute force.
+
+### Bug: the size of a vertex that is not a leader
+
+Template: sizes of the groups after each event.
+
+```cpp
+sizes.push_back(dsu.size[a]);          // instead of dsu.size[dsu.find(a)]
+```
+
+Input: `4 2`, then the events `3 2` and `2 3`.
+
+Wrong output `2 1`, correct output `2 2`. After the first event vertex 3 is the leader and vertex 2 hangs under it. The size is stored only at the leader, so asking vertex 2 for its size gives the stale value 1 (Theorem 4.5.1(b) is about the leader).
+
+**Fix:** go through `find` first: `dsu.size[dsu.find(a)]`.
+
+### Bug: uniting vertices instead of leaders
+
+Template: sizes of the groups after each event (the `unite` of the structure).
+
+```cpp
+// the line "a = find(a), b = find(b);" removed from unite
+```
+
+Input: `4 2`, then the events `3 2` and `2 3`.
+
+Wrong output `2 3`, correct output `2 2`. The second event repeats the first, but without the leaders the two vertices look different: `unite` returns true and adds the size of the group to itself. Two vertices are in one group exactly when their *leaders* are the same (Theorem 4.5.1(a)).
+
+**Fix:** replace both vertices by their leaders at the start of `unite`.
+
+### Bug: adding the sizes instead of multiplying them
+
+Template: pairs cut off after each removal.
+
+```cpp
+linked += 1LL * (dsu.size[a] + dsu.size[b]);   // instead of dsu.size[a] * dsu.size[b]
+```
+
+Input: `3 2`, then the bridges `2 3` and `1 3`.
+
+Wrong output `1` then `3`, correct output `2` then `3`. Adding the bridge `1 3` back joins the groups $\{1\}$ and $\{2, 3\}$, which links $1 \cdot 2 = 2$ new pairs (vertex 1 with 2 and with 3), not $1 + 2 = 3$.
+
+**Fix:** every vertex of one group is linked to every vertex of the other: multiply.
+
+### Bug: no test that the network is connected
+
+Template: the cheapest network of cables.
+
+```cpp
+return total;                          // instead of return taken == n - 1 ? total : -1;
+```
+
+Input: `4 0` (four computers, no cables).
+
+Wrong output `0`, correct output `IMPOSSIBLE`. With no cable at all the loop buys nothing, and the total of nothing is 0. A network of $n$ computers needs $n - 1$ cables (Theorem 4.5.1(d)); fewer cables mean more than one group.
+
+**Fix:** count the cables bought and report failure unless the count is $n - 1$.
+
+### Bug: sorting the cables by the wrong key
+
+Template: the cheapest network of cables.
+
+```cpp
+sort(cables.begin(), cables.end());    // instead of sorting by price, index 2
+```
+
+Input: `2 2`, then `2 1 8` and `1 2 9`.
+
+Wrong output `9`, correct output `8`. The plain `sort` of arrays compares the first element first (the number of the first computer), so the cable `1 2 9` comes before `2 1 8`. Kruskal's algorithm is correct only when the edges are taken in the order of their weight (Theorem 4.5.4, step 4).
+
+**Fix:** sort with a comparison on the price: `x[2] < y[2]`.
+
+### Bug: overwriting the cheapest link in Prim's algorithm
+
+Template: the cheapest network of points.
+
+```cpp
+best[v] = llabs(p[u].first - p[v].first) + llabs(p[u].second - p[v].second);   // without min(best[v], ...)
+```
+
+Input: `3`, then the points `0 -1`, `2 4`, `6 0`.
+
+Wrong output `15`, correct output `14`. From the first point the links to the other two points cost 7 and 7. After the second point joins, its link to the third (cost 8) overwrites the cheaper link 7 that the first point already offered, and the tree buys the dearer one. `best[v]` must stay the cheapest link from *any* point of the tree.
+
+**Fix:** `best[v] = min(best[v], ...)`.
+
+### Bug: answering the questions in the order of the input
+
+Template: is there a trip under the limit?
+
+```cpp
+// the sort of `order` by the limit removed
+```
+
+Input: `4 2 2`, the roads `4 2 9` and `1 4 8`, then the questions `4 4 9` and `1 2 2`.
+
+Wrong output `YES`, `YES`, correct output `YES`, `NO`. The first question has the limit 9, so both roads are added; the second question has limit 2, but the roads cannot be taken away again, so towns 1 and 2 look linked. The roads are only added, so the limits must grow (Theorem 4.5.6, step 1).
+
+**Fix:** sort the questions by the limit and keep their original numbers for printing.
+
+### Bug: strictly less than the limit
+
+Template: is there a trip under the limit?
+
+```cpp
+while (next < roads.size() && roads[next][2] < limit)     // instead of <=
+```
+
+Input: `2 1 1`, the road `1 2 2`, then the question `1 2 2`.
+
+Wrong output `NO`, correct output `YES`. The road has toll 2 and the limit is 2, and "at most 2" allows it.
+
+**Fix:** use `<=` when the statement says "at most".
+
+### Bug: multiplying with the sizes of vertices instead of groups
+
+Template: sum of the largest road over all pairs.
+
+```cpp
+// the line "a = dsu.find(a), b = dsu.find(b);" removed
+```
+
+Input: `3`, then the roads `2 3 3` and `3 1 8`.
+
+Wrong output `11`, correct output `19`. After the road of toll 3, towns 2 and 3 form one group of size 2. The road of toll 8 joins that group with town 1: $8 \cdot 2 \cdot 1 = 16$ to the sum. Without `find`, town 3 is asked for its own size, which is 1 (it is not the leader), and the product is only $8$.
+
+**Fix:** take the sizes of the leaders.
+
+## 8. Worked examples
+
+### Example 1: Reachability Query
+
+[AtCoder Beginner Contest (ABC) 420 E: Reachability Query](https://atcoder.jp/contests/abc420/tasks/abc420_e). In short: a graph has $N \le 2 \cdot 10^5$ vertices, all white, and no edges. Then $Q \le 6 \cdot 10^5$ queries arrive: add an edge between $u$ and $v$; flip the colour of a vertex between white and black; or ask whether a black vertex can be reached from $v$ (zero or more edges).
+
+#### Step 1: Constraints → budget
+
+$Q = 6 \cdot 10^5$ queries on up to $2 \cdot 10^5$ vertices. A walk for every question of the third kind is up to $Q \cdot (N + Q) \approx 5 \cdot 10^{11}$ steps. About $\log_2 N \approx 18$ steps per query give $10^7$.
+
+#### Step 2: Question form → candidate tools
+
+- A fresh walk from $v$ for each question ([topic 4.1](../4-1-graph-traversal/)): too slow.
+- Edges are only added and never removed, and the question is about the group of $v$: the card "Merging groups (disjoint set union)".
+
+#### Step 3: Property check → decision
+
+Every query of the first kind joins two groups; no edge is removed. The question asks whether the group of $v$ contains a black vertex, which is a property of the group. Decision: a disjoint set union that keeps, at each leader, the number of black vertices of its group.
+
+#### Step 4: Proof for this problem
+
+By Theorem 4.5.1(a), a black vertex can be reached from $v$ exactly when the group of $v$ contains one. The number of black vertices in a group is kept at the leader: when two groups merge, the new count is the sum of the two counts (it is read before the merge, because after the merge only one of the two leaders is left), and when a vertex changes colour, the count of its leader changes by one. So the count at the leader is always the true number of black vertices of its group, and the answer is Yes exactly when it is positive. Each query takes $O(\log N)$ steps by Theorem 4.5.1(c).
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.5/example-1" />
+
+#### Step 6: Alternative approach
+
+Walking the group of $v$ for each question is simple but too slow. A weighted version of the structure (a count that is moved when the leader changes) is the same idea written differently. There is no shortcut for the colour changes without the count at the leader.
+
+### Example 2: Decayed Bridges
+
+[AtCoder Beginner Contest (ABC) 120 D: Decayed Bridges](https://atcoder.jp/contests/abc120/tasks/abc120_d). In short: $N \le 10^5$ islands are joined by $M \le 10^5$ bridges; initially any two islands can reach each other. The bridges collapse one by one, from the first to the last. After each collapse, print the number of pairs of islands that can no longer reach each other.
+
+#### Step 1: Constraints → budget
+
+$M = 10^5$ collapses. A walk of the whole map after each is $M \cdot (N + M) = 2 \cdot 10^{10}$ steps. The answer for one state can be as large as $\binom{N}{2} \approx 5 \cdot 10^9$, which needs `long long`.
+
+#### Step 2: Question form → candidate tools
+
+- A fresh walk after each collapse ([topic 4.1](../4-1-graph-traversal/)): $2 \cdot 10^{10}$ steps.
+- The union structure can only join, but all the collapses are given in advance: the card "Deletions in reverse".
+
+#### Step 3: Property check → decision
+
+The order of the collapses is fully known, and each question is about which islands can still reach each other: groups only. Decision: add the bridges from the last to the first, keeping the number of pairs that are linked.
+
+#### Step 4: Proof for this problem
+
+By Theorem 4.5.2, the groups just after $i$ collapses are those of the structure after adding the bridges $i+1, \dots, M$. A pair of islands can reach each other exactly when it is in one group (Theorem 4.5.1(a)). Adding a bridge between two different groups of sizes $a$ and $b$ makes exactly the $a \cdot b$ pairs with one island in each group reachable, and no other pair changes. So the number of linked pairs after each addition is known, and the answer after $i$ collapses is $\binom{N}{2}$ minus the linked pairs just before bridge $i$ is added back.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.5/example-2" />
+
+#### Step 6: Alternative approach
+
+An offline divide and conquer that processes the time axis with an undoable structure would work, but it needs the rollback that this course does not cover, and it is more complicated. Going backwards makes the problem plain.
+
+### Example 3: Min Cost to Connect All Points
+
+[LeetCode 1584: Min Cost to Connect All Points](https://leetcode.com/problems/min-cost-to-connect-all-points/). In short: given $n \le 1000$ points in the plane, connecting two points costs the Manhattan distance between them; find the least total cost so that all points are connected.
+
+#### Step 1: Constraints → budget
+
+$n = 1000$ gives $n(n-1)/2 \approx 5 \cdot 10^5$ possible links. Sorting them takes about $5 \cdot 10^5 \cdot 19 \approx 10^7$ steps. Trying all sets of $n - 1$ links is impossible. The sum of 999 links of cost up to $4 \cdot 10^6$ could in principle reach $4 \cdot 10^9$, so a general program uses `long long`; LeetCode fixes the return type as `int`, and the example follows it.
+
+#### Step 2: Question form → candidate tools
+
+- Try every set of $n - 1$ links ([topic 0.5](../../phase-0/0-5-brute-force/)): impossible.
+- Shortest paths from one point ([topic 4.3](../4-3-shortest-paths/)): they give the cheapest route to each point, which is not a cheapest network.
+- A set of links that connects everything at the least total cost: the card "Cheapest way to connect everything (spanning tree)".
+
+#### Step 3: Property check → decision
+
+The answer is a set of links that connects all points, and its total is minimised. Decision: Kruskal's algorithm on the complete graph. Since the graph is complete, Prim's algorithm with an array (the template for points) is an equally good choice.
+
+#### Step 4: Proof for this problem
+
+The points and all possible links form a connected weighted graph, and a set of links connects all points at the least total cost exactly when it is a minimum spanning tree (a set that connects everything and contains a cycle can lose an edge of the cycle and stay connected, at no higher cost). By Theorem 4.5.4, taking the links from the cheapest and keeping a link when it joins two groups gives a minimum spanning tree. The total of the kept links is the answer.
+
+#### Step 5: Code
+
+<CodeSnippet unit="4.5/example-3" />
+
+#### Step 6: Alternative approach
+
+Prim's algorithm of Theorem 4.5.5 on an array runs in $O(n^2)$ and does not store the links. For $n \le 1000$ both take a few milliseconds.
+
+## 9. Problem ladder
+
+<Ladder topic="4.5" />
+
+## 10. Identification drill
+
+<Drill topic="4.5" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="4.5" />
+
+## 12. Self-test questions
+
+<SelfTest topic="4.5" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="4.5" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="4.5" />

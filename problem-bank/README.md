@@ -38,14 +38,15 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 4 | [4.3 Dijkstra, 0-1 BFS, Bellman–Ford, Floyd–Warshall](phase-4/4.3-shortest-paths.md) | 0 | 1 | 14 | 15 | 4 | 34 | short |
 | 4 | [4.9 State-space search](phase-4/4.9-state-space-search.md) | 0 | 1 | 10 | 10 | 4 | 25 | short |
 | 4 | [4.4 DSU and MST: Kruskal, Prim, cut property](phase-4/4.4-dsu-mst.md) | 0 | 2 | 13 | 14 | 7 | 36 | complete |
-| 4 | [4.5 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.5-trees.md) | 2 | 1 | 15 | 7 | 8 | 33 | complete |
+| 4 | [4.5 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.5-trees.md) | 2 | 1 | 15 | 7 | 8 | 33 | short |
 | 4 | [4.6 LCA via binary lifting](phase-4/4.6-lca.md) | 0 | 1 | 9 | 5 | 8 | 23 | short |
 | 4 | [4.7 SCC, bridges, articulation points, 2-SAT](phase-4/4.7-connectivity.md) | 0 | 3 | 6 | 7 | 7 | 23 | short |
 | 5 | [5.1 Sparse table and RMQ](phase-5/5.1-sparse-table.md) | 1 | 3 | 8 | 4 | 0 | 16 | short |
 | 5 | [5.2 Fenwick tree (BIT), inversion counting](phase-5/5.2-fenwick.md) | 3 | 1 | 7 | 3 | 8 | 22 | short |
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 1 | 4 | 7 | 17 | 29 | complete |
 | 5 | [5.5 Sweep line with a segment tree](phase-5/5.5-sweep-segment-tree.md) | 0 | 0 | 2 | 2 | 4 | 8 | short |
-| 5 | [5.4 Square-root decomposition, Mo's algorithm](phase-5/5.4-sqrt-decomposition.md) | 0 | 1 | 4 | 4 | 10 | 19 | short |
+| 5 | [5.4 Square-root decomposition](phase-5/5.4-sqrt-decomposition.md) | 0 | 1 | 3 | 3 | 8 | 15 | short |
+| 5 | [5.6 Mo's algorithm](phase-5/5.6-mo-algorithm.md) | 0 | 0 | 0 | 1 | 7 | 8 | short |
 | 5 | [5.7 Binary trie and XOR](phase-5/5.7-binary-trie.md) | 0 | 2 | 4 | 3 | 1 | 10 | short |
 | 6 | [6.1 Polynomial hashing](phase-6/6.1-string-hashing.md) | 0 | 2 | 8 | 6 | 3 | 19 | short |
 | 6 | [6.2 Prefix function (KMP) and Z-function](phase-6/6.2-prefix-function.md) | 4 | 3 | 3 | 7 | 2 | 19 | short |

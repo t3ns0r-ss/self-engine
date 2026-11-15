@@ -83,6 +83,7 @@ So most plausible greedy rules are wrong. This topic teaches two standard ways t
   - length covered by $\ge k$ intervals
   - probability of exactly 1 cover
   - top k in segments
+- Events sorted and scanned (Theorem 1.5.6)
 - Recognition cards
 - Quick revision
 - Check yourself
@@ -1926,9 +1927,71 @@ Trace on the segments of the figure above, written as $[L, R]$ with value X: $[1
 
 Cost: T.C. $O((n + Q) \log (n + Q))$ for the sort and $O(\log n)$ for each insert or erase, and $O(n + Q)$ space. Common mistakes: removing the segment at R + 1 instead of at R for closed segments (the event order start, query, end already handles the end point), using `erase(value)` on a multiset (it removes every copy), and forgetting that `erase` must also look in `rest` first, because the value may not be in `top`.
 
+## Events sorted and scanned
+
+The sweepline above is one idea with many uses: sort the starts and ends of the intervals, and scan once while a running total changes at each event. This section shows why that is correct (Theorem 1.5.6), what to do when two events share a position, and how the same scan answers three different questions. The tie rule alone was proved for a counter in [topic 1.1](../../phase-1/1-1-sorting/) (Theorem 1.1.6); here it is extended to lengths, weights and queries.
+
+Question: a shop logs $n$ visits. Visit $i$ covers the whole seconds $l_i, l_i + 1, \dots, r_i$ (both ends included) and has a weight $w_i$. Print three things: (1) the most visits that share one second, (2) the largest total weight of the visits that share one second, (3) for every $k = 1, \dots, n$, the number of seconds covered by at least $k$ visits. The limits are $n \le 10^5$, $0 \le l_i \le r_i \le 10^9$ and $w_i \le 10^9$.
+
+Example: three visits, $[1, 3]$ with weight 5, $[3, 5]$ with weight 2 and $[4, 6]$ with weight 10. The seconds 1 to 6 are covered by 1, 1, 2, 2, 2, 1 visits, with total weights 5, 5, 7, 12, 12, 10. So (1) is 2, (2) is 12, and (3) is 6 seconds for at least 1, 3 seconds for at least 2 and 0 seconds for at least 3.
+
+Brute force: for every second, look at all visits. That is $10^9 \cdot n$ steps. Marking the seconds of every visit in an array needs an array of $10^9$ cells and up to $10^{14}$ marks. Better: only the $2n$ starts and ends matter, as in the sweepline above. Sort them and scan once.
+
+Writing the closed seconds $[l, r]$ as the half-open $[l, r + 1)$, the events of the example are: $+5$ at 1, $+2$ at 3, $-5$ at 4 (the end of $[1, 3]$), $+10$ at 4 (the start of $[4, 6]$), $-2$ at 6 and $-10$ at 7. At position 4 the end is processed before the start. The three running states after each event, side by side:
+
+| after the event | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| position | 1 | 3 | 4 | 4 | 6 | 7 |
+| number of visits | 1 | 2 | 1 | 2 | 1 | 0 |
+| total weight | 5 | 7 | 2 | 12 | 10 | 0 |
+| gap up to the next event | 2 | 1 | 0 | 2 | 1 | none |
+
+The largest entry of the second row is 2 and of the third row is 12. For the third question, add each gap to the bucket of its row-2 value: bucket 1 gets $2 + 0 + 1 = 3$ and bucket 2 gets $1 + 2 = 3$. These are the seconds covered by exactly 1 and exactly 2 visits. Add the buckets from the back to get "at least": 6 for $k = 1$ and 3 for $k = 2$.
+
+**Theorem 1.5.6 (scan of sorted events).** Take $n$ intervals and make two events for each: $(l_i, +1)$ and $(r_i, -1)$. Let $C(x)$ be the number of intervals that contain the integer point $x$.
+
+1. Half-open intervals $[l_i, r_i)$. Sort the events by position, and at equal positions put the $-1$ events first. The counter after an event equals $C$ on the stretch from that event's position up to the next event position. So the number of integer points covered by exactly $c$ intervals is the sum of the lengths of the stretches whose counter is $c$, the number covered by at least $k$ is the sum of these over $c \ge k$, and the largest counter over all events is $\max_x C(x)$.
+2. Closed intervals $[l_i, r_i]$ in which touching ends overlap. The largest number of them that share a point is found by putting the $+1$ events first at equal positions. To count integer points, write $[l_i, r_i]$ as $[l_i, r_i + 1)$ and use part 1.
+3. If interval $i$ has a weight $w_i$, the events $(l_i, +w_i)$ and $(r_i, -w_i)$ give, in place of the counter, the total weight of the intervals that contain the point.
+
+In plain words: between two neighbouring event positions nothing changes, so a running total over the sorted events gives the answer for every stretch at once. When one interval ends exactly where another starts, the order of the two events decides whether they overlap: ends first when the end is not included, starts first when it is.
+
+Small example first. The intervals $[1, 5)$, $[2, 7)$, $[6, 8)$ have the events $+1$ at 1, $+1$ at 2, $-1$ at 5, $+1$ at 6, $-1$ at 7 and $-1$ at 8, with the counters 1, 2, 1, 2, 1, 0. The stretches are $1$ to $2$ with 1, $2$ to $5$ with 2, $5$ to $6$ with 1, $6$ to $7$ with 2 and $7$ to $8$ with 1. Exactly 1 interval covers $1 + 1 + 1 = 3$ points and exactly 2 cover $3 + 1 = 4$ points, so at least 1 covers 7 points, at least 2 cover 4 and at least 3 cover 0.
+
+Why it works:
+1. Part 1. An interval $[l_i, r_i)$ contains $x$ exactly when $l_i \le x < r_i$. So $C(x) = \#\{i : l_i \le x\} - \#\{i : r_i \le x\}$: an interval that has started and not yet ended is the one that contains $x$.
+2. This is the counter after all events at positions at most $x$. No event lies strictly between two neighbouring event positions $y < y'$, so $C(x) = C(y)$ for $y \le x < y'$. Before the first event the counter is 0.
+3. The stretch from $y$ to $y'$ holds $y' - y$ integer points, all with the count $C(y)$. Adding these lengths into one bucket for each counter value gives the points covered by exactly $c$ intervals, and adding the buckets from $c = n$ down to $k$ gives "at least $k$".
+4. At one position $y$ with ends first, the counter falls from $C(y - 1)$ and then rises to $C(y)$, so it never exceeds the larger of the two. So the largest counter over all events is the largest $C$. With starts first it could rise above both: $[1, 3)$ and $[3, 5)$ give the counter 2 at position 3, but $C \le 1$ everywhere.
+5. Part 2. A closed interval contains $x$ when $l_i \le x \le r_i$, so the number of them containing $x$ is $\#\{l_i \le x\} - \#\{r_i < x\}$. With starts first at position $x$, the counter after the last start and before the first end at $x$ is exactly this number, and every other counter at $x$ is smaller. So the largest counter is the largest number of closed intervals that share a point.
+6. For integer points, $l \le x \le r$ is the same as $l \le x < r + 1$, so $[l, r]$ and $[l, r + 1)$ contain the same integers and part 1 applies to the shifted ends.
+7. Part 3. The same argument holds with $+w_i$ and $-w_i$ in place of $+1$ and $-1$: each interval adds its weight when it starts and takes it back when it ends.
+
+This proof needs: (1) the quantity at a point is a sum, over the intervals that contain it, of a term that belongs to the interval alone (1, or a weight), so a start can add it and an end can take it back. The largest height among the active buildings in the skyline problem is not such a sum, because an end cannot be subtracted from a maximum; there the active heights go into a multiset. (2) The order at equal positions follows the statement: ends first when the end is not part of the interval, starts first when it is. (3) The $2n$ events are sorted, which costs $O(n \log n)$, and the totals reach $n \cdot 10^9$ for weights, so they need `long long`.
+
+<TheoremCode unit="1.5/thm-6" />
+
+The first example is steps 1 to 3 on the three intervals of the first example above. The second is step 4 and part 2: the two intervals $[1, 3)$ and $[3, 5)$ never overlap (most overlap 1), while the closed $[1, 3]$ and $[3, 5]$ share the point 3 (most overlap 2). The third has two equal intervals and one that starts where they end: 4 points are covered at least once and 2 at least twice.
+
+The template follows the example. Closed seconds become $[l, r + 1)$. An event is stored as `{position, kind, weight}` with kind 0 for an end and kind 1 for a start, so the default sort puts an end before a start at the same position. The scan keeps `count` (the visits), `weight` (the total weight) and, for every event, adds the gap to the next event into `exact[count]`. A suffix sum then turns "exactly" into "at least".
+
+<CodeSnippet unit="1.5/events-scan" />
+
+Dry run on the example, in the order of the table above. After the second event the counter is 2 and the weight is 7. After the fourth (the start at 4, after the end at 4) the counter is 2 and the weight is 12, the maximum. The gaps give `exact[1] = 3` and `exact[2] = 3`, and the suffix sums give `atLeast[1] = 6` and `atLeast[2] = 3`. T.C. is $O(n \log n)$ for the sort and $O(n)$ for the scan. S.C. is $O(n)$. It matched a brute force that looks at every second on 5000 random inputs.
+
+The three states differ only in what the scan stores: a counter, a sum of weights, or the length of a gap added to a bucket. A running maximum of the active heights is a fourth kind of state; it needs a multiset (the skyline problem in the practice problems). For queries at given positions, put the queries into the same sorted list: at one position the order is end, start, query, because a query at $t$ sees the intervals that start at $t$ and not those that ended before $t$. The answers go back to the queries by index (the offline queries of the last section).
+
+Common mistake: starts before ends at equal positions, for visits written as closed seconds. Input `2`, then `1 3 1` and `4 6 1`: the visits cover the seconds 1 to 3 and 4 to 6, so they never share a second and the most visits is 1. The end of the first visit sits at position 4 after the shift, and the start of the second visit is also at 4. With the start processed first the counter reaches 2, and the program prints 2 (and 2 for the weight). Fix: ends first.
+
+Common mistake: the end event placed at $r$ for closed seconds. Input `2`, then `1 3 1` and `3 5 1`: both visits contain the second 3. The correct output is 2 and 2 for the first two lines and `5 1` for the last. With the end at $r$, the first visit is read as $[1, 3)$, which stops before the second visit starts at 3, so the second 3 is counted once only, and the program prints 1, 1 and `4 0`. Fix: place the end at $r + 1$ (Theorem 1.5.6, step 6).
+
+Common mistake: printing the "exactly" buckets for "at least". On `3`, then `1 4 1`, `2 6 1`, `6 7 1`, the last line is `3 4 0` instead of `7 4 0`. Fix: the suffix sum over $k$ (Theorem 1.5.6, step 3).
+
+Common mistake: a total weight in `int`. Input `3`, then three lines `1 1000000000 1000000000`: all three visits share every second, so the largest total is $3 \cdot 10^9$, but an `int` total wraps around after $2 \cdot 10^9$ and the program prints 2000000000. Random tests with small weights do not show this, so it was found by a hand input. Fix: `long long`.
+
 ## Recognition cards
 
-A recognition card is a short test for one technique. It gives the property that decides it, how to check that property, what the limits look like, the signals that suggest it and the ones that rule it out, a worked case and the look-alikes. The five cards of this topic are the five shapes named at the start.
+A recognition card is a short test for one technique. It gives the property that decides it, how to check that property, what the limits look like, the signals that suggest it and the ones that rule it out, a worked case and the look-alikes. The six cards of this topic are the five shapes named at the start and a sixth, the scan of sorted events.
 
 <Cards topic="1.5" />
 
@@ -1950,6 +2013,7 @@ A recognition card is a short test for one technique. It gives the property that
 - Max points on a line → fix a pivot, count reduced slopes in a map, answer = max frequency + pivot. T.C. = $O(n^2 \log n)$. Edge case: all points equal to the pivot (the map is empty), use `max(ans, same)`.
 - Sweepline → events (+1 at L, −1 at R), sort, add the gap length to bucket[coverage], suffix sum for $\ge k$. T.C. = $O(n \log n)$.
 - Same position: start → query → end.
+- Events sorted and scanned: one scan with a running total gives every stretch. Half-open $[l, r)$: ends first at equal positions. Closed $[l, r]$: starts first for the most overlap; for points write $[l, r + 1)$ and use ends first. Bucket the gaps by the counter, then take suffix sums for "at least $k$". Weights: add and take back $w_i$.
 - Sweepline can maintain a data structure: product + sum (probability, with modular inverses), multiset (top k).
 - Probability code: reduce `p * inv(q)` with `% MOD`, and handle x = 1 separately.
 - Offline queries: sort by y, save the index, print the answers in the original order.
@@ -1960,6 +2024,7 @@ A recognition card is a short test for one technique. It gives the property that
 - Theorem 1.5.3: the $k$ largest items have the largest sum, so the fewest items reaching T are the largest first. Splittable units go by value per unit. It fails for non-splittable items of different sizes.
 - Theorem 1.5.4: each child by increasing greed gets the smallest unused sufficient cookie. Move past a cookie once it is given.
 - Theorem 1.5.5: if the greedy state after every step dominates any other state, greedy is at least as good. Cover a segment by the farthest reach, and Missing Coin Sum by the reach $r$ with the test $x \le r + 1$.
+- Theorem 1.5.6: with the events sorted (ends first at equal positions for half-open intervals), the counter after an event is the count on the stretch up to the next event. Gaps by counter, then suffix sums, give the points covered by at least $k$; the largest counter is the most overlap; with weights it is the heaviest load. Closed intervals: starts first for the most overlap, or $[l, r + 1)$ for points.
 
 ## Check yourself
 
@@ -1983,7 +2048,7 @@ Answer each question on paper before opening its answer.
 
 ### Checkpoint
 
-Three problems in 90 minutes. To pass, solve at least 2 of 3 in time and choose the right card on at least 8 of the 11 drill items. After passing, three review sets become due: after 3 days, 14 days and 60 days.
+Three problems in 90 minutes. To pass, solve at least 2 of 3 in time and choose the right card on at least 8 of the 12 drill items. After passing, three review sets become due: after 3 days, 14 days and 60 days.
 
 <Checkpoint topic="1.5" />
 

@@ -16,14 +16,14 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 1 | [1.2 Prefix sums and difference arrays (1D, 2D)](phase-1/1.2-prefix-sums.md) | 7 | 5 | 10 | 4 | 4 | 30 | complete |
 | 1 | [1.3 Two pointers and sliding window](phase-1/1.3-two-pointers.md) | 4 | 5 | 12 | 3 | 3 | 27 | complete |
 | 1 | [1.4 Binary search: invariant template, search on the answer](phase-1/1.4-binary-search.md) | 4 | 4 | 13 | 1 | 4 | 26 | short |
-| 1 | [1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)](phase-1/1.5-greedy-1.md) | 4 | 8 | 12 | 3 | 3 | 30 | complete |
+| 1 | [1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)](phase-1/1.5-greedy-1.md) | 4 | 9 | 12 | 4 | 3 | 32 | complete |
 | 1 | [1.6 Monotonic stack and deque](phase-1/1.6-monotonic-stack.md) | 2 | 0 | 10 | 5 | 3 | 20 | short |
-| 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 12 | 3 | 2 | 25 | complete |
+| 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 12 | 4 | 3 | 27 | complete |
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 9 | 3 | 2 | 21 | short |
 | 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 3 | 3 | 4 | 5 | 3 | 18 | short |
 | 2 | [2.5 Linear Diophantine equations and the Chinese remainder theorem](phase-2/2.5-diophantine-crt.md) | 1 | 0 | 1 | 1 | 5 | 8 | short |
 | 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 5 | 13 | 9 | 6 | 8 | 41 | short |
-| 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 8 | 18 | short |
+| 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 9 | 19 | short |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 3 | 12 | 5 | 2 | 0 | 22 | short |
 | 3 | [3.9 Meet in the middle](phase-3/3.9-meet-in-the-middle.md) | 0 | 0 | 0 | 1 | 9 | 10 | short |
 | 3 | [3.2 DP foundations: state, transition, base case; memoisation vs tabulation](phase-3/3.2-dp-foundations.md) | 4 | 14 | 11 | 5 | 1 | 35 | short |

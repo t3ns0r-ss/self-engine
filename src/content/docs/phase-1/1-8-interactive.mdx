@@ -1,0 +1,384 @@
+---
+title: "1.8 Interactive problems: flushing, query budgets, adaptive judges"
+sidebar:
+  order: 13.5
+topic: "1.8"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="1.8" />
+
+## 1. Why this topic exists
+
+Here is a small problem. A judge program holds a whole number $x$ between 1 and $10^9$. Your program may ask "is $x \le m$?" for any $m$, and the judge answers yes or no. You must print $x$ after at most 30 questions. Asking about every number in turn needs up to $10^9$ questions, far above the limit of 30. A program that only reads its input once and prints once cannot even start: the answer to the next question depends on the answer to the last one, so the program and the judge must talk while they run.
+
+That is an **interactive problem**. Three things change compared with the problems before.
+
+- **The protocol.** The output of your program is the input of the judge, and the other way round. Every question must reach the judge before it can reply, so every question must be flushed. A program that forgets this waits for a reply to a question that the judge never received, and the verdict is "Idleness limit exceeded".
+- **The budget.** The number of questions is limited, and the limit is part of the problem. Before any code, work out how many questions the best possible strategy needs. Here $2^{30} = 1073741824 \ge 10^9$, so 30 questions are the least that can work, and halving the range of possible numbers with every question uses exactly that many (Section 4.1).
+- **The judge.** Some judges do not fix the hidden value at the start. They answer each question so that the replies stay consistent with at least one value, and they may choose the replies that hurt most. Your program must then be right for every possible reply (Section 4.4).
+
+The rest of this lesson gives the protocol once, then three kinds of questions (a reply that says on which side the answer lies, a comparison of two neighbours, and replies that are sums or xors), and a way to test your own interactive solutions on your computer with a small judge program.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="1.8" />
+
+### What this topic does not cover
+
+- Interactive games whose winning move comes from the theory of Grundy numbers: topic 7.5. Here the only game is one where a pairing of the numbers is enough.
+- Interactive problems on graphs and trees, where a question names a vertex and the strategy is a search of the graph (Phase 4).
+- Problems with a score to maximise and problems in which two programs communicate with each other: not part of this course.
+- Questions answered by a random process (a strategy with random choices and an expected number of questions): not part of this course. Every strategy here is deterministic.
+
+## 3. Definitions
+
+- An **interactive problem** is a problem in which the program talks to a judge program while it runs: the output of the program is the input of the judge, and the output of the judge is the input of the program. Example: the number guessing problem above.
+- A **query** is one question that the program prints, for example `? 7`. The **reply** is the line that the judge prints back. A line such as `! 37` is not a query: it is the final answer, and the program must stop right after it.
+- The **query budget** is the largest number of queries that the problem allows. A solution that asks one query more gets the verdict wrong answer.
+- To **flush** is to send everything that the program has printed so far to the other side at once. Printed text waits in a buffer until it is flushed. In C++, `endl` ends the line and flushes; `cout.flush()` and `fflush(stdout)` flush without a new line; a plain `'\n'` does not flush. By default `cin` is tied to `cout`, so every read of `cin` flushes `cout` first. The two fast input lines `ios::sync_with_stdio(false)` and `cin.tie(nullptr)` of [topic 0.1](../../phase-0/0-1-cpp-for-cp/) remove that tie: after them a question stays in the buffer until it is flushed.
+- The reply **-1** is the usual signal that the judge refused a query (more queries than the budget, or a malformed one). The program must quit at once, with `exit(0)`. If it keeps reading, the judge has already stopped, and the verdict is a runtime error or "Idleness limit exceeded" instead of the real cause.
+- An **adaptive judge** is a judge that does not fix the hidden value. It answers each query with any reply for which at least one value still agrees with all replies so far, and it may pick the reply that leaves the most values possible. It never lies: some value always agrees with every reply it has given.
+- The **information bound** for $n$ possible answers and yes or no replies is the number $\lceil \log_2 n \rceil$: the smallest $q$ with $2^q \ge n$. Example: for $n = 1000$ it is 10, because $2^9 = 512 < 1000 \le 1024 = 2^{10}$.
+- In the code, `exit(0)` ends the program at once, `cin >> reply` reads one number from the judge, `endl` ends a line and flushes, and `lo + (hi - lo) / 2` is the middle of $lo$ and $hi$ written so that the sum $lo + hi$ is never formed (it could pass $2^{31}$).
+
+## 4. Theory and proofs
+
+### 4.1 Halving meets the information bound
+
+**Theorem 1.8.1 (halving meets the information bound).** A judge holds a hidden number $x$ in $\{1, \dots, n\}$ and answers yes or no to any question that a strategy asks, where each question may depend on the earlier replies. Let $q = \lceil \log_2 n \rceil$, the smallest number with $2^q \ge n$.
+- (a) A deterministic strategy that prints the right number for every $x$ asks at least $q$ questions for some $x$.
+- (b) The halving strategy, which asks "is $x \le m$?" for the middle $m$ of the range that is still possible, prints the right number and asks at most $q$ questions for every $x$.
+
+:::tip[In plain words]
+A judge holds one of $n$ numbers and every question has a yes or no reply. After $q$ questions there are at most $2^q$ different reply sequences, and each number needs its own sequence, so $q$ questions are enough only when $2^q$ is at least $n$. Asking whether the number is at most the middle of the range that is left cuts the range in half every time, so the smallest $q$ with $2^q$ at least $n$ is also enough.
+:::
+
+**A tiny instance.** Take $n = 5$, so $q = 3$ because $2^2 = 4 < 5 \le 8 = 2^3$. Halving starts with the range 1 to 5, kept as $lo = 0$ (the answer is above it) and $hi = 5$ (the answer is at most it). For $x = 4$: "is $x \le 2$?" no ($lo = 2$), "is $x \le 3$?" no ($lo = 3$), "is $x \le 4$?" yes ($hi = 4$), and $hi - lo = 1$, so the answer is 4 after 3 questions. No number of $1, \dots, 5$ needs a fourth question.
+
+**Proof.**
+1. Fix a deterministic strategy that is right for every $x$ and asks at most $q'$ questions for every $x$. Its first question is always the same, its second question depends only on the first reply, and so on: the replies alone decide everything it does, including the number it prints at the end.
+2. Draw all the plays as a tree. Each inner node is a question and its two children are the two replies. The depth of the tree is at most $q'$, so it has at most $2^{q'}$ leaves.
+3. Each hidden number ends in one leaf, and the number printed at a leaf is fixed. If two different numbers ended in the same leaf, the strategy would print the same number for both and be wrong for one of them. So the $n$ numbers need $n$ different leaves: $n \le 2^{q'}$, which means $q' \ge q$. This proves (a).
+4. For (b), let $p(m)$ be the statement "$x \le m$". It is false for every $m < x$ and true for every $m \ge x$, so it is monotone. With $lo = 0$ ($p(0)$ is false because $x \ge 1$) and $hi = n$ ($p(n)$ is true), halving is the loop of Theorem 1.4.1.
+5. By Theorem 1.4.1 the loop ends with $hi$ equal to the first number where $p$ is true, which is $x$, after at most $\lceil \log_2 (hi - lo) \rceil = \lceil \log_2 n \rceil = q$ tests of $p$. Each test is one question. This proves (b). $\square$
+
+:::note[This proof needs]
+1. The strategy is deterministic and reads only the replies, so a play is a path in a tree. A strategy with random choices can use fewer questions on some inputs, but the bound counts the worst case.
+2. Every reply carries one bit. A question with $r$ possible replies replaces the 2 by $r$: $r^{q} \ge n$. The three-way reply (lower, higher, equal) of some judges adds almost nothing, because "equal" ends the game.
+3. For (b), the predicate must be monotone and $lo$, $hi$ must hold the two values of the invariant of Theorem 1.4.1.
+:::
+
+<TheoremCode unit="1.8/thm-1" />
+
+The first three lines compute the bound for $n = 8$, 10 and 1 and the worst case of halving over all hidden numbers: they agree (for $n = 8$ both are 3, and every number needs all three questions). The last line is the tiny instance, steps 4 and 5 of the proof. The check compares halving with the bound for every $n$ up to 200, and compares the bound with the best worst case over all possible questions (every subset of the possible numbers as a question) for every $n$ up to 12.
+
+### 4.2 Comparing two neighbours keeps a local minimum
+
+**Theorem 1.8.2 (comparing two neighbours keeps a local minimum).** Let $a_1, \dots, a_n$ be different numbers and let $a_0 = a_{n+1} = +\infty$. A position $p$ is a **local minimum** when $a_p < a_{p-1}$ and $a_p < a_{p+1}$. Call a range $lo, \dots, hi$ **good** when $a_{lo-1} > a_{lo}$ and $a_{hi} < a_{hi+1}$.
+- (i) Every good range contains a local minimum, and a good range of one position is a local minimum.
+- (ii) The range $1, \dots, n$ is good.
+- (iii) If $lo < hi$ and $mid = lo + \lfloor (hi - lo) / 2 \rfloor$, then the range $mid + 1, \dots, hi$ is good when $a_{mid} > a_{mid+1}$, and the range $lo, \dots, mid$ is good otherwise.
+
+So a loop that keeps a good range ends with $lo = hi$, a local minimum, after at most $\lceil \log_2 n \rceil$ rounds of two reads.
+
+:::tip[In plain words]
+Look at a range whose left neighbour is larger than its first number and whose right neighbour is larger than its last number. A number that is smaller than both of its neighbours must lie inside it. Compare two neighbouring numbers in the middle; the side where the numbers go down still has this shape, so half of the range can be dropped with two questions.
+:::
+
+**A tiny instance.** The numbers are $4, 2, 5, 3, 1, 6$ at the positions 1 to 6, with $a_0 = a_7 = +\infty$. The range 1 to 6 is good. $mid = 3$: $a_3 = 5 > a_4 = 3$, so keep 4 to 6 (good: $a_3 = 5 > a_4 = 3$ and $a_6 = 6 < a_7$). $mid = 5$: $a_5 = 1 < a_6 = 6$, so keep 4 to 5. $mid = 4$: $a_4 = 3 > a_5 = 1$, so keep 5 to 5. Position 5 holds 1, smaller than 3 and 6: a local minimum, after 6 reads.
+
+**Proof.**
+1. (i) Let $m$ be the position of the smallest number in a good range; the numbers are different, so $m$ is unique. If $lo < m < hi$, both neighbours of $m$ are in the range and larger, so $m$ is a local minimum.
+2. If $m = lo$, its left neighbour $a_{lo-1}$ is larger by the definition of a good range, and its right neighbour is larger because $a_m$ is the smallest in the range (when $lo = hi$ the right neighbour is $a_{hi+1}$, larger by the definition). The case $m = hi$ is the mirror image. A good range of one position is therefore a local minimum.
+3. (ii) $a_0 = +\infty > a_1$ and $a_n < a_{n+1} = +\infty$, so the range $1, \dots, n$ is good.
+4. (iii) If $a_{mid} > a_{mid+1}$, the new range $mid + 1, \dots, hi$ has the left end condition $a_{mid} > a_{mid+1}$, and its right end is the old right end, so it is good.
+5. Otherwise $a_{mid} < a_{mid+1}$ (the numbers are different). The new range $lo, \dots, mid$ keeps the old left end, and its right end satisfies $a_{mid} < a_{mid+1}$, so it is good.
+6. A range of $s$ positions becomes at most $\lceil s/2 \rceil$ positions, so after at most $\lceil \log_2 n \rceil$ rounds only one position is left, and by (i) it is a local minimum. Each round reads two numbers. $\square$
+
+:::note[This proof needs]
+1. The numbers must be different. With $a_{mid} = a_{mid+1}$ neither half is known to be good.
+2. The positions outside the array count as infinitely large. If a problem does not say so, check what it says about the ends.
+3. One round costs two reads. If the reply to a question is not a number but a position (the position of the second largest in a range), the comparison is hidden inside the reply, and the same invariant works with one question per round if the previous reply is reused.
+:::
+
+<TheoremCode unit="1.8/thm-2" />
+
+The first line is the tiny instance: position 5 after 6 reads. The second line is a rising array: the search keeps the left half every time and ends at position 1 (it has no left neighbour smaller than it, because $a_0$ is infinite). The third line is one number: no read at all. The check tries every ordering of $1, \dots, n$ for $n$ up to 8, and tests that the position is a local minimum and that the number of reads is at most $2 \lceil \log_2 n \rceil$.
+
+### 4.3 Sums of pairs fix every number
+
+**Theorem 1.8.3 (sums of pairs fix every number).** Let $a_1, \dots, a_n$ be whole numbers with $n \ge 3$, and let $s_{ij} = a_i + a_j$ be the reply to the question "? $i$ $j$". Then $a_1 = (s_{12} + s_{13} - s_{23}) / 2$, $a_2 = s_{12} - a_1$, $a_3 = s_{13} - a_1$, and $a_i = s_{1i} - a_1$ for $i \ge 4$. So the $n$ questions "? 1 2", "? 1 3", "? 2 3" and "? 1 $i$" for $i = 4, \dots, n$ determine all numbers, and no choice of $n - 1$ questions does.
+
+:::tip[In plain words]
+When the reply to a question is the sum of two hidden numbers, the three sums of three numbers add up to twice the total of the three. So the sum of two of them minus the third sum, divided by 2, gives one number exactly. After that one more sum with that number gives every other number, and n questions are enough for n numbers.
+:::
+
+**A tiny instance.** The hidden numbers are $7, 2, 9, 4$. The replies are $s_{12} = 9$, $s_{13} = 16$, $s_{23} = 11$ and $s_{14} = 11$. Then $a_1 = (9 + 16 - 11)/2 = 7$, $a_2 = 9 - 7 = 2$, $a_3 = 16 - 7 = 9$ and $a_4 = 11 - 7 = 4$: four questions for four numbers.
+
+**Proof.**
+1. $s_{12} + s_{13} - s_{23} = (a_1 + a_2) + (a_1 + a_3) - (a_2 + a_3) = 2 a_1$. So $a_1 = (s_{12} + s_{13} - s_{23})/2$, and the division is exact because $2 a_1$ is even.
+2. $a_2 = s_{12} - a_1$ and $a_3 = s_{13} - a_1$, because $s_{12} = a_1 + a_2$ and $s_{13} = a_1 + a_3$.
+3. For $i \ge 4$, $s_{1i} = a_1 + a_i$, so $a_i = s_{1i} - a_1$.
+4. The questions used are the three of step 1 and one for each of the $n - 3$ numbers $a_4, \dots, a_n$: $n$ questions in all.
+5. For the last claim, a set of $n - 1$ pairs has a component that is a tree, because a graph with $n$ points and $n - 1$ edges in which every component had a cycle would have at least $n$ edges. In a tree the points can be split into two colours so that every edge joins different colours. Add 1 to the numbers of one colour and subtract 1 from the numbers of the other colour in that component: every sum of an edge stays the same, so two different arrays give the same replies, and no strategy can tell them apart. (The strategy of questions is the same for both arrays, because the replies are the same.) $\square$
+
+:::note[This proof needs]
+1. The replies are exact sums of numbers that may be any whole numbers. In the code the values up to $10^9$ give sums up to $2 \cdot 10^9$ and $s_{12} + s_{13}$ up to $4 \cdot 10^9$, so 64-bit integers are used.
+2. The relation used is $s_{12} + s_{13} - s_{23} = 2 a_1$. A reply of another kind has another relation: for xors, $x_{12} \oplus x_{13} \oplus x_{23} = 0$ always, which carries no information about $a_1$.
+3. The last claim is about arbitrary numbers. If the numbers come from a small set (as in Lost Numbers, in the look-alike pairs below) fewer questions can be enough.
+:::
+
+<TheoremCode unit="1.8/thm-3" />
+
+The three lines show the replies and the numbers found for the tiny instance, for $-5, 5, 0$ (negative numbers work, since $2 a_1$ is even whatever the signs are), and for four equal numbers. The check restores every array of 3 to 5 numbers between $-2$ and $2$ with exactly $n$ questions, and finds, for every choice of $n - 1$ pairs with $n$ from 3 to 5, two different arrays that give the same replies.
+
+### 4.4 An adaptive judge changes nothing
+
+**Theorem 1.8.4 (an adaptive judge changes nothing for a strategy that works for every hidden value).** Let $S$ be a deterministic strategy for the game of Theorem 1.8.1 that, for every fixed hidden number $x \in \{1, \dots, n\}$, asks at most $q$ questions and prints $x$. An adaptive judge answers each question with any reply for which at least one number still agrees with all the replies given so far (the consistency rule). Then against every adaptive judge $S$ asks at most $q$ questions, and when $S$ prints its answer exactly one number agrees with all the replies, and $S$ printed that number.
+
+:::tip[In plain words]
+An adaptive judge has no number in mind and only promises that its replies agree with at least one number. A strategy that reads only the replies cannot tell such a judge from a judge with a fixed number. At the end some number agrees with every reply, and a judge holding that number would have given the same replies. So a strategy that is right and fast for every fixed number is right and fast against the adaptive judge, and at the end exactly one number agrees with all the replies.
+:::
+
+**A tiny instance.** $n = 5$, $S$ is halving, and the adaptive judge answers so that the larger group of numbers stays (a tie: no). Question "is $x \le 2$?": the numbers $\{1, 2\}$ agree with yes and $\{3, 4, 5\}$ with no, so the reply is no. "Is $x \le 3$?": $\{3\}$ against $\{4, 5\}$, no. "Is $x \le 4$?": $\{4\}$ against $\{5\}$, a tie, no. Now only 5 agrees, and $S$ prints 5 after 3 questions. A judge that holds $x = 5$ gives the replies no, no, no as well.
+
+**Proof.**
+1. After every reply the numbers that agree with all the replies so far form a set that is not empty, by the consistency rule.
+2. Take a play of $S$ against the adaptive judge with the questions $m_1, \dots, m_k$, the replies $r_1, \dots, r_k$, and the printed number $y$. Let $C$ be the numbers that agree with all the replies. By step 1, $C$ is not empty; take any $x \in C$.
+3. Run $S$ against a fixed judge that holds $x$. The first question is $m_1$, since $S$ is deterministic and has seen nothing yet. If the first $t$ questions are the same as in the first play, the replies so far are $r_1, \dots, r_t$ in both plays, so $S$ asks the same question $m_{t+1}$. The fixed judge answers $m_{t+1}$ with $r_{t+1}$, because $x$ agrees with all replies. By induction the two plays are the same.
+4. The fixed play has at most $q$ questions and prints $x$, since $S$ is right for every fixed number. So $k \le q$ and $y = x$.
+5. This holds for every $x \in C$, so every element of $C$ equals $y$: $C = \{y\}$. $\square$
+
+:::note[This proof needs]
+1. $S$ is deterministic and reads only the replies. A strategy that looks at the time or at a random number is outside the theorem.
+2. The consistency rule. A judge that gave replies that no number agrees with would make every answer wrong, and real judges promise to avoid it.
+3. The answer must be unique in the problem. When many answers are accepted (any position where the string changes), an adaptive judge is harmless, because the check at the end is "valid", not "unique".
+:::
+
+<TheoremCode unit="1.8/thm-4" />
+
+The first line is the tiny instance with $n = 8$: the replies are no, no, no, and 8 is found after 3 questions. The second line is the same with $n = 5$, and the third has $n = 1$: no question, one number. The check follows every possible sequence of replies that keeps one number possible (it tries both replies whenever both are allowed), for $n$ up to 24: at the end of every play halving made at most $\lceil \log_2 n \rceil$ questions, exactly one number agrees with the replies and it is the printed one, and a judge holding that number gives the same replies.
+
+## 5. Recognition Cards
+
+<Cards topic="1.8" />
+
+## 6. Templates
+
+Five templates. Each shows only the function that matters; the program around it reads $n$ and prints the final line. Each unit also has a **judge**, a small program stored with the unit that plays the judge of the problem: it reads a hidden test from a file, answers the queries on its input, counts them, checks the final answer, and writes a verdict. The two programs are connected by two pipes, so the template runs exactly as it would on a real judge, and a missing flush shows up as "Idleness limit exceeded". Each template is checked on fixed tests (the transcript of all the messages is compared with the expected one) and on thousands of random hidden tests, with the budget of the problem.
+
+### Halving: a hidden number (Theorem 1.8.1)
+
+<CodeSnippet unit="1.8/guess-number" />
+
+**How it works.** `atMost(m)` prints the question and reads the reply. The `endl` flushes, so the judge sees the question before we wait for the reply; a reply of -1 means that the judge refused the query, and the program quits at once. `findHidden` keeps `lo`, where the reply is no by agreement, and `hi`, where the reply is yes by agreement. While `hi - lo` is more than 1 it asks about the middle and moves one of the two. When the gap is 1 the answer is `hi`. All numbers are `long long`, because with $n$ near $2 \cdot 10^9$ the sum `lo + hi` passes $2^{31}$. In `main` the answer is stored in a variable before it is printed: in `cout << "! " << findHidden(n)` the text `"! "` would be printed before the function prints its questions.
+
+**Alternative formulation.** Many judges answer with three words (lower, higher, equal). The same loop works: on "equal" print the number at once, on "higher" move `lo`, on "lower" move `hi`. The budget is the same, because a reply of "equal" can only save a question.
+
+### Local minimum with comparisons (Theorem 1.8.2)
+
+<CodeSnippet unit="1.8/local-minimum" />
+
+**How it works.** `valueAt(i)` asks for the $i$-th number. `findLocalMin` keeps a range `lo` to `hi` with a larger number on the left of `lo` and on the right of `hi`. The two reads in the middle are two separate statements, so the order of the two queries is the same on every compiler (the order in which the two parts of `valueAt(mid) > valueAt(mid + 1)` are evaluated is not fixed by C++). If the numbers go down at `mid` the kept range is `mid + 1` to `hi`; otherwise it is `lo` to `mid`. With $n = 10^5$ the loop has 17 rounds and asks 34 questions.
+
+**Alternative formulation.** Look at the number and its left neighbour instead of its right neighbour. It is the mirror image and also correct, but the two reads must be at `mid - 1` and `mid`, and the ends must be changed to match.
+
+### Sums of pairs (Theorem 1.8.3)
+
+<CodeSnippet unit="1.8/restore-sums" />
+
+**How it works.** `pairSum(i, j)` asks for $a_i + a_j$ and keeps the reply in a `long long`. `restore` asks the three sums of the first three numbers and applies the formula of the theorem; then every further number needs one more sum with the first number. The division by 2 is exact because the sum in the brackets is $2 a_1$, even also for negative numbers. All sums are `long long`: with values up to $10^9$ the sum $s_{12} + s_{13}$ reaches $4 \cdot 10^9$.
+
+**Alternative formulation.** Ask every neighbouring pair $s_{12}, s_{23}, s_{34}, \dots$ and one more sum $s_{13}$: it is also $n$ questions, and every number follows from the first by differences of neighbouring sums. It is the same idea with a different chain.
+
+### Friends and bits: all questions at once (Theorem 1.8.1)
+
+<CodeSnippet unit="1.8/bad-juice" />
+
+**How it works.** Here the questions cannot depend on the replies: the program prints which bottles each of the $m$ friends drinks, and only then reads which friends got sick. With $m$ the smallest number with $2^m \ge n$ (Theorem 1.8.1 says that fewer friends cannot work), friend $j$ drinks the bottles whose number minus 1 has bit $j$ set ([topic 1.7](../1-7-bits/)). The string of sick friends is then the bad bottle minus 1 written in binary, and `bad |= 1 << j` collects the set bits. The code prints all the lines and flushes once at the end with `flush`. The judge in the unit is adaptive in half of the tests: it chooses the pattern of sickness that fits the most bottles, so a design in which two bottles have the same pattern is caught.
+
+**Alternative formulation.** Give friend $j$ the bottles whose number minus 1 has bit $j$ **not** set: the sick friends then spell the bad bottle with the bits inverted. It is correct and uses the same number of friends.
+
+### Playing against any reply: a pairing (Theorem 1.8.4)
+
+<CodeSnippet unit="1.8/pair-game" />
+
+**How it works.** The numbers are $1, \dots, 2n + 1$ and each player in turn names a number that nobody has named. We name the middle number $n + 1$ first. The other $2n$ numbers form $n$ pairs $\{x, 2n + 2 - x\}$. Whenever the judge names a number $x$, its partner is unused (the unused numbers are always whole pairs, because we took the middle one first and the judge takes one number of a pair at a time, which we answer by the other number of the pair), so we name it. We always have a move, so the judge is the first one that cannot move: it prints 0, and the program stops. The strategy does not depend on which unused number the judge names, so it works against any judge, adaptive or not.
+
+**Alternative formulation.** Name any first number, for example 1, and pair the remaining $2n$ numbers in any way that does not depend on the judge, for example $\{2k, 2k + 1\}$. The argument is the same: the unused numbers are always whole pairs after our move. The pairing $x \mapsto 2n + 2 - x$ is only the one whose first move is the middle.
+
+### Testing an interactive solution at home
+
+A judge for your own solution is short. Write a program that reads a hidden test from a file, prints what the judge would print, reads your queries, counts them against the budget, replies, and at the end checks your answer and writes one line with the verdict. Connect the two programs with two named pipes (a small shell script does it) and run them on many random hidden tests, as the stress test does for the units of this lesson. Make the judge adaptive when the problem says so. Two cheap checks catch most mistakes: a test where the budget is exactly $\lceil \log_2 n \rceil$ and a test with the largest $n$ allowed.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template and running the stress test with the judge of the unit; the input shown is the first one found by the random tests (or a fixed test, where the text says so).
+
+### Bug: the question stays in the buffer
+
+Template: halving, with the two fast input lines of [topic 0.1](../../phase-0/0-1-cpp-for-cp/) added to `main` and a plain newline in `atMost`.
+
+```cpp
+cout << "? " << m << "\n";                                // instead of << endl
+```
+
+Input: `6 0 3 adaptive` (the number of possible values, a number that the adaptive judge ignores, the budget, the mode).
+
+Wrong verdict "Idleness limit exceeded" (the program waits for a reply that the judge never started to write), correct verdict "OK queries=3". With `ios::sync_with_stdio(false)` and `cin.tie(nullptr)` the read no longer flushes the output, so the question sits in the buffer. Without those two lines the program would still work, which is why the mistake appears only after the fast input lines are added.
+
+**Fix:** end every question with `endl`, or print `"\n"` and then `cout << flush`.
+
+### Bug: the answer line is printed before the questions
+
+Template: halving.
+
+```cpp
+cout << "! " << findHidden(n) << endl;                    // instead of storing the answer first
+```
+
+Input: `6 0 3 adaptive`.
+
+Wrong verdict "WA the answer 0 is not forced by the replies", and the transcript shows the line `! ? 3`. The text `"! "` is printed first, then `findHidden` prints its questions on the same line, so the judge reads one garbled line. The order of the parts of one `<<` chain is not the order in which the functions inside it run to the end: the functions run while the line is built.
+
+**Fix:** compute the answer into a variable, then print the line.
+
+### Bug: the loop does not stop when the gap is 1
+
+Template: halving.
+
+```cpp
+while (hi != lo) {                                         // instead of hi - lo > 1
+```
+
+Input: `6 0 3 adaptive`.
+
+Wrong verdict "WA more than 3 queries", and the transcript ends with the same question `? 5` asked again and again until the judge sends -1. When $hi = lo + 1$ the middle is `lo`, the reply is the same as before, nothing moves, and the loop never ends (Theorem 1.4.1, step 2: the loop must stop at gap 1).
+
+**Fix:** loop while `hi - lo > 1`.
+
+### Bug: the middle overflows
+
+Template: halving.
+
+```cpp
+int lo = 0, hi = n;                                         // instead of long long
+int mid = (lo + hi) / 2;                                    // instead of lo + (hi - lo) / 2
+```
+
+Input: `2000000000 1999999999 31 fixed` (a fixed test of the unit, worked out by hand, because random tests with small $n$ never overflow).
+
+Wrong verdict "WA question outside 1..n", the transcript shows the question `? -647483648`; correct verdict "OK queries=31". After the first reply $lo = 10^9$ and $hi = 2 \cdot 10^9$, and $lo + hi = 3 \cdot 10^9$ does not fit in 32 bits: it becomes negative.
+
+**Fix:** use `long long`, and write the middle as `lo + (hi - lo) / 2`.
+
+### Bug: the range for the local minimum loses the middle
+
+Template: local minimum.
+
+```cpp
+else hi = mid - 1;                                          // instead of hi = mid
+```
+
+Input: `3 4` and the numbers `2 1 3`.
+
+Wrong verdict "WA position 1 is not a local minimum", correct verdict "OK queries=4". The numbers rise at position 2 ($1 < 3$), so the position 2 may itself be the local minimum, and `hi = mid - 1` throws it away (Theorem 1.8.2, step 5: the kept range is $lo, \dots, mid$).
+
+**Fix:** keep `mid` in the range: `hi = mid`.
+
+### Bug: a sum with the wrong anchor
+
+Template: sums of pairs.
+
+```cpp
+for (int i = 4; i <= n; i++) a[i] = pairSum(2, i) - a[1];   // instead of pairSum(1, i)
+```
+
+Input: `4` and the numbers `7 2 9 4`.
+
+Wrong output `7 2 9 -1`, correct output `7 2 9 4`. The reply is $a_2 + a_4 = 6$, and subtracting $a_1 = 7$ gives $-1$. The reply and the number that is subtracted must belong to the same anchor (Theorem 1.8.3, step 3). The variant that uses `pairSum(2, i) - a[2]` is also correct: it is the same idea with the second number as the anchor.
+
+**Fix:** subtract the anchor that the question used.
+
+### Bug: the bit of the number, not of the number minus 1
+
+Template: friends and bits.
+
+```cpp
+if (i >> j & 1) drinks.push_back(i);                        // instead of (i - 1) >> j & 1
+```
+
+Input: `2 1 fixed`.
+
+Wrong verdict "WA bottle 2 is not forced by the replies", correct verdict "OK friends=1". The single friend drinks bottle 1 (bit 0 of 1 is set), the bad bottle is 1, the friend gets sick, and the decoder, which adds 1 to the value of the sickness bits, names bottle 2. The code that collects the answer adds 1 to the number made of the sick bits, so the friends must be given the bits of the number minus 1.
+
+**Fix:** use `(i - 1) >> j & 1`.
+
+## 8. Worked examples
+
+### Example 1: Find by Query
+
+[AtCoder ABC 299 D: Find by Query](https://atcoder.jp/contests/abc299/tasks/abc299_d) (ABC is the AtCoder Beginner Contest). In short: the judge holds a string $S$ of 0 and 1 of length $N$ with $S_1 = 0$ and $S_N = 1$. A query "? $i$" gives $S_i$. Print any position $p$ with $S_p \ne S_{p+1}$, using at most 20 queries.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$. Asking positions one by one until the value changes needs up to $N - 1$ queries, far above 20. The information bound for the $N - 1$ possible places of a change is $\lceil \log_2 (N - 1) \rceil = 18$ ($2^{17} = 131072 < 2 \cdot 10^5 \le 262144 = 2^{18}$), so 20 queries are enough for halving. The program must flush after every query and quit right after the answer.
+
+#### Step 2: Question form → candidate tools
+
+- Ask $S_1, S_2, \dots$ in order (brute force, [topic 0.5](../../phase-0/0-5-brute-force/)): up to $N - 1$ queries.
+- Halving with a query (the card "Halving under a query budget"): about 18 queries.
+
+#### Step 3: Property check → decision
+
+The reply $S_i$ is not monotone in $i$ (the string may be 0, 1, 0, 1, 1), but it says which side holds a change: if $S_{mid} = 0$, there is a change between $mid$ and $hi$ (the value at $hi$ is 1), and if $S_{mid} = 1$ there is one between $lo$ and $mid$. So every reply keeps a half whose ends have different values. The property holds. Decision: halving.
+
+#### Step 4: Proof for this problem
+
+Keep $lo$ and $hi$ with $S_{lo} = 0$ and $S_{hi} = 1$. Between two positions with different values there is a position $p$ with $S_p \ne S_{p+1}$: if there were none, all values from $lo$ to $hi$ would be equal to $S_{lo} = 0$, but $S_{hi} = 1$. The range is halved with every query: a query at $mid$ gives either $S_{mid} = 0$ (keep $mid$ to $hi$) or $S_{mid} = 1$ (keep $lo$ to $mid$), and both keep the two different end values. When $hi = lo + 1$, the position $lo$ has $S_{lo} = 0 \ne 1 = S_{lo+1}$. The loop of Theorem 1.4.1 with this invariant takes at most $\lceil \log_2 (N - 1) \rceil = 18$ queries.
+
+#### Step 5: Code
+
+<CodeSnippet unit="1.8/example-1" />
+
+#### Step 6: Alternative approach
+
+Only the scan from the left needs no idea, and it is too slow. A search that takes a random position and goes both ways has no better worst case; the halving is the natural solution.
+
+## 9. Problem ladder
+
+<Ladder topic="1.8" />
+
+## 10. Identification drill
+
+<Drill topic="1.8" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="1.8" />
+
+## 12. Self-test questions
+
+<SelfTest topic="1.8" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="1.8" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="1.8" />

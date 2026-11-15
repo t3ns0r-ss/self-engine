@@ -50,5 +50,28 @@ int main() {
                 if (a[i] != v[i - 1]) return 1;
         }
     }
+    // The check: for every choice of n - 1 pairs, two different arrays (numbers in -2..2) give the same replies.
+    for (int n = 3; n <= 5; n++) {
+        vector<pair<int, int>> pairs;
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++) pairs.push_back({i, j});
+        int total = 1;
+        for (int i = 0; i < n; i++) total *= 5;
+        for (int chosen = 0; chosen < (1 << (int)pairs.size()); chosen++) {
+            if (__builtin_popcount(chosen) != n - 1) continue;
+            set<vector<int>> seen;
+            bool collision = false;
+            for (int code = 0; code < total && !collision; code++) {
+                vector<int> v(n);
+                int c = code;
+                for (int i = 0; i < n; i++, c /= 5) v[i] = c % 5 - 2;
+                vector<int> replies;
+                for (int e = 0; e < (int)pairs.size(); e++)
+                    if (chosen >> e & 1) replies.push_back(v[pairs[e].first] + v[pairs[e].second]);
+                if (!seen.insert(replies).second) collision = true;  // another array gave the same replies
+            }
+            if (!collision) return 1;
+        }
+    }
     return 0;
 }

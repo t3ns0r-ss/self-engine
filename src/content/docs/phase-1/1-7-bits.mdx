@@ -37,6 +37,8 @@ This note covers: operators, the sign bit, 2's complement, sets as bitmasks, $x^
   - Example: Masked Popcount
 - Question: sum of all pair xor
   - Per-bit sums over pairs
+- Question: sum of all subarray xor
+  - Per-bit sums over subarrays and over two arrays (Theorem 1.7.6)
 - Some functions to remember
 - Recognition cards
 - Quick revision
@@ -57,6 +59,7 @@ This note does not cover:
 - Dynamic programming over subsets stored as bitmasks. That is topic 3.7.
 - Prefix sums of an array that changes, organised by the bits of the positions (Fenwick tree). That is topic 5.2.
 - Linear algebra over bits (the XOR basis of a set of numbers). It is not part of this course.
+- The average of a bitwise result over a random choice, such as the expected XOR of a random subset. The per-bit counts of this note carry over, divided by the number of choices. That is topic 2.4.
 
 More terms used in this lesson:
 
@@ -1306,6 +1309,58 @@ Dry run for AND on $(1, 2, 3)$: $c_0 = c_1 = 2$, $\binom{2}{2} = 1$, so the sum 
 
 Common mistake: counting ordered pairs and self-pairs for AND, with `c * c` instead of `c * (c - 1) / 2`. Input: one value, `3`. There are no pairs, but $c^2 = 1$ pairs the value with itself at bits 0 and 1, so the AND sum is 3 instead of 0 (the output `0 3 0` instead of `0 0 0` for XOR, AND, OR). Fix: use $\binom{c}{2}$. The XOR count $c(n - c)$ needs no fix, because a value is never paired with itself there.
 
+## Question: sum of all subarray xor
+
+Question: given an array arr of size n, find the sum of the XOR of every subarray, with $n \le 10^5$ and $0 \le a_i < 2^{30}$.
+
+Example: arr = [1, 2, 3]. The six subarrays are [1], [2], [3], [1, 2], [2, 3], [1, 2, 3], with XORs 1, 2, 3, 3, 1, 0. The sum is 10.
+
+Brute force: for each start keep a running XOR and add it at every end. This is $O(n^2)$, about $5 \cdot 10^9$ steps for $n = 10^5$, which is about 50 seconds at $10^8$ operations per second. Too slow.
+
+Better: the XOR of a subarray is $P[r+1] \oplus P[l]$ (Theorem 1.7.2). So every subarray is one pair of prefix values, and every pair of different positions among the $n + 1$ prefix values is one subarray. The sum over all subarrays is therefore the sum of pair XORs over the prefix values, which is the question of the last section with $n + 1$ values. Per bit: $2^b \cdot d_b \cdot (n + 1 - d_b)$, where $d_b$ is the number of prefix values with bit $b$ set.
+
+Dry run on [1, 2, 3]: the prefix values are 0, 1, 3, 0. Bit 0 is set in 1 and 3, so $d_0 = 2$ and the pairs that differ at bit 0 number $2 \cdot 2 = 4$, worth $4 \cdot 1 = 4$. Bit 1 is set only in 3, so $d_1 = 1$ and there are $1 \cdot 3 = 3$ pairs, worth $3 \cdot 2 = 6$. The sum is $4 + 6 = 10$, the same as the direct count.
+
+**Theorem 1.7.6 (per-bit sums over subarrays and over two arrays).** Let $a_1, \dots, a_n \ge 0$, let $P_0 = 0$ and $P_k = a_1 \oplus \dots \oplus a_k$, and let $d_b$ be the number of the $n + 1$ values $P_0, \dots, P_n$ that have bit $b$ set.
+
+1. The sum of the XOR of all subarrays is $\sum_b 2^b \, d_b (n + 1 - d_b)$.
+2. Let $x_1, \dots, x_p$ and $y_1, \dots, y_q$ be two arrays, and let $e_b$ and $f_b$ be the numbers of values with bit $b$ set in them. Then $\sum_{i, j} (x_i \,\&\, y_j) = \sum_b 2^b \, e_b f_b$, and the XOR of all $pq$ values $x_i \,\&\, y_j$ equals $(x_1 \oplus \dots \oplus x_p) \,\&\, (y_1 \oplus \dots \oplus y_q)$.
+
+In plain words: a subarray XOR is the XOR of two prefix values, so the sum over all subarrays is the pair sum of Theorem 1.7.3 on the prefix values. For two arrays, a pair gives a 1 at a bit only when both numbers have it. When the total is a XOR, only the parity of that count matters, and the parity of a product is odd only when both counts are odd.
+
+Small example first. For $a = (1, 2, 3)$ the prefix values are 0, 1, 3, 0, and part 1 gives $2^0 \cdot 2 \cdot 2 + 2^1 \cdot 1 \cdot 3 = 10$ (the dry run above). For the arrays $x = (3, 1)$ and $y = (2, 3)$ the four ANDs are $3 \,\&\, 2 = 2$, $3 \,\&\, 3 = 3$, $1 \,\&\, 2 = 0$ and $1 \,\&\, 3 = 1$. Their sum is 6 and their XOR is $2 \oplus 3 \oplus 0 \oplus 1 = 0$. The formulas give $2^0 \cdot 2 \cdot 1 + 2^1 \cdot 1 \cdot 2 = 6$, and $(3 \oplus 1) \,\&\, (2 \oplus 3) = 2 \,\&\, 1 = 0$.
+
+Why it works:
+1. A subarray $a_{l+1} \dots a_r$ with $0 \le l < r \le n$ has XOR $P_l \oplus P_r$ (Theorem 1.7.2).
+2. Each pair of different positions $l < r$ among $P_0, \dots, P_n$ is exactly one subarray. So the sum of all subarray XORs is the sum of $P_l \oplus P_r$ over all pairs of the $n + 1$ values.
+3. Theorem 1.7.3, part 1, applied to these $n + 1$ values gives $\sum_b 2^b \, d_b (n + 1 - d_b)$. That is part 1.
+4. Part 2, the sum. Bit $b$ of $x_i \,\&\, y_j$ is 1 exactly when both numbers have bit $b$, so there are $e_b f_b$ such pairs. Weighting each by $2^b$ and adding over $b$ gives the sum.
+5. Part 2, the XOR. Bit $b$ of the XOR of many numbers is the parity of how many of them have bit $b$. So bit $b$ of the XOR of all the ANDs is the parity of $e_b f_b$.
+6. A product is odd exactly when both factors are odd. The count $e_b$ is odd exactly when bit $b$ of $x_1 \oplus \dots \oplus x_p$ is 1, and the same holds for $f_b$ and the $y$ values.
+7. So bit $b$ of the XOR of all ANDs is 1 exactly when bit $b$ of both total XORs is 1, which is bit $b$ of their AND. This is the last claim.
+
+This proof needs: (1) every term is a bitwise result (XOR, AND or OR) of the values, so each bit is counted on its own. A sum of $a_l + \dots + a_r$ over subarrays does not qualify, because addition carries; that one is a count of how often each element appears (topic 1.2). (2) For a subarray, the XOR must be the XOR of two prefix values, which holds because XOR cancels equal values. (3) The total can be large: with $n = 10^5$ and values below $2^{30}$ it is at most about $5.4 \cdot 10^{18}$, which fits in `long long`.
+
+<TheoremCode unit="1.7/thm-6" />
+
+The first two examples are steps 1 to 3 on $(1, 2, 3)$ and on $(5, 5, 5)$, where the prefix values are 0, 5, 0, 5 and only the pairs of different values count: $4 \cdot 1 + 4 \cdot 4 = 20$. The third is steps 4 to 7 on the arrays $(3, 1)$ and $(2, 3)$.
+
+Code (one pass, no prefix array). For each new prefix value, add for every bit how many earlier prefix values differ from it at that bit. `seen[b][v]` counts the earlier prefix values whose bit $b$ equals $v$. The empty prefix (value 0) is counted before the loop.
+
+<CodeSnippet unit="1.7/subarray-xor-sum" />
+
+Dry run on [1, 2, 3], showing only bits 0 and 1 (the other bits are 0 in every prefix, so they add nothing). Before the loop `seen[0][0] = seen[1][0] = 1`. Prefix 1 has bits (1, 0): bit 0 adds `seen[0][0] = 1`, bit 1 adds `seen[1][1] = 0`, so 1 is added (the subarray [1]). Prefix 3 has bits (1, 1): bit 0 adds `seen[0][0] = 1`, bit 1 adds `2 * seen[1][0] = 4`, so 5 is added (the subarrays ending at 2). Prefix 0 has bits (0, 0): bit 0 adds `seen[0][1] = 2`, bit 1 adds `2 * seen[1][1] = 2`, so 4 is added (the subarrays ending at 3). The total is $1 + 5 + 4 = 10$.
+
+Cost: T.C. $O(30 n)$, S.C. $O(30)$ besides the input. It matched the $O(n^2)$ brute force on 5000 random inputs.
+
+Common mistake: forgetting the empty prefix, the line `seen[b][0] = 1`. Input `1` and then `5`: the only subarray is [5], which pairs $P[1] = 5$ with $P[0] = 0$, but $P[0]$ was never recorded, so the program prints 0 instead of 5. Fix: record the value 0 before the loop.
+
+Common mistake: counting the earlier values with the same bit instead of the other bit (`seen[b][bit]` instead of `seen[b][bit ^ 1]`). The same input prints 1073741818 instead of 5, because it adds $2^b$ for every one of the 28 bits where $5$ has a 0 (and nothing at bits 0 and 2). The XOR has a 1 at a bit exactly when the two values differ there.
+
+Common mistake: a total stored in `int`. Input `3` and then `1000000000 0 0`: the three subarrays that contain the first element have XOR $10^9$, so the answer is $3 \cdot 10^9$, but an `int` total prints $-1294967296$. Fix: `long long`, as in the code above.
+
+For two arrays the formulas of Theorem 1.7.6 are the whole solution; the function `xorOfAllAnds` in the theorem code is the answer to the LeetCode problem "Find XOR Sum of All Pairs Bitwise AND". The same per-bit view does not work for $x_i + y_j$: the carries make bit $b$ of the sum depend on the lower bits, so there only the values modulo $2^{b+1}$ matter (see the practice problem Two Sequences).
+
 ## Some functions to remember
 
 The compiler gives ready functions for the most useful bit questions: the highest set bit, the count of set bits and the trailing zeros.
@@ -1439,6 +1494,7 @@ A card names a kind of problem, the property that decides it, how to test the pr
 - Theorem 1.7.3: pair sums, bit by bit. XOR $c(n-c)$, AND $\binom{c}{2}$, OR $\binom{n}{2} - \binom{n-c}{2}$, each times $2^b$. Addition is not bitwise.
 - Theorem 1.7.4: the highest differing bit decides, so build the best value from the top bit down. Largest AND of a pair: keep a bit if two values contain all decided bits and this one.
 - Theorem 1.7.5: $a + b = (a \oplus b) + 2(a \,\&\, b)$ and $a \mid b = (a \oplus b) + (a \,\&\, b)$. `x & (x-1)` clears the lowest set bit, and `x & -x` is the lowest set bit.
+- Theorem 1.7.6: the sum of the XOR of all subarrays is the pair sum over the $n + 1$ prefix values, $\sum_b 2^b d_b (n + 1 - d_b)$. For two arrays, $\sum x_i \,\&\, y_j = \sum_b 2^b e_b f_b$, and the XOR of all $x_i \,\&\, y_j$ is (XOR of $x$) $\&$ (XOR of $y$).
 
 ## Check yourself
 
@@ -1462,7 +1518,7 @@ Answer each question on paper before opening its answer.
 
 ### Checkpoint
 
-Three problems in 90 minutes. Pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 11 drill items. After passing, review sets are due after 3, 14 and 60 days.
+Three problems in 90 minutes. Pass rule: solve at least 2 of 3 in time, and choose the right card on at least 8 of the 12 drill items. After passing, review sets are due after 3, 14 and 60 days.
 
 <Checkpoint topic="1.7" />
 

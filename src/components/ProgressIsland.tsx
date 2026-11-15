@@ -18,7 +18,7 @@ export function feedbackMarkdown(problems: Record<string, Info>): string {
   }
   if (!groups.size) return '';
   return [...groups.values()]
-    .sort((a, b) => a.topic.localeCompare(b.topic) || a.card.localeCompare(b.card))
+    .sort((a, b) => a.topic.localeCompare(b.topic, undefined, { numeric: true }) || a.card.localeCompare(b.card))
     .map((g) => {
       const counts = new Map<string, number>();
       for (const it of g.items) counts.set(it.mistake, (counts.get(it.mistake) ?? 0) + 1);

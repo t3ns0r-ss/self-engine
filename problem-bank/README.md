@@ -50,7 +50,8 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 6 | [6.2 Prefix function (KMP) and Z-function](phase-6/6.2-prefix-function.md) | 4 | 3 | 3 | 7 | 2 | 19 | short |
 | 6 | [6.3 Trie, binary trie for max-XOR](phase-6/6.3-trie.md) | 0 | 3 | 9 | 6 | 1 | 19 | short |
 | 6 | [6.4 Suffix array and LCP array](phase-6/6.4-suffix-array.md) | 0 | 0 | 2 | 5 | 8 | 15 | short |
-| 7 | [7.1 DP on trees, rerooting](phase-7/7.1-tree-dp.md) | 2 | 6 | 4 | 6 | 6 | 24 | short |
+| 7 | [7.1 DP on trees](phase-7/7.1-tree-dp.md) | 2 | 4 | 2 | 4 | 4 | 16 | short |
+| 7 | [7.10 Rerooting: an answer for every root](phase-7/7.10-rerooting.md) | 1 | 1 | 2 | 2 | 3 | 9 | short |
 | 7 | [7.2 DP on DAGs](phase-7/7.2-dag-dp.md) | 1 | 7 | 5 | 7 | 0 | 20 | short |
 | 7 | [7.3 DP speed-ups: Fenwick and segment trees, convex hull trick, divide and conquer](phase-7/7.3-dp-with-ds.md) | 0 | 4 | 11 | 8 | 2 | 25 | short |
 | 7 | [7.4 Greedy II: priority-queue greedy, regret greedy](phase-7/7.4-greedy-2.md) | 1 | 1 | 10 | 6 | 1 | 19 | short |

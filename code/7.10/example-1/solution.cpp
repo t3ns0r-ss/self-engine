@@ -25,7 +25,7 @@ struct Rooted {
 
 // snippet:begin
 // Moving the root from p to a child c: the size[c] vertices below c get one step closer, the other n - size[c] one step farther
-// (Theorem 7.1.3 with the sum as the rule). So answer[c] = answer[p] + n - 2 * size[c].
+// (Theorem 7.10.1 with the sum as the rule). So answer[c] = answer[p] + n - 2 * size[c].
 vector<long long> distanceSums(const Rooted& t) {
     int n = t.n;
     vector<long long> size(n, 1), depth(n, 0), answer(n);

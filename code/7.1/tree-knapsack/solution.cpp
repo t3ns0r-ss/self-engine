@@ -24,7 +24,7 @@ struct Rooted {
 };
 
 // snippet:begin
-// Theorem 7.1.4: dp[v][j] = the largest sum of a connected set that contains v, lies in the subtree of v and has j vertices.
+// Theorem 7.1.3: dp[v][j] = the largest sum of a connected set that contains v, lies in the subtree of v and has j vertices.
 // A child is merged with a double loop over the sizes; the sum of all such loops is n(n-1)/2. The top vertex of the best set may be any v.
 long long bestConnectedSet(const Rooted& t, const vector<long long>& w, int k) {
     const long long NEG = LLONG_MIN / 4;

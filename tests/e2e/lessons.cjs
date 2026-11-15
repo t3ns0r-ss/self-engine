@@ -33,7 +33,7 @@ const topics = fs.readdirSync(topicDir).filter((f) => f.endsWith('.yaml') && /^\
     p.on('pageerror', (e) => errs.push(e.message));
     p.on('console', (m) => m.type() === 'error' && errs.push(m.text()));
     await p.goto(lesson);
-    // Topic 7.8 teaches no new tool: it has no cards and no ladder (PLAN.md Section 4 notes).
+    // Topic 7.10 teaches no new tool: it has no cards and no ladder (PLAN.md Section 4 notes).
     const hasLadder = tf.problems.some((x) => x.role === 'ladder');
     await p.waitForSelector(hasLadder || tf.format === 'notes' ? '.ladder' : '.drill');
     const T = `[${tf.id}]`;

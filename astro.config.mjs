@@ -27,8 +27,8 @@ const phaseGroups = PHASES.map((name, phase) => {
     const lesson = existsSync(`${dir}/${dash(t.id)}-${t.slug}.mdx`);
     items.push({
       label: `${t.id} ${t.title}`,
-      // 7.8 has no practice set, so before its lesson exists it points at the bank overview.
-      link: lesson ? `/phase-${phase}/${dash(t.id)}-${t.slug}/` : t.id === '7.8' ? '/bank/' : `/bank/${dash(t.id)}/`,
+      // 7.10 has no practice set, so before its lesson exists it points at the bank overview.
+      link: lesson ? `/phase-${phase}/${dash(t.id)}-${t.slug}/` : t.id === '7.10' ? '/bank/' : `/bank/${dash(t.id)}/`,
       attrs: { 'data-order': String(t.order), 'data-topic': t.id },
       ...(lesson ? {} : { badge: { text: 'soon', variant: 'note' } }),
     });

@@ -20,7 +20,7 @@ function topicPage(t, bank, pf) {
   const lines = [HEADER, `# ${t.id} ${t.title}`, ''];
   lines.push(`Phase ${t.phase} (${PHASE_NAMES[t.phase]}), target rating ${t.target_rating[0]}–${t.target_rating[1]}. ` +
     `Bank status: ${bank ? bank.status.replace('_', ' ') : 'not started'}.`, '');
-  if (t.id === '7.8') {
+  if (t.id === '7.10') {
     lines.push('This topic has no practice set: all of its problems are reserved for mixed recognition sets.', '');
     return lines.join('\n');
   }

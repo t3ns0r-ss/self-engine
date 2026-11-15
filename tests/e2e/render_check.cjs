@@ -8,7 +8,7 @@ const { parse } = require('yaml');
 const { chromium } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 const BASE = process.env.BASE || 'http://localhost:4321';
 const ROOT = path.join(__dirname, '..', '..');
-const LESSONS = ['0.1', '0.2', '0.4', '0.6', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '2.1', '2.2', '2.3', '2.4', '3.1'];
+const LESSONS = ['0.1', '0.2', '0.4', '0.6', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '2.1', '2.2', '2.5', '2.6', '3.1'];
 const ids = process.argv.length > 2 ? process.argv.slice(2) : LESSONS;
 const curriculum = parse(fs.readFileSync(path.join(ROOT, 'src/data/curriculum.yaml'), 'utf8'));
 

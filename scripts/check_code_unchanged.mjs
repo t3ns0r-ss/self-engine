@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Proves his code is untouched: every fenced code block in the base version of a lesson must still appear
 // verbatim (same text) in the new version. New blocks are allowed. Lines that mention maang.in are ignored on both sides.
-// Usage: node scripts/check_code_unchanged.mjs <base-ref> <file.mdx> ...
+// Usage: node scripts/check_code_unchanged.mjs <base-ref> <file.mdx> ...  (a file renamed since <base-ref> is matched to its old path)
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 // Import-script escapes inside fences (&lt; &gt; &amp; \{ \}) render literally; the fix unescapes them, so compare unescaped text.
@@ -23,9 +23,15 @@ function blocks(t) {
   return out;
 }
 const [ref, ...files] = process.argv.slice(2);
+// A lesson that was renamed since <base-ref> (topic ids renumbered) is compared with its old path: `git diff -M` pairs them.
+const renamedFrom = new Map();
+for (const l of execSync(`git diff -M --name-status ${ref}`, { encoding: 'utf8', maxBuffer: 1 << 26 }).split('\n')) {
+  const m = /^R\d*\t(.+)\t(.+)$/.exec(l);
+  if (m) renamedFrom.set(m[2], m[1]);
+}
 let bad = 0;
 for (const f of files) {
-  const before = blocks(execSync(`git show ${ref}:${f}`, { encoding: 'utf8', maxBuffer: 1 << 26 }));
+  const before = blocks(execSync(`git show ${ref}:${renamedFrom.get(f) ?? f}`, { encoding: 'utf8', maxBuffer: 1 << 26 }));
   const after = new Set(blocks(readFileSync(f, 'utf8')).map((b) => b.text));
   // A block that was only a sketch/diagram (no code) may be replaced by a figure: only cpp-like blocks are checked.
   // Labelled c++/cpp blocks always count; unlabelled blocks count only when they look like real statements.

@@ -31,8 +31,8 @@ const V1_FILE = {
   '1-7-bits': 'Bit Manipulation Fundamentals.md',
   '2-1-number-theory': 'maths_2.1.md',
   '2-2-modular-arithmetic': 'maths_2.2.md',
-  '2-3-combinatorics': 'maths_2.3.md',
-  '2-4-expected-value': 'The Contribution Technique in Algorithm Optimization.md',
+  '2-5-combinatorics': 'maths_2.3.md',
+  '2-6-expected-value': 'The Contribution Technique in Algorithm Optimization.md',
   '3-1-backtracking': 'Recursion and Backtracking.md',
 };
 

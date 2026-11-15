@@ -131,8 +131,8 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
       if (hits.length) err(F, `pattern ${p.id} uses later-topic keywords: ${hits.join(', ')}`);
     }
     patternIds.set(t.id, ids);
-    if (t.id === '7.8') {
-      if (pf.patterns.length) err(F, 'topic 7.8 has no patterns of its own (problems use "{topic}:{pattern-id}")');
+    if (t.id === '7.10') {
+      if (pf.patterns.length) err(F, 'topic 7.10 has no patterns of its own (problems use "{topic}:{pattern-id}")');
     } else if (pf.patterns.length < 3 || pf.patterns.length > 6) {
       err(F, `has ${pf.patterns.length} patterns; 3–6 required`);
     }
@@ -161,7 +161,7 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
     const F = `src/data/bank/${fileId(topic)}.yaml`;
     const t = byId.get(topic);
     if (!t || t.draft) continue;
-    const is78 = topic === '7.8';
+    const isRecognition = topic === '7.10';
     const note = notes[topic];
     const N = `notes/bank/${topic}.md`;
 
@@ -169,13 +169,13 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
       const P = `${p.id}`;
       // 1. Pattern exists.
       let patternTopic = topic;
-      if (is78) {
+      if (isRecognition) {
         const m = /^([0-7]\.(?:10|[1-9])):(.+)$/.exec(p.pattern);
-        if (!m) err(F, `${P}: topic 7.8 patterns must be "{topic}:{pattern-id}"`);
+        if (!m) err(F, `${P}: topic 7.10 patterns must be "{topic}:{pattern-id}"`);
         else {
           patternTopic = m[1];
           const pt = byId.get(m[1]);
-          if (!pt || pt.order >= t.order) err(F, `${P}: pattern topic ${m[1]} must be a topic before 7.8`);
+          if (!pt || pt.order >= t.order) err(F, `${P}: pattern topic ${m[1]} must be a topic before 7.10`);
           else if (!patternIds.get(m[1])?.has(m[2])) err(F, `${P}: pattern ${p.pattern} does not exist`);
         }
       } else if (!patternIds.get(topic)?.has(p.pattern)) {
@@ -210,7 +210,7 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
         else if (tt.order > t.order) err(F, `${P}: technique ${tech} is later than topic ${topic}`);
       }
       const partner = p.reserved_for === 'later_drill' || p.reserved_for === 'lookalike';
-      if (is78) {
+      if (isRecognition) {
         if (!p.techniques.includes(patternTopic)) err(F, `${P}: techniques must include ${patternTopic}, the topic of its pattern`);
       } else if (!partner && !p.techniques.includes(topic)) {
         err(F, `${P}: techniques must include ${topic}`);
@@ -231,9 +231,9 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
         if (r < lo || r > hi) err(F, `${P}: rating ${r} is outside tier ${p.tier} (${lo}–${hi}) for phase ${t.phase}`);
       }
 
-      // Reserved purposes have their own tier ranges; 7.8 uses tiers 3–5.
-      if (is78) {
-        if (p.tier < 3) err(F, `${P}: topic 7.8 problems must be tier 3–5`);
+      // Reserved purposes have their own tier ranges; 7.10 uses tiers 3–5.
+      if (isRecognition) {
+        if (p.tier < 3) err(F, `${P}: topic 7.10 problems must be tier 3–5`);
       } else if (p.reserved_for) {
         // Phase 0 has almost no problems above tier 2 (ABC A–B are tier 1), so any tier may fill its
         // reserved purposes (decision recorded in PROGRESS.md, M2).
@@ -254,9 +254,9 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
     const practice = bf.problems.filter((p) => p.set === 'practice');
     const reserved = bf.problems.filter((p) => p.set === 'reserved');
 
-    if (is78) {
-      if (bf.problems.length < 40) err(F, `topic 7.8 needs 40 problems, has ${bf.problems.length}`);
-      if (practice.length) err(F, 'topic 7.8 problems must all be reserved');
+    if (isRecognition) {
+      if (bf.problems.length < 40) err(F, `topic 7.10 needs 40 problems, has ${bf.problems.length}`);
+      if (practice.length) err(F, 'topic 7.10 problems must all be reserved');
       const perPhase = new Map();
       const perTopic = new Set();
       for (const p of bf.problems) {
@@ -265,8 +265,8 @@ export function validateAll({ curriculum: allRows, patterns, banks, notes }) {
         const ph = byId.get(pt)?.phase;
         perPhase.set(ph, (perPhase.get(ph) ?? 0) + 1);
       }
-      for (let ph = 0; ph <= 7; ph++) if ((perPhase.get(ph) ?? 0) < 2) err(F, `topic 7.8 needs at least 2 problems from phase ${ph}`);
-      for (const x of curriculum) if (x.phase >= 1 && x.phase <= 6 && !x.reduced_bank && !perTopic.has(x.id)) err(F, `topic 7.8 needs at least 1 problem for topic ${x.id}`);
+      for (let ph = 0; ph <= 7; ph++) if ((perPhase.get(ph) ?? 0) < 2) err(F, `topic 7.10 needs at least 2 problems from phase ${ph}`);
+      for (const x of curriculum) if (x.phase >= 1 && x.phase <= 6 && !x.reduced_bank && !perTopic.has(x.id)) err(F, `topic 7.10 needs at least 1 problem for topic ${x.id}`);
       continue;
     }
 

@@ -105,11 +105,11 @@ test('pattern files reject later-topic keywords', () => {
   d.patterns['1.1'].patterns[0].description += ' Then use two pointers.';
   expectError(validateAll(d), /pattern sort-then-scan uses later-topic keywords: "two pointers" \(topic 1.3\)/);
 });
-test('7.8 patterns name another topic', () => {
+test('7.10 patterns name another topic', () => {
   const d = base();
   const p = cf(2200, { tier: 3, pattern: '1.3:count-windows', set: 'reserved', reserved_for: 'exam', techniques: ['1.3'] });
-  d.banks['7.8'] = { topic: '7.8', status: 'in_progress', problems: [p] };
-  d.notes['7.8'] = notesFor(d.banks['7.8']);
+  d.banks['7.10'] = { topic: '7.10', status: 'in_progress', problems: [p] };
+  d.notes['7.10'] = notesFor(d.banks['7.10']);
   assert.deepEqual(validateAll(d), []);
   p.pattern = '1.3:nope';
   expectError(validateAll(d), /pattern 1.3:nope does not exist/);

@@ -21,14 +21,14 @@ export const LESSON_HEADINGS = [
   '## 13. Checkpoint',
   '## 14. Decision map update',
 ];
-// Topic 7.8 replaces Sections 4, 6, and 7 with a recap (PLAN.md Section 4 notes).
+// Topic 7.10 replaces Sections 4, 6, and 7 with a recap (PLAN.md Section 4 notes).
 // Notes-format lessons (PLAN.md Section 6A) keep the owner's own section order; only these two are required, in this order.
 export const NOTES_HEADINGS = ['## Quick revision', '## Practice problems'];
 // LESSON_RESTORE_PLAN.md Section 3: the new notes shape. Switched on with NOTES_V2=1 (or `notes_v2: true` in a topic file) after Phase 2 is merged.
 export const NOTES_HEADINGS_V2 = ['## What this note covers', '## Quick revision', '## Check yourself', '## Practice problems'];
 export const NOTES_V2_COMPONENTS = ['TopicHeader', 'WhatYouNeed', 'Cards', 'Drill', 'LookalikePairs', 'SelfTest', 'Checkpoint', 'DecisionMapUpdate', 'Ladder'];
 export const NOTES_V2_CHECK_YOURSELF = ['### Identification drill', '### Look-alike pairs', '### Self-test', '### Checkpoint', '### Decision map update'];
-const HEADINGS_78 = LESSON_HEADINGS.filter((h) => !/^## [467]\. /.test(h));
+const HEADINGS_RECOGNITION = LESSON_HEADINGS.filter((h) => !/^## [467]\. /.test(h));
 
 export const WORKED_EXAMPLE_STEPS = [
   '#### Step 1: Constraints → budget',
@@ -112,7 +112,7 @@ export function validateTopics({ curriculum: allRows, patterns, banks, topics, g
     if (tf.id !== tid) err(F, `id field is "${tf.id}", expected "${tid}"`);
     const own = new Set(tf.cards.map((c) => c.id));
     if (own.size !== tf.cards.length) err(F, 'duplicate card ids');
-    const is78 = tid === '7.8';
+    const isRecognition = tid === '7.10';
 
     // Problems: exist in the bank, unique here, come from the right set, techniques allowed.
     const roleOf = new Map();
@@ -132,13 +132,13 @@ export function validateTopics({ curriculum: allRows, patterns, banks, topics, g
         const tt = byId.get(tech);
         if (tt && tt.order > t.order) err(F, `${p.id}: uses technique ${tech}, later than ${tid}`);
       }
-      if (t.phase === 7 && !is78 && (p.role === 'ladder' || p.role === 'worked_example'))
+      if (t.phase === 7 && !isRecognition && (p.role === 'ladder' || p.role === 'worked_example'))
         for (const r of t.requires) if (!b.techniques.includes(r)) err(F, `${p.id}: Phase 7 problems must use the combined topics; missing ${r}`);
-      // Topic 7.8 has no cards of its own: its checkpoint and review problems name a card of the earlier topic they test.
-      if (p.card && (p.role === 'ladder' || p.role === 'checkpoint' || p.role === 'review') && !(is78 ? [...byId.values()].some((x) => x.order < t.order && cardsOf(x.id).has(p.card)) : own.has(p.card)))
+      // Topic 7.10 has no cards of its own: its checkpoint and review problems name a card of the earlier topic they test.
+      if (p.card && (p.role === 'ladder' || p.role === 'checkpoint' || p.role === 'review') && !(isRecognition ? [...byId.values()].some((x) => x.order < t.order && cardsOf(x.id).has(p.card)) : own.has(p.card)))
         err(F, `${p.id}: card ${p.card} is not a card of topic ${tid}`);
       // Exam problems test earlier topics of the phase: their card belongs to the topic of their bank.
-      if (p.role === 'exam' && (!p.card || !(b.bankTopic === '7.8' ? [...byId.values()].some((x) => x.order < t.order && cardsOf(x.id).has(p.card)) : cardsOf(b.bankTopic).has(p.card))))
+      if (p.role === 'exam' && (!p.card || !(b.bankTopic === '7.10' ? [...byId.values()].some((x) => x.order < t.order && cardsOf(x.id).has(p.card)) : cardsOf(b.bankTopic).has(p.card))))
         err(F, `${p.id}: exam problems need the card of topic ${b.bankTopic} they test (found ${p.card})`);
     }
     const ofRole = (r) => tf.problems.filter((p) => p.role === r);
@@ -148,8 +148,8 @@ export function validateTopics({ curriculum: allRows, patterns, banks, topics, g
     // Skipped while the topic is a draft (pipeline steps 1–9).
     if (!tf.draft) {
       const reduced = t.reduced_bank === true; // CURRICULUM_GAPS_PLAN.md: a small topic with a documented shortage of problems
-      if (!is78 && (tf.cards.length < (reduced ? 2 : 3) || tf.cards.length > 6)) err(F, `has ${tf.cards.length} cards; ${reduced ? 2 : 3}–6 required`);
-      if (!is78) {
+      if (!isRecognition && (tf.cards.length < (reduced ? 2 : 3) || tf.cards.length > 6)) err(F, `has ${tf.cards.length} cards; ${reduced ? 2 : 3}–6 required`);
+      if (!isRecognition) {
         if (ladder.length < (reduced ? 8 : 12) || ladder.length > 20) err(F, `ladder has ${ladder.length} problems; ${reduced ? 8 : 12}–20 required`);
         for (const c of tf.cards) {
           const n = ladder.filter((p) => p.card === c.id).length;
@@ -160,7 +160,7 @@ export function validateTopics({ curriculum: allRows, patterns, banks, topics, g
       const earlier = tf.drill.filter((d) => byId.get(d.answer_topic) && byId.get(d.answer_topic).order < t.order).length;
       // The first topics have few earlier topics to draw from: 0.1 needs none, 0.2 one, 0.3 two.
       const needEarlier = Math.min(3, t.order - 1);
-      if (!is78 && earlier < needEarlier) err(F, `drill has ${earlier} earlier-topic answers; at least ${needEarlier} required`);
+      if (!isRecognition && earlier < needEarlier) err(F, `drill has ${earlier} earlier-topic answers; at least ${needEarlier} required`);
       if (tf.lookalike_pairs.length < 2 || tf.lookalike_pairs.length > 4) err(F, `has ${tf.lookalike_pairs.length} look-alike pairs; 2–4 required`);
       if (tf.self_test.length < 5 || tf.self_test.length > 8) err(F, `has ${tf.self_test.length} self-test questions; 5–8 required`);
       if (tf.checkpoint.problems.length !== 3) err(F, `checkpoint has ${tf.checkpoint.problems.length} problems; exactly 3 required`);
@@ -243,7 +243,7 @@ export function validateTopics({ curriculum: allRows, patterns, banks, topics, g
     const hs = headingsOf(lesson.text);
     const isNotes = topics[tid]?.format === 'notes';
     const v2 = isNotes && (process.env.NOTES_V2 === '1' || topics[tid]?.notes_v2 === true);
-    const required = v2 ? NOTES_HEADINGS_V2 : isNotes ? NOTES_HEADINGS : tid === '7.8' ? HEADINGS_78 : LESSON_HEADINGS;
+    const required = v2 ? NOTES_HEADINGS_V2 : isNotes ? NOTES_HEADINGS : tid === '7.10' ? HEADINGS_RECOGNITION : LESSON_HEADINGS;
     let i = 0;
     for (const h of hs) if (i < required.length && h === required[i]) i++;
     if (i < required.length) err(lesson.path, `missing or out-of-order heading "${required[i]}"`);

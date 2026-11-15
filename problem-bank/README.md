@@ -46,9 +46,10 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 1 | 4 | 7 | 17 | 29 | complete |
 | 5 | [5.5 Sweep line with a segment tree](phase-5/5.5-sweep-segment-tree.md) | 0 | 0 | 2 | 2 | 4 | 8 | short |
 | 5 | [5.4 Square-root decomposition, Mo's algorithm](phase-5/5.4-sqrt-decomposition.md) | 0 | 1 | 4 | 4 | 10 | 19 | short |
+| 5 | [5.7 Binary trie and XOR](phase-5/5.7-binary-trie.md) | 0 | 2 | 4 | 3 | 1 | 10 | short |
 | 6 | [6.1 Polynomial hashing](phase-6/6.1-string-hashing.md) | 0 | 2 | 8 | 6 | 3 | 19 | short |
 | 6 | [6.2 Prefix function (KMP) and Z-function](phase-6/6.2-prefix-function.md) | 4 | 3 | 3 | 7 | 2 | 19 | short |
-| 6 | [6.3 Trie, binary trie for max-XOR](phase-6/6.3-trie.md) | 0 | 3 | 9 | 6 | 1 | 19 | short |
+| 6 | [6.3 Trie: words that share beginnings](phase-6/6.3-trie.md) | 0 | 2 | 5 | 6 | 1 | 14 | short |
 | 6 | [6.4 Suffix array and LCP array](phase-6/6.4-suffix-array.md) | 0 | 0 | 2 | 5 | 8 | 15 | short |
 | 7 | [7.1 DP on trees](phase-7/7.1-tree-dp.md) | 2 | 4 | 2 | 4 | 4 | 16 | short |
 | 7 | [7.10 Rerooting: an answer for every root](phase-7/7.10-rerooting.md) | 1 | 1 | 2 | 2 | 3 | 9 | short |

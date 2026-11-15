@@ -2,9 +2,10 @@
 using namespace std;
 
 /*
-Problem: count the pairs i < j with a_i XOR a_j < k.
-Input: n, k, then n numbers below 2^30 (k below 2^30).
-Output: the number of pairs.
+Problem: a multiset that starts with the number 0, and q operations: "+ x" adds x, "- x" removes one copy of x (it is
+present), "? x" asks for the largest x XOR y over the numbers y in the multiset.
+Input: q, then q lines with the sign and the number (below 2^30).
+Output: the answer to each "?" on its own line.
 */
 
 const int BITS = 30;
@@ -51,23 +52,25 @@ struct BinaryTrie {
 };
 
 // snippet:begin
-// The number of pairs i < j with a_i ^ a_j < k: each number is counted against the numbers inserted before it, then inserted
-// (inserting first would pair a number with itself, whose XOR is 0). Theorem 6.3.5. Uses the BinaryTrie of Theorem 6.3.4.
-long long countPairsBelow(const vector<int>& a, int k) {
+// The operations on a multiset of numbers: the counts of the binary trie allow removals (Theorem 5.7.1, note 2). Uses the
+// BinaryTrie of Theorem 5.7.1; the multiset starts with 0, so a question always has an answer.
+vector<int> runOperations(const vector<pair<char, int>>& operations) {
     BinaryTrie t;
-    long long pairs = 0;
-    for (int x : a) {
-        pairs += t.countXorBelow(x, k);
-        t.add(x, +1);
+    t.add(0, +1);
+    vector<int> answers;
+    for (auto [sign, x] : operations) {
+        if (sign == '+') t.add(x, +1);
+        else if (sign == '-') t.add(x, -1);
+        else answers.push_back(t.maxXor(x));
     }
-    return pairs;
+    return answers;
 }
 // snippet:end
 
 int main() {
-    int n, k;
-    cin >> n >> k;
-    vector<int> a(n);
-    for (int& x : a) cin >> x;
-    cout << countPairsBelow(a, k) << "\n";
+    int q;
+    cin >> q;
+    vector<pair<char, int>> operations(q);
+    for (auto& [sign, x] : operations) cin >> sign >> x;
+    for (int a : runOperations(operations)) cout << a << "\n";
 }

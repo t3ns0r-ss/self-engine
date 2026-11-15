@@ -2,9 +2,9 @@
 using namespace std;
 
 /*
-Problem: CSES 1655 Maximum Xor Subarray. Given an array of n integers, print the largest XOR of a subarray.
-Input: n, then the n numbers (n up to 2·10^5, values up to 10^9).
-Output: the largest XOR of a (non-empty) subarray.
+Problem: the largest XOR of two different elements (different places) of an array.
+Input: n (at least 2), then n numbers below 2^30.
+Output: the largest value of a_i XOR a_j over i != j.
 */
 
 const int BITS = 30;
@@ -51,17 +51,15 @@ struct BinaryTrie {
 };
 
 // snippet:begin
-// The XOR of the subarray a[l..r] is P[r + 1] ^ P[l] for the prefix XORs P (P[0] = 0). Walk the prefixes from the left: the
-// best subarray ending at r uses the best earlier prefix, found in the binary trie of the earlier prefixes (Theorem 6.3.4).
-// Uses the BinaryTrie of Theorem 6.3.4.
-int maxSubarrayXor(const vector<int>& a) {
+// The largest a_i ^ a_j over i < j: insert the numbers one by one, and before inserting a number ask for its best partner
+// among the numbers inserted so far (Theorem 5.7.1). Uses the BinaryTrie of Theorem 5.7.1.
+int largestPairXor(const vector<int>& a) {
     BinaryTrie t;
-    t.add(0, +1);  // the empty prefix P[0]
-    int prefix = 0, best = 0;
-    for (int x : a) {
-        prefix ^= x;
-        best = max(best, t.maxXor(prefix));  // the best partner among the earlier prefixes
-        t.add(prefix, +1);
+    t.add(a[0], +1);
+    int best = 0;
+    for (size_t i = 1; i < a.size(); i++) {
+        best = max(best, t.maxXor(a[i]));
+        t.add(a[i], +1);
     }
     return best;
 }
@@ -72,5 +70,5 @@ int main() {
     cin >> n;
     vector<int> a(n);
     for (int& x : a) cin >> x;
-    cout << maxSubarrayXor(a) << "\n";
+    cout << largestPairXor(a) << "\n";
 }

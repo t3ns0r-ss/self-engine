@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 6.3.4. A binary trie of numbers below 2^BITS, written with BITS binary digits from the highest. Node 0 is the root;
+// Theorem 5.7.1. A binary trie of numbers below 2^BITS, written with BITS binary digits from the highest. Node 0 is the root;
 // child[v][d] is the node reached by the digit d (0 = none); cnt[v] = how many stored numbers go through v.
 const int BITS = 30;
 struct BinaryTrie {

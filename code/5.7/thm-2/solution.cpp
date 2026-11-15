@@ -21,9 +21,9 @@ struct BinaryTrie {
 };
 
 // snippet:begin
-// Theorem 6.3.5. How many stored numbers y have x ^ y < k? Walk the digits of x and k from the highest. Where k has a 1,
+// Theorem 5.7.2. How many stored numbers y have x ^ y < k? Walk the digits of x and k from the highest. Where k has a 1,
 // every y in the child that makes the XOR digit 0 is below k (add its count), and the walk continues in the other child;
-// where k has a 0 the walk must keep the XOR digit 0. Uses the BinaryTrie of Theorem 6.3.4.
+// where k has a 0 the walk must keep the XOR digit 0. Uses the BinaryTrie of Theorem 5.7.1.
 long long countXorBelow(const BinaryTrie& t, int x, int k) {
     long long total = 0;
     int v = 0;

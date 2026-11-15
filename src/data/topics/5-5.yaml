@@ -1,0 +1,675 @@
+# Topic 5.5 data file (CURRICULUM_GAPS_PLAN.md Section 5.1, S1). Problems reference the bank by id. reduced_bank: see PROGRESS.md.
+id: '5.5'
+uses:
+- topic: '0.1'
+  what: 'Overflow: areas, sums of weights and crossing counts pass $2 \cdot 10^9$ and need `long long`'
+- topic: '0.2'
+  what: 'Complexity: events times tree steps against a budget of about $10^8$ steps'
+- topic: '0.5'
+  what: 'Brute force: the reference solutions in the tests, and trying every set of four points in one
+    look-alike'
+- topic: '1.1'
+  what: 'Sorting and coordinate compression: sorted events, values replaced by ranks (Theorems 1.1.5 and
+    1.1.6)'
+- topic: '1.2'
+  what: 'Prefix sums and difference arrays: the two-dimensional table that replaces a sweep when the coordinates
+    are small'
+- topic: '1.4'
+  what: 'Binary search: search on the answer, the tool of one look-alike partner'
+- topic: '1.5'
+  what: 'Greedy I: the one-dimensional sweep with a running counter (Theorem 1.5.6), and its tie rules'
+- topic: '2.2'
+  what: 'Modular arithmetic: powers of 2 modulo a prime in one review problem'
+- topic: '4.5'
+  what: 'Trees: the Euler tour that turns a subtree into a range, in one drill problem'
+- topic: '5.2'
+  what: 'Fenwick tree: prefix sums with a tree over ranks (Theorem 5.2.1), the tool inside the counting
+    sweep'
+- topic: '5.3'
+  what: 'Segment tree, lazy propagation: a tree over positions with range additions (Theorem 5.3.3), the
+    tool inside the cover sweep'
+theorems:
+- id: 5.5.1
+  title: The area of a union is a sum over vertical strips
+  plain_words: Cut the picture into vertical strips at every edge. Inside one strip each rectangle either
+    crosses it completely or not at all, so the covered height is the same everywhere in the strip, and
+    the area is the sum of strip width times covered height.
+  code: 5.5/thm-1
+- id: 5.5.2
+  title: A counter on tree nodes gives the covered length without pushing tags down
+  plain_words: Put a counter on tree nodes instead of passing tags to the children. A node with a counter
+    above 0 is covered completely; otherwise its covered length is the sum of its two children. To remove
+    a rectangle, undo exactly the range you added.
+  code: 5.5/thm-2
+- id: 5.5.3
+  title: Range addition, the maximum and where it is, without pushing tags down
+  plain_words: At each node keep what was added to everything below it and the best value below it. The
+    root tells the largest value; walking down from the root, always to the left when it holds the best
+    value, tells the leftmost place where it happens.
+  code: 5.5/thm-3
+- id: 5.5.4
+  title: Counting points in rectangles offline takes four prefix counts
+  plain_words: The points in a rectangle are four prefix counts added and subtracted. Sort the points
+    by x, answer the prefix counts in order of x, and let a Fenwick tree over y say how many of the points
+    added so far are low enough.
+  code: 5.5/thm-4
+cards:
+- id: cover-sweep
+  name: Rectangles added and removed along a line
+  from_theorem: 5.5.1
+  decisive_property: Each rectangle covers a whole range of the second axis between one position of the
+    sweep line and another; what is asked at each position depends only on how many rectangles (or how
+    much weight) cover each gap of the second axis, for example the covered length or the largest total;
+    and a rectangle that stops is removed by repeating the range it added.
+  how_to_test: 'Pick the sweep axis (the one you sort by) and compress the other axis with both ends of
+    every rectangle, so that each rectangle covers whole gaps. Then write what you need at one position
+    as a function of the counts per gap: the total length of the gaps with a count above 0 (a union),
+    or the largest count or weight (a heaviest spot). If that is all you need, a tree with range additions
+    over the gaps answers it.'
+  constraint_shapes:
+  - 'n = 5·10^4 rectangles with corners up to 10^9: marking cells needs up to 10^18 cells, and testing
+    every strip against every rectangle is about 2n · n = 5·10^9 steps, while the sweep makes 2n = 10^5
+    events of O(log n) steps each, about 2·10^6'
+  - 'n = 200 rectangles (Rectangle Area II): 400 events and fewer than 400 gaps, so even a loop over all
+    gaps at every event is 1.6·10^5 steps; the tree is not needed there, but the sweep is the same'
+  weak_signals:
+  - form: Asks for the area of the union of many rectangles or squares, or for the area covered at least
+      once
+    shape: n between 10^4 and 2·10^5 rectangles with corners up to 10^9, so the coordinates cannot index
+      an array
+  - form: Asks for the largest number (or total weight) of rectangles covering one point, and where that
+      happens
+    shape: n ≥ 10^5 rectangles or weighted points; the position of the maximum is part of the output,
+      or ties are broken by the smallest coordinate
+  - form: Something moves along a line and every object is active between a start and an end, while a
+      second coordinate says which part of the other axis the object affects
+    shape: Objects with a start, an end and a range, all up to 10^9; the question is a quantity per position
+      of the second axis
+  kill_signals:
+  - 'Coordinates are small (up to about 1000 in each direction): a two-dimensional difference array (topic
+    1.2) gives the count of every cell in one pass, and a tree is extra work (the second negative example
+    below)'
+  - 'The question is about cells covered at least twice, or exactly k times: the node says "covered" as
+    soon as its counter is above 0, so it answers "at least once". For two squares of side 2 that overlap
+    in one cell, the union is 7 but the area covered at least twice is 1 (the first negative example below)'
+  - 'Rectangles arrive one at a time and each answer is needed before the next one is given: the coordinates
+    cannot be compressed in advance, so this offline sweep does not apply'
+  in_action:
+    statement: A map shows n = 50 000 rectangular fields with sides along the axes and corners with coordinates
+      up to 10^9. Some fields overlap. How much land is there in all?
+    constraints: n ≤ 5·10^4, coordinates ≤ 10^9.
+    budget: A table with one cell per unit of land would need up to 10^18 cells. Adding the areas counts
+      overlaps more than once. Inclusion and exclusion over subsets of the fields has 2^n terms. About
+      O(n log n) is needed.
+    candidates:
+    - tool: Add the areas and take away overlaps (inclusion and exclusion, topic 2.3)
+      verdict: rejected
+      because: Three fields that share a patch need the triple term as well; with 50 000 fields there
+        are 2^50000 terms.
+    - tool: Mark the cells in a two-dimensional table (topic 1.2)
+      verdict: rejected
+      because: The coordinates go up to 10^9, so the table would have 10^18 cells.
+    - tool: Sweep line with a counted-cover tree (this topic)
+      verdict: chosen
+      because: The covered height in a vertical strip depends only on the counts per gap of y.
+    property_check: The land in a strip is its width times the total length of the y gaps covered by at
+      least one active field. Compressing y with all 2n ends makes each field cover whole gaps. A field
+      is added at x1 and removed at x2 with the same range, so no counter goes below 0. Theorems 5.5.1
+      and 5.5.2 apply.
+    decision: Sort 2n events by x, build the tree over at most 2n − 1 gaps, add up covered length times
+      strip width, and keep the sum in `long long`. Time O(n log n).
+  examples:
+    positive:
+    - inline:
+        input: 'Squares [0,2)×[0,2) and [1,3)×[1,3): what is the area of the union?'
+        answer: '7'
+        why: 'Between x = 0 and x = 1 only the first square is active (covered height 2), between 1 and
+          2 both are (covered height 3), between 2 and 3 only the second (height 2): 2 + 3 + 2 = 7, the
+          same as counting cells.'
+    - inline:
+        input: 'Closed squares [0,3]², [2,5]² and [3,4]² each of weight 1: what is the largest number
+          of squares that contain one integer point?'
+        answer: '3'
+        why: The point (3, 3) is in all three. Sweeping x, the tree with range addition and maximum reads
+          3 after the events at x = 3, the same as testing every point.
+    negative:
+    - inline:
+        input: 'The same two squares as in the first example: what is the area covered by at least two
+          squares?'
+        answer: '1'
+        method_gives: '7'
+        why: The node of the counted-cover tree calls a gap covered as soon as its counter is above 0, so the tree
+          answers "at least once", which is the union, 7. The cells covered twice are only [1,2)×[1,2),
+          area 1. A table of counts per cell answers it when the coordinates are small.
+      correct_tool:
+        topic: '1.2'
+        card: prefix-2d
+    - problem: lc-increment-submatrices-by-one
+      why: The board is at most 500 × 500, so the coordinates are small. A two-dimensional difference
+        array adds 1 to every rectangle and one pass gives every cell; a tree over compressed gaps would
+        be extra work.
+      correct_tool:
+        topic: '1.2'
+        card: prefix-2d
+  lookalikes:
+  - description: The largest overlap of one-dimensional intervals, or the number of points covered by
+      exactly k intervals
+    tool:
+      topic: '1.5'
+      card: events-scanned
+    flipping_difference: On one line the sorted events and a running counter are enough (Theorem 1.5.6).
+      A second coordinate means each event changes only part of the other axis, so the single counter
+      becomes a tree.
+  - description: Rectangles on a small board, with coordinates up to about 1000
+    tool:
+      topic: '1.2'
+      card: prefix-2d
+    flipping_difference: With small coordinates every cell can be marked by a two-dimensional difference
+      array. Compression and a tree are needed only when the coordinates reach 10^9.
+  - description: Counting segments that cross, or points inside rectangles
+    tool:
+      topic: '5.5'
+      card: sweep-count
+    flipping_difference: If the question is a count of pairs or of points rather than a covered length
+      or a largest total, the tree holds counts of alive items and a Fenwick tree is enough.
+  complexity: 'O(n log n): 2n events, each a range update on a tree of at most 2n gaps, plus the sort.'
+- id: sweep-count
+  name: Count over a sweep with a Fenwick tree
+  from_theorem: 5.5.4
+  decisive_property: The points (or segments, or ranges) are fixed and every question is known before
+    the work starts; each question is a count over a rectangle, a crossing or a containment that splits
+    into prefix questions of the form "how many items have x at most X and y at most Y"; so sorting by
+    x and keeping a Fenwick tree over y answers every prefix question at the moment the sweep reaches
+    X.
+  how_to_test: 'Write each question as a sum of prefix counts G(X, Y). Check that nothing changes between
+    the questions (no updates) and that all questions can be read first. Then fix the tie rule: when the
+    condition is "x at most X", the items with x equal to X are added before the question at X.'
+  constraint_shapes:
+  - 'n = q = 2·10^5 points and rectangles: testing every pair is 4·10^10 tests, while the sweep is about
+    (n + 4q) log n ≈ 2·10^7 steps'
+  - 'n = 10^5 horizontal and 10^5 vertical segments in a 10^6 square: testing every pair is 10^10 tests,
+    while the sweep has 3·10^5 events'
+  weak_signals:
+  - form: Counts the points inside many rectangles, or the pairs of items where one coordinate must be
+      smaller and another larger (nested ranges, crossing chords)
+    shape: n and q between 10^5 and 5·10^5, coordinates up to 10^9 that compress to ranks
+  - form: Counts the crossings or touches between horizontal and vertical segments
+    shape: Up to 10^5 segments with integer coordinates; the answer can reach 10^10, so it needs 64 bits
+  - form: For each point asks how many other points lie in each quadrant around it
+    shape: n up to 2·10^5 points with distinct or repeated coordinates, an answer or a sum over all points
+  kill_signals:
+  - 'Items appear and disappear between the questions (a third dimension, time): the sweep by x cannot
+    also follow the order of events (the first negative example below)'
+  - 'The grid is small (a side of about 1000 or less): a two-dimensional prefix table answers any rectangle
+    in O(1) (the second negative example below)'
+  in_action:
+    statement: A delivery firm has n = 200 000 customers at points (x, y) with coordinates up to 10^9.
+      It draws q = 200 000 delivery zones, each a rectangle with sides along the axes. For every zone,
+      how many customers are inside?
+    constraints: n, q ≤ 2·10^5, coordinates ≤ 10^9.
+    budget: Testing every customer for every zone is n · q = 4·10^10 tests, over 400 seconds at 10^8 per
+      second. A two-dimensional table over compressed coordinates would have 4·10^10 cells. About O((n
+      + q) log n) is needed.
+    candidates:
+    - tool: Test every customer for every zone (brute force, topic 0.5)
+      verdict: rejected
+      because: 4·10^10 tests are far too many.
+    - tool: A two-dimensional prefix table (topic 1.2)
+      verdict: rejected
+      because: Even after compressing, 2·10^5 × 2·10^5 cells do not fit in memory.
+    - tool: Sweep with a Fenwick tree over y (this topic)
+      verdict: chosen
+      because: The customers do not change and all zones are known, so the questions can be answered offline.
+    property_check: A zone [a,b]×[c,d] is G(b,d) − G(a−1,d) − G(b,c−1) + G(a−1,c−1). G(X,Y) is read from
+      a Fenwick tree over the ranks of y after all customers with x ≤ X were added (customers with x =
+      X are added first). Theorem 5.5.4 applies.
+    decision: Sort the customers by x and the 4q prefix questions by X, keep a Fenwick tree over the ranks
+      of y, and combine four answers per zone. Time O((n + q) log n).
+  examples:
+    positive:
+    - inline:
+        input: 'Points (1,1), (2,3), (3,2), (3,3): how many lie in the rectangle 1 ≤ x ≤ 3, 2 ≤ y ≤ 3?'
+        answer: '3'
+        why: The four prefix counts are G(3,3) = 4, G(0,3) = 0, G(3,1) = 1 and G(0,1) = 0, so the count
+          is 4 − 0 − 1 + 0 = 3; the points with x = 3 are added before the question at X = 3.
+    - inline:
+        input: 'Horizontal segments at y = 1 and y = 3 (both from x = 0 to x = 4) and vertical segments
+          at x = 2 and at x = 5 (both from y = 0 to y = 3): how many pairs of a horizontal and a vertical
+          segment cross?'
+        answer: '2'
+        why: 'At x = 2 both horizontals are alive, so a Fenwick tree over y holds the heights 1 and 3,
+          and the vertical segment asks for the heights in [0, 3]: 2. At x = 5 both horizontals have ended,
+          so that segment finds none.'
+    negative:
+    - inline:
+        input: 'The number 5 is added, a question counts the numbers in [5, 5], then 5 is removed and
+          the question is asked again: what is the sum of the two answers?'
+        answer: '1'
+        method_gives: '2'
+        why: The sweep answers about a fixed set, so it counts the number 5 for both questions (1 + 1
+          = 2). The first answer 1 is right and the second should be 0, because 5 is gone. When the set
+          changes between the questions, a Fenwick tree with updates in the order of time is needed.
+      correct_tool:
+        topic: '5.2'
+        card: updates-and-range-sums
+    - problem: lc-range-sum-query-2d-immutable
+      why: The grid is fixed and small (at most 200 × 200), so a two-dimensional prefix table answers
+        every rectangle in O(1); there is nothing to sweep.
+      correct_tool:
+        topic: '1.2'
+        card: prefix-2d
+  lookalikes:
+  - description: Count the pairs i < j with a_i > a_j in one sequence
+    tool:
+      topic: '5.2'
+      card: inversion-count
+    flipping_difference: There the position is the second coordinate and the array order is the sweep,
+      so one tree is enough. With a genuine pair of coordinates per item you sort by one of them and let
+      the tree index the other.
+  - description: Count the cells of a small grid inside many rectangles
+    tool:
+      topic: '1.2'
+      card: prefix-2d
+    flipping_difference: On a small grid the prefix table is O(1) per rectangle. The sweep is for coordinates
+      up to 10^9 that must be compressed.
+  - description: Count the distinct values in many ranges of one array
+    tool:
+      topic: '5.2'
+      card: offline-sweep-count
+    flipping_difference: There the questions are ranges on a line, sorted by their right end, and one
+      tree holds one mark per value. With points in a plane, the points are sorted by x and the tree indexes
+      y.
+  complexity: 'O((n + q) log n): sorting, n insertions and 4q prefix questions, each a Fenwick step.'
+problems:
+- id: lc-rectangle-area-ii
+  role: ladder
+  card: cover-sweep
+  rung: 1
+  twist: 'Base case of the card: the union area with a tree of cover counts.'
+  summary: Given at most 200 axis-parallel rectangles with corners up to 10^9, find the area of their
+    union modulo 10^9 + 7.
+  hints:
+  - What is the area of the union inside a vertical strip between two neighbouring x-values? Which rectangles
+    are active there?
+  - Compress the y-values of all corners; each rectangle then covers whole gaps. Between two neighbouring
+    event x-values the covered length is fixed (Theorem 5.5.1). With at most 200 rectangles there are
+    fewer than 400 gaps.
+  - Sort the 2n events by x, add 1 or −1 to the gap range of the rectangle, read the covered length after
+    all events at one x, and add length times the distance to the next event x. The sum is at most 10^18,
+    so it fits `long long`; take it modulo 10^9 + 7 at the end.
+- id: ac-abc360_f
+  role: ladder
+  card: cover-sweep
+  rung: 2
+  twist: The sweep runs over r, the tree is over l, and the answer is a maximum with its position and
+    ties.
+  summary: N ≤ 10^5 intervals [L_i, R_i] with ends up to 10^9. An interval crosses [l, r] when L_i < l
+    < R_i < r or l < L_i < r < R_i. Choose integers 0 ≤ l < r to maximise the number of crossing intervals;
+    ties go to the smallest l, then the smallest r.
+  hints:
+  - For a fixed r, which values of l does one interval cross? Write the two cases (r is inside the interval,
+    r is beyond its end) separately.
+  - Sweep r upwards. While L_i < r < R_i the interval adds 1 to every l < L_i; once r > R_i it adds 1
+    to every l with L_i < l < R_i. These are range additions on a tree over the compressed values of l,
+    with the maximum and its leftmost position (Theorem 5.5.3).
+  - At every candidate r read the maximum and its leftmost position; keep the first strict improvement,
+    so the smaller r wins ties, and the leftmost position gives the smallest l. Candidates for l and r
+    are the end values and their neighbours; compress them and keep l < r.
+- id: cf-610D
+  role: ladder
+  card: cover-sweep
+  rung: 3
+  twist: A covered length in one dimension per line, plus the crossings to take away.
+  summary: n ≤ 10^5 horizontal or vertical segments with integer endpoints up to 10^9 are painted on a
+    grid; count the unit cells painted by at least one segment.
+  hints:
+  - If you add up the lengths of all the segments, which cells are counted twice? First merge the segments
+    that lie on the same row or the same column.
+  - After merging, a cell is still counted twice exactly where a merged horizontal segment crosses a merged
+    vertical one. Count those crossings with the sweep and a Fenwick tree over y (Theorem 5.5.4 with segments).
+  - Merge by sorting the pieces on each line, total the lengths, subtract the number of crossings, and
+    use `long long` (the answer can pass 10^14).
+- id: cf-1221F
+  role: ladder
+  card: cover-sweep
+  rung: 4
+  twist: 'Two terms per position: the largest value of a stored number plus the position.'
+  summary: n ≤ 5·10^5 points, each with a cost that may be negative. Choose integers a ≤ b; the square
+    with opposite corners (a, a) and (b, b) earns the costs of the points inside it minus (b − a). Maximise
+    the profit and print a pair that gives it.
+  hints:
+  - Fix the right corner b and let a vary. For which values of a does one point earn its cost?
+  - 'A point (x, y, c) counts for every a ≤ min(x, y) once b ≥ max(x, y): a range addition of c on a prefix
+    of positions. The quantity to maximise is the stored value plus a, minus b.'
+  - Sweep b upwards over the compressed coordinates, keep a tree with range addition whose maximum includes
+    the position, read the maximum and its position (Theorem 5.5.3), subtract b, and remember the best
+    pair.
+- id: cses-1740
+  role: ladder
+  card: sweep-count
+  rung: 1
+  twist: 'Base case of the card: live horizontal segments in a Fenwick tree over y, a vertical segment
+    asks for a range count.'
+  summary: n ≤ 10^5 horizontal and vertical segments with coordinates up to 10^6, and no endpoint is a
+    crossing point; count the points where a horizontal and a vertical segment cross.
+  hints:
+  - Sweep a vertical line from left to right. Which horizontal segments does it meet at a given x?
+  - Those with left end at most x and right end at least x. Keep their y values in a Fenwick tree; a vertical
+    segment asks how many live y values lie in its range (Theorem 5.5.4 with segments).
+  - 'Events: add a horizontal at its left end, remove it after its right end, ask at each vertical segment;
+    sort by x. The answer can reach 2.5·10^9, so use `long long`.'
+- id: cses-2169
+  role: ladder
+  card: sweep-count
+  rung: 2
+  twist: 'Ties on one coordinate: equal left ends need the right order.'
+  summary: n ≤ 2·10^5 different ranges [x, y] with ends up to 10^9. For every range, count how many ranges
+    it contains and how many ranges contain it.
+  hints:
+  - A range [a, b] contains [c, d] when a ≤ c and d ≤ b. Which of the two conditions can the order of
+    the sweep take care of?
+  - 'Sort by the left end and let a Fenwick tree over the right ends count the earlier ranges with the
+    right end on the right side (Theorem 5.5.4: the order gives one condition, the tree the other).'
+  - 'Ties matter: for equal left ends the shorter range lies inside the longer one. Choose the order of
+    equal left ends so that the longer range counts the shorter one but not the other way round, and use
+    the opposite rule for the second count.'
+- id: cf-1401E
+  role: ladder
+  card: sweep-count
+  rung: 3
+  twist: A crossing count inside an argument about regions.
+  summary: n horizontal and m vertical segments lie in a 10^6 × 10^6 square, and each touches at least
+    one side of the square. Into how many regions do they cut the square?
+  hints:
+  - How does the number of regions grow when segments are added one at a time? What changes for a segment
+    that joins two opposite sides, and what for a segment that crosses an earlier one?
+  - The number of regions is 1, plus the segments that join two opposite sides, plus the number of crossing
+    pairs of a horizontal and a vertical segment. The crossings are counted as in the CSES problem Intersection
+    Points.
+  - Count the crossings with the sweep and a Fenwick tree over y, with the tie order open, ask, close
+    for closed segments; the answer fits `long long`.
+- id: cf-524E
+  role: ladder
+  card: sweep-count
+  rung: 4
+  twist: The tree holds the latest position per row and answers with a minimum, not a count.
+  summary: A board of n × m cells (each up to 10^5) holds k ≤ 2·10^5 rooks. For each of q ≤ 2·10^5 rectangles
+    decide whether every cell inside is attacked by a rook inside the rectangle (a rook attacks along
+    its row and column).
+  hints:
+  - When is every cell of a rectangle attacked by rooks that lie inside it? Think about rows and about
+    columns separately.
+  - 'It is enough that every row of the rectangle contains a rook of the rectangle, or that every column
+    does. Take the rows: each row must have a rook in the column range of the rectangle.'
+  - Sort the questions by their right edge and sweep that edge; a tree over rows holds, for each row,
+    the column of its latest rook so far; the minimum over the rows of a question is compared with its
+    left edge. Then do the same with rows and columns swapped.
+- id: cf-1194E
+  role: checkpoint
+  card: sweep-count
+  summary: n ≤ 5000 horizontal and vertical segments with integer coordinates; count the rectangles whose
+    four sides lie on given segments (a rectangle may use only parts of the segments).
+- id: cf-1190D
+  role: checkpoint
+  card: sweep-count
+  summary: n ≤ 2·10^5 points with coordinates up to 10^9; count the different sets of points that can
+    be cut out by a rectangle whose lower side is a horizontal line and whose top is open.
+- id: ac-typical90_q
+  role: checkpoint
+  card: sweep-count
+  summary: N ≤ 3·10^5 points on a circle and M ≤ 3·10^5 chords joining two of them; count the pairs of
+    chords that cross at a point that is not an end.
+- id: lc-perfect-rectangle
+  role: review
+  card: cover-sweep
+  review_set: 1
+  summary: Up to 2·10^4 axis-parallel rectangles with coordinates within ±10^5; decide whether together
+    they cover one rectangular region exactly, with no gap and no overlap.
+- id: lc-count-number-of-rectangles-containing-each-point
+  role: review
+  card: sweep-count
+  review_set: 1
+  summary: Up to 5·10^4 rectangles with the lower-left corner at the origin and sides (l, h) (heights
+    at most 100), and up to 5·10^4 points; for each point count the rectangles that contain it, edges
+    included.
+- id: ac-abc136_f
+  role: review
+  card: sweep-count
+  review_set: 1
+  summary: N ≤ 2·10^5 points with distinct x and distinct y; for every non-empty subset take the number
+    of points in its bounding box, and print the sum over all subsets modulo 998244353.
+- id: lc-separate-squares-ii
+  role: lookalike
+  summary: Up to 5·10^4 axis-parallel squares with corners up to 10^9 that may overlap; find the lowest
+    horizontal line with the same union area above and below it.
+- id: lc-separate-squares-i
+  role: lookalike
+  summary: The same squares, but an overlap is counted once for every square that covers it; find the
+    lowest horizontal line with the same total area above and below.
+- id: lc-maximum-area-rectangle-with-point-constraints-ii
+  role: lookalike
+  summary: Up to 2·10^5 distinct points with coordinates up to 8·10^7; find the largest area of an axis-parallel
+    rectangle whose four corners are points and that holds no other point inside or on its border, or
+    −1.
+- id: lc-maximum-area-rectangle-with-point-constraints-i
+  role: lookalike
+  summary: The same question for at most 10 points.
+- id: cf-1042D
+  role: drill
+  summary: 'Petya and Array: n ≤ 2·10^5 integers and a number t; count the segments whose sum is less
+    than t (the numbers can be negative, |t| up to 2·10^14).'
+- id: cf-459D
+  role: drill
+  summary: 'Pashmak and Parmida: n ≤ 10^6 numbers; for each position let f(l, i) be how many times a_i
+    occurs in the first i entries and g(j, n) how many times a_j occurs from j to the end; count the pairs
+    i < j with f(1, i) > g(j, n).'
+- id: cf-1983D
+  role: drill
+  summary: 'Swap Dilemma: two arrays of n ≤ 10^5 distinct numbers; one move swaps two entries of the first
+    array and the entries at the same distance in the second; can both arrays be made equal?'
+- id: cses-1144
+  role: drill
+  summary: 'Salary Queries: n ≤ 2·10^5 salaries, with q ≤ 2·10^5 operations that either change one salary
+    or ask how many employees have a salary between a and b.'
+- id: cses-2206
+  role: drill
+  summary: 'Pizzeria Queries: n ≤ 2·10^5 buildings on a line with prices p_k; ordering from building a
+    to b costs p_a + |a − b|; process updates of a price and queries for the cheapest pizza for a building.'
+- id: cses-2166
+  role: drill
+  summary: 'Prefix Sum Queries: n ≤ 2·10^5 numbers with updates of one value and queries for the largest
+    prefix sum inside a range [a, b] (the empty prefix counts as 0).'
+- id: cf-1891F
+  role: drill
+  summary: 'A Growing Tree: q ≤ 5·10^5 operations that either add a new leaf to a tree or add a value
+    to a whole subtree; at the end print the value of every vertex.'
+- id: cf-1477B
+  role: drill
+  summary: 'Nezzar and Binary String: a binary string s, a target string f and q ≤ 2·10^5 daily inspections
+    of a segment; each night a segment is changed to all equal values, by a strict majority rule; can
+    s be turned into f?'
+drill:
+- problem: cf-1042D
+  answer:
+    topic: '5.2'
+    card: inversion-count
+  property: 'A segment sum is a difference of two prefix sums, so the question counts pairs of prefix
+    sums that are in the wrong order by more than t: scan the right end and count earlier prefix sums
+    with a Fenwick tree over their ranks.'
+  why_others_fail: There is one coordinate (the position) and a value; the position order is the sweep,
+    so no second sort and no rectangles are involved.
+- problem: cf-459D
+  answer:
+    topic: '5.2'
+    card: inversion-count
+  property: 'After computing the two counts for every position, the question counts pairs i < j with L_i
+    > R_j: scan j and ask a Fenwick tree over the values L_i of the earlier positions.'
+  why_others_fail: The order of the array is the sweep and the values are the second coordinate, so this
+    is one sequence and a plain inversion count.
+- problem: cf-1983D
+  answer:
+    topic: '5.2'
+    card: inversion-count
+  property: Equal moves change the parity of the number of inversions of both arrays together, so the
+    answer needs the same set of values and equal parity of the two inversion counts.
+  why_others_fail: 'No points in a plane and no rectangles: only the parity of one inversion count per
+    array is needed.'
+- problem: cses-1144
+  answer:
+    topic: '5.2'
+    card: updates-and-range-sums
+  property: Read all operations first, compress the salaries, and keep a Fenwick tree of counts per salary;
+    a change is two point updates and a question is a range sum, in the order of the operations.
+  why_others_fail: The set changes between the questions, so the offline sweep by x that treats the points
+    as fixed would answer for the wrong set; the Fenwick tree with updates follows time directly.
+- problem: cses-2206
+  answer:
+    topic: '5.3'
+    card: point-update-range-query
+  property: Keep two segment trees, one over p_k − k and one over p_k + k; the cheapest pizza for building
+    k is the minimum over the left part (plus k) and over the right part (minus k).
+  why_others_fail: The updates change single values and every question is a range minimum, so a segment
+    tree with point updates answers it; no rectangles and no sweep are needed.
+- problem: cses-2166
+  answer:
+    topic: '5.3'
+    card: custom-node
+  property: A node stores its sum and its largest prefix sum; two children combine as best = max(left
+    best, left sum + right best).
+  why_others_fail: The values change one at a time and the question is not a count, so a node with two
+    numbers is the answer; a sweep over a point set does not apply.
+- problem: cf-1891F
+  answer:
+    topic: '5.3'
+    card: lazy-range-update
+  property: Build the final tree, number the vertices by an Euler tour so that a subtree is a range, and
+    then a subtree addition is a range addition with a point query, handled by processing the operations
+    in reverse order.
+  why_others_fail: The structure is a tree with subtrees as ranges and additions to ranges, not points
+    and rectangles in a plane.
+- problem: cf-1477B
+  answer:
+    topic: '5.3'
+    card: lazy-range-update
+  property: 'Work backwards from f: each inspected segment must be uniform at the end of its night, so
+    assign it its majority value; a range assignment with a range count of ones, and at the end compare
+    with s.'
+  why_others_fail: The operations are assignments to ranges of one array, so a lazy segment tree is the
+    tool; the questions are not counts over points in rectangles.
+lookalike_pairs:
+- a: lc-separate-squares-ii
+  b: lc-separate-squares-i
+  a_tool:
+    topic: '5.5'
+    card: cover-sweep
+  b_tool:
+    topic: '1.4'
+    card: answer-search
+  shared_surface: Both give up to 5·10^4 squares and ask for the lowest horizontal line that splits the
+    total area into two equal parts, with the same input format.
+  flipping_difference: In the first problem overlaps are counted once, so the area below a line is the
+    covered length of a union and needs the sweep with a tree. In the second an overlap is counted once
+    for every square, so the area below a line is a plain sum over squares and a binary search on the
+    line is enough.
+  flipping_input: 'Squares given as (x, y, side): (0, 0, 2) and (0, 0, 1). Counting the overlap once,
+    the area is 4 and the answer is the line y = 1. Counting it twice, the total is 5 and the answer is
+    y = 5/6, about 0.83.'
+- a: lc-maximum-area-rectangle-with-point-constraints-ii
+  b: lc-maximum-area-rectangle-with-point-constraints-i
+  a_tool:
+    topic: '5.5'
+    card: sweep-count
+  b_tool:
+    topic: '0.5'
+    card: nested-loops
+  shared_surface: Both ask for the largest axis-parallel rectangle that has four of the given points as
+    corners and no other point inside or on its border.
+  flipping_difference: With at most 10 points every choice of four points can be tested (210 choices).
+    With 2·10^5 points the candidates must be found from neighbouring points and each must be checked
+    by counting the points in it, which is the offline sweep of Theorem 5.5.4.
+self_test:
+- q: 'Two squares [0,1)×[0,1) and [1,2)×[0,1) share a side at x = 1: one stops at x = 1 and the other
+    starts at x = 1. Does the order of these two events change the union area in the sweep?'
+  a: No. The covered length is read after all events at x = 1 are applied, and a strip of width 0 would
+    add 0 anyway, so the area is 2 for either order (Theorem 5.5.1, steps 5 and 6). The order matters
+    only when a maximum is read after each single event.
+- q: Give two closed rectangles with weights for which reading the largest total after every single event,
+    instead of after all events at one x, reports a value that no point has.
+  a: 'A: x from 0 to 0, y from 1 to 1, weight 2. B: x from 1 to 1, y from 0 to 1, weight 3. A is removed
+    at x = 1 (its right end plus 1) and B is added at x = 1. If B is applied first, the tree shows 2 +
+    3 = 5 at y = 1, but the true largest total is 3.'
+- q: A node of the counted-cover tree has a counter. What does the counter mean, and why can it never
+    go below 0 when every removal repeats the range of an earlier insertion?
+  a: The counter is the number of currently active intervals whose decomposition into tree nodes contains
+    this node. The decomposition of a range depends only on the range, so the removal lowers the same
+    counters that the insertion raised, and each counter is a count of active intervals, never negative
+    (Theorem 5.5.2, steps 1 and 2).
+- q: In Theorem 5.5.4 a point (3, 3) and the rectangle with 3 ≤ x ≤ 3 and 3 ≤ y ≤ 3 are given. Write the
+    four prefix counts. What do they sum to if the points with x equal to X are added after the question
+    at X instead of before?
+  a: 'G(3,3) − G(2,3) − G(3,2) + G(2,2) = 1 − 0 − 0 + 0 = 1. If the points with x = 3 are added after
+    the questions at X = 3, then G(3,3) is 0 and the sum is 0, which is wrong: the condition is "x at
+    most X", so equal x must be added first.'
+- q: 'Rectangles have integer corners and are closed: [x1, x2] × [y1, y2]. Which half-open ranges go into
+    the tree, and at which x is a rectangle removed?'
+  a: The gap range is [y1, y2 + 1) (the compressed values are y1 and y2 + 1) and the rectangle is added
+    at x1 and removed at x2 + 1, so the sweep reads each column of integer points once, after all events
+    at that x.
+- q: n = 2·10^5 rectangles have all corners between 0 and 1000, and the question is the area covered by
+    at least 3 of them. Which tool do you use, and why is the counted-cover tree the wrong one?
+  a: A two-dimensional difference array on the 1001 × 1001 table (topic 1.2) gives the count of every
+    cell in one pass, and then the cells with a count of at least 3 are counted. The node of the counted-cover tree
+    answers only "at least once", and the table is small enough that no sweep is needed.
+checkpoint:
+  time_limit_minutes: 150
+  problems:
+  - cf-1194E
+  - cf-1190D
+  - ac-typical90_q
+decision_map:
+- weak_signal: The area of the union of many rectangles, or the point covered by the most rectangles (or
+    the largest total weight), with coordinates up to 10^9
+  choose: cover-sweep
+  when: Each rectangle adds or removes a whole range of gaps on the second axis and the answer at each
+    position depends only on the counts per gap (Theorems 5.5.1 to 5.5.3).
+  over:
+  - topic: '1.2'
+    card: prefix-2d
+    because: If the coordinates are small (about 1000 or less), a two-dimensional difference array gives
+      the count of every cell, for any threshold.
+  - topic: '1.5'
+    card: events-scanned
+    because: If the objects are intervals on one line, sorted events and a running counter are enough.
+  - topic: '5.3'
+    card: lazy-range-update
+    because: If the ranges are over the positions of a given array and the operations come in a fixed
+      order, the lazy tree of topic 5.3 answers them without a sweep.
+  - topic: '5.5'
+    card: sweep-count
+    because: If the question counts points, crossings or pairs rather than a covered length or a largest
+      total, a Fenwick tree is enough.
+- weak_signal: Count the points in many rectangles, the crossings of horizontal and vertical segments,
+    or the nested and crossing ranges, offline
+  choose: sweep-count
+  when: The items are fixed, all questions are known first, and each question is a sum of prefix counts
+    on x and y (Theorem 5.5.4).
+  over:
+  - topic: '1.2'
+    card: prefix-2d
+    because: If the grid is small, a prefix table answers every rectangle in O(1).
+  - topic: '5.2'
+    card: inversion-count
+    because: If the items form one sequence, so that the position is the second coordinate, a single Fenwick
+      tree counts the pairs.
+  - topic: '5.2'
+    card: updates-and-range-sums
+    because: If items are added or removed between the questions, a Fenwick tree with updates in the order
+      of time is needed.
+  - topic: '5.5'
+    card: cover-sweep
+    because: If the answer is a covered length or a largest total instead of a count, the tree needs a
+      counter per node.
+glossary_added:
+- gap
+- counted-cover tree
+- prefix count

@@ -42,6 +42,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 4 | [4.5 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.5-trees.md) | 2 | 1 | 15 | 7 | 8 | 33 | short |
 | 4 | [4.6 LCA via binary lifting](phase-4/4.6-lca.md) | 0 | 1 | 9 | 5 | 8 | 23 | short |
 | 4 | [4.7 SCC, bridges, articulation points, 2-SAT](phase-4/4.7-connectivity.md) | 0 | 3 | 6 | 7 | 7 | 23 | short |
+| 4 | [4.8 Basic geometry: cross product, orientation, segments, polygons](phase-4/4.8-geometry.md) | 2 | 4 | 6 | 3 | 1 | 16 | short |
 | 5 | [5.1 Sparse table and RMQ](phase-5/5.1-sparse-table.md) | 1 | 3 | 8 | 4 | 0 | 16 | short |
 | 5 | [5.2 Fenwick tree (BIT), inversion counting](phase-5/5.2-fenwick.md) | 3 | 1 | 7 | 3 | 8 | 22 | short |
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 1 | 4 | 7 | 17 | 29 | complete |

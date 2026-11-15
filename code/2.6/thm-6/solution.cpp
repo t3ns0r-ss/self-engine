@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.8.6. The smallest squared distance between two of n >= 2 different points.
+// Theorem 2.6.6. The smallest squared distance between two of n >= 2 different points.
 struct Point { long long x, y; };
 long long closestPairSquared(vector<Point> p) {
     sort(p.begin(), p.end(), [](Point a, Point b) { return a.x < b.x; });

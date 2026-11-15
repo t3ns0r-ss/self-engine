@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.8.1. Twice the signed area of the triangle A, B, C.
+// Theorem 2.6.1. Twice the signed area of the triangle A, B, C.
 // Positive: C is left of the line from A to B. Negative: right. Zero: A, B and C are on one line.
 struct Point { long long x, y; };  // long long: coordinates up to 10^9, so differences reach 2*10^9
 long long cross(Point a, Point b, Point c) {

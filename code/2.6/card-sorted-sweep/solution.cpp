@@ -7,7 +7,7 @@ using namespace std;
 struct Point { long long x, y; };
 long long cross(Point a, Point b, Point c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
 
-vector<Point> hull(vector<Point> pts) {  // Theorem 4.8.5
+vector<Point> hull(vector<Point> pts) {  // Theorem 2.6.5
     sort(pts.begin(), pts.end(), [](Point a, Point b) { return make_pair(a.x, a.y) < make_pair(b.x, b.y); });
     pts.erase(unique(pts.begin(), pts.end(), [](Point a, Point b) { return a.x == b.x && a.y == b.y; }), pts.end());
     if (pts.size() < 2) return pts;
@@ -24,7 +24,7 @@ vector<Point> hull(vector<Point> pts) {  // Theorem 4.8.5
     return h;
 }
 
-long long closestPairSquared(vector<Point> p) {  // Theorem 4.8.6
+long long closestPairSquared(vector<Point> p) {  // Theorem 2.6.6
     sort(p.begin(), p.end(), [](Point a, Point b) { return a.x < b.x; });
     set<pair<long long, long long>> window;
     long long best = LLONG_MAX;

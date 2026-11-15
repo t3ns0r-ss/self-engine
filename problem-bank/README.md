@@ -23,6 +23,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 9 | 3 | 2 | 21 | short |
 | 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 3 | 3 | 4 | 5 | 3 | 18 | short |
 | 2 | [2.5 Linear Diophantine equations and the Chinese remainder theorem](phase-2/2.5-diophantine-crt.md) | 1 | 0 | 1 | 1 | 5 | 8 | short |
+| 2 | [2.6 Basic geometry: cross product, orientation, segments, polygons](phase-2/2.6-geometry.md) | 2 | 4 | 6 | 3 | 1 | 16 | short |
 | 2 | [2.3 Counting rules, nCr mod p, stars and bars, inclusion–exclusion](phase-2/2.3-combinatorics.md) | 5 | 13 | 9 | 6 | 8 | 41 | short |
 | 2 | [2.4 Linearity of expectation, contribution technique](phase-2/2.4-expected-value.md) | 1 | 1 | 5 | 3 | 9 | 19 | short |
 | 3 | [3.1 Recursion, backtracking, pruning](phase-3/3.1-backtracking.md) | 3 | 12 | 5 | 2 | 0 | 22 | short |
@@ -42,7 +43,6 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 4 | [4.5 Tree properties, subtree sizes, diameter, centre, Euler tour](phase-4/4.5-trees.md) | 2 | 1 | 15 | 7 | 8 | 33 | short |
 | 4 | [4.6 LCA via binary lifting](phase-4/4.6-lca.md) | 0 | 1 | 9 | 5 | 8 | 23 | short |
 | 4 | [4.7 SCC, bridges, articulation points, 2-SAT](phase-4/4.7-connectivity.md) | 0 | 3 | 6 | 7 | 7 | 23 | short |
-| 4 | [4.8 Basic geometry: cross product, orientation, segments, polygons](phase-4/4.8-geometry.md) | 2 | 4 | 6 | 3 | 1 | 16 | short |
 | 5 | [5.1 Sparse table and RMQ](phase-5/5.1-sparse-table.md) | 1 | 3 | 8 | 4 | 0 | 16 | short |
 | 5 | [5.2 Fenwick tree (BIT), inversion counting](phase-5/5.2-fenwick.md) | 3 | 1 | 7 | 3 | 8 | 22 | short |
 | 5 | [5.3 Segment tree, lazy propagation](phase-5/5.3-segment-tree.md) | 0 | 1 | 4 | 7 | 17 | 29 | complete |

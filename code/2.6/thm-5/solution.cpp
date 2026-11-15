@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.8.5. The corners of the convex hull in counterclockwise order, starting at the leftmost (lowest if tied) point.
+// Theorem 2.6.5. The corners of the convex hull in counterclockwise order, starting at the leftmost (lowest if tied) point.
 // A point in the middle of an edge is not a corner: the test cross <= 0 removes it.
 struct Point { long long x, y; };
 long long cross(Point a, Point b, Point c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }

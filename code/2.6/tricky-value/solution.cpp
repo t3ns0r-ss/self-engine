@@ -10,7 +10,7 @@ Output: the smallest value.
 
 // snippet:begin
 struct Point { long long x, y; };
-// The smallest squared distance between n >= 2 different points, by the sweep of Theorem 4.8.6.
+// The smallest squared distance between n >= 2 different points, by the sweep of Theorem 2.6.6.
 long long closestPairSquared(vector<Point> p) {
     sort(p.begin(), p.end(), [](Point a, Point b) { return a.x < b.x; });
     set<pair<long long, long long>> window;  // (y, x) of the points less than r to the left of the current one

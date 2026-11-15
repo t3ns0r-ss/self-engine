@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.8.4. Where is q relative to a simple polygon p (corners in either direction)? 0 outside, 1 on the boundary, 2 inside.
+// Theorem 2.6.4. Where is q relative to a simple polygon p (corners in either direction)? 0 outside, 1 on the boundary, 2 inside.
 struct Point { long long x, y; };
 long long cross(Point a, Point b, Point c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
 bool inBox(Point a, Point b, Point q) {  // q is inside the bounding box of ab

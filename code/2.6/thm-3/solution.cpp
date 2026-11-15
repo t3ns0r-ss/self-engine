@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.8.3. A polygon is a list of corners in counterclockwise order (the first corner is not repeated at the end).
+// Theorem 2.6.3. A polygon is a list of corners in counterclockwise order (the first corner is not repeated at the end).
 struct Point { long long x, y; };
 // Twice the area. The sum is kept in __int128: the running total can pass 9.2*10^18 on the way, although the result fits.
 long long twiceArea(const vector<Point>& p) {

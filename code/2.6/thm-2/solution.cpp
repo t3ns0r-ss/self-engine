@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.8.2. Do the closed segments ab and cd share a point? (a != b, c != d)
+// Theorem 2.6.2. Do the closed segments ab and cd share a point? (a != b, c != d)
 struct Point { long long x, y; };
 long long cross(Point a, Point b, Point c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
 int sign(long long v) { return (v > 0) - (v < 0); }  // the sign, so that no product of two big numbers is formed

@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-// Brute force: walk along all edges (the simple test of Theorem 4.8.4, one pass per query).
+// Brute force: walk along all edges (the simple test of Theorem 2.6.4, one pass per query).
 struct Point { long long x, y; };
 long long cross(Point a, Point b, Point c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
 

@@ -8,7 +8,7 @@ Output: the least cost of a trip from town 1 to town n, or -1 if town n cannot b
 using namespace std;
 
 // snippet:begin
-// Theorem 4.3.5. Least cost from 1 to n when up to k edges are free. The state is (vertex, free edges used so far).
+// Theorem 4.9.2. Least cost from 1 to n when up to k edges are free. The state is (vertex, free edges used so far).
 long long cheapestWithFreeEdges(const vector<vector<pair<int, long long>>>& adj, int k) {
     int n = adj.size() - 1;
     const long long INF = LLONG_MAX / 4;

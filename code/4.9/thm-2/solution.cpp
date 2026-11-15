@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 4.3.5. Cheapest route from 1 to n when ONE edge may be used for free. The state is (vertex, free edge already used),
+// Theorem 4.9.2. Cheapest route from 1 to n when ONE edge may be used for free. The state is (vertex, free edge already used),
 // and Dijkstra runs on these pairs; edges are {to, weight}.
 long long cheapestWithOneFreeEdge(const vector<vector<pair<int, long long>>>& adj) {
     int n = adj.size() - 1;

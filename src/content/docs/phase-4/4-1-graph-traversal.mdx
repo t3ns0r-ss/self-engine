@@ -27,7 +27,7 @@ Asking, for every pair of cities, "is there a route?" means $n(n-1)/2 \approx 5 
 
 The key idea: draw each city as a dot and each road as a line between two dots (a **graph**). Stand on one city, walk along roads, mark every city you reach, and never step on a marked city again. When the walk cannot go on, the marked cities are exactly the cities you can reach from the start, and the work was one step per city and one look per road in that group: no pairs at all. Start again from any unmarked city and you find the next group. All groups together cost $n + m = 3 \cdot 10^5$ steps. If there are $k$ groups, the answer is $k - 1$: one new road merges at most two groups, so at least $k - 1$ are needed, and joining the groups in a chain uses exactly that many.
 
-The same walk, done with a queue instead of a stack, also tells the **fewest roads** from the start to every city, and the idea reaches far beyond maps: the cells of a grid, or the positions of a puzzle, are dots too. That is the plan of this lesson: graph traversal, components, fewest edges, several starting points, grids, and puzzles as graphs.
+The same walk, done with a queue instead of a stack, also tells the **fewest roads** from the start to every city, and the idea reaches far beyond maps: the cells of a grid are dots too. That is the plan of this lesson: graph traversal, components, fewest edges, several starting points, and grids.
 
 ## 2. Prerequisites and scope
 
@@ -41,6 +41,7 @@ The same walk, done with a queue instead of a stack, also tells the **fewest roa
 - Fewest edges is not the same as the shortest total length when roads have different lengths; Dijkstra's algorithm and its relatives handle lengths, in topic 4.3. Here every edge costs 1.
 - Merging groups while roads arrive one at a time with a union–find structure (disjoint set union), and minimum spanning trees: topic 4.4.
 - Trees as a topic (parents, subtree sizes, diameters, Euler tours) and the lowest common ancestor: topics 4.5 and 4.6.
+- Searching a graph that is not given but invented, where a vertex is a place together with a key, a direction, a set or a number: topic 4.9. Here the vertices are cells and cities.
 - Strongly connected components of a directed graph, bridges and articulation points: topic 4.7. Here directed edges appear only to say what a traversal reaches.
 
 ## 3. Definitions
@@ -53,7 +54,7 @@ The same walk, done with a queue instead of a stack, also tells the **fewest roa
 - An **adjacency list** stores, for every vertex, the list of its neighbours: `vector<vector<int>> adj(n + 1)`, where `adj[u]` is the list for $u$. An undirected edge $a\!-\!b$ is stored twice (`b` in `adj[a]` and `a` in `adj[b]`), so the lists hold $2m$ entries in total, and the structure takes $n + 2m$ memory. An **adjacency matrix** is an $n \times n$ table whose cell $(a, b)$ says whether the edge exists: for $n = 10^5$ it has $10^{10}$ cells, far too many, and listing the neighbours of one vertex costs $n$ steps instead of its own number of neighbours. An **edge list** is just the $m$ pairs, enough when you only need to sort or count edges.
 - **Graph traversal** visits the vertices reachable from a start vertex $s$, using a container of vertices still to be processed. In **breadth-first search (BFS)** the container is a queue, so the vertices closest to $s$ leave first. In **depth-first search (DFS)** the container is a stack, so the search follows one route as far as it can before it backs up.
 - A vertex is **marked** (or visited) from the moment it is put into the container.
-- A **grid graph** has one vertex for each cell of an $R \times C$ table and an edge between two cells that share a side (4 directions; with corners, 8 directions). A **state graph** has one vertex for each configuration (state) of a puzzle and an edge from a state to every state one move away; it is **implicit**: it is never written down, the program computes the neighbours of a state from the rules when it needs them.
+- A **grid graph** has one vertex for each cell of an $R \times C$ table and an edge between two cells that share a side (4 directions; with corners, 8 directions).
 - A **source** is a start vertex of a traversal; with several sources, all of them start at once.
 
 ## 4. Theory and proofs
@@ -207,39 +208,13 @@ Treat every free cell as a dot and join side-by-side cells. You do not have to b
 
 The first example is the tiny instance: the distances of the middle row are 1, wall, wall, 4, and the bottom-right cell is 5 (step 3: one table cell per grid cell). In the second example the wall column splits the grid, so the cells on the far side stay at $-1$; the third is a grid with no walls, where the distance to a cell is its number of rows plus its number of columns away from the start (here the start is the bottom-right corner).
 
-### 4.6 Puzzles as graphs
-
-**Theorem 4.1.6 (states).** A puzzle has a start state and a rule that lists, for every state, the states one move away. Let the states be the vertices and the moves the edges. If every move costs 1 and the states reachable from the start number $S$, with at most $k$ moves from each, then a traversal with a queue (Theorem 4.1.3) finds the fewest moves from the start to every reachable state in $O(S \cdot k)$ steps (times $O(\log S)$ when the distances are kept in a map instead of a table). The graph is not stored; the neighbours of a state are computed from the rule when the state is removed from the queue.
-
-:::tip[In plain words]
-Any puzzle where you want the fewest moves and every move counts the same is a search through a graph whose dots are the positions of the puzzle. Walk it with a queue, remember each position you saw, and the first time you reach the goal is the fewest moves.
-:::
-
-**A tiny instance.** Turn 3 into 10 using the moves "add 1" and "double". Ring 0: $\{3\}$. Ring 1: $\{4, 6\}$. Ring 2: $\{5, 8, 7, 12\}$. Ring 3 reaches 10 from 5 by doubling. So the fewest moves is 3: $3 \to 4 \to 5 \to 10$.
-
-**Proof.**
-1. A sequence of moves from the start to a state $t$ is exactly a path from the start to $t$ in the state graph, so the fewest moves to $t$ equals $d(\text{start}, t)$.
-2. Theorem 4.1.3 computes $d(\text{start}, t)$ for every reachable $t$ by a queue-based traversal, using the neighbour lists only through "look at all neighbours of $u$"; computing the list of $u$ from the rule when $u$ is removed gives the same neighbours (as in Theorem 4.1.5).
-3. Each reachable state is removed from the queue once (Theorem 4.1.1(b)), and each removal tries at most $k$ moves, each with one lookup of the stored distance: $O(1)$ in a table, $O(\log S)$ in a map. This gives $O(S \cdot k)$, or $O(S \cdot k \log S)$. $\square$
-
-:::note[This proof needs]
-1. The state contains everything that the rules of the moves and the goal depend on. Two situations that differ in anything relevant must be two states; two situations that differ in nothing relevant must be the same state (or the search counts them separately and may be too slow).
-2. Every move costs the same, 1.
-3. The number of reachable states $S$ fits in the time and memory limits: $S \cdot k$ steps and the distance table or map.
-:::
-
-<TheoremCode unit="4.1/thm-6" />
-
-The first example is the tiny instance (step 1: the path $3, 4, 5, 10$). The second target is the start itself, which costs 0 moves, and in the third no move ever lowers a number, so a smaller target is unreachable and the search ends with an empty queue.
-
-'''
 ## 5. Recognition Cards
 
 <Cards topic="4.1" />
 
 ## 6. Templates
 
-Six templates, one for each card (the components card has two: one with an explicit stack and one with recursion). Each shows only the function that matters. The program around it reads the input and builds `adj` by putting `b` into `adj[a]` and `a` into `adj[b]` for every edge `a b` (the vertices are numbered from 1, so `adj` has `n + 1` entries and `adj[0]` is unused). Every template is checked against a brute force that uses a different method (label propagation or repeated relaxation, until nothing changes) on thousands of random small graphs and grids, and on fixed tests with isolated vertices, repeated edges and unreachable targets.
+Five templates, one for each card (the components card has two: one with an explicit stack and one with recursion). Each shows only the function that matters. The program around it reads the input and builds `adj` by putting `b` into `adj[a]` and `a` into `adj[b]` for every edge `a b` (the vertices are numbered from 1, so `adj` has `n + 1` entries and `adj[0]` is unused). Every template is checked against a brute force that uses a different method (label propagation or repeated relaxation, until nothing changes) on thousands of random small graphs and grids, and on fixed tests with isolated vertices, repeated edges and unreachable targets.
 
 ### Component sizes (Theorem 4.1.2)
 
@@ -280,14 +255,6 @@ Six templates, one for each card (the components card has two: one with an expli
 **How it works.** Before the walk starts, every source is put into the queue with `dist = 0`; after that the loop is the ordinary one of Theorem 4.1.3. Cells that no source reaches keep the value $-1$, and walls are skipped.
 
 **Alternative formulation.** Add one new vertex joined to all sources and run the ordinary walk from it, subtracting 1 from every distance; this is the proof of Theorem 4.1.4, and it gives the same numbers.
-
-### Fewest steps with extra information in the state (Theorem 4.1.6)
-
-<CodeSnippet unit="4.1/key-door" />
-
-**How it works.** A state is the cell and the set of keys held, stored as four bits of `keys`; the table `dist` has `rows * cols * 16` entries, one per state. Stepping onto a key sets its bit, and stepping onto a door is allowed only if its bit is set. The reference `slot` is the table entry of the next state: if it is already filled the state was seen before, otherwise it receives `here + 1`. The search stops at the first time a state on `T` is removed, whatever keys are held.
-
-**Alternative formulation.** For a state with too many values to index, keep the distances in a `map` from the state (a `tuple` or a `pair`) to the distance, as in Theorem 4.1.6; it costs an extra logarithm.
 
 ## 7. Bug catalogue
 
@@ -369,20 +336,6 @@ Input: `1 3`, then the row `S.S`.
 Wrong output `3 2 0`, correct output `1 1 0`. The second source is treated as an ordinary cell and receives distance 2, instead of 0. Theorem 4.1.4 needs all sources in the queue at distance 0 (step 3 of its proof).
 
 **Fix:** push every source before the loop starts.
-
-### Bug: a state that forgets the keys
-
-Template: fewest steps with extra information in the state.
-
-```cpp
-int& slot = dist[(nr * cols + nc) * 16];  // the keys left out of the index
-```
-
-Input: `2 5`, then the rows `S.A.T` and `#a###`.
-
-Wrong output `-1`, correct output `6`. The cell with the key was reached with the key, but the table cannot tell that state from the same cell without it; the cell next to the door is already filled, so the walk never returns to it with the key. This is the instance of the "Grids as graphs" card where the cell alone is not the state (Theorem 4.1.6, precondition 1).
-
-**Fix:** index the table by the cell and the keys, `dist[(nr * cols + nc) * 16 + nextKeys]`.
 
 ### Bug: recursion that is too deep
 

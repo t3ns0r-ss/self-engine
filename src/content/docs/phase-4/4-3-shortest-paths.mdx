@@ -39,6 +39,7 @@ Three other situations need other tools, and the lesson tells them apart by one 
 
 - Spanning trees and merging groups of vertices (the minimum spanning tree, union–find): topic 4.4. Trees as a topic: topic 4.5.
 - Strongly connected components and bridges: topic 4.7.
+- Dijkstra over pairs of a place and a small extra fact (a coupon used or not, a fuel level, a mode), and shortest paths that need a set of visited places in the state: topic 4.9.
 - Shortest paths along the order of an acyclic graph with a table (dynamic programming over a topological order): a Phase 7 topic. Here the tools work on any graph.
 - The $k$-th shortest path, shortest paths with a limit on the number of edges beyond what Bellman–Ford rounds show, and heuristics such as A*: not part of this course.
 - Printing a negative cycle itself: here a negative cycle is only detected.
@@ -182,38 +183,13 @@ Allow the vertices as stop-overs one at a time. A route that may stop over at ve
 
 The first example is the tiny instance: after allowing stop-over 1, the entry from 3 to 2 is 5 (step 3); after stop-over 2, the entry from 1 to 3 improves from 7 to 4. The second has a negative weight and no negative cycle, and unreachable pairs stay "−".
 
-### 4.5 Extra states
-
-**Theorem 4.3.5 (Dijkstra over pairs).** Suppose a trip is described by the vertex and a small extra fact $f$ from a set $F$ (a coupon used or not, the parity of the number of steps, a fuel level), and each step goes from $(u, f)$ to $(v, f')$ and costs $c \ge 0$. Then the cheapest trip to a goal pair equals the shortest path in the graph whose vertices are the pairs $(v, f)$, and Dijkstra's algorithm on that graph finds it in $O(|F| (n + m) \log (|F| m))$ time.
-
-:::tip[In plain words]
-If what you may do next depends on a small extra fact, make a separate vertex for every pair (place, fact) and run Dijkstra on those pairs.
-:::
-
-**A tiny instance.** The roads $1\!-\!2$ (4) and $2\!-\!3$ (6), and one road of your choice may be used for free. The pairs are (vertex, free road already used?). From $(1, \text{no})$ at cost 0: crossing $1\!-\!2$ costs 4 to $(2, \text{no})$ or 0 to $(2, \text{yes})$. From $(2, \text{yes})$, crossing $2\!-\!3$ costs 6 to $(3, \text{yes})$; from $(2, \text{no})$ it costs 0 to $(3, \text{yes})$, for a total of 4. The cheapest is 4.
-
-**Proof.**
-1. A trip, with its choices of when to use the free road, is exactly a path in the graph of pairs, and its cost is the sum of the costs of the steps. So the cheapest trip is a shortest path there.
-2. Every cost is at least 0, so Theorem 4.3.1 applies to the graph of pairs.
-3. That graph has $|F| n$ vertices and at most $|F| \cdot 4m$ edges (each road can be used from each fact, in both directions, paid or free), which gives the time bound. $\square$
-
-:::note[This proof needs]
-1. The extra fact together with the vertex is the whole state: the possible next steps and their costs depend on nothing else (Theorem 4.1.6).
-2. All step costs are non-negative, including the free ones.
-3. $|F|$ is small, because the graph grows by that factor.
-:::
-
-<TheoremCode unit="4.3/thm-5" />
-
-The first example is the path of two roads: the free road is the 6-minute road (step 1), and the cost is 4. In the second example, the cheapest trip frees the expensive road $3\!-\!4$ after the 2-minute road $1\!-\!3$, for a total of 2. With one vertex, the trip is empty and costs 0.
-
 ## 5. Recognition Cards
 
 <Cards topic="4.3" />
 
 ## 6. Templates
 
-Five templates, one for each card. Each shows only the function that matters; the program around it reads the input and builds `adj` (pairs `{to, weight}`; for two-way roads both ends get an entry) as in [topic 4.1](../4-1-graph-traversal/). The theorem units of Section 4 show the algorithms with their parents or in place; the templates answer the questions that contests ask about the same ideas. Each is checked against a brute force with a different method (relaxing every edge again and again, repeating a step until nothing changes, trying every simple path) on thousands of random small inputs, and on fixed tests with unreachable vertices, a single vertex and weights near $10^9$.
+Four templates, one for each card. Each shows only the function that matters; the program around it reads the input and builds `adj` (pairs `{to, weight}`; for two-way roads both ends get an entry) as in [topic 4.1](../4-1-graph-traversal/). The theorem units of Section 4 show the algorithms with their parents or in place; the templates answer the questions that contests ask about the same ideas. Each is checked against a brute force with a different method (relaxing every edge again and again, repeating a step until nothing changes, trying every simple path) on thousands of random small inputs, and on fixed tests with unreachable vertices, a single vertex and weights near $10^9$.
 
 ### Cheapest cost to every place (Theorem 4.3.1)
 
@@ -246,14 +222,6 @@ Five templates, one for each card. Each shows only the function that matters; th
 **How it works.** The matrix `d` starts as the road lengths (`INF` where there is no road, 0 on the diagonal), and the triple loop turns it into the cheapest cost between every pair. The loop over `k`, the town allowed in the middle of the route, is the outer one; this order is what makes the proof of Theorem 4.3.4 work. Afterwards a row is read off in $O(n)$: a town counts only if no entry of its row is `INF`, and then the sum of the row is its total. The strict `<` keeps the smallest number on a tie.
 
 **Alternative formulation.** With $n$ up to a few thousand, $n$ runs of Theorem 4.3.1 cost $O(n (n + m) \log n)$ and beat the $O(n^3)$ of the triple loop when the graph is sparse.
-
-### Up to $k$ free roads (Theorem 4.3.5)
-
-<CodeSnippet unit="4.3/free-rides" />
-
-**How it works.** The state is the pair (town, free roads used so far), `dist[v][used]` is the cheapest cost to be in state `(v, used)`, and the heap works on triples. From a state two moves are tried along each road: pay for it and keep `used`, or drive it for free (cost unchanged) and go to `used + 1`, as long as `used < k`. The answer is the cheapest of the states `(n, 0)` to `(n, k)`; using fewer than $k$ free roads is allowed, which is why all are looked at.
-
-**Alternative formulation.** For $k = 1$, run Dijkstra from both ends and take the best $\text{dist}_1[a] + \text{dist}_n[b]$ over all roads $a - b$ with the road itself free (the same value, found without the extra dimension).
 
 ## 7. Bug catalogue
 
@@ -359,20 +327,6 @@ Input: `2 1`, then `1 2 1`.
 Wrong output `2 1`, correct output `1 1`. Both towns have total 1, and the problem asks for the smallest number; `<=` lets the later town replace the earlier one.
 
 **Fix:** replace the best only on a strictly smaller total.
-
-### Bug: using exactly $k$ free roads
-
-Template: up to $k$ free roads.
-
-```cpp
-best = dist[n][k];                    // instead of the minimum over all used
-```
-
-Input: `2 1 2`, then the road `1 2 7`.
-
-Wrong output `7`, correct output `0`. The only road can be free, which is state $(2, 1)$ at cost 0. Reaching $(2, 2)$ takes two moves along the road: pay 7 for one of them and drive the other for free. The program therefore pays for a road it never needed. The question allows *up to* $k$ free roads.
-
-**Fix:** take the minimum of `dist[n][used]` over `used = 0..k`.
 
 ## 8. Worked examples
 

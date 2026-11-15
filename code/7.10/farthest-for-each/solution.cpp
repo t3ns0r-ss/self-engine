@@ -23,7 +23,7 @@ struct Rooted {
 };
 
 // snippet:begin
-// Theorem 7.1.3 for a maximum, which has no inverse: the two best downward values of every vertex tell what remains when one
+// Theorem 7.10.2 for a maximum, which has no inverse: the two best downward values of every vertex tell what remains when one
 // child is left out. down[v] = the height of the subtree; up[c] = the longest path that leaves c through its parent.
 vector<int> farthestForEach(const Rooted& t) {
     vector<int> down(t.n, 0), up(t.n, 0), answer(t.n);

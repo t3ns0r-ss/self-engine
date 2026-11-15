@@ -24,7 +24,7 @@ struct Rooted {
 };
 
 // snippet:begin
-// Theorem 7.1.3, with the contribution of one child taken out of its parent. down[v] = w[v] + the child values that are above 0.
+// Theorem 7.10.1, with the contribution of one child taken out of its parent. down[v] = w[v] + the child values that are above 0.
 // answer[c] = down[c] + the part above c, which is answer[p] without what c itself gave to p.
 vector<long long> bestSubtreeForEach(const Rooted& t, const vector<long long>& w) {
     vector<long long> down(w), answer(t.n);

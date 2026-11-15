@@ -24,7 +24,7 @@ struct Rooted {
 };
 
 // snippet:begin
-// Theorem 7.1.3: down[v] = ways inside the subtree of v; up[c] = ways for the part above c as seen from its parent p. Prefix and
+// Theorem 7.10.1: down[v] = ways inside the subtree of v; up[c] = ways for the part above c as seen from its parent p. Prefix and
 // suffix products over the children take one child out without a division (M need not be a prime).
 vector<long long> countConnectedSets(const Rooted& t, long long M) {
     vector<long long> down(t.n, 1 % M), up(t.n, 0), answer(t.n);

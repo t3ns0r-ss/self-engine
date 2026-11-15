@@ -12,18 +12,28 @@ mkdir -p "$STAMPS"
 check_unit() {
   unit="$1"
   stamp="$STAMPS/$(echo "$unit" | tr '/' '_').sha"
-  hash=$( (find "$unit" -type f -not -path '*/.build/*' | sort | xargs sha256sum; sha256sum "$HERE/stress.sh"; echo "$STRESS_N") | sha256sum | cut -d' ' -f1)
+  hash=$( (find "$unit" -type f -not -path '*/.build/*' | sort | xargs sha256sum; sha256sum "$HERE/stress.sh" "$HERE/interact.sh" "$HERE/../code/shared/interact/interact.hpp"; echo "$STRESS_N") | sha256sum | cut -d' ' -f1)
   if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$hash" ]; then echo "skip (unchanged): $unit"; return 0; fi
   mkdir -p "$unit/.build"
   g++ -std=c++17 -O2 -Wall -Wextra -Werror -o "$unit/.build/solution" "$unit/solution.cpp" || { echo "COMPILE FAIL: $unit"; return 1; }
+  # Interactive unit: tests/judge.cpp plays the judge; each tests/k.in is a hidden test and tests/k.out the verdict file.
+  interactive=0
+  if [ -f "$unit/tests/judge.cpp" ]; then
+    interactive=1
+    g++ -std=c++17 -O2 -Wall -Wextra -Werror -o "$unit/.build/judge" "$unit/tests/judge.cpp" || { echo "COMPILE FAIL: $unit/tests/judge.cpp"; return 1; }
+  fi
   for in_file in "$unit"/tests/*.in; do
     [ -e "$in_file" ] || continue
     expected="${in_file%.in}.out"
     actual="$unit/.build/actual.out"
-    "$unit/.build/solution" < "$in_file" > "$actual" || { echo "RUN FAIL: $in_file"; return 1; }
+    if [ "$interactive" = 1 ]; then
+      bash "$HERE/interact.sh" "$unit/.build/solution" "$unit/.build/judge" "$in_file" "$actual" 5
+    else
+      "$unit/.build/solution" < "$in_file" > "$actual" || { echo "RUN FAIL: $in_file"; return 1; }
+    fi
     diff -q -Z "$actual" "$expected" > /dev/null || { echo "FAIL: $in_file"; return 1; }
   done
-  if [ -f "$unit/brute.cpp" ] && [ -f "$unit/gen.cpp" ]; then
+  if [ -f "$unit/gen.cpp" ] && { [ -f "$unit/brute.cpp" ] || [ -f "$unit/tests/judge.cpp" ]; }; then
     bash "$HERE/stress.sh" "$unit" "$STRESS_N" > /dev/null || { echo "STRESS FAIL: $unit"; return 1; }
   fi
   echo "$hash" > "$stamp"

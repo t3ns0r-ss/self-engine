@@ -19,6 +19,7 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 1 | [1.5 Greedy I: exchange argument, stays ahead (arrays and sorting only)](phase-1/1.5-greedy-1.md) | 4 | 9 | 12 | 4 | 3 | 32 | complete |
 | 1 | [1.6 Monotonic stack and deque](phase-1/1.6-monotonic-stack.md) | 2 | 0 | 10 | 5 | 3 | 20 | short |
 | 1 | [1.7 Bits: XOR properties, prefix XOR, per-bit contribution](phase-1/1.7-bits.md) | 5 | 3 | 12 | 4 | 3 | 27 | complete |
+| 1 | [1.8 Interactive problems: flushing, query budgets, adaptive judges](phase-1/1.8-interactive.md) | 0 | 2 | 2 | 3 | 9 | 16 | short |
 | 2 | [2.1 Sieve, factorisation, divisors, extended Euclid](phase-2/2.1-number-theory.md) | 2 | 5 | 9 | 3 | 2 | 21 | short |
 | 2 | [2.2 Fast exponentiation, Fermat's little theorem, modular inverse](phase-2/2.2-modular-arithmetic.md) | 3 | 3 | 4 | 5 | 3 | 18 | short |
 | 2 | [2.5 Linear Diophantine equations and the Chinese remainder theorem](phase-2/2.5-diophantine-crt.md) | 1 | 0 | 1 | 1 | 5 | 8 | short |

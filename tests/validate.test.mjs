@@ -148,9 +148,12 @@ test('LeetCode Hard is tier 3 or higher', () => {
 
 test('draft rows keep their place in the order but need no files; a live topic may not require a draft', () => {
   const rows = structuredClone(real.curriculum);
+  // Every planned topic may be live by now; then the last row (nothing requires it) stands in as a draft.
+  if (!rows.some((t) => t.draft)) rows.at(-1).draft = true;
   assert.ok(rows.some((t) => t.draft), 'the registry has draft rows');
   const errs = validateAll({ ...base(), curriculum: rows });
-  assert.ok(!errs.some((e) => /draft|pattern file/.test(e) && /1\.8|2\.5/.test(e)), errs.join('\n'));
+  const drafted = new RegExp(rows.filter((t) => t.draft).map((t) => `topic ${t.id.replace('.', '\\.')}\\b|${t.id.replace('.', '\\.')}\\.yaml`).join('|'));
+  assert.ok(!errs.some((e) => /draft|pattern file/.test(e) && drafted.test(e)), errs.join('\n'));
   const bad = structuredClone(rows);
   bad.find((t) => t.id === '1.5').requires.push('1.8'); // 1.8 is later than 1.5 and a draft
   assert.ok(validateAll({ ...base(), curriculum: bad }).some((e) => /1\.5 requires 1\.8/.test(e)));

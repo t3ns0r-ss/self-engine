@@ -62,4 +62,5 @@ Practice problems for every topic, grouped by difficulty tier (1 Warm-up, 2 Easy
 | 7 | [7.6 Sprague–Grundy theorem](phase-7/7.6-game-theory.md) | 7 | 6 | 0 | 2 | 4 | 19 | short |
 | 7 | [7.7 Matrix exponentiation for linear recurrences](phase-7/7.7-matrix-exponentiation.md) | 1 | 3 | 9 | 2 | 2 | 17 | short |
 | 7 | [7.8 Constructive algorithms](phase-7/7.8-constructive.md) | 15 | 8 | 2 | 0 | 0 | 25 | short |
+| 7 | [7.9 Maximum flow, minimum cut, bipartite matching](phase-7/7.9-flow-matching.md) | 2 | 4 | 1 | 4 | 0 | 11 | short |
 | 7 | [7.10 Technique recognition: mixed sets, topic not given](phase-7/7.10-recognition.md) | 0 | 0 | 0 | 0 | 0 | 0 | complete |

@@ -1,0 +1,34 @@
+---
+// Implementation drills (CURRICULUM_GAPS_PLAN.md Section 6, item 1). Usage in MDX: <ImplDrills topic="1.4" />
+// With no topic it lists every drill (the Drills page). Data: src/data/drills.yaml; code: code/{unit}/.
+import { Code } from '@astrojs/starlight/components';
+import { loadData, lessonHref } from '../lib/data';
+import { mathText } from '../lib/mathText';
+import { snippetOf } from '../lib/snippet';
+
+const { topic } = Astro.props as { topic?: string };
+const data = await loadData();
+const rank = new Map(data.curriculum.map((t) => [t.id, t.order]));
+const drills = data.drills.filter((d) => !topic || d.topic === topic).sort((a, b) => (rank.get(a.topic) ?? 0) - (rank.get(b.topic) ?? 0));
+const files = import.meta.glob('/code/**/drill-*/solution.cpp', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+const rows = drills.map((d) => {
+  const source = files[`/code/${d.unit}/solution.cpp`];
+  const t = data.curriculum.find((x) => x.id === d.topic)!;
+  return { d, code: (source && snippetOf(source)) ?? '', topicTitle: t.title, href: lessonHref(t) };
+});
+---
+<div class="impl-drills">
+  {rows.map(({ d, code, topicTitle, href }) => (
+    <article class="impl-drill" id={`drill-${d.id}`}>
+      <h4>{d.title} <span class="muted">· about {d.minutes} minutes{!topic && <> · topic <a href={href}>{d.topic} {topicTitle}</a></>}</span></h4>
+      <p set:html={mathText(d.task)} />
+      <details>
+        <summary>What to check, then the reference solution</summary>
+        <ul>{d.check.map((c) => <li set:html={mathText(c)} />)}</ul>
+        <p><strong>The bug this prevents:</strong> <Fragment set:html={mathText(d.bug)} /></p>
+        <Code code={code} lang="cpp" />
+        <p class="muted">Tested unit: <code>code/{d.unit}/</code> (reference solution, brute force, random tests).</p>
+      </details>
+    </article>
+  ))}
+</div>

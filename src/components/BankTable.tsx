@@ -11,7 +11,7 @@ export type BankTier = { tier: number; name: string; problems: BankRow[] };
 
 const PLATFORM: Record<string, string> = { codeforces: 'Codeforces', atcoder: 'AtCoder', cses: 'CSES', leetcode: 'LeetCode' };
 
-export default function BankTable({ tiers, patternNames }: { tiers: BankTier[]; patternNames: Record<string, string> }) {
+export default function BankTable({ tiers, patternNames, reading }: { tiers: BankTier[]; patternNames: Record<string, string>; reading?: string[] }) {
   const logs = useProblems();
   const st = useStatuses();
   const [open, setOpen] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function BankTable({ tiers, patternNames }: { tiers: BankTier[]; 
                         </tr>
                         {open === p.id && (
                           <tr className="log-row-container">
-                            <td colSpan={6}><LogPanel id={p.id} log={log} onDone={() => setOpen(null)} /></td>
+                            <td colSpan={6}><LogPanel id={p.id} log={log} reading={reading} onDone={() => setOpen(null)} /></td>
                           </tr>
                         )}
                       </Fragment>

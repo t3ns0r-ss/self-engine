@@ -3,7 +3,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { designTopicFile, designExerciseFile, unitYaml, labYaml, experimentRecord, inventoryFile, designConfig, rubricsFile, constantsFile, productNamesFile, curriculumFile, patternFile, bankFile, topicFile, glossaryFile } from '../../src/lib/schemas.mjs';
+import { designTopicFile, designExerciseFile, unitYaml, labYaml, experimentRecord, inventoryFile, designConfig, rubricsFile, constantsFile, productNamesFile, curriculumFile, patternFile, bankFile, topicFile, glossaryFile, drillsFile } from '../../src/lib/schemas.mjs';
 import { findLessons } from '../../src/lib/lessons.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -64,6 +64,8 @@ export function loadAll() {
   }
   const glossaryPath = join(DATA, 'glossary.yaml');
   const glossary = existsSync(glossaryPath) ? parseWith(glossaryFile, glossaryPath, errors) ?? [] : [];
+  const drillsPath = join(DATA, 'drills.yaml');
+  const drills = existsSync(drillsPath) ? parseWith(drillsFile, drillsPath, errors) ?? [] : [];
   const { lessons: allLessons, errors: lessonErrors } = findLessons(ROOT);
   errors.push(...lessonErrors);
   // CP validators only see CP lessons; design lessons are checked by validateDesignLesson.
@@ -108,5 +110,5 @@ export function loadAll() {
     const d = parseWith(experimentRecord, join(expDir, f), errors);
     if (d) designData.experiments[d.experiment] = d;
   }
-  return { curriculum, designCurriculum, designData, designLessons, patterns, banks, notes, topics, glossary, lessons, errors };
+  return { curriculum, designCurriculum, designData, designLessons, patterns, banks, notes, topics, glossary, drills, lessons, errors };
 }

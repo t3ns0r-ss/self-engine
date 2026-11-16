@@ -1,8 +1,10 @@
 // Per-problem log panel (PLAN.md Section 10.2), shared by the bank pages and, later, the ladder.
 import { useState } from 'react';
+import M from './M';
 import { MISTAKE_LABELS, STATUS_LABELS, saveProblem, today, type Mistake, type ProblemLog, type ProblemStatus } from '../lib/storage';
 
-export default function LogPanel({ id, log, onDone }: { id: string; log?: ProblemLog; onDone?: () => void }) {
+// `reading`: the three "Read one accepted solution" questions of the problem's topic (Phase 3 onwards, optional).
+export default function LogPanel({ id, log, onDone, reading }: { id: string; log?: ProblemLog; onDone?: () => void; reading?: string[] }) {
   const [form, setForm] = useState({
     budget: log?.budget ?? '',
     candidates: log?.candidates ?? '',
@@ -69,6 +71,13 @@ export default function LogPanel({ id, log, onDone }: { id: string; log?: Proble
           </select>
         </div>
       </div>
+      {reading && (form.status === 'solved' || form.status === 'solved_hints') && (
+        <details className="read-solution">
+          <summary>Optional: read one accepted solution (3 minutes)</summary>
+          <p>Open one accepted solution by someone else (sort the submissions by time or length), then answer in the note below:</p>
+          <ol>{reading.map((q, i) => <li key={i}><M t={q} /></li>)}</ol>
+        </details>
+      )}
       <label htmlFor={fid('note')}>Note</label>
       <textarea id={fid('note')} rows={2} value={form.note} onChange={set('note')} />
       <div className="log-actions">

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 // Validates curriculum, pattern files, and bank files (PROBLEM_BANK_PLAN.md Section 10).
 // Runs as the first step of `npm run build`; exits 1 with every error listed.
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { loadAll } from './lib/load.mjs';
 import { validateAll } from '../src/lib/validate.mjs';
 import { validateTopics } from '../src/lib/validate-topics.mjs';
+import { validateDrills } from '../src/lib/validate-drills.mjs';
 import { ROOT } from './lib/load.mjs';
 import { validateDesignFiles, validateCodeHygiene, validateDesignLesson, realFs } from '../src/lib/validate-design-files.mjs';
 import { validateDesignCurriculum, validateDesignCounts, validateRubrics, validateConstants } from '../src/lib/validate-design.mjs';
@@ -18,7 +21,7 @@ function designFileErrors(d) {
   }
   return out;
 }
-const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDesignCurriculum(data.designCurriculum), ...validateDesignCounts(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants), ...designFileErrors(data)])];
+const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDrills(data, (f) => existsSync(join(ROOT, f))), ...validateDesignCurriculum(data.designCurriculum), ...validateDesignCounts(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants), ...designFileErrors(data)])];
 if (errors.length) {
   console.error(`Validation failed with ${errors.length} error(s):`);
   for (const e of errors) console.error(`  - ${e}`);

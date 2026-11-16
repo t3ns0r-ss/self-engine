@@ -97,6 +97,8 @@ export default defineConfig({
         { label: 'Problems', link: '/problems/' },
         { label: 'Problem bank', link: '/bank/' },
         { label: 'Contest log', link: '/contests/' },
+        { label: 'Contest strategy', link: '/contest-strategy/' },
+        { label: 'Implementation drills', link: '/drills/' },
         { label: 'Progress', link: '/progress/' },
         { label: 'Profiles', link: '/profiles/' },
       ],

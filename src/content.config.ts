@@ -4,7 +4,7 @@ import { docsLoader } from '@astrojs/starlight/loaders';
 import { docsSchema } from '@astrojs/starlight/schema';
 import { z } from 'astro/zod';
 import { parse } from 'yaml';
-import { anyCurriculumRow, designTopicFile, patternFile, bankFile, topicFile, glossaryEntry } from './lib/schemas.mjs';
+import { anyCurriculumRow, designTopicFile, patternFile, bankFile, topicFile, glossaryEntry, implDrill } from './lib/schemas.mjs';
 
 export const collections = {
   docs: defineCollection({
@@ -17,6 +17,7 @@ export const collections = {
   bank: defineCollection({ loader: glob({ pattern: '*.yaml', base: 'src/data/bank' }), schema: bankFile }),
   topics: defineCollection({ loader: glob({ pattern: '[0-9]*.yaml', base: 'src/data/topics' }), schema: topicFile }),
   designTopics: defineCollection({ loader: glob({ pattern: '[LH]*.yaml', base: 'src/data/topics' }), schema: designTopicFile }),
+  drills: defineCollection({ loader: file('src/data/drills.yaml'), schema: implDrill.extend({ id: z.string() }) }),
   // Glossary entries have no id field; the term serves as one.
   glossary: defineCollection({
     loader: file('src/data/glossary.yaml', {

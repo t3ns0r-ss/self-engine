@@ -45,7 +45,7 @@ function Hints({ p, log, budget }: { p: LadderProblem; log?: ProblemLog; budget:
   );
 }
 
-export default function LadderIsland({ groups, more, budget }: { groups: LadderGroup[]; more: ExtraProblem[]; budget: string }) {
+export default function LadderIsland({ groups, more, budget, reading }: { groups: LadderGroup[]; more: ExtraProblem[]; budget: string; reading?: string[] }) {
   const logs = useProblems();
   const st = useStatuses();
   const [open, setOpen] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export default function LadderIsland({ groups, more, budget }: { groups: LadderG
                     {log?.hintsOpened ? <span className="muted"> · {log.hintsOpened} hint{log.hintsOpened > 1 ? 's' : ''} opened</span> : null}{' '}
                     <button type="button" className="secondary" aria-expanded={open === p.id} onClick={() => setOpen(open === p.id ? null : p.id)}>Log</button>
                   </div>
-                  {open === p.id && <LogPanel id={p.id} log={log} onDone={() => setOpen(null)} />}
+                  {open === p.id && <LogPanel id={p.id} log={log} reading={reading} onDone={() => setOpen(null)} />}
                 </article>
               );
             })}

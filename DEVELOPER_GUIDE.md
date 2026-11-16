@@ -49,6 +49,7 @@ node scripts/fetch_problem.mjs <id>     # read a problem statement (ids like lc-
 | `src/data/topics/{id-with-dash}.yaml` | everything structured in a lesson: `uses`, `theorems`, `cards`, `problems` (by role), `drill`, `lookalike_pairs`, `self_test`, `checkpoint`, `decision_map`, `glossary_added` |
 | `src/content/docs/phase-N/N-M-slug.mdx` | lesson prose; `phase-N/index.mdx` intro; `phase-N/exam.mdx` exam; `method.mdx` |
 | `code/{topic}/{unit}/` | tested C++ units: `solution.cpp`, `brute.cpp`, `gen.cpp`, `tests/*.in|out` |
+| `src/data/drills.yaml`, `src/pages/drills.astro`, `src/components/ImplDrills.astro` | implementation drills (not topics; units `code/<topic>/drill-*`; validator `validate-drills.mjs`). `read_solution` in a topic file (Phase 3+) feeds the box in `LogPanel.tsx`; `contest-strategy.mdx` is the contest rules page |
 | `src/lib/schemas.mjs` | Zod schemas (bank, topic file). `validate.mjs` bank rules; `validate-topics.mjs` + `validate-r2.mjs` topic and lesson rules |
 | `src/components/`, `src/pages/` | lesson components (`Cards`, `Ladder`, `Drill`, `Checkpoint`, `TopicHeader`, `PhaseExam`, ...) and pages (dashboard, handbook, glossary, problems, contests, progress, bank, review) |
 | `src/lib/storage.ts`, `useStore.ts` | all browser storage, versioned keys `cp:v1:*` |

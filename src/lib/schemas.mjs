@@ -230,6 +230,9 @@ export const topicFile = z.strictObject({
     over: z.array(z.strictObject({ topic: topicId.optional(), card: slug, because: z.string().min(1) })),
   })),
   glossary_added: z.array(z.string().min(1)),
+  // Optional "Read one accepted solution" prompt (CURRICULUM_GAPS_PLAN.md Section 6, item 5): shown in the log panel of
+  // a solved problem of this topic. Exactly three questions; allowed from Phase 3 onwards (checked in validate-drills.mjs).
+  read_solution: z.strictObject({ questions: z.tuple([z.string().min(1), z.string().min(1), z.string().min(1)]) }).optional(),
 });
 
 // src/data/glossary.yaml (PLAN.md Section 5.1).
@@ -240,6 +243,19 @@ export const glossaryEntry = z.strictObject({
   topic: topicId,
 });
 export const glossaryFile = z.array(glossaryEntry);
+
+// src/data/drills.yaml: implementation drills (CURRICULUM_GAPS_PLAN.md Section 6, item 1). Not topics.
+export const implDrill = z.strictObject({
+  id: slug,
+  title: z.string().min(1),
+  topic: topicId,
+  minutes: z.number().int().min(3).max(5),
+  unit: z.string().regex(/^\d+\.\d+\/[a-z0-9-]+$/, 'code unit like "0.1/drill-read-eof"'),
+  task: z.string().min(1),
+  check: z.array(z.string().min(1)).min(2).max(4),
+  bug: z.string().min(1),
+});
+export const drillsFile = z.array(implDrill);
 
 // ---- Design-track data files (DESIGN_TRACKS_PLAN.md Sections 3, 7.4, 7.5, 10.7) ----
 export const designConfig = z.strictObject({

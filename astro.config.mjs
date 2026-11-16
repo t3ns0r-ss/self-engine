@@ -99,6 +99,8 @@ export default defineConfig({
         { label: 'Contest log', link: '/contests/' },
         { label: 'Contest strategy', link: '/contest-strategy/' },
         { label: 'Implementation drills', link: '/drills/' },
+        { label: 'Volume set', link: '/volume/' },
+        { label: 'Bridge set', link: '/bridge/' },
         { label: 'Progress', link: '/progress/' },
         { label: 'Profiles', link: '/profiles/' },
       ],

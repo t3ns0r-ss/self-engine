@@ -7,6 +7,7 @@ import { loadAll } from './lib/load.mjs';
 import { validateAll } from '../src/lib/validate.mjs';
 import { validateTopics } from '../src/lib/validate-topics.mjs';
 import { validateDrills } from '../src/lib/validate-drills.mjs';
+import { validateSets } from '../src/lib/validate-sets.mjs';
 import { ROOT } from './lib/load.mjs';
 import { validateDesignFiles, validateCodeHygiene, validateDesignLesson, realFs } from '../src/lib/validate-design-files.mjs';
 import { validateDesignCurriculum, validateDesignCounts, validateRubrics, validateConstants } from '../src/lib/validate-design.mjs';
@@ -21,7 +22,7 @@ function designFileErrors(d) {
   }
   return out;
 }
-const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDrills(data, (f) => existsSync(join(ROOT, f))), ...validateDesignCurriculum(data.designCurriculum), ...validateDesignCounts(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants), ...designFileErrors(data)])];
+const errors = [...data.errors, ...(data.errors.length ? [] : [...validateAll(data), ...validateTopics(data), ...validateDrills(data, (f) => existsSync(join(ROOT, f))), ...validateSets(data), ...validateDesignCurriculum(data.designCurriculum), ...validateDesignCounts(data.designCurriculum), ...validateRubrics(data.designData.rubrics), ...validateConstants(data.designData.constants), ...designFileErrors(data)])];
 if (errors.length) {
   console.error(`Validation failed with ${errors.length} error(s):`);
   for (const e of errors) console.error(`  - ${e}`);

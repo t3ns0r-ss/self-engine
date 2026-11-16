@@ -23,7 +23,7 @@ GitHub Actions runs all four on every push and pull request (`.github/workflows/
 ## Where things live
 | Path | What |
 |---|---|
-| `src/data/curriculum.yaml` | the 48 topics, in order |
+| `src/data/curriculum.yaml` | the 58 topics, in order |
 | `src/data/bank/patterns/{id}.yaml` | the patterns for each topic (a pattern is a named sub-type of the topic's technique, with the precondition that makes it work) |
 | `src/data/bank/{id}.yaml` | the problems for each topic: practice and reserved sets |
 | `notes/bank/{id}.md` | solution notes for every bank problem (not shown on the site) |

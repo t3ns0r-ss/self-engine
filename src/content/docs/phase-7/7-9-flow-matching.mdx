@@ -1,0 +1,549 @@
+---
+title: "7.9 Maximum flow, minimum cut, bipartite matching"
+sidebar:
+  order: 47.5
+topic: "7.9"
+---
+import { Code } from '@astrojs/starlight/components';
+import TopicHeader from '../../../components/TopicHeader.astro';
+import TheoremCode from '../../../components/TheoremCode.astro';
+import CodeSnippet from '../../../components/CodeSnippet.astro';
+import WhatYouNeed from '../../../components/WhatYouNeed.astro';
+import Cards from '../../../components/Cards.astro';
+import Ladder from '../../../components/Ladder.astro';
+import Drill from '../../../components/Drill.astro';
+import LookalikePairs from '../../../components/LookalikePairs.astro';
+import SelfTest from '../../../components/SelfTest.astro';
+import Checkpoint from '../../../components/Checkpoint.astro';
+import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
+
+<TopicHeader topic="7.9" />
+
+This topic combines [graph traversal](../../phase-4/4-1-graph-traversal/) (a graph as lists of edges, and breadth-first search, which here searches the graph of the room that is left) and the idea of a *cut* from [disjoint set union and minimum spanning trees](../../phase-4/4-5-dsu-mst/) (a split of the vertices into two sides). A flow is pushed along paths that a search finds, and a cut is the two-sided split that says when no path is left. The cut is the part of the answer that a search alone never shows.
+
+## 1. Why this topic exists
+
+Here is a small problem. A network has $n = 500$ computers and $m = 1000$ one-way links. Link $i$ can carry at most $c_i \le 10^9$ units of data per second. How much data per second can computer 1 send to computer $n$, when the data may be split over many routes at the same time?
+
+Trying sets of links is out of the question: there are $2^{1000}$ of them. Sending the data along the best route again and again does not work either, because the routes compete for the same links and an early choice can block a better total. A small case shows it: with links $s \to a$, $s \to b$, $a \to b$, $a \to t$ and $b \to t$, all of capacity 1, the route $s, a, b, t$ uses up the links $s \to a$ and $b \to t$ and leaves one unit of the best total unused.
+
+The way out has two parts. The first is to allow a route to *take flow back*: after sending 1 unit along $s, a, b, t$, the link $a \to b$ may be used backwards, which cancels that unit and lets $s, b, a, t$ send another one. The second is a *certificate*: when no route with room is left, the vertices that can still be reached from $s$ form a set whose outgoing links are all full, and their capacity is exactly the flow. Nothing larger is possible, because every unit of flow must leave that set through one of those links. The two parts together are the **maximum-flow minimum-cut theorem**.
+
+The same machinery solves more than routing. Pairing people with jobs, covering all marked cells with the fewest rows and columns, finding the most paths that share no road, and colouring a grid with a cost for every neighbouring pair of different colours are all maximum flows in a suitable network. The skill of the topic is to recognise which of these a statement is, and to build the network with the right capacities. At $n = 500$ vertices and $m = 1000$ edges the best algorithm of this lesson needs at most $V^2 E = 2.5 \cdot 10^8$ steps and usually far fewer.
+
+## 2. Prerequisites and scope
+
+### What you need
+
+<WhatYouNeed topic="7.9" />
+
+### What this topic does not cover
+
+- Minimum-cost flow (sending a given amount at the least total price per unit), flows with lower bounds on the edges, and circulations: not in this course.
+- Matching in graphs that are not bipartite (the blossom algorithm), and weighted matching (the Hungarian algorithm, the assignment problem with costs): not in this course.
+- The push-relabel method, and Stoer–Wagner minimum cuts of undirected graphs without a source and a sink: not in this course. The bounds proved here are $O(V E^2)$ and $O(V^2 E)$ for flows in general and $O(E \sqrt{V})$ for matching (Theorem 7.9.9).
+- Flows with real-number capacities: not in this course. All capacities here are whole numbers.
+
+## 3. Definitions
+
+- A **flow network** is a directed graph with a **source** $s$, a **sink** $t \ne s$, and a **capacity** $c(u, v)$, a whole number at least 0, on every edge $(u, v)$. We merge repeated edges by adding their capacities. An edge in both directions between two vertices is two edges.
+- A **flow** $f$ gives each edge a number $0 \le f(u, v) \le c(u, v)$ so that at every vertex other than $s$ and $t$ the flow into it equals the flow out of it (**conservation**). The **value** of $f$ is the flow out of $s$ minus the flow into $s$. Example: in the network $s \to a$ (2), $a \to t$ (1), putting 1 on both edges is a flow of value 1.
+- The **residual graph** of $f$ has, for every edge $(u, v)$, a forward edge $(u, v)$ with **room** $c(u, v) - f(u, v)$ and a backward edge $(v, u)$ with room $f(u, v)$ (the flow that could be taken back). Only edges with room above 0 are present. If both $(u, v)$ and $(v, u)$ are edges, their rooms add up in each direction.
+- An **augmenting path** of a flow is a path from $s$ to $t$ in its residual graph. Its **bottleneck** is the smallest room on it. **Pushing** along it adds the bottleneck to $f$ on forward edges and subtracts it on backward edges. Example: after the flow of value 1 above, the residual graph has $s \to a$ with room 1, $a \to s$ with room 1 and $t \to a$ with room 1, but no edge from $a$ to $t$, so there is no augmenting path.
+- An **$s$–$t$ cut** is a cut ([minimum spanning trees](../../phase-4/4-5-dsu-mst/): a split of the vertices into two sets) with $s$ in one set $S$ and $t$ in the other, $T$. Its **capacity** is the sum of $c(u, v)$ over the edges with $u \in S$ and $v \in T$. Edges from $T$ to $S$ are not counted. Example: for $s \to a$ (2), $a \to t$ (1), the cut $S = \{s\}$ has capacity 2 and $S = \{s, a\}$ has capacity 1.
+- In a residual graph, the **level** of a vertex is the fewest edges on a path from $s$ to it. The **level graph** keeps the edges $(u, v)$ with level of $v$ equal to level of $u$ plus 1. A **blocking flow** is a flow in the level graph after which every path from $s$ to $t$ in the level graph has a full edge.
+- A **matching** in a graph is a set of edges, no two of which share a vertex. In a **bipartite graph** ([graph structure](../../phase-4/4-2-graph-structure/): the vertices split into a left and a right side, and every edge joins the two sides) a matching pairs left items with right items, each at most once. A vertex is **matched** if an edge of the matching touches it, and **free** otherwise.
+- With a matching $M$, a path is **alternating** if its edges are, in turn, not in $M$ and in $M$. An **augmenting path of a matching** starts at a free left vertex, ends at a free right vertex, and alternates; it has one more non-matching edge than matching edges. (The flow and the matching meaning of "augmenting path" are different objects with the same job: they make the answer one larger.)
+- A **vertex cover** is a set of vertices that touches every edge. An **independent set** is a set of vertices with no edge between two of them. A set is independent exactly when the vertices outside it are a vertex cover.
+
+In code, capacities and flows are `long long` because a flow can be as large as $m \cdot 10^9$ ([topic 0.1](../../phase-0/0-1-cpp-for-cp/)). An "infinite" capacity is a number larger than every possible total, such as $10^{18}$ when the real totals stay below $10^{15}$.
+
+## 4. Theory and proofs
+
+### 4.1 Maximum flow equals minimum cut
+
+**Theorem 7.9.1 (maximum flow and minimum cut).** Let $f$ be a flow in a network with whole-number capacities. The following three statements are equivalent:
+
+(a) $f$ has the largest value among all flows;
+
+(b) the residual graph of $f$ has no path from $s$ to $t$;
+
+(c) the value of $f$ equals the capacity of some $s$–$t$ cut.
+
+If (b) holds, then the set $S$ of vertices reachable from $s$ in the residual graph is such a cut, and it is a minimum cut. The method "push along any augmenting path until there is none" ends, with a maximum flow, after at most as many rounds as the largest flow value.
+
+:::tip[In plain words]
+Keep pushing flow along any path that still has room, counting backward edges that undo earlier pushes. When no such path is left, the flow is as large as possible, and the vertices you can still reach from the source form a cut that is exactly as small as the flow.
+:::
+
+**A tiny instance.** The network $s \to a$ (2), $s \to b$ (2), $a \to b$ (1), $a \to t$ (1), $b \to t$ (2). The flow with 1 on $s \to a$, 2 on $s \to b$, 1 on $a \to t$, 2 on $b \to t$ and 0 on $a \to b$ has value 3 (conservation holds at $a$: 1 in, 1 out; and at $b$: 2 in, 2 out). The edge $s \to b$ is full, $a \to t$ and $b \to t$ are full, so the residual graph keeps $s \to a$ (room 1) and $a \to b$ (room 1). The reachable set is $S = \{s, a, b\}$, and the edges from $S$ to $\{t\}$ are $a \to t$ and $b \to t$, with capacity $1 + 2 = 3$, the value of the flow.
+
+**Proof.**
+1. For any flow $f$ and any $s$–$t$ cut $(S, T)$, add up "flow out minus flow in" over the vertices of $S$. For $s$ it is the value of $f$; for every other vertex of $S$ it is 0 by conservation.
+2. An edge with both ends in $S$ is counted once as out and once as in, so it cancels. What is left is $\text{value}(f) = f(S \to T) - f(T \to S) \le f(S \to T) \le \text{capacity}(S, T)$, because $0 \le f \le c$ on every edge. So no flow is larger than any cut.
+3. (a) implies (b): suppose the residual graph has an $s$–$t$ path with bottleneck $b$. All rooms are whole numbers above 0, so $b \ge 1$. Pushing $b$ keeps every edge within $[0, c]$ and keeps conservation (the path enters and leaves each inner vertex once), and raises the value by $b$. So $f$ was not largest.
+4. (b) implies (c): let $S$ be the set reachable from $s$; $t \notin S$. An edge $(u, v)$ with $u \in S$, $v \notin S$ has room 0 (otherwise $v$ is reachable), so $f(u, v) = c(u, v)$. An edge $(v, u)$ with $v \notin S$, $u \in S$ has a backward edge $(u, v)$ with room $f(v, u)$, which must be 0. So $f(S \to T) = \text{capacity}(S, T)$ and $f(T \to S) = 0$, and by step 2 the value equals the capacity.
+5. (c) implies (a): by step 2 every flow has value at most the capacity of that cut, which is the value of $f$.
+6. The three statements are equivalent. With (b) and (c), the cut $S$ of step 4 has capacity equal to the value of $f$, and every other cut has capacity at least that value (step 2), so $S$ is a minimum cut. Each round of the method raises the value by at least 1 and the value never exceeds the capacity of any cut, so the method stops, and at the stop (b) holds. This shows all statements of the theorem. $\square$
+
+:::note[This proof needs]
+1. Whole-number capacities, so that every bottleneck is at least 1 and the method stops. With real numbers an unlucky choice of paths may never stop.
+2. The residual graph contains the backward edges (the room to take flow back); without them step 4 does not hold.
+3. Conservation at every vertex except $s$ and $t$, and $s \ne t$.
+:::
+
+<TheoremCode unit="7.9/thm-1" />
+
+The first example is the tiny instance: the flow 3, the source side $\{0, 1, 2\}$ (the vertices $s$, $a$, $b$) and the cut capacity 3 (steps 4 and 2). In the second, the diamond, the source side is $\{s\}$ alone: both edges that leave $s$ are full, and the cut capacity equals the flow 2. In the third there is no path from $s$ to $t$ at all: the flow is 0, and the source side $\{s, a\}$ has capacity 0. The fourth shows capacities of $4 \cdot 10^{18}$: the flow fits in a `long long`, while the sum of three such capacities, $1.2 \cdot 10^{19}$, would not (the largest `long long` is about $9.2 \cdot 10^{18}$).
+
+### 4.2 A choice of sides is a cut
+
+**Theorem 7.9.2 (labelling as a cut).** Let there be $n$ items. Item $i$ takes side $S$ or side $T$; it pays $a_i \ge 0$ if it takes $S$ and $b_i \ge 0$ if it takes $T$. For every listed triple $(i, j, w)$ with $w \ge 0$, the penalty $w$ is paid when $i$ takes $S$ and $j$ takes $T$. Build a network with a source $s$, a sink $t$ and one vertex per item, with edges $s \to i$ of capacity $b_i$, $i \to t$ of capacity $a_i$, and $i \to j$ of capacity $w$ for each triple. Then the smallest total cost over all $2^n$ choices equals the capacity of a minimum $s$–$t$ cut, which equals the value of a maximum flow, and the items on the source side of a minimum cut are the items that take side $S$.
+
+:::tip[In plain words]
+If every item takes one of two sides, pays a cost for its side, and some listed pairs pay a penalty when the first is on one side and the second on the other, then the cheapest choice costs the same as a minimum cut of a network that has one edge for each cost and each penalty.
+:::
+
+**A tiny instance.** Two items with $a = (2, 6)$, $b = (5, 1)$ and one triple $(1, 2, 3)$ (item 1 on $S$ and item 2 on $T$ costs 3 more). The four choices cost: both on $S$: $2 + 6 = 8$; item 1 on $S$, item 2 on $T$: $2 + 1 + 3 = 6$; item 1 on $T$, item 2 on $S$: $5 + 6 = 11$; both on $T$: $5 + 1 = 6$. The smallest cost is 6. The network has $s \to 1$ (5), $s \to 2$ (1), $1 \to t$ (2), $2 \to t$ (6), $1 \to 2$ (3), and its largest flow is $2 + 3 + 1 = 6$.
+
+**Proof.**
+1. A choice of sides gives the $s$–$t$ cut $S^* = \{s\} \cup \{\text{items that take } S\}$, and every $s$–$t$ cut comes from exactly one choice. So the choices and the cuts are the same set.
+2. The capacity of that cut is the sum over the edges from $S^*$ to its complement. The edge $s \to i$ is in the sum exactly when $i$ takes $T$, and it adds $b_i$.
+3. The edge $i \to t$ is in the sum exactly when $i$ takes $S$, and adds $a_i$. The edge $i \to j$ is in the sum exactly when $i$ takes $S$ and $j$ takes $T$, and adds $w$.
+4. So the capacity of the cut is exactly the total cost of the choice. The cheapest choice is therefore the minimum cut, whose capacity is the maximum flow by Theorem 7.9.1. The items on the source side of the minimum cut are the items that take $S$. $\square$
+
+:::note[This proof needs]
+1. Every cost $a_i$, $b_i$ and every penalty $w$ is a whole number that is at least 0. A negative number cannot be a capacity; a constant added to both $a_i$ and $b_i$ of an item removes a negative value.
+2. A penalty is for the pair "$i$ on $S$ and $j$ on $T$" in that order. A penalty for either order needs both edges $i \to j$ and $j \to i$.
+3. An item that must take one side has an infinite cost ($10^{18}$, above the sum of everything else) for the other side.
+:::
+
+<TheoremCode unit="7.9/thm-2" />
+
+The first example is the tiny instance (steps 2 to 4). The second is a cycle of three pairs with equal costs: all items on one side costs 12, and every mixed choice pays at least one penalty on top. In the third the penalty is huge, so the cut puts both items on $S$ and the answer is the two small costs. In the fourth every number is 0 and so is the answer.
+
+**How to write a wish as an edge.** With the network of the theorem, the common wishes are:
+
+| Wish | Edge |
+|---|---|
+| Item $i$ must be on $S$ | $s \to i$ with infinite capacity |
+| Item $i$ must be on $T$ | $i \to t$ with infinite capacity |
+| Pay $w$ if $i$ and $j$ are on different sides | $i \to j$ and $j \to i$, each with capacity $w$ |
+| Taking $i$ forces taking $j$ (a closure: $i$ on $S$ means $j$ on $S$) | $i \to j$ with infinite capacity |
+| Pay $w$ if $i$ and $j$ are both on $S$ | possible when every such pair joins group $A$ to group $B$: swap the meaning of the sides for group $B$, and the pair becomes "$i$ on $S$, $j'$ on $T$": an edge $i \to j'$ with capacity $w$ |
+
+The last row is the trick of "choose rows and columns" and "colour a chessboard": the two groups are the two sides of a bipartite structure, so one group's sides can be swapped without changing the problem.
+
+### 4.3 Shortest augmenting paths: the Edmonds–Karp bound
+
+**Theorem 7.9.3 (Edmonds–Karp).** In the method of Theorem 7.9.1, let every round push along a path with the fewest edges in the residual graph (found by breadth-first search). Let $V$ be the number of vertices and $E$ the number of edges. Then:
+
+(a) the number of edges of the path used never decreases from one round to the next;
+
+(b) there are at most $V \cdot E$ rounds, so the whole method takes $O(V E^2)$ steps.
+
+:::tip[In plain words]
+If every round pushes along a path with the fewest edges, the length of that path never goes down, and every edge can be the one that fills up only about half as many times as there are vertices. So the number of rounds depends on the shape of the network only, not on the capacities.
+:::
+
+**A tiny instance.** The network $s \to a$ (1000), $s \to b$ (1000), $a \to b$ (1), $a \to t$ (1000), $b \to t$ (1000) has 4 vertices and 5 edges. Breadth-first search uses $s, a, t$ (2 edges) and $s, b, t$ (2 edges): 2 rounds, flow 2000, well below $V \cdot E = 20$. A choice that always passes the middle edge, $s, a, b, t$ and then $s, b, a, t$, pushes only 1 unit per round and needs 2000 rounds. The shortest-path rule rules this out.
+
+**Proof.** Let $d_k(v)$ be the fewest edges from $s$ to $v$ in the residual graph before round $k$.
+1. A round removes some edges of the path (those that become full) and adds backward edges $(v, u)$ of the path edges $(u, v)$. On a shortest path every edge has $d_k(v) = d_k(u) + 1$, so every new edge goes from a vertex to one that is one step closer to $s$: $d_k(u) = d_k(v) - 1$.
+2. So in the new graph every edge $(x, y)$ satisfies $d_k(y) \le d_k(x) + 1$: an old edge by the definition of distance, a new edge because it goes one step back.
+3. Take a shortest path from $s$ to a vertex $v$ in the new residual graph (a vertex that was not reachable stays unreachable, because new edges join only vertices on the old path). Along it, $d_k$ rises by at most 1 per edge, from $d_k(s) = 0$ to $d_k(v)$, so the path has at least $d_k(v)$ edges: $d_{k+1}(v) \ge d_k(v)$. In particular the length of the augmenting path, $d_k(t)$, never decreases. This is (a).
+4. Call an edge $(u, v)$ *critical* in round $k$ if it is on the path and its room is the bottleneck, so that it is gone afterwards. It can come back only after its backward edge $(v, u)$ is on a later path, in a round $i$; there $d_i(u) = d_i(v) + 1$. By step 3, $d_i(v) \ge d_k(v) = d_k(u) + 1$, so $d_i(u) \ge d_k(u) + 2$.
+5. So between two rounds in which the same edge is critical, the distance of its tail $u$ grows by at least 2. That distance is between 0 and $V - 2$ (the tail is not $t$), so one edge is critical at most $V / 2$ times.
+6. There are at most $2E$ edges in a residual graph (each edge and its backward edge), and each round has at least one critical edge. So there are at most $2E \cdot V / 2 = V \cdot E$ rounds. Each round costs $O(E)$ for the search, so the total is $O(V E^2)$. This is (b). $\square$
+
+:::note[This proof needs]
+1. Every round uses a path with the fewest edges (breadth-first search), not any path.
+2. The backward edges are in the residual graph, as in Theorem 7.9.1; the proof is about how they appear.
+3. The bound counts rounds and does not depend on the capacities, which may be as large as $10^9$.
+:::
+
+<TheoremCode unit="7.9/thm-3" />
+
+The first example is the tiny instance: two rounds with paths of 2 edges each, in step 3 a path length that does not decrease. The line that follows it shows the unlucky choice: 2000 rounds to reach the same flow. The third example has six vertices: the path through $s, 1, 5$ has 2 edges and the next one, $s, 2, 3, 4, 5$, has 4, so the length goes up (step 3). The fourth is a chain: one round with 3 edges. The code also checks both claims on every graph with 4 vertices and capacities 0, 1 or 2.
+
+### 4.4 Dinic: phases of shortest paths
+
+**Theorem 7.9.4 (Dinic).** In the residual graph let the level of a vertex be its distance from $s$. One **phase** of Dinic's algorithm builds the level graph by breadth-first search, then pushes a blocking flow in it: it repeatedly finds a path from $s$ to $t$ using level-graph edges with room, and pushes along it, until every such path has a full edge. The algorithm repeats phases until $t$ is no longer reachable. Then:
+
+(a) after each phase the distance from $s$ to $t$ is strictly larger than before;
+
+(b) there are at most $V - 1$ phases, and the final flow is a maximum flow;
+
+(c) a phase takes $O(V E)$ steps, so the whole algorithm takes $O(V^2 E)$ steps.
+
+:::tip[In plain words]
+Dinic pushes flow along shortest paths only until every shortest path has a full edge. After that phase the shortest path to the sink is strictly longer. A path has fewer than V edges, so there are fewer than V phases.
+:::
+
+**A tiny instance.** The six-vertex network of Theorem 7.9.3 ($s \to 1$ (1), $s \to 2$ (1), $1 \to 3$ (1), $2 \to 3$ (1), $3 \to 4$ (2), $4 \to 5$ (2), $1 \to 5$ (1)). Phase 1: the distance from $s$ to $t = 5$ is 2 (only $s, 1, 5$), and the blocking flow sends 1 unit along it. Phase 2: now $s \to 1$ is full, the distance is 4, along $s, 2, 3, 4, 5$, and 1 more unit is sent. Phase 3 finds no path. The distances 2 and 4 increase, as the theorem says, and the flow is 2.
+
+**Proof.** Let $L$ be the distance from $s$ to $t$ at the start of the phase.
+1. Every edge of the level graph goes from level $d$ to level $d + 1$, so every path from $s$ to $t$ in it has exactly $L$ edges.
+2. While the phase runs, a push removes edges that become full and adds backward edges of path edges. A backward edge goes from level $d + 1$ to level $d$, so it is never in the level graph, and the level graph only loses edges.
+3. Suppose that after the phase there is a path $P$ from $s$ to $t$ with at most $L$ edges in the new residual graph. Every old edge $(x, y)$ has level of $y$ at most level of $x$ plus 1, and every new backward edge goes down one level, so along $P$ the level rises by at most 1 per edge, from 0 to $L$.
+4. So $P$ has exactly $L$ edges, and each of them rises exactly one level: all of them are old level-graph edges that are not full. That is a path of the level graph with no full edge, which contradicts the blocking flow. So $d(s, t) > L$ after the phase. This is (a).
+5. The distance is a whole number from 1 to $V - 1$ while $t$ is reachable, so there are at most $V - 1$ phases. At the end there is no augmenting path, so by Theorem 7.9.1(b) the flow is maximum. This is (b).
+6. In a phase, a depth-first search with a pointer for each vertex finds the paths. Each pointer only moves forward, past an edge that is full or leads nowhere, so all pointer moves together cost $O(E)$. Each found path has at most $V$ edges and fills at least one edge, so there are at most $E$ paths and $O(V E)$ steps for them. A phase costs $O(V E)$ and the whole run $O(V \cdot V E)$. This is (c). $\square$
+
+:::note[This proof needs]
+1. The levels are computed by breadth-first search in the residual graph with its backward edges (Theorem 7.9.1).
+2. A phase ends only when no path of the level graph has room (a blocking flow), and a pointer moves forward only past an edge that is full or has no way on to $t$.
+3. The bound $V - 1$ counts distances; the algorithm is usually much faster than $V^2 E$, and the unit networks of matching and disjoint paths are the fast cases.
+:::
+
+<TheoremCode unit="7.9/thm-4" />
+
+The first example is a network with the flow 3 in one phase of distance 2. The second is the network with two wide paths, flow 2000 in one phase: both paths have distance 2, and the cross edge is never used. The third is the tiny instance: distances 2 and 4 (steps 4 and 5). The code also runs thousands of random graphs, compares the flow with the cheapest cut, and checks that the distance grows in every phase.
+
+### 4.5 Matching is flow
+
+**Theorem 7.9.5 (matching as flow).** Let a bipartite graph have left vertices $1, \dots, L$, right vertices $1, \dots, R$ and a list of edges (the allowed pairs). Build the **unit network** with a source $s$, a sink $t$, edges $s \to u$ for every left vertex $u$, edges $u \to v$ for every allowed pair, and edges $v \to t$ for every right vertex $v$, all of capacity 1. Then:
+
+(a) every matching of size $k$ gives a flow of value $k$, and every flow with whole-number values and value $k$ gives a matching of size $k$ (the allowed pairs whose edge carries 1);
+
+(b) the largest matching has as many pairs as the largest flow has units, and the pairs are read from the edges that carry flow.
+
+:::tip[In plain words]
+Pairing items is the same as sending one unit of water through each pair: a pipe of width 1 into every left item and out of every right item makes sure that each is used at most once. The largest matching has as many pairs as the largest flow has units.
+:::
+
+**A tiny instance.** Left vertices 1, 2, 3; right vertices $a$, $b$, $c$; allowed pairs $1a$, $1b$, $2a$, $3a$. The unit network has the middle edges $1 \to a$, $1 \to b$, $2 \to a$, $3 \to a$. The flow that sends 1 along $s, 1, b, t$ and 1 along $s, 2, a, t$ has value 2 and uses the pairs $1b$ and $2a$. A third unit would need to enter $a$ or $b$ again from vertex 3, but $a \to t$ is already full and $b$ has no other neighbour.
+
+**Proof.**
+1. From a matching $M$, put 1 on $s \to u$, $u \to v$ and $v \to t$ for each pair $uv$ of $M$. Each left vertex is in at most one pair, so $s \to u$ carries at most 1; the same holds for $v \to t$. Conservation holds at each $u$ and $v$ (1 in, 1 out). The value is $|M|$.
+2. Let $f$ be a flow with whole-number values. Every edge has capacity 1, so every value is 0 or 1. At a left vertex $u$ the flow in is at most 1 (the edge $s \to u$), and by conservation the flow out on the middle edges equals the flow in, so at most one middle edge at $u$ carries 1. The same argument at a right vertex $v$ shows at most one middle edge at $v$ carries 1.
+3. So the middle edges that carry 1 form a matching $M'$. Every unit of flow goes along a path $s, u, v, t$ with one middle edge, so $|M'|$ equals the value of $f$. This is (a).
+4. By Theorem 7.9.1, a method that pushes whole numbers along augmenting paths ends with a flow of whole numbers whose value is the largest of all flows. By step 1 every matching is such a flow and by step 3 every such flow is a matching, so the largest matching is as large as the largest flow. This is (b). $\square$
+
+:::note[This proof needs]
+1. The graph is bipartite: the left and the right items are different groups and every allowed pair joins one of each.
+2. Every capacity is 1 (and a whole number), so each item is used at most once and the flow found by augmenting paths has whole values.
+3. Repeated allowed pairs add up their capacities in the network; list each pair once.
+:::
+
+<TheoremCode unit="7.9/thm-5" />
+
+The first example is the tiny instance, and it also shows the reverse edge at work: the first path found is $s, 1, a, t$, and the second, $s, 2, a, 1, b, t$, takes the pair $1a$ back and gives vertex 1 the vertex $b$, so the final pairs are $1b$ and $2a$ (steps 1 to 4). The second example is a full square with 2 pairs. The third has no allowed pair and no flow, and the fourth is one left vertex with three allowed partners and one pair.
+
+### 4.6 Kuhn's algorithm
+
+**Theorem 7.9.6 (Kuhn).** Let $M$ be a matching of a bipartite graph.
+
+(a) $M$ is a largest matching if and only if there is no augmenting path of $M$ (an alternating path from a free left vertex to a free right vertex). Flipping the edges of an augmenting path gives a matching with one more pair.
+
+(b) Kuhn's algorithm takes the left vertices one at a time and, for each, searches for an augmenting path that starts at it (a depth-first search that visits each right vertex at most once) and flips it if it finds one. At the end $M$ is a largest matching, after $O(V E)$ steps.
+
+:::tip[In plain words]
+A matching is largest exactly when no path alternates from an unpaired left item to an unpaired right item. If the search from one item finds no such path, it will not find one later either, so one try per left item is enough.
+:::
+
+**A tiny instance.** Left vertices 1, 2, 3 with allowed right vertices $1: \{a, b\}$, $2: \{a\}$, $3: \{a\}$. Vertex 1 takes $a$. Vertex 2 finds $a$ taken by 1, asks 1 to move to $b$ (a free vertex), and takes $a$: the pairs are $1b$ and $2a$. Vertex 3 finds only $a$, which belongs to 2; 2 has no other choice and 1 would have to move to $a$ again, which is already visited: the search fails, and vertex 3 stays free. The matching has 2 pairs, and no augmenting path exists.
+
+**Proof.**
+1. Flipping an augmenting path swaps its matching and non-matching edges. The inner vertices keep one matching edge each, and the two free ends become matched, so the result is a matching with one more pair.
+2. If $M$ is not largest, take a larger matching $M^*$. Look at the edges that are in exactly one of $M$ and $M^*$. Every vertex has at most one edge from each, so these edges form paths and cycles that alternate between the two. There are more $M^*$ edges than $M$ edges in total, so some component is a path with one more $M^*$ edge than $M$ edges, starting and ending with an $M^*$ edge. Its two ends are free in $M$: if an edge $e$ of $M$ touched an end $x$, then either $e$ is also in these edges (and $x$ would have two edges in the path, but it is an end) or $e \in M^*$ (and $x$ would have two edges of $M^*$). That path is an augmenting path of $M$. This proves (a).
+3. *Claim.* Suppose the free left vertex $u$ has no augmenting path, and let $A$ be the set of vertices reachable from $u$ by alternating paths (from a left vertex along a non-matching edge, from a right vertex along its matching edge). Every right vertex of $A$ is matched (else there is an augmenting path), and every left vertex of $A$ except $u$ is matched, to a right vertex of $A$.
+4. Let $P$ be an augmenting path starting at another free left vertex $w$. Then $P$ has no vertex of $A$. Suppose it had, and let $x$ be the first one on $P$. It is not $u$ ($u$ is free and not an end of $P$) and it is not a left vertex (such a vertex is entered along its matching edge from its partner, which is in $A$ and earlier on $P$). So $x$ is a right vertex of $A$, matched, and $P$ goes on along its matching edge to a left vertex of $A$ and then along a non-matching edge to a right vertex, which is also in $A$ (reachable from the left vertex). The path stays in $A$ until its last vertex, a free right vertex, which cannot be in $A$. This is a contradiction.
+5. So flipping $P$ changes no edge at a vertex of $A$, and $u$ still has no augmenting path afterwards. The same holds after any number of later flips. A search from $u$ that fails (the depth-first search visits exactly the right vertices of $A$ and finds no free one) therefore never needs to be tried again.
+6. A left vertex that is matched stays matched after a flip. So after the last search, every left vertex is either matched, or was free with no augmenting path and still has none. Every augmenting path starts at a free left vertex, so none exists, and $M$ is largest by (a).
+7. Each search visits every right vertex once and looks at every edge at most once: $O(E)$. There are at most $V$ searches: $O(V E)$. This is (b). $\square$
+
+:::note[This proof needs]
+1. The graph is bipartite, so that augmenting paths alternate between the two sides.
+2. The search marks right vertices as visited for one search only. The marks must be cleared before the next left vertex; otherwise a vertex looks blocked that is not.
+3. The step "a failed vertex stays failed" is why one pass over the left vertices is enough.
+:::
+
+<TheoremCode unit="7.9/thm-6" />
+
+In the code, vertices are numbered from 0. The first example is the tiny instance: after the pass, the right vertices 0 and 1 are held by the left vertices 1 and 0 (the pairs $2a$ and $1b$ above), and no free left vertex can still augment (step 6). In the second every left vertex gets its own right vertex. The third has a left vertex that stays free (3 left vertices, 2 right vertices). The fourth has no edges. The code checks every bipartite graph with up to 4 vertices on each side against a brute force, and checks that no free left vertex has an augmenting path afterwards.
+
+### 4.7 König's theorem
+
+**Theorem 7.9.7 (König).** In a bipartite graph:
+
+(a) the size of a largest matching equals the size of a smallest vertex cover;
+
+(b) take a largest matching $M$ and let $Z$ be the set of vertices reachable from the free left vertices by alternating paths (from a left vertex along any edge, from a right vertex along its matching edge). Then $C = (\text{left} \setminus Z) \cup (\text{right} \cap Z)$ is a smallest vertex cover;
+
+(c) a largest independent set has $V - |M|$ vertices.
+
+:::tip[In plain words]
+The fewest vertices that touch every edge is exactly as many as the most pairs you can form. After the matching is found, a search along alternating paths from the unpaired left items tells which vertices to take. The items that are left out of the cover are the largest group with no pair connected.
+:::
+
+**A tiny instance.** The coin grid with coins at (row 1, column 1), (1, 2), (2, 1), (3, 3): the edges are $r_1 c_1$, $r_1 c_2$, $r_2 c_1$, $r_3 c_3$. The largest matching has 3 pairs ($r_1 c_2$, $r_2 c_1$, $r_3 c_3$), no left vertex is free, so $Z$ is empty and $C = \{r_1, r_2, r_3\}$, the three rows: size 3, and every coin is in one of them. The largest independent set has $6 - 3 = 3$ vertices (the three columns).
+
+**Proof.**
+1. For any matching $M$ and any vertex cover $C$, each of the $|M|$ pairs is an edge and needs its own vertex of $C$, and the pairs share no vertex, so $|C| \ge |M|$.
+2. Now take a largest matching $M$ and the set $Z$ as in (b). Since $M$ is largest, there is no augmenting path (Theorem 7.9.6(a)), so every right vertex of $Z$ is matched.
+3. Every vertex of $C$ is matched: the free left vertices are the starting points and lie in $Z$, so left vertices outside $Z$ are matched, and right vertices of $Z$ are matched by step 2.
+4. No edge of $M$ has both ends in $C$: if its right end $v$ is in $Z$, its left end is reached from $v$ along the matching edge, so it is in $Z$ and not in $C$; if $v \notin Z$, then $v \notin C$. So $C$ has at most one vertex on each edge of $M$, and by step 3 every vertex of $C$ is on one of them: $|C| \le |M|$.
+5. $C$ is a cover: take an edge $(u, v)$ with $u \notin C$. Then $u \in Z$ (left vertices outside $Z$ are in $C$), and from $u$ the edge leads to $v$ (along the matching edge if it is one, along a non-matching edge otherwise), so $v \in Z$ and $v \in C$.
+6. By steps 1, 4 and 5, $|M| \le |C| \le |M|$ for the cover $C$, so $C$ is a smallest cover and its size is the size of a largest matching. This is (a) and (b). A set is independent exactly when the other vertices are a cover, so the largest independent set has $V - |M|$ vertices. This is (c). $\square$
+
+:::note[This proof needs]
+1. The graph is bipartite (the alternating search goes from left to right and back).
+2. $M$ is a *largest* matching, so that every right vertex reached is matched; with a smaller matching the set $C$ is not a cover of the right size.
+3. $Z$ starts from every free left vertex, not only from one.
+:::
+
+<TheoremCode unit="7.9/thm-7" />
+
+The first example is the tiny instance: the matching 3, the cover is the three rows, and the largest independent set has 3 vertices (steps 4 and 6). The second is a star that needs a smaller cover: left vertex 1 is joined to all three right vertices, and left vertices 2 and 3 are joined to right vertex 1. Left vertex 3 is free, $Z = \{$left 2, left 3, right 1$\}$ and the cover is left vertex 1 with right vertex 1: 2 vertices, the matching size. The third has no edges, so every vertex is independent. The code checks every bipartite graph with up to 4 vertices on each side against a brute force over all vertex sets.
+
+### 4.8 Paths that share nothing
+
+**Theorem 7.9.8 (disjoint paths).** Let $G$ be a directed graph and $s \ne t$ two vertices.
+
+(a) The largest number of paths from $s$ to $t$ that pairwise share no edge equals the value of a maximum flow when every edge has capacity 1.
+
+(b) The largest number of paths from $s$ to $t$ that pairwise share no vertex except $s$ and $t$ equals the value of a maximum flow in the **split network**: every vertex $v$ becomes an entry $v_{\text{in}}$ and an exit $v_{\text{out}}$ with an edge $v_{\text{in}} \to v_{\text{out}}$ of capacity 1, every edge $(u, v)$ becomes $u_{\text{out}} \to v_{\text{in}}$ with capacity 1, the source is $s_{\text{out}}$ and the sink is $t_{\text{in}}$.
+
+:::tip[In plain words]
+The most paths from the source to the sink that share no edge is the maximum flow when every edge has capacity 1. To forbid shared vertices too, split each vertex into an entry and an exit joined by one edge of capacity 1, so that every vertex can be used only once.
+:::
+
+**A tiny instance.** The graph with edges $0 \to 1$, $1 \to 2$, $0 \to 2$, $2 \to 3$, $3 \to 4$, $2 \to 4$ and $s = 0$, $t = 4$. The paths $0, 2, 4$ and $0, 1, 2, 3, 4$ share no edge, so there are 2 edge-disjoint paths, and no third path exists (only 2 edges leave 0). Both paths pass vertex 2, and every path from 0 to 4 does, so the vertex-disjoint count is 1: in the split network the edge $2_{\text{in}} \to 2_{\text{out}}$ has capacity 1.
+
+**Proof.**
+1. Given $k$ paths with no common edge, put 1 on every edge of every path. Capacities hold since no edge is used twice. At an inner vertex of a path the path enters and leaves, so the flow in equals the flow out, and with several paths the sums are equal too. The value is $k$.
+2. Given a flow of whole numbers (0 or 1) and value $k$, which exists with value equal to the maximum (Theorem 7.9.1): start at $s$ and follow edges that carry 1, using each edge once, until $t$ is reached. Conservation gives a next edge at every vertex except $t$ (we entered by one used edge, so at least one unused edge with flow leaves), and every step uses a new edge, so the walk ends at $t$.
+3. The walk contains a path from $s$ to $t$ (cut out the loops). Take all of its edges away from the flow: what is left still obeys conservation (a walk enters and leaves every inner vertex equally often) and has value $k - 1$. Repeat $k$ times. The $k$ paths found use disjoint sets of edges, so $k$ paths with no common edge exist. With step 1 this is (a).
+4. For (b), a path of $G$ that visits each vertex at most once becomes a path in the split network that uses the edge $v_{\text{in}} \to v_{\text{out}}$ once for each inner vertex $v$. Paths that share no vertex share no edge of the split network.
+5. Conversely, $k$ edge-disjoint paths in the split network use each edge $v_{\text{in}} \to v_{\text{out}}$ at most once (capacity 1), so as paths of $G$ they pass each inner vertex at most once and share no inner vertex. By (a) applied to the split network, the maximum flow equals the largest number of such paths. $\square$
+
+:::note[This proof needs]
+1. Whole numbers: all capacities are 1, so the flow has values 0 and 1 (Theorem 7.9.1) and can be cut into paths.
+2. For (b), $s$ and $t$ may be used by every path, so the source is the exit of $s$ and the sink is the entry of $t$ (their own edge of capacity 1 is not used).
+3. An undirected edge is two directed edges. If the same vertex pair has both, in the split network they stay two different edges.
+:::
+
+<TheoremCode unit="7.9/thm-8" />
+
+The first example is a graph with two disjoint routes. The second is the tiny instance, where the two counts differ (2 and 1: steps 3 and 5). The third has no path: 0 and 0. In the fourth there is a direct edge from $s$ to $t$ and a detour: the direct edge is a path with no inner vertex, so both counts are 2. The code compares both counts with a brute force over all simple paths on every directed graph with 4 vertices and on 100000 random graphs with 5.
+
+### 4.9 Dinic on a matching network is Hopcroft–Karp
+
+**Theorem 7.9.9 (Hopcroft–Karp).** Run Dinic's algorithm (Theorem 7.9.4) on the unit network of a bipartite graph (Theorem 7.9.5), which has $V$ vertices and $E$ edges, all of capacity 1. Then it ends after at most $2\sqrt{V} + 3$ phases, and it takes $O(E \sqrt{V})$ steps in all. (Its phases are the phases of the Hopcroft–Karp algorithm for matching.)
+
+:::tip[In plain words]
+When every vertex can be used only once, the paths that are still missing from a maximum matching cannot share a vertex. After about the square root of V phases every augmenting path is longer than the square root of V, so only about the square root of V of them can still fit, and each phase costs only a pass over the edges.
+:::
+
+**A tiny instance.** The graph with the allowed pairs $1a$, $1b$, $2a$, $3a$ has $V = 8$ vertices. Phase 1 (distance 3) sends one unit along $s, 1, a, t$. Phase 2 (distance 5) sends $s, 2, a, 1, b, t$, and phase 3 finds no path. Two phases, far below $2\sqrt{8} + 3 \approx 8.7$.
+
+**Proof.** Let $k = \lceil \sqrt{V} \rceil$ and let $f$ be the flow after $k$ phases (if the algorithm has not ended before).
+1. By Theorem 7.9.4(a) the distance from $s$ to $t$ grows in every phase, and it starts at 3 or more, so in the residual graph of $f$ every path from $s$ to $t$ has at least $k$ edges.
+2. In the residual graph of $f$, a left vertex $u$ has exactly one edge entering it with room: from $s$ if $u$ is free, from its partner (the backward edge) if it is matched. A right vertex $v$ has exactly one edge leaving it with room: to $t$ if $v$ is free, to its partner if it is matched. Every such edge has room 1.
+3. Let $f^*$ be a maximum flow, of value $M$, and let $r = M - |f|$. The differences $f^*(e) - f(e)$ (a forward edge where positive, a backward edge where negative) are a flow $g$ of value $r$ in the residual graph: conservation is a difference of two conservations, and the room is enough because $0 \le f^* \le 1$.
+4. By step 2 at most one unit of $g$ passes through each left or right vertex. As in Theorem 7.9.8 (steps 2 and 3), $g$ splits into $r$ paths from $s$ to $t$, and the paths share no vertex except $s$ and $t$.
+5. Each of these paths is a path of the residual graph, so by step 1 it has at least $k$ edges and at least $k - 1$ inner vertices. The inner vertices are different, and there are fewer than $V$ of them, so $r (k - 1) \le V$, that is, $r \le V / (\sqrt{V} - 1) \le \sqrt{V} + 2$ (for $V \ge 4$).
+6. Every phase raises the flow by at least 1 (Theorem 7.9.4), so after the first $k$ phases at most $r$ more are needed: at most $k + r \le 2\sqrt{V} + 3$ phases.
+7. In one phase all edges have capacity 1, so every path that is found fills all its edges, and none of them is in the level graph again during the phase. The paths together cost at most $E$ steps, the pointer moves at most $E$, and the search for levels $E$: $O(E)$ per phase, $O(E\sqrt{V})$ in all. $\square$
+
+:::note[This proof needs]
+1. The network is the unit network of a bipartite graph: every edge has capacity 1, and every vertex other than $s$ and $t$ has either a single entering edge (left) or a single leaving edge (right).
+2. The phases are those of Dinic (Theorem 7.9.4): the distance grows in every phase.
+3. $V \ge 4$ (at least one left and one right vertex), and $E$ counts the edges of the network, at least $V / 2$.
+:::
+
+<TheoremCode unit="7.9/thm-9" />
+
+The first example is three separate pairs: one phase. The second is the tiny instance with its two phases (steps 1 and 6: the distances 3 and 5). The third runs the code on the whole $100 \times 100$ grid of free cells, coloured like a chessboard, with a pair for every two neighbouring cells: the largest matching is 5000 pairs (a tiling by dominoes exists), and the number of phases is within $2\sqrt{V} + 3$, which for $V = 10002$ is about 203; at about $3 \cdot 10^4$ steps per phase the whole run costs about $6 \cdot 10^6$ steps, instead of the $V \cdot E = 2 \cdot 10^8$ of Kuhn. The code also compares the size with Kuhn's on thousands of random graphs and checks the bound on the phases.
+
+## 5. Recognition Cards
+
+<Cards topic="7.9" />
+
+## 6. Templates
+
+Six templates. The program around each reads the input; the shown code is what matters. Each has a brute force that uses a different method (trying every set of vertices, every choice of sides, every set of pairs, every set of paths) and a generator, and passed 5000 random small cases.
+
+### Maximum flow with Dinic (Theorem 7.9.4)
+
+<CodeSnippet unit="7.9/dinic-flow" />
+
+**How it works.** `addEdge` stores an edge and, right after it, its backward edge with capacity 0, so that the edges $2k$ and $2k + 1$ are a pair and `k ^ 1` is the number of the partner of edge `k`. `buildLevels` is a breadth-first search over the edges that still have room and gives `level[v]`, the distance from $s$. `push` walks only along edges that go up one level and has a pointer `it[u]` for each vertex: the pointer moves past an edge that is full or leads nowhere and never moves back during the phase, which is the bound of step 6 of the proof. It returns the amount that one path carries, and `maxFlow` repeats until a search finds no path. Capacities and the result are `long long`, since the sum of many capacities of $10^9$ exceeds $2^{31}$ (the second bug below). A recursion as deep as the level of $t$ is fine for networks of a few thousand vertices; for a path-like network of $10^5$ vertices a judge with a small stack may need an explicit stack.
+
+**Alternative formulation.** Edmonds–Karp (Theorem 7.9.3) is the one-path-per-round version: one breadth-first search per augmenting path, as in the code of Theorem 7.9.1. It is shorter and correct, with $O(V E^2)$ steps instead of $O(V^2 E)$; use it when the network has a few hundred edges.
+
+### The minimum cut itself (Theorem 7.9.1)
+
+<CodeSnippet unit="7.9/min-cut" />
+
+**How it works.** After `maxFlow`, `sourceSide` runs one more breadth-first search from $s$ over edges whose room is above 0. The visited vertices are the source side of Theorem 7.9.1, step 4. The edges of the network are stored in pairs, and the original edge number $i$ is the stored edge $2i$, so the cut edges are the original edges with a visited tail and an unvisited head; the program prints the capacity, the number of visited vertices and the number of cut edges. Edges that go from the sink side back to the source side are not counted. For a two-way street add two directed edges of the same capacity.
+
+**Alternative formulation.** Instead of the vertices reachable from $s$, take all vertices that cannot reach $t$ in the residual graph (a search over the backward edges from $t$). That is the largest source side of a minimum cut, and the set of the first template is the smallest; any problem that accepts any minimum cut accepts both.
+
+### Choosing a side for every item (Theorem 7.9.2)
+
+<CodeSnippet unit="7.9/label-cut" />
+
+**How it works.** Vertex $i$ is item $i$, vertex $n$ is $s$ and vertex $n + 1$ is $t$. The edge $s \to i$ with capacity `b[i]` is cut when $i$ is on the sink side, so it adds `b[i]` exactly when the item takes side $T$; the edge $i \to t$ with `a[i]` is cut when the item takes side $S$. A triple $(i, j, w)$ becomes an edge $i \to j$ of capacity $w$, which is cut exactly when $i$ is on the source side and $j$ on the sink side. The returned flow is the cost of the cheapest choice. To force an item to a side or to forbid a pair, use a capacity larger than every possible total, for example $10^{18}$ when the real totals stay below $10^{15}$, so that the sum of such capacities does not overflow.
+
+**Alternative formulation.** For $n \le 20$ items, trying all $2^n$ choices (the brute force of the unit) is shorter and has no network to get wrong; it is also the way to test a new model.
+
+### Pairing with Kuhn's algorithm (Theorem 7.9.6)
+
+<CodeSnippet unit="7.9/kuhn-matching" />
+
+**How it works.** `adj[u]` lists the right vertices allowed for left vertex `u`, and `matchOf[v]` holds the left vertex paired with `v` or $-1$. `tryAugment(u)` visits each right vertex at most once, marking it in `seen`. If the vertex is free, or its partner can move to another vertex (the recursive call), then `u` takes it, and the whole chain flips. `solve` clears the marks before each left vertex (the fourth bug below) and counts the successes. After `solve`, `matchOf` gives the pairs.
+
+**Alternative formulation.** Dinic on the unit network (Theorem 7.9.5) gives the same size. Kuhn is shorter and fast enough up to about $V \cdot E = 10^8$; for a $100 \times 100$ grid of dominoes with $10^4$ cells use the network and Dinic, which on this network is the Hopcroft–Karp algorithm with $O(E\sqrt{V})$ steps (Theorem 7.9.9).
+
+### The vertex cover and the independent set (Theorem 7.9.7)
+
+<CodeSnippet unit="7.9/konig-cover" />
+
+**How it works.** The function takes a finished matching. `walk` is the alternating search from the free left vertices: from a left vertex along every allowed pair to a right vertex, and from a right vertex along its matching pair to the left vertex of that pair. Left vertices that were not reached, and right vertices that were reached, are the cover. The program checks that no allowed pair is left uncovered and that the cover has exactly as many vertices as the matching has pairs (the numbers must agree, by the theorem), and prints the size of the matching and the size of the largest independent set, $L + R$ minus the cover. An independent set is the complement of the cover.
+
+**Alternative formulation.** When only the size is needed, the answer is $L + R$ minus the size of a largest matching; the cover itself is needed only when the problem asks for the lines or the items.
+
+### Paths that share nothing (Theorem 7.9.8)
+
+<CodeSnippet unit="7.9/disjoint-paths" />
+
+**How it works.** Without splitting, every edge has capacity 1 and the flow from $s$ to $t$ is the number of edge-disjoint paths. With `vertexDisjoint`, vertex $v$ becomes the entry $v$ and the exit $v + n$; the edge `(v, v + n)` has capacity 1, and every graph edge $(u, v)$ leaves the exit of $u$ and enters the entry of $v$. The source is the exit of $s$ and the sink is the entry of $t$, so $s$ and $t$ themselves are not limited. The program prints both counts.
+
+**Alternative formulation.** To forbid sharing of edges only, no splitting is needed, and for undirected graphs add two directed edges per edge. For a path from $A$ through $B$ to $C$ (the ladder problem Typical Path Problem), start the flow at $B$ and give a new sink edges of capacity 1 from $A$ and from $C$.
+
+## 7. Bug catalogue
+
+Each bug below was made by changing one line of a template from Section 6. All were caught by `scripts/stress.sh` on random inputs except the second, which only a fixed test catches because random inputs have small capacities. The inputs shown are small failing inputs checked against the brute force.
+
+### Bug: no backward edge
+
+Template: maximum flow with Dinic.
+
+```cpp
+if (sent > 0) { edges[k].cap -= sent; return sent; }   // instead of also doing edges[k ^ 1].cap += sent
+```
+
+Input: `6 7 1 6`, then the edges `1 2 1`, `1 3 1`, `2 4 1`, `2 5 1`, `3 4 1`, `4 6 1`, `5 6 1`.
+
+Wrong output `1`, correct output `2`. The first path found is $1, 2, 4, 6$, which blocks the edge $4 \to 6$ that the second path $1, 3, 4, 6$ needs; the correct flow sends $1, 2, 5, 6$ and $1, 3, 4, 6$, and it can get there only by taking back the flow on $2 \to 4$ (Theorem 7.9.1, step 3). The first generator of the unit (any random graph) never produced such a graph in 3000 cases: the generator was strengthened with layered graphs, in which paths of equal length compete for the same edges, and the bug appeared at once.
+
+**Fix:** add the pushed amount to the backward edge.
+
+### Bug: `int` for the capacities
+
+Template: maximum flow with Dinic.
+
+```cpp
+struct Edge { int to; int cap; };   // and int flow, int limit, instead of long long
+```
+
+Input: `3 4 1 3`, then `1 2 1000000000`, `2 3 1000000000`, `1 3 1000000000`, `1 3 1000000000`.
+
+Wrong output `-1294967296`, correct output `3000000000`. The total flow is $3 \cdot 10^9$, above $2^{31} - 1 \approx 2.147 \cdot 10^9$. Random small inputs never reach it; the fixed test with capacities of $10^9$ catches it.
+
+**Fix:** `long long` for the capacities, the flow and the limit.
+
+### Bug: the penalty edge in the wrong direction
+
+Template: choosing a side for every item.
+
+```cpp
+for (auto [i, j, w] : pairs) d.addEdge(j, i, w);   // instead of d.addEdge(i, j, w)
+```
+
+Input: `2 1`, then `1 4`, `5 3`, `1 2 5`.
+
+Wrong output `4`, correct output `6`. The penalty is for item 1 on side $S$ and item 2 on side $T$; reversed, the edge charges item 2 on $S$ and item 1 on $T$, so the cheapest choice (item 1 on $S$, item 2 on $T$, cost $1 + 3 = 4$) pays no penalty at all. The true cost of that choice is $4 + 5 = 9$, and the true minimum is 6 (both on $S$: $1 + 5$) (Theorem 7.9.2, step 3).
+
+**Fix:** the edge goes from $i$ to $j$.
+
+### Bug: visited marks that are never cleared
+
+Template: pairing with Kuhn's algorithm.
+
+```cpp
+// the line fill(seen.begin(), seen.end(), false); at the start of each left vertex is removed
+```
+
+Input: `2 2 3`, then `1 1`, `1 2`, `2 1`.
+
+Wrong output `1`, correct output `2`. Left vertex 1 takes right vertex 1 and marks it visited. For left vertex 2, right vertex 1 still looks visited, so the search cannot move vertex 1 to right vertex 2 and fails; the pairs $1 \to 2$ and $2 \to 1$ are missed (Theorem 7.9.6, precondition 2).
+
+**Fix:** clear `seen` before every left vertex.
+
+### Bug: edges that go back are counted as cut edges
+
+Template: the minimum cut itself.
+
+```cpp
+crossing += inS[ends[i][0]] != inS[ends[i][1]];   // instead of inS[tail] && !inS[head]
+```
+
+Input: `3 1 1 3`, then `2 1 3`.
+
+Wrong output `0 1 1`, correct output `0 1 0`. The only edge goes from vertex 2 (not reachable) back to vertex 1 (the source). The flow is 0, the source side is $\{1\}$, and the edge does not leave the source side, so it is not a cut edge; the wrong line counts every edge that has its ends on different sides (Section 3, the capacity of a cut).
+
+**Fix:** count only edges from the source side to the other side.
+
+### Bug: the cover taken the wrong way round
+
+Template: the vertex cover and the independent set.
+
+```cpp
+if (leftReached[u]) coverLeft.push_back(u);        // instead of !leftReached[u]
+if (!rightReached[v]) coverRight.push_back(v);     // instead of rightReached[v]
+```
+
+Input: `2 2 2`, then `1 1`, `2 1`.
+
+Wrong output `INVALID COVER`, correct output `1 3`. The largest matching has 1 pair; left vertex 2 is free, so the reached set is left 2, right 1 and left 1. The cover is the left vertices not reached (none) and the right vertex 1 reached: one vertex, the right vertex 1, which touches both edges. The swapped version takes the reached left vertices and the unreached right vertex: 3 vertices and no longer a cover of the right size (Theorem 7.9.7, steps 3 to 5).
+
+**Fix:** left vertices that are not reached, right vertices that are reached.
+
+### Bug: a vertex that can be used many times
+
+Template: paths that share nothing.
+
+```cpp
+d.addEdge(v, v + n, n);   // instead of capacity 1
+```
+
+Input: `5 6 1 5`, then `1 2`, `2 3`, `1 3`, `3 4`, `4 5`, `3 5`.
+
+Wrong output `2 2`, correct output `2 1`. With capacity $n$ on the entry-to-exit edge, vertex 3 can be passed twice, so the "vertex-disjoint" answer is the edge-disjoint answer 2 (Theorem 7.9.8, step 5).
+
+**Fix:** capacity 1 on every entry-to-exit edge.
+
+## 8. Worked examples
+
+The problem bank of this topic is small (see the note at the end of this section), so there is no separate worked-example problem. The templates of Section 6 are the worked examples: each is shown with a short walk through its steps, and each agrees with a brute force on thousands of random inputs. The problem ladder (Section 9) gives three hints for every rung, in the order of the steps of the theorems: say what the question is (a most that can be sent, a fewest to remove, a choice of sides, a pairing), say what the network is (its vertices, its edges and their capacities), and say how large the numbers can get.
+
+Why the bank is small: the topic needs problems in which a maximum flow, a minimum cut or a matching of unit pairs is really the tool, with no cost per unit and no lower bounds on the edges. The searches (the Codeforces API tags `flows` and `graph matchings`, the AtCoder Problems list, LeetCode and the graph section of the CSES problem set) found 35 such problems: 5 on CSES, 10 on AtCoder and 20 on Codeforces. Of these, 21 are used in the bank (11 ladder rungs, 3 checkpoint problems, 3 review problems, 2 flow problems of the drill and the 2 matching problems of the look-alike pairs). The others need minimum-cost flow, lower bounds, a weighted assignment, a three-state cut or a long extra argument, or were left out because a rung already covers the idea. Most of the 224 Codeforces problems with these two tags are of those kinds.
+
+## 9. Problem ladder
+
+<Ladder topic="7.9" />
+
+## 10. Identification drill
+
+All eight problems below talk about capacities, pairs, assignments or paths that must not share anything, so a flow or a matching looks possible. Six of them are answered by a card of an earlier topic (binary search on the answer, a dynamic programming (DP) table over two indices, trying the six orders, an invariant and a build, a sorted greedy over sizes on a line, and a window of consecutive positions). Two are really flows. The point of the drill is to say which, and why no network is needed in the first six.
+
+<Drill topic="7.9" />
+
+## 11. Look-alike pairs
+
+<LookalikePairs topic="7.9" />
+
+## 12. Self-test questions
+
+<SelfTest topic="7.9" />
+
+## 13. Checkpoint
+
+<Checkpoint topic="7.9" />
+
+## 14. Decision map update
+
+<DecisionMapUpdate topic="7.9" />

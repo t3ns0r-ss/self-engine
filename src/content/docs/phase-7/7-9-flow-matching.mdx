@@ -41,7 +41,7 @@ The same machinery solves more than routing. Pairing people with jobs, covering 
 
 - Minimum-cost flow (sending a given amount at the least total price per unit), flows with lower bounds on the edges, and circulations: not in this course.
 - Matching in graphs that are not bipartite (the blossom algorithm), and weighted matching (the Hungarian algorithm, the assignment problem with costs): not in this course.
-- The push-relabel method, the Hopcroft–Karp bound $O(E\sqrt{V})$ for matching, and Stoer–Wagner minimum cuts of undirected graphs without a source and a sink: not in this course. The bounds proved here are $O(V E^2)$ and $O(V^2 E)$.
+- The push-relabel method, and Stoer–Wagner minimum cuts of undirected graphs without a source and a sink: not in this course. The bounds proved here are $O(V E^2)$ and $O(V^2 E)$ for flows in general and $O(E \sqrt{V})$ for matching (Theorem 7.9.9).
 - Flows with real-number capacities: not in this course. All capacities here are whole numbers.
 
 ## 3. Definitions
@@ -328,6 +328,35 @@ The most paths from the source to the sink that share no edge is the maximum flo
 
 The first example is a graph with two disjoint routes. The second is the tiny instance, where the two counts differ (2 and 1: steps 3 and 5). The third has no path: 0 and 0. In the fourth there is a direct edge from $s$ to $t$ and a detour: the direct edge is a path with no inner vertex, so both counts are 2. The code compares both counts with a brute force over all simple paths on every directed graph with 4 vertices and on 100000 random graphs with 5.
 
+### 4.9 Dinic on a matching network is Hopcroft–Karp
+
+**Theorem 7.9.9 (Hopcroft–Karp).** Run Dinic's algorithm (Theorem 7.9.4) on the unit network of a bipartite graph (Theorem 7.9.5), which has $V$ vertices and $E$ edges, all of capacity 1. Then it ends after at most $2\sqrt{V} + 3$ phases, and it takes $O(E \sqrt{V})$ steps in all. (Its phases are the phases of the Hopcroft–Karp algorithm for matching.)
+
+:::tip[In plain words]
+When every vertex can be used only once, the paths that are still missing from a maximum matching cannot share a vertex. After about the square root of V phases every augmenting path is longer than the square root of V, so only about the square root of V of them can still fit, and each phase costs only a pass over the edges.
+:::
+
+**A tiny instance.** The graph with the allowed pairs $1a$, $1b$, $2a$, $3a$ has $V = 8$ vertices. Phase 1 (distance 3) sends one unit along $s, 1, a, t$. Phase 2 (distance 5) sends $s, 2, a, 1, b, t$, and phase 3 finds no path. Two phases, far below $2\sqrt{8} + 3 \approx 8.7$.
+
+**Proof.** Let $k = \lceil \sqrt{V} \rceil$ and let $f$ be the flow after $k$ phases (if the algorithm has not ended before).
+1. By Theorem 7.9.4(a) the distance from $s$ to $t$ grows in every phase, and it starts at 3 or more, so in the residual graph of $f$ every path from $s$ to $t$ has at least $k$ edges.
+2. In the residual graph of $f$, a left vertex $u$ has exactly one edge entering it with room: from $s$ if $u$ is free, from its partner (the backward edge) if it is matched. A right vertex $v$ has exactly one edge leaving it with room: to $t$ if $v$ is free, to its partner if it is matched. Every such edge has room 1.
+3. Let $f^*$ be a maximum flow, of value $M$, and let $r = M - |f|$. The differences $f^*(e) - f(e)$ (a forward edge where positive, a backward edge where negative) are a flow $g$ of value $r$ in the residual graph: conservation is a difference of two conservations, and the room is enough because $0 \le f^* \le 1$.
+4. By step 2 at most one unit of $g$ passes through each left or right vertex. As in Theorem 7.9.8 (steps 2 and 3), $g$ splits into $r$ paths from $s$ to $t$, and the paths share no vertex except $s$ and $t$.
+5. Each of these paths is a path of the residual graph, so by step 1 it has at least $k$ edges and at least $k - 1$ inner vertices. The inner vertices are different, and there are fewer than $V$ of them, so $r (k - 1) \le V$, that is, $r \le V / (\sqrt{V} - 1) \le \sqrt{V} + 2$ (for $V \ge 4$).
+6. Every phase raises the flow by at least 1 (Theorem 7.9.4), so after the first $k$ phases at most $r$ more are needed: at most $k + r \le 2\sqrt{V} + 3$ phases.
+7. In one phase all edges have capacity 1, so every path that is found fills all its edges, and none of them is in the level graph again during the phase. The paths together cost at most $E$ steps, the pointer moves at most $E$, and the search for levels $E$: $O(E)$ per phase, $O(E\sqrt{V})$ in all. $\square$
+
+:::note[This proof needs]
+1. The network is the unit network of a bipartite graph: every edge has capacity 1, and every vertex other than $s$ and $t$ has either a single entering edge (left) or a single leaving edge (right).
+2. The phases are those of Dinic (Theorem 7.9.4): the distance grows in every phase.
+3. $V \ge 4$ (at least one left and one right vertex), and $E$ counts the edges of the network, at least $V / 2$.
+:::
+
+<TheoremCode unit="7.9/thm-9" />
+
+The first example is three separate pairs: one phase. The second is the tiny instance with its two phases (steps 1 and 6: the distances 3 and 5). The third runs the code on the whole $100 \times 100$ grid of free cells, coloured like a chessboard, with a pair for every two neighbouring cells: the largest matching is 5000 pairs (a tiling by dominoes exists), and the number of phases is within $2\sqrt{V} + 3$, which for $V = 10002$ is about 203; at about $3 \cdot 10^4$ steps per phase the whole run costs about $6 \cdot 10^6$ steps, instead of the $V \cdot E = 2 \cdot 10^8$ of Kuhn. The code also compares the size with Kuhn's on thousands of random graphs and checks the bound on the phases.
+
 ## 5. Recognition Cards
 
 <Cards topic="7.9" />
@@ -366,7 +395,7 @@ Six templates. The program around each reads the input; the shown code is what m
 
 **How it works.** `adj[u]` lists the right vertices allowed for left vertex `u`, and `matchOf[v]` holds the left vertex paired with `v` or $-1$. `tryAugment(u)` visits each right vertex at most once, marking it in `seen`. If the vertex is free, or its partner can move to another vertex (the recursive call), then `u` takes it, and the whole chain flips. `solve` clears the marks before each left vertex (the fourth bug below) and counts the successes. After `solve`, `matchOf` gives the pairs.
 
-**Alternative formulation.** Dinic on the unit network (Theorem 7.9.5) gives the same size. Kuhn is shorter and fast enough up to about $V \cdot E = 10^8$; for a $100 \times 100$ grid of dominoes with $10^4$ cells use the network and Dinic.
+**Alternative formulation.** Dinic on the unit network (Theorem 7.9.5) gives the same size. Kuhn is shorter and fast enough up to about $V \cdot E = 10^8$; for a $100 \times 100$ grid of dominoes with $10^4$ cells use the network and Dinic, which on this network is the Hopcroft–Karp algorithm with $O(E\sqrt{V})$ steps (Theorem 7.9.9).
 
 ### The vertex cover and the independent set (Theorem 7.9.7)
 

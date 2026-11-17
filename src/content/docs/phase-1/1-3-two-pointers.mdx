@@ -23,22 +23,11 @@ import DecisionMapUpdate from '../../../components/DecisionMapUpdate.astro';
 
 This note covers two pointers (TP) and the sliding window.
 
-Words used in this note:
-- pointer = just an index in the array
-- subarray = continuous part of the array, subsequence = same order but gaps allowed
-- time complexity = how the number of steps grows with the input size, written with $O(\ldots)$
-- DS = data structure, BS = binary search, TLE = time limit exceeded, # = number of
-- dry run = following the code by hand on a small input
-
 The idea: instead of a nested loop, move two indices smartly. Neither index goes back, so the total work is $O(n)$.
 
 Why this matters, with numbers: suppose n = 100 000. A nested loop over all pairs of positions does about $n^2/2 = 5 \times 10^9$ steps, and a typical judge allows only about $10^8$ simple steps per second, so it gets a time limit exceeded (TLE) verdict. Two pointers does at most $2n = 200\,000$ steps for the same problem.
 
-A second example, with bigger numbers. You are given $n$ positive integers $a_i$ and a number $K$, with $n \le 2 \cdot 10^5$ and $a_i \le 10^9$. Find the longest run of consecutive elements whose sum is at most $K$. The direct method tries every start and every end. That is about $n^2/2 = 2 \cdot 10^{10}$ pairs. Even if every pair sum costs one step (prefix sums from topic 1.2 give each sum in one step), that is about 200 seconds at $10^8$ simple steps per second. The time limit is usually 1 or 2 seconds.
-
-The key idea: all values are positive, so a shorter run inside a valid run is also valid. So when the end of the run moves right, the best start for the new end is never left of the best start for the old end. Both indices only move right. Each moves at most $n$ times, so the search costs about $2n$ steps instead of $n^2/2$.
-
-This note shows that idea as proofs and templates, and then its other forms: a window of fixed length, two indices moving inwards from both ends of a sorted array, and two indices walking through two sorted lists.
+This note builds that idea from proofs and the variable window, and then covers its other forms: a window of fixed length, two indices moving inwards from both ends of a sorted array, and two indices walking through two sorted lists.
 
 ### What you need
 
@@ -52,17 +41,22 @@ This note shows that idea as proofs and templates, and then its other forms: a w
 
 Indices start at 0. For an array $a$ of length $n$:
 
+- **Pointer**: an index in the array (not a C++ pointer).
+- **Subarray**: a continuous part of the array. **Subsequence**: the same order, but gaps are allowed.
+- **Time complexity**: how the number of steps grows with the input size, written with $O(\ldots)$.
+- **Abbreviations**: DS = data structure, BS = binary search, TLE = time limit exceeded, # = number of.
+- **Dry run**: following the code by hand on a small input.
 - **Window**: a subarray $[l, r]$ that we are looking at, with both ends included. Its length is $r - l + 1$. Example: in $a = [3, 1, 2]$ the window $[1, 2]$ is the values 1, 2. The **empty window** has $l = r + 1$ and length 0.
 - **Validity condition**: a yes/no property of windows, such as "the sum is at most $K$". A window with the property is **valid**.
 - **Sub-window** of $[l, r]$: any window $[l', r']$ with $l \le l'$ and $r' \le r$, possibly empty. Example: $[2, 3]$ is a sub-window of $[1, 4]$.
-- **Closed under shrinking**: every sub-window of a valid window is valid. Example: "sum at most $K$" with positive values. Counterexample: with values $[5, -4]$ and $K = 2$, the window $[0, 1]$ has sum 1 and is valid, but its sub-window $[0, 0]$ has sum 5 and is not. So negative values break it. This is what his note calls a monotonic criteria.
+- **Closed under shrinking**: every sub-window of a valid window is valid. Example: "sum at most $K$" with positive values. Counterexample: with values $[5, -4]$ and $K = 2$, the window $[0, 1]$ has sum 1 and is valid, but its sub-window $[0, 0]$ has sum 5 and is not. So negative values break it. This is what is called a monotonic criteria below.
 - **Closed under extension**: every window that contains a valid window is valid. Example: "sum at least $S$" with positive values. A condition is closed under extension exactly when its opposite ("not valid") is closed under shrinking. For instance, "at least $k$ distinct values" is closed under extension, and "fewer than $k$ distinct values" is closed under shrinking.
 - **Amortised analysis**: bounding the total cost of all steps instead of each step alone. One `while` inside a `for` can run many times for one value of `r`. But if each pass moves `l` right and `l` never passes $n$, all passes together are at most $n$.
 
 The sections of this note, in order:
 
-- Two pointers: where it comes from
-- Sliding window (fixed length, form 0)
+- Two pointers and binary search
+- Two pointers and the sliding window (fixed length)
 - Two pointers forms
 - Form 1: variable sized window
   - flips problem
@@ -74,15 +68,18 @@ The sections of this note, in order:
   - count subarrays with distinct $\le k$
   - distinct $= k$ and $\ge k$
   - shortest subarray with distinct $\ge k$
-- Form 2: opposite direction
+- Form 2: two pointers moving towards each other
   - container with most water
   - 3-Sum
-- Form 3: separate sequences
+- Form 3: one pointer on each of two sequences
   - subsequence
   - inverted index (search)
   - matrix: minimise max - min
 - Theorems 1.3.1 to 1.3.6, each inside the form it proves
 - Recognition cards
+- Templates: nine copy-ready functions
+- Bug catalogue: wrong lines, inputs that expose them, fixes
+- Worked examples: Playlist, Enough Array, Container With Most Water
 - Quick revision
 - Check yourself (identification drill, look-alike pairs, self-test, checkpoint, decision map update)
 - Practice problems
@@ -99,9 +96,9 @@ Binary search (BS) has two kinds:
 
 *Binary search on every start is solved by two pointers in $O(n)$.*
 
-There are two patterns of TP:
-- Two pointers moving towards each other. This is the classical pattern.
-- Two pointers moving in the same direction while maintaining a window. This is the medium/hard pattern.
+Two pointers moves in one of two ways:
+- Towards each other. This is the classical way (Form 2 below).
+- In the same direction while maintaining a window. This is the medium/hard way (Forms 1 and 3 below).
 
 ![Pattern 1: pointers at both ends moving inward. Pattern 2: tail and head moving right around a window](../../../assets/notes/1-3-two-pointers/fig02_tp_patterns.png)
 
@@ -118,7 +115,7 @@ A sliding window is a part of the array that moves to the right. There are two k
 - A fixed length window (easy).
 - A variable length window.
 
-A fixed length window always has the same size k. With each step to the right, the leftmost element leaves the window and one new element enters on the right. (This is the "0-form" in the repository.)
+A fixed length window always has the same size k. With each step to the right, the leftmost element leaves the window and one new element enters on the right.
 
 ![Window of length 3 sliding over an array, minimum of each window marked](../../../assets/notes/1-3-two-pointers/fig03_fixed_window.png)
 
@@ -149,10 +146,6 @@ Deque trace (the deque holds indices; the value of each index is in brackets):
 - i = 5: value 2 pops index 4 (3) → deque `[3, 5]`, min = 1
 - i = 6: index 3 is outside the window (3 &lt;= 6 - 3), so pop it from the front → deque `[5, 6]`, min = arr[5] = 2
 - i = 7: value 1 pops indices 6 and 5 → deque `[7]`, min = 1
-
-Common mistakes:
-- Storing values instead of indices in the deque. Then we cannot tell when the front element has left the window.
-- In the multiset version, writing `ms.erase(x)` removes every copy of x. To remove only the one copy that left the window, erase `ms.find(x)`, as the code below does.
 
 ```cpp
 // Fabricator/TwoPointers/0-Form/SlidingWindow.cpp
@@ -237,8 +230,6 @@ The same loop gives other summaries. For the number of distinct values in every 
 
 When the summary is only a sum, we do not even need to slide. With prefix sums $P$ (topic 1.2), the window sum is $P_{r+1} - P_{r-k+1}$ with no add or remove. Counts of distinct values have no such formula, so the slide is needed for them.
 
-Common mistake: removing the wrong element. Writing `cnt[a[r-k+1]]--` instead of `cnt[a[r-k]]--` removes the first element of the new window. Input `6 3` and `1 2 2 2 3 2` (largest number of distinct values in a window of length 3): the wrong code gives 3, the right answer is 2, because the summary drifts away from the window. Fix: remove `a[r-k]`, and check the index on a tiny case. With $k = 3$ and $r = 3$ the window is $[1, 3]$, so index $0 = r - k$ leaves.
-
 ## Two pointers forms
 
 The problems fall into three forms. The table gives the level and the idea of each form.
@@ -254,6 +245,12 @@ The problems fall into three forms. The table gives the level and the idea of ea
 *The three forms: a window with a tail and a head, two pointers moving inward from both ends, and one pointer on each of two separate sequences.*
 
 ## Form 1: variable sized window
+
+Why this form exists, with bigger numbers.
+
+You are given $n$ positive integers $a_i$ and a number $K$, with $n \le 2 \cdot 10^5$ and $a_i \le 10^9$. Find the longest run of consecutive elements whose sum is at most $K$. The direct method tries every start and every end. That is about $n^2/2 = 2 \cdot 10^{10}$ pairs. Even if every pair sum costs one step (prefix sums from topic 1.2 give each sum in one step), that is about 200 seconds at $10^8$ simple steps per second. The time limit is usually 1 or 2 seconds.
+
+The key idea: all values are positive, so a shorter run inside a valid run is also valid. So when the end of the run moves right, the best start for the new end is never left of the best start for the old end. Both indices only move right. Each moves at most $n$ times, so the search costs about $2n$ steps instead of $n^2/2$.
 
 The standard first problem of form 1 is about flips.
 
@@ -492,7 +489,7 @@ void solve() {
 
 The check `count_of_zeros + 1 - arr[head + 1] <= k` works like this. If the next element is 1, the value is count_of_zeros, so nothing new is added. If the next element is 0, the value is count_of_zeros + 1, so one more zero is added. In both cases the result must stay within k.
 
-The comment above the code says one move may flip a 0 to a 1 or a 1 to a 0. Flipping a 1 to a 0 never helps when we want the longest block of 1s, so counting only the zeros in the window is enough. This gives the same answer as the version in the notebook.
+The comment above the code says one move may flip a 0 to a 1 or a 1 to a 0. Flipping a 1 to a 0 never helps when we want the longest block of 1s, so counting only the zeros in the window is enough.
 
 Dry run: `1 0 1 0 1`, k=1 → 3. `0 1 0 1 0 0 1 1 0`, k=2 → 5. `0 0 0 1`, k=0 → 1.
 
@@ -501,12 +498,6 @@ Step by step for `1 0 1 0 1`, k = 1:
 - tail = 1: the window is still `0 1`, head cannot eat the zero at index 3. Length 2. Remove arr[1] (a zero, so the zero count drops to 0), tail = 2.
 - tail = 2: head eats indices 3 and 4. Length 3. Then the tail keeps moving and lengths only get smaller.
 - Best = 3.
-
-Common mistakes:
-- Starting with head = 0 (see "Why head = -1" above).
-- Forgetting to remove arr[tail] from the data structure when the tail moves.
-- Forgetting the else branch, which handles the case where the tail runs ahead of the head.
-- Using a criteria that is not monotonic.
 
 Cost: time $O(n)$, memory $O(1)$ (only one counter).
 
@@ -535,7 +526,7 @@ int longest_atmost_k_zeros_binary_search(const vector<int>& a, int k) {
 }
 ```
 
-Trace on `0 1 0 1 0 0 1 1 0` with k = 2. The array `zeros_before` is `0 1 1 2 2 3 4 4 4 5`. For start = 3 we have zeros_before[3] = 2, so the window may reach the last position whose value is at most 2 + 2 = 4. The first value above 4 is at position 9, so end_exclusive = 8 and the length is 8 - 3 = 5 (positions 3 to 7). No other start gives more, so the function returns 5, the same as two pointers (checked by running it, and also against a brute force on 20 000 random arrays).
+Trace on `0 1 0 1 0 0 1 1 0` with k = 2. The array `zeros_before` is `0 1 1 2 2 3 4 4 4 5`. For start = 3 we have zeros_before[3] = 2, so the window may reach the last position whose value is at most 2 + 2 = 4. The first value above 4 is at position 9, so end_exclusive = 8 and the length is 8 - 3 = 5 (positions 3 to 7). No other start gives more, so the function returns 5, the same as two pointers.
 
 Cost: n binary searches over at most n + 1 values, so T.C. $O(n \log n)$, and the array `zeros_before` needs $O(n)$ space. Common mistake: forgetting the `- 1` after `upper_bound`. The function returns the first position that is too big, so the last good position is one before it. Without the `- 1` the example above would give 6 instead of 5 for start = 3.
 
@@ -593,10 +584,6 @@ An alternative loop: the non-shrinking window. Replace `while (sum > K)` by `if 
 - If it is invalid, no valid window ending at $r$ has length $w + 1$ or more, because each such window contains $[r - w, r]$ and would make it valid. So $B(r) = w$, and the `if` removes one element, leaving length $w$.
 
 The variant needs the same conditions as Theorem 1.3.1 and saves no time. You will meet it in other people's code. Changing `while` to `if` is therefore not a bug when only the length is needed. It is a bug only when the window itself must be valid, for example when you must print it.
-
-Common mistake: recording the answer before shrinking. If `best = max(best, r - l + 1)` is written right after adding `a[r]`, the window may still be invalid. Input `6 7` and `5 9 4 4 2 2` (longest run with sum at most 7): at $r = 5$ the window is $4, 2, 2$ with sum 8, more than 7, but its length 3 is recorded before the `while` loop removes the 4. The wrong code gives 3, the right answer is 2. Fix: record the answer only after the `while` loop, because only then is the window known to be valid (Theorem 1.3.1, part 2).
-
-Common mistake: `>=` instead of `>` in the shrink condition. With `while (sum >= K)` on input `3 2` and `2 2 2`, a window with sum exactly 2 is valid ("at most $K$") but gets removed. The wrong code gives 0, the right answer is 1. Fix: the loop condition is exactly "the window is invalid". Write the validity condition first, then negate it.
 
 ### Distinct elements
 
@@ -759,7 +746,7 @@ Dry run: `1 2 1 3`, k=2 → $\le k$: 8, $= k$: 4, $\ge k$: 6 (10 total subarrays
 
 Cost: each call of the function is $O(n)$, and we call it at most three times, so still $O(n)$. Memory is $O(V)$, where V is the largest value in the array (the frequency array here has 100 100 cells). If values can be larger, use a map or compress the values first. A value outside the array range is a common cause of crashes.
 
-The same counting loop is also in the file `1-Form/SubarraysWithAtmostKDistincts.cpp` (a problem about counting subarrays with at most K distinct values). It keeps the frequencies in a `map` instead of an array. Run on the five sample cases written in that file, it prints `5 6 0 28 46`, which are the answers written there. The time is $O(n)$ with an array and $O(n \log n)$ with a `map`.
+The same counting loop also counts subarrays with at most $K$ distinct values. It keeps the frequencies in a `map` instead of an array. The time is $O(n)$ with an array and $O(n \log n)$ with a `map`.
 
 Question: find the number of subarrays with sum $\le k$ (non-negative numbers). It is the same thing, and the DS is just the running sum. The criteria is monotonic because removing a number can only lower the sum (all numbers are non-negative). Note: if negative numbers are allowed, removing a number can raise the sum, so the criteria is not monotonic and TP fails. For "the number of subarrays with sum equal to K" with negative numbers, use prefix sums and a hash map instead (LeetCode 560, Subarray Sum Equals K).
 
@@ -846,60 +833,6 @@ Why it works:
 This proof needs: (1) the condition is closed under shrinking; (2) the empty window is valid, so $L(r)$ exists.
 
 Cost: the same loop as Theorem 1.3.1, adding `r - l + 1` instead of taking a maximum, so $O(n)$ checks. The count can reach $n(n+1)/2$. For $n = 2 \cdot 10^5$ that is about $2 \cdot 10^{10}$, which is far above the largest 32-bit `int` (about $2.1 \cdot 10^9$). So the count must be a `long long`.
-
-Common mistake: leaving a count at zero instead of erasing it, when the window summary is a `map`. Input `5 2` and `-1 -3 -1 2 -2` (count windows with at most 2 distinct values): the right answer is 10. If removing an element only does `--cnt[a[l]]`, the key stays in the map with count 0. At $r = 3$ the map holds $-1, -3, 2$, so `cnt.size()` is 3. Removing elements lowers counts but never removes keys, so `cnt.size()` stays 3, the `while` loop never stops, and `l` runs past the end of the array (a crash). Fix: erase a key when its count reaches 0, so `cnt.size()` is the number of distinct values in the window. A loop that stops on a summary needs that summary to match the window exactly.
-
-#### Worked example: Playlist
-
-Example: [CSES 1141 Playlist](https://cses.fi/problemset/task/1141). Given $n$ song ids, find the longest run of consecutive songs in which no song repeats. Limits: $n \le 2 \cdot 10^5$, ids up to $10^9$.
-
-The idea, in the six recognition steps.
-1. Budget: checking every run is about $n^2/2 = 2 \cdot 10^{10}$ pairs, far too slow. We need about $O(n \log n)$, at most a few million steps, each possibly a `map` lookup.
-2. Tools: "longest run of consecutive elements with a property" is the weak signal for a shrinkable window (Theorem 1.3.1). Other candidates: prefix sums, but the property is not a sum; or a `set` for every start, which is $O(n^2 \log n)$ in the worst case.
-3. Deciding property: "no id repeats" is closed under shrinking, because removing the first or last song keeps all songs different. The empty window is valid. When song $k_r$ enters, we can recheck the window by looking at the count of $k_r$ alone, because every other song was already unique. All three conditions of Theorem 1.3.1 hold.
-4. Proof for this problem: after the `while` loop for right end $r$, `l` is the smallest left end where $k_l, \dots, k_r$ are all different, so `r - l + 1` is the longest valid run ending at $r$. The loop condition `cnt[k[r]] > 1` is the same as "the window is invalid", because before $k_r$ entered, the window $[l, r-1]$ was valid. So the only possible repeat is $k_r$. Each pointer moves at most $n$ times with one `map` operation each, so the total is $O(n \log n)$.
-
-Trace on `1 2 1 3 2 7 4 2`:
-- $r = 0, 1$: ids 1 and 2 are new, the length is 2.
-- $r = 2$ (id 1): its count is 2, so remove $k_0 = 1$ and `l` $= 1$. Length 2.
-- $r = 3$ (id 3): length 3.
-- $r = 4$ (id 2): count 2, remove $k_1 = 2$, `l` $= 2$. Length 3.
-- $r = 5, 6$ (ids 7, 4): lengths 4 and 5. The window $[2, 6]$ is `1 3 2 7 4`.
-- $r = 7$ (id 2): count 2, remove $k_2$, $k_3$, $k_4$, so `l` $= 5$. Length 3.
-The answer is 5.
-
-<CodeSnippet unit="1.3/example-1" />
-
-Cost: $O(n \log n)$ time with a `map`, $O(n)$ space.
-
-Another way: store for each id its last position, `last[id]`. When $k_r$ arrives and `last[k[r]] >= l`, jump `l` straight to `last[k[r]] + 1`, then set `last[k[r]] = r`. This is the same window with the left end moved in one step instead of one element at a time. It is correct because every left end up to the earlier copy gives an invalid window, and the window starting just after it is valid.
-
-Common mistake: moving `l` only one step per `r` (an `if` instead of a `while`) leaves a repeat inside the window, so the length can be too big.
-
-#### Worked example: Enough Array
-
-Example: [AtCoder ABC130 D, Enough Array](https://atcoder.jp/contests/abc130/tasks/abc130_d). Given $N$ positive integers and $K$, count the subarrays whose sum is at least $K$. Limits: $N \le 10^5$, $a_i \le 10^5$, $K \le 10^{10}$.
-
-The idea, in the six recognition steps.
-1. Budget: there are about $5 \cdot 10^9$ subarrays, so they cannot be listed one by one. The answer can be that large, so it needs `long long`. We need $O(N)$ or $O(N \log N)$.
-2. Tools: "count the subarrays that satisfy a condition" is the weak signal for counting windows (Theorem 1.3.2). Prefix sums give each sum in $O(1)$ but still leave $5 \cdot 10^9$ subarrays to check. The shrinkable window of Theorem 1.3.1 finds one best window, not a count.
-3. Deciding property: "sum at least $K$" is closed under extension, not under shrinking, because removing an element of a valid window can drop its sum below $K$. Its opposite, "sum less than $K$", is closed under shrinking since all values are positive. The empty window has sum 0, which is less than $K$ because $K \ge 1$. So Theorem 1.3.2 counts the windows with sum less than $K$.
-4. Proof for this problem: after the `while` loop for right end $r$, the windows ending at $r$ with sum less than $K$ are exactly those starting at $L(r), \dots, r$, so `r - l + 1` of them. Adding over all $r$ counts every window with sum less than $K$ once. Every one of the $N(N+1)/2$ non-empty windows has sum either less than $K$ or at least $K$, so the answer is $N(N+1)/2$ minus that count. The loop is $O(N)$.
-
-Trace on $a = [3, 1, 2, 1]$, $K = 4$ ($N = 4$, so 10 windows):
-- $r = 0$: sum 3, `l` $= 0$, add 1. Below $= 1$.
-- $r = 1$: sum 4 is not below 4, so remove 3, `l` $= 1$, sum 1. Add 1. Below $= 2$.
-- $r = 2$: sum 3, add 2 (windows $[1,2]$ and $[2,2]$). Below $= 4$.
-- $r = 3$: sum 4, remove 1, `l` $= 2$, sum 3. Add 2. Below $= 6$.
-The answer is $10 - 6 = 4$ (the windows $[3,1]$, $[3,1,2]$, $[3,1,2,1]$ and $[1,2,1]$).
-
-<CodeSnippet unit="1.3/example-2" />
-
-Cost: $O(N)$ time, $O(1)$ extra space.
-
-Another way: count the valid windows directly. For each right end $r$, let $g(r)$ be the largest left end with $a_{g(r)} + \dots + a_r \ge K$, if any. Because the condition is closed under extension, every left end $0, \dots, g(r)$ works, giving $g(r) + 1$ windows, and $g(r)$ never decreases as $r$ grows. In code: after adding $a_r$, move `l` right while the window without $a_l$ still reaches $K$. Then, if the window reaches $K$, add `l + 1`. Both versions are $O(N)$. The complement version is easier to get right because its loop is the plain template.
-
-Common mistake: counting "at least" with the "at most" loop. For $a = [3, 1, 2, 1, 4, 1]$ there are 11 windows with sum at least 5 and 12 with sum at most 5, and the "at most" loop answers 12. Fix: subtract the opposite count from $N(N+1)/2$.
 
 ### Shortest with ≥ k distinct
 
@@ -1054,7 +987,7 @@ int shortest_with_at_least_k_distinct(const vector<int>& a, int k) {
 }
 ```
 
-Dry run (checked by running the function): `2 3 2 5 2`, k=3 → 3. `1 1 1`, k=2 → -1 (none). `1 1 1 2`, k=2 → 2.
+Dry run: `2 3 2 5 2`, k=3 → 3. `1 1 1`, k=2 → -1 (none). `1 1 1 2`, k=2 → 2.
 
 Cost: time $O(n)$ on average (each element enters and leaves the window once, and the hash map costs $O(1)$ on average), memory $O(\text{number of distinct values})$.
 
@@ -1078,9 +1011,7 @@ Cost: $O(n)$ time, $O(1)$ space.
 
 Another way: keep the window valid with `while (sum - a[l] >= S)`, which drops the first element only while the rest still reaches $S$. Then record `r - l + 1` if `sum >= S`. Both forms are correct by the same theorem. A one-element window is never dropped, because then `sum - a[l]` is 0, which is less than $S \ge 1$.
 
-Common mistake: starting `best` at 0 and using `max`. For the shortest window we need a large start value and `min`.
-
-## Form 2:
+## Form 2: two pointers moving towards each other
 
 In form 2 the two pointers start at the two ends of the array and move towards each other.
 
@@ -1175,16 +1106,6 @@ When the two heights are equal, the code moves r. Moving l would be equally fine
 
 Note: `min(v[l], v[r]) * (r - l)` is int * int, so it can overflow when values are large (for example heights up to $10^9$ and width up to $10^5$ give a product near $10^{14}$, which does not fit in a 32-bit int). Use 1LL * ...
 
-#### Container with most water: budget, tools and the invariant
-
-The same problem in the six recognition steps.
-1. Budget: in the LeetCode version $n \le 10^5$ and heights are up to $10^4$. All pairs is about $5 \cdot 10^9$, too slow, so we need $O(n)$ or $O(n \log n)$. The largest area is at most $10^5 \cdot 10^4 = 10^9$, which fits in `int`, but only just. With larger heights, use `long long` as above.
-2. Tools: "best pair of positions" suggests opposite ends. A sliding window is rejected, because the two chosen lines are the two ends of the container, not a window with a property. Sorting by height is a possible tool, because the shorter line decides the height (see the other way below).
-3. Deciding property: the array is not sorted and sorting would destroy the positions that give the width, so a sorted-array theorem does not apply as stated. But we can check its discard property directly. Suppose $h_l \le h_r$. Any container that uses line $l$ with another line $j$, $l < j < r$, has width $j - l < r - l$ and height $\min(h_l, h_j) \le h_l = \min(h_l, h_r)$. So it is no better than $(l, r)$, which we just measured, and line $l$ can be discarded. The mirror argument discards $r$ when $h_r < h_l$.
-4. Proof: the invariant is "some optimal pair has already been measured, or lies inside $[l, r]$". It holds at the start. In each step we measure $(l, r)$ and discard the shorter end. Every pair that uses the discarded end inside $[l, r]$ is no better than the measured $(l, r)$, so the invariant holds after the step. When $l = r$ no pair is left inside, so the best measured area is optimal. There are $n - 1$ steps, so $O(n)$.
-
-Another way: sort the positions by height, tallest first, and keep the smallest and largest position seen so far. When position $p$ is processed, every line seen is at least as tall. If $p$ is the shorter line of the best container, its partner is the seen position farthest from $p$, which is the smallest or the largest. So the area is $h_p \cdot \max(p - \text{smallest}, \text{largest} - p)$. On `[1, 8, 6, 2, 5, 4, 8, 3, 7]` the order is the heights 8 (position 1), 8 (6), 7 (8), and so on. At position 6 the best is $8 \cdot 5 = 40$. At position 8 it is $7 \cdot \max(8 - 1, 6 - 8) = 49$, the same answer. Cost: $O(n \log n)$ for the sort. It is correct, but longer than the two-pointer version.
-
 ### 3-Sum
 
 Question: 3-Sum. Given an array of n elements and a target T, the task can be any one of these:
@@ -1246,7 +1167,7 @@ This is enough to check whether a solution exists, or to find one solution.
 
 Why? If the sum is bigger than needed: the array is sorted, so pairing this k with any i further to the right gives an even bigger sum. This k is useless for this j, so we do k--. If the sum is smaller than needed: pairing this i with any k further to the left gives an even smaller sum. This i is useless, so we do i++.
 
-Looping j over all positions, with an $O(n)$ scan for i and k for each j, gives $O(n^2)$ in total. In his pseudo code:
+Looping j over all positions, with an $O(n)$ scan for i and k for each j, gives $O(n^2)$ in total. In pseudo code:
 
 ```
 for (j → (0, n-1))                → O(n²).
@@ -1319,7 +1240,7 @@ void solve() {
 }
 ```
 
-Dry run (checked against a brute force): T=21 on the sorted example → 7. `3 3 5 7 7 7`, T=15 → 6. The `1 3 4 ... 19` array, T=20 → 5.
+Dry run: T=21 on the sorted example → 7. `3 3 5 7 7 7`, T=15 → 6. The `1 3 4 ... 19` array, T=20 → 5.
 
 Note: this function never prints cnt, so add `cout<<cnt<<endl;` at the end. Also cnt is an int, so use long long if the count can be big.
 
@@ -1347,9 +1268,9 @@ bool find_one_triple(const vector<int>& a, int T, int& i_out, int& j_out, int& k
 }
 ```
 
-Trace on the sorted array `1 3 4 5 6 7 8 10 12 19` with T = 20. For j = 1 (value 3) we need 17: the pair 1 + 19 is too big (k moves), 1 + 12 is too small (i moves), and i reaches j, so we go on. For j = 2 (value 4) we need 16: the same thing happens. For j = 3 (value 5) we need 15: 1 + 19 is too big, 1 + 12 = 13 is too small, and 3 + 12 = 15 matches. The function returns the positions 1, 3, 8, which is 3 + 5 + 12 = 20. This is a different valid triple from the hand trace above, because the hand trace fixed j at the value 6 and this loop meets the value 5 first. With T = 100 it returns false. Both results were checked by running the function, and it matched a brute force on 20 000 random sorted arrays.
+Trace on the sorted array `1 3 4 5 6 7 8 10 12 19` with T = 20. For j = 1 (value 3) we need 17: the pair 1 + 19 is too big (k moves), 1 + 12 is too small (i moves), and i reaches j, so we go on. For j = 2 (value 4) we need 16: the same thing happens. For j = 3 (value 5) we need 15: 1 + 19 is too big, 1 + 12 = 13 is too small, and 3 + 12 = 15 matches. The function returns the positions 1, 3, 8, which is 3 + 5 + 12 = 20. This is a different valid triple from the hand trace above, because the hand trace fixed j at the value 6 and this loop meets the value 5 first. With T = 100 it returns false.
 
-Cost: T.C. $O(n^2)$ in the worst case and $O(1)$ extra space. Common mistake: calling it on an array that is not sorted, because the moves of i and k depend on the order.
+Cost: T.C. $O(n^2)$ in the worst case and $O(1)$ extra space.
 
 Variant: the closest sum to the target. It uses the same loop, but we do not stop on a match. We just keep the minimum of abs(sum - target). If sum > target we do k--, otherwise i++.
 
@@ -1421,9 +1342,7 @@ The same count can be written differently: for each $i$, count the elements at m
 
 Another way for one pair with a given sum: scan once and keep a `set` of the values seen. For each $a_j$, the answer is yes if $T - a_j$ is already in the set. A pair $i < j$ is found exactly when $a_j$ is scanned. It costs $O(n \log n)$, needs no sort, and also works when the original positions must be reported. The two-pointer version needs only $O(1)$ extra memory after the sort.
 
-Common mistake: letting the pointers meet, `while (l <= r)`. Input `1 -4` and `-2` (one element, target $-4$): with $l = r = 0$ we get $a_0 + a_0 = -4$, which matches the target, so the wrong code says YES. The right answer is NO, because a pair needs two different positions. Fix: `while (l < r)`. In Theorem 1.3.4 the range $[l, r]$ holds a pair only while it has at least two indices.
-
-## Form 3:
+## Form 3: one pointer on each of two sequences
 
 In form 3 each sequence has its own pointer, and both pointers move in the same direction.
 
@@ -1444,7 +1363,7 @@ while (i → (0, s.length-1) &&
 
 *The letters b, d, a are found at positions 1, 8 and 9 of s, so t is a subsequence of s.*
 
-If all the letters of t were found (j == t.length), the answer is yes. The 3-Form folder in the repository is still empty, so here is a function:
+If all the letters of t were found (j == t.length), the answer is yes. Here is a function:
 
 ```cpp
 /*
@@ -1806,8 +1725,6 @@ Cost: $O(n + m)$ after sorting. The same walk has other uses. The number of pair
 
 Another way for the closest pair across two lists: merge both into one sorted list, remembering which list each value came from. The closest cross pair is then adjacent in the merged order. It is the same forward-only walk, with output.
 
-Common mistake: walking past equal values, `while (j < m && b[j] <= a[i]) j++`. Input `1 4`, then `1`, then `0 0 1 1`: the count of $b$ strictly below $a_0 = 1$ is 2, but the wrong loop also counts the two 1s and gives 4. The closest distance is still right (0), which is why a test that checks only one output line can miss the bug. Fix: use the strict comparison that matches the definition of $p(i)$. When a problem says "at most" or "less than", decide which one before writing the loop.
-
 ### Theorem 1.3.6: the subsequence check
 
 **Theorem 1.3.6 (subsequence check).** A string $t$ is a subsequence of a string $s$ if and only if this walk ends with `j` $= |t|$:
@@ -1844,6 +1761,398 @@ Each card names one form of the method. The decisive property is the condition o
 
 <Cards topic="1.3" />
 
+## Templates
+
+Nine short functions, one for each mechanism above. The lesson explains why each loop works; here they are in a form you can copy. Each reads a small made-up problem from standard input, so it can be run on its own. In a contest you copy the loop, not the whole program.
+
+All nine start with `#include <bits/stdc++.h>` (one line that includes the whole standard library) and `using namespace std;` (so `vector` can be written instead of `std::vector`). Topic 0.1 explains both. They read numbers with `cin >> x` and write with `cout << x << "\n"`.
+
+### Longest window (Theorem 1.3.1)
+
+<CodeSnippet unit="1.3/longest-window" />
+
+**How it works.** `sum` always equals $a_l + \dots + a_r$. For each `r`, the new element is added to `sum`. While the window is invalid (`sum > K`), its first element is removed and `l` moves right. After the loop, `[l, r]` is the longest valid window ending at `r` (Theorem 1.3.1, part 2), so `r - l + 1` is a candidate for `best`. If even $a_r$ alone exceeds $K$, the loop empties the window (`l = r + 1`) and the candidate is 0.
+
+**Alternative formulation (non-shrinking window).** Replace `while (sum > K)` with `if (sum > K)`. The window then moves right by one place when it is invalid, instead of shrinking, and its length never decreases. The answer is still `best` (equivalently, the final `r - l + 1`), but the window itself may be invalid at the end.
+
+*Proof.* Let $B(r)$ be the length of the longest valid window inside $[0, r]$, and let $w$ be the window length after iteration $r - 1$; assume $w = B(r-1)$ (true before the first iteration with $w = 0$). Iteration $r$ first makes the window $[r - w, r]$, of length $w + 1$.
+- If it is valid, $B(r) \ge w + 1$. Also $B(r) \le w + 1$: any valid window of length $L$ ending at $r$ has the valid sub-window of length $L - 1$ ending at $r - 1$ (closure under shrinking), so $L - 1 \le B(r - 1) = w$. The window is kept, with length $w + 1 = B(r)$.
+- If it is invalid, no valid window ending at $r$ has length $w + 1$ or more, because each such window contains $[r - w, r]$ and would make it valid by closure under shrinking. So $B(r) = w$, and the `if` removes one element, leaving length $w$. $\square$
+
+The variant needs the same preconditions as Theorem 1.3.1. It saves nothing in complexity, but you will meet it in other people's code, and the Bug catalogue explains why changing `while` to `if` is *not* a bug here.
+
+### Shortest window (Theorem 1.3.1, opposite condition)
+
+<CodeSnippet unit="1.3/shortest-window" />
+
+**How it works.** After adding $a_r$, the `while` loop runs as long as the window still reaches $S$. Each pass records the current length (a window ending at `r` that reaches $S$) and then removes $a_l$. When the loop stops, `sum` $< S$, so `l` is the smallest left end whose window falls short (Theorem 1.3.1 applied to "sum less than $S$"), and the last length recorded, for the window starting at `l - 1`, is the shortest one ending at `r` that reaches $S$. `best` starts at `n + 1`, a value no real answer can have, so "nothing found" can be told apart.
+
+**Alternative formulation.** Use the shape of Theorem 1.3.1 directly: keep a `while (sum - a[l] >= S)` loop that drops the first element only while the rest still reaches $S$, then record `r - l + 1` if `sum >= S`. It keeps the window valid instead of stepping one past it. Both are correct by the same theorem. The first element is never dropped from a one-element window, because then `sum - a[l]` is 0, which is less than $S \ge 1$.
+
+### Counting windows (Theorem 1.3.2)
+
+<CodeSnippet unit="1.3/count-windows" />
+
+**How it works.** The validity condition is "at most $k$ distinct values", which is closed under shrinking (removing elements cannot add new values), and the empty window has 0 distinct values. `cnt` maps each value in the window to how many times it occurs, so `cnt.size()` is the number of distinct values. A value whose count drops to 0 is erased, so it no longer counts. After the `while` loop, `l` $= L(r)$, and Theorem 1.3.2 says the valid windows ending at `r` are exactly those starting at `l, l + 1, …, r`: `r - l + 1` of them.
+
+**Alternative formulation.** For "exactly $k$ distinct values", which is not closed under shrinking, count "at most $k$" minus "at most $k - 1$". Every window with exactly $k$ distinct values is counted by the first and not by the second.
+
+### Fixed-size window (Theorem 1.3.3)
+
+<CodeSnippet unit="1.3/fixed-window" />
+
+**How it works.** The summary is the map of counts. At step `r`, `a[r]` enters; from `r = k` on, `a[r - k]` leaves, so the window is always the last `k` elements (Theorem 1.3.3). From `r = k - 1` on, the window is complete and its number of distinct values, `cnt.size()`, is a candidate.
+
+**Alternative formulation.** When the summary is a sum, prefix sums (Theorem 1.2.1) give each window's sum as $P_{r+1} - P_{r-k+1}$ with no add or remove at all. Counts of distinct values have no such formula, which is why the sliding update is needed here.
+
+### Maximum of each fixed-size window (Theorem 1.3.3 with a multiset)
+
+<CodeSnippet unit="1.3/window-max" />
+
+**How it works.** A single "maximum so far" variable cannot remove an element (see the fixed window section above), so the window's values are kept in a `multiset`, a sorted collection that keeps duplicates. Adding is `insert`; removing the leaving element is `erase` of *one* copy; the maximum is the last element.
+
+**Alternative formulation.** Topic 1.6 gives an $O(n)$ method. Within this topic the `multiset` is the natural choice; $O(n \log k)$ is fast enough for $n \le 2 \cdot 10^5$.
+
+### Pair with a given sum (Theorem 1.3.4)
+
+<CodeSnippet unit="1.3/pair-sum" />
+
+**How it works.** After sorting, `l` and `r` start at the two ends. If the sum is too small, no partner inside `[l, r]` can help `a[l]` (all are at most `a[r]`), so `l` moves in; if too large, `a[r]` is discarded the same way. The loop stops when the pointers meet, so an element is never paired with itself.
+
+**Alternative formulation.** Scan the array once, keeping a `set` of the values seen so far; for each $a_j$, the answer is YES if $T - a_j$ is already in the set. Correct because a pair $i < j$ is found exactly when $a_j$ is scanned. It costs $O(n \log n)$ too, needs no sort, and also works when the original positions must be reported. The two-pointer version needs only $O(1)$ extra memory after sorting.
+
+### Counting pairs with sum at most T (Theorem 1.3.4, counting form)
+
+<CodeSnippet unit="1.3/pairs-at-most" />
+
+**How it works.** If `a[l] + a[r] <= T`, then `a[l]` plus any element between them is also at most $T$ (the array is sorted), so all `r - l` pairs $(l, j)$ with $l < j \le r$ count, and `l` is finished. Otherwise `a[r]` plus even the smallest remaining element is too big, so `r` is finished. Each pair $(i, j)$ is counted once: when its left index $i$ is finished.
+
+**Alternative formulation.** Counting pairs $(i, j)$ with $a_i + a_j \le T$ is the same as counting, for each $i$, the elements at most $T - a_i$. With a second pointer walking down as $a_i$ grows, this is the forward-only walk of Theorem 1.3.5 run in the opposite direction; the code is the same loop written differently.
+
+### Walking two sorted lists (Theorem 1.3.5)
+
+<CodeSnippet unit="1.3/two-sorted" />
+
+**How it works.** Both lists are sorted. For each `a[i]` in increasing order, `j` advances past every `b` value smaller than `a[i]`; afterwards `j` is $p(i)$, the number of such values, so `pairs += j` counts them. The closest `b` value to `a[i]` is either `b[j]` (the first that is at least `a[i]`) or `b[j - 1]` (the last below it), whichever exists. `j` never moves back because `a` is sorted (Theorem 1.3.5).
+
+**Alternative formulation.** Merge the two sorted lists into one, remembering which list each value came from; the closest pair across the lists is then adjacent in the merged order (topic 1.1, self-test question 7). This is the same forward-only walk, with output.
+
+### Subsequence check (Theorem 1.3.6)
+
+<CodeSnippet unit="1.3/subsequence" />
+
+**How it works.** `j` counts how many characters of `t` are matched. Each character of `s` is compared with the next unmatched character `t[j]`; if they are equal, it is matched at this earliest possible position. Theorem 1.3.6 shows that earliest matching never loses a solution.
+
+**Alternative formulation.** For many queries $t$ against the same $s$, store for each letter the sorted list of its positions in $s$ and jump to the next position after the current one. That needs a faster lookup than a forward walk and is left to topic 1.4.
+
+## Bug catalogue
+
+Each entry shows the wrong line, an input that exposes it, what the wrong code prints, and the fix. Templates are the functions in the Templates section.
+
+### Bug: answer recorded before shrinking
+
+Template: longest window. The wrong line is added just after `sum += a[r];`:
+
+```cpp
+best = max(best, r - l + 1);  // window may still be invalid here
+```
+
+Input:
+
+```
+6 7
+5 9 4 4 2 2
+```
+
+Wrong output `3`, correct output `2`. At `r = 5` the window is $4, 2, 2$ with sum 8, which is more than 7, but its length 3 is recorded before the `while` loop removes the 4.
+
+**Fix:** record the answer only after the `while` loop, because only then is `[l, r]` known to be valid (Theorem 1.3.1, part 2).
+
+### Bug: `>=` instead of `>` in the shrink condition
+
+Template: longest window.
+
+```cpp
+while (sum >= K) {
+```
+
+Input:
+
+```
+3 2
+2 2 2
+```
+
+Wrong output `0`, correct output `1`. A window with sum exactly 2 is valid ("at most $K$"), but this loop removes it.
+
+**Fix:** the loop condition must be exactly "the window is invalid", here `sum > K`. Write the validity condition first, then negate it for the loop.
+
+### Bug: window sum kept in an `int`
+
+Template: longest window.
+
+```cpp
+int sum = 0;  // sum of a[l..r]
+```
+
+Input:
+
+```
+8 2772667053
+400000000 900000000 200000000 500000000 700000000 400000000 800000000 100000000
+```
+
+Wrong output `8`, correct output `6`. The full sum is $4 \cdot 10^9$, more than the largest `int` (about $2.1 \cdot 10^9$). The addition overflows to a negative number, so the whole array looks valid.
+
+**Fix:** `long long sum`. Any sum of up to $2 \cdot 10^5$ values of size $10^9$ needs 64 bits. Random tests with small values never show this bug, so always include a test with the largest allowed values.
+
+### Bug: count left at zero instead of erased
+
+Template: counting windows.
+
+```cpp
+--cnt[a[l]];  // the key stays in the map with count 0
+```
+
+Input:
+
+```
+5 2
+-1 -3 -1 2 -2
+```
+
+Wrong output: the program crashes with a *segmentation fault* (it read memory outside the array). Correct output `10`. At `r = 3` the map holds $-1, -3, 2$, so `cnt.size()` is 3. Removing elements lowers counts but never removes keys, so `cnt.size()` stays 3, the `while` loop never stops, and `l` runs past the end of the array.
+
+**Fix:** erase a key when its count reaches 0, so `cnt.size()` is the number of distinct values *in the window*. A loop whose exit depends on a summary must have that summary match the window exactly.
+
+### Bug: `erase(value)` removes every copy
+
+Template: maximum of each fixed-size window.
+
+```cpp
+if (r >= k) window.erase(a[r - k]);
+```
+
+Input:
+
+```
+2 1
+-3 -3
+```
+
+Wrong output: the program crashes. Correct output `-3 -3`. At `r = 1` the multiset holds two copies of $-3$; `erase(-3)` removes both, the multiset is empty, and reading `*window.rbegin()` from an empty multiset is *undefined behaviour*: the C++ standard does not say what happens, and here the program crashed.
+
+**Fix:** `window.erase(window.find(a[r - k]))`, which removes exactly one copy. The leaving element appears once in the window's history, so exactly one copy must go (Theorem 1.3.3, condition 2).
+
+### Bug: wrong element leaves the window
+
+Template: fixed-size window.
+
+```cpp
+if (--cnt[a[r - k + 1]] == 0) cnt.erase(a[r - k + 1]);
+```
+
+Input:
+
+```
+6 3
+1 2 2 2 3 2
+```
+
+Wrong output `3`, correct output `2`. The element at `r - k + 1` is the first element of the *new* window, so it stays; the one that leaves is at `r - k`. With the wrong index, the summary drifts away from the window and reports 3 distinct values where no window of length 3 has more than 2.
+
+**Fix:** remove `a[r - k]`. Check index arithmetic on a tiny case: with $k = 3$ and $r = 3$ the window is $[1, 3]$, so index $0 = r - k$ leaves.
+
+### Bug: pointers allowed to meet
+
+Template: pair with a given sum.
+
+```cpp
+while (l <= r) {
+```
+
+Input:
+
+```
+1 -4
+-2
+```
+
+Wrong output `YES`, correct output `NO`. With one element, `l = r = 0` and $a_0 + a_0 = -4$ matches the target, but a pair needs two different positions.
+
+**Fix:** `while (l < r)`. In Theorem 1.3.4 the range $[l, r]$ holds a pair only while it has at least two indices.
+
+### Bug: walking past equal values
+
+Template: walking two sorted lists.
+
+```cpp
+while (j < m && b[j] <= a[i]) j++;
+```
+
+Input:
+
+```
+1 4
+1
+0 0 1 1
+```
+
+Wrong output `4` and `0`, correct output `2` and `0`. The pair count should include only $b$ values *less than* $a_i = 1$, but `<=` also counts the two 1s. The closest distance is still right, which is why a test that checks only one output line can miss this bug.
+
+**Fix:** use the comparison that matches the definition of $p(i)$ in Theorem 1.3.5: strictly less. When a problem says "at most" or "less than", decide which one before writing the loop.
+
+### Bug: values stored in the deque instead of indices
+
+Template: maximum or minimum of each fixed-size window with a monotonic deque.
+
+If the deque holds values, you cannot tell when its front element has left the window, because equal values at different positions look the same. Store indices, compare through `arr[index]`, and pop the front when its index is at most `r - k`.
+
+**Fix:** keep indices in the deque.
+
+### Bug: `head` starts at 0 instead of -1
+
+Template: variable window with a `head` and a `tail` pointer (Form 1).
+
+`head` is the last index already taken into the window, so the empty window is `head = tail - 1`, and the first pass must start with `head = -1`. Starting at 0 counts the first element as taken before it was checked, and a first element that is already invalid slips into the window.
+
+**Fix:** `head = -1`, and after moving the tail past an empty window set `head = tail - 1`.
+
+### Bug: the tail moves but its element is not removed
+
+Template: variable window with a data structure.
+
+The summary (sum, count map, set) must always describe exactly the elements from `tail` to `head`. If `tail++` happens without removing `arr[tail]` first, the summary still contains an element that is no longer in the window, and every later check is wrong.
+
+**Fix:** remove `arr[tail]` from the summary, then move `tail`.
+
+### Bug: the `else` branch is missing
+
+Template: variable window with a data structure.
+
+When the window is empty and the next element cannot be taken, the tail is ahead of the head. The `else` branch handles exactly this case: it moves `tail` one step and sets `head = tail - 1`, so the window is empty again. Without it, nothing moves the tail past an element that cannot be taken.
+
+**Fix:** keep the `else` branch.
+
+### Bug: the criteria is not monotonic
+
+Template: any variable window.
+
+The two-pointer loop is correct only when validity is closed under shrinking. "At least `k` distinct values" and "sum at least `S`" are not: a valid window can contain an invalid part. The loop then skips windows and gives wrong answers.
+
+**Fix:** switch to the opposite condition, which is monotonic ("fewer than `k` distinct", "sum less than `S`"), and use it as in the shortest-window and counting templates.
+
+### Bug: `if` instead of `while` in the shrink step of Playlist
+
+Template: the no-repeat window of the Playlist example, with `cnt[k[r]] > 1` as the shrink test.
+
+```cpp
+if (cnt[k[r]] > 1) { --cnt[k[l]]; l++; }  // removes only one element
+```
+
+Input:
+
+```
+7
+1 1 3 2 3 4 2
+```
+
+Wrong output `4`, correct output `3`. At the end of `r = 1` the window holds the two 1s, and one removal fixes it. But after `r = 4` the window is `1 3 2 3`: removing one element leaves a repeat of 3 inside it, and the loop never looks again because it tests only the new element.
+
+**Fix:** `while`. The no-repeat test depends on the new element alone, so the window stays valid only if it is shrunk until that test passes. (The sum template in the Templates section is different: its `if` version re-tests the whole window every step, and the Templates section proves it correct.)
+
+### Bug: counting "at least" with the "at most" loop
+
+Template: counting windows.
+
+For $a = [3, 1, 2, 1, 4, 1]$ there are 11 windows with sum at least 5 and 12 with sum at most 5. The counting loop answers the "at most" question, so using it for "at least" prints 12.
+
+**Fix:** count the opposite condition and subtract it from $N(N+1)/2$.
+
+### Bug: `best` starts at 0 and uses `max` for a shortest window
+
+Template: shortest window.
+
+A shortest answer needs a start value larger than any real answer and `min`. Starting at 0 with `max` returns 0 or the longest window.
+
+**Fix:** start `best` at `n + 1`, use `min`, and treat `n + 1` at the end as "no window".
+
+### Bug: pair-sum or 3-Sum loop on an array that is not sorted
+
+Template: pair with a given sum; 3-Sum.
+
+The moves of the pointers ("sum too small, move `l` in") are correct only because the array is sorted.
+
+**Fix:** sort first, or use a `set` when the original positions must be kept.
+
+### Not a bug: `if` instead of `while`
+
+Changing `while (sum > K)` to `if (sum > K)` in the longest-window template passes every test. The variant is correct, and the Templates section proves it (the non-shrinking window). It is a bug only when you need the window itself to be valid, for example to print it.
+
+## Worked examples
+
+Each example follows the same routine: budget first, then the candidate tools, then the property that decides between them, a proof for this problem, and only then code. The traces use small inputs.
+
+### Example 1: Playlist
+
+[CSES 1141 Playlist](https://cses.fi/problemset/task/1141). Given $n$ song ids, find the longest run of consecutive songs in which no song repeats. Limits: $n \le 2 \cdot 10^5$, ids up to $10^9$.
+
+The idea, in the six recognition steps.
+1. Budget: checking every run is about $n^2/2 = 2 \cdot 10^{10}$ pairs, far too slow. We need about $O(n \log n)$, at most a few million steps, each possibly a `map` lookup.
+2. Tools: "longest run of consecutive elements with a property" is the weak signal for a shrinkable window (Theorem 1.3.1). Other candidates: prefix sums, but the property is not a sum; or a `set` for every start, which is $O(n^2 \log n)$ in the worst case.
+3. Deciding property: "no id repeats" is closed under shrinking, because removing the first or last song keeps all songs different. The empty window is valid. When song $k_r$ enters, we can recheck the window by looking at the count of $k_r$ alone, because every other song was already unique. All three conditions of Theorem 1.3.1 hold.
+4. Proof for this problem: after the `while` loop for right end $r$, `l` is the smallest left end where $k_l, \dots, k_r$ are all different, so `r - l + 1` is the longest valid run ending at $r$. The loop condition `cnt[k[r]] > 1` is the same as "the window is invalid", because before $k_r$ entered, the window $[l, r-1]$ was valid. So the only possible repeat is $k_r$. Each pointer moves at most $n$ times with one `map` operation each, so the total is $O(n \log n)$.
+
+Trace on `1 2 1 3 2 7 4 2`:
+- $r = 0, 1$: ids 1 and 2 are new, the length is 2.
+- $r = 2$ (id 1): its count is 2, so remove $k_0 = 1$ and `l` $= 1$. Length 2.
+- $r = 3$ (id 3): length 3.
+- $r = 4$ (id 2): count 2, remove $k_1 = 2$, `l` $= 2$. Length 3.
+- $r = 5, 6$ (ids 7, 4): lengths 4 and 5. The window $[2, 6]$ is `1 3 2 7 4`.
+- $r = 7$ (id 2): count 2, remove $k_2$, $k_3$, $k_4$, so `l` $= 5$. Length 3.
+The answer is 5.
+
+<CodeSnippet unit="1.3/example-1" />
+
+Cost: $O(n \log n)$ time with a `map`, $O(n)$ space.
+
+Another way: store for each id its last position, `last[id]`. When $k_r$ arrives and `last[k[r]] >= l`, jump `l` straight to `last[k[r]] + 1`, then set `last[k[r]] = r`. This is the same window with the left end moved in one step instead of one element at a time. It is correct because every left end up to the earlier copy gives an invalid window, and the window starting just after it is valid.
+
+### Example 2: Enough Array
+
+Example: [AtCoder ABC130 D, Enough Array](https://atcoder.jp/contests/abc130/tasks/abc130_d). Given $N$ positive integers and $K$, count the subarrays whose sum is at least $K$. Limits: $N \le 10^5$, $a_i \le 10^5$, $K \le 10^{10}$.
+
+The idea, in the six recognition steps.
+1. Budget: there are about $5 \cdot 10^9$ subarrays, so they cannot be listed one by one. The answer can be that large, so it needs `long long`. We need $O(N)$ or $O(N \log N)$.
+2. Tools: "count the subarrays that satisfy a condition" is the weak signal for counting windows (Theorem 1.3.2). Prefix sums give each sum in $O(1)$ but still leave $5 \cdot 10^9$ subarrays to check. The shrinkable window of Theorem 1.3.1 finds one best window, not a count.
+3. Deciding property: "sum at least $K$" is closed under extension, not under shrinking, because removing an element of a valid window can drop its sum below $K$. Its opposite, "sum less than $K$", is closed under shrinking since all values are positive. The empty window has sum 0, which is less than $K$ because $K \ge 1$. So Theorem 1.3.2 counts the windows with sum less than $K$.
+4. Proof for this problem: after the `while` loop for right end $r$, the windows ending at $r$ with sum less than $K$ are exactly those starting at $L(r), \dots, r$, so `r - l + 1` of them. Adding over all $r$ counts every window with sum less than $K$ once. Every one of the $N(N+1)/2$ non-empty windows has sum either less than $K$ or at least $K$, so the answer is $N(N+1)/2$ minus that count. The loop is $O(N)$.
+
+Trace on $a = [3, 1, 2, 1]$, $K = 4$ ($N = 4$, so 10 windows):
+- $r = 0$: sum 3, `l` $= 0$, add 1. Below $= 1$.
+- $r = 1$: sum 4 is not below 4, so remove 3, `l` $= 1$, sum 1. Add 1. Below $= 2$.
+- $r = 2$: sum 3, add 2 (windows $[1,2]$ and $[2,2]$). Below $= 4$.
+- $r = 3$: sum 4, remove 1, `l` $= 2$, sum 3. Add 2. Below $= 6$.
+The answer is $10 - 6 = 4$ (the windows $[3,1]$, $[3,1,2]$, $[3,1,2,1]$ and $[1,2,1]$).
+
+<CodeSnippet unit="1.3/example-2" />
+
+Cost: $O(N)$ time, $O(1)$ extra space.
+
+Another way: count the valid windows directly. For each right end $r$, let $g(r)$ be the largest left end with $a_{g(r)} + \dots + a_r \ge K$, if any. Because the condition is closed under extension, every left end $0, \dots, g(r)$ works, giving $g(r) + 1$ windows, and $g(r)$ never decreases as $r$ grows. In code: after adding $a_r$, move `l` right while the window without $a_l$ still reaches $K$. Then, if the window reaches $K$, add `l + 1`. Both versions are $O(N)$. The complement version is easier to get right because its loop is the plain template.
+
+### Example 3: Container With Most Water
+
+[LeetCode Container With Most Water](https://leetcode.com/problems/container-with-most-water/). Given $n$ heights, choose two positions $i < j$ to maximise $(j - i) \cdot \min(h_i, h_j)$. The code is in Form 2 above.
+
+The idea, in the six recognition steps.
+1. Budget: in the LeetCode version $n \le 10^5$ and heights are up to $10^4$. All pairs is about $5 \cdot 10^9$, too slow, so we need $O(n)$ or $O(n \log n)$. The largest area is at most $10^5 \cdot 10^4 = 10^9$, which fits in `int`, but only just. With larger heights, use `long long` as above.
+2. Tools: "best pair of positions" suggests opposite ends. A sliding window is rejected, because the two chosen lines are the two ends of the container, not a window with a property. Sorting by height is a possible tool, because the shorter line decides the height (see the other way below).
+3. Deciding property: the array is not sorted and sorting would destroy the positions that give the width, so a sorted-array theorem does not apply as stated. But we can check its discard property directly. Suppose $h_l \le h_r$. Any container that uses line $l$ with another line $j$, $l < j < r$, has width $j - l < r - l$ and height $\min(h_l, h_j) \le h_l = \min(h_l, h_r)$. So it is no better than $(l, r)$, which we just measured, and line $l$ can be discarded. The mirror argument discards $r$ when $h_r < h_l$.
+4. Proof: the invariant is "some optimal pair has already been measured, or lies inside $[l, r]$". It holds at the start. In each step we measure $(l, r)$ and discard the shorter end. Every pair that uses the discarded end inside $[l, r]$ is no better than the measured $(l, r)$, so the invariant holds after the step. When $l = r$ no pair is left inside, so the best measured area is optimal. There are $n - 1$ steps, so $O(n)$.
+
+Another way: sort the positions by height, tallest first, and keep the smallest and largest position seen so far. When position $p$ is processed, every line seen is at least as tall. If $p$ is the shorter line of the best container, its partner is the seen position farthest from $p$, which is the smallest or the largest. So the area is $h_p \cdot \max(p - \text{smallest}, \text{largest} - p)$. On `[1, 8, 6, 2, 5, 4, 8, 3, 7]` the order is the heights 8 (position 1), 8 (6), 7 (8), and so on. At position 6 the best is $8 \cdot 5 = 40$. At position 8 it is $7 \cdot \max(8 - 1, 6 - 8) = 49$, the same answer. Cost: $O(n \log n)$ for the sort. It is correct, but longer than the two-pointer version.
+
 ## Quick revision
 
 - Two pointers (TP): two indices that never move back, so the total work is $O(n)$
@@ -1856,7 +2165,7 @@ Each card names one form of the method. The decisive property is the condition o
 - The count of valid subarrays starting at tail is len; the sum of their lengths is len(len+1)/2
 - Exactly k: $f(\le k) - f(\le k-1)$. At least k: $n(n+1)/2 - f(\le k-1)$
 - Shortest with at least k distinct: eat while there are fewer than k distinct values; if a next element exists, the length is head - tail + 1 + 1
-- Fixed window (form 0): monotonic deque of indices: pop the back while arr[back] >= new value, pop the front when its index leaves the window. $O(n)$
+- Fixed window: monotonic deque of indices: pop the back while arr[back] >= new value, pop the front when its index leaves the window. $O(n)$
 - Common mistakes: head must start at -1; remove arr[tail] when the tail moves; keep the else branch; the criteria must be monotonic
 - Form 2: pointers move inward. Container: move the smaller bar (use 1LL * to avoid overflow). 3-Sum: sort, put j in the middle, and solve 2-sum with i and k (sum too big: k--, sum too small: i++); for duplicates, multiply the frequencies
 - Form 3: one pointer per sequence. Subsequence: pointer on s always moves, pointer on t moves on a match. For sorted lists, intersection and union (inverted index) take $O(a + b)$

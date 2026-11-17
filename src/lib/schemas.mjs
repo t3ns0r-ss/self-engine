@@ -257,6 +257,28 @@ export const implDrill = z.strictObject({
 });
 export const drillsFile = z.array(implDrill);
 
+// src/data/sets/*.yaml: contest-practice problem sets that are not topics (CURRICULUM_GAPS_PLAN.md Section 6, items 2 and 3).
+// `source_check: api` marks a Codeforces problem whose statement could not be opened (the summary is recalled, shown with a dagger).
+const setProblemBase = {
+  id: z.string().min(1),
+  source: z.enum(SOURCES),
+  title: z.string().min(1),
+  url: z.string().url(),
+  difficulty: z.string().min(1),
+  summary: z.string().min(1),
+  checked_on: isoDate,
+  source_check: z.enum(['page', 'api']).default('page'),
+};
+export const volumeProblem = z.strictObject({ ...setProblemBase, topic: topicId });
+export const volumeSetFile = z.strictObject({ id: z.literal('volume-0'), title: z.string().min(1), rating: z.string().min(1), problems: z.array(volumeProblem) });
+export const bridgeProblem = z.strictObject({
+  ...setProblemBase,
+  have: z.string().min(1),                  // the known tool, in words
+  have_topics: z.array(topicId).min(1),     // topics of Phase 4 or earlier that supply it
+  new_idea: z.string().min(1),              // the one step beyond, one line
+});
+export const bridgeSetFile = z.strictObject({ id: z.literal('bridge-4-5'), title: z.string().min(1), rating: z.string().min(1), problems: z.array(bridgeProblem) });
+
 // ---- Design-track data files (DESIGN_TRACKS_PLAN.md Sections 3, 7.4, 7.5, 10.7) ----
 export const designConfig = z.strictObject({
   lld: z.strictObject({

@@ -13,7 +13,7 @@ mkdirSync(CACHE, { recursive: true });
 /** Every cf-... id mentioned in the topic and bank data files, as a cache key like 1234A. */
 export function siteCfKeys(root = ROOT) {
   const keys = new Set();
-  for (const dir of ['src/data/topics', 'src/data/bank']) {
+  for (const dir of ['src/data/topics', 'src/data/bank', 'src/data/sets']) {
     for (const f of readdirSync(join(root, dir))) {
       if (!f.endsWith('.yaml')) continue;
       for (const m of readFileSync(join(root, dir, f), 'utf8').matchAll(/\bcf-(\d+[A-Z]\d?)\b/g)) keys.add(m[1]);

@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { validateAll } from './validate.mjs';
 import { validateTopics } from './validate-topics.mjs';
 import { validateDrills } from './validate-drills.mjs';
+import { validateSets } from './validate-sets.mjs';
 import { validateDesignCurriculum } from './validate-design.mjs';
 import { findLessons } from './lessons.mjs';
 import { url } from './url';
@@ -65,6 +66,10 @@ export type TopicFile = {
   read_solution?: { questions: [string, string, string] };
 };
 export type ImplDrill = { id: string; title: string; topic: string; minutes: number; unit: string; task: string; check: string[]; bug: string };
+export type SetProblem = { id: string; source: Source; title: string; url: string; difficulty: string; summary: string; checked_on: string; source_check: 'page' | 'api' };
+export type VolumeProblem = SetProblem & { topic: string };
+export type BridgeProblem = SetProblem & { have: string; have_topics: string[]; new_idea: string };
+export type SetsData = { 'volume-0': { id: 'volume-0'; title: string; rating: string; problems: VolumeProblem[] }; 'bridge-4-5': { id: 'bridge-4-5'; title: string; rating: string; problems: BridgeProblem[] } };
 export type GlossaryEntry = { term: string; expansion?: string; definition: string; topic: string };
 
 /** A topic problem joined with its bank record: the one source of title, URL, and difficulty. */
@@ -79,6 +84,7 @@ export type SiteData = {
   topics: Record<string, TopicFile>;
   glossary: GlossaryEntry[];
   drills: ImplDrill[];
+  sets: SetsData;
   lessons: Record<string, { path: string; text: string }>;
   bankById: Map<string, BankProblem>;
 };
@@ -99,6 +105,7 @@ export function loadData(): Promise<SiteData> {
     const topics = Object.fromEntries((await getCollection('topics')).map((e) => [e.data.id, e.data as TopicFile]));
     const glossary = (await getCollection('glossary')).map(({ data: { id: _id, ...g } }) => g as GlossaryEntry);
     const drills = (await getCollection('drills')).map((e) => e.data as ImplDrill);
+    const sets = Object.fromEntries((await getCollection('sets')).map((e) => [e.data.id, e.data])) as unknown as SetsData;
     const notes = Object.fromEntries(
       Object.keys(banks).map((t) => {
         const p = `notes/bank/${t}.md`;
@@ -111,12 +118,13 @@ export function loadData(): Promise<SiteData> {
       ...validateAll({ curriculum: allCp, patterns, banks, notes }),
       ...validateTopics({ curriculum: allCp, patterns, banks, topics, glossary, lessons: Object.fromEntries(Object.entries(lessons).filter(([k]) => !isDesignId(k))) }),
       ...validateDrills({ curriculum: allCp, topics, drills }, (f) => existsSync(f)),
+      ...validateSets({ curriculum: allCp, banks, topics, sets }),
       ...validateDesignCurriculum(designCurriculum),
     ];
     if (errors.length) throw new Error(`Data validation failed:\n${errors.map((e) => `  - ${e}`).join('\n')}`);
     const bankById = new Map<string, BankProblem>();
     for (const b of Object.values(banks)) for (const p of b.problems) bankById.set(p.id, p);
-    return { curriculum, designCurriculum, designTopics, patterns, banks, topics, glossary, drills, lessons, bankById };
+    return { curriculum, designCurriculum, designTopics, patterns, banks, topics, glossary, drills, sets, lessons, bankById };
   })();
   return cache;
 }

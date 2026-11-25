@@ -25,7 +25,7 @@ npm install
 npm run dev                     # http://localhost:4321, live reload
 npm run build                   # validate + check problem-bank/ is current + astro build + check built pages
 npm run preview
-npm test                        # node --test tests/*.test.mjs (71 validator tests)
+npm test                        # node --test tests/*.test.mjs (201 tests; the lesson-text tests of validate-r2 use topic 4.3)
 bash scripts/test_units.sh code/7.8     # compile + fixed tests + 5000 random cases vs brute, for one topic
 bash tests/e2e.sh               # Playwright, ~10 min; builds twice (real site, then placeholder topic)
 npm run bank:md                 # regenerate problem-bank/*.md from src/data/bank (never hand-edit them)

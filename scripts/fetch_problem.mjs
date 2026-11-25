@@ -62,9 +62,14 @@ const text = (html) =>
 const today = () => new Date().toISOString().slice(0, 10);
 
 function atcoder(task) {
-  const contest = task.replace(/_[^_]+$/, '');
-  const url = `https://atcoder.jp/contests/${contest}/tasks/${task}`;
-  const html = curl(url);
+  const base = task.replace(/_[^_]+$/, '');
+  // A few contests have hyphens in their id (tessoku-book, math-and-algorithm) while the task id uses underscores.
+  const urls = [...new Set([base, base.replace(/_/g, '-')])].map((c) => `https://atcoder.jp/contests/${c}/tasks/${task}`);
+  let url = urls[0];
+  let html;
+  for (const u of urls) {
+    try { html = curl(u); url = u; break; } catch (e) { if (u === urls[urls.length - 1]) throw e; }
+  }
   const head = /<span class="h2">\s*([\s\S]*?)\s*(?:<a|<\/span>)/.exec(html);
   if (!head) throw new Error(`${url}: no task title on the page`);
   const full = decode(head[1].trim()); // e.g. "C - Title"

@@ -8,7 +8,7 @@ Output: one sum per line.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.2.4, parts 1 and 2. S[x][y] = sum of rows 1..x and columns 1..y (row 0 and column 0 stay 0).
+// Theorem 1.2.5, parts 1 and 2. S[x][y] = sum of rows 1..x and columns 1..y (row 0 and column 0 stay 0).
 vector<vector<long long>> prefix2D(const vector<vector<long long>>& a) {
     int R = a.size(), C = a[0].size();
     vector<vector<long long>> S(R + 1, vector<long long>(C + 1, 0));

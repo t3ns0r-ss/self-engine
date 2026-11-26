@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 1.4.6. The k-th smallest entry of the n x n multiplication table: the smallest x with count(x) >= k,
+// Theorem 1.4.4. The k-th smallest entry of the n x n multiplication table: the smallest x with count(x) >= k,
 // where count(x) = sum over rows i of min(n, x / i) entries at most x.
 long long kthInTable(long long n, long long k) {
     auto count = [&](long long x) {

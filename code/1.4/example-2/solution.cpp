@@ -8,7 +8,7 @@ Output: the smallest possible largest part sum.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.4.3 with Lemma 1.4.4. Cut x into at most k consecutive parts so that the largest part sum is as small as
+// Theorem 1.4.3 with Lemma 1.4.6. Cut x into at most k consecutive parts so that the largest part sum is as small as
 // possible: search on the answer, with a greedy check.
 long long minLargestPart(const vector<long long>& x, int k) {
     auto ok = [&](long long s) {  // fewest parts with sums <= s, filled greedily, is at most k?

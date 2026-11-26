@@ -205,10 +205,6 @@ Note: `5 × 2 = 10` is just one rectangle on the way. For `1 3 5 7 4` the best i
 
 Two common mistakes appear when the histogram is written with two scans (nearest lower bar on the left, then on the right), each with its own stack.
 
-Common mistake 1: the stack is not cleared between the scans. Take heights `0 2`. The left scan ends with positions 0 and 1 still on the stack. The right-to-left scan starts with them. For bar 1 it finds position 0 as the "next lower bar on the right", although position 0 is on its left. The width becomes $0 - 0 - 1 = -1$, and the real rectangle of area 2 is lost. The program prints 0 instead of 2. Fix: every scan starts with an empty stack. Write `st.clear()`, or declare a new stack for each scan.
-
-Common mistake 2: equal bars stop the rectangle. Pop only strictly higher bars, for example `while (!st.empty() && h[st.back()] > h[i]) st.pop_back();`, and each bar stops at its equal neighbour. Take heights `3 3`. Bar 0 covers only itself and bar 1 covers only itself, so the output is 3 instead of 6. Fix: a rectangle of height $h_i$ extends over every bar at least as high. It stops only at strictly lower bars, so pop everything `>=`. Unlike the sum of minimums, the same rule on both sides is correct here, because a maximum is not changed by repeats.
-
 ## Dry run of the histogram stack
 
 This section follows the stack step by step for `1 3 5 7 4` with sentinel 0 at both ends. Box = height, small number = index in the array with sentinels (0 to 6). The bars 1, 3, 5, 7 are each taller than the top of the stack, so they are only pushed, and nothing is popped yet.
@@ -357,8 +353,6 @@ This proof needs: (1) the question is about the nearest greater (or smaller) ele
 <TheoremCode unit="1.6/thm-1" />
 
 The unit adds one thing his functions do not: the next greater and the previous greater-or-equal element in a single scan. Example 1: the value 4 at position 2 pops positions 1 and 0 (steps 2 and 3 of the proof), so their next greater position is 2. Example 2, with a repeated value: in $(3, 3, 1, 2)$ the second 3 does not pop the first, because $3 < 3$ is false. So the previous greater-or-equal element of position 1 is position 0 (part 3). The `previousGreater` below (a new function, built like his `previousSmaller`) pops on `<=`, so it returns the previous strictly greater element. That is the other tie rule of the same scan.
-
-Common mistake: popping equal values in next greater. Take the input $a = (0, 0)$. With `a[st.back()] <= a[i]` the second 0 pops the first and records itself as its next greater element. The output is next $= (1, \text{none})$ and previous greater-or-equal $= (\text{none}, \text{none})$. The correct output is next $= (\text{none}, \text{none})$ and previous $= (\text{none}, 0)$. Fix: decide for each answer whether ties count, and write the pop condition that says exactly that. Test with repeated values.
 
 ## Sum of subarray minimums (A2, super minimum sum)
 
@@ -825,7 +819,7 @@ The answer is $c = (3, 2, 2, 1, 0)$. Check $i = 0$ directly: $j = 1$ has nothing
 
 Cost: $O(N)$ time and $O(N)$ memory. Common mistake: read `st.size()` after the push instead of before it. Then building $i$ counts itself. On heights $(1, 2)$ the code prints $(2, 1)$ instead of $(1, 0)$. Fix: read the size first, then pop, then push.
 
-Alternative. Compute $P_j$, the previous taller building of each $j$ (Theorem 1.6.1, left to right). Building $j$ is counted exactly for $i = \max(P_j, 0), \dots, j - 1$. The building at $P_j$ itself is allowed, because it is the end $i$ and not between. So add 1 on that range with a difference array and take prefix sums (Theorem 1.2.3). On $(2, 1, 4, 3, 5)$ we get $P = (-1, 0, -1, 2, -1)$, so building 1 is counted for $i = 0$, building 2 for $i = 0..1$, building 3 for $i = 2$, and building 4 for $i = 0..3$. The totals are $(3, 2, 2, 1, 0)$ again. It is $O(N)$ too, and it separates the stack step from the counting.
+Alternative. Compute $P_j$, the previous taller building of each $j$ (Theorem 1.6.1, left to right). Building $j$ is counted exactly for $i = \max(P_j, 0), \dots, j - 1$. The building at $P_j$ itself is allowed, because it is the end $i$ and not between. So add 1 on that range with a difference array and take prefix sums (Theorem 1.2.2). On $(2, 1, 4, 3, 5)$ we get $P = (-1, 0, -1, 2, -1)$, so building 1 is counted for $i = 0$, building 2 for $i = 0..1$, building 3 for $i = 2$, and building 4 for $i = 0..3$. The totals are $(3, 2, 2, 1, 0)$ again. It is $O(N)$ too, and it separates the stack step from the counting.
 
 ## Number of rectangles in histogram
 
@@ -975,17 +969,9 @@ Examples. At $i = 4$ the value 5 removes 3, −1 and −3 (step 2 of the proof).
 
 Alternatives. For the minimum, reverse the comparison. For a fixed length $k$ only, there is also a block trick, using prefix maximums as in topic 1.2. Cut the array into blocks of $k$ and keep, inside each block, the prefix maximums and the suffix maximums. A window of length $k$ touches at most two blocks. Its maximum is the larger of the suffix maximum of the first block from the window start and the prefix maximum of the second block up to the window end. Example: $a = (1, 3, -1, -3, 5, 3, 6, 7)$ and $k = 3$ give the blocks $(1, 3, -1)$, $(-3, 5, 3)$, $(6, 7)$. The window $(-1, -3, 5)$ is the suffix $(-1)$ of block 0 and the prefix $(-3, 5)$ of block 1, so its maximum is $\max(-1, 5) = 5$. The deque is simpler, and it also works when the window length changes.
 
-Common mistake: the window is one too wide. Write the check as `if (dq.front() < i - k) dq.pop_front();` and position $i - k$ stays, although the window is $[i - k + 1, i]$. Take $n = 2$, $k = 1$ and $a = (4, 1)$. The output is `4 4` instead of `4 1`. Fix: remove every position before $i - k + 1$, that is, while `dq.front() <= i - k`. It is the same boundary as in his note's `(i-k) >= 0` remark.
-
-Common mistake: reading the back of the deque. Write `a[dq.back()]` for the answer. The back is always the newest position $i$. Take $n = 2$, $k = 2$ and $a = (2, 1)$. The output is 1 instead of 2. Fix: the values decrease from front to back, so the extreme sits at the front. Write that invariant in a comment next to the deque.
-
 The same deque also works when the left end of the window moves irregularly, as in the shrinkable windows of topic 1.3. When the left end passes the front's position, pop the front. Two deques, one for the maximum and one for the minimum, give the spread $\max - \min$ of the window in $O(1)$. That decides conditions like "max minus min is at most $K$" while both ends move.
 
 Worked example: the longest window with $\max - \min \le K$. A window with spread at most $K$ keeps that property for every window inside it (topic 1.3). So for each right end $r$ the left end $l$ moves right until the condition holds. Then $[l, r]$ is the longest valid window ending at $r$. Brute force over all windows with a scan inside is $O(n^3)$. The budget for $n = 2 \cdot 10^5$ is $O(n)$ or $O(n \log n)$.
-
-<CodeSnippet unit="1.6/spread-window" />
-
-How it works: the `mx` deque holds the window maximum candidates, the `mn` deque holds the minimum candidates. When $l$ passes a front's position, that front is popped. Cost: $O(n)$, each position enters and leaves each deque once. Common mistake: checking only one front. Remove the line that pops the front of `mn`, and take $n = 3$, $K = 1$, $a = (0, 3, 3)$. At $r = 1$ the spread is 3, so $l$ moves to 1. But `mn` still has position 0 at its front, so the spread still reads as 3, and $l$ keeps moving past $r$ until a deque is empty. Reading the front of an empty deque is undefined behaviour. It can print 1 instead of 2, or crash. Fix: after every step of $l$, check the front of every deque. Alternative: a `multiset` of the window values (topic 0.6) gives the maximum and the minimum in $O(\log n)$ each. It is easier to write, and $O(n \log n)$ is fast enough for $n = 2 \cdot 10^5$.
 
 Worked example 2: Maximum Subarray Sum II. This is CSES 1644. In short: $n \le 2 \cdot 10^5$ integers with $|x_i| \le 10^9$. Print the largest sum of a subarray whose length is between $a$ and $b$.
 
@@ -1012,6 +998,216 @@ Cost: $O(n)$ time and $O(n)$ memory for the prefix sums. Common mistake: startin
 A recognition card lists the weak signals in a statement, the constraint shape, the property that decides, and how to test it. Read each card against the problems you have seen in this lesson.
 
 <Cards topic="1.6" />
+
+## Templates
+
+Five short functions: Theorem 1.6.1, the two uses of Theorem 1.6.2, the sliding-window maximum of Theorem 1.6.3, and a window with two deques whose left end moves as in topic 1.3. Every brute force scans every position or subarray directly, in $O(n^2)$.
+
+### Next greater and previous greater-or-equal (Theorem 1.6.1)
+
+<CodeSnippet unit="1.6/next-greater" />
+
+**How it works.** The stack holds the positions still waiting for a greater value; their values never increase from bottom to top. At position $i$, every waiting position with a smaller value has found its next greater element. These positions are all on top, so they are popped. What remains on top, if anything, is the nearest earlier position whose value is at least $a_i$ (part 3 of the theorem). It is recorded before $i$ is pushed, so one scan gives both answers.
+
+**Alternative formulation.** Scan from the right instead. Keep a stack of candidates and pop every candidate $\le a_i$ (for every position further left, $a_i$ hides them); the top is then $i$'s next greater element. Both directions are $O(n)$. The left-to-right version finds an element's answer when the element is popped, the right-to-left version when it is pushed.
+
+### Sum of subarray minima (Theorem 1.6.2, parts 1–2)
+
+<CodeSnippet unit="1.6/subarray-min-sum" />
+
+**How it works.** The first scan finds $L_i$, the previous strictly smaller position: it pops everything $\ge a_i$, so the top that remains is $< a_i$. The second scan, from the right, finds $R_i$, the next smaller-or-equal position: it pops only what is $> a_i$. Position $i$ is then the rightmost minimum of exactly $(i - L_i)(R_i - i)$ subarrays, and the answer adds $a_i$ times that count.
+
+**Alternative formulation.** The sum of maxima uses the same code with every comparison reversed. The sum of $\max - \min$ over all subarrays is the difference of the two sums.
+
+### Largest rectangle in a histogram (Theorem 1.6.2, part 3)
+
+<CodeSnippet unit="1.6/histogram" />
+
+**How it works.** For each bar, the two scans find the nearest strictly lower bar on each side. The widest rectangle of height $h_i$ that contains bar $i$ covers every bar strictly between them, $R_i - L_i - 1$ bars, and the best rectangle is one of these $n$ candidates. Ties need no care here. Equal bars that share a rectangle each produce the same candidate, and a maximum is not changed by repeats.
+
+**Alternative formulation.** One scan is enough. When bar $j$ is popped by bar $i$, its right boundary is $i$ and its left boundary is the new top. A final bar of height 0 at the end empties the stack.
+
+### Sliding-window maximum (Theorem 1.6.3)
+
+<CodeSnippet unit="1.6/window-max" />
+
+**How it works.** The deque holds the window's positions that are not dominated, with values decreasing from front to back. The new position first removes from the back every position it dominates, then joins. If the front has slid out of the window, it is removed. Only the front can be outside the window, because positions are in increasing order and the window moves by one. The front is then the maximum.
+
+**Alternative formulation.** For the minimum, reverse the comparison (`>=`). For windows of a fixed length only, you can also cut the array into blocks of $k$ and use prefix and suffix maxima inside each block (the prefix idea of topic 1.2). The deque is simpler and also works when the window's length changes.
+
+### Longest window with a bounded spread (Theorem 1.6.3 with topic 1.3)
+
+<CodeSnippet unit="1.6/spread-window" />
+
+**How it works.** This is the shrinkable window of topic 1.3: if a window has $\max - \min \le K$, so does every window inside it. For each right end $r$, the left end $l$ moves right until the condition holds, and $[l, r]$ is then the longest valid window ending at $r$. Two deques give the maximum and the minimum while both ends move. When $l$ passes a front's position, that front is popped.
+
+**Alternative formulation.** A `multiset` of the window's values (topic 0.6) gives the maximum and minimum in $O(\log n)$ each. It is easier to write, and $O(n \log n)$ overall is fast enough for $n = 2 \cdot 10^5$.
+
+## Bug catalogue
+
+Monotonic-stack bugs are mostly one character: `<` against `<=` in a pop condition, a default value one off, a front checked at the wrong distance. The code still runs in $O(n)$ and gives plausible answers, so only a brute force finds them. Each bug was made by changing one line of a template from the Templates section and comparing the broken copy with the brute force on random inputs. The input shown is the shortest failing input among the first 2000 random seeds.
+
+### Bug: popping equal values
+
+Template: next greater and previous greater-or-equal.
+
+```cpp
+while (!st.empty() && a[st.back()] <= a[i]) {
+```
+
+Input: `2`, then `0 0`.
+
+Wrong output `2 0` / `0 0`, correct output `0 0` / `0 1`. The second 0 pops the first and records itself as its "next greater" element, though it is only equal. With the first 0 gone, the second finds no previous greater-or-equal element either.
+
+**Fix:** decide for each answer whether ties count, and make the pop condition say exactly that: pop while strictly smaller for "next strictly greater" (Theorem 1.6.1). Test with repeated values.
+
+### Bug: the same tie rule on both sides
+
+Template: sum of subarray minima. The right scan also pops equal values, so $R_i$ becomes the next strictly smaller position.
+
+```cpp
+while (!st.empty() && a[st.back()] >= a[i]) st.pop_back();
+```
+
+Input: `2`, then `2 2`.
+
+Wrong output `8`, correct output `6`. The subarray $(2, 2)$ has two minima, and with strict comparisons on both sides each of them counts it: $2 \cdot 2 + 2 \cdot 2$ instead of $2 + 2 + 2$.
+
+**Fix:** strict on one side, non-strict on the other, so that every subarray is counted for exactly one minimum, its rightmost (Theorem 1.6.2, part 1).
+
+### Bug: a missing value is one position short
+
+Template: sum of subarray minima. With no smaller-or-equal element to the right, $R_i$ is set to $n - 1$ instead of $n$.
+
+```cpp
+R[i] = st.empty() ? n - 1 : st.back();
+```
+
+Input: `1`, then `1`.
+
+Wrong output `0`, correct output `1`. The only element has $R_0 = 0$, so its count $(0 - (-1)) \cdot (0 - 0)$ is 0.
+
+**Fix:** "none" must be the position just outside the array, $-1$ on the left and $n$ on the right, so that the formulas $i - L_i$ and $R_i - i$ count the elements up to the end.
+
+### Bug: the stack is not cleared between scans
+
+Template: largest rectangle in a histogram. The `st.clear()` between the two scans is removed.
+
+Input: `2`, then `0 2`.
+
+Wrong output `0`, correct output `2`. The right-to-left scan starts with the positions left over from the first scan. For bar 1 it finds position 0 as the "next lower bar to the right", which is in fact to its left; the width becomes $0 - 0 - 1 = -1$ and the real rectangle of area 2 is lost.
+
+**Fix:** every scan starts with an empty stack. Write it as `st.clear()`, or declare a new stack for each scan.
+
+### Bug: equal bars stop the rectangle
+
+Template: largest rectangle in a histogram. Both scans pop only strictly higher bars, so $L_i$ and $R_i$ are the nearest bars of height at most $h_i$.
+
+```cpp
+while (!st.empty() && h[st.back()] > h[i]) st.pop_back();
+```
+
+Input: `2`, then `3 3`.
+
+Wrong output `3`, correct output `6`. Each bar stops at its equal neighbour, so no candidate covers both bars.
+
+**Fix:** a rectangle of height $h_i$ extends over every bar at least as high, so it stops only at strictly lower bars: pop everything $\ge h_i$ (Theorem 1.6.2, part 3). Unlike in the sum of minima, using the same rule on both sides is correct here, because a maximum is not affected by repeats.
+
+### Bug: the window is one too wide
+
+Template: sliding-window maximum.
+
+```cpp
+if (dq.front() < i - k) dq.pop_front();
+```
+
+Input: `2 1`, then `4 1`.
+
+Wrong output `4 4`, correct output `4 1`. The window ending at $i$ is $[i - k + 1, i]$, so position $i - k$ is already outside it, but the check keeps it.
+
+**Fix:** write the window's first position, $i - k + 1$, and remove every position before it: `dq.front() < i - k + 1`, which is `dq.front() <= i - k`.
+
+### Bug: reading the back of the deque
+
+Template: sliding-window maximum.
+
+```cpp
+if (i >= k - 1) out.push_back(a[dq.back()]);
+```
+
+Input: `2 2`, then `2 1`.
+
+Wrong output `1`, correct output `2`. The back is always the newest position $i$; the maximum is at the front, where values are largest.
+
+**Fix:** the deque's values decrease from front to back, so the maximum is the front (Theorem 1.6.3). Writing that invariant in a comment next to the deque prevents this bug.
+
+### Bug: only one front is checked
+
+Template: longest window with a bounded spread. The line that pops the minimum deque's front is removed.
+
+Input: `3 1`, then `0 3 3`.
+
+Wrong output `1`, correct output `2`. At $r = 1$ the window $[0, 1]$ has spread 3, so $l$ moves to 1. But the minimum deque still has position 0 at its front, so the spread still reads as 3, and $l$ keeps moving, past $r$, until the maximum deque is empty. Reading an empty deque's front is undefined behaviour: here it printed a wrong answer, and on other inputs it crashed.
+
+**Fix:** after every step of $l$, check the front of every deque that describes the window.
+
+## Worked examples
+
+### Example 1: Buildings
+
+[AtCoder Beginner Contest (ABC) 372, problem D: Buildings](https://atcoder.jp/contests/abc372/tasks/abc372_d). In short: $N \le 2 \cdot 10^5$ buildings in a row with distinct heights; for each building $i$, count the buildings $j > i$ such that no building strictly between $i$ and $j$ is taller than $j$.
+
+#### Step 1: Constraints → budget
+
+$N = 2 \cdot 10^5$: $O(N)$ or $O(N \log N)$. Checking every pair is $O(N^2) = 4 \cdot 10^{10}$, far too slow. The counts are at most $N$: `int`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force: for each pair $(i, j)$, check the buildings between them (topic 0.5), $O(N^3)$. The condition says that building $j$ is taller than everything between $i$ and $j$; read from position $i + 1$ to the right, the counted buildings are the new records (each taller than all before it). That is a question about the nearest taller building, the shape of Theorem 1.6.1. A second reading: building $j$ is counted for every $i$ from its previous taller building up to $j - 1$, so the counts are range additions (difference array, topic 1.2).
+
+#### Step 3: Property check → decision
+
+Process $i$ from right to left, keeping the records of the suffix $i + 1, \dots, N$ on a stack, the nearest on top. Their heights increase from top to bottom, and $c_i$ is their number. To move to $i - 1$, building $i$ joins the suffix: it is a record (nothing before it), and an old record stays a record exactly when it is taller than $h_i$. The old records that are shorter are all on top, so popping them and pushing $i$ gives the new stack. Decision: one right-to-left scan, $c_i$ = stack size before building $i$ is added.
+
+#### Step 4: Proof for this problem
+
+Invariant: before step $i$ (0-based, from $N - 1$ down to 0), the stack holds exactly the $j > i$ with $h_j > h_k$ for all $i < k < j$, from the nearest at the top to the farthest at the bottom, with increasing heights. It holds before step $N - 1$ (empty stack, no $j$). At step $i$, the answer $c_i$ is the stack size, by the invariant. For step $i - 1$ the counted set becomes: $i$ itself (no building lies between $i - 1$ and $i$), plus those $j$ of the old set that are also taller than $h_i$. Since heights increase from top to bottom, the old elements shorter than $h_i$ form the top of the stack, and the loop pops exactly them; pushing $i$ puts the nearest element on top, and its height is smaller than all heights below it. Each building is pushed and popped at most once: $O(N)$ (Theorem 0.2.4).
+
+#### Step 5: Code
+
+<CodeSnippet unit="1.6/example-1" />
+
+#### Step 6: Alternative approach
+
+Compute $P_j$, the previous taller building of each $j$ (Theorem 1.6.1, scanning left to right). Building $j$ is counted exactly for $i = \max(P_j, 0), \dots, j - 1$ (with $P_j = -1$ when there is none), so add 1 on that range with a difference array and take prefix sums (Theorem 1.2.3). It is also $O(N)$, and it separates the stack step from the counting.
+
+### Example 2: Maximum Subarray Sum II
+
+[CSES 1644 Maximum Subarray Sum II](https://cses.fi/problemset/task/1644). In short: an array of $n \le 2 \cdot 10^5$ integers with $|x_i| \le 10^9$; print the largest sum of a subarray whose length is between $a$ and $b$.
+
+#### Step 1: Constraints → budget
+
+$n = 2 \cdot 10^5$: $O(n)$ or $O(n \log n)$. All pairs of ends is $O(n^2)$ when $b - a$ is large. Sums reach $2 \cdot 10^{14}$ in absolute value: `long long`.
+
+#### Step 2: Question form → candidate tools
+
+Brute force over both ends (topic 0.5). A subarray sum is a difference of prefix sums, $p_r - p_l$ (topic 1.2). For a fixed right end $r$, the best start is the $l$ with the smallest $p_l$ among $r - b \le l \le r - a$. As $r$ grows, that range of allowed starts moves right by one: a sliding window over $p$, whose minimum Theorem 1.6.3 maintains.
+
+#### Step 3: Property check → decision
+
+Theorem 1.6.3 needs a window whose ends only move to the right, and only its minimum. Both hold: at step $r$, start $r - a$ joins and start $r - b - 1$ leaves. The window of starts is never empty, since $r - a \ge r - b$ and $r \ge a$. Decision: prefix sums, then one pass over $r$ with a deque of starts whose prefix sums increase from front to back.
+
+#### Step 4: Proof for this problem
+
+The subarrays with right end $r$ (prefix positions, $1 \le r \le n$) and an allowed length are exactly those $(l, r]$ with $\max(0, r - b) \le l \le r - a$, and their sums are $p_r - p_l$. For fixed $r$, the largest sum uses the smallest $p_l$ in that range. By Theorem 1.6.3, with the comparisons reversed for the minimum, the deque's front is a position of that minimum, provided every start of the range has been pushed and the front is not below $r - b$. At step $r$ the program pushes $r - a$, so all starts up to $r - a$ have been pushed, and the range's lower end moves by at most one per step, so popping at most one front is enough. The answer is the maximum over all $r$. Each start enters and leaves the deque once: $O(n)$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="1.6/example-2" />
+
+#### Step 6: Alternative approach
+
+Keep the allowed prefix sums $p_l$ in a `multiset` (topic 0.6): insert $p_{r - a}$, erase $p_{r - b - 1}$, and read the smallest with `begin()`. It is $O(n \log n)$ and fast enough here; the deque is shorter and $O(n)$.
 
 ## Quick revision
 

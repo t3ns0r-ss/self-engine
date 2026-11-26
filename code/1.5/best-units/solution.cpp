@@ -9,7 +9,7 @@ Output: the largest total value.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.5.3, part 2. The largest total value of at most W units, where good i has units[i] units worth value[i] each.
+// Theorem 1.5.2, part 2. The largest total value of at most W units, where good i has units[i] units worth value[i] each.
 long long bestUnits(vector<pair<long long, long long>> goods, long long W) {  // (value per unit, units)
     sort(goods.rbegin(), goods.rend());  // most valuable units first
     long long total = 0;  // at most (2*10^5 * 10^9 units) * 10^4 = 2*10^18

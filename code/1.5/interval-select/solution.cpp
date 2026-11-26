@@ -2,13 +2,13 @@
 Problem: n closed intervals [s_i, e_i]; two intervals overlap if they share a point. Print the largest
 number of pairwise non-overlapping intervals, and the fewest points that hit every interval.
 Input: n (1 <= n <= 2*10^5), then n lines "s_i e_i" (0 <= s_i <= e_i <= 10^9).
-Output: "maxDisjoint minPoints" (the two are equal by Theorem 1.5.2).
+Output: "maxDisjoint minPoints" (the two are equal by Theorem 1.5.1).
 */
 #include <bits/stdc++.h>
 using namespace std;
 
 // snippet:begin
-// Theorem 1.5.2. The largest number of pairwise disjoint closed intervals (touching counts as overlapping); the same
+// Theorem 1.5.1. The largest number of pairwise disjoint closed intervals (touching counts as overlapping); the same
 // number of points hits every interval.
 int intervalSelect(vector<pair<int, int>> iv) {  // (start, end)
     sort(iv.begin(), iv.end(), [](const pair<int, int>& a, const pair<int, int>& b) { return a.second < b.second; });

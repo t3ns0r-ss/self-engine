@@ -7,7 +7,7 @@ Output: the number of subarrays (up to n(n+1)/2, about 2*10^10).
 using namespace std;
 
 // snippet:begin
-// Theorem 1.7.2. The number of subarrays with XOR exactly k: pairs of prefix values with P_i = P_j xor k.
+// Theorem 1.7.3. The number of subarrays with XOR exactly k: pairs of prefix values with P_i = P_j xor k.
 long long countXorSubarrays(const vector<int>& a, int k) {
     map<int, int> seen;  // prefix XOR value -> how many earlier prefixes have it
     seen[0] = 1;         // P_0 = 0

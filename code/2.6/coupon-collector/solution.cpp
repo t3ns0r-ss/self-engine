@@ -19,7 +19,7 @@ long long power(long long a, long long b) {
     }
     return r;
 }
-// Theorem 2.6.5. With j kinds owned, a draw is new with probability (n - j)/n, so the stage takes n/(n - j) draws.
+// Theorem 2.6.4. With j kinds owned, a draw is new with probability (n - j)/n, so the stage takes n/(n - j) draws.
 long long couponCollector(long long n, long long c) {
     long long e = 0;
     for (long long j = c; j < n; j++) e = (e + n % MOD * power(n - j, MOD - 2)) % MOD;  // stages add

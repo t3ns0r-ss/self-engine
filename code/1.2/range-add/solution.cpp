@@ -7,7 +7,7 @@ Output: the n final values.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.2.3. Add v to a[l..r] for every update (1-based), then read the whole array: one running sum.
+// Theorem 1.2.2. Add v to a[l..r] for every update (1-based), then read the whole array: one running sum.
 vector<long long> rangeAdd(int n, const vector<array<long long, 3>>& updates) {
     vector<long long> d(n + 2, 0);  // difference array; index n + 1 absorbs updates ending at n
     for (auto [l, r, v] : updates) {

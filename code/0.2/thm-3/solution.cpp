@@ -2,27 +2,36 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.2.3. a + (a + d) + ... + (a + (n - 1) d), and the number of pairs among n items.
-// The product is always even: multiply first, then halve.
-long long arithSum(long long a, long long d, long long n) { return n * (2 * a + (n - 1) * d) / 2; }
-long long pairs(long long n) { return n * (n - 1) / 2; }
+// Theorem 0.2.3. Lengths of the maximal blocks of equal characters. j only moves forward,
+// so the inner loop runs at most n times in all, although the loops are nested.
+vector<int> blockLengths(const string& s) {
+    vector<int> len;
+    int n = s.size(), i = 0;
+    while (i < n) {
+        int j = i;
+        while (j < n && s[j] == s[i]) j++;
+        len.push_back(j - i);
+        i = j;  // the next block starts where this one ended
+    }
+    return len;
+}
 // snippet:end
 
 int main() {
-    for (auto [a, d, n] : {tuple{1, 1, 5}, tuple{3, 2, 4}, tuple{10, -3, 4}})
-        cout << "a = " << a << ", d = " << d << ", n = " << n << ": sum " << arithSum(a, d, n) << '\n';
-    cout << "pairs among 5 items: " << pairs(5) << '\n';
-    for (int a = -5; a <= 5; a++)
-        for (int d = -5; d <= 5; d++)
-            for (int n = 1; n <= 20; n++) {
-                long long loop = 0;
-                for (int k = 0; k < n; k++) loop += a + (long long)k * d;
-                if (loop != arithSum(a, d, n)) return 1;
-            }
-    for (int n = 1; n <= 30; n++) {
-        int count = 0;
-        for (int i = 0; i < n; i++)
-            for (int j = i + 1; j < n; j++) count++;
-        if (count != pairs(n)) return 1;
+    for (string s : {"aabccc", "abc", "aaaa"}) {
+        cout << s << ":";
+        for (int x : blockLengths(s)) cout << ' ' << x;
+        cout << '\n';
+    }
+    for (int code = 0; code < (1 << 10); code++) {  // every string over {a, b} of length 10: the inner iterations are at most n
+        string s;
+        for (int i = 0; i < 10; i++) s += (code >> i & 1) ? 'b' : 'a';
+        int inner = 0, i = 0;
+        while (i < 10) {
+            int j = i;
+            while (j < 10 && s[j] == s[i]) j++, inner++;
+            i = j;
+        }
+        if (inner > 10) return 1;
     }
 }

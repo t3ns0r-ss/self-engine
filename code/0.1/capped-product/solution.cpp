@@ -7,7 +7,7 @@ Output: the product, or -1 if it is greater than 10^18.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.1.2. The product of a, or -1 if it exceeds 10^18. The product never leaves the 64-bit range.
+// Theorem 0.1.3. The product of a, or -1 if it exceeds 10^18. The product never leaves the 64-bit range.
 long long cappedProduct(const vector<long long>& a) {
     const long long LIMIT = 1000000000000000000LL;  // 10^18
     for (long long x : a)

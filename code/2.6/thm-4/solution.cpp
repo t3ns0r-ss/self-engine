@@ -2,27 +2,26 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.6.4. E[X] = sum over x >= 1 of P(X >= x). For the maximum of k independent draws from 1..m,
-// P(max >= x) = 1 - ((x - 1)/m)^k.
-double expectedMax(int m, int k) {
+// Theorem 2.6.4. Waiting for a success of probability p takes 1/p trials; stages add. Coupon collector: n * (1 + 1/2 + ... + 1/n).
+double waitFor(double p) { return 1 / p; }
+double couponCollector(int n) {
     double e = 0;
-    for (int x = 1; x <= m; x++) e += 1 - pow((x - 1.0) / m, k);
+    for (int j = 0; j < n; j++) e += n / (double)(n - j);  // stage j: a new kind has probability (n - j)/n
     return e;
 }
 // snippet:end
 
 int main() {
-    cout << fixed << setprecision(4);
-    cout << "the larger of two dice: " << expectedMax(6, 2) << " = 161/36\n";
-    for (int m = 1; m <= 6; m++) for (int k = 1; k <= 3; k++) {
-        double total = 0, count = 0;
-        int cells = 1;
-        for (int i = 0; i < k; i++) cells *= m;
-        for (int code = 0; code < cells; code++) {
-            int c = code, best = 0;
-            for (int i = 0; i < k; i++) best = max(best, c % m + 1), c /= m;
-            total += best, count++;
-        }
-        if (fabs(total / count - expectedMax(m, k)) > 1e-9) return 1;
+    cout << fixed << setprecision(1);
+    cout << "rolls of a die until a 6: " << waitFor(1 / 6.0) << '\n';
+    cout << "rolls until all six faces have appeared: " << couponCollector(6) << '\n';
+    mt19937 rng(11);
+    double total = 0;
+    const int trials = 200000;
+    for (int t = 0; t < trials; t++) {
+        int seen = 0, rolls = 0;
+        while (seen != 63) seen |= 1 << (rng() % 6), rolls++;
+        total += rolls;
     }
+    if (fabs(total / trials - couponCollector(6)) > 0.1) return 1;
 }

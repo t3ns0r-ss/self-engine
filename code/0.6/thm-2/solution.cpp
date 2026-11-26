@@ -2,28 +2,26 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.2. The number of distinct values, and whether a value occurs, with a set.
-int distinctCount(const vector<int>& a) { return set<int>(a.begin(), a.end()).size(); }
-bool occurs(const vector<int>& a, int x) { return set<int>(a.begin(), a.end()).count(x) > 0; }
+// Theorem 0.6.2. Is the bracket string properly nested? Push the position of each '(' and pop at each ')'.
+bool nested(const string& s) {
+    stack<int> open;
+    for (int i = 0; i < (int)s.size(); i++) {
+        if (s[i] == '(') open.push(i);
+        else if (open.empty()) return false;  // a ')' with nothing to match
+        else open.pop();
+    }
+    return open.empty();
+}
 // snippet:end
 
 int main() {
-    vector<int> a = {3, 1, 3, 3};
-    cout << "distinct values in 3 1 3 3: " << distinctCount(a) << '\n';
-    cout << "is 1 present: " << (occurs(a, 1) ? "yes" : "no") << '\n';
-    cout << "is 2 present: " << (occurs(a, 2) ? "yes" : "no") << '\n';
-    mt19937 rng(1);
-    for (int round = 0; round < 500; round++) {
-        int n = rng() % 8;
-        vector<int> b(n);
-        for (int& x : b) x = rng() % 5;
-        int distinct = 0;
-        for (int v = 0; v < 5; v++) {
-            bool seen = false;
-            for (int x : b) seen |= x == v;
-            distinct += seen;
-            if (seen != occurs(b, v)) return 1;
+    for (string s : {"(())", "(()", "())("}) cout << s << ": " << (nested(s) ? "yes" : "no") << '\n';
+    for (int len = 0; len <= 12; len++)  // against repeated removal of "()"
+        for (int code = 0; code < (1 << len); code++) {
+            string s, t;
+            for (int i = 0; i < len; i++) s += (code >> i & 1) ? '(' : ')';
+            t = s;
+            for (size_t p; (p = t.find("()")) != string::npos;) t.erase(p, 2);
+            if (nested(s) != t.empty()) return 1;
         }
-        if (distinct != distinctCount(b)) return 1;
-    }
 }

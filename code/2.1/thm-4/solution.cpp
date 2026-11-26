@@ -2,36 +2,33 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.1.4. spf[x] = the smallest prime factor of x; then x splits into primes by repeated division.
-vector<int> buildSpf(int N) {
-    vector<int> spf(N + 1, 0);
-    for (int p = 2; p <= N; p++) {
-        if (spf[p] != 0) continue;  // p is prime
-        spf[p] = p;
-        for (long long j = (long long)p * p; j <= N; j += p)
-            if (spf[j] == 0) spf[j] = p;
-    }
-    return spf;
-}
-vector<int> primesOf(int x, const vector<int>& spf) {
-    vector<int> primes;
-    while (x > 1) primes.push_back(spf[x]), x /= spf[x];  // increasing order, at most log2(x) steps
+// Theorem 2.1.4. Trial division: divide out each d while d*d <= n; the leftover n > 1 is a prime.
+vector<long long> primeFactors(long long n) {
+    vector<long long> primes;  // with repetition, increasing
+    for (long long d = 2; d * d <= n; d++)
+        while (n % d == 0) primes.push_back(d), n /= d;
+    if (n > 1) primes.push_back(n);  // the leftover is a prime factor, possibly larger than sqrt of the original n
     return primes;
 }
 // snippet:end
 
+void show(long long n) {
+    cout << n << " =";
+    for (long long p : primeFactors(n)) cout << ' ' << p;
+    cout << '\n';
+}
 int main() {
-    vector<int> spf = buildSpf(1000);
-    cout << "spf(45) = " << spf[45] << ", spf(13) = " << spf[13] << '\n';
-    cout << "360 splits into:";
-    for (int p : primesOf(360, spf)) cout << ' ' << p;
-    cout << " (" << primesOf(360, spf).size() << " divisions)\n";
-    for (int x = 2; x <= 1000; x++) {
-        int smallest = x;
-        for (int d = 2; d < x; d++) if (x % d == 0) { smallest = d; break; }
-        auto ps = primesOf(x, spf);
+    show(360);
+    show(999999999989LL);
+    show(1000000000000LL);
+    show(2LL * 999983);
+    for (long long n = 2; n <= 3000; n++) {
+        auto ps = primeFactors(n);
         long long prod = 1;
-        for (int p : ps) prod *= p;
-        if (spf[x] != smallest || prod != x || !is_sorted(ps.begin(), ps.end()) || (1 << ps.size()) > 2 * x) return 1;
+        for (long long p : ps) {
+            prod *= p;
+            for (long long d = 2; d * d <= p; d++) if (p % d == 0) return 1;  // every recorded number is prime
+        }
+        if (prod != n || !is_sorted(ps.begin(), ps.end())) return 1;
     }
 }

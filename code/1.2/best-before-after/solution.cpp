@@ -8,7 +8,7 @@ Output: line 1: the largest subarray sum; line 2: n values.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.2.5. The largest subarray sum, and for each i the largest element other than a_i.
+// Theorem 1.2.4. The largest subarray sum, and for each i the largest element other than a_i.
 long long bestSubarray(const vector<long long>& a) {
     long long P = 0, minP = 0, best = LLONG_MIN;  // minP starts as P_0 = 0
     for (long long x : a) {

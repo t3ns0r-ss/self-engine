@@ -28,7 +28,7 @@ array<long long, 3> divisorAnalysis(const vector<pair<long long, long long>>& f)
         long long geo = (power(x, k + 1, MOD) - 1 + MOD) % MOD * power(x - 1, MOD - 2, MOD) % MOD;
         sum = sum * geo % MOD;
         // divisors of m * x^k are d * x^j: product = prod^(k+1) * x^((0 + ... + k) * cnt)
-        long long tri = (k * (k + 1) / 2) % (MOD - 1);  // exponent reduced mod MOD - 1 (Theorem 2.2.5)
+        long long tri = (k * (k + 1) / 2) % (MOD - 1);  // exponent reduced mod MOD - 1 (Theorem 2.2.6)
         prod = power(prod, k + 1, MOD) * power(x, tri * cntE % (MOD - 1), MOD) % MOD;
         cntE = cntE * ((k + 1) % (MOD - 1)) % (MOD - 1);
     }

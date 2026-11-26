@@ -17,7 +17,7 @@ long long power(long long a, long long b, long long m) {
     }
     return r;
 }
-// Theorems 2.2.3 and 2.2.4. The sum of P/Q fractions as residues modulo the prime MOD: add P * Q^(MOD-2).
+// Theorems 2.2.2 and 2.2.4. The sum of P/Q fractions as residues modulo the prime MOD: add P * Q^(MOD-2).
 long long sumFractions(const vector<pair<long long, long long>>& f, long long MOD) {
     long long sum = 0;
     for (auto [P, Q] : f) {

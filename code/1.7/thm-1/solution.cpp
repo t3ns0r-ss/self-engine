@@ -2,38 +2,33 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 1.7.1. The XOR of a list is the XOR of the values that appear an odd number of times: a value appearing twice
-// cancels. The XOR of 0..n has a pattern of period 4.
-int xorAll(const vector<int>& a) {
-    int result = 0;
-    for (int x : a) result ^= x;
-    return result;
+// Theorem 1.7.1. a + b = (a xor b) + 2 (a and b), so from s = a + b and x = a xor b the common bits are (s - x) / 2.
+// Also: the lowest set bit of v is v & -v, and v is a power of two when v & (v - 1) == 0.
+pair<long long, long long> splitSumXor(long long s, long long x) {
+    if (s < x || (s - x) % 2 != 0) return {-1, -1};
+    long long c = (s - x) / 2;
+    if (c & x) return {-1, -1};  // a bit cannot be in both and in exactly one
+    return {c, c | x};           // a contains c; giving every bit of x to b makes a smallest
 }
-long long xorUpTo(long long n) {
-    switch (n % 4) {
-        case 0: return n;
-        case 1: return 1;
-        case 2: return n + 1;
-        default: return 0;
-    }
-}
+long long lowestSetBit(long long v) { return v & -v; }
+bool isPowerOfTwo(long long v) { return v > 0 && (v & (v - 1)) == 0; }
 // snippet:end
 
 int main() {
-    cout << "XOR of 4 7 4 2 7: " << xorAll({4, 7, 4, 2, 7}) << '\n';
-    for (int n : {4, 5, 6, 7}) cout << "XOR of 0.." << n << ": " << xorUpTo(n) << '\n';
-    for (int n = 0; n <= 200; n++) {
-        long long x = 0;
-        for (int i = 0; i <= n; i++) x ^= i;
-        if (x != xorUpTo(n)) return 1;
-    }
-    mt19937 rng(1);
-    for (int round = 0; round < 300; round++) {
-        vector<int> a(rng() % 8);
-        map<int, int> cnt;
-        for (int& v : a) v = rng() % 6, cnt[v]++;
-        int odd = 0;
-        for (auto [v, c] : cnt) if (c % 2) odd ^= v;
-        if (odd != xorAll(a)) return 1;
+    cout << "6 and 3: xor " << (6 ^ 3) << ", and " << (6 & 3) << ", sum " << 6 + 3 << " = " << (6 ^ 3) + 2 * (6 & 3) << ", or " << (6 | 3) << '\n';
+    pair<long long, long long> p = splitSumXor(9, 5);
+    cout << "sum 9 and xor 5: a = " << p.first << ", b = " << p.second << '\n';
+    cout << "lowest set bit of 12: " << lowestSetBit(12) << '\n';
+    cout << "12 is a power of two: " << (isPowerOfTwo(12) ? "yes" : "no") << ", 16: " << (isPowerOfTwo(16) ? "yes" : "no") << '\n';
+    for (long long s = 0; s <= 40; s++)
+        for (long long x = 0; x <= 40; x++) {
+            pair<long long, long long> want = {-1, -1};
+            for (long long a = 0; a <= s && want.first < 0; a++) if ((a ^ (s - a)) == x) want = {a, s - a};
+            if (want != splitSumXor(s, x)) return 1;
+        }
+    for (long long v = 1; v <= 300; v++) {
+        long long low = 1;
+        while (!(v & low)) low <<= 1;
+        if (low != lowestSetBit(v) || isPowerOfTwo(v) != (__builtin_popcountll(v) == 1)) return 1;
     }
 }

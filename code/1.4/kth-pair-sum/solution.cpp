@@ -7,7 +7,7 @@ Output: the k-th smallest sum.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.4.6. The k-th smallest of all sums A_i + B_j: the smallest x such that at least k pair sums are <= x.
+// Theorem 1.4.4. The k-th smallest of all sums A_i + B_j: the smallest x such that at least k pair sums are <= x.
 long long kthPairSum(const vector<long long>& A, vector<long long> B, long long k) {
     sort(B.begin(), B.end());
     // count(x) = number of pairs with A_i + B_j <= x: for each i, the B_j <= x - A_i

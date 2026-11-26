@@ -7,7 +7,7 @@ Output: the divisors, separated by spaces.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.2.2. All divisors of n in increasing order; d is tried only up to sqrt(n), at most 10^6 values for n <= 10^12.
+// Theorem 0.2.5. All divisors of n in increasing order; d is tried only up to sqrt(n), at most 10^6 values for n <= 10^12.
 vector<long long> divisors(long long n) {
     vector<long long> small, large;  // d <= sqrt(n), and their partners n / d
     for (long long d = 1; d * d <= n; d++) {

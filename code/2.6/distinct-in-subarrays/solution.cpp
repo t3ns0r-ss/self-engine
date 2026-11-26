@@ -7,7 +7,7 @@ Output: the exact sum (at most about 1.4*10^15).
 using namespace std;
 
 // snippet:begin
-// Theorem 2.6.3. The sum over all subarrays of the number of distinct values: a at position i counts in the subarrays
+// Theorem 2.6.5. The sum over all subarrays of the number of distinct values: a at position i counts in the subarrays
 // where it is the first copy, l in (prev, i] and r in [i, n - 1]: (i - prev) * (n - i) of them.
 long long distinctInSubarrays(const vector<long long>& a) {
     long long n = a.size(), total = 0;

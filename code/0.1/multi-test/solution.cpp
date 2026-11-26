@@ -7,7 +7,7 @@ Output: one line per test.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.1.3. One test: how many elements are above the average. Everything is created per test.
+// Theorem 0.1.1. One test: how many elements are above the average. Everything is created per test.
 int countAboveAverage(const vector<long long>& a) {
     long long n = a.size(), sum = 0;
     for (long long x : a) sum += x;

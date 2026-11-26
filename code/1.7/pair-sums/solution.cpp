@@ -7,7 +7,7 @@ Output: the three sums on one line (each below 6*10^18).
 using namespace std;
 
 // snippet:begin
-// Theorem 1.7.3. The sums of a_i xor a_j, a_i and a_j, a_i or a_j over all pairs i < j, from the number c of values with each bit.
+// Theorem 1.7.5. The sums of a_i xor a_j, a_i and a_j, a_i or a_j over all pairs i < j, from the number c of values with each bit.
 array<long long, 3> pairSums(const vector<int>& a) {
     long long n = a.size(), sx = 0, sa = 0, so = 0, pairs = n * (n - 1) / 2;
     for (int b = 0; b < 30; b++) {

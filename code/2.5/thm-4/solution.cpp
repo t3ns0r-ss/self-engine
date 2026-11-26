@@ -2,28 +2,22 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.5.4. The arrangements of a list with c_i copies of value i: n! / (c_1! ... c_k!), exact in 64 bits here.
-long long multinomial(const vector<int>& c) {
+// Theorem 2.5.4. Lattice paths with right and up steps from (x1, y1) to (x2, y2): C(dx + dy, dx), which is the choice of
+// the positions of the right steps among all the steps.
+long long paths(int dx, int dy) {
+    if (dx < 0 || dy < 0) return 0;
     long long ways = 1;
-    int n = 0;
-    for (int ci : c) {
-        for (int j = 1; j <= ci; j++) ways = ways * (++n) / j;  // multiply in C(n, ci), step by step
-    }
+    for (int i = 1; i <= dx; i++) ways = ways * (dy + i) / i;
     return ways;
 }
 // snippet:end
 
+long long brute(int dx, int dy) {
+    if (dx < 0 || dy < 0) return 0;
+    if (dx == 0 && dy == 0) return 1;
+    return brute(dx - 1, dy) + brute(dx, dy - 1);
+}
 int main() {
-    cout << "AAB: " << multinomial({2, 1}) << " arrangements\n";
-    cout << "MISSISSIPPI: " << multinomial({1, 4, 4, 2}) << " arrangements\n";
-    for (string s : {"AAB", "ABBA", "AABBC", "ABCABC"}) {
-        sort(s.begin(), s.end());
-        set<string> seen;
-        do seen.insert(s); while (next_permutation(s.begin(), s.end()));
-        map<char, int> cnt;
-        for (char ch : s) cnt[ch]++;
-        vector<int> c;
-        for (auto [ch, k] : cnt) c.push_back(k);
-        if ((long long)seen.size() != multinomial(c)) return 1;
-    }
+    cout << "paths from (0, 0) to (2, 2): " << paths(2, 2) << '\n';
+    for (int a = 0; a <= 8; a++) for (int b = 0; b <= 8; b++) if (paths(a, b) != brute(a, b)) return 1;
 }

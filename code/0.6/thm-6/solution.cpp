@@ -2,26 +2,32 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.6. Is the bracket string properly nested? Push the position of each '(' and pop at each ')'.
-bool nested(const string& s) {
-    stack<int> open;
-    for (int i = 0; i < (int)s.size(); i++) {
-        if (s[i] == '(') open.push(i);
-        else if (open.empty()) return false;  // a ')' with nothing to match
-        else open.pop();
-    }
-    return open.empty();
+// Theorem 0.6.6. The largest element <= x and the smallest element >= x of a set; -1 if there is none.
+int largestAtMost(const set<int>& s, int x) {
+    auto it = s.upper_bound(x);  // first element > x
+    return it == s.begin() ? -1 : *prev(it);
+}
+int smallestAtLeast(const set<int>& s, int x) {
+    auto it = s.lower_bound(x);  // first element >= x
+    return it == s.end() ? -1 : *it;
 }
 // snippet:end
 
 int main() {
-    for (string s : {"(())", "(()", "())("}) cout << s << ": " << (nested(s) ? "yes" : "no") << '\n';
-    for (int len = 0; len <= 12; len++)  // against repeated removal of "()"
-        for (int code = 0; code < (1 << len); code++) {
-            string s, t;
-            for (int i = 0; i < len; i++) s += (code >> i & 1) ? '(' : ')';
-            t = s;
-            for (size_t p; (p = t.find("()")) != string::npos;) t.erase(p, 2);
-            if (nested(s) != t.empty()) return 1;
+    set<int> s = {2, 5, 9};
+    cout << "set 2 5 9, largest <= 6: " << largestAtMost(s, 6) << '\n';
+    cout << "set 2 5 9, smallest >= 6: " << smallestAtLeast(s, 6) << '\n';
+    cout << "set 2 5 9, largest <= 1: " << largestAtMost(s, 1) << '\n';
+    cout << "set 2 5 9, smallest >= 10: " << smallestAtLeast(s, 10) << '\n';
+    mt19937 rng(4);
+    for (int round = 0; round < 300; round++) {
+        set<int> t;
+        for (int i = 0; i < 6; i++) t.insert(rng() % 20);
+        for (int x = -1; x <= 21; x++) {
+            int lo = -1, hi = -1;
+            for (int v : t) if (v <= x) lo = v;
+            for (int v : t) if (v >= x) { hi = v; break; }
+            if (lo != largestAtMost(t, x) || hi != smallestAtLeast(t, x)) return 1;
         }
+    }
 }

@@ -2,33 +2,34 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.5.5. Solutions of x_1 + ... + x_k = n with x_i >= l_i: C(n - L + k - 1, k - 1), L = sum of the l_i.
-long long binomial(long long n, long long r) {
-    if (r < 0 || r > n) return 0;
-    long long ways = 1;
-    for (long long i = 1; i <= r; i++) ways = ways * (n - r + i) / i;
-    return ways;
-}
-long long starsBars(long long n, int k, long long L) {
-    if (L > n) return 0;
-    return binomial(n - L + k - 1, k - 1);
+// Theorem 2.5.5. Inclusion-exclusion: sum over the sets S of properties of (-1)^|S| N(S). Here, the permutations of
+// n elements with no fixed point: N(S) = (n - |S|)! when the elements of S are fixed, and C(n, j) sets of size j.
+long long derangements(int n) {
+    vector<long long> fact(n + 1, 1);
+    for (int i = 1; i <= n; i++) fact[i] = fact[i - 1] * i;
+    long long total = 0;
+    for (int j = 0; j <= n; j++) {
+        long long c = fact[n] / (fact[j] * fact[n - j]);  // the number of sets of size j
+        total += (j % 2 == 0 ? 1 : -1) * c * fact[n - j];
+    }
+    return total;
 }
 // snippet:end
 
-long long brute(int n, int k, const vector<int>& l, int i = 0) {
-    if (i == k) return n == 0;
-    long long ways = 0;
-    for (int x = l[i]; x <= n; x++) ways += brute(n - x, k, l, i + 1);
-    return ways;
-}
 int main() {
-    cout << "7 candies, 3 children: " << starsBars(7, 3, 0) << "; at least one each: " << starsBars(7, 3, 3) << '\n';
-    mt19937 rng(3);
-    for (int round = 0; round < 300; round++) {
-        int n = rng() % 12, k = 1 + rng() % 4;
-        vector<int> l(k);
-        long long L = 0;
-        for (int& x : l) x = rng() % 3, L += x;
-        if (brute(n, k, l) != starsBars(n, k, L)) return 1;
+    int divisible = 0;
+    for (int x = 1; x <= 100; x++) divisible += x % 2 == 0 || x % 3 == 0 || x % 5 == 0;
+    cout << "divisible by 2, 3 or 5 among 1..100: 50 + 33 + 20 - 16 - 10 - 6 + 3 = " << 50 + 33 + 20 - 16 - 10 - 6 + 3 << " (checked: " << divisible << "), by none: " << 100 - divisible << '\n';
+    cout << "permutations of 4 with no fixed point: " << derangements(4) << '\n';
+    for (int n = 1; n <= 7; n++) {
+        vector<int> p(n);
+        iota(p.begin(), p.end(), 0);
+        long long brute = 0;
+        do {
+            bool ok = true;
+            for (int i = 0; i < n; i++) if (p[i] == i) ok = false;
+            brute += ok;
+        } while (next_permutation(p.begin(), p.end()));
+        if (brute != derangements(n)) return 1;
     }
 }

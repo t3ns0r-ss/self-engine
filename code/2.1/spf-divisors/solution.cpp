@@ -7,7 +7,7 @@ Output: d(x_i) for each i, one per line.
 using namespace std;
 
 // snippet:begin
-// Theorem 2.1.4. spf[x] = the smallest prime factor of x, for 2 <= x <= N.
+// Theorem 2.1.5. spf[x] = the smallest prime factor of x, for 2 <= x <= N.
 vector<int> buildSpf(int N) {
     vector<int> spf(N + 1, 0);
     for (int p = 2; p <= N; p++) {

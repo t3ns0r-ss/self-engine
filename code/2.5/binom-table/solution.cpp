@@ -18,7 +18,7 @@ long long power(long long a, long long b) {
     }
     return r;
 }
-// Theorem 2.5.3. fact[i] = i! and inv[i] = (i!)^(-1) modulo the prime MOD, for i <= N < MOD; C(n, r) in O(1).
+// Theorem 2.5.7. fact[i] = i! and inv[i] = (i!)^(-1) modulo the prime MOD, for i <= N < MOD; C(n, r) in O(1).
 struct Binom {
     vector<long long> fact, inv;
     Binom(int N) : fact(N + 1, 1), inv(N + 1, 1) {

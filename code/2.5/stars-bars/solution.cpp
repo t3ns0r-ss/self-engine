@@ -7,7 +7,7 @@ Output: the count modulo 998244353.
 using namespace std;
 
 // snippet:begin
-// Theorem 2.5.5. Solutions of x_1 + ... + x_k = n with x_i >= l_i: C(n - L + k - 1, k - 1), L = sum of the l_i.
+// Theorem 2.5.6. Solutions of x_1 + ... + x_k = n with x_i >= l_i: C(n - L + k - 1, k - 1), L = sum of the l_i.
 const long long MOD = 998244353;
 long long power(long long a, long long b) {
     long long r = 1;

@@ -2,18 +2,22 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.1.1. The largest value of a b-bit signed type, and a product computed in 64 bits.
-unsigned long long maxSigned(int b) { return (1ULL << (b - 1)) - 1; }
-long long product(int a, int b) { return 1LL * a * b; }
+// Theorem 0.1.1. Steps of a program that works only on each test's own size n, and of one that
+// clears an array of M entries in every test.
+long long stepsOwnSize(const vector<int>& n) {
+    long long steps = 0;
+    for (int x : n) steps += x;
+    return steps;
+}
+long long stepsClearing(const vector<int>& n, long long M) { return (long long)n.size() * M; }
 // snippet:end
 
 int main() {
-    cout << "largest 32-bit signed value: " << maxSigned(32) << '\n';
-    cout << "largest 64-bit signed value: " << maxSigned(64) << '\n';
-    cout << "100000 * 100000 computed in 64 bits: " << product(100000, 100000) << '\n';
-    if (maxSigned(32) != (unsigned long long)numeric_limits<int>::max()) return 1;
-    if (maxSigned(64) != (unsigned long long)numeric_limits<long long>::max()) return 1;
-    for (int a = -300; a <= 300; a += 7)
-        for (int b = -300; b <= 300; b += 11)
-            if (product(a, b) != (long long)((__int128)a * b)) return 1;
+    vector<int> small = {3, 5, 2}, many(10000, 20);
+    cout << "sizes 3 5 2, M = 200000: own size " << stepsOwnSize(small) << ", clearing " << stepsClearing(small, 200000) << '\n';
+    cout << "10000 tests of size 20, M = 200000: own size " << stepsOwnSize(many) << ", clearing " << stepsClearing(many, 200000) << '\n';
+    long long counted = 0;  // the clearing program, run for real on the small input
+    for (size_t i = 0; i < small.size(); i++)
+        for (int j = 0; j < 1000; j++) counted++;
+    if (counted != stepsClearing(small, 1000)) return 1;
 }

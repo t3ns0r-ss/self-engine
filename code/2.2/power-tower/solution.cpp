@@ -17,7 +17,7 @@ long long power(long long a, long long b, long long m) {
     }
     return r;
 }
-// Theorem 2.2.5. a^(b^c) mod the prime p, with 0^0 = 1: reduce the exponent b^c modulo p - 1, unless p divides a.
+// Theorem 2.2.6. a^(b^c) mod the prime p, with 0^0 = 1: reduce the exponent b^c modulo p - 1, unless p divides a.
 long long tower(long long a, long long b, long long c, long long p) {
     bool expZero = (b == 0 && c > 0);  // b^c = 0 exactly then
     if (a % p == 0) return expZero ? 1 : 0;

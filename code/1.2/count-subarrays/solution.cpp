@@ -8,7 +8,7 @@ Output: "countEqualK countDivisibleByM".
 using namespace std;
 
 // snippet:begin
-// Theorem 1.2.2. The number of subarrays with sum exactly K, and the number with sum divisible by m,
+// Theorem 1.2.3. The number of subarrays with sum exactly K, and the number with sum divisible by m,
 // from a map of how often each earlier prefix value occurred.
 pair<long long, long long> countSubarrays(const vector<long long>& a, long long K, long long m) {
     map<long long, int> seen, seenMod;  // prefix sum (and its remainder) -> how many earlier prefixes had it

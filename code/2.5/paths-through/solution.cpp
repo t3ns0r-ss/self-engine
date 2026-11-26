@@ -7,7 +7,7 @@ Output: the total number of paths, then for each query the number of paths throu
 using namespace std;
 
 // snippet:begin
-// Theorem 2.5.7. Lattice paths from (0, 0) to (a, b): C(a + b, a). Paths through (x, y): first half times second half.
+// Theorem 2.5.4. Lattice paths from (0, 0) to (a, b): C(a + b, a). Paths through (x, y): first half times second half.
 const long long MOD = 998244353;
 long long power(long long a, long long b) {
     long long r = 1;
@@ -19,7 +19,7 @@ long long power(long long a, long long b) {
     }
     return r;
 }
-// Theorem 2.5.3 tables, built inside the struct below.
+// Theorem 2.5.7 tables, built inside the struct below.
 struct Paths {
     vector<long long> fact, inv;
     Paths(int N) : fact(N + 1, 1), inv(N + 1, 1) {

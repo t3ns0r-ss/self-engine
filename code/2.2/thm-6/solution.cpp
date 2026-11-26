@@ -2,23 +2,29 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.2.6. The inverses of 1..n modulo a prime p > n in O(n): inv[i] = -(p / i) * inv[p mod i] mod p.
-vector<long long> inverseTable(long long n, long long p) {
-    vector<long long> inv(n + 1);
-    inv[1] = 1;
-    for (long long i = 2; i <= n; i++)
-        inv[i] = (p - (p / i) * inv[p % i] % p) % p;
-    return inv;
+// Theorem 2.2.6. For a prime p with p not dividing a: a^e = a^(e mod (p-1)) (mod p). A multiple of p gives 0 for e >= 1.
+long long power(long long a, long long b, long long m) {
+    long long r = 1 % m;
+    a %= m;
+    while (b > 0) {  // invariant: r * a^b = (the answer) mod m
+        if (b & 1) r = r * a % m;
+        a = a * a % m;
+        b >>= 1;
+    }
+    return r;
+}
+long long powerReduced(long long a, long long e, long long p) {
+    if (a % p == 0) return e == 0 ? 1 : 0;
+    return power(a, e % (p - 1), p);
 }
 // snippet:end
 
 int main() {
-    auto inv = inverseTable(6, 7);
-    cout << "inverses modulo 7:";
-    for (int i = 1; i <= 6; i++) cout << ' ' << inv[i];
-    cout << '\n';
-    for (long long p : {7, 101, 1009}) {
-        auto t = inverseTable(p - 1, p);
-        for (long long i = 1; i < p; i++) if (i * t[i] % p != 1) return 1;
-    }
+    cout << "3^100 mod 7 = 3^(100 mod 6) = 3^4 mod 7 = " << powerReduced(3, 100, 7) << '\n';
+    cout << "7^6 mod 7 = " << powerReduced(7, 6, 7) << " (a multiple of p is not reduced)\n";
+    cout << "2^(10^18) mod (10^9 + 7) = " << powerReduced(2, 1000000000000000000LL, 1000000007) << '\n';
+    for (long long p : {2, 3, 5, 7, 11, 13})
+        for (long long a = 0; a < 30; a++)
+            for (long long e = 0; e < 60; e++)
+                if (power(a, e, p) != powerReduced(a, e, p)) return 1;
 }

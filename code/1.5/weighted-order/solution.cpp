@@ -8,7 +8,7 @@ Output: the minimum weighted sum.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.5.1. The smallest sum of w_i * (finishing time of job i) over all orders of jobs (t_i, w_i): sort by t / w.
+// Theorem 1.5.3. The smallest sum of w_i * (finishing time of job i) over all orders of jobs (t_i, w_i): sort by t / w.
 long long weightedOrder(vector<pair<long long, long long>> job) {
     // x before y when t_x / w_x < t_y / w_y, compared exactly as t_x * w_y < t_y * w_x
     sort(job.begin(), job.end(), [](const pair<long long, long long>& x, const pair<long long, long long>& y) {

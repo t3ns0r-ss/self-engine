@@ -2,29 +2,25 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.2.2. All divisors of n in increasing order; d is tried only up to sqrt(n).
-vector<long long> divisors(long long n) {
-    vector<long long> small, large;  // d <= sqrt(n), and their partners n / d
-    for (long long d = 1; d * d <= n; d++) {
-        if (n % d != 0) continue;
-        small.push_back(d);
-        if (d != n / d) large.push_back(n / d);  // a square root is recorded once
-    }
-    small.insert(small.end(), large.rbegin(), large.rend());
-    return small;
+// Theorem 0.2.2. k nested loops with bounds m_1 .. m_k take m_1 * ... * m_k innermost steps;
+// about 10^8 steps fit in one second.
+long long nestedSteps(const vector<long long>& bounds) {
+    long long steps = 1;
+    for (long long m : bounds) steps *= m;
+    return steps;
 }
+bool fits(long long steps, double seconds) { return steps <= 1e8 * seconds; }
 // snippet:end
 
 int main() {
-    for (long long n : {12LL, 36LL, 97LL}) {
-        cout << "divisors of " << n << ":";
-        for (long long d : divisors(n)) cout << ' ' << d;
-        cout << '\n';
+    for (auto [bounds, sec] : {pair{vector<long long>{5000, 5000}, 1.0}, pair{vector<long long>{200000, 200000}, 2.0}, pair{vector<long long>{500, 500, 500}, 2.0}}) {
+        long long steps = nestedSteps(bounds);
+        for (size_t i = 0; i < bounds.size(); i++) cout << (i ? " x " : "loops ") << bounds[i];
+        cout << ": " << steps << " steps, fits in " << sec << " s: " << (fits(steps, sec) ? "yes" : "no") << '\n';
     }
-    for (long long n = 1; n <= 400; n++) {
-        vector<long long> all;
-        for (long long d = 1; d <= n; d++)
-            if (n % d == 0) all.push_back(d);
-        if (all != divisors(n)) return 1;
-    }
+    long long counted = 0;  // the product against the loops run for real
+    for (int a = 0; a < 7; a++)
+        for (int b = 0; b < 5; b++)
+            for (int c = 0; c < 3; c++) counted++;
+    if (counted != nestedSteps({7, 5, 3})) return 1;
 }

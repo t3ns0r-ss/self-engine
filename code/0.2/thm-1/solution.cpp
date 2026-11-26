@@ -2,25 +2,27 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.2.1. k nested loops with bounds m_1 .. m_k take m_1 * ... * m_k innermost steps;
-// about 10^8 steps fit in one second.
-long long nestedSteps(const vector<long long>& bounds) {
-    long long steps = 1;
-    for (long long m : bounds) steps *= m;
-    return steps;
-}
-bool fits(long long steps, double seconds) { return steps <= 1e8 * seconds; }
+// Theorem 0.2.1. a + (a + d) + ... + (a + (n - 1) d), and the number of pairs among n items.
+// The product is always even: multiply first, then halve.
+long long arithSum(long long a, long long d, long long n) { return n * (2 * a + (n - 1) * d) / 2; }
+long long pairs(long long n) { return n * (n - 1) / 2; }
 // snippet:end
 
 int main() {
-    for (auto [bounds, sec] : {pair{vector<long long>{5000, 5000}, 1.0}, pair{vector<long long>{200000, 200000}, 2.0}, pair{vector<long long>{500, 500, 500}, 2.0}}) {
-        long long steps = nestedSteps(bounds);
-        for (size_t i = 0; i < bounds.size(); i++) cout << (i ? " x " : "loops ") << bounds[i];
-        cout << ": " << steps << " steps, fits in " << sec << " s: " << (fits(steps, sec) ? "yes" : "no") << '\n';
+    for (auto [a, d, n] : {tuple{1, 1, 5}, tuple{3, 2, 4}, tuple{10, -3, 4}})
+        cout << "a = " << a << ", d = " << d << ", n = " << n << ": sum " << arithSum(a, d, n) << '\n';
+    cout << "pairs among 5 items: " << pairs(5) << '\n';
+    for (int a = -5; a <= 5; a++)
+        for (int d = -5; d <= 5; d++)
+            for (int n = 1; n <= 20; n++) {
+                long long loop = 0;
+                for (int k = 0; k < n; k++) loop += a + (long long)k * d;
+                if (loop != arithSum(a, d, n)) return 1;
+            }
+    for (int n = 1; n <= 30; n++) {
+        int count = 0;
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++) count++;
+        if (count != pairs(n)) return 1;
     }
-    long long counted = 0;  // the product against the loops run for real
-    for (int a = 0; a < 7; a++)
-        for (int b = 0; b < 5; b++)
-            for (int c = 0; c < 3; c++) counted++;
-    if (counted != nestedSteps({7, 5, 3})) return 1;
 }

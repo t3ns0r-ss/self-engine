@@ -2,32 +2,32 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.4. The largest element <= x and the smallest element >= x of a set; -1 if there is none.
-int largestAtMost(const set<int>& s, int x) {
-    auto it = s.upper_bound(x);  // first element > x
-    return it == s.begin() ? -1 : *prev(it);
-}
-int smallestAtLeast(const set<int>& s, int x) {
-    auto it = s.lower_bound(x);  // first element >= x
-    return it == s.end() ? -1 : *it;
+// Theorem 0.6.4. The number of pairs i < j with a_i = a_j: each element adds the count of its value read
+// just before it is incremented.
+long long equalPairs(const vector<int>& a) {
+    map<int, int> cnt;
+    long long pairs = 0;
+    for (int x : a) {
+        pairs += cnt[x];
+        cnt[x]++;
+    }
+    return pairs;
 }
 // snippet:end
 
 int main() {
-    set<int> s = {2, 5, 9};
-    cout << "set 2 5 9, largest <= 6: " << largestAtMost(s, 6) << '\n';
-    cout << "set 2 5 9, smallest >= 6: " << smallestAtLeast(s, 6) << '\n';
-    cout << "set 2 5 9, largest <= 1: " << largestAtMost(s, 1) << '\n';
-    cout << "set 2 5 9, smallest >= 10: " << smallestAtLeast(s, 10) << '\n';
-    mt19937 rng(4);
-    for (int round = 0; round < 300; round++) {
-        set<int> t;
-        for (int i = 0; i < 6; i++) t.insert(rng() % 20);
-        for (int x = -1; x <= 21; x++) {
-            int lo = -1, hi = -1;
-            for (int v : t) if (v <= x) lo = v;
-            for (int v : t) if (v >= x) { hi = v; break; }
-            if (lo != largestAtMost(t, x) || hi != smallestAtLeast(t, x)) return 1;
-        }
+    for (vector<int> a : {vector<int>{3, 1, 3, 3}, vector<int>{1, 2, 3}, vector<int>{5, 5, 5, 5}}) {
+        cout << "equal pairs in";
+        for (int x : a) cout << ' ' << x;
+        cout << ": " << equalPairs(a) << '\n';
+    }
+    mt19937 rng(2);
+    for (int round = 0; round < 500; round++) {
+        int n = rng() % 9;
+        vector<int> b(n);
+        for (int& x : b) x = rng() % 4;
+        long long brute = 0;
+        for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) brute += b[i] == b[j];
+        if (brute != equalPairs(b)) return 1;
     }
 }

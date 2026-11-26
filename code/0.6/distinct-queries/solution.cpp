@@ -8,7 +8,7 @@ Output: one line per query of type 2 or 3.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.2. "1 x" adds x, "2 x" asks whether x is present, "3" asks for the number of distinct values.
+// Theorem 0.6.3. "1 x" adds x, "2 x" asks whether x is present, "3" asks for the number of distinct values.
 vector<string> processQueries(const vector<array<int, 2>>& queries) {
     set<int> s;  // each distinct value once
     vector<string> answers;

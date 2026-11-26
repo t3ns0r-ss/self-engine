@@ -240,18 +240,6 @@ This proof needs: $k \ge 1$ and $l \ge 1$, so that $l - 1 \ge 0$ and C++ divisio
 
 The first example is the small example above. In the second, no multiple of 5 lies below 5. In the third, the range $\{3\}$ is itself a multiple of 3.
 
-For any sign of $l$ and $r$, the template below writes out the floor:
-
-<CodeSnippet unit="0.4/count-multiples" />
-
-How it works: for integers $a \le b$, the multiples $jk$ with $a < jk \le b$ are those with $\lfloor a/k \rfloor < j \le \lfloor b/k \rfloor$. With $a = l - 1$ and $b = r$ this is Theorem 0.4.2. `floorDiv` rounds down also for negative numbers, because C++ rounds toward zero, which for a negative `a` that `b` does not divide gives a quotient one too large.
-
-Alternative: for $l \ge 1$ the plain `r / k - (l - 1) / k` is enough, because both numerators are non-negative. Another correct form: the first multiple at least $l$ is $f = \lceil l/k \rceil k$, and the count is $\lfloor (r - f)/k \rfloor + 1$ if $f \le r$, else 0.
-
-Common mistake: truncating instead of rounding down. With `a / b` in place of `floorDiv`, the input $l = -15$, $r = -7$, $k = 8$ gives 2. The right answer is 1, because only $-8$ lies in $[-15, -7]$. The program computes $\lfloor -7/8 \rfloor$ as 0 instead of $-1$, so the count becomes $0 - (-2) = 2$. Fix: use `floorDiv`.
-
-Common mistake: subtracting the multiples up to $l$ instead of $l - 1$. For $l = 18$, $r = 39$, $k = 3$ the program prints $13 - 6 = 7$. The right answer is 8 (18, 21, ..., 39), because 18 itself is a multiple and was removed. Fix: subtract the count up to $l - 1$, which is $13 - 5 = 8$.
-
 ### Parity and invariants
 
 Question: five coins show heads. One move flips exactly two coins. Can all five show tails?
@@ -280,25 +268,11 @@ The code adds the second necessary condition: the target must be within $t$ step
 
 Another example: a chess knight starts at $(0, 0)$. Each move changes $x + y$ by $\pm 1$ or $\pm 3$, always an odd amount. So after $t$ moves $x + y$ has the parity of $t$, and after exactly 7 moves the knight can never be back at $(0, 0)$.
 
-Template for the grid walker:
-
-<CodeSnippet unit="0.4/exact-steps" />
-
-How it works: the fewest steps is $d = |t_x - s_x| + |t_y - s_y|$, because each step changes one coordinate by 1. Each step also flips the parity of $x + y$, so $t$ must have the parity of $d$. Both conditions are enough: walk a shortest path ($d$ steps), then step away and back $(t - d)/2$ times. Cost: $O(1)$.
-
-Alternative: compare $(s_x + s_y + t) \bmod 2$ with $(t_x + t_y) \bmod 2$. This is the same condition, but with negative coordinates you must use the normalised remainder.
-
-Common mistake: checking parity but not distance. For start $(0, 0)$, target $(1, -3)$ and $t = 0$, the test `(t - d) % 2 == 0` gives YES, because $d = 4$ and $-4$ is even. The right answer is NO, since zero steps cannot cover distance 4. Fix: also require $d \le t$. Parity rules targets out; it does not prove the rest are reachable.
-
-Common mistake: comparing the parities of negative numbers with `%`. For start $(-3, 1)$, target $(-2, -1)$ and $t = 5$, the distance is $d = 3$ and $t - d = 2$ is even, so the answer is YES. The test `(sx + sy + t) % 2 == (tx + ty) % 2` gives `3 % 2 = 1` on the left but `-3 % 2 = -1` on the right (Theorem 0.4.1), so it says NO. Fix: test `(t - d) % 2 == 0` with $t \ge d$, or normalise both remainders first.
-
 ### Rules
 
 Five rules keep modular answers correct. They are numbered i to v.
 
 i) Use long long everywhere.
-
-Common mistake: declaring the answer as `long long` but the inputs or a loop variable as `int`. A product such as `a * b` is computed in `int` first and overflows before it is stored.
 
 ii) Multiply two numbers at a time.
 
@@ -398,35 +372,6 @@ This proof needs: (1) only addition, subtraction and multiplication. Division is
 
 The last example is the point of the rule. $20!$ has 19 digits, but when it is reduced after every multiplication the running value stays below $10^9 + 7$. The same rule gives $n! \bmod (10^9 + 7)$ for $n = 10^6$ in $10^6$ multiplications, although $n!$ itself has more than 5 million digits.
 
-For a whole sum of products, the loop is:
-
-<CodeSnippet unit="0.4/mod-sum-product" />
-
-How it works: every input is first brought into $[0, m)$ by `norm` (Theorem 0.4.1), so negative inputs are handled. The product of two reduced values is below $m^2 \le 4 \cdot 10^{18}$, which fits in `long long`, and the running sum is reduced after every addition. By Theorem 0.4.4 the result is the remainder of the exact sum, which could be as large as $10^{41}$. Cost: $O(n)$.
-
-Alternative: with `__int128` the product of two unreduced values up to $10^{18}$ can be taken exactly. Reducing first works on every 64-bit compiler and is the habit to keep.
-
-Common mistake: forgetting that `%` can be negative. With `norm(x) = x % m` and $m = 1463659931$, the sum $-243 + 228 - 182 = -197$ prints as $-197$. The right answer is $m - 197 = 1463659734$. Fix: `(x % m + m) % m`.
-
-#### Example: Repsept
-
-[AtCoder Beginner Contest (ABC) 174, problem C: Repsept](https://atcoder.jp/contests/abc174/tasks/abc174_c). In short: for the sequence $7, 77, 777, \dots$, print the position of the first term that is a multiple of $K$ ($K \le 10^6$), or $-1$ if no term is.
-
-Idea. The budget: the millionth term has a million digits, so computing the terms themselves is about $10^{12}$ digit operations. We need $O(K)$ steps with small numbers. "Is a multiple of $K$" depends only on the remainder modulo $K$, so arithmetic modulo $m$ applies (Theorem 0.4.4). Each term is the previous one times 10 plus 7, which uses only $\times$ and $+$. So the remainder of the next term is $(10 r + 7) \bmod K$, where $r$ is the remainder of the current one. There are only $K$ possible remainders, so we follow at most $K$ steps and otherwise print $-1$.
-
-Why $-1$ is right after $K$ steps: let $r_i$ be the remainder of the $i$-th term. Suppose 0 is not among $r_1, \dots, r_K$. These $K$ values take only the $K - 1$ values $1, \dots, K - 1$, so two are equal (pigeonhole principle). Each remainder depends only on the previous one (Theorem 0.3.1), so from the repeat on, the remainders cycle through values already seen, none of them 0.
-
-Trace for $K = 101$: $r_1 = 7$, $r_2 = 77$, $r_3 = 777 \bmod 101 = 70$, $r_4 = (700 + 7) \bmod 101 = 0$. The answer is 4 (indeed $7777 = 101 \cdot 77$). Trace for $K = 6$: $r = 1, 5, 3, 1$. It repeats without 0, so the answer is $-1$.
-
-<CodeSnippet unit="0.4/example-2" />
-
-Cost: at most $K$ steps with numbers below $10K + 7$, so $O(K)$ time and $O(1)$ memory.
-
-Common mistake: storing the real term in a `long long`. The 20th term, 77777777777777777777, is above $9.2 \cdot 10^{18}$, so it overflows. Keep only the remainder.
-
-Alternative: mark the remainders already seen in an array of size $K$ and stop at the first repeat. It stops earlier on inputs like $K = 2$, but needs the extra array.
-
-
 ## GCD & LCM
 
 Two small examples first:
@@ -503,8 +448,6 @@ The first example is the table above. For $\gcd(0, 9)$ the loop turns $(0, 9)$ i
 
 GCD of an array. Fold from the left: $g \leftarrow \gcd(g, a_i)$, starting with $g = 0$. This works because $\gcd(0, x) = x$, and because the common divisors of $a_1, \dots, a_i$ are the common divisors of $\gcd(a_1, \dots, a_{i-1})$ and $a_i$. That is step 1 and 2 applied once more, by induction on $i$.
 
-Common mistake: starting the fold at 1. For the array `24` the program prints 1, because $\gcd(1, x) = 1$ for every $x$. Fix: start at 0. The neutral start for a GCD is the value that leaves the first element unchanged.
-
 LCM stands for Least Common Multiple. It is defined below and computed from the GCD.
 
 The LCM of a and b is the smallest positive integer that both divide. For 4 and 6 it is 12.
@@ -552,39 +495,213 @@ The first two examples are the small example and a second pair. In the third, th
 
 LCM of an array. Fold from the left: $L \leftarrow \operatorname{lcm}(L, a_i)$, starting with $L = 1$. By part 1, a number is a common multiple of $a_1, \dots, a_i$ exactly when it is a multiple of $\operatorname{lcm}(a_1, \dots, a_{i-1})$ and of $a_i$.
 
-Template for both folds, with a cap on the LCM:
-
-<CodeSnippet unit="0.4/gcd-lcm" />
-
-How it works: `g` starts at 0 and `L` at 1. Before multiplying, the code compares `q` with `C / a`, because for positive integers $q \cdot a > C$ exactly when $q > \lfloor C/a \rfloor$. Once the LCM is too big it stays too big, so the flag is final. Cost: $O(n \log \max a)$.
-
-Alternative: `__int128` can hold the product exactly before comparing with `C`.
-
-### Worked example: Monsters Battle Royale
-
-[AtCoder Beginner Contest (ABC) 118, problem C: Monsters Battle Royale](https://atcoder.jp/contests/abc118/tasks/abc118_c). In short: $N$ monsters ($2 \le N \le 10^5$) have healths $A_i \le 10^9$. Repeatedly, an alive monster attacks another alive one and lowers its health by the attacker's current health. A monster at 0 or below dies. What is the smallest health the last monster can have?
-
-Idea. Budget: $N = 10^5$, so $O(N \log \max A)$ is fine. The number of attack orders is astronomically large, so the answer must come from a property of the healths. Simulation (topic 0.3) does not fit, because we choose the attacker and the target. But an attack replaces $b$ by $b - a$, which is the subtraction form of Euclid (Theorem 0.4.5, step 3). So the GCD of the healths may be invariant.
-
-Lower bound: $g = \gcd(A_1, \dots, A_N)$ divides every health. If $g \mid a$ and $g \mid b$ then $g \mid b - a$, so after every attack all healths are still multiples of $g$. The last monster has a positive health that is a multiple of $g$, so it is at least $g$.
-
-Reaching $g$: let the smallest alive monster attack every other one until that one's health is below the attacker's. This turns $b$ into $b \bmod a$, a Euclid step. The GCD of the alive set does not change, and each round lowers the smallest health, so one monster is left with health $g$.
-
-Trace for healths $6, 10, 15$: the 6 attacks 10 once (10 becomes 4) and 15 twice (15 becomes 3). Alive: $6, 4, 3$. The 3 kills the 6 and turns 4 into 1. Alive: $3, 1$. The 1 kills the 3. The answer is 1 $= \gcd(6, 10, 15)$.
-
-<CodeSnippet unit="0.4/example-1" />
-
-Cost: one `gcd` per number, $O(N \log \max A)$ time and $O(1)$ memory.
-
-Common mistake: answering the smallest health. For $6, 10, 15$ that prints 6, but the answer is 1. Another: starting the fold at 1 (see the common mistake above).
-
-Alternative: simulate the strategy with `b %= a` and remove zeros. It gives the same value with more code, so the single `gcd` fold is the shortest.
-
 ## Recognition cards
 
 A card names one tool, the property that decides it, and how to test that property on a new problem.
 
 <Cards topic="0.4" />
+
+## Templates
+
+Four short functions, one for each card.
+
+### Counting multiples in a range (Theorem 0.4.2)
+
+<CodeSnippet unit="0.4/count-multiples" />
+
+**How it works.** The multiples of `k` in `[l, r]` are those up to `r` minus those up to `l - 1`. For any integers $a \le b$, the multiples $jk$ with $a < jk \le b$ are those with $\lfloor a/k \rfloor < j \le \lfloor b/k \rfloor$, so there are $\lfloor b/k \rfloor - \lfloor a/k \rfloor$ of them; with $a = l - 1$ and $b = r$ this is the formula of Theorem 0.4.2, now for any sign of `l` and `r`, as long as the division rounds *down*. `floorDiv` does that for negative numbers too: C++ rounds toward zero, so for a negative `a` that `b` does not divide, the truncated quotient is one too large (Theorem 0.1.4).
+
+**Alternative formulation.** For $l \ge 1$ the plain `r / k - (l - 1) / k` is enough, because both divisions have non-negative numerators. Another correct form is "first multiple $\ge l$ is $f = \lceil l/k \rceil k$; the count is $\lfloor (r - f)/k \rfloor + 1$ if $f \le r$, else 0", which needs the same care with negative ceilings.
+
+### Exactly t steps on a grid (Theorem 0.4.3)
+
+<CodeSnippet unit="0.4/exact-steps" />
+
+**How it works.** The fewest steps is $d = |t_x - s_x| + |t_y - s_y|$: each step changes one coordinate by 1, so it reduces this distance by at most 1. Each step also changes $x + y$ by $\pm 1$, which flips its parity, so after $t$ steps $x + y$ has the parity of $s_x + s_y + t$. The target is reachable in exactly $t$ steps only if $d \le t$ and $t$ has the parity of $d$ (since $d \equiv (t_x + t_y) - (s_x + s_y) \pmod 2$). Both conditions are also enough: walk a shortest path ($d$ steps), then step away and back $(t - d)/2$ times.
+
+**Alternative formulation.** Compare $(s_x + s_y + t) \bmod 2$ with $(t_x + t_y) \bmod 2$ instead of $(t - d) \bmod 2$. Same condition; with negative coordinates use the normalised remainder (Theorem 0.4.1) or compare `& 1`.
+
+### GCD and LCM of an array (Theorems 0.4.5 and 0.4.6)
+
+<CodeSnippet unit="0.4/gcd-lcm" />
+
+**How it works.** `gcdLL` is the Euclidean algorithm: it replaces `(a, b)` with `(b, a % b)` until `b` is 0. The GCD of the array is folded from the left, starting from $\gcd(0, x) = x$. The LCM is folded the same way, starting from 1: $\operatorname{lcm}(L, a) = (L / \gcd(L, a)) \cdot a$. Before multiplying, the program checks whether the product would exceed `C` by comparing `q` with `C / a`: for positive integers, $q \cdot a > C$ exactly when $q > \lfloor C/a \rfloor$. Once the LCM is too big it stays too big (it only grows), so the flag is final.
+
+**Alternative formulation.** The recursive form `gcd(a, b) = b == 0 ? a : gcd(b, a % b)` is the same algorithm. For the overflow check, `__int128` (a 128-bit integer type that GCC provides) can hold the product exactly before comparing with `C`.
+
+### A sum of products modulo m (Theorem 0.4.4)
+
+<CodeSnippet unit="0.4/mod-sum-product" />
+
+**How it works.** Every input value is first brought into $[0, m)$ by `norm` (Theorem 0.4.1), so negative inputs are handled. The product of two reduced values is below $m^2 \le 4 \cdot 10^{18}$, which fits in `long long`, and the running sum is reduced after every addition. By Theorem 0.4.4 the result is the remainder of the exact sum, which itself could be as large as $10^{41}$.
+
+**Alternative formulation.** With `__int128` the product of two values up to $10^{18}$ can be taken before reducing. That is fine when the type is available, but reducing first works with any 64-bit compiler and is the habit to keep: the product of two *unreduced* `long long` values overflows.
+
+## Bug catalogue
+
+Each bug was made by changing one line of a template from the Templates section and comparing the broken copy with the brute force on random inputs. The input shown is the first failing input found; where that input had several queries, only the first failing query is shown.
+
+### Bug: truncating instead of rounding down
+
+Template: counting multiples.
+
+```cpp
+return a / b;
+```
+
+Input: `1` query, `-15 -7 8`.
+
+Wrong output `2`, correct output `1` (only $-8$ lies in $[-15, -7]$). The formula needs $\lfloor (l - 1)/k \rfloor = \lfloor -16/8 \rfloor = -2$ and $\lfloor -7/8 \rfloor = -1$, but C++ truncates $-7/8$ to 0, so the count becomes $0 - (-2) = 2$.
+
+**Fix:** subtract 1 when the quotient is negative and not exact (Theorem 0.1.4), as `floorDiv` does. With $l \ge 1$ only, the plain division is safe.
+
+### Bug: subtracting the multiples up to l instead of l − 1
+
+Template: counting multiples.
+
+```cpp
+cout << floorDiv(r, k) - floorDiv(l, k) << "\n";
+```
+
+Input: first query `18 39 3`.
+
+Wrong output `7`, correct output `8` (the multiples $18, 21, \dots, 39$). The subtraction removes the multiples up to $l$ itself, so $l = 18$, which is a multiple, is lost.
+
+**Fix:** subtract the multiples up to $l - 1$ (Theorem 0.4.2): the range $[l, r]$ is "up to $r$" minus "up to $l - 1$".
+
+### Bug: checking parity but not distance
+
+Template: exactly t steps.
+
+```cpp
+bool ok = (t - d) % 2 == 0;
+```
+
+Input: first query `0 0 1 -3 0`.
+
+Wrong output `YES`, correct output `NO`. The target is at distance $d = 4$, and $t = 0$ steps cannot reach it; but $t - d = -4$ is even. Parity is a *necessary* condition only.
+
+**Fix:** also require $d \le t$. A parity invariant rules targets out; it does not by itself prove that the rest are reachable (Theorem 0.4.3 gives the first half, the explicit walk in the Templates section the second).
+
+### Bug: comparing parities of negative numbers with %
+
+Template: exactly t steps.
+
+```cpp
+bool ok = d <= t && (sx + sy + t) % 2 == (tx + ty) % 2;
+```
+
+Input: first query `-3 1 -2 -1 5`.
+
+Wrong output `NO`, correct output `YES` ($d = 3$ and $t = 5$). The left side is $3 \% 2 = 1$, but the right side is $-3 \% 2$, which is $-1$ in C++ (Theorem 0.4.1), so two numbers of the same parity compare as different.
+
+**Fix:** compare `(t - d) % 2 == 0` with $t - d \ge 0$, or normalise both remainders into $[0, 2)$ before comparing.
+
+### Bug: starting the GCD fold at 1
+
+Template: GCD and LCM of an array.
+
+```cpp
+long long g = 1, L = 1;
+```
+
+Input: `1 1140` and the array `24`.
+
+Wrong output `1 24`, correct output `24 24`. $\gcd(1, x) = 1$ for every $x$, so the fold never leaves 1. The neutral start for GCD is 0, because $\gcd(0, x) = x$; the neutral start for LCM is 1.
+
+**Fix:** `long long g = 0, L = 1;`. For any fold, start from the value that leaves the first element unchanged.
+
+### Bug: forgetting that % can be negative
+
+Template: sum of products modulo m.
+
+```cpp
+auto norm = [&](long long x) { return x % m; };
+```
+
+Input: `3 1463659931`, then `-9 27`, `-19 -12`, `-14 13`.
+
+Wrong output `-197`, correct output `1463659734`. The exact sum is $-243 + 228 - 182 = -197$, and its remainder modulo $m$ is $m - 197$. Without `+ m`, C++ keeps the sign of the dividend (Theorem 0.4.1).
+
+**Fix:** `(x % m + m) % m`. Any subtraction or negative input can make a C++ remainder negative.
+
+### Bug: multiplying before reducing
+
+Template: sum of products modulo m.
+
+```cpp
+ans = (ans + norm(a * b)) % m;
+```
+
+Input: `1 18`, then `-334750831671345766 -493348971505064996`.
+
+Wrong output `2`, correct output `14`. The product is about $1.65 \cdot 10^{35}$, far above the `long long` maximum, so `a * b` overflows (undefined behaviour; here it wraps around) before `norm` is applied.
+
+**Fix:** reduce each factor first, then multiply: two values below $m \le 2 \cdot 10^9$ give a product below $4 \cdot 10^{18}$ (Theorem 0.4.4, condition 2).
+
+## Worked examples
+
+### Example 1: Monsters Battle Royale
+
+[AtCoder Beginner Contest (ABC) 118, problem C: Monsters Battle Royale](https://atcoder.jp/contests/abc118/tasks/abc118_c). In short: $N$ monsters ($2 \le N \le 10^5$) have healths $A_i \le 10^9$. Repeatedly, some alive monster attacks another alive one, lowering the target's health by the attacker's current health; a monster whose health drops to 0 or below dies. When one monster is left, what is the smallest health it can have?
+
+#### Step 1: Constraints → budget
+
+$N = 10^5$, so $O(N \log \max A)$ or similar is fine. The number of possible attack orders is astronomically large, so the answer must come from a property of the healths, not from trying orders.
+
+#### Step 2: Question form → candidate tools
+
+Following the process (simulation, topic 0.3) is the first candidate, but the attacker and target are ours to choose at every step, so there is no single process to follow. The second: an attack replaces $b$ by $b - a$, which is the subtraction form of Euclid, so the GCD of the healths may be invariant (the card "GCD and LCM via Euclid", Theorem 0.4.5).
+
+#### Step 3: Property check → decision
+
+Every health is a combination of the starting healths by subtractions, so every multiple of $g = \gcd(A_1, \dots, A_N)$ stays a multiple of $g$: the final health is at least $g$. And there is a strategy reaching $g$: let the smallest alive monster attack each other one until that one's health drops below the attacker's. That turns $b$ into $b \bmod a$, a step of Euclid. Decision: the answer is the GCD of all healths.
+
+#### Step 4: Proof for this problem
+
+*Lower bound.* $g$ divides every starting health. If $g \mid a$ and $g \mid b$, then $g \mid b - a$ (Theorem 0.4.5, part 1), so after every attack all healths are still multiples of $g$. The last monster has a positive health that is a multiple of $g$, so it is at least $g$.
+
+*Reaching $g$.* Let $a$ be the smallest alive health. Let it attack every other monster $b$ until $b < a$; then $b$ has become $b \bmod a$, and it has died exactly when that is 0. The GCD of the alive healths does not change: replacing $b$ by $b \bmod a$ keeps it (Theorem 0.4.5), and removing a monster at exactly 0 keeps it ($\gcd(x, 0) = x$). If a monster survives with $0 < b \bmod a < a$, it becomes the new smallest and the round repeats. Every round strictly lowers the smallest health, so the process ends with one monster, whose health is the GCD of the alive set: $g$.
+
+The program folds `gcd` over the array: $O(N \log \max A)$ steps.
+
+#### Step 5: Code
+
+<CodeSnippet unit="0.4/example-1" />
+
+A common slip is to print the smallest health. For $6, 10, 15$ that prints 6, but the answer is 1.
+
+#### Step 6: Alternative approach
+
+Carry out the strategy of Step 4 literally: keep the healths, repeatedly let the smallest attack the others with `b %= a`, and remove the zeros. It returns the same value with more code; with `%` instead of repeated subtraction it is also fast. The single `gcd` fold is the shortest correct program.
+
+### Example 2: Repsept
+
+[AtCoder Beginner Contest (ABC) 174, problem C: Repsept](https://atcoder.jp/contests/abc174/tasks/abc174_c). In short: the sequence $7, 77, 777, \dots$; print the position of the first term that is a multiple of $K$ ($K \le 10^6$), or $-1$ if no term is.
+
+#### Step 1: Constraints → budget
+
+$K = 10^6$. The terms have as many digits as their position, so the millionth term has a million digits: computing the terms themselves, even with big numbers, costs about $10^{12}$ digit operations. We need $O(K)$ steps with small numbers.
+
+#### Step 2: Question form → candidate tools
+
+"Is a multiple of $K$" depends only on the remainder modulo $K$: arithmetic modulo $m$ (Theorem 0.4.4). The question "or $-1$ if never" asks when to stop, which is the repetition argument of Theorem 0.3.1: the remainders form a deterministic process on $K$ states.
+
+#### Step 3: Property check → decision
+
+Each term is the previous one times 10 plus 7, which uses only multiplication and addition, so the remainder of the next term is $(10r + 7) \bmod K$, where $r$ is the remainder of the current term. Only $K$ remainders exist. Decision: follow the remainders for at most $K$ steps; if none is 0, print $-1$.
+
+#### Step 4: Proof for this problem
+
+Let $x_i$ be the $i$-th term and $r_i = x_i \bmod K$. Since $x_{i+1} = 10x_i + 7$, Theorem 0.4.4 gives $r_{i+1} = (10 r_i + 7) \bmod K$, and $x_i$ is a multiple of $K$ exactly when $r_i = 0$. Suppose 0 does not appear among $r_1, \dots, r_K$. These $K$ remainders then take only the $K - 1$ values $1, \dots, K - 1$, so two of them are equal (the pigeonhole principle). Each remainder depends only on the previous one, so from that repeat on the remainders cycle through values already seen (Theorem 0.3.1), none of which is 0: no term is ever a multiple of $K$, and printing $-1$ after $K$ terms is correct. The program takes at most $K = 10^6$ steps, each with numbers below $10K + 7$.
+
+#### Step 5: Code
+
+<CodeSnippet unit="0.4/example-2" />
+
+#### Step 6: Alternative approach
+
+Mark the remainders already seen in an array of size $K$ and stop at the first repeat instead of after exactly $K$ steps (Theorem 0.3.1 as in the cycle-detection template of topic 0.3). It stops earlier on inputs like $K = 2$ but needs the extra array; the fixed bound of $K$ steps is simpler and fast enough.
 
 ## Quick revision
 

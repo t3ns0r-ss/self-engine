@@ -7,7 +7,7 @@ Output: the sum.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.2.3. a + (a + d) + ... + (a + (n - 1) d). The product is always even: multiply first, then halve.
+// Theorem 0.2.1. a + (a + d) + ... + (a + (n - 1) d). The product is always even: multiply first, then halve.
 long long arithSum(long long a, long long d, long long n) { return n * (2 * a + (n - 1) * d) / 2; }
 // snippet:end
 

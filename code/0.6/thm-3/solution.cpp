@@ -2,32 +2,28 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.3. The number of pairs i < j with a_i = a_j: each element adds the count of its value read
-// just before it is incremented.
-long long equalPairs(const vector<int>& a) {
-    map<int, int> cnt;
-    long long pairs = 0;
-    for (int x : a) {
-        pairs += cnt[x];
-        cnt[x]++;
-    }
-    return pairs;
-}
+// Theorem 0.6.3. The number of distinct values, and whether a value occurs, with a set.
+int distinctCount(const vector<int>& a) { return set<int>(a.begin(), a.end()).size(); }
+bool occurs(const vector<int>& a, int x) { return set<int>(a.begin(), a.end()).count(x) > 0; }
 // snippet:end
 
 int main() {
-    for (vector<int> a : {vector<int>{3, 1, 3, 3}, vector<int>{1, 2, 3}, vector<int>{5, 5, 5, 5}}) {
-        cout << "equal pairs in";
-        for (int x : a) cout << ' ' << x;
-        cout << ": " << equalPairs(a) << '\n';
-    }
-    mt19937 rng(2);
+    vector<int> a = {3, 1, 3, 3};
+    cout << "distinct values in 3 1 3 3: " << distinctCount(a) << '\n';
+    cout << "is 1 present: " << (occurs(a, 1) ? "yes" : "no") << '\n';
+    cout << "is 2 present: " << (occurs(a, 2) ? "yes" : "no") << '\n';
+    mt19937 rng(1);
     for (int round = 0; round < 500; round++) {
-        int n = rng() % 9;
+        int n = rng() % 8;
         vector<int> b(n);
-        for (int& x : b) x = rng() % 4;
-        long long brute = 0;
-        for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) brute += b[i] == b[j];
-        if (brute != equalPairs(b)) return 1;
+        for (int& x : b) x = rng() % 5;
+        int distinct = 0;
+        for (int v = 0; v < 5; v++) {
+            bool seen = false;
+            for (int x : b) seen |= x == v;
+            distinct += seen;
+            if (seen != occurs(b, v)) return 1;
+        }
+        if (distinct != distinctCount(b)) return 1;
     }
 }

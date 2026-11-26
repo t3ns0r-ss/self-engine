@@ -8,7 +8,7 @@ Output: "pairs value".
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.3. The number of pairs i < j with a_i = a_j, and the most frequent value (the smallest if tied).
+// Theorem 0.6.4. The number of pairs i < j with a_i = a_j, and the most frequent value (the smallest if tied).
 pair<long long, int> equalPairs(const vector<int>& a) {
     map<int, int> cnt;
     long long pairs = 0;  // up to n(n-1)/2, about 2*10^10

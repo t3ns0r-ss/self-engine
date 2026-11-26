@@ -3,7 +3,7 @@ using namespace std;
 
 int main() {
     // P1: tests of sizes 3, 5, 2. Brute: count the steps of a program that loops over each test's own array.
-    // Method: the sum of the sizes (Theorem 0.1.3).
+    // Method: the sum of the sizes (Theorem 0.1.1).
     vector<int> sizes = {3, 5, 2};
     long long counted = 0, sum = 0;
     for (int n : sizes) {

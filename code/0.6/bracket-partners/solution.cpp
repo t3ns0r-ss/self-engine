@@ -8,7 +8,7 @@ Output: the partner positions separated by spaces, or NO.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.6. Partner positions of a properly nested bracket string, found with a stack of open positions.
+// Theorem 0.6.2. Partner positions of a properly nested bracket string, found with a stack of open positions.
 // Returns false if the string is not properly nested.
 bool bracketPartners(const string& s, vector<int>& partner) {
     int n = s.size();

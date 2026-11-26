@@ -2,16 +2,18 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.1.2. Is a * b > L? Answered without computing the product. Needs a >= 0 and b >= 1.
-bool exceeds(long long a, long long b, long long L) { return a > L / b; }
+// Theorem 0.1.2. The largest value of a b-bit signed type, and a product computed in 64 bits.
+unsigned long long maxSigned(int b) { return (1ULL << (b - 1)) - 1; }
+long long product(int a, int b) { return 1LL * a * b; }
 // snippet:end
 
 int main() {
-    cout << "1000000000 * 1000000000 > 10^18: " << (exceeds(1000000000, 1000000000, 1000000000000000000LL) ? "yes" : "no") << '\n';
-    cout << "1000000001 * 1000000000 > 10^18: " << (exceeds(1000000001, 1000000000, 1000000000000000000LL) ? "yes" : "no") << '\n';
-    cout << "5 * 7 > 34: " << (exceeds(5, 7, 34) ? "yes" : "no") << '\n';
-    for (int a = 0; a <= 40; a++)
-        for (int b = 1; b <= 40; b++)
-            for (int L = 0; L <= 400; L++)
-                if (exceeds(a, b, L) != (a * b > L)) return 1;
+    cout << "largest 32-bit signed value: " << maxSigned(32) << '\n';
+    cout << "largest 64-bit signed value: " << maxSigned(64) << '\n';
+    cout << "100000 * 100000 computed in 64 bits: " << product(100000, 100000) << '\n';
+    if (maxSigned(32) != (unsigned long long)numeric_limits<int>::max()) return 1;
+    if (maxSigned(64) != (unsigned long long)numeric_limits<long long>::max()) return 1;
+    for (int a = -300; a <= 300; a += 7)
+        for (int b = -300; b <= 300; b += 11)
+            if (product(a, b) != (long long)((__int128)a * b)) return 1;
 }

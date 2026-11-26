@@ -18,7 +18,7 @@ long long power(long long a, long long b) {
     }
     return r;
 }
-// Theorem 2.6.4. E[max of k draws from 1..m] = sum over x of P(max >= x) = 1 - ((x - 1)/m)^k, modulo 998244353.
+// Theorem 2.6.3. E[max of k draws from 1..m] = sum over x of P(max >= x) = 1 - ((x - 1)/m)^k, modulo 998244353.
 long long expectedMax(long long m, long long k) {
     long long invMk = power(power(m, k), MOD - 2), e = 0;
     for (long long x = 1; x <= m; x++) {

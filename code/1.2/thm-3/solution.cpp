@@ -2,40 +2,50 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 1.2.3. Add v to a[l..r] for every update (0-based), then read the whole array: one running sum.
-vector<long long> applyUpdates(int n, const vector<array<long long, 3>>& updates) {
-    vector<long long> d(n + 1, 0);  // difference array; index n absorbs updates ending at n - 1
-    for (auto [l, r, v] : updates) {
-        d[l] += v;      // the value starts rising at l
-        d[r + 1] -= v;  // and drops back after r
+// Theorem 1.2.3. Subarrays with sum exactly K, and with sum divisible by m: count earlier equal prefix values.
+long long countSumK(const vector<long long>& a, long long K) {
+    map<long long, int> seen;
+    seen[0] = 1;  // P_0 = 0
+    long long P = 0, count = 0;
+    for (long long x : a) {
+        P += x;
+        auto it = seen.find(P - K);
+        if (it != seen.end()) count += it->second;  // earlier P_i = P_j - K
+        seen[P]++;
     }
-    vector<long long> a(n);
-    long long cur = 0;
-    for (int i = 0; i < n; i++) a[i] = cur += d[i];
-    return a;
+    return count;
+}
+
+long long countDivisible(const vector<long long>& a, long long m) {
+    map<long long, int> seen;
+    seen[0] = 1;
+    long long P = 0, count = 0;
+    for (long long x : a) {
+        P += x;
+        long long r = (P % m + m) % m;  // P may be negative
+        count += seen[r];
+        seen[r]++;
+    }
+    return count;
 }
 // snippet:end
 
 int main() {
-    auto a = applyUpdates(5, {{1, 3, 2}, {2, 4, 5}});
-    cout << "n = 5, add 2 on [1, 3], add 5 on [2, 4]:";
-    for (long long x : a) cout << ' ' << x;
-    cout << '\n';
-    a = applyUpdates(5, {{0, 4, 3}});
-    cout << "n = 5, add 3 on [0, 4]:";
-    for (long long x : a) cout << ' ' << x;
-    cout << '\n';
-    mt19937 rng(3);
-    for (int round = 0; round < 300; round++) {
-        int n = rng() % 8 + 1, q = rng() % 6;
-        vector<array<long long, 3>> ups;
-        vector<long long> brute(n, 0);
-        for (int i = 0; i < q; i++) {
-            int l = rng() % n, r = l + rng() % (n - l);
-            long long v = (long long)(rng() % 11) - 5;
-            ups.push_back({l, r, v});
-            for (int k = l; k <= r; k++) brute[k] += v;
+    cout << "1 2 -1 2, sum 3: " << countSumK({1, 2, -1, 2}, 3) << " subarrays\n";
+    cout << "1 2 3, sum divisible by 3: " << countDivisible({1, 2, 3}, 3) << " subarrays\n";
+    cout << "-1 2 1, sum divisible by 2: " << countDivisible({-1, 2, 1}, 2) << " subarrays\n";
+    mt19937 rng(2);
+    for (int round = 0; round < 400; round++) {
+        int n = rng() % 8 + 1;
+        vector<long long> b(n);
+        for (auto& x : b) x = (long long)(rng() % 9) - 4;
+        long long K = (long long)(rng() % 7) - 3, m = rng() % 4 + 1, c1 = 0, c2 = 0;
+        for (int l = 0; l < n; l++) for (int r = l; r < n; r++) {
+            long long s = 0;
+            for (int i = l; i <= r; i++) s += b[i];
+            c1 += s == K;
+            c2 += s % m == 0;
         }
-        if (applyUpdates(n, ups) != brute) return 1;
+        if (c1 != countSumK(b, K) || c2 != countDivisible(b, m)) return 1;
     }
 }

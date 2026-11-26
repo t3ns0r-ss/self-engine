@@ -7,7 +7,7 @@ Output: the count (an exact integer, at most N).
 using namespace std;
 
 // snippet:begin
-// Theorem 2.5.6. The integers in [1, N] divisible by none of a_1..a_m: the alternating sum over the sets S of
+// Theorem 2.5.5. The integers in [1, N] divisible by none of a_1..a_m: the alternating sum over the sets S of
 // N / lcm(S) (Theorem 0.4.2); an lcm above N counts as N + 1, so its term is 0.
 long long noneDivisible(long long N, const vector<long long>& a) {
     int m = a.size();

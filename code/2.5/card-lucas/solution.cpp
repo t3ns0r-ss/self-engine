@@ -7,7 +7,7 @@ long long power(long long a, long long b, long long m) {
     while (b > 0) { if (b & 1) r = r * a % m; a = a * a % m; b >>= 1; }
     return r;
 }
-// the factorial-table formula of Theorem 2.5.3 applied to any n (Fermat inverses, so a prime m is assumed)
+// the factorial-table formula of Theorem 2.5.7 applied to any n (Fermat inverses, so a prime m is assumed)
 long long tableBinom(int n, int r, long long m) {
     auto fact = [&](int k) { long long f = 1 % m; for (int i = 1; i <= k; i++) f = f * i % m; return f; };
     return fact(n) * power(fact(r), m - 2, m) % m * power(fact(n - r), m - 2, m) % m;
@@ -35,6 +35,6 @@ int main() {
     cout << "N1 brute=" << pascal(4, 2, 4) << " method=" << lucasDigits(4, 2, 4) << '\n';
     // N2: C(9, 3) modulo 9, a prime power. Base-9 digits (9 = 10, 3 = 03) give 0, the truth is 84 mod 9 = 3.
     cout << "N2 brute=" << pascal(9, 3, 9) << " method=" << lucasDigits(9, 3, 9) << '\n';
-    // Extra (not an example): the table formula of Theorem 2.5.3 on C(14, 7) modulo 7 collapses to 0 while Lucas gives 2.
+    // Extra (not an example): the table formula of Theorem 2.5.7 on C(14, 7) modulo 7 collapses to 0 while Lucas gives 2.
     cout << "table formula on C(14, 7) mod 7 = " << tableBinom(14, 7, 7) << '\n';
 }

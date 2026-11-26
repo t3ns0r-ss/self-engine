@@ -7,7 +7,7 @@ Output: inv[n], then the sum inv[1] + ... + inv[n] mod p.
 using namespace std;
 
 // snippet:begin
-// Theorem 2.2.6. inv[i] = -(p / i) * inv[p mod i] mod p, for 1 <= i <= n < p, in O(n).
+// Theorem 2.2.3. inv[i] = -(p / i) * inv[p mod i] mod p, for 1 <= i <= n < p, in O(n).
 vector<long long> inverseTable(long long n, long long p) {
     vector<long long> inv(n + 1);
     inv[1] = 1;

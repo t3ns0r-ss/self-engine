@@ -7,7 +7,7 @@ Output: the sum modulo 10^9 + 7.
 using namespace std;
 
 // snippet:begin
-// Theorem 2.6.3. The sum of (max - min) over all non-empty subsets: after sorting, a[i] is the maximum of 2^i subsets
+// Theorem 2.6.5. The sum of (max - min) over all non-empty subsets: after sorting, a[i] is the maximum of 2^i subsets
 // and the minimum of 2^(n-1-i) subsets.
 long long subsetWidths(vector<long long> a) {
     const long long MOD = 1000000007;

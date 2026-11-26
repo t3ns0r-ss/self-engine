@@ -2,33 +2,33 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 1.7.5. a + b = (a xor b) + 2 (a and b), so from s = a + b and x = a xor b the common bits are (s - x) / 2.
-// Also: the lowest set bit of v is v & -v, and v is a power of two when v & (v - 1) == 0.
-pair<long long, long long> splitSumXor(long long s, long long x) {
-    if (s < x || (s - x) % 2 != 0) return {-1, -1};
-    long long c = (s - x) / 2;
-    if (c & x) return {-1, -1};  // a bit cannot be in both and in exactly one
-    return {c, c | x};           // a contains c; giving every bit of x to b makes a smallest
+// Theorem 1.7.5. The sums of a_i xor a_j, a_i and a_j, a_i or a_j over all pairs i < j, from the number c of values with each bit.
+array<long long, 3> pairSums(const vector<int>& a) {
+    long long n = a.size(), sx = 0, sa = 0, so = 0, pairs = n * (n - 1) / 2;
+    for (int b = 0; b < 30; b++) {
+        long long c = 0;  // how many values have bit b
+        for (int x : a) c += (x >> b) & 1;
+        long long w = 1LL << b;
+        sx += w * (c * (n - c));                       // exactly one has the bit
+        sa += w * (c * (c - 1) / 2);                   // both have it
+        so += w * (pairs - (n - c) * (n - c - 1) / 2); // not "neither"
+    }
+    return {sx, sa, so};
 }
-long long lowestSetBit(long long v) { return v & -v; }
-bool isPowerOfTwo(long long v) { return v > 0 && (v & (v - 1)) == 0; }
 // snippet:end
 
 int main() {
-    cout << "6 and 3: xor " << (6 ^ 3) << ", and " << (6 & 3) << ", sum " << 6 + 3 << " = " << (6 ^ 3) + 2 * (6 & 3) << ", or " << (6 | 3) << '\n';
-    pair<long long, long long> p = splitSumXor(9, 5);
-    cout << "sum 9 and xor 5: a = " << p.first << ", b = " << p.second << '\n';
-    cout << "lowest set bit of 12: " << lowestSetBit(12) << '\n';
-    cout << "12 is a power of two: " << (isPowerOfTwo(12) ? "yes" : "no") << ", 16: " << (isPowerOfTwo(16) ? "yes" : "no") << '\n';
-    for (long long s = 0; s <= 40; s++)
-        for (long long x = 0; x <= 40; x++) {
-            pair<long long, long long> want = {-1, -1};
-            for (long long a = 0; a <= s && want.first < 0; a++) if ((a ^ (s - a)) == x) want = {a, s - a};
-            if (want != splitSumXor(s, x)) return 1;
-        }
-    for (long long v = 1; v <= 300; v++) {
-        long long low = 1;
-        while (!(v & low)) low <<= 1;
-        if (low != lowestSetBit(v) || isPowerOfTwo(v) != (__builtin_popcountll(v) == 1)) return 1;
+    array<long long, 3> r = pairSums({1, 2, 3});
+    cout << "1 2 3: sum of XOR " << r[0] << ", AND " << r[1] << ", OR " << r[2] << '\n';
+    r = pairSums({5, 5});
+    cout << "5 5: sum of XOR " << r[0] << ", AND " << r[1] << ", OR " << r[2] << '\n';
+    mt19937 rng(3);
+    for (int round = 0; round < 300; round++) {
+        int n = rng() % 7;
+        vector<int> a(n);
+        for (int& x : a) x = rng() % 64;
+        array<long long, 3> want = {0, 0, 0};
+        for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) want[0] += a[i] ^ a[j], want[1] += a[i] & a[j], want[2] += a[i] | a[j];
+        if (want != pairSums(a)) return 1;
     }
 }

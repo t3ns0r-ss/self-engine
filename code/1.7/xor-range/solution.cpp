@@ -7,7 +7,7 @@ Output: one line per query.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.7.1. The XOR of 0, 1, ..., n by the period-4 pattern, and the XOR of L..R: the part 0..L-1 cancels.
+// Theorem 1.7.2. The XOR of 0, 1, ..., n by the period-4 pattern, and the XOR of L..R: the part 0..L-1 cancels.
 long long xorUpTo(long long n) {
     switch (n % 4) {
         case 0: return n;

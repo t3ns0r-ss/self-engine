@@ -2,40 +2,27 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.6.3. A total over configurations is a sum over elements of value times the number of configurations in which
-// it counts: subarray sums (a[i] lies in (i+1)(n-i) subarrays) and subset maxima (a[i] is the maximum of 2^i subsets).
-long long sumOfSubarraySums(const vector<long long>& a) {
-    long long n = a.size(), total = 0;
-    for (long long i = 0; i < n; i++) total += a[i] * (i + 1) * (n - i);
-    return total;
-}
-long long sumOfSubsetMaxima(vector<long long> a) {  // distinct values
-    sort(a.begin(), a.end());
-    long long total = 0;
-    for (size_t i = 0; i < a.size(); i++) total += a[i] << i;
-    return total;
+// Theorem 2.6.3. E[X] = sum over x >= 1 of P(X >= x). For the maximum of k independent draws from 1..m,
+// P(max >= x) = 1 - ((x - 1)/m)^k.
+double expectedMax(int m, int k) {
+    double e = 0;
+    for (int x = 1; x <= m; x++) e += 1 - pow((x - 1.0) / m, k);
+    return e;
 }
 // snippet:end
 
 int main() {
-    cout << "sum of the sums of all subarrays of 1 2 3: " << sumOfSubarraySums({1, 2, 3}) << '\n';
-    cout << "sum of the maxima of all non-empty subsets of 1 2 3: " << sumOfSubsetMaxima({1, 2, 3}) << '\n';
-    mt19937 rng(5);
-    for (int round = 0; round < 200; round++) {
-        int n = 1 + rng() % 8;
-        vector<long long> a(n);
-        for (auto& x : a) x = rng() % 20;
-        long long sub = 0;
-        for (int l = 0; l < n; l++) for (int r = l; r < n; r++) for (int i = l; i <= r; i++) sub += a[i];
-        if (sub != sumOfSubarraySums(a)) return 1;
-        set<long long> s(a.begin(), a.end());
-        vector<long long> d(s.begin(), s.end());
-        long long mx = 0;
-        for (int mask = 1; mask < (1 << d.size()); mask++) {
-            long long best = 0;
-            for (size_t i = 0; i < d.size(); i++) if (mask >> i & 1) best = max(best, d[i]);
-            mx += best;
+    cout << fixed << setprecision(4);
+    cout << "the larger of two dice: " << expectedMax(6, 2) << " = 161/36\n";
+    for (int m = 1; m <= 6; m++) for (int k = 1; k <= 3; k++) {
+        double total = 0, count = 0;
+        int cells = 1;
+        for (int i = 0; i < k; i++) cells *= m;
+        for (int code = 0; code < cells; code++) {
+            int c = code, best = 0;
+            for (int i = 0; i < k; i++) best = max(best, c % m + 1), c /= m;
+            total += best, count++;
         }
-        if (mx != sumOfSubsetMaxima(d)) return 1;
+        if (fabs(total / count - expectedMax(m, k)) > 1e-9) return 1;
     }
 }

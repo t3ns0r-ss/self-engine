@@ -2,7 +2,7 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 3.1.5. Counting inversions by divide and conquer: the pairs i < j with a[i] > a[j] inside a[l..r-1].
+// Theorem 3.1.4. Counting inversions by divide and conquer: the pairs i < j with a[i] > a[j] inside a[l..r-1].
 // Count inside each half, then count the pairs that cross the middle while merging the two sorted halves.
 // The part a[l..r-1] ends up sorted, and the count is long long (it can reach n(n-1)/2).
 long long countInversions(vector<int>& a, vector<int>& tmp, int l, int r) {

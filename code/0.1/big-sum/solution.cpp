@@ -7,7 +7,7 @@ Output: the sum.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.1.1. The sum is kept in a long long: 2*10^5 values of 10^9 reach 2*10^14.
+// Theorem 0.1.2. The sum is kept in a long long: 2*10^5 values of 10^9 reach 2*10^14.
 long long sumAll(const vector<long long>& a) {
     long long sum = 0;
     for (long long x : a) sum += x;

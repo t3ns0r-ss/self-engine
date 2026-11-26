@@ -8,7 +8,7 @@ Output: line 1: the factorisation as "p^e" terms in increasing order of p;
 using namespace std;
 
 // snippet:begin
-// Theorems 2.1.5 and 2.1.3. Trial division gives the primes with exponents; then d(n) and sigma(n) by the product formulas.
+// Theorems 2.1.4 and 2.1.3. Trial division gives the primes with exponents; then d(n) and sigma(n) by the product formulas.
 vector<pair<long long, int>> factorise(long long n) {
     vector<pair<long long, int>> f;  // (prime, exponent)
     for (long long d = 2; d * d <= n; d++) {

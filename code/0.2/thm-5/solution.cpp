@@ -2,21 +2,29 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 0.2.5. The steps of the loop over multiples: for each i, the numbers i, 2i, 3i, ... up to n.
-long long multipleSteps(int n) {
-    long long steps = 0;
-    for (int i = 1; i <= n; i++)
-        for (int j = i; j <= n; j += i) steps++;
-    return steps;
+// Theorem 0.2.5. All divisors of n in increasing order; d is tried only up to sqrt(n).
+vector<long long> divisors(long long n) {
+    vector<long long> small, large;  // d <= sqrt(n), and their partners n / d
+    for (long long d = 1; d * d <= n; d++) {
+        if (n % d != 0) continue;
+        small.push_back(d);
+        if (d != n / d) large.push_back(n / d);  // a square root is recorded once
+    }
+    small.insert(small.end(), large.rbegin(), large.rend());
+    return small;
 }
 // snippet:end
 
 int main() {
-    for (int n : {10, 1000, 1000000}) cout << "n = " << n << ": " << multipleSteps(n) << " steps\n";
-    for (int n = 1; n <= 3000; n++) {
-        double bound = n * (1 + log((double)n));
-        long long exact = 0;
-        for (int i = 1; i <= n; i++) exact += n / i;
-        if (multipleSteps(n) != exact || multipleSteps(n) > bound + 1e-9) return 1;
+    for (long long n : {12LL, 36LL, 97LL}) {
+        cout << "divisors of " << n << ":";
+        for (long long d : divisors(n)) cout << ' ' << d;
+        cout << '\n';
+    }
+    for (long long n = 1; n <= 400; n++) {
+        vector<long long> all;
+        for (long long d = 1; d <= n; d++)
+            if (n % d == 0) all.push_back(d);
+        if (all != divisors(n)) return 1;
     }
 }

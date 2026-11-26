@@ -8,7 +8,7 @@ Output: R lines of C values.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.2.4, part 3. Add v to every cell of a rectangle (1-based corners) for each update: four corner changes,
+// Theorem 1.2.5, part 3. Add v to every cell of a rectangle (1-based corners) for each update: four corner changes,
 // then 2D prefix sums give the grid.
 vector<vector<long long>> rectAdd(int R, int C, const vector<array<long long, 5>>& updates) {
     vector<vector<long long>> d(R + 2, vector<long long>(C + 2, 0));  // one extra row and column for corners past the edge

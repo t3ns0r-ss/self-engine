@@ -8,7 +8,7 @@ Output: two numbers.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.2.5. cnt[k] = number of divisors of k, for every k up to n, in about n ln n steps.
+// Theorem 0.2.4. cnt[k] = number of divisors of k, for every k up to n, in about n ln n steps.
 vector<int> divisorCounts(int n) {
     vector<int> cnt(n + 1, 0);
     for (int i = 1; i <= n; i++)

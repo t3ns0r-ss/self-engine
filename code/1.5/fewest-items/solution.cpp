@@ -7,7 +7,7 @@ Output: the fewest number of items, or -1.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.5.3, part 1. The fewest items whose sum reaches T: take the largest first (-1 if even all of them fall short).
+// Theorem 1.5.2, part 1. The fewest items whose sum reaches T: take the largest first (-1 if even all of them fall short).
 int fewestItems(vector<long long> v, long long T) {
     sort(v.rbegin(), v.rend());
     long long sum = 0;  // up to 2*10^14

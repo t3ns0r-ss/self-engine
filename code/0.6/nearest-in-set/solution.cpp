@@ -8,7 +8,7 @@ Output: one line per query of type 3 or 4.
 using namespace std;
 
 // snippet:begin
-// Theorem 0.6.4. "1 x" adds x, "2 x" removes one copy of x, "3 x" asks for the largest element <= x,
+// Theorem 0.6.6. "1 x" adds x, "2 x" removes one copy of x, "3 x" asks for the largest element <= x,
 // "4 x" for the smallest element >= x (-1 if none).
 vector<int> processMultiset(const vector<array<int, 2>>& queries) {
     multiset<int> s;

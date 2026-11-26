@@ -7,7 +7,7 @@ Output: the x in [0, m) with a*x = 1 (mod m), or -1 if gcd(a, m) != 1.
 using namespace std;
 
 // snippet:begin
-// Theorem 2.2.3, part 2. ext gives g = gcd(a, b) and x, y with a*x + b*y = g; then x is the inverse of a modulo m.
+// Theorem 2.2.2, part 2. ext gives g = gcd(a, b) and x, y with a*x + b*y = g; then x is the inverse of a modulo m.
 long long ext(long long a, long long b, long long& x, long long& y) {
     if (b == 0) {
         x = 1, y = 0;

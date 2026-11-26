@@ -8,7 +8,7 @@ Output: one line per test: a b, or -1.
 using namespace std;
 
 // snippet:begin
-// Theorem 1.7.5. The pair (a, b) with a + b = s and a xor b = x and the smallest a, or {-1, -1} if there is none:
+// Theorem 1.7.1. The pair (a, b) with a + b = s and a xor b = x and the smallest a, or {-1, -1} if there is none:
 // a + b = (a xor b) + 2 (a and b), so the common bits are c = (s - x) / 2.
 pair<long long, long long> splitSumXor(long long s, long long x) {
     if (s < x || (s - x) % 2 != 0) return {-1, -1};

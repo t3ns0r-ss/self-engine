@@ -2,26 +2,40 @@
 using namespace std;
 
 // snippet:begin
-// Theorem 2.6.5. Waiting for a success of probability p takes 1/p trials; stages add. Coupon collector: n * (1 + 1/2 + ... + 1/n).
-double waitFor(double p) { return 1 / p; }
-double couponCollector(int n) {
-    double e = 0;
-    for (int j = 0; j < n; j++) e += n / (double)(n - j);  // stage j: a new kind has probability (n - j)/n
-    return e;
+// Theorem 2.6.5. A total over configurations is a sum over elements of value times the number of configurations in which
+// it counts: subarray sums (a[i] lies in (i+1)(n-i) subarrays) and subset maxima (a[i] is the maximum of 2^i subsets).
+long long sumOfSubarraySums(const vector<long long>& a) {
+    long long n = a.size(), total = 0;
+    for (long long i = 0; i < n; i++) total += a[i] * (i + 1) * (n - i);
+    return total;
+}
+long long sumOfSubsetMaxima(vector<long long> a) {  // distinct values
+    sort(a.begin(), a.end());
+    long long total = 0;
+    for (size_t i = 0; i < a.size(); i++) total += a[i] << i;
+    return total;
 }
 // snippet:end
 
 int main() {
-    cout << fixed << setprecision(1);
-    cout << "rolls of a die until a 6: " << waitFor(1 / 6.0) << '\n';
-    cout << "rolls until all six faces have appeared: " << couponCollector(6) << '\n';
-    mt19937 rng(11);
-    double total = 0;
-    const int trials = 200000;
-    for (int t = 0; t < trials; t++) {
-        int seen = 0, rolls = 0;
-        while (seen != 63) seen |= 1 << (rng() % 6), rolls++;
-        total += rolls;
+    cout << "sum of the sums of all subarrays of 1 2 3: " << sumOfSubarraySums({1, 2, 3}) << '\n';
+    cout << "sum of the maxima of all non-empty subsets of 1 2 3: " << sumOfSubsetMaxima({1, 2, 3}) << '\n';
+    mt19937 rng(5);
+    for (int round = 0; round < 200; round++) {
+        int n = 1 + rng() % 8;
+        vector<long long> a(n);
+        for (auto& x : a) x = rng() % 20;
+        long long sub = 0;
+        for (int l = 0; l < n; l++) for (int r = l; r < n; r++) for (int i = l; i <= r; i++) sub += a[i];
+        if (sub != sumOfSubarraySums(a)) return 1;
+        set<long long> s(a.begin(), a.end());
+        vector<long long> d(s.begin(), s.end());
+        long long mx = 0;
+        for (int mask = 1; mask < (1 << d.size()); mask++) {
+            long long best = 0;
+            for (size_t i = 0; i < d.size(); i++) if (mask >> i & 1) best = max(best, d[i]);
+            mx += best;
+        }
+        if (mx != sumOfSubsetMaxima(d)) return 1;
     }
-    if (fabs(total / trials - couponCollector(6)) > 0.1) return 1;
 }

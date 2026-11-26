@@ -7,7 +7,7 @@ Output: the number of inversions.
 using namespace std;
 
 // snippet:begin
-// Divide and conquer (Theorem 3.1.5): count inside the left half, inside the right half, and across the middle
+// Divide and conquer (Theorem 3.1.4): count inside the left half, inside the right half, and across the middle
 // while merging. Equal values are not inversions, so on a tie the left value goes first.
 long long countInversions(vector<int>& a, vector<int>& tmp, int l, int r) {
     if (r - l <= 1) return 0;
